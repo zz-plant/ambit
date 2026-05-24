@@ -1,5 +1,9 @@
 # Toolchain Visualizer
 
+<p align="center">
+  <img src="docs/assets/toolchain-visualizer-demo.gif" alt="toolchain-visualizer demo animation" width="720">
+</p>
+
 A web-based visualizer for managing and visualizing your opencode toolchain with hexagonal mapping and AI consultants.
 
 ## Features
