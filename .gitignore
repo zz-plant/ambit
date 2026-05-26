@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.DS_Store
+
+# Tooling
+.cmux/
+.opencode/
+.sisyphus/
+.codex/
+.agent/
+.wrangler/
