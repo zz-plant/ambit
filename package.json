@@ -8,7 +8,9 @@
     "dev": "concurrently -n api,web -c cyan,magenta \"bun run server\" \"vite\"",
     "build": "vite build",
     "start": "NODE_ENV=production bun run server",
-    "server": "bun run server.ts"
+    "server": "bun run server.ts",
+    "assets:check": "bun run scripts/check-assets.ts",
+    "assets:generate": "bun run scripts/generate-scenes.ts"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.0",
