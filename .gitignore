@@ -2,6 +2,9 @@ node_modules/
 dist/
 .DS_Store
 
+# Secrets
+.env
+
 # Tooling
 .cmux/
 .opencode/
@@ -9,3 +12,5 @@ dist/
 .codex/
 .agent/
 .wrangler/
+.playwright-mcp/
+
