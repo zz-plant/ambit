@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import Constellation from './components/Constellation';
 import StarPanel from './components/StarPanel';
-import DiagnosticsPanel from './components/ConsultantPanel';
-import RepoScanPanel from './components/RepoScanPanel';
+import ConsultantPanel from './components/ConsultantPanel';
+import CivTree from './components/CivTree';
 import ToolchainPanel from './components/ToolchainPanel';
-import InfrastructurePanel from './components/InfrastructurePanel';
+import DocsModal from './components/DocsModal';
 import { useToolchainStore } from './store/toolchainStore';
 
-type Tab = 'contacts' | 'edge' | 'diagnostics' | 'scan';
+type Tab = 'contacts' | 'diagnostics';
 
 function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const addMcpServer = useToolchainStore(s => s.addMcpServer);
@@ -178,13 +178,49 @@ export default function App() {
   const loading = useToolchainStore(s => s.loading);
   const error = useToolchainStore(s => s.error);
   const loadConfig = useToolchainStore(s => s.loadConfig);
-
   const layoutMode = useToolchainStore(s => s.layoutMode);
   const setLayoutMode = useToolchainStore(s => s.setLayoutMode);
+  const seedDemo = useToolchainStore(s => s.seedDemo);
+  const loadFromJSON = useToolchainStore(s => s.loadFromJSON);
+  const hoveredId = useToolchainStore(s => s.hoveredItem);
+  const hoverItem = useToolchainStore(s => s.hoverItem);
+
   const showUplinkModal = useToolchainStore(s => s.showUplinkModal);
   const setShowUplinkModal = useToolchainStore(s => s.setShowUplinkModal);
 
-  const [leftTab, setLeftTab] = useState<Tab>('contacts');
+  const [leftTab, setLeftTab] = useState<Tab>('diagnostics');
+  const [showDocs, setShowDocs] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [showImport, setShowImport] = useState(false);
+
+  const captureGraph = () => {
+    const svg = document.querySelector('.app-scene svg');
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    const data = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([data], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      const h = svg.viewBox.baseVal?.height || 600;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f5e6c8';
+      ctx.fillRect(0, 0, 1200, h);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(b => {
+        if (!b) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = 'capability-graph.png';
+        a.click();
+      });
+    };
+    img.src = url;
+  };
   const [leftOpen, setLeftOpen] = useState(true);
 
   useEffect(() => {
@@ -197,7 +233,7 @@ export default function App() {
         {loading && !items.length && (
           <div className="app-loading">
             <div className="app-loading-ring" />
-            <p>Acquiring sensor lock…</p>
+            <p>Loading capability graph…</p>
           </div>
         )}
         {error && (
@@ -206,7 +242,36 @@ export default function App() {
             <button className="tp-btn" onClick={() => loadConfig()}>RECONNECT</button>
           </div>
         )}
-        <Constellation />
+        {showGuide && items.length > 0 && (
+          <div style={{ position:'absolute', bottom:80, left:'50%', transform:'translateX(-50%)', zIndex:5, background:'#faf3e0cc', backdropFilter:'blur(4px)', border:'1px solid #b8860b', borderRadius:8, padding:'12px 20px', maxWidth:500, textAlign:'center' }}>
+            <p style={{ margin:0, fontSize:11, color:'#4a3728', lineHeight:1.5 }}>
+              <strong>Click any circle</strong> to see what it enables and highlight its dependencies. <strong>Hover</strong> for connection details. <strong>Toggle ERAS</strong> for era-column view.
+            </p>
+          </div>
+        )}
+        {!items.length && !loading && (
+          <div className="app-welcome">
+            <div className="app-welcome-hero">
+              <div className="app-welcome-title">CAPABILITY GRAPH</div>
+              <div className="app-welcome-tagline">Your OpenCode toolchain, mapped as a capability graph:<br/>what you have built, what connects, and what is possible.</div>
+              <div className="app-welcome-diagram">
+                <svg width="300" height="100" viewBox="0 0 300 100"><rect x={0} y={0} width={300} height={100} rx={6} fill="#e8d5a8" opacity={0.5}/><line x1={52} y1={50} x2={128} y2={30} stroke="#8b6914" strokeWidth={1.5}/><line x1={152} y1={50} x2={128} y2={30} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><line x1={52} y1={50} x2={128} y2={70} stroke="#8b6914" strokeWidth={1.5}/><line x1={252} y1={50} x2={128} y2={70} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><circle cx={52} cy={50} r={16} fill="#b8860b"/><text x={52} y={55} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>◈</text><circle cx={252} cy={50} r={16} fill="#cd853f"/><text x={252} y={55} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>◆</text><circle cx={128} cy={30} r={14} fill="#b87333"/><text x={128} y={34} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>●</text><circle cx={128} cy={70} r={14} fill="#6b8e23"/><text x={128} y={74} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>◇</text><circle cx={128} cy={30} r={18} fill="none" stroke="#b8860b" strokeWidth={2} strokeDasharray="84 29" strokeLinecap="round" transform="rotate(-90 128 30)"/><circle cx={128} cy={70} r={18} fill="none" stroke="#b8860b" strokeWidth={1.5} strokeDasharray="40 73" strokeLinecap="round" transform="rotate(-90 128 70)"/></svg>
+              </div>
+              <div className="app-welcome-actions">
+                <button className="app-welcome-btn" onClick={() => { seedDemo(); setTimeout(() => setShowGuide(true), 600); }}>▶  LOAD DEMO</button>
+                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowImport(true)}>📋  PASTE</button>
+                <a href="https://github.com/zz-plant/capability-graph" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">⭐  GITHUB</a>
+              </div>
+              <div className="app-welcome-code"><code>git clone https://github.com/zz-plant/capability-graph.git &amp;&amp; cd capability-graph &amp;&amp; ./bootstrap.sh</code></div>
+              <div className="app-welcome-modes"><span>Click <em>LOAD DEMO</em> to see a sample capability graph</span><span>Select any node and check <em>DIAGNOSTICS</em> in the sidebar</span><span>Toggle <em>ERAS</em> layout mode for an era-column tech tree view</span></div>
+            </div>
+          </div>
+        )}
+        {items.length > 0 && layoutMode === 'civ' ? (
+          <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} />
+        ) : items.length > 0 ? (
+          <Constellation />
+        ) : null}
       </div>
 
       {showStarPanel && selectedId && (
@@ -217,51 +282,21 @@ export default function App() {
 
       <aside className={`app-console ${leftOpen ? 'app-console--open' : ''}`}>
         <div className="app-console-tabs">
-          <button className={`app-console-tab ${leftTab === 'contacts' ? 'active' : ''}`}
-            onClick={() => setLeftTab('contacts')}>CONTACTS</button>
-          <button className={`app-console-tab ${leftTab === 'edge' ? 'active' : ''}`}
-            onClick={() => setLeftTab('edge')}>EDGE</button>
-          <button className={`app-console-tab ${leftTab === 'diagnostics' ? 'active' : ''}`}
-            onClick={() => setLeftTab('diagnostics')}>DIAGNOSTICS</button>
-          <button className={`app-console-tab ${leftTab === 'scan' ? 'active' : ''}`}
-            onClick={() => setLeftTab('scan')}>SCAN</button>
+          <button className={`app-console-tab ${leftTab === 'contacts' ? 'active' : ''}`} onClick={() => setLeftTab('contacts')}>TOOLS</button>
+          <button className={`app-console-tab ${leftTab === 'diagnostics' ? 'active' : ''}`} onClick={() => setLeftTab('diagnostics')}>DIAGNOSTICS</button>
         </div>
-        {leftTab === 'contacts' ? <ToolchainPanel /> : leftTab === 'edge' ? <InfrastructurePanel /> : leftTab === 'diagnostics' ? <DiagnosticsPanel /> : <RepoScanPanel />}
+        {leftTab === 'contacts' ? <ToolchainPanel /> : <ConsultantPanel />}
       </aside>
 
       <div className="app-hud">
-        <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle console">
-          {leftOpen ? '◀' : '▶'}
-        </button>
-        <button className="app-hud-btn" onClick={loadConfig} title="Refresh scan">
-          ↺
-        </button>
-        {selectedId && (
-          <button className="app-hud-btn" onClick={() => selectItem(null)} title="Deselect">
-            ✕
-          </button>
-        )}
-
-        {/* Layout Modes */}
+        <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle panel"> {leftOpen ? '◀' : '▶'} </button>
+        <button className="app-hud-btn" onClick={() => { setShowDocs(true); setShowGuide(false); }} style={{fontWeight:600,fontSize:9,letterSpacing:1}}>DOCS</button>
+        <button className="app-hud-btn" onClick={captureGraph}>📷</button>
+        {selectedId && (<button className="app-hud-btn" onClick={() => selectItem(null)} title="Deselect"> ✕ </button>)}
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
-          {(['constellation', 'orbital', 'flat'] as const).map(m => (
-            <button
-              key={m}
-              className={`app-hud-btn`}
-              style={{
-                width: 'auto',
-                padding: '0 8px',
-                border: 'none',
-                background: layoutMode === m ? 'var(--accent)' : 'transparent',
-                color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)',
-                fontWeight: layoutMode === m ? 700 : 'normal',
-                fontSize: '9px',
-                height: '22px'
-              }}
-              onClick={() => setLayoutMode(m)}
-              title={`${m.toUpperCase()} layout`}
-            >
-              {m.toUpperCase()}
+          {(['constellation', 'civ'] as const).map(m => (
+            <button key={m} className="app-hud-btn" style={{ width:'auto', padding:'0 8px', border:'none', background: layoutMode === m ? 'var(--accent)' : 'transparent', color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: layoutMode === m ? 700 : 'normal', fontSize:'9px', height:'22px' }} onClick={() => { setLayoutMode(m); setShowGuide(false); }} title={`${m === 'civ' ? 'Era columns' : '3D hex map'} layout`}>
+              {m === 'civ' ? 'ERAS' : m.toUpperCase()}
             </button>
           ))}
         </div>
@@ -269,12 +304,28 @@ export default function App() {
 
       <UplinkModal isOpen={showUplinkModal} onClose={() => setShowUplinkModal(false)} />
 
+      <DocsModal isOpen={showDocs} onClose={() => setShowDocs(false)} />
+
+      {showImport && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowImport(false)}>
+          <div style={{ background:'#faf3e0', borderRadius:8, maxWidth:500, width:'90%', padding:28, border:'1px solid #c4a96a' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin:'0 0 4px 0', fontSize:14, fontWeight:700, letterSpacing:1.5, color:'#6b5b3a' }}>IMPORT CAPABILITY GRAPH</h3>
+            <p style={{ margin:'0 0 12px 0', fontSize:10, color:'#8b7355' }}>Run <code style={{background:'#f0dbb8', padding:'1px 4px', borderRadius:3}}>tt export</code> locally, copy the output, and paste below.</p>
+            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from tt export here..." style={{ width:'100%', height:200, fontFamily:'monospace', fontSize:11, padding:10, border:'1px solid #c4a96a', borderRadius:4, background:'#f0dbb8', resize:'vertical', color:'#4a3728' }} />
+            <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'flex-end' }}>
+              <button onClick={() => setShowImport(false)} style={{ padding:'6px 14px', fontSize:10, fontWeight:600, letterSpacing:1, border:'1px solid #c4a96a', background:'transparent', color:'#8b7355', borderRadius:3, cursor:'pointer' }}>CANCEL</button>
+              <button onClick={() => { if (loadFromJSON(importText)) { setShowImport(false); setImportText(''); } }} style={{ padding:'6px 14px', fontSize:10, fontWeight:600, letterSpacing:1, border:'1px solid #b8860b', background:'#b8860b', color:'#faf3e0', borderRadius:3, cursor:'pointer' }}>LOAD GRAPH</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <footer className="app-footer">
-        <span className="app-footer-title">◈ SENSOR ARRAY</span>
+        <span className="app-footer-title">◈ CAPABILITY GRAPH</span>
         <span className="app-footer-info">
-          {items.length} contacts · {connections.length} data links
+          {items.length} capabilities · {items.filter(i => i.status === 'built').length} built
         </span>
-        <span className="app-footer-hint">ORBIT · SELECT · DIAGNOSE</span>
+        <span className="app-footer-hint">ERAS · CONSTELLATION</span>
       </footer>
     </div>
   );

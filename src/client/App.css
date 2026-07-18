@@ -1260,3 +1260,142 @@ html, body, #root {
   from { opacity: 0; transform: scale(0.95); }
   to { opacity: 1; transform: scale(1); }
 }
+
+/* ─── Welcome Hero ─── */
+.app-welcome {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-deep);
+  z-index: 10;
+}
+
+.app-welcome-hero {
+  max-width: 560px;
+  padding: 40px;
+  text-align: center;
+}
+
+.app-welcome-title {
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.app-welcome-tagline {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 28px;
+}
+
+.app-welcome-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.app-welcome-btn {
+  padding: 10px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border-radius: var(--radius, 4px);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg-deep);
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.app-welcome-btn:hover { opacity: 0.8; }
+.app-welcome-btn-outline {
+  background: transparent;
+  color: var(--accent);
+}
+
+.app-welcome-code {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 4px);
+  padding: 10px 14px;
+  margin-bottom: 28px;
+  text-align: left;
+}
+.app-welcome-code code {
+  font-size: 11px;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.app-welcome-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.app-welcome-modes em {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ─── Mobile ─── */
+@media (max-width: 768px) {
+  .app-welcome-hero {
+    max-width: 90vw;
+    padding: 24px;
+  }
+  .app-welcome-title {
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+  .app-welcome-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .app-welcome-code {
+    font-size: 10px;
+  }
+  .app-hud {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .app-console {
+    max-width: 70vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-welcome-title {
+    font-size: 15px;
+  }
+  .app-welcome-tagline {
+    font-size: 11px;
+  }
+  .app-welcome-btn {
+    padding: 8px 14px;
+    font-size: 10px;
+  }
+  .app-console-tab {
+    font-size: 8px;
+    padding: 6px 8px;
+  }
+}
+
+/* ─── Welcome Diagram ─── */
+.app-welcome-diagram {
+  margin: 16px 0 24px 0;
+  text-align: center;
+}
+.app-welcome-diagram svg {
+  border-radius: 6px;
+}

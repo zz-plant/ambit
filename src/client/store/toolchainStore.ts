@@ -65,12 +65,14 @@ interface StoreState {
   snapshots: Snapshot[];
   showStarPanel: boolean;
   showUplinkModal: boolean;
-  layoutMode: 'constellation' | 'orbital' | 'flat';
+  layoutMode: 'constellation' | 'civ';
   loading: boolean;
   error: string | null;
   trends: TrendItem[];
   infrastructureScan: InfrastructureScan | null;
 
+  seedDemo: () => void;
+  loadFromJSON: (json: string) => boolean;
   setShowUplinkModal: (show: boolean) => void;
   loadInfrastructureScan: () => Promise<InfrastructureScan | null>;
   fetchTrends: () => Promise<void>;
@@ -81,7 +83,7 @@ interface StoreState {
   hoverItem: (id: string | null) => void;
   setSearch: (q: string) => void;
   toggleStarPanel: () => void;
-  setLayoutMode: (mode: 'constellation' | 'orbital' | 'flat') => void;
+  setLayoutMode: (mode: 'constellation' | 'orbital' | 'flat' | 'civ') => void;
 
   updateItem: (id: string, updates: Partial<Item>) => void;
   deleteItem: (id: string) => void;
@@ -284,7 +286,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   snapshots: [],
   showStarPanel: false,
   showUplinkModal: false,
-  layoutMode: 'constellation',
+  layoutMode: 'civ',
   loading: false,
   error: null,
   trends: [],
@@ -300,10 +302,73 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     const s = get();
     const next = s.selectedItem === id ? null : id;
     set({ selectedItem: next, showStarPanel: next !== null });
+    if (next) get().runConsultant('architecture');
   },
   hoverItem: (id) => set({ hoveredItem: id }),
   setSearch: (q) => set({ searchQuery: q }),
   toggleStarPanel: () => set(s => ({ showStarPanel: !s.showStarPanel })),
+  loadFromJSON: (jsonStr) => {
+    try {
+      const data = JSON.parse(jsonStr);
+      const items = (data.items || []).map(i => ({
+        ...i,
+        status: i.status || 'built',
+        position: i.position || { x: 0, y: 0, z: 0 },
+        meta: i.meta || {}
+      }));
+      const connections = (data.connections || []).map(c => ({
+        ...c,
+        type: c.type || 'connects'
+      }));
+      set({ items, connections, loading: false, error: null });
+      get().layoutItems();
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  seedDemo: () => {
+    const items = [
+      {id:'opencode-core',name:'OpenCode',type:'framework',status:'built',description:'Main framework',meta:{maturity:1,domain:'meta'}},
+      {id:'mcp:playwright',name:'Playwright',type:'mcp-server',status:'built',description:'Browser automation',meta:{maturity:.82,domain:'quality'}},
+      {id:'mcp:cloudflare',name:'Cloudflare',type:'mcp-server',status:'built',description:'Edge compute',meta:{maturity:.9,domain:'backend'}},
+      {id:'mcp:tailscale',name:'Tailscale',type:'mcp-server',status:'built',description:'Mesh VPN',meta:{maturity:.75,domain:'infra'}},
+      {id:'mcp:github',name:'GitHub',type:'mcp-server',status:'built',description:'CI + repos',meta:{maturity:.88,domain:'devops'}},
+      {id:'mcp:1password',name:'1Password',type:'mcp-server',status:'built',description:'Secrets',meta:{maturity:.7,domain:'security'}},
+      {id:'mcp:brew',name:'Homebrew',type:'mcp-server',status:'built',description:'Packages',meta:{maturity:.92,domain:'devops'}},
+      {id:'agent:oracle',name:'Oracle',type:'agent',status:'built',description:'Debugging',meta:{maturity:.95,domain:'meta'}},
+      {id:'agent:deep',name:'Deep Agent',type:'agent',status:'built',description:'Autonomous',meta:{maturity:.8,domain:'meta'}},
+      {id:'agent:steward',name:'Steward',type:'agent',status:'built',description:'Repos',meta:{maturity:.78,domain:'devops'}},
+      {id:'skill:frontend',name:'Frontend',type:'skill',status:'built',description:'UI patterns',meta:{maturity:.75,domain:'frontend'}},
+      {id:'skill:cloudflare',name:'Cloudflare',type:'skill',status:'built',description:'Workers',meta:{maturity:.8,domain:'backend'}},
+      {id:'skill:wrangler',name:'Wrangler',type:'skill',status:'built',description:'CLI',meta:{maturity:.72,domain:'backend'}},
+      {id:'skill:playwright',name:'Browser',type:'skill',status:'built',description:'E2E',meta:{maturity:.68,domain:'quality'}},
+      {id:'skill:vitest',name:'Vitest',type:'skill',status:'built',description:'Unit tests',meta:{maturity:.65,domain:'quality'}},
+      {id:'skill:durable-objects',name:'Durable Objects',type:'skill',status:'specified',description:'Stateful',meta:{maturity:.35,domain:'backend'}},
+      {id:'skill:agents-sdk',name:'Agents SDK',type:'skill',status:'specified',description:'Framework',meta:{maturity:.3,domain:'ai-ml'}},
+      {id:'skill:llm',name:'LLM',type:'skill',status:'built',description:'Local models',meta:{maturity:.9,domain:'ai-ml'}},
+      {id:'skill:gguf',name:'GGUF',type:'skill',status:'built',description:'Quant',meta:{maturity:.6,domain:'ai-ml'}},
+      {id:'combo:e2e',name:'E2E on Edge',type:'possibility',status:'specified',description:'Deploy+verify',meta:{maturity:.4,domain:'quality'}},
+      {id:'combo:deploy',name:'Deploy Pipeline',type:'possibility',status:'specified',description:'Push→build',meta:{maturity:.55,domain:'devops'}},
+      {id:'combo:local-ai',name:'Local Inference',type:'possibility',status:'built',description:'Quant→run',meta:{maturity:.9,domain:'ai-ml'}},
+      {id:'tool:bash',name:'Shell',type:'framework',status:'built',description:'Commands',meta:{maturity:1,domain:'infra'}},
+      {id:'tool:edit',name:'Editor',type:'framework',status:'built',description:'Files',meta:{maturity:1,domain:'meta'}},
+      {id:'tool:lsp',name:'LSP',type:'framework',status:'built',description:'Diagnostics',meta:{maturity:.95,domain:'quality'}},
+    ];
+    const connections = [
+      {from:'opencode-core',to:'mcp:playwright',type:'connects'},{from:'opencode-core',to:'mcp:cloudflare',type:'connects'},
+      {from:'opencode-core',to:'mcp:github',type:'connects'},{from:'opencode-core',to:'agent:oracle',type:'subagent'},
+      {from:'skill:cloudflare',to:'combo:e2e',type:'hard-dep'},{from:'skill:playwright',to:'combo:e2e',type:'hard-dep'},
+      {from:'skill:cloudflare',to:'combo:deploy',type:'hard-dep'},{from:'skill:wrangler',to:'combo:deploy',type:'hard-dep'},
+      {from:'skill:llm',to:'combo:local-ai',type:'hard-dep'},{from:'skill:gguf',to:'combo:local-ai',type:'hard-dep'},
+      {from:'mcp:playwright',to:'combo:e2e',type:'soft-dep'},{from:'skill:vitest',to:'combo:e2e',type:'soft-dep'},
+      {from:'skill:durable-objects',to:'combo:deploy',type:'soft-dep'},{from:'skill:agents-sdk',to:'combo:deploy',type:'soft-dep'},
+    ];
+    set({ items: items.map((i,idx) => ({...i, position:{x:100+(idx%6)*80, y:50+Math.floor(idx/6)*70, z:0}})), connections, loading:false, error:null });
+    get().layoutItems();
+    get().selectItem('mcp:cloudflare');
+  },
   setShowUplinkModal: (show) => set({ showUplinkModal: show }),
 
   updateItemOnServer: async (id, type, updates) => {
@@ -413,7 +478,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       const itemIds = new Set([...base.items, ...infra.items].map(i => i.id));
       const connections = [...base.connections, ...infra.connections].filter(c => itemIds.has(c.from) && itemIds.has(c.to));
       set({ items: [...base.items, ...infra.items], connections, loading: false });
-      get().layoutItems();
+      get().layoutItems(); get().selectItem("mcp:cloudflare");
       get().fetchTrends();
     } catch (e) {
       set({ error: 'Uplink failed: ' + (e as Error).message, loading: false });
@@ -613,6 +678,6 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   reset: () => set({
     items: [], connections: [], selectedItem: null, hoveredItem: null,
     searchQuery: '', consultantResults: {}, snapshots: [], showStarPanel: false,
-    layoutMode: 'constellation', loading: false, error: null, infrastructureScan: null,
+    layoutMode: 'civ', loading: false, error: null, infrastructureScan: null,
   }),
 }));
