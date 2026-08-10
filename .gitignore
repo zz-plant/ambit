@@ -2,6 +2,10 @@ node_modules/
 dist/
 .DS_Store
 
+# SQLite runtime files
+*.db-shm
+*.db-wal
+
 # Secrets
 .env
 
