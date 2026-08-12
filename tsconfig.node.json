@@ -1,0 +1,22 @@
+{
+  // Server-side code: engine, MCP server, Express server, build scripts.
+  // node:sqlite is experimental and returns untyped `{}` rows, so full strict
+  // mode is not achievable here without hand-writing row types for every query.
+  // Kept separate from the client config so client code stays strict.
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": ["src/engine", "src/mcp", "server.ts", "scripts"]
+}

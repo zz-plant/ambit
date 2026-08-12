@@ -5,7 +5,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import { useToolchainStore } from '../store/toolchainStore';
 import { StarNode } from './StarNode';
-import { ConnectionLine } from './ConnectionLine';
+import { ConnectionLine, PacketFlow } from './ConnectionLine';
 
 function TacticalGrid() {
   const rings = useMemo(() => {
@@ -168,7 +168,7 @@ function Scene() {
 
       {/* Background packet flow: slow and dim */}
       {connections.length > 0 && (
-        <ConnectionLine
+        <PacketFlow
           connections={connections}
           itemMap={itemMap}
           speedMultiplier={0.15}
@@ -180,7 +180,7 @@ function Scene() {
 
       {/* Active surge packet flow: fast and bright */}
       {activeConnections.length > 0 && (
-        <ConnectionLine
+        <PacketFlow
           connections={activeConnections}
           itemMap={itemMap}
           speedMultiplier={1.0}

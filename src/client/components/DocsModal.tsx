@@ -1,6 +1,11 @@
 import React from 'react';
 
-export default function DocsModal({ isOpen, onClose }) {
+interface DocsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
   if (!isOpen) return null;
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }}
@@ -40,7 +45,17 @@ export default function DocsModal({ isOpen, onClose }) {
   );
 }
 
-function DocSection({ title, items, iconItems, desc, code }) {
+interface DocSectionProps {
+  title: string;
+  /** Coloured circle + symbol rows. */
+  items?: { color: string; sym: string; label: string; desc: string }[];
+  /** Arbitrary swatch rows styled inline. */
+  iconItems?: { style: React.CSSProperties; label: string; desc: string }[];
+  desc?: string;
+  code?: string;
+}
+
+function DocSection({ title, items, iconItems, desc, code }: DocSectionProps) {
   return (
     <div style={{ marginBottom: 18 }}>
       <h3 style={{ margin:'0 0 8px 0', fontSize:12, fontWeight:700, letterSpacing:1.5, color:'#8b6914', textTransform:'uppercase' }}>{title}</h3>

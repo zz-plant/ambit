@@ -1,22 +1,36 @@
 import React, { useMemo, useState } from 'react';
+import type { Item, Connection } from '../utils/configImporter';
 
 const TYPE_FILTERS = ['all', 'server', 'agent', 'skill', 'combo'] as const;
 type Filter = typeof TYPE_FILTERS[number];
 
 const DOMAIN_ORDER = ['infra', 'devops', 'backend', 'frontend', 'ai-ml', 'quality', 'meta', 'security'];
-const ERA_LABELS = { infra:'Foundation', devops:'Pipeline', backend:'Services', frontend:'Interface', 'ai-ml':'Intelligence', quality:'Guard', meta:'Orchestration', security:'Fortress' };
+const ERA_LABELS: Record<string, string> = { infra:'Foundation', devops:'Pipeline', backend:'Services', frontend:'Interface', 'ai-ml':'Intelligence', quality:'Guard', meta:'Orchestration', security:'Fortress' };
+/** meta is an untyped bag; these narrow the two fields the tree reads. */
+const domainOf = (item: Item): string => (item.meta?.domain as string) || 'meta';
+const maturityOf = (item: Item): number => Number(item.meta?.maturity) || 0;
+
 const NODE_R = 28, COL_W = 170, ROW_H = 105, START_X = 90, START_Y = 70;
 
-export default function CivTree({ items, connections, selectedId, hoveredId, onSelect, onHover }) {
+interface CivTreeProps {
+  items: Item[];
+  connections: Connection[];
+  selectedId: string | null;
+  hoveredId: string | null;
+  onSelect: (id: string | null) => void;
+  onHover: (id: string | null) => void;
+}
+
+export default function CivTree({ items, connections, selectedId, hoveredId, onSelect, onHover }: CivTreeProps) {
   const [filter, setFilter] = useState<Filter>('all');
 
   const { downstream, chainIds } = useMemo(() => {
-    const down = new Map(), up = new Map();
+    const down = new Map<string, string[]>(), up = new Map<string, string[]>();
     for (const c of connections) {
       if (!down.has(c.from)) down.set(c.from, []);
-      down.get(c.from).push(c.to);
+      down.get(c.from)!.push(c.to);
       if (!up.has(c.to)) up.set(c.to, []);
-      up.get(c.to).push(c.from);
+      up.get(c.to)!.push(c.from);
     }
     const chain = new Set<string>();
     if (selectedId) {
@@ -34,16 +48,16 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
   const filtered = useMemo(() => {
     if (filter === 'all') return items;
-    const tm = { server: 'mcp-server', agent: 'agent', skill: 'skill', combo: 'possibility' };
+    const tm: Record<string, string> = { server: 'mcp-server', agent: 'agent', skill: 'skill', combo: 'possibility' };
     return items.filter(i => i.type === tm[filter] || i.type === 'framework');
   }, [items, filter]);
 
   const [hoverItem, setHoverItem] = useState<string | null>(null);
 
   const { cols, colOrder } = useMemo(() => {
-    const c = {};
+    const c: Record<string, Item[]> = {};
     for (const item of filtered) {
-      const d = item.meta?.domain || 'meta';
+      const d = domainOf(item);
       if (!c[d]) c[d] = [];
       c[d].push(item);
     }
@@ -52,7 +66,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
     return { cols: c, colOrder: order };
   }, [filtered]);
 
-  const COLORS = { framework: '#b8860b', 'mcp-server': '#daa520', agent: '#cd853f', skill: '#6b8e23', provider: '#a0853c', combo: '#b87333', possibility: '#b87333', tool: '#a0522d' };
+  const COLORS: Record<string, string> = { framework: '#b8860b', 'mcp-server': '#daa520', agent: '#cd853f', skill: '#6b8e23', provider: '#a0853c', combo: '#b87333', possibility: '#b87333', tool: '#a0522d' };
   const hoverTarget = hoverItem || hoveredId;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
@@ -83,7 +97,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
               <rect x={x - 5} y={START_Y - 45} width={COL_W - 20} height={contentHeight - START_Y + 20}
                 fill={i % 2 === 0 ? '#f0dbb8' : '#f8ecd0'} rx={6} opacity={0.5}/>
               <text x={x + COL_W/2 - 40} y={START_Y - 22} textAnchor="middle" fill="#6b5b3a" fontSize={12} fontWeight={700}
-                letterSpacing={2} textTransform="uppercase">{ERA_LABELS[d] || d}</text>
+                letterSpacing={2} style={{ textTransform: 'uppercase' }}>{ERA_LABELS[d] || d}</text>
               <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="#9b8b6a" fontSize={10}>{(d || '').toUpperCase()}</text>
               <line x1={x + 10} y1={START_Y - 2} x2={x + COL_W - 50} y2={START_Y - 2} stroke="#c4a96a" strokeWidth={0.8}/>
             </g>
@@ -95,12 +109,12 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           const from = items.find(it => it.id === conn.from);
           const to = items.find(it => it.id === conn.to);
           if (!from || !to) return null;
-          const fd = from.meta?.domain || 'meta';
-          const td = to.meta?.domain || 'meta';
+          const fd = domainOf(from);
+          const td = domainOf(to);
           const fi = colOrder.indexOf(fd);
           const ti = colOrder.indexOf(td);
-          const fa = (cols[fd] || []).findIndex(it => it.id === from.id);
-          const ta = (cols[td] || []).findIndex(it => it.id === to.id);
+          const fa = (cols[fd] || []).findIndex((it: Item) => it.id === from.id);
+          const ta = (cols[td] || []).findIndex((it: Item) => it.id === to.id);
           if (fi < 0 || ti < 0 || fa < 0 || ta < 0) return null;
           const x1 = START_X + fi * COL_W + COL_W/2 - 40;
           const y1 = START_Y + fa * ROW_H + NODE_R;
@@ -130,7 +144,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 const selected = item.id === selectedId;
                 const dimmed = chainIds.size > 0 && !inChain;
                 const baseOpacity = dimmed ? 0.15 : item.status === 'built' ? 1 : 0.35;
-                const mat = item.meta?.maturity || 0;
+                const mat = maturityOf(item);
                 const ringCirc = 2 * Math.PI * (NODE_R + 5);
                 const sc = inChain && !selected ? '#d4a017' : selected ? '#d4a017' : color;
                 const sw = inChain ? 3 : selected ? 3 : 1.5;
@@ -169,8 +183,8 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         {hoverTarget && hoverDownstream.length > 0 && (() => {
           const ni = items.find(i => i.id === hoverTarget);
           if (!ni) return null;
-          const di = colOrder.indexOf(ni.meta?.domain || 'meta');
-          const ai = (cols[ni.meta?.domain || 'meta'] || []).findIndex(i => i.id === hoverTarget);
+          const di = colOrder.indexOf(domainOf(ni));
+          const ai = (cols[domainOf(ni)] || []).findIndex((i: Item) => i.id === hoverTarget);
           if (di < 0 || ai < 0) return null;
           const tx = START_X + di * COL_W + COL_W/2 - 40 + NODE_R + 10;
           const ty = START_Y + ai * ROW_H + NODE_R - 10;

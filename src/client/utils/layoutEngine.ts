@@ -1,4 +1,4 @@
-import type { Item, Connection } from './configImporter';
+import type { Item, Connection, LayoutMode } from './configImporter';
 
 interface Vec3 { x: number; y: number; z: number }
 
@@ -10,7 +10,7 @@ function len(v: Vec3): number {
   return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
-function mag(v: Vec3): number {
+function mag(v: Vec3): Vec3 {
   const l = len(v) || 0.001;
   return { x: v.x / l, y: v.y / l, z: v.z / l };
 }
@@ -56,7 +56,9 @@ export function computeLayout(
   items: Item[],
   connections: Connection[],
   iterations = 80,
-  layoutMode: 'constellation' | 'orbital' | 'flat' = 'constellation'
+  // 'civ' is not handled here — CivTree computes its own column positions —
+  // so it falls through to the constellation force layout as a base.
+  layoutMode: LayoutMode = 'constellation'
 ): Item[] {
   const positions = new Map<string, Vec3>();
 
