@@ -35,6 +35,38 @@ interface OpenCodeConfig {
   instructions?: string[];
 }
 
+/**
+ * Domain drives which era column an item lands in. Matched against the item's
+ * name, so an MCP named "cloudflare-workers" reads as backend rather than
+ * falling through to the meta column.
+ */
+const DOMAIN_KEYWORDS: [RegExp, string][] = [
+  [/tailscale|network|dns|vpn|ssh|docker|host|proxy|caddy|nginx|pi-?hole/i, 'infra'],
+  [/github|gitlab|git\b|ci|deploy|build|wrangler|brew|npm|package|release|actions/i, 'devops'],
+  [/cloudflare|worker|d1|kv|r2|durable|database|sql|postgres|redis|api|server|queue/i, 'backend'],
+  [/react|vue|svelte|css|ui|design|figma|browser|playwright|puppeteer|frontend/i, 'frontend'],
+  [/llm|model|ollama|openai|anthropic|claude|gpt|gemini|embed|ai|ml|rag|vector/i, 'ai-ml'],
+  [/test|vitest|jest|lint|eslint|typecheck|coverage|qa|audit|review/i, 'quality'],
+  [/1password|secret|vault|auth|token|credential|security|permission/i, 'security'],
+];
+
+/** Item types whose domain is fixed regardless of name. */
+const TYPE_DOMAINS: Record<string, string> = {
+  agent: 'meta',
+  command: 'meta',
+  config: 'meta',
+  model: 'ai-ml',
+  provider: 'ai-ml',
+};
+
+function inferDomain(name: string, type: string, hint = ''): string {
+  const haystack = `${name} ${hint}`;
+  for (const [pattern, domain] of DOMAIN_KEYWORDS) {
+    if (pattern.test(haystack)) return domain;
+  }
+  return TYPE_DOMAINS[type] || 'meta';
+}
+
 export function importConfig(config: OpenCodeConfig): { items: Item[]; connections: Connection[] } {
   const items: Item[] = [];
   const connections: Connection[] = [];
@@ -55,6 +87,8 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       snapshot: config.snapshot,
       permissions: config.permission ? Object.keys(config.permission).join(', ') : undefined,
       disabledProviders: config.disabled_providers?.join(', '),
+      domain: 'meta',
+      maturity: 1,
     },
   });
 
@@ -68,7 +102,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       status: m.enabled !== false ? 'built' : 'specified',
       description: `${m.type || 'local'} MCP server` + (m.url ? ` — ${m.url}` : ''),
       position: { x: 0, y: 0, z: 0 },
-      meta: { url: m.url, command: m.command, envKeys: Object.keys(m.env || {}), type: m.type },
+      meta: { url: m.url, command: m.command, envKeys: Object.keys(m.env || {}), type: m.type, domain: inferDomain(name, 'mcp-server', `${m.url || ''} ${(m.command || []).join(' ')}`), maturity: m.enabled !== false ? 0.8 : 0.3 },
       group: m.type === 'remote' ? 'Cloudflare' : 'Local',
     });
     if (m.enabled !== false) {
@@ -86,7 +120,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       status: 'built',
       description: a.description || '',
       position: { x: 0, y: 0, z: 0 },
-      meta: { mode: a.mode, color: a.color, model: a.model },
+      meta: { mode: a.mode, color: a.color, model: a.model, domain: inferDomain(name, 'agent', a.description || ''), maturity: 0.75 },
       group: 'Agents',
     });
     connections.push({ from: 'opencode-core', to: `agent:${name}`, type: 'subagent' });
@@ -102,7 +136,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       status: 'built',
       description: `LLM provider`,
       position: { x: 0, y: 0, z: 0 },
-      meta: { key: name },
+      meta: { key: name, domain: 'ai-ml', maturity: 0.85 },
       group: 'Providers',
     });
     connections.push({ from: 'opencode-core', to: `provider:${name}`, type: 'uses-provider' });
@@ -116,7 +150,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
         status: 'built',
         description: `${model.limit?.context || '?'}K context`,
         position: { x: 0, y: 0, z: 0 },
-        meta: { provider: name, context: model.limit?.context },
+        meta: { provider: name, context: model.limit?.context, domain: 'ai-ml', maturity: 0.8 },
         group: 'Models',
       });
       connections.push({ from: `provider:${name}`, to: `model:${name}/${mname}`, type: 'provides' });
@@ -133,7 +167,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       status: 'built',
       description: c.description || '',
       position: { x: 0, y: 0, z: 0 },
-      meta: {},
+      meta: { domain: inferDomain(name, 'command', c.description || ''), maturity: 0.6 },
       group: 'Commands',
     });
     connections.push({ from: 'opencode-core', to: `cmd:${name}`, type: 'command' });
@@ -150,7 +184,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       status: 'built',
       description: `Skill path: ${path}`,
       position: { x: 0, y: 0, z: 0 },
-      meta: { path },
+      meta: { path, domain: inferDomain(skillName, 'skill', path), maturity: 0.7 },
       group: 'Skills',
     });
     connections.push({ from: 'opencode-core', to: `skill:${skillName}`, type: 'skill' });
@@ -192,6 +226,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       type: 'config',
       status: 'built',
       position: { x: 0, y: 0, z: 0 },
+      meta: { ...si.meta, domain: 'meta', maturity: 0.5 },
       group: 'Config',
     });
     connections.push({ from: 'opencode-core', to: si.id, type: 'config' });
