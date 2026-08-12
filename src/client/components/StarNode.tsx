@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -65,20 +65,31 @@ function TargetBracket({ pos, color, pulse }: { pos: [number, number, number]; c
     [[r, -r + t * 0.1, 0], [r, -r + len + t * 0.1, 0]],
   ];
 
-  return (
-    <group position={pos}>
-      {corners.map(([start, end], i) => {
-        const points = [
+  // Rebuilt only when the pulse changes, and disposed on unmount — building
+  // these inline every render allocated eight GPU buffers per frame that were
+  // never freed.
+  const cornerGeometries = useMemo(
+    () =>
+      corners.map(([start, end]) =>
+        new THREE.BufferGeometry().setFromPoints([
           new THREE.Vector3(start[0], start[1], start[2]),
           new THREE.Vector3(end[0], end[1], end[2]),
-        ];
-        const geo = new THREE.BufferGeometry().setFromPoints(points);
-        return (
-          <line key={i} geometry={geo}>
-            <lineBasicMaterial color={color} transparent opacity={0.6 + 0.3 * Math.sin(Date.now() * 0.003 + i)} />
-          </line>
-        );
-      })}
+        ])
+      ),
+    [pulse]
+  );
+
+  useEffect(() => () => cornerGeometries.forEach(g => g.dispose()), [cornerGeometries]);
+
+  return (
+    <group position={pos}>
+      {cornerGeometries.map((geo, i) => (
+        // lineSegments, not line: the `line` intrinsic collides with the SVG
+        // element of the same name in React's JSX typings.
+        <lineSegments key={i} geometry={geo}>
+          <lineBasicMaterial color={color} transparent opacity={0.6 + 0.3 * Math.sin(Date.now() * 0.003 + i)} />
+        </lineSegments>
+      ))}
     </group>
   );
 }

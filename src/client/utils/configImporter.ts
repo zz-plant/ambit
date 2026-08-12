@@ -9,6 +9,9 @@ export interface Item {
   group?: string;
 }
 
+/** The four layout modes selectable in the HUD. */
+export type LayoutMode = 'constellation' | 'civ' | 'orbital' | 'flat';
+
 export interface Connection {
   from: string;
   to: string;

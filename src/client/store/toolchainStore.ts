@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Item, Connection } from '../utils/configImporter';
+import type { Item, Connection, LayoutMode } from '../utils/configImporter';
 import type { TrendItem } from '../utils/knowledgeBase';
 import { computeLayout } from '../utils/layoutEngine';
 
@@ -65,7 +65,7 @@ interface StoreState {
   snapshots: Snapshot[];
   showStarPanel: boolean;
   showUplinkModal: boolean;
-  layoutMode: 'constellation' | 'civ';
+  layoutMode: LayoutMode;
   loading: boolean;
   error: string | null;
   trends: TrendItem[];
@@ -83,7 +83,7 @@ interface StoreState {
   hoverItem: (id: string | null) => void;
   setSearch: (q: string) => void;
   toggleStarPanel: () => void;
-  setLayoutMode: (mode: 'constellation' | 'orbital' | 'flat' | 'civ') => void;
+  setLayoutMode: (mode: LayoutMode) => void;
 
   updateItem: (id: string, updates: Partial<Item>) => void;
   deleteItem: (id: string) => void;
@@ -310,13 +310,13 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   loadFromJSON: (jsonStr) => {
     try {
       const data = JSON.parse(jsonStr);
-      const items = (data.items || []).map(i => ({
+      const items: Item[] = (data.items || []).map((i: Partial<Item>) => ({
         ...i,
         status: i.status || 'built',
         position: i.position || { x: 0, y: 0, z: 0 },
         meta: i.meta || {}
       }));
-      const connections = (data.connections || []).map(c => ({
+      const connections: Connection[] = (data.connections || []).map((c: Partial<Connection>) => ({
         ...c,
         type: c.type || 'connects'
       }));
@@ -329,7 +329,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   },
 
   seedDemo: () => {
-    const items = [
+    const items: Omit<Item, 'position'>[] = [
       {id:'opencode-core',name:'OpenCode',type:'framework',status:'built',description:'Main framework',meta:{maturity:1,domain:'meta'}},
       {id:'mcp:playwright',name:'Playwright',type:'mcp-server',status:'built',description:'Browser automation',meta:{maturity:.82,domain:'quality'}},
       {id:'mcp:cloudflare',name:'Cloudflare',type:'mcp-server',status:'built',description:'Edge compute',meta:{maturity:.9,domain:'backend'}},

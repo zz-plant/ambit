@@ -195,9 +195,9 @@ export default function App() {
   const [showImport, setShowImport] = useState(false);
 
   const captureGraph = () => {
-    const svg = document.querySelector('.app-scene svg');
+    const svg = document.querySelector<SVGSVGElement>('.app-scene svg');
     if (!svg) return;
-    const clone = svg.cloneNode(true);
+    const clone = svg.cloneNode(true) as SVGSVGElement;
     const data = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([data], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
@@ -208,16 +208,20 @@ export default function App() {
       const h = svg.viewBox.baseVal?.height || 600;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
+      if (!ctx) return;
       ctx.fillStyle = '#f5e6c8';
       ctx.fillRect(0, 0, 1200, h);
       ctx.drawImage(img, 0, 0);
       canvas.toBlob(b => {
         if (!b) return;
+        const pngUrl = URL.createObjectURL(b);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(b);
+        a.href = pngUrl;
         a.download = 'capability-graph.png';
         a.click();
+        URL.revokeObjectURL(pngUrl);
       });
+      URL.revokeObjectURL(url);
     };
     img.src = url;
   };
