@@ -10,16 +10,32 @@ const CONFIG_DEFAULT = join(process.env.HOME || "/", ".config", "opencode", "ope
 
 const C = { reset: "\x1b[0m", green: "\x1b[32m", yellow: "\x1b[33m", grey: "\x1b[90m", blue: "\x1b[36m", red: "\x1b[31m", bold: "\x1b[1m" };
 
-function getDb(dbPath?: string) {
+/**
+ * node:sqlite is experimental and types every row as `unknown`, which would
+ * require a hand-written row type at each of the ~40 query sites. This narrows
+ * the handle to the surface the engine actually uses, with rows as loose
+ * records — the same guarantee the code had before, now stated explicitly.
+ */
+interface Db {
+  prepare(sql: string): {
+    all(...params: unknown[]): Record<string, any>[];
+    get(...params: unknown[]): Record<string, any> | undefined;
+    run(...params: unknown[]): unknown;
+  };
+  exec(sql: string): void;
+  close(): void;
+}
+
+function getDb(dbPath?: string): Db {
   const envPath = process.env.TOOLCHAIN_DB;
   const path = dbPath || envPath || DB_PATH_DEFAULT;
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
-  return db;
+  return db as unknown as Db;
 }
 
-function migrate(db) {
+function migrate(db: Db) {
   db.exec(readFileSync(join(__dirname, "schema.sql"), "utf8"));
 }
 
@@ -35,7 +51,7 @@ function parseMapping(mappingStr?: string): Record<string, any> {
   };
 }
 
-function seedFromConfig(db, configPath?: string, mappingStr?: string) {
+function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   const cp = configPath || CONFIG_DEFAULT;
   if (!existsSync(cp)) return 0;
   const config = JSON.parse(readFileSync(cp, "utf8"));
@@ -44,9 +60,9 @@ function seedFromConfig(db, configPath?: string, mappingStr?: string) {
   let count = 0;
   const insert = db.prepare("INSERT OR IGNORE INTO capabilities (id, name, domain, description, category, state, maturity_score) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
-  for (const [key, cfg] of Object.entries(mapping.config_keys || {})) {
+  for (const [key, cfg] of Object.entries<any>(mapping.config_keys || {})) {
     const entries = config[key] || {};
-    for (const [name, val] of Object.entries(entries)) {
+    for (const [name, val] of Object.entries<any>(entries)) {
       const type = cfg.type || 'tool';
       const domain = cfg.domain || (cfg.domain_map && cfg.domain_map[val[cfg.domain_field || 'type']]) || 'infra';
       const desc = (cfg.desc_field ? (val[cfg.desc_field] || '') : cfg.desc_template ? cfg.desc_template.replace('{type}', val.type || type) : '') || '';
@@ -102,7 +118,7 @@ function forkComparison(db) {
   const locked = db.prepare("SELECT id, name, domain, unlock_cost_setup, unlock_cost_tokens FROM capabilities WHERE state = 'locked'").all();
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
   const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
-  const capMap = new Map(caps.map(c => [c.id, c]));
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const comboGroups = new Map();
   for (const d of deps) {
     if (!comboGroups.has(d.to_capability)) comboGroups.set(d.to_capability, []);
@@ -127,7 +143,7 @@ function forkComparison(db) {
 function nearMissCombos(db) {
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
   const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
-  const capMap = new Map(caps.map(c => [c.id, c]));
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const groups = new Map();
   for (const d of deps) {
     if (!groups.has(d.to_capability)) groups.set(d.to_capability, []);
@@ -196,7 +212,7 @@ function computeDecay(db) {
 function discoverCombos(db) {
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
   const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
-  const capMap = new Map(caps.map(c => [c.id, c]));
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const results = [];
   const groups = new Map();
   for (const d of deps) {
@@ -248,7 +264,7 @@ function graphProfile(db) {
 function sessionDiff(db) {
   const caps = db.prepare("SELECT id, name, domain, maturity_score, state FROM capabilities WHERE state IN ('unlocked','active')").all();
   const recent = db.prepare("SELECT capability_id, action, outcome_score FROM session_learning ORDER BY timestamp DESC LIMIT 50").all();
-  const capMap = new Map(caps.map(c => [c.id, c]));
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const domains = new Map();
   for (const c of caps) {
     if (!domains.has(c.domain)) domains.set(c.domain, { total: 0, unlocked: 0, changed_caps: [] });
@@ -308,7 +324,7 @@ function analyzeImpact(db, capId) {
   if (!cap) return { capability: capId, decayed: [], combos_at_risk: [] };
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies").all();
   const allCaps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
-  const capMap = new Map(allCaps.map(c => [c.id, c]));
+  const capMap = new Map<string, Record<string, any>>(allCaps.map(c => [c.id, c]));
   const simMaturity = Math.max(0.1, cap.maturity_score - 0.3);
   const decayed = deps.filter(d => d.from_capability === capId).map(d => {
     const t = capMap.get(d.to_capability);
