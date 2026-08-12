@@ -14,24 +14,28 @@ if [ "$MODE" = "--dry-run" ]; then
   exit 0
 fi
 
-[ ! -d node_modules ] && echo "Installing..." && bun install -q
+# -q is an npm flag; bun rejects it and set -e aborted the whole bootstrap,
+# so a clean clone never installed anything.
+if [ ! -d node_modules ]; then echo "Installing..."; bun install --silent; fi
 
 if [ -f "${OPENCODE_CONFIG:-$HOME/.config/opencode/opencode.json}" ]; then
-  node --experimental-sqlite src/engine/engine.ts seed 2>/dev/null
+  node --experimental-sqlite src/engine/engine.ts seed
 fi
 
-DB="${TOOLCHAIN_DB:-$HOME/.config/opencode/toolchain-viz.db}"
+# Must match engine.ts's default, or the summary reads a different database
+# than seed just wrote and always reports an empty graph.
+DB="${TOOLCHAIN_DB:-$(pwd)/toolchain-viz.db}"
 node --experimental-sqlite -e "
 const {DatabaseSync}=require('node:sqlite');
 const db=new DatabaseSync('$DB');
-const g=db.prepare('SELECT COUNT(*) as t, SUM(CASE WHEN state IN (\"unlocked\",\"active\") THEN 1 ELSE 0 END) as u FROM capabilities').get();
-const d=db.prepare('SELECT domain, COUNT(*) as t, SUM(CASE WHEN state IN (\"unlocked\",\"active\") THEN 1 ELSE 0 END) as u FROM capabilities GROUP BY domain ORDER BY domain').all();
+const g=db.prepare(\"SELECT COUNT(*) as t, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as u FROM capabilities\").get();
+const d=db.prepare(\"SELECT domain, COUNT(*) as t, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as u FROM capabilities GROUP BY domain ORDER BY domain\").all();
 const c=db.prepare(\"SELECT COUNT(*) as c FROM capabilities WHERE category='combo'\").get()||{c:0};
 console.log('┌─ Toolchain ───────────────────────────────────────────┐');
 console.log('│ '+g.u+'/'+g.t+' capabilities, '+d.length+' domains'+(c.c>0?', '+c.c+' combos':''));
 for(const s of d){const p=s.t>0?Math.round((s.u/s.t)*100):0;console.log('│ '+'█'.repeat(Math.round(p/10))+'░'.repeat(10-Math.round(p/10))+' '+s.domain.padEnd(12)+' '+s.u+'/'+s.t);}
 console.log('└───────────────────────────────────────────────────────┘');
-db.close();" 2>/dev/null
+db.close();"
 
 echo ""
 if [ "$MODE" = "web" ]; then
