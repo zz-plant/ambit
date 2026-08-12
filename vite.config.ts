@@ -14,5 +14,20 @@ export default defineConfig({
   build: {
     outDir: '../../dist',
     emptyOutDir: true,
+    modulePreload: {
+      // Without this Vite preloads the three chunk from index.html, which
+      // downloads the whole 3D renderer even though ERAS is the default view.
+      resolveDependencies: (_url, deps) => deps.filter(d => !d.includes('three')),
+    },
+    rollupOptions: {
+      output: {
+        // Three.js is ~2/3 of the bundle and only the 3D layouts need it, so
+        // splitting it lets the ERAS/flat views cache and load independently.
+        manualChunks: {
+          three: ['three', '@react-three/fiber', '@react-three/drei', '@react-three/postprocessing'],
+          react: ['react', 'react-dom', 'zustand'],
+        },
+      },
+    },
   },
 });
