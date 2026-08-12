@@ -1,11 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import Constellation from './components/Constellation';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
+// Three.js is ~1MB and only the 3D layouts need it. ERAS is the default mode,
+// so keeping this lazy means most sessions never download the 3D renderer.
+const Constellation = lazy(() => import('./components/Constellation'));
 import StarPanel from './components/StarPanel';
 import ConsultantPanel from './components/ConsultantPanel';
 import CivTree from './components/CivTree';
 import ToolchainPanel from './components/ToolchainPanel';
 import DocsModal from './components/DocsModal';
 import { useToolchainStore } from './store/toolchainStore';
+import type { LayoutMode } from './utils/configImporter';
+
+// All four modes the layout engine supports. ORBITAL and FLAT existed in the
+// engine and store but were never reachable from the HUD.
+const LAYOUT_MODES: { id: LayoutMode; label: string; title: string }[] = [
+  { id: 'civ', label: 'ERAS', title: 'Era columns' },
+  { id: 'constellation', label: 'CONSTELLATION', title: '3D hex map' },
+  { id: 'orbital', label: 'ORBITAL', title: '3D concentric shells by type' },
+  { id: 'flat', label: 'FLAT', title: '2D force-directed' },
+];
 
 type Tab = 'contacts' | 'diagnostics';
 
@@ -274,7 +286,9 @@ export default function App() {
         {items.length > 0 && layoutMode === 'civ' ? (
           <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} />
         ) : items.length > 0 ? (
-          <Constellation />
+          <Suspense fallback={<div className="app-loading">LOADING 3D VIEW…</div>}>
+            <Constellation />
+          </Suspense>
         ) : null}
       </div>
 
@@ -298,9 +312,9 @@ export default function App() {
         <button className="app-hud-btn" onClick={captureGraph}>📷</button>
         {selectedId && (<button className="app-hud-btn" onClick={() => selectItem(null)} title="Deselect"> ✕ </button>)}
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
-          {(['constellation', 'civ'] as const).map(m => (
-            <button key={m} className="app-hud-btn" style={{ width:'auto', padding:'0 8px', border:'none', background: layoutMode === m ? 'var(--accent)' : 'transparent', color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: layoutMode === m ? 700 : 'normal', fontSize:'9px', height:'22px' }} onClick={() => { setLayoutMode(m); setShowGuide(false); }} title={`${m === 'civ' ? 'Era columns' : '3D hex map'} layout`}>
-              {m === 'civ' ? 'ERAS' : m.toUpperCase()}
+          {LAYOUT_MODES.map(({ id: m, label, title }) => (
+            <button key={m} className="app-hud-btn" style={{ width:'auto', padding:'0 8px', border:'none', background: layoutMode === m ? 'var(--accent)' : 'transparent', color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: layoutMode === m ? 700 : 'normal', fontSize:'9px', height:'22px' }} onClick={() => { setLayoutMode(m); setShowGuide(false); }} title={`${title} layout`}>
+              {label}
             </button>
           ))}
         </div>
