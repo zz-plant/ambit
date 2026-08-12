@@ -4,7 +4,8 @@ import { execFileSync } from 'node:child_process';
 
 const DB_PATH = Bun.env.HOME + '/.config/opencode/toolchain-viz.db';
 const CONFIG_PATH = Bun.env.HOME + '/.config/opencode/opencode.json';
-const REPO_PATH = Bun.env.HOME + '/Documents/GitHub';
+const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
+const INFRA_MANIFEST_PATH = Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
 const API_PORT = 3001;
 
 type InfraHealth = 'online' | 'degraded' | 'offline' | 'unknown';
@@ -79,6 +80,167 @@ async function writeConfig(data: Record<string, unknown>): Promise<boolean> {
   }
 }
 
+interface InfraManifest {
+  /** Hosts that run services. */
+  devices?: { id: string; name: string; description?: string; statusUrl?: string; meta?: Record<string, unknown> }[];
+  /** Services expected on those hosts. */
+  services?: { key: string; label?: string; host?: string; url?: string; expectedMcp?: string; description?: string }[];
+  links?: InfraLink[];
+}
+
+async function probe(url: string, timeoutMs = 3000): Promise<{ ok: boolean; status?: number; json?: any; error?: string }> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = { text: text.slice(0, 500) };
+    }
+    return { ok: res.ok, status: res.status, json };
+  } catch (error: any) {
+    return { ok: false, error: error?.message || 'fetch failed' };
+  }
+}
+
+function readManifest(): InfraManifest | null {
+  if (!existsSync(INFRA_MANIFEST_PATH)) return null;
+  try {
+    return JSON.parse(readFileSync(INFRA_MANIFEST_PATH, 'utf8')) as InfraManifest;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Probes the hosts and services described by the infrastructure manifest and
+ * returns a topology the client can render alongside the capability graph.
+ *
+ * The manifest path comes from INFRA_MANIFEST (default
+ * ~/.config/opencode/infrastructure.json), so no host addresses are baked in.
+ * With no manifest the scan is empty rather than an error — the graph simply
+ * shows no infrastructure layer.
+ */
+async function buildInfrastructureScan(): Promise<{
+  generatedAt: string;
+  source: string;
+  nodes: InfraNode[];
+  links: InfraLink[];
+  findings: InfraFinding[];
+  summary: { online: number; degraded: number; offline: number; unknown: number };
+}> {
+  const generatedAt = new Date().toISOString();
+  const manifest = readManifest();
+  const nodes: InfraNode[] = [];
+  const links: InfraLink[] = [...(manifest?.links || [])];
+  const findings: InfraFinding[] = [];
+
+  if (!manifest) {
+    findings.push({
+      severity: 'info',
+      message: `No infrastructure manifest at ${INFRA_MANIFEST_PATH}. Create one (or set INFRA_MANIFEST) to map devices and services into the graph.`,
+    });
+    return {
+      generatedAt,
+      source: INFRA_MANIFEST_PATH,
+      nodes,
+      links,
+      findings,
+      summary: { online: 0, degraded: 0, offline: 0, unknown: 0 },
+    };
+  }
+
+  const rawConfig = await readConfig();
+  const mcpConfig = (rawConfig?.mcp as Record<string, any>) || {};
+  const enabledMcps = new Set(
+    Object.entries(mcpConfig)
+      .filter(([, value]) => value && value.enabled !== false)
+      .map(([key]) => key)
+  );
+
+  // Probe every device that exposes a status URL, in parallel.
+  const deviceProbes = await Promise.all(
+    (manifest.devices || []).map(async device => ({
+      device,
+      result: device.statusUrl ? await probe(device.statusUrl) : null,
+    }))
+  );
+
+  // A device's status payload doubles as a service health map, so keep it.
+  const serviceHealthFromDevice = new Map<string, any>();
+
+  for (const { device, result } of deviceProbes) {
+    const status: InfraHealth = !device.statusUrl ? 'unknown' : result?.ok ? 'online' : 'offline';
+    if (result?.json) serviceHealthFromDevice.set(device.id, result.json);
+    nodes.push({
+      id: device.id,
+      name: device.name,
+      kind: 'device',
+      status,
+      description: device.description || `Host ${device.name}`,
+      meta: { ...device.meta, statusUrl: device.statusUrl, statusCode: result?.status },
+    });
+    if (device.statusUrl && !result?.ok) {
+      findings.push({
+        severity: 'error',
+        message: `${device.name} status endpoint unreachable: ${result?.error || result?.status}`,
+        relatedIds: [device.id],
+      });
+    }
+  }
+
+  for (const spec of manifest.services || []) {
+    const id = `svc:${spec.key}`;
+    const hostPayload = spec.host ? serviceHealthFromDevice.get(spec.host) : undefined;
+    const reported = hostPayload?.[spec.key];
+
+    let health: InfraHealth = 'unknown';
+    if (spec.url) {
+      const res = await probe(spec.url);
+      health = res.ok ? 'online' : 'offline';
+    } else if (reported === true) {
+      health = 'online';
+    } else if (reported === false) {
+      health = 'offline';
+    }
+
+    const mcpEnabled = spec.expectedMcp ? enabledMcps.has(spec.expectedMcp) : undefined;
+    nodes.push({
+      id,
+      name: spec.label || spec.key,
+      kind: 'service',
+      status: health,
+      description: spec.description || `Service ${spec.key}`,
+      meta: { host: spec.host, url: spec.url, expectedMcp: spec.expectedMcp, mcpEnabled },
+    });
+
+    if (spec.host) links.push({ from: spec.host, to: id, type: 'runs' });
+    if (spec.expectedMcp && mcpEnabled) {
+      links.push({ from: `mcp:${spec.expectedMcp}`, to: id, type: 'controls' });
+    }
+
+    // The point of the scan: config expects a service that isn't actually up.
+    if (mcpEnabled && health === 'offline') {
+      findings.push({
+        severity: 'warn',
+        message: `MCP "${spec.expectedMcp}" is enabled but ${spec.label || spec.key} is not reachable.`,
+        relatedIds: [id, `mcp:${spec.expectedMcp}`],
+      });
+    }
+  }
+
+  const summary = nodes.reduce(
+    (acc, node) => {
+      acc[node.status] += 1;
+      return acc;
+    },
+    { online: 0, degraded: 0, offline: 0, unknown: 0 }
+  );
+
+  return {
+    generatedAt,
+    source: INFRA_MANIFEST_PATH,
     nodes,
     links,
     findings,
@@ -86,12 +248,35 @@ async function writeConfig(data: Record<string, unknown>): Promise<boolean> {
   };
 }
 
+/**
+ * Only local dev origins may talk to this server.
+ *
+ * Reflecting the caller's Origin (the previous behaviour) let any website the
+ * user visited read /api/config and POST to /api/config/apply, because the
+ * browser would honour the reflected header. Since /api/config/apply can add an
+ * MCP server — an arbitrary command OpenCode later runs — that was a path from
+ * "visit a page" to "code runs on this machine".
+ */
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return true; // same-origin and non-browser clients send no Origin
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
 function corsHeaders(origin: string): Record<string, string> {
-  return {
-    'Access-Control-Allow-Origin': origin || '*',
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
   };
+  if (origin && isAllowedOrigin(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+  return headers;
 }
 
 let db: Database;
@@ -105,9 +290,20 @@ try {
 
 const server = Bun.serve({
   port: API_PORT,
+  // Loopback only. This server reads and writes the OpenCode config, so it must
+  // not be reachable from the LAN or over Tailscale.
+  hostname: '127.0.0.1',
   async fetch(req) {
     const url = new URL(req.url);
-    const headers = corsHeaders(req.headers.get('Origin') || '*');
+    const origin = req.headers.get('Origin') || '';
+    const headers = corsHeaders(origin);
+
+    // CORS headers only stop a browser from *reading* a cross-origin response;
+    // a simple request is still delivered and executed. Reject it outright so a
+    // foreign page cannot rewrite the config it is not allowed to read.
+    if (!isAllowedOrigin(origin)) {
+      return new Response('Forbidden origin', { status: 403, headers });
+    }
 
     if (req.method === 'OPTIONS') {
       return new Response(null, { headers });
@@ -124,8 +320,8 @@ const server = Bun.serve({
 
     // POST /api/config/apply — write delta back to config
     if (url.pathname === '/api/config/apply' && req.method === 'POST') {
-      const body = await req.json();
-      const raw = await readConfig();
+      const body = await req.json() as any;
+      const raw = await readConfig() as any;
       if (!raw) {
         return Response.json({ error: 'Config not found' }, { status: 404, headers });
       }
@@ -163,13 +359,13 @@ const server = Bun.serve({
 
     // GET /api/snapshots — list from SQLite
     if (url.pathname === '/api/snapshots' && req.method === 'GET') {
-      const rows = db.query('SELECT id, label, timestamp FROM snapshots ORDER BY timestamp DESC').all();
+      const rows = db.query('SELECT id, label, timestamp FROM snapshots ORDER BY timestamp DESC').all() as any[];
       return Response.json({ snapshots: rows }, { headers });
     }
 
     // POST /api/snapshots — create
     if (url.pathname === '/api/snapshots' && req.method === 'POST') {
-      const body = await req.json();
+      const body = await req.json() as any;
       const id = `snap-${Date.now()}`;
       db.run('INSERT INTO snapshots (id, label, timestamp, items, connections) VALUES (?, ?, ?, ?, ?)',
         [id, body.label || `Snapshot ${new Date().toLocaleDateString()}`, new Date().toISOString(), JSON.stringify(body.items), JSON.stringify(body.connections)]);
@@ -186,23 +382,42 @@ const server = Bun.serve({
     // GET /api/snapshots/:id — restore snapshot data
     if (url.pathname.startsWith('/api/snapshots/') && req.method === 'GET') {
       const id = url.pathname.slice('/api/snapshots/'.length);
-      const row = db.query('SELECT * FROM snapshots WHERE id = ?').get(id);
+      const row = db.query('SELECT * FROM snapshots WHERE id = ?').get(id) as any;
       if (!row) return Response.json({ error: 'Not found' }, { status: 404, headers });
       return Response.json({ snapshot: { ...row, items: JSON.parse(row.items), connections: JSON.parse(row.connections) } }, { headers });
     }
 
     // GET /api/consultant/history
     if (url.pathname === '/api/consultant/history' && req.method === 'GET') {
-      const rows = db.query('SELECT * FROM consultant_log ORDER BY timestamp DESC LIMIT 50').all();
+      const rows = db.query('SELECT * FROM consultant_log ORDER BY timestamp DESC LIMIT 50').all() as any[];
       return Response.json({ history: rows.map(r => ({ ...r, findings: JSON.parse(r.findings) })) }, { headers });
     }
 
     // POST /api/consultant/log
     if (url.pathname === '/api/consultant/log' && req.method === 'POST') {
-      const body = await req.json();
+      const body = await req.json() as any;
       db.run('INSERT INTO consultant_log (consultant_id, timestamp, score, findings, item_count) VALUES (?, ?, ?, ?, ?)',
         [body.consultantId, new Date().toISOString(), body.score, JSON.stringify(body.findings), body.itemCount]);
       return Response.json({ ok: true }, { headers });
+    }
+
+    // GET /api/infrastructure/scan — read-only device/service topology
+    if (url.pathname === '/api/infrastructure/scan' && req.method === 'GET') {
+      const scan = await buildInfrastructureScan();
+      return Response.json(scan, { headers });
+    }
+
+    // GET /api/health — return server status
+    if (url.pathname === '/api/health' && req.method === 'GET') {
+      const configExists = await Bun.file(CONFIG_PATH).exists();
+      const snapshots = db.query('SELECT COUNT(*) as c FROM snapshots').get() as { c: number } | null;
+      return Response.json({
+        status: 'ok',
+        configPath: CONFIG_PATH,
+        configExists,
+        infraManifestPath: INFRA_MANIFEST_PATH,
+        snapshotCount: snapshots?.c || 0,
+      }, { headers });
     }
 
     // GET /api/repos/scan — cross-repo config diff against global
@@ -270,7 +485,7 @@ const server = Bun.serve({
     // GET /api/trending — ecosystem freshness signals from GitHub
     if (url.pathname === '/api/trending' && req.method === 'GET') {
       // Check cache first (1 hour TTL)
-      const cached = db.query('SELECT * FROM trends ORDER BY score DESC LIMIT 30').all();
+      const cached = db.query('SELECT * FROM trends ORDER BY score DESC LIMIT 30').all() as any[];
       if (cached.length > 0) {
         const oldest = cached.reduce((a, b) => a.discovered_at < b.discovered_at ? a : b);
         const age = Date.now() - new Date(oldest.discovered_at).getTime();
@@ -298,7 +513,7 @@ const server = Bun.serve({
             signal: AbortSignal.timeout(5000),
           });
           if (!res.ok) continue;
-          const data = await res.json();
+          const data = await res.json() as any;
           for (const repo of (data.items || [])) {
             if (seen.has(repo.full_name)) continue;
             seen.add(repo.full_name);
@@ -323,7 +538,7 @@ const server = Bun.serve({
           signal: AbortSignal.timeout(5000),
         });
         if (npmRes.ok) {
-          const npmData = await npmRes.json();
+          const npmData = await npmRes.json() as any;
           for (const pkg of (npmData.objects || [])) {
             const name = pkg.package.name;
             if (seen.has(name)) continue;
@@ -356,3 +571,20 @@ const server = Bun.serve({
       return Response.json({ trends: newTrends.slice(0, 30), cached: false }, { headers });
     }
 
+
+    // Serve built SPA whenever dist exists; Vite dev still proxies /api separately.
+    if (url.pathname === '/' || !url.pathname.startsWith('/api')) {
+      // The build sets base '/capability-graph/' for GitHub Pages, so asset
+      // URLs carry that prefix; strip it when serving dist locally.
+      const stripped = url.pathname.replace(/^\/capability-graph/, '') || '/';
+      const filePath = stripped === '/' ? '/index.html' : stripped;
+      const f = Bun.file('dist' + filePath);
+      const exists = await f.exists();
+      if (exists) return new Response(f, { headers });
+    }
+
+    return new Response('Not found', { status: 404, headers });
+  },
+});
+
+console.log(`API server running on http://localhost:${API_PORT}`);
