@@ -38,11 +38,32 @@ Installing...
 
 To see what it would find without building anything, run `./bootstrap.sh --dry-run`.
 
-### What a fresh install actually gives you
+### What seeding builds
 
-Seeding discovers **nodes, not edges**. A first run produces one capability per MCP server, agent, provider, model, command, and skill — and zero dependencies between them. That means the analyses built on graph structure (`tt combos`, `tt near`, `tt fork`, `tt bottlenecks`, `tt impact`) return empty until edges exist.
+Seeding reads your config and writes both nodes and the edges the config states outright:
 
-Edges accrue three ways: the tracking plugin records connections as you change your config over time, combos are defined against prerequisite clusters, and the visualizer infers a `core → capability` link per item for display. So day one is an inventory with maturity and domain classification; the graph analyses become useful as history builds up. Worth knowing before you judge it on the first run.
+```
+provider:acme  ──requires──▶  model:acme/fast-1  ──requires──▶  agent:writer
+```
+
+A provider is a hard prerequisite for the models it serves; a model is a hard prerequisite for any agent pinned to it. Those relationships are declared in `opencode.json`, so they are read rather than guessed. That is what makes `tt bottlenecks`, `tt impact`, and `tt health` return something on a first run — for example, a local provider showing as a bottleneck because six models and two agents fall over if it goes away.
+
+**Combos are not inferred.** A combo says "these capabilities together unlock something," which is a judgement about your work, not a fact in a config file — so the engine will not invent one. Define them and the unlock analyses (`tt combos`, `tt near`, `tt fork`) light up; leave them undefined and those commands return empty, which is accurate rather than broken:
+
+```json
+{
+  "combos": {
+    "e2e-on-edge": {
+      "name": "E2E on Edge",
+      "domain": "quality",
+      "requires": ["mcp:playwright", "provider:cloudflare"],
+      "optional": ["skill:vitest"]
+    }
+  }
+}
+```
+
+Add that block to `opencode.json` (or to `CONFIG_MAPPING`) and re-run `./bootstrap.sh`. Prerequisites that don't resolve to a real capability are skipped, so a typo yields a missing combo rather than a permanently unreachable one.
 
 Then start the visualizer:
 
@@ -161,7 +182,7 @@ CONFIG_MAPPING='{"config_keys":{"tools":{"type":"tool","domain":"devops","desc_f
 
 This maps the `tools` key of `my-project.json` into the graph. The default mapping covers `mcp`, `agent`, `provider`, `command`, and `skills`.
 
-**The compounding loop.** This is the design intent rather than a description of a fresh install: each new capability connects to existing ones, raising density; each removal is recorded as a decision rather than leaving a gap; each combo unlocked reveals downstream combos. The value is meant to compound with history, which is also why day one looks sparse.
+**The compounding loop.** Seeding gives you the structure the config declares. Depth beyond that comes from use: each removal recorded as a decision rather than a gap, each combo you define revealing which capabilities were load-bearing all along. The graph is meant to get better structured rather than merely bigger — but the part that arrives on day one is what the config can prove.
 
 ## Requirements
 

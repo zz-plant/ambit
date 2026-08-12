@@ -6,7 +6,10 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH_DEFAULT = join(__dirname, "..", "..", "toolchain-viz.db");
-const CONFIG_DEFAULT = join(process.env.HOME || "/", ".config", "opencode", "opencode.json");
+// OPENCODE_CONFIG is the documented way to point the engine at another config
+// (README, "Using other configs"); it was accepted by bootstrap.sh but never
+// read here, so seeding always used the default path regardless.
+const CONFIG_DEFAULT = process.env.OPENCODE_CONFIG || join(process.env.HOME || "/", ".config", "opencode", "opencode.json");
 
 const C = { reset: "\x1b[0m", green: "\x1b[32m", yellow: "\x1b[33m", grey: "\x1b[90m", blue: "\x1b[36m", red: "\x1b[31m", bold: "\x1b[1m" };
 
@@ -89,6 +92,127 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   count += 4;
 
   db.prepare("UPDATE capabilities SET state = 'active' WHERE id IN ('core:reasoning','tool:bash','tool:edit','tool:lsp')").run();
+
+  count += seedModels(db, config, insert);
+  seedDependencies(db, config);
+  count += seedCombos(db, config, mapping, insert);
+
+  return count;
+}
+
+/**
+ * Models are real config entities the seed previously skipped, which left
+ * providers as leaves and agents unconnected to anything. Their ids match the
+ * visualizer's (`model:<provider>/<name>`) so both halves agree.
+ */
+function seedModels(db: Db, config: any, insert: any): number {
+  let count = 0;
+  for (const [provider, pv] of Object.entries<any>(config.provider || {})) {
+    for (const [model, mv] of Object.entries<any>(pv?.models || {})) {
+      const ctx = mv?.limit?.context;
+      insert.run(
+        `model:${provider}/${model}`,
+        mv?.name || model,
+        'ai-ml',
+        ctx ? `${ctx} context` : 'Model',
+        'model',
+        'unlocked',
+        0.6
+      );
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Edges the config states outright — nothing inferred by heuristic:
+ *   provider → model   a model cannot run without its provider
+ *   model    → agent   an agent pinned to a model depends on it
+ *
+ * `from` is the prerequisite and `to` the dependent, matching how the combo
+ * analyses read the table. Only edges whose endpoints both exist are written,
+ * since the schema has foreign keys on both columns.
+ */
+function seedDependencies(db: Db, config: any): number {
+  const has = (id: string) =>
+    !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const link = db.prepare(
+    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, ?, ?)"
+  );
+  let count = 0;
+
+  for (const [provider, pv] of Object.entries<any>(config.provider || {})) {
+    for (const model of Object.keys(pv?.models || {})) {
+      if (!has(`provider:${provider}`) || !has(`model:${provider}/${model}`)) continue;
+      link.run(`provider:${provider}`, `model:${provider}/${model}`, 1, 'Model served by provider');
+      count++;
+    }
+  }
+
+  for (const [name, agent] of Object.entries<any>(config.agent || {})) {
+    const ref = agent?.model;
+    if (typeof ref !== 'string' || !has(`agent:${name}`)) continue;
+    // "provider/model" — the model half may itself contain slashes.
+    const slash = ref.indexOf('/');
+    if (slash < 0) continue;
+    const provider = ref.slice(0, slash);
+    const modelId = `model:${ref}`;
+    if (has(modelId)) {
+      link.run(modelId, `agent:${name}`, 1, 'Agent pinned to model');
+      count++;
+    } else if (has(`provider:${provider}`)) {
+      // Model not declared in config; the provider dependency still holds.
+      link.run(`provider:${provider}`, `agent:${name}`, 1, 'Agent pinned to provider');
+      count++;
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Combos are the unit every unlock analysis is built on, and they are a
+ * judgement about what capabilities compose — not something to infer from a
+ * config file. They are read from an optional `combos` block, so a fabricated
+ * cluster never ends up presented as a finding:
+ *
+ *   "combos": { "e2e-on-edge": { "name": "E2E on Edge", "domain": "quality",
+ *                                "requires": ["mcp:playwright", "skill:vitest"],
+ *                                "optional": ["mcp:cloudflare"] } }
+ *
+ * Accepted in opencode.json or in CONFIG_MAPPING. Without one, the combo
+ * analyses stay empty — which is honest, not broken.
+ */
+function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
+  const combos = { ...(mapping.combos || {}), ...(config.combos || {}) };
+  const has = (id: string) =>
+    !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const link = db.prepare(
+    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, ?, ?)"
+  );
+  let count = 0;
+
+  for (const [key, spec] of Object.entries<any>(combos)) {
+    const id = key.startsWith('combo:') ? key : `combo:${key}`;
+    const requires: string[] = (spec?.requires || []).filter(has);
+    const optional: string[] = (spec?.optional || []).filter(has);
+    // A combo whose prerequisites are all missing describes nothing.
+    if (requires.length === 0 && optional.length === 0) continue;
+
+    insert.run(
+      id,
+      spec?.name || key,
+      spec?.domain || 'meta',
+      spec?.description || 'Composed capability',
+      'combo',
+      'locked',
+      0
+    );
+    count++;
+    for (const dep of requires) { link.run(dep, id, 1, 'Hard prerequisite'); }
+    for (const dep of optional) { link.run(dep, id, 0, 'Soft prerequisite'); }
+  }
 
   return count;
 }
