@@ -22,7 +22,7 @@ const LAYOUT_MODES: { id: LayoutMode; label: string; title: string }[] = [
 type Tab = 'contacts' | 'diagnostics';
 
 function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const addMcpServer = useToolchainStore(s => s.addMcpServer);
+  const buildMcpSnippet = useToolchainStore(s => s.buildMcpSnippet);
   const loading = useToolchainStore(s => s.loading);
 
   const [name, setName] = useState('');
@@ -31,6 +31,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
   const [command, setCommand] = useState('');
   const [envStr, setEnvStr] = useState('');
   const [error, setError] = useState('');
+  const [snippet, setSnippet] = useState<{ snippet: string; configPath: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -76,16 +77,12 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
       config.env = env;
     }
 
-    const ok = await addMcpServer(name.trim(), config);
-    if (ok) {
-      setName('');
-      setType('local');
-      setUrl('');
-      setCommand('');
-      setEnvStr('');
-      onClose();
+    const result = await buildMcpSnippet(name.trim(), config);
+    if (result) {
+      setSnippet(result);
+      setError('');
     } else {
-      setError('Uplink failed. Check console or server logs.');
+      setError('Could not build snippet. Check console or server logs.');
     }
   };
 
@@ -96,11 +93,24 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
           <span className="sp-sig" style={{ color: 'var(--accent)' }}>🔌</span>
           <div className="sp-title-group">
             <div className="sp-designation">ESTABLISH UPLINK</div>
-            <div className="sp-class">REGISTER NEW MCP SERVER</div>
+            <div className="sp-class">GENERATE MCP CONFIG SNIPPET</div>
           </div>
           <button className="sp-close" onClick={onClose}>✕</button>
         </div>
 
+        {snippet ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              An MCP entry carries a command OpenCode runs, so this tool will not write it for you.
+              Merge this into <code>{snippet.configPath}</code>, then reload.
+            </div>
+            <pre style={{ fontSize: '10px', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '8px', overflow: 'auto', maxHeight: '220px', margin: 0 }}>{snippet.snippet}</pre>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button type="button" className="sp-action-btn" onClick={() => navigator.clipboard?.writeText(snippet.snippet)}>COPY</button>
+              <button type="button" className="sp-action-btn" onClick={() => { setSnippet(null); setName(''); setUrl(''); setCommand(''); setEnvStr(''); onClose(); }}>DONE</button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
           {error && <div style={{ color: 'var(--error)', fontSize: '11px', border: '1px solid var(--error)', padding: '6px', background: 'rgba(255, 51, 68, 0.1)', borderRadius: 'var(--radius)' }}>{error}</div>}
 
@@ -173,9 +183,10 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
           </div>
 
           <button type="submit" className="tp-btn" style={{ width: '100%', marginTop: '10px' }} disabled={loading}>
-            {loading ? 'UPLINKING...' : 'ESTABLISH CONNECTION'}
+            {loading ? 'BUILDING...' : 'GENERATE CONFIG SNIPPET'}
           </button>
         </form>
+        )}
       </div>
     </div>
   );

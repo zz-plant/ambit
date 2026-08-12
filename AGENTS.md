@@ -49,6 +49,7 @@ Two configs, because the halves have different constraints:
 
 `server.ts` reads and writes `~/.config/opencode/opencode.json`, and `/api/config/apply` can add an MCP server — a command OpenCode will later execute. Two invariants protect that, and neither may be relaxed:
 
+0. **No entry creation** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups use `Object.hasOwnProperty` — a bare truth test accepts `__proto__` and pollutes every object in the process.
 1. **Loopback only** — `Bun.serve({ hostname: '127.0.0.1' })`. Never bind `0.0.0.0`; the LAN and Tailscale must not reach this.
 2. **Origin allowlist** — requests with a non-local `Origin` are rejected with 403 *before* routing. CORS response headers are not sufficient on their own: a simple request (`Content-Type: text/plain`) skips preflight and still reaches the handler, so the check must reject the request, not just omit the header.
 

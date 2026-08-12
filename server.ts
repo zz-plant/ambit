@@ -267,6 +267,35 @@ function isAllowedOrigin(origin: string): boolean {
   }
 }
 
+/** Editable fields, by entry kind. Anything else in a payload is dropped. */
+const AGENT_FIELDS = ['description', 'model'] as const;
+const COMMAND_FIELDS = ['description'] as const;
+
+/**
+ * True only for a real, own entry. A plain `bag[name]` truth test would accept
+ * '__proto__' or 'constructor' — inherited from Object.prototype — and the
+ * assignment that followed would pollute every object in the process.
+ */
+function ownEntry(bag: any, name: unknown): boolean {
+  return (
+    typeof name === 'string' &&
+    !!bag &&
+    Object.prototype.hasOwnProperty.call(bag, name) &&
+    typeof bag[name] === 'object' &&
+    bag[name] !== null
+  );
+}
+
+function pick(updates: unknown, allowed: readonly string[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!updates || typeof updates !== 'object') return out;
+  for (const key of allowed) {
+    const value = (updates as Record<string, unknown>)[key];
+    if (typeof value === 'string') out[key] = value;
+  }
+  return out;
+}
+
 function corsHeaders(origin: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -325,29 +354,31 @@ const server = Bun.serve({
       if (!raw) {
         return Response.json({ error: 'Config not found' }, { status: 404, headers });
       }
+      // This endpoint may only edit entries that already exist, and only the
+      // fields listed below. It deliberately cannot create an entry: a new MCP
+      // server carries a `command` array that OpenCode executes, which would
+      // make an HTTP request a way to run code on this machine. Adding a server
+      // is a hand edit to opencode.json — see /api/config/mcp-snippet.
       if (body.disableMcp) {
         for (const name of body.disableMcp) {
-          if (raw.mcp?.[name]) raw.mcp[name].enabled = false;
+          if (ownEntry(raw.mcp, name)) raw.mcp[name].enabled = false;
         }
       }
       if (body.enableMcp) {
         for (const name of body.enableMcp) {
-          if (raw.mcp?.[name]) raw.mcp[name].enabled = true;
+          if (ownEntry(raw.mcp, name)) raw.mcp[name].enabled = true;
         }
-      }
-      if (body.addMcp) {
-        raw.mcp = { ...(raw.mcp || {}), ...body.addMcp };
       }
       if (body.updateAgent) {
         const { name, updates } = body.updateAgent;
-        if (raw.agent && raw.agent[name]) {
-          raw.agent[name] = { ...raw.agent[name], ...updates };
+        if (ownEntry(raw.agent, name)) {
+          Object.assign(raw.agent[name], pick(updates, AGENT_FIELDS));
         }
       }
       if (body.updateCommand) {
         const { name, updates } = body.updateCommand;
-        if (raw.command && raw.command[name]) {
-          raw.command[name] = { ...raw.command[name], ...updates };
+        if (ownEntry(raw.command, name)) {
+          Object.assign(raw.command[name], pick(updates, COMMAND_FIELDS));
         }
       }
       const ok = await writeConfig(raw);
@@ -399,6 +430,19 @@ const server = Bun.serve({
       db.run('INSERT INTO consultant_log (consultant_id, timestamp, score, findings, item_count) VALUES (?, ?, ?, ?, ?)',
         [body.consultantId, new Date().toISOString(), body.score, JSON.stringify(body.findings), body.itemCount]);
       return Response.json({ ok: true }, { headers });
+    }
+
+    // POST /api/config/mcp-snippet — format an MCP entry for the user to paste.
+    // Deliberately returns text instead of writing: an MCP entry is executable,
+    // so it crosses into the config only by a human's own hand.
+    if (url.pathname === '/api/config/mcp-snippet' && req.method === 'POST') {
+      const body = await req.json() as any;
+      const name = typeof body?.name === 'string' ? body.name.trim() : '';
+      if (!name) return Response.json({ error: 'name required' }, { status: 400, headers });
+      return Response.json({
+        configPath: CONFIG_PATH,
+        snippet: JSON.stringify({ mcp: { [name]: { ...body.config, enabled: true } } }, null, 2),
+      }, { headers });
     }
 
     // GET /api/infrastructure/scan — read-only device/service topology

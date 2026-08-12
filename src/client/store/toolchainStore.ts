@@ -92,7 +92,7 @@ interface StoreState {
 
   loadConfig: () => Promise<void>;
   toggleMcpEnabled: (name: string, enabled: boolean) => Promise<boolean>;
-  addMcpServer: (name: string, mcpConfig: any) => Promise<boolean>;
+  buildMcpSnippet: (name: string, mcpConfig: any) => Promise<{ snippet: string; configPath: string } | null>;
   applyFindingAction: (action: { type: string; target: string }) => Promise<boolean>;
 
   runConsultant: (id: string) => void;
@@ -527,23 +527,21 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     return false;
   },
 
-  addMcpServer: async (name: string, mcpConfig: any) => {
+  // Returns a snippet to paste rather than writing the config. An MCP entry
+  // carries a command OpenCode executes, so it must not be reachable through an
+  // HTTP request — see the security note in AGENTS.md.
+  buildMcpSnippet: async (name: string, mcpConfig: any) => {
     try {
-      const res = await fetch('/api/config/apply', {
+      const res = await fetch('/api/config/mcp-snippet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          addMcp: { [name]: { ...mcpConfig, enabled: true } }
-        })
+        body: JSON.stringify({ name, config: mcpConfig })
       });
-      if (res.ok) {
-        await get().loadConfig();
-        return true;
-      }
+      if (res.ok) return await res.json();
     } catch (e) {
       console.error(e);
     }
-    return false;
+    return null;
   },
 
   applyFindingAction: async (action: { type: string; target: string }) => {
