@@ -5,21 +5,25 @@ import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, "..");
+// cli.js sits at the package root, next to src/ — resolving ".." walked out
+// of the package entirely and every command failed to find the engine.
+const ROOT = __dirname;
 
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
 
 if (!cmd || cmd === "--help") {
   console.log("  Toolchain capability graph\n");
-  console.log("  Bootstrap: npx @zz-plant/capability-graph seed");
+  console.log("  Bootstrap: ./bootstrap.sh");
   console.log("");
-  console.log("  Explore:   stats  export  context  cap <domain>  health  profile");
+  console.log("  Explore:   stats  export  context  health  profile");
   console.log("  Maintain:  decay  prune  prune <id>  diff  trend");
-  console.log("  Plan:      recs  near  combos  fork  insight");
+  console.log("  Plan:      near  combos  fork  insight");
   console.log("  Analyze:   bottlenecks  impact <id>  budget <s> <t>");
   console.log("");
-  console.log("  Web:       Start the visualizer at http://localhost:3000");
+  console.log("  Web:       tt web  — visualizer at http://localhost:3000");
+  console.log("");
+  console.log("  recs and cap are MCP-only tools, available inside OpenCode sessions.");
   process.exit(0);
 }
 

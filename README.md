@@ -6,46 +6,13 @@
   <a href="https://zz-plant.github.io/capability-graph/"><strong>Live Demo</strong></a>
 </p>
 
-A capability graph for your [OpenCode](https://opencode.ai) toolchain. Discovers every skill, agent, MCP server, and model from your config. Tracks what you've built, connected, maintained, and removed. Shows maturity for each capability and the cheapest path to unlock new ones.
+You added an MCP server eight months ago. Is it still doing anything? Which of your agents point at a model you've since stopped using? What did you connect last quarter and never touch again?
 
-## Why a capability graph
+`opencode.json` can't answer that. It's a flat file with no history and no edges — every entry looks equally load-bearing whether you use it hourly or added it once and forgot.
 
-```
-  FLAT MEMORY                         CAPABILITY GRAPH
-┌──────────────────┐            ┌──────────────────────────┐
-│  "I know X"      │            │  skill:playwright         │
-│  "I know Y"      │            │  maturity: 0.72 → 0.66    │
-│  "I know Z"      │            │  last used: 23 days ago   │
-│                  │            │  unlocks: 4 combos         │
-│  prose file      │            │  decay rate: -0.02/day    │
-│  ctrl-f to find  │            │                            │
-│  time has no     │            │  pathfind · bottleneck     │
-│  effect          │            │  impact · budget · trend   │
-└──────────────────┘            └──────────────────────────┘
-
-     claim               →         evidence
-     static              →         dynamic
-     search              →         compute
-     self-report         →         ground truth
-```
-
-A flat list of claims has no edges, no time, no computation. You can search it. That's all.
-
-A capability graph has domain-classified nodes, typed dependencies, maturity scores with decay, and timestamps on every event. Seventeen tools compute answers from the structure: pathfinding, impact analysis, bottleneck detection, budget optimization, trend projection, prune recommendations, and fork comparison.
+Capability Graph reads that config and builds a structure that can answer it: every capability as a typed node with a domain, a maturity score that decays when things go unmaintained, and a timestamp on every change. Then it gives you a terminal, an agent, and a visual to ask questions of.
 
 ## Quick Start
-
-```bash
-brew install zz-plant/tap/capability-graph && tt
-```
-
-Or with Node:
-
-```bash
-npx @zz-plant/capability-graph
-```
-
-Or clone and run:
 
 ```bash
 git clone https://github.com/zz-plant/capability-graph.git
@@ -53,115 +20,102 @@ cd capability-graph
 ./bootstrap.sh
 ```
 
-That's it. No decisions. No config files. The bootstrap scans your system and tells you what it found:
+Bootstrap installs dependencies, reads your config, and prints what it found:
 
 ```
-┌─ Discovery ──────────────────────────────────────────────┐
-│ ✓ opencode.json found                                    │
-│ ✓ Ollama running — 5 models available                    │
-│ ✓ Skills: 105 across 4 directories                       │
-│ ✓ MCP servers: 28                                        │
-│ ✓ Agents: 25                                             │
-└──────────────────────────────────────────────────────────┘
+Installing...
+✓ 123 capabilities
+┌─ Toolchain ───────────────────────────────────────────┐
+│ 123/123 capabilities, 6 domains
+│ ██████████ ai-ml        5/5
+│ ██████████ backend      5/5
+│ ██████████ devops       5/5
+│ ██████████ infra        25/25
+│ ██████████ meta         82/82
+│ ██████████ quality      1/1
+└───────────────────────────────────────────────────────┘
 ```
 
-Then it builds the graph and shows your toolchain summary:
+To see what it would find without building anything, run `./bootstrap.sh --dry-run`.
 
+### What a fresh install actually gives you
+
+Seeding discovers **nodes, not edges**. A first run produces one capability per MCP server, agent, provider, model, command, and skill — and zero dependencies between them. That means the analyses built on graph structure (`tt combos`, `tt near`, `tt fork`, `tt bottlenecks`, `tt impact`) return empty until edges exist.
+
+Edges accrue three ways: the tracking plugin records connections as you change your config over time, combos are defined against prerequisite clusters, and the visualizer infers a `core → capability` link per item for display. So day one is an inventory with maturity and domain classification; the graph analyses become useful as history builds up. Worth knowing before you judge it on the first run.
+
+Then start the visualizer:
+
+```bash
+./bootstrap.sh web
 ```
-┌─ Your toolchain ─────────────────────────────────────────┐
-│ 118/120 capabilities across 8 domains                    │
-│ ██████████ ai-ml        11/11                            │
-│ █████████░ devops       11/12                            │
-│ ██████░░░░ security      2/2                             │
-│ 7 combo capabilities                                     │
-└──────────────────────────────────────────────────────────┘
-```
 
-Curious what it would find without committing? `./bootstrap.sh --dry-run` shows the discovery phase only, no graph built.
+Homebrew (`brew install zz-plant/tap/capability-graph`) installs the `tt` CLI on its own, without the visualizer.
 
-### What you get
-
-<p align="center">
-  <img src="docs/assets/constellation-view.png" alt="hexagonal constellation view" width="720">
-</p>
+## What you get
 
 | Component | What it does |
 |---|---|
-| **Visualizer** | Two layout modes: ERAS (era-column tech tree with hover tooltips, prereq highlighting, and tree filter) and CONSTELLATION (3D hex map). Inline legend, DOCS modal, and one-click PNG export. |
-| **CLI Engine** | `tt stats`, `tt recs`, `tt context`, `tt decay`, `tt combos`, `tt health`, `tt prune`, `tt fork`, `tt near`, `tt insight`, `tt profile`, `tt export` — query your toolchain from the terminal. |
-| **MCP Server** | 17 tools available inside OpenCode sessions. Your agent can query its own capabilities. |
-| **Tracking Plugin** | Tracks configuration changes — what you build, connect, keep, and remove. Not invocation frequency. |
-| **Consultant Agent** | A subagent that knows how to query the graph and interpret the results. |
-| **Teach Skill** | Load with `skill(name="tech-tree")` to give any agent toolchain awareness. |
+| **Visualizer** | Four layout modes: ERAS (era-column tech tree with hover tooltips, prerequisite highlighting, and a type filter), CONSTELLATION (3D hex map), ORBITAL (concentric shells by type), and FLAT (2D force-directed). Inline legend, DOCS modal, one-click PNG export. |
+| **CLI** | 14 commands for querying the graph from a terminal — see [CLI reference](#cli-reference). |
+| **MCP server** | 17 tools your agent can call inside an OpenCode session — see [MCP reference](#mcp-reference). |
+| **Tracking plugin** | Records configuration changes: what you build, connect, keep, and remove. Not invocation counts. Installs to `~/.config/opencode/plugins/`. |
+| **Consultant agent** | A subagent that knows how to query the graph and interpret what comes back. |
 
-### Once bootstrapped, inside any OpenCode session
+## Execution, not just advice
 
-```
-> What's my toolchain look like?
-→ tt_stats: 118 capabilities, 94% maturity. 8 domains.
-  Security is thin (2). Local Model Inference at 90%.
+Most of the tools report. `tt prune <id>` acts: it removes the entry from `opencode.json`, writes a `.bak` alongside it first, and re-seeds the graph. The removal is then recorded as a deliberate decision rather than an absence, which is what keeps the graph's signal from degrading as it grows.
 
-> What's rusting?
-→ tt_decay: Playwright unused for 23 days (72% → 66%).
-  4 combos depend on it.
-
-> What's ready to unlock?
-→ tt_combos: Deploy Pipeline — all prerequisites met at 68% avg.
-  2 hard deps (Cloudflare, Wrangler) already active.
-
-> If I let Cloudflare decay, what breaks?
-→ tt_impact skill:cloudflare: 5 downstream combos at risk.
-  3 critical (hard prerequisite would fail).
-
-> What's the cheapest path to Agent Deployment?
-→ tt_path combo:agent-deployment:
-  Cloudflare → Wrangler → Agents SDK → Agent Deployment
-  60s setup, 600 tokens. 1 cascade unlock.
-
-> Where should I invest effort today?
-→ tt_bottlenecks: Cloudflare unlocks 8 combos — highest leverage.
-  Wrangler unlocks 6. Git Mastery unlocks 4.
-
-> What should I prune?
-→ tt prune mcp:seq — removes the entry from opencode.json, creates a backup,
-  and re-seeds the graph. The action is carried out, not just recommended.
-
-> What's almost ready?
-→ tt_near: Deploy Pipeline — 1 dependency away (Agents SDK).
-  Cloudflare, Wrangler, Git all at 80%+ maturity.
-
-> What should I do right now?
-→ tt_insight: Top 3 actions — Playwright decaying (affects 4 combos),
-  Deploy Pipeline near-miss (add one dependency), Cloudflare bottleneck (unlocks 8).
+```bash
+tt prune mcp:seq
 ```
 
-## Execution Layer
+## CLI reference
 
-Recommendations are actionable. `tt prune mcp:seq` removes the entry from opencode.json, creates a `.bak` backup, and re-seeds the graph. Every removal and unlock is tracked as a deliberate decision, improving the graph's signal-to-noise ratio over time.
+```
+Explore     stats  export  context  health  profile
+Maintain    decay  prune  prune <id>  diff  trend
+Plan        near  combos  fork  insight
+Analyze     bottlenecks  impact <id>  budget <setup> <tokens>
+```
 
-## Tools Reference
-
-| Tool | What it answers |
+| Command | What it answers |
 |---|---|
-| `tt_stats` | Where am I? Domain breakdown, global maturity, learned patterns |
-| `tt_recs` | What next? Unlock recommendations ranked by efficiency |
-| `tt_path <id>` | How do I get there? Optimal unlock route with costs |
-| `tt_context` | What should the agent know? Session context block |
-| `tt_cap <query>` | What's in this domain? Zoom into any area |
-| `tt_decay` | What's rusting? Unused capabilities losing proficiency |
-| `tt_combos` | What's ready? Auto-detected prerequisite clusters |
-| `tt_diff` | What changed? Session-over-session delta |
-| `tt_health` | How healthy? Composite domain scores |
-| `tt_bottlenecks` | What's high-leverage? Skills that unlock the most combos |
-| `tt_impact <id>` | What if this decays? Downstream damage analysis |
-| `tt_budget <s> <t>` | What's optimal? Best unlocks given constraints |
-| `tt_trend <days>` | What's coming? Projected health in N days |
-| `tt_near` | What's almost ready? Combos 1-2 dependencies away at high maturity |
-| `tt_insight` | What should I do right now? Top actionable items |
-| `tt_profile` | How has my graph evolved? Density, removals, combos over time |
-| `tt_prune <id>` | What should I remove? Run with an ID to execute the removal |
-| `tt_fork` | Which path? Compare combos by efficiency, regret, cascade |
-| `tt_export` | Share your graph. Dumps capabilities and connections as JSON — paste on the Pages site to share. |
+| `tt stats` | Where am I? Domain breakdown and global maturity |
+| `tt context` | What should the agent know? Session context block |
+| `tt health` | How healthy? Composite domain scores |
+| `tt profile` | How has the graph evolved? Density, removals, combos over time |
+| `tt decay` | What's rusting? Capabilities losing proficiency |
+| `tt diff` | What changed? Session-over-session delta |
+| `tt trend <days>` | What's coming? Projected health in N days |
+| `tt near` | What's almost ready? Combos one or two dependencies away |
+| `tt combos` | What's ready? Auto-detected prerequisite clusters |
+| `tt fork` | Which path? Combos compared by efficiency, regret, cascade |
+| `tt insight` | What should I do right now? Top actionable items |
+| `tt bottlenecks` | What's high-leverage? Capabilities that unlock the most combos |
+| `tt impact <id>` | What if this decays? Downstream damage |
+| `tt budget <s> <t>` | What's optimal given a setup-time and token budget? |
+| `tt prune [id]` | What should I remove? With an ID, performs the removal |
+| `tt export` | Dumps capabilities and connections as JSON — paste it on the [demo site](https://zz-plant.github.io/capability-graph/) to view a graph without installing anything |
+
+## MCP reference
+
+Seventeen tools, available inside any OpenCode session once the MCP server is registered. They overlap with the CLI but are not identical: `tt_recs` and `tt_cap` are MCP-only, and `tt_export` is CLI-only.
+
+`tt_stats` · `tt_recs` · `tt_cap` · `tt_context` · `tt_decay` · `tt_combos` · `tt_diff` · `tt_health` · `tt_bottlenecks` · `tt_impact` · `tt_budget` · `tt_trend` · `tt_near` · `tt_insight` · `tt_profile` · `tt_prune` · `tt_fork`
+
+```
+> What's rusting?
+→ tt_decay: capabilities ranked by days since their config last changed,
+  with the combos that depend on each one.
+
+> What's the highest-leverage thing to invest in?
+→ tt_bottlenecks: capabilities ordered by how many combos they unlock.
+
+> If I let this decay, what breaks?
+→ tt_impact <id>: downstream combos at risk, separated into hard
+  prerequisites that would fail and soft ones that would degrade.
+```
 
 ## Architecture
 
@@ -169,56 +123,54 @@ Recommendations are actionable. `tt prune mcp:seq` removes the entry from openco
 opencode.json          ←─ your config
         │
         ▼
-   engine.ts           ←─ discovers capabilities, builds graph
+   engine.ts           ←─ discovers capabilities, builds the graph
         │
         ▼
-toolchain-viz.db       ←─ capabilities · dependencies · synergies · session_learning
+toolchain-viz.db       ←─ capabilities · dependencies · session_learning
         │
-        ├──► server.ts              ←─ web visualizer (hex map + Civ layout)
-        │       └── /api/tech-tree       serves graph to frontend
+        ├──► server.ts              ←─ visualizer API (Bun.serve, port 3001)
+        │       ├── /api/config             config as a graph model
+        │       ├── /api/repos/scan         per-repo drift vs. global config
+        │       ├── /api/infrastructure/scan  device and service topology
+        │       ├── /api/snapshots          saved graph states
+        │       └── /api/trending           newly published MCP servers
         │
-        ├──► mcp/server.ts          ←─ 17 MCP tools for OpenCode queries
+        ├──► src/mcp/server.ts      ←─ 17 MCP tools, JSON-RPC over stdio
         │
-        ├──► plugins/               ←─ passive event tracking (zero-token instrumentation)
-        │       └── writes session_learning · timestamps · outcome scores
+        ├──► plugin                 ←─ passive config-event tracking
+        │       └── installs to ~/.config/opencode/plugins/
         │
-        └──► consultant agent + tech-tree skill
-                └── knows how to query and interpret the graph
+        └──► consultant agent
 ```
 
-## Visualizer Features
+The server binds `127.0.0.1` and rejects non-local origins. It can toggle an MCP on or off and edit an existing agent's description or model, but it cannot create config entries — an MCP entry carries a command OpenCode executes, so new servers are added by hand. The visualizer's "add server" screen generates a snippet for you to paste. See [AGENTS.md](./AGENTS.md) for the full reasoning.
 
-**ERAS layout.** Era-column tech tree with domain bands, dependency connection lines, maturity rings, hover tooltips showing downstream capabilities, and prerequisite chain highlighting when a node is selected.
+## How it works
 
-**Tree filter.** Filter nodes by type — servers, agents, skills, combos — to focus on what matters.
+The engine reads `opencode.json` and discovers every capability. Each gets a maturity score (0–1), cost metadata, and a domain classification that determines its column in the ERAS view. Dependencies form a directed graph: hard prerequisites must be met, soft ones are optional, synergies discount costs.
 
-**Export.** The camera button exports the current graph as a PNG. Share it in a PR, a Notion doc, or a tweet.
+**Domains are inferred from names.** An MCP called `cloudflare-bindings` classifies as `backend`, `tailscale` as `infra`. The keyword table in `src/client/utils/configImporter.ts` is tuned to a Cloudflare/Tailscale/Ollama-shaped toolchain — on a different stack, more items will land in the `meta` fallback, and that table is the first place to edit.
 
-**Import.** Paste JSON from `tt export` on the [demo site](https://zz-plant.github.io/capability-graph/) to see your own graph without installing anything.
-
-## How It Works
-
-The engine reads your opencode.json and discovers every capability. Each one gets a maturity score (0–1), cost metadata (setup time, token overhead), and domain classification. Dependencies form a directed graph — hard prerequisites must be met, soft ones are optional, synergies discount costs.
-
-**Using other configs.** Don't use OpenCode? Set `CONFIG_MAPPING` to describe your config structure:
+**Using other configs.** Not on OpenCode? Describe your config's shape with `CONFIG_MAPPING`:
 
 ```bash
-CONFIG_MAPPING='{"config_keys":{"tools":{"type":"tool","domain":"devops","desc_field":"description"},"plugins":{"type":"plugin","domain":"backend","desc_field":"version"}}}' \
+CONFIG_MAPPING='{"config_keys":{"tools":{"type":"tool","domain":"devops","desc_field":"description"}}}' \
   OPENCODE_CONFIG=my-project.json \
   ./bootstrap.sh
 ```
 
-This maps `my-project.json`'s `tools` and `plugins` keys into the capability graph. Each becomes a typed node with the specified domain and description. The default mapping matches opencode.json's `mcp`, `agent`, `provider`, `command`, and `skills` keys.
+This maps the `tools` key of `my-project.json` into the graph. The default mapping covers `mcp`, `agent`, `provider`, `command`, and `skills`.
 
-The tracking plugin hooks OpenCode's configuration events and records every capability addition, removal, and connection. The decay system lowers maturity scores for unmaintained capabilities. The auto-combo system detects when prerequisite clusters reach unlock thresholds.
+**The compounding loop.** This is the design intent rather than a description of a fresh install: each new capability connects to existing ones, raising density; each removal is recorded as a decision rather than leaving a gap; each combo unlocked reveals downstream combos. The value is meant to compound with history, which is also why day one looks sparse.
 
-**The compounding loop.** The graph doesn't just grow — it improves. Each new capability connects to existing ones, increasing density (connections per node). Each removal cleans up unused entries, improving signal-to-noise. Each combo unlock reveals downstream combos that were previously invisible. After 3 months, the graph isn't larger — it's better structured, because every entry reflects a deliberate decision.
+## Requirements
 
-**Execution.** Recommendations can be carried out directly. `tt prune mcp:seq` removes the entry from opencode.json, creates a `.bak` backup, and re-seeds the graph. Every action is tracked as a deliberate decision, not an oversight to be corrected.
+- **Bun** for the visualizer and API server
+- **Node 22+** for the engine and CLI, which use `node:sqlite` behind `--experimental-sqlite`
 
 ## Contributing
 
-Fork → branch → commit → PR. See [AGENTS.md](./AGENTS.md) for codebase conventions.
+Fork → branch → commit → PR. See [AGENTS.md](./AGENTS.md) for codebase conventions, the typechecking setup, and the security invariants the server must preserve.
 
 ## License
 
