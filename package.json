@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"bun run server\" \"vite\"",
-    "build": "vite build",
+    "build": "bun run typecheck && vite build",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "start": "NODE_ENV=production bun run server",
     "server": "bun run server.ts",
     "assets:check": "bun run scripts/check-assets.ts",
@@ -23,6 +25,7 @@
     "zustand": "^4.3.6"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.14",
     "@types/node": "^26.2.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

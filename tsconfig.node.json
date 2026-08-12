@@ -8,7 +8,7 @@
     "lib": ["ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": ["node", "bun"],
     "strict": false,
     "noImplicitAny": false,
     "skipLibCheck": true,
