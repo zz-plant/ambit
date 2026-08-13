@@ -17,7 +17,7 @@ Ordered by ambition. Each is defensible on its own; each depends on the one abov
 | **1 · Inventory** | discover the capabilities implicit in configuration and infrastructure, model their dependencies, costs, and failure cascades | shipping |
 | **2 · Assurance** | distinguish *configured* from *demonstrated* — `installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate` | §3–4 |
 | **3 · Planning** | given a desired outcome, compute the capability delta and compare paths that close it | §5 |
-| **4 · Reflexive infrastructure** | agents use the model to improve the environment they themselves operate in | §6–10 |
+| **4 · Reflexive infrastructure** | agents use the model to improve the environment they themselves operate in | §6–11 |
 
 "Reflexive infrastructure" rather than "self-improving": the system can inspect the conditions of its own action and propose modifications to them, and a human approves every one.
 
@@ -163,7 +163,26 @@ The tree already tells you to write a SKILL.md for anything you explain more tha
 
 > **Repeated friction should become infrastructure.**
 
-## 7. A runtime adapter layer
+## 7. The ledger
+
+Capability accounting gets substantially more interesting longitudinally. Rather than describing only today's environment, record: *at time T, what could this system do — and what changed since?*
+
+```
+gains a machine → then network access → then credentials → then a scheduler
+→ then memory → then authority to deploy → then the ability to create agents
+```
+
+Each addition is not only an infrastructure change but a change in the reachable capability frontier. That turns the graph into something closer to a balance sheet for agency: traditional accounting records accumulated economic claims, IAM records accumulated authority, a CMDB records accumulated infrastructure — this would record **accumulated capacity for action**.
+
+The interesting entries are the ones no single change explains:
+
+> The system acquired autonomous incident-recovery capability yesterday, although no component added yesterday was itself an incident-recovery system.
+
+Agency emerging as a graph property is exactly what a per-component changelog cannot show.
+
+**This is nearer than the rest of this document, because the schema is already there.** `capabilities` carries `created_at` and `updated_at`; `session_learning` carries `session_id`, `capability_id`, `action`, `outcome_score`, `timestamp`. What is missing is that nothing writes a time series of *frontier state*, and no command can answer a question as of a past date — `tt diff`, `tt profile` and `tt trend` all read current state. The work is a snapshot-on-change writer and a reader that takes a timestamp.
+
+## 8. A runtime adapter layer
 
 Do not model "Claude has tool X, Hermes has tool Y". Model what each runtime *provides*, and let the graph decide which runtime can execute which step:
 
@@ -176,7 +195,7 @@ Do not model "Claude has tool X, Hermes has tool Y". Model what each runtime *pr
 
 The point is durability. You stop maintaining a setup for one assistant and start maintaining a capability fabric that different intelligences attach to — which matters more each time the model landscape shifts.
 
-## 8. Authority as a first-class edge
+## 9. Authority as a first-class edge
 
 The server already refuses to create MCP entries because those entries contain commands that get executed, binds to loopback, and rejects foreign origins. That boundary should be **generalised, never weakened**.
 
@@ -195,7 +214,7 @@ docker-container-management
 
 This is not guardrails instead of capability. Granular, legible authority is what makes it safe to grant a much larger total action surface — the agent can be given more precisely because the limits are explicit.
 
-## 9. A second-generation MCP
+## 10. A second-generation MCP
 
 Today's seventeen tools are analytical: they answer questions about the graph. The next set exposes a lifecycle:
 
@@ -210,7 +229,7 @@ cg_opportunities  cg_compound
 
 `cg_simulate_acquisition` matters as much as `cg_plan`: showing the graph as it *would* be, before anything changes, is what makes approval meaningful rather than ceremonial.
 
-## 10. The visualiser becomes a negotiating surface
+## 11. The visualiser becomes a negotiating surface
 
 Today it explains the graph to you. It should become where you and an agent agree on changes to your shared capability:
 
@@ -273,6 +292,6 @@ do real work → discover friction → identify the capability deficit
 
 ## Honest status
 
-Sections 1–2 are data-model work that the current schema can mostly absorb. Sections 3–5 are the substance and are not started. Sections 6–10 depend on 3–5 and are sketches, not designs.
+Sections 1–2 are data-model work the current schema can mostly absorb. Sections 3–5 are the substance and are not started. Section 7 is nearer than its position suggests — the tables exist, only the writer and the time-aware reader are missing. Sections 8–11 depend on 3–5 and are sketches, not designs.
 
 The gap between this document and the README is deliberate. The README describes only what runs.

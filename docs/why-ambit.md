@@ -52,6 +52,18 @@ work → friction → structural deficit → capability acquisition
      → verification → larger future action space
 ```
 
+## Accounting, and then a ledger
+
+What Ambit is doing is closest to accounting. Partly a dependency graph, partly IAM, partly a CMDB, partly an audit ledger — but with *capacity for action* as the thing being accounted for.
+
+Ordinary tool registries collapse seven different things into one. Something can be **available** without being **authorized**; **authorized** without being **reachable**; reachable without being **verified**; and a **composed** capability can exist that no component declares. Add **delegated** — a human or another agent supplies a missing step — and **persistent** — it survives the current interaction — and you have most of what determines whether a system can actually cause something to happen.
+
+The version of this I find most interesting is longitudinal. Instead of describing only today, record what the system could do at time T, and what changed. A system gains a machine, then network access, then credentials, then a scheduler, then memory, then deploy authority, then the ability to create further agents. Each is an infrastructure change *and* a change in the reachable frontier.
+
+That is a balance sheet for agency. And it makes visible the entries no changelog can:
+
+> The system acquired autonomous incident-recovery capability yesterday, although no component added yesterday was itself an incident-recovery system.
+
 ## The safety argument
 
 I think this also points at a problem that gets less attention than model alignment.
@@ -76,9 +88,11 @@ I do not think AGI necessarily arrives as one monolithic model crossing a thresh
 
 It may arrive compositionally: models plus tools plus persistence plus credentials plus infrastructure plus humans, forming systems whose aggregate ability to act becomes the historically relevant thing.
 
-If that is roughly right, the unit we need to understand is no longer just the model. It is the agentic system.
+If that is roughly right, the unit we need to understand is no longer just the model. It is the agentic system — and model benchmarks describe only one input into the transition. The other dimension is the infrastructure through which intelligence becomes consequential.
 
-Ambit is an attempt to give that system an explicit model of itself.
+A mature version of this should be able to say: *this model did not change, but the system around it acquired twelve new reachable capabilities this month.* At some point descriptions like that stop looking like a chatbot's tool configuration and start looking like the operational anatomy of a persistent actor.
+
+Ambit does not measure how intelligent the AI is. It tries to measure what intelligence has acquired the means to do.
 
 ---
 

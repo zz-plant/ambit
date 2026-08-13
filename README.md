@@ -14,7 +14,11 @@
 
 </div>
 
-Ambit gives agents and their users a persistent model of what their combined environment can actually do: which capabilities exist, what they depend on, what is one step away, what is decaying, and what would break if something disappeared.
+Ambit is a capability-accounting system for agentic infrastructure. It gives agents and their users a persistent model of what their combined environment can actually do: which capabilities exist, what they depend on, what is one step away, what is decaying, and what would break if something disappeared.
+
+The premise is that the meaningful capabilities of an AI system do not reside entirely in the model. They arise from composition — models, tools, credentials, machines, networks, memory, schedulers, humans, policies, persistent processes — so the question worth answering is not what the model knows or what appears in a config file, but:
+
+> **What can this human-machine system actually cause to happen right now?**
 
 It is built for the point where an agent setup stops fitting comfortably in your head.
 
@@ -51,15 +55,29 @@ Ambit treats that as a graph problem. It models capabilities, dependencies, cost
 
 Configuration tells you what is declared. Ambit tries to tell you what those declarations amount to.
 
-```
-installed     ≠ callable
-callable      ≠ working
-working once  ≠ reliable
-reliable      ≠ authorized
-authorized    ≠ appropriate
-```
+A capability in a tool registry looks like *"GitHub access: yes."* The useful form is closer to:
 
-The long-term object is **effective capability**: an action the system can actually perform under its present technical, operational, and authority constraints. Ambit is an early attempt to make that state explicit — today it models the first two or three of those distinctions, and [the roadmap](./ROADMAP.md) is about the rest.
+> Can diagnose a failing service, modify its repository, deploy a fix, verify recovery, and report the intervention — because the system currently has repository write access, shell execution, deployment credentials, monitoring visibility, network reachability, persistent execution, and the required human authorisation.
+
+That second description is **effective capability**, and it is the object Ambit is built around. Getting there means keeping apart seven things that ordinary registries collapse into one:
+
+| | | today |
+|---|---|---|
+| **Available** | something appears to exist | ✅ |
+| **Reachable** | all necessary dependencies are currently accessible | ✅ |
+| **Composed** | several lower-level capabilities together make a higher-order action possible | ✅ |
+| **Verified** | the capability has actually succeeded | roadmap |
+| **Authorized** | the system has permission to use it | roadmap |
+| **Delegated** | a human or another agent supplies a missing step | roadmap |
+| **Persistent** | it can operate beyond the current interaction | roadmap |
+
+Three of seven, and the README says which. [The roadmap](./ROADMAP.md) is the rest.
+
+The compressed form of the same point:
+
+```
+installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate
+```
 
 ## What it does today
 
@@ -237,6 +255,20 @@ GPU node
 ```
 
 A machine matters because of the actions it makes reachable.
+
+## Humans are nodes, not outsiders
+
+Ambit does not model humans only as users issuing prompts. Humans supply legal authority, physical access, money, institutional standing, subjective judgement, approval, and actions machines cannot perform. A capability chain can therefore run:
+
+```
+diagnose hardware failure → request replacement → human approves expenditure
+→ vendor ships component → human installs it → agent configures it
+→ monitoring verifies recovery
+```
+
+The capability belongs to the human-machine system, not to either half. That lets partial, structured autonomy be described as it actually is, rather than forcing everything into "fully autonomous" or "human controlled".
+
+*Not built yet — humans are not currently nodes in the graph. See [ROADMAP.md §2](./ROADMAP.md).*
 
 ## Composition is the interesting part
 
