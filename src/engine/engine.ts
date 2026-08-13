@@ -42,6 +42,63 @@ function migrate(db: Db) {
   db.exec(readFileSync(join(__dirname, "schema.sql"), "utf8"));
 }
 
+
+/**
+ * Prints a result for a person to read, or raw JSON with --json.
+ *
+ * Every command used to dump JSON.stringify unconditionally, which meant the
+ * primary surface spoke machine and the reader had to parse it themselves —
+ * the single biggest reason this tool needed explaining. Formatting is generic
+ * rather than per-command so no command can drift back to raw output.
+ */
+function emit(data: any): void {
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  const HEADLINE = ["name", "title", "capability_id", "domain", "id", "type"];
+  const label = (k: string) => k.replace(/_/g, " ");
+  const scalar = (v: any) =>
+    Array.isArray(v) ? v.filter(x => typeof x !== "object").join(", ") : String(v);
+  const skip = (k: string, v: any) =>
+    v === null || v === undefined || v === "" ||
+    (Array.isArray(v) && v.length === 0) ||
+    (Array.isArray(v) && v.some(x => typeof x === "object"));
+
+  const renderOne = (row: any, indent = "  ") => {
+    if (typeof row !== "object" || row === null) { console.log(indent + String(row)); return; }
+    const headKey = HEADLINE.find(k => row[k] !== undefined);
+    if (headKey) console.log(`${indent}${C.bold}${row[headKey]}${C.reset}`);
+    for (const [k, v] of Object.entries(row)) {
+      if (k === headKey || skip(k, v) || typeof v === "object") continue;
+      console.log(`${indent}  ${C.grey}${label(k)}:${C.reset} ${scalar(v)}`);
+    }
+    // One level of nesting is common (near-misses carry their own list).
+    for (const [k, v] of Object.entries(row)) {
+      if (Array.isArray(v) && v.some(x => typeof x === "object")) {
+        console.log(`${indent}  ${C.grey}${label(k)}:${C.reset}`);
+        for (const child of v.slice(0, 5)) renderOne(child, indent + "    ");
+      }
+    }
+  };
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      console.log(`${C.grey}Nothing to report.${C.reset}`);
+      return;
+    }
+    console.log("");
+    for (const row of data) { renderOne(row); console.log(""); }
+    console.log(`${C.grey}${data.length} result${data.length === 1 ? "" : "s"} · --json for machine output${C.reset}`);
+    return;
+  }
+
+  console.log("");
+  renderOne(data);
+  console.log("");
+}
+
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 function parseMapping(mappingStr?: string): Record<string, any> {
@@ -717,21 +774,21 @@ function main() {
       for (const d of domains) console.log(`  ${d.domain.padEnd(12)} ${d.unlocked}/${d.total}`);
       break;
     }
-    case "health": console.log(JSON.stringify(domainHealth(db), null, 2)); break;
-    case "decay": console.log(JSON.stringify(computeDecay(db), null, 2)); break;
-    case "combos": console.log(JSON.stringify(discoverCombos(db), null, 2)); break;
-    case "diff": console.log(JSON.stringify(sessionDiff(db), null, 2)); break;
-    case "bottlenecks": console.log(JSON.stringify(findBottlenecks(db), null, 2)); break;
-    case "impact": console.log(JSON.stringify(analyzeImpact(db, arg), null, 2)); break;
-    case "budget": console.log(JSON.stringify(optimizeBudget(db, parseInt(arg) || 120, parseInt(process.argv[4]) || 8000), null, 2)); break;
-    case "trend": console.log(JSON.stringify(projectTrends(db, parseInt(arg) || 30), null, 2)); break;
-    case "prune": console.log(JSON.stringify(pruneRecommendations(db), null, 2)); break;
-    case "fork": console.log(JSON.stringify(forkComparison(db), null, 2)); break;
-    case "profile": console.log(JSON.stringify(graphProfile(db), null, 2)); break;
+    case "health": emit(domainHealth(db)); break;
+    case "decay": emit(computeDecay(db)); break;
+    case "combos": emit(discoverCombos(db)); break;
+    case "diff": emit(sessionDiff(db)); break;
+    case "bottlenecks": emit(findBottlenecks(db)); break;
+    case "impact": emit(analyzeImpact(db, arg)); break;
+    case "budget": emit(optimizeBudget(db, parseInt(arg) || 120, parseInt(process.argv[4]) || 8000)); break;
+    case "trend": emit(projectTrends(db, parseInt(arg) || 30)); break;
+    case "prune": emit(pruneRecommendations(db)); break;
+    case "fork": emit(forkComparison(db)); break;
+    case "profile": emit(graphProfile(db)); break;
     case "export": console.log(JSON.stringify(exportGraph(db))); break;
 
-    case "near": console.log(JSON.stringify(nearMissCombos(db), null, 2)); break;
-    case "insight": console.log(JSON.stringify(insights(db), null, 2)); break;
+    case "near": emit(nearMissCombos(db)); break;
+    case "insight": emit(insights(db)); break;
     default: console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
   }
   db.close();

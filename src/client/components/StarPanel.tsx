@@ -67,7 +67,6 @@ export default function StarPanel() {
     return db - da;
   });
   const rank = sortedByDegree.findIndex(i => i.id === item.id) + 1;
-  const influence = items.length > 1 ? Math.round((1 - (rank - 1) / (items.length - 1)) * 100) : 100;
 
   const neighborIds = new Set<string>();
   connections.forEach(c => {
@@ -77,9 +76,9 @@ export default function StarPanel() {
   const neighbors = items.filter(i => neighborIds.has(i.id));
 
   const advisories: { icon: string; label: string }[] = [];
-  if (item.status === 'deprecated') advisories.push({ icon: '!', label: 'DECOMM' });
-  if (item.status === 'specified') advisories.push({ icon: '~', label: 'PENDING' });
-  if (neighbors.length === 0 && item.id !== 'opencode-core') advisories.push({ icon: 'x', label: 'ISOLATED' });
+  if (item.status === 'deprecated') advisories.push({ icon: '!', label: 'Deprecated — scheduled for removal' });
+  if (item.status === 'specified') advisories.push({ icon: '~', label: 'Not reached yet' });
+  if (neighbors.length === 0 && item.id !== 'opencode-core') advisories.push({ icon: 'x', label: 'Nothing depends on this' });
 
   const handleSave = async () => {
     if (!item) return;
@@ -167,35 +166,27 @@ export default function StarPanel() {
         <div className="sp-desc" style={{ marginBottom: '8px' }}>{item.description}</div>
       )}
 
+      {/* "influence" was rank rescaled to a percentage — the same fact twice,
+          under a word implying something it did not measure. Dropped. The two
+          that remain say what they count. */}
       <div className="sp-telemetry">
         <div className="sp-tel-box">
           <span className="sp-tel-val">{connCount}</span>
-          <span className="sp-tel-lbl">links</span>
+          <span className="sp-tel-lbl">connections</span>
         </div>
         <div className="sp-tel-box">
           <span className="sp-tel-val">#{rank}</span>
-          <span className="sp-tel-lbl">rank</span>
-        </div>
-        <div className="sp-tel-box">
-          <span className="sp-tel-val">{influence}%</span>
-          <span className="sp-tel-lbl">influence</span>
+          <span className="sp-tel-lbl">most connected</span>
         </div>
       </div>
 
-      <div className="sp-sys" style={{ marginTop: '8px' }}>
-        {sysBar(
-          item.status === 'built' ? 100 : item.status === 'specified' ? 50 : 10,
-          100,
-          item.status === 'built' ? '#00ff88' : item.status === 'specified' ? '#ff8c00' : '#ff3344',
-          'SYS'
-        )}
-        {sysBar(connCount, maxDegree, '#00d4ff', 'NET')}
-        {sysBar(Math.min(100, (item.description?.length || 0) * 2), 100, '#4488ff', 'DAT')}
-      </div>
+      {/* Removed: SYS duplicated the status shown above, and DAT plotted
+          description.length — telemetry-looking noise with nothing behind it.
+          NET survives as a labelled count in the box row. */}
 
       {advisories.length > 0 && (
         <div className="sp-adv" style={{ marginTop: '8px' }}>
-          <div className="sp-section-label">Advisories</div>
+          <div className="sp-section-label">Worth knowing</div>
           <div className="sp-adv-list">
             {advisories.map((a, i) => (
               <div key={i} className="sp-adv-item">
@@ -209,7 +200,7 @@ export default function StarPanel() {
 
       {neighbors.length > 0 && (
         <div className="sp-links" style={{ marginTop: '8px' }}>
-          <div className="sp-section-label">Data Links ({neighbors.length})</div>
+          <div className="sp-section-label">Connected to ({neighbors.length})</div>
           <div className="sp-link-list">
             {neighbors.map(n => {
               const conn = connections.find(c =>
@@ -229,7 +220,7 @@ export default function StarPanel() {
 
       {Object.keys(item.meta).length > 0 && (
         <div className="sp-attrs" style={{ marginTop: '8px' }}>
-          <div className="sp-section-label">Attributes</div>
+          <div className="sp-section-label">Details</div>
           {Object.entries(item.meta).map(([k, v]) => (
             <div key={k} className="sp-attr-row">
               <span className="sp-attr-key">{k.replace(/([A-Z])/g, '_$1').toUpperCase()}</span>

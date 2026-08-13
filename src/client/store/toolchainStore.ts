@@ -469,7 +469,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     try {
       const res = await fetch('/api/config');
       if (!res.ok) {
-        set({ error: 'Sensor offline. Run `bun run server` to establish uplink.', loading: false });
+        set({ error: 'Cannot reach the API. Start it with `bun run server`.', loading: false });
         return;
       }
       const { config } = await res.json();
@@ -482,7 +482,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       get().layoutItems(); get().selectItem("mcp:cloudflare");
       get().fetchTrends();
     } catch (e) {
-      set({ error: 'Uplink failed: ' + (e as Error).message, loading: false });
+      set({ error: 'Could not load: ' + (e as Error).message, loading: false });
     }
   },
 
