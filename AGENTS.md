@@ -45,6 +45,15 @@ Two configs, because the halves have different constraints:
 
 `bun run typecheck` runs both, and `bun run build` runs it first.
 
+## Concurrent sessions
+
+This machine runs many interactive agent sessions at once, and at least one has
+been scoped to this repository (`toolchain-visualizer-c7`). A concurrent session
+committed and pushed to `main` mid-edit on 2026-08-12, which is how a database
+of local capability data reached the public remote. Before committing, check
+whether another session is working in this tree; for parallel work, use a git
+worktree rather than sharing this one.
+
 ## Security posture
 
 `server.ts` reads and writes `~/.config/opencode/opencode.json`, and `/api/config/apply` can add an MCP server — a command OpenCode will later execute. Two invariants protect that, and neither may be relaxed:

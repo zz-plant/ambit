@@ -14,7 +14,7 @@ const B = "\x1b[1m", R = "\x1b[0m", D = "\x1b[90m";
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
 
-if (!cmd || cmd === "--help") {
+if (cmd === "--help" || cmd === "help") {
   // A bare list of verbs taught nothing. Lead with the two commands worth
   // running first, group the rest by the question each answers.
   console.log(`
@@ -51,6 +51,23 @@ if (!cmd || cmd === "--help") {
 
   ${D}recs and cap are MCP-only, available inside an agent session.${R}
 `);
+  process.exit(0);
+}
+
+// Bare `tt` used to print help — a list of things to read before doing
+// anything. Showing where you actually are teaches more in one screen, and
+// the help is still one flag away.
+if (!cmd) {
+  const run = (c, args = []) =>
+    spawnSync("node", ["--experimental-sqlite", resolve(ROOT, "src", "engine", "engine.ts"), c, ...args],
+      { stdio: "inherit" });
+  console.log(`\n${B}Where you are${R}`);
+  run("stats");
+  console.log(`\n${B}What is one step away${R}`);
+  run("near");
+  console.log(`\n${B}What to do next${R}`);
+  run("insight");
+  console.log(`\n${D}tt --help for every command · tt explain for what the terms mean${R}\n`);
   process.exit(0);
 }
 
