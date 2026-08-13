@@ -1,6 +1,6 @@
 #!/usr/bin/env node --experimental-sqlite
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 
@@ -33,6 +33,10 @@ const TOOLS = [
   { name: "tt_plan", description: "What is missing for a capability, in the order it must be closed, including which steps require a person", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
   { name: "tt_blocked", description: "Record that a task was blocked by a missing capability. The pattern matters more than the instance: the same deficit hit repeatedly is infrastructure that should exist.", inputSchema: { type: "object", properties: { capId: { type: "string" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
+  { name: "tt_simulate", description: "The frontier as it would be if a capability were acquired, including what it unblocks. Pure preview — changes nothing.", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
+  { name: "tt_propose", description: "Draft a reviewable acquisition: ordered steps, the alternative chosen and its trade-offs, and the simulated result. Nothing executes; proposals have no inverse and so cannot be applied.", inputSchema: { type: "object", properties: { capId: { type: "string" }, option: { type: "number", description: "Which alternative to choose, 0-based" } }, required: ["capId"] } },
+  { name: "tt_proposals", description: "Every proposal drafted so far, newest first", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_proposal", description: "One proposal in full, with its steps and simulated frontier", inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "tt_spof", description: "Capabilities with exactly one provider — where redundancy is absent. Distinct from tt_bottlenecks, which ranks leverage rather than fragility.", inputSchema: { type: "object", properties: {} } },
   { name: "tt_deficits", description: "Recurring capability deficits, worst first — which missing capabilities keep stopping different work", inputSchema: { type: "object", properties: {} } },
   { name: "tt_ledger", description: "Every recorded frontier observation — how the system's capacity for action has changed over time", inputSchema: { type: "object", properties: {} } },
@@ -79,6 +83,10 @@ function handleLine(line) {
               case "tt_blocked": res = tt(db => recordFailure(db, args.capId, args.note)); break;
               case "tt_deficits": res = tt(db => deficits(db)); break;
               case "tt_spof": res = tt(db => singlePointsOfFailure(db)); break;
+              case "tt_simulate": res = tt(db => simulateFrontier(db, [args.capId])); break;
+              case "tt_propose": res = tt(db => propose(db, args.capId, args.option)); break;
+              case "tt_proposals": res = tt(db => listProposals(db)); break;
+              case "tt_proposal": res = tt(db => showProposal(db, args.id)); break;
               case "tt_fork": res = tt(db => forkComparison(db)); break;
               case "tt_profile": res = tt(db => graphProfile(db)); break;
               case "tt_near": res = tt(db => nearMissCombos(db)); break;

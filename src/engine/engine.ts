@@ -118,7 +118,12 @@ function planFor(db: Db, goal?: string) {
 
   const target = db.prepare("SELECT id, name, state FROM capabilities WHERE id = ?").get(id);
   if (!target) return { error: `No capability ${id}. Try tt combos for the list.` };
-  if (target.state !== 'locked') return { goal: target.name, reachable: true, missing: [], note: "already reached" };
+  // Same shape as the planned case. Returning a different one here meant
+  // callers had to special-case it, and a guard reading `steps === 0` silently
+  // never fired because the field was absent rather than zero.
+  if (target.state !== 'locked') {
+    return { goal: target.name, reachable: true, steps: 0, missing: [], order: [], note: "already reached" };
+  }
 
   const hard = db
     .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE is_hard_requisite = 1")
@@ -252,6 +257,142 @@ function deficits(db: Db) {
     still_missing: r.state === 'locked',
     verdict: r.times >= 3 && r.state === 'locked' ? 'structural — build it' : r.times >= 3 ? 'was structural; now reached' : 'incidental so far',
   }));
+}
+
+
+// ─── Proposals ────────────────────────────────────────────────────────────────
+
+/**
+ * The frontier as it would be if these capabilities were acquired.
+ *
+ * Runs against a copy of the state, never the database. The interesting output
+ * is not the assumed capabilities — you already knew you were adding those —
+ * but the ones that come with them: capabilities already provided by something
+ * you have, held back only by a prerequisite the change satisfies. Those are
+ * the reason a small acquisition can move the frontier a long way, and the
+ * reason a preview is worth reading before approving.
+ */
+function simulateFrontier(db: Db, assume: string[]) {
+  const combos = db
+    .prepare("SELECT id, name, state FROM capabilities WHERE category = 'combo'")
+    .all();
+  const hard = db
+    .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE is_hard_requisite = 1")
+    .all();
+  const providers = providersOf(db);
+
+  const prereqs = new Map<string, string[]>();
+  for (const d of hard) {
+    if (!d.t.startsWith('combo:')) continue;
+    if (!prereqs.has(d.t)) prereqs.set(d.t, []);
+    prereqs.get(d.t)!.push(d.f);
+  }
+
+  const nameOf = new Map(combos.map((c: any) => [c.id, c.name]));
+  const before = new Set(combos.filter((c: any) => c.state !== 'locked').map((c: any) => c.id));
+  const assumed = new Set(assume.map(a => (a.startsWith('combo:') ? a : `combo:${a}`)));
+  const after = new Set([...before, ...assumed]);
+
+  // Fixpoint rather than a single pass: satisfying one prerequisite can unblock
+  // a capability that unblocks another, and the cascade is the point.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const c of combos as any[]) {
+      if (after.has(c.id)) continue;
+      // Only something already provided can be unblocked. A capability nothing
+      // supplies does not appear merely because its prerequisites are met.
+      if (!(providers.get(c.id) || []).length) continue;
+      const met = (prereqs.get(c.id) || []).every(p => after.has(p) || !p.startsWith('combo:'));
+      if (met) { after.add(c.id); changed = true; }
+    }
+  }
+
+  const gained = [...assumed].filter(id => !before.has(id));
+  const emergent = [...after].filter(id => !before.has(id) && !assumed.has(id));
+  return {
+    frontier_before: before.size,
+    frontier_after: after.size,
+    acquired: gained.map(id => ({ id, name: nameOf.get(id) || id })),
+    unblocked: emergent.map(id => ({ id, name: nameOf.get(id) || id })),
+    note: emergent.length
+      ? 'unblocked: already provided, held back only by a prerequisite this change satisfies'
+      : undefined,
+  };
+}
+
+/**
+ * Builds a proposal for reaching a capability and stores it.
+ *
+ * Nothing executes, now or as a side effect later. Each step records the
+ * alternative chosen and carries an `inverse` that is deliberately null: no
+ * step may run without one, so an unpopulated inverse is what prevents a
+ * future apply from touching this proposal at all.
+ */
+function propose(db: Db, goal?: string, optionIndex?: number) {
+  if (!goal) return { error: 'Usage: tt propose <capability> [option-number]' };
+  const plan = planFor(db, goal) as any;
+  if (plan.error) return plan;
+  if (plan.reachable && plan.steps === 0) {
+    return { goal: plan.goal, note: 'Already reached. Nothing to propose.' };
+  }
+
+  const steps = (plan.order || []).map((step: any) => {
+    const options = step.options || [];
+    const chosen = options.length ? options[Math.min(optionIndex ?? 0, options.length - 1)] : undefined;
+    return {
+      id: step.id,
+      name: step.name,
+      chosen: chosen ? chosen.name : 'no alternative recorded',
+      setup_seconds: chosen?.setup_seconds ?? step.setup_seconds ?? 0,
+      recurring_cost: chosen?.recurring_cost,
+      privacy: chosen?.privacy,
+      requires_person: step.requires_person,
+      // The gate for stage 3: an inverse must be computed before a step may
+      // execute. None can be yet, so none of these are executable.
+      inverse: null,
+    };
+  });
+
+  const simulated = simulateFrontier(db, steps.map((s: any) => s.id).concat(
+    goal.startsWith('combo:') ? goal : `combo:${goal}`
+  ));
+
+  const id = `prop-${Date.now().toString(36)}`;
+  db.prepare(
+    "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES (?, ?, 'draft', ?, ?)"
+  ).run(id, plan.goal, JSON.stringify(steps), JSON.stringify(simulated));
+
+  const totalSeconds = steps.reduce((t: number, s: any) => t + (s.setup_seconds || 0), 0);
+  return {
+    proposal: id,
+    goal: plan.goal,
+    status: 'draft',
+    estimated_setup: totalSeconds >= 3600 ? `${(totalSeconds / 3600).toFixed(1)}h` : `${Math.round(totalSeconds / 60)}m`,
+    requires_person: plan.requires_person,
+    steps,
+    simulated,
+    executable: false,
+    note: 'Draft only. Nothing here runs — no step has an inverse, and applying without one is refused by design.',
+  };
+}
+
+function listProposals(db: Db) {
+  const rows = db
+    .prepare("SELECT id, created_at, goal, status FROM proposals ORDER BY created_at DESC")
+    .all();
+  return rows.length ? rows : { note: 'No proposals. Create one with tt propose <capability>.' };
+}
+
+function showProposal(db: Db, id?: string) {
+  if (!id) return { error: 'Usage: tt proposal <id>' };
+  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(id);
+  if (!row) return { error: `No proposal ${id}. See tt proposals.` };
+  return {
+    ...row,
+    steps: JSON.parse(row.steps),
+    simulated: JSON.parse(row.simulated),
+  };
 }
 
 // ─── Verification ─────────────────────────────────────────────────────────────
@@ -1340,6 +1481,18 @@ function main() {
     return;
   }
   switch (cmd) {
+    case "propose":
+      emit(propose(db, arg, Number(process.argv.slice(4).filter(a => !a.startsWith('--'))[0]) || undefined));
+      break;
+    case "proposals":
+      emit(listProposals(db));
+      break;
+    case "proposal":
+      emit(showProposal(db, arg));
+      break;
+    case "simulate":
+      emit(arg ? simulateFrontier(db, [arg]) : { error: 'Usage: tt simulate <capability>' });
+      break;
     case "spof":
       emit(singlePointsOfFailure(db));
       break;
@@ -1444,4 +1597,4 @@ function main() {
 }
 
 if (import.meta.main) main();
-export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure };
+export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal };

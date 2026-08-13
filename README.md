@@ -199,7 +199,7 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 Explore    stats · context · health · profile · export · explain
 Verify     verify [id] · evidence <id> · authority
 Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
-Plan       plan <id>
+Plan       plan <id> · simulate <id> · propose <id> [n] · proposals · proposal <id>
 Plan       near · combos · fork · insight
 Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
 ```
@@ -266,6 +266,32 @@ diagnose hardware failure → request replacement → human approves expenditure
 
 The capability belongs to the human-machine system, not to either half — which lets partial, structured autonomy be described as it actually is, rather than forced into "fully autonomous" or "human controlled".
 
+### Previewing a change
+
+`tt simulate` computes the frontier as it would be, without touching anything. What makes it worth reading is the second line:
+
+```console
+$ tt simulate vector-store
+  frontier: 21 → 23
+  acquired:  Vector Store
+  unblocked: Retrieval          # already provided, waiting on the prerequisite
+```
+
+`tt propose` turns that into a reviewable draft — ordered steps, the alternative chosen, and what it costs beyond time:
+
+```console
+$ tt propose retrieval
+  Retrieval · 25m
+    Embeddings     nomic-embed via local runtime      none / local
+    Vector Store   pgvector on existing Postgres      none / local
+  simulated frontier: 21 → 24
+  executable: false
+```
+
+Choosing the hosted alternatives (`tt propose retrieval 1`) takes it to 13 minutes, at a per-token bill and a data boundary.
+
+**Nothing executes.** Every step carries a null `inverse`, and that is the gate rather than an omission: no step may run without one, so no proposal is applicable by construction. Ambit describes and previews; it does not act.
+
 ### The ledger
 
 `capabilities` holds the present state and is overwritten on every seed, so on its own the graph can only say what the system can do *now*. Every seed also records the whole frontier, which lets it answer what was reachable at a past date:
@@ -295,6 +321,7 @@ tt_insight tt_profile  tt_prune   tt_fork    tt_bottlenecks
 
 tt_verify  tt_evidence tt_authority tt_plan  tt_since    tt_ledger
 tt_blocked tt_deficits tt_spof
+tt_simulate tt_propose tt_proposals tt_proposal
 ```
 
 The second group is the capability lifecycle: is this real, may I act, what is missing, and — when the answer is *nothing here can do that* — recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again.
