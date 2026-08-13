@@ -1,6 +1,6 @@
 import { test, expect, beforeEach, afterEach } from 'bun:test';
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, rmSync, mkdtempSync } from 'node:fs';
+import { writeFileSync, rmSync, mkdtempSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 // The engine runs under Node (node:sqlite); these assertions run under Bun,
@@ -240,4 +240,58 @@ test('a frontier query before any history explains itself', () => {
   const since = cli('since');
   expect(since.since).toBeDefined();
   expect(since.emergent).toEqual([]);
+});
+
+// ── Runtimes ────────────────────────────────────────────────────────────────
+
+test('capabilities are attributed to the runtime that contributed them', () => {
+  const db = seed({ mcp: { git: {} }, provider: { acme: {} } });
+  const runtimes = rows(db, "SELECT id FROM capabilities WHERE category = 'runtime'");
+  expect(runtimes.map(r => r.id)).toContain('runtime:opencode');
+
+  const edges = rows(db, `SELECT to_capability t FROM dependencies
+                          WHERE from_capability = 'runtime:opencode'`);
+  expect(edges.map(e => e.t)).toContain('mcp:git');
+});
+
+test('two runtimes providing the same capability share one node', () => {
+  // Ids deliberately collide: a git MCP under either runtime is one capability
+  // with two providers, and the runtime edges are what keep that legible.
+  seed({ mcp: { git: {}, exa: {} } }).close();
+  const dbPath = join(dir, 'graph.db');
+  writeFileSync(join(dir, 'second.json'), JSON.stringify({ mcp: { git: {}, fetch: {} } }));
+  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
+    env: { ...process.env, OPENCODE_CONFIG: join(dir, 'second.json'), TOOLCHAIN_DB: dbPath,
+           AMBIT_RUNTIME: 'hermes',
+           CONFIG_MAPPING: JSON.stringify({ config_keys: { mcp: { type: 'mcp' } }, skill_dirs: [] }) },
+    stdio: 'ignore',
+  });
+  const db = new Database(dbPath);
+
+  expect(rows(db, "SELECT id FROM capabilities WHERE id = 'mcp:git'").length).toBe(1);
+  const providers = rows(db, `SELECT from_capability f FROM dependencies
+                              WHERE to_capability = 'mcp:git' AND description = 'Contributed by runtime'`);
+  expect(providers.map(p => p.f).sort()).toEqual(['runtime:hermes', 'runtime:opencode']);
+});
+
+test('skills symlinked into a runtime directory are discovered', () => {
+  // Dirent.isDirectory() is false for a symlink, which silently skipped every
+  // shared skill — the ones two runtimes have in common.
+  const shared = join(dir, 'shared-skills');
+  const runtime = join(dir, 'runtime-skills');
+  mkdirSync(join(shared, 'deploying'), { recursive: true });
+  writeFileSync(join(shared, 'deploying', 'SKILL.md'), '# deploying');
+  mkdirSync(runtime, { recursive: true });
+  symlinkSync(join(shared, 'deploying'), join(runtime, 'deploying'));
+
+  const configPath = join(dir, 'config.json');
+  const dbPath = join(dir, 'symlink.db');
+  writeFileSync(configPath, JSON.stringify({}));
+  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
+    env: { ...process.env, OPENCODE_CONFIG: configPath, TOOLCHAIN_DB: dbPath,
+           CONFIG_MAPPING: JSON.stringify({ config_keys: {}, skill_dirs: [runtime] }) },
+    stdio: 'ignore',
+  });
+  const db = new Database(dbPath);
+  expect(rows(db, "SELECT id FROM capabilities WHERE id = 'skill:deploying'").length).toBe(1);
 });

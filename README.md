@@ -251,6 +251,29 @@ This matters because Ambit is not only a dashboard for the user. An agent should
 
 The agent no longer has to reconstruct the environment from conversational context every session.
 
+## Runtimes are nodes, not owners
+
+Ambit represents agent runtimes rather than being one. A runtime becomes a node, and everything it contributes hangs off it — so two runtimes configuring the same MCP server produce **one capability with two providers**, not two capabilities.
+
+```bash
+bun run scripts/adapters/hermes.ts          # what Hermes provides
+bun run scripts/adapters/hermes.ts --seed   # add it to the graph
+```
+
+Against a real install, that yields:
+
+```
+runtime:opencode — contributes 127 capabilities
+runtime:hermes   — contributes 32 capabilities
+shared by both   — mcp:fetch · mcp:filesystem · mcp:git · mcp:sequential-thinking
+```
+
+`tt impact runtime:hermes` then answers what would be lost if that runtime went away — and the answer is smaller than its capability count, because the shared four survive.
+
+The adapter also reads what a config file cannot infer but the runtime states outright: Hermes reports `approvals: manual`, `cron_mode: deny`, eight messaging surfaces, a policy engine, and zero scheduled jobs — which is the difference between a capability that persists and one that lasts a session.
+
+Hermes has no machine-readable config export today, so the adapter reads its documented paths. That is a stopgap: the durable contract is for runtimes to publish their capability surface and for Ambit to consume it.
+
 ## The visualizer
 
 Four views: **ERAS** (capability model by era), **CONSTELLATION** (3D), **ORBITAL** (concentric by type), **FLAT** (force-directed).
