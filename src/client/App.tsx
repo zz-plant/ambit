@@ -212,7 +212,7 @@ export default function App() {
   const setShowUplinkModal = useToolchainStore(s => s.setShowUplinkModal);
 
   const [leftTab, setLeftTab] = useState<Tab>('diagnostics');
-  const [showDocs, setShowDocs] = useState(false);
+  const [showDocs, setShowDocs] = useState(() => new URLSearchParams(window.location.search).get('docs') === 'open');
   // Shown once on first run, for real configs as well as the demo — it used to
   // fire only after LOAD DEMO, so the normal path taught nothing.
   const [showGuide, setShowGuide] = useState(() => {
@@ -227,7 +227,13 @@ export default function App() {
 
   const loadTechTree = useToolchainStore(s => s.loadTechTree);
   const loadConfigSource = useToolchainStore(s => s.loadConfig);
-  const [source, setSource] = useState<'config' | 'tree'>('config');
+  // ?view=tree and ?layout=eras|constellation|orbital|flat make a particular
+  // view linkable — useful for sharing a specific angle, and for capturing
+  // documentation screenshots reproducibly.
+  const params = new URLSearchParams(window.location.search);
+  const [source, setSource] = useState<'config' | 'tree'>(
+    params.get('view') === 'tree' ? 'tree' : 'config'
+  );
   const treeFilter = useToolchainStore(s => s.treeFilter);
   const setTreeFilter = useToolchainStore(s => s.setTreeFilter);
 
@@ -265,8 +271,15 @@ export default function App() {
   const [leftOpen, setLeftOpen] = useState(true);
 
   useEffect(() => {
-    loadConfig();
-  }, [loadConfig]);
+    const wanted = params.get('layout');
+    const alias: Record<string, LayoutMode> = { eras: 'civ', civ: 'civ',
+      constellation: 'constellation', orbital: 'orbital', flat: 'flat' };
+    if (wanted && alias[wanted]) setLayoutMode(alias[wanted]);
+    if (params.get('guide') === 'off') dismissGuide();
+    if (source === 'tree') loadTechTree(); else loadConfig();
+    // Intentionally once on mount; the toggles drive later changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="app">

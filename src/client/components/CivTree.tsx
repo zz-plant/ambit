@@ -202,7 +202,10 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                         <circle r={NODE_R + 9} fill="none" stroke="#1f7a8c" strokeWidth={2}
                           strokeDasharray="5,4" opacity={0.9}/>
                         {costOf(item) && (
-                          <text y={-NODE_R - 14} textAnchor="middle" fill="#1f7a8c"
+                          // Offset to the upper right: centred above, this collided
+                          // with the era subtitle on row one and with the name of
+                          // the node above it everywhere else.
+                          <text x={NODE_R + 4} y={-NODE_R - 1} textAnchor="start" fill="#1f7a8c"
                             fontSize={12} fontWeight={700}>{costOf(item)}</text>
                         )}
                       </>
