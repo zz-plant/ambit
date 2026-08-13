@@ -493,3 +493,72 @@ test('single points of failure are distinguished from high-leverage capabilities
   // however much depends on it — which is what bottlenecks measures instead.
   expect(ids).not.toContain('combo:version-control');
 });
+
+// ── Proposals and simulation ────────────────────────────────────────────────
+
+test('simulation reports what comes with an acquisition, not just the acquisition', () => {
+  seed(LOCAL_ONLY).close();
+  // A capability already provided but held back by a prerequisite should
+  // appear once that prerequisite is satisfied — that cascade is the reason
+  // to read a preview before approving.
+  const sim = cli('simulate', 'embeddings');
+  expect(sim.frontier_after).toBeGreaterThan(sim.frontier_before);
+  expect(sim.acquired.map((a: any) => a.id)).toContain('combo:embeddings');
+});
+
+test('simulation does not conjure capabilities nothing provides', () => {
+  seed(LOCAL_ONLY).close();
+  const sim = cli('simulate', 'embeddings');
+  // Satisfying prerequisites is not enough; something must supply it.
+  const unblockedIds = sim.unblocked.map((u: any) => u.id);
+  for (const id of unblockedIds) {
+    expect(id).not.toBe('combo:self-hosted-stack');
+  }
+});
+
+test('a proposal records the chosen alternative and its trade-off', () => {
+  seed(LOCAL_ONLY).close();
+  const local = cli('propose', 'retrieval');
+  const embeddings = local.steps.find((s: any) => s.id === 'combo:embeddings');
+  expect(embeddings.chosen).toContain('local');
+  expect(embeddings.privacy).toBe('local');
+});
+
+test('a proposal cannot execute, and says why', () => {
+  seed(LOCAL_ONLY).close();
+  const p = cli('propose', 'retrieval');
+  expect(p.executable).toBe(false);
+  // The inverse is the gate: no step runs without one, so an unpopulated
+  // inverse is what makes a future apply refuse this proposal.
+  for (const step of p.steps) expect(step.inverse).toBeNull();
+});
+
+test('proposals persist and are retrievable', () => {
+  seed(LOCAL_ONLY).close();
+  const created = cli('propose', 'retrieval');
+  const listed = cli('proposals');
+  expect(listed.map((r: any) => r.id)).toContain(created.proposal);
+
+  const fetched = cli('proposal', created.proposal);
+  expect(fetched.goal).toBe('Retrieval');
+  expect(fetched.status).toBe('draft');
+  expect(fetched.simulated.frontier_after).toBeGreaterThan(0);
+});
+
+test('proposing something already reached says so instead of inventing steps', () => {
+  seed(LOCAL_ONLY).close();
+  const p = cli('propose', 'shell-execution');
+  expect(p.note).toContain('Already reached');
+});
+
+test('plan returns the same shape whether or not there is work to do', () => {
+  // A caller should not have to special-case the already-reached branch; a
+  // guard on `steps === 0` failed silently when the field was simply absent.
+  seed(LOCAL_ONLY).close();
+  const done = cli('plan', 'shell-execution');
+  const todo = cli('plan', 'offline-capable');
+  for (const key of ['goal', 'reachable', 'steps', 'order']) {
+    expect(done).toHaveProperty(key);
+    expect(todo).toHaveProperty(key);
+  }
+});

@@ -38,6 +38,10 @@ if (cmd === "--help" || cmd === "help") {
   ${B}What next${R}
     tt insight           Top actions, ranked
     tt plan <id>         What is missing for this, in order
+    tt simulate <id>     The frontier as it would be — changes nothing
+    tt propose <id> [n]  Draft a reviewable acquisition, using alternative n
+    tt proposals         Drafts so far
+    tt proposal <id>     One draft in full
     tt combos            Capabilities whose prerequisites are met
     tt fork              Compare candidates by efficiency
     tt bottlenecks       What the most things depend on

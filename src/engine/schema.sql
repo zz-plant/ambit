@@ -65,3 +65,24 @@ CREATE TABLE IF NOT EXISTS frontier_snapshots (
 );
 
 CREATE INDEX IF NOT EXISTS idx_frontier_taken ON frontier_snapshots(taken_at);
+
+-- Proposals. A reviewable, durable description of a capability acquisition:
+-- what it would achieve, which alternative was chosen, in what order, and what
+-- the frontier would look like afterwards.
+--
+-- Nothing here executes. A proposal is an artifact you read before believing,
+-- and the record that makes an approval refer to a stated consequence rather
+-- than a hope. `inverse` exists and is unpopulated by design: no step may ever
+-- execute without one, so the column is the gate rather than an afterthought.
+CREATE TABLE IF NOT EXISTS proposals (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    goal TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft',
+    steps TEXT NOT NULL,
+    simulated TEXT NOT NULL,
+    approved_by TEXT,
+    approved_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
