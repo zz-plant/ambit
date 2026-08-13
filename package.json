@@ -1,5 +1,5 @@
 {
-  "name": "ambit",
+  "name": "ambit-cli",
   "version": "0.4.0",
   "private": false,
   "description": "A capability model and planning layer for personal agent infrastructure",
@@ -36,6 +36,19 @@
     "vite": "^6.0.0"
   },
   "bin": { "tt": "./cli.js", "ambit": "./cli.js" },
+  "files": [
+    "cli.js",
+    "bootstrap.sh",
+    "server.ts",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.node.json",
+    "src",
+    "scripts",
+    "plugins",
+    "AGENTS.md",
+    "ROADMAP.md"
+  ],
   "keywords": [
     "capability-graph",
     "agent-infrastructure",
@@ -48,7 +61,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/zz-plant/capability-graph.git"
+    "url": "https://github.com/zz-plant/ambit.git"
   },
   "publishConfig": {
     "access": "public"

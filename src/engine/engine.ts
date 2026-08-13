@@ -1128,27 +1128,110 @@ function findBottlenecks(db) {
 
 // ─── Impact Analysis ─────────────────────────────────────────────────────────
 
-function analyzeImpact(db, capId) {
+/**
+ * Who supplies each capability.
+ *
+ * A capability with three providers survives losing one. Nothing consulted
+ * these edges, so every analysis treated each provider as though it were the
+ * only one — which inflates loss exactly where there is redundancy, the case
+ * you most want to distinguish from a single point of failure.
+ */
+function providersOf(db: Db): Map<string, string[]> {
+  const rows = db
+    .prepare(
+      `SELECT from_capability f, to_capability t FROM dependencies
+       WHERE description IN ('Provides this capability', 'Contributed by runtime', 'Supplied by a person')`
+    )
+    .all();
+  const map = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!map.has(r.t)) map.set(r.t, []);
+    if (!map.get(r.t)!.includes(r.f)) map.get(r.t)!.push(r.f);
+  }
+  return map;
+}
+
+/**
+ * What would actually be lost if this went away.
+ *
+ * Only the loss of the *last* provider takes a capability down. Anything else
+ * is a reduction in redundancy, which matters but is not the same claim.
+ */
+function analyzeImpact(db: Db, capId: string) {
   const cap = db.prepare("SELECT id, name, maturity_score FROM capabilities WHERE id = ?").get(capId);
   if (!cap) return { capability: capId, decayed: [], combos_at_risk: [] };
+
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies").all();
   const allCaps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
   const capMap = new Map<string, Record<string, any>>(allCaps.map(c => [c.id, c]));
-  const simMaturity = Math.max(0.1, cap.maturity_score - 0.3);
-  const decayed = deps.filter(d => d.from_capability === capId).map(d => {
-    const t = capMap.get(d.to_capability);
-    return { name: t?.name || d.to_capability, becomes_unavailable: d.is_hard_requisite && simMaturity < 0.3 };
-  });
-  const combos_at_risk = [];
-  for (const d of deps.filter(d => d.to_capability.startsWith('combo:'))) {
-    const prereqs = deps.filter(p => p.to_capability === d.to_capability);
-    if (!prereqs.some(p => p.from_capability === capId)) continue;
+  const providers = providersOf(db);
+
+  /** Nothing else supplies it, so removing this ends it. */
+  const isSoleProvider = (target: string) => {
+    const list = providers.get(target) || [];
+    return list.length > 0 && list.length === 1 && list[0] === capId;
+  };
+  const remaining = (target: string) => (providers.get(target) || []).filter(p => p !== capId);
+
+  const decayed = deps
+    .filter(d => d.from_capability === capId)
+    .map(d => {
+      const t = capMap.get(d.to_capability);
+      const others = remaining(d.to_capability);
+      return {
+        name: t?.name || d.to_capability,
+        becomes_unavailable: d.is_hard_requisite && isSoleProvider(d.to_capability),
+        also_provided_by: others.length ? others.length : undefined,
+      };
+    });
+
+  // Keyed by capability, not by edge. Iterating edges reported the same combo
+  // once per prerequisite — "Version Control" four times for one risk.
+  const risk = new Map<string, { name: string; severity: string; also_provided_by?: number }>();
+  for (const d of deps) {
+    if (!d.to_capability.startsWith('combo:')) continue;
+    if (d.from_capability !== capId) continue;
     const combo = capMap.get(d.to_capability);
-    const wouldBreak = prereqs.filter(p => p.is_hard_requisite).some(p => capMap.get(p.from_capability) && p.from_capability === capId && simMaturity < 0.3);
-    combos_at_risk.push({ name: combo?.name || d.to_capability, severity: wouldBreak ? 'critical' : 'warning' });
+    const others = remaining(d.to_capability);
+    const sole = isSoleProvider(d.to_capability);
+    risk.set(d.to_capability, {
+      name: combo?.name || d.to_capability,
+      severity: d.is_hard_requisite && sole ? 'critical' : others.length ? 'redundant' : 'warning',
+      also_provided_by: others.length || undefined,
+    });
   }
-  return { capability: cap.name, decayed, combos_at_risk };
+
+  return { capability: cap.name, decayed, combos_at_risk: [...risk.values()] };
 }
+
+/**
+ * Capabilities with exactly one provider — where redundancy is absent rather
+ * than merely thin. This is the question `tt bottlenecks` is often asked to
+ * answer and does not: it ranks by how much depends on something, which is
+ * leverage, not fragility.
+ */
+function singlePointsOfFailure(db: Db) {
+  const providers = providersOf(db);
+  const names = new Map(
+    db.prepare("SELECT id, name, state FROM capabilities").all().map((c: any) => [c.id, c])
+  );
+  const out: any[] = [];
+  for (const [target, list] of providers) {
+    if (list.length !== 1) continue;
+    const t = names.get(target) as any;
+    if (!t || t.state === 'locked') continue; // not yet reached; nothing to lose
+    out.push({
+      capability: t.name,
+      id: target,
+      sole_provider: (names.get(list[0]) as any)?.name || list[0],
+      provider_id: list[0],
+    });
+  }
+  return out.length
+    ? out
+    : { note: 'Every reached capability has more than one provider, or none are recorded.' };
+}
+
 
 // ─── Budget Optimization ─────────────────────────────────────────────────────
 
@@ -1257,6 +1340,9 @@ function main() {
     return;
   }
   switch (cmd) {
+    case "spof":
+      emit(singlePointsOfFailure(db));
+      break;
     case "failed":
       emit(recordFailure(db, arg, process.argv.slice(4).filter(a => !a.startsWith('--'))[0]));
       break;
@@ -1358,4 +1444,4 @@ function main() {
 }
 
 if (import.meta.main) main();
-export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits };
+export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure };
