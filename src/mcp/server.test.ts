@@ -1,4 +1,4 @@
-import { test, expect, beforeEach, afterEach } from 'bun:test';
+import { test, expect, beforeAll, afterAll } from 'bun:test';
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
@@ -8,7 +8,10 @@ const ENGINE = join(import.meta.dir, '..', 'engine', 'engine.ts');
 const SERVER = join(import.meta.dir, 'server.ts');
 let dir: string;
 
-beforeEach(() => {
+// Seeded once for the file rather than per test. Every test here is
+// read-only, and spawning a full seed four times took long enough on a cold CI
+// runner to exceed the default hook timeout — a failure a fast machine hides.
+beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'ambit-mcp-'));
   const config = join(dir, 'config.json');
   writeFileSync(config, JSON.stringify({ provider: { ollama: { models: { 'qwen3-coder': {} } } } }));
@@ -22,7 +25,7 @@ beforeEach(() => {
     stdio: 'ignore',
   });
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 /** Drive the server over stdio the way a client does. */
 function rpc(requests: object[]): any[] {
