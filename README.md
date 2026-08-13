@@ -201,14 +201,15 @@ Verify     verify [id] · evidence <id> · authority
 Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
 Plan       plan <id>
 Plan       near · combos · fork · insight
-Analyze    bottlenecks · impact <id> · budget <setup> <tokens>
+Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
 ```
 
 | | asks |
 |---|---|
 | `tt near` | What am I one or two dependencies away from being able to do? |
 | `tt bottlenecks` | Which capability would unlock the largest part of the graph? |
-| `tt impact <id>` | What becomes unavailable if this disappears? |
+| `tt impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |
+| `tt spof` | Which capabilities have only one provider? |
 | `tt fork` | Which nearby path has the best trade-off between setup cost, regret, and downstream leverage? |
 | `tt decay` | Which parts of the system appear to be rusting? |
 | `tt since` | What became reachable since a past date — and what emerged rather than being added? |
@@ -255,7 +256,15 @@ $ tt plan continuous-delivery
   steps: 1 · estimated setup: 30m
 ```
 
-A plan that hides the human step reads as autonomous when it is not.
+A plan that hides the human step reads as autonomous when it is not. A capability chain can therefore run:
+
+```
+diagnose hardware failure → request replacement → human approves expenditure
+→ vendor ships component → human installs it → agent configures it
+→ monitoring verifies recovery
+```
+
+The capability belongs to the human-machine system, not to either half — which lets partial, structured autonomy be described as it actually is, rather than forced into "fully autonomous" or "human controlled".
 
 ### The ledger
 
@@ -285,7 +294,7 @@ tt_diff    tt_health   tt_impact  tt_budget  tt_trend    tt_near
 tt_insight tt_profile  tt_prune   tt_fork    tt_bottlenecks
 
 tt_verify  tt_evidence tt_authority tt_plan  tt_since    tt_ledger
-tt_blocked tt_deficits
+tt_blocked tt_deficits tt_spof
 ```
 
 The second group is the capability lifecycle: is this real, may I act, what is missing, and — when the answer is *nothing here can do that* — recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again.
@@ -365,20 +374,6 @@ GPU node
 ```
 
 A machine matters because of the actions it makes reachable.
-
-## Humans are nodes, not outsiders
-
-Ambit does not model humans only as users issuing prompts. Humans supply legal authority, physical access, money, institutional standing, subjective judgement, approval, and actions machines cannot perform. A capability chain can therefore run:
-
-```
-diagnose hardware failure → request replacement → human approves expenditure
-→ vendor ships component → human installs it → agent configures it
-→ monitoring verifies recovery
-```
-
-The capability belongs to the human-machine system, not to either half. That lets partial, structured autonomy be described as it actually is, rather than forcing everything into "fully autonomous" or "human controlled".
-
-*Not built yet — humans are not currently nodes in the graph. See [ROADMAP.md §2](./ROADMAP.md).*
 
 ## Composition is the interesting part
 

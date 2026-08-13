@@ -41,6 +41,7 @@ if (cmd === "--help" || cmd === "help") {
     tt combos            Capabilities whose prerequisites are met
     tt fork              Compare candidates by efficiency
     tt bottlenecks       What the most things depend on
+    tt spof              Capabilities with only one provider
     tt impact <id>       If this went away, what breaks?
     tt budget <s> <t>    Best moves within a setup-time and token budget
 

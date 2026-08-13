@@ -29,7 +29,7 @@ Everything here follows from taking that seriously.
 
 ---
 
-## 1. Separate capability from implementation
+## 1. Separate capability from implementation — substitutability built
 
 Today a node conflates two things: the capability (*web research*) and the thing providing it (*a Tavily MCP server*). Splitting them is the prerequisite for almost everything else, because it lets a capability survive a change of provider and lets two providers compete to satisfy one need.
 
@@ -60,6 +60,12 @@ Netdata MCP    SSH / shell
 ```
 
 Once providers are separate, `tt fork` stops comparing capabilities and starts comparing **ways of obtaining the same capability** — which is the comparison that actually matters when deciding what to build.
+
+Built, narrowly: the `provides` edges existed and no analysis consulted them, so every provider was treated as though it were the only one. `tt impact` now asks whether anything else supplies a capability before calling its loss critical — removing one of three git providers reports `redundant · also provided by 2` where it previously reported `critical` four times over, once per edge. `tt spof` lists capabilities with exactly one provider, which is fragility, as against `tt bottlenecks`, which ranks leverage.
+
+Unbuilt, and the reason this section stays open: capabilities and implementations are still the same rows. `mcp:git` is simultaneously a thing in your config and the capability it confers, and the only true capabilities are the coarse tech-tree nodes — *Tool Protocol*, not *read a repository*. The six object types, action-level capabilities, and the id rework they force are untouched.
+
+That rework has a cost worth naming before anyone starts it: every id appears in the ledger's stored snapshots, so splitting capability from provider invalidates the history of the one component whose value is that its history is continuous. It should be designed with that migration rather than discovering it.
 
 ## 2. Put the human and the machines in the graph — partly built
 

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Both runtimes, for the same reason bootstrap.sh checks for both:
+      # the engine and CLI run on node:sqlite, the server and tests on Bun.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bun test
+
+      # `build` typechecks first, so this covers both.
+      - name: Typecheck and build
+        run: bun run build
+
+      # The path a new user takes. It must survive a machine with no agent
+      # config, which is how it used to fail — with a raw SQLite error.
+      - name: Bootstrap on a clean machine
+        env:
+          OPENCODE_CONFIG: ${{ github.workspace }}/no-such-config.json
+        run: ./bootstrap.sh

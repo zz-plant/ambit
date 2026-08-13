@@ -1,0 +1,62 @@
+name: Deploy demo
+
+# The live demo was published by hand. Pages is configured in "legacy" mode,
+# serving the gh-pages branch at /, so this keeps that arrangement and only
+# automates the step that was manual: build, then commit dist/ to that branch.
+# Nothing here touches the Pages configuration itself.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/client/**'
+      - 'src/shared/**'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Publish to gh-pages
+        run: |
+          set -e
+          # A worktree over the existing branch, rather than a force-push of a
+          # fresh history: the branch keeps its past deploys, and a build that
+          # changes nothing produces no commit.
+          git fetch origin gh-pages
+          git worktree add /tmp/pages origin/gh-pages
+          rsync -a --delete --exclude '.git' dist/ /tmp/pages/
+          cd /tmp/pages
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Demo unchanged — nothing to deploy."
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "deploy: ${GITHUB_SHA::7}"
+          git push origin HEAD:gh-pages

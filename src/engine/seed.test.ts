@@ -447,3 +447,49 @@ test('a deficit against an unknown capability is refused, not silently kept', ()
   expect(r.error).toContain('No capability');
   expect(cli('deficits').note).toContain('Nothing recorded');
 });
+
+// ── Substitutability ────────────────────────────────────────────────────────
+
+const TWO_PROVIDERS = {
+  mcp: { git: {}, github: {} },          // both provide Version Control
+  provider: { ollama: { models: { 'qwen3-coder': {} } } },
+};
+
+test('losing one of several providers is not a critical loss', () => {
+  const db = seed(TWO_PROVIDERS);
+  const providers = rows(db, `SELECT from_capability f FROM dependencies
+                              WHERE to_capability = 'combo:version-control'
+                              AND description = 'Provides this capability'`);
+  expect(providers.length).toBeGreaterThan(1);
+  db.close();
+
+  const impact = cli('impact', 'mcp:github');
+  const vc = impact.combos_at_risk.find((c: any) => c.name === 'Version Control');
+  // Previously reported critical — every provider was treated as the only one.
+  expect(vc.severity).not.toBe('critical');
+  expect(vc.also_provided_by).toBeGreaterThan(0);
+});
+
+test('a capability is reported once, not once per edge', () => {
+  seed(TWO_PROVIDERS).close();
+  const impact = cli('impact', 'mcp:github');
+  const names = impact.combos_at_risk.map((c: any) => c.name);
+  expect(new Set(names).size).toBe(names.length);
+});
+
+test('losing the only provider is critical', () => {
+  seed({ mcp: { git: {} }, provider: { ollama: { models: { 'qwen3-coder': {} } } } }).close();
+  const impact = cli('impact', 'mcp:git');
+  const vc = impact.combos_at_risk.find((c: any) => c.name === 'Version Control');
+  expect(vc.severity).toBe('critical');
+  expect(vc.also_provided_by).toBeUndefined();
+});
+
+test('single points of failure are distinguished from high-leverage capabilities', () => {
+  seed(TWO_PROVIDERS).close();
+  const spof = cli('spof');
+  const ids = Array.isArray(spof) ? spof.map((s: any) => s.id) : [];
+  // Version Control has two providers, so it is not a single point of failure
+  // however much depends on it — which is what bottlenecks measures instead.
+  expect(ids).not.toContain('combo:version-control');
+});
