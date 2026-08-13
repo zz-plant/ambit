@@ -66,14 +66,29 @@ That second description is **effective capability**, and it is the object Ambit 
 | **Available** | something appears to exist | ✅ |
 | **Reachable** | all necessary dependencies are currently accessible | ✅ |
 | **Composed** | several lower-level capabilities together make a higher-order action possible | ✅ |
-| **Verified** | the capability has actually succeeded | roadmap |
-| **Authorized** | the system has permission to use it | roadmap |
+| **Verified** | the capability has actually succeeded | ✅ where a check is declared |
+| **Authorized** | the system has permission to use it | ✅ declared, not enforced |
 | **Delegated** | a human or another agent supplies a missing step | roadmap |
 | **Persistent** | it can operate beyond the current interaction | roadmap |
 
 Capability *change* is now recorded over time — see [the ledger](#the-ledger) — which is the accounting half of that table rather than a seventh state.
 
-Three of seven, and the README says which. [The roadmap](./ROADMAP.md) is the rest.
+Five of seven, with the two caveats stated in the table rather than hidden: checks exist for eight capabilities, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
+
+```console
+$ tt verify              # run the declared checks, record what happened
+  checked: 8 · verified: 8 · failed: 0
+  Local Runtime   verified   23ms   reliability 4/4
+
+$ tt authority           # reached is not the same as permitted
+  autonomous      File Editing · Parallel Execution
+  needs approval  Shell Execution · Version Control · Continuous Delivery
+  forbidden       Secret Management
+
+$ tt plan offline-capable
+  goal: Offline Capable · steps: 2 · estimated setup: 25m
+  1. Embeddings   2. Local Embeddings
+```
 
 The compressed form of the same point:
 
@@ -176,7 +191,9 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 
 ```
 Explore    stats · context · health · profile · export · explain
+Verify     verify [id] · evidence <id> · authority
 Maintain   decay · diff · trend · prune · prune <id> · ledger · since
+Plan       plan <id>
 Plan       near · combos · fork · insight
 Analyze    bottlenecks · impact <id> · budget <setup> <tokens>
 ```
