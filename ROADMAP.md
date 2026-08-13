@@ -83,7 +83,7 @@ Built: an `actors` block seeds people as nodes. `provides` becomes a capability 
 
 Unbuilt: preferences, cost and risk tolerance are not modelled, so nothing reasons about *which* human should be asked or when a step is worth their attention. Machines are in the graph through the infrastructure manifest but are not yet capability-bearing in the way §1 requires.
 
-## 3. Acquisition recipes
+## 3. Acquisition recipes — partly built
 
 The largest single addition to the data model. A node stops being documentation and becomes an installable competency:
 
@@ -109,6 +109,10 @@ rollback:
 ```
 
 At that point the tech tree behaves less like a diagram and more like a package manager for agency.
+
+Built: seven capabilities carry `acquisition.alternatives`, and `tt plan` attaches them to each step. Alternatives rather than one blessed answer, because the trade-off is rarely setup time — the hosted embedding API is three minutes against ten and costs money and a data boundary, and the plan says so.
+
+Unbuilt: the contract (`can:`), executable verification per recipe, and rollback. A recipe today describes a choice; it does not perform or undo one.
 
 ## 4. Detection becomes verification — partly built
 
@@ -166,7 +170,7 @@ $ tt plan offline-capable
 
 Unbuilt: the goal must be a capability the model already knows. A free-form goal — "maintain the homelab unattended" — still has no route in, and comparing *alternative* paths with their risks and lock-in is untouched. That is the substance of this section.
 
-## 6. Failure becomes an input
+## 6. Failure becomes an input — built
 
 `session_learning` is more important than it currently looks. Every failed task should be classified: was it reasoning, missing knowledge, a missing tool, a missing permission, weak infrastructure, or an unreliable capability?
 
@@ -175,6 +179,10 @@ task failure → capability deficit → does it recur?
                                       no  → solve it manually
                                       yes → propose a permanent upgrade
 ```
+
+Built. `tt failed <capability>` records that work was blocked by something missing; `tt deficits` reports which deficits recur. One is bad luck, three is a structural deficit and the verdict says so. Both are exposed over MCP as `tt_blocked` and `tt_deficits`, since an agent hitting the same wall is exactly who should record it.
+
+Unbuilt: the classification in the diagram above — reasoning versus knowledge versus tool versus permission — is not made. A block is recorded against a capability, so the answer is always "a missing capability", which is the easy case.
 
 The tree already tells you to write a SKILL.md for anything you explain more than twice. Generalised, that rule is the governing principle of the whole project:
 
@@ -254,7 +262,7 @@ Built: ten nodes declare `authority` with `observe` and `execute`, each autonomo
 
 Unbuilt: authority is declared per capability rather than derived from the runtime that would execute it, though Hermes states its own (`approvals.mode`, `approvals.cron_mode`) and the adapter already reads it. Nothing enforces any of this — Ambit describes authority, it does not mediate action.
 
-## 10. A second-generation MCP
+## 10. A second-generation MCP — partly built
 
 Today's seventeen tools are analytical: they answer questions about the graph. The next set exposes a lifecycle:
 
@@ -268,6 +276,10 @@ cg_opportunities  cg_compound
 ```
 
 `cg_simulate_acquisition` matters as much as `cg_plan`: showing the graph as it *would* be, before anything changes, is what makes approval meaningful rather than ceremonial.
+
+Built: the surface went from 17 analytical tools to 25, adding `tt_verify`, `tt_evidence`, `tt_authority`, `tt_plan`, `tt_since`, `tt_ledger`, `tt_blocked` and `tt_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent.
+
+Unbuilt: everything that changes the world. No `apply_step`, `request_approval`, `simulate` or `rollback`. Ambit still only describes.
 
 ## 11. The visualiser becomes a negotiating surface — transport built
 
@@ -340,6 +352,6 @@ do real work → discover friction → identify the capability deficit
 
 ## Honest status
 
-Sections 1–2 are data-model work the current schema can mostly absorb. Section 3 is not started; 4, 5 and 9 have narrow implementations with their unbuilt halves recorded under each. Section 7 is built. Sections 8–11 depend on 3–5 and are sketches, not designs.
+Sections 1–2 are data-model work the current schema can mostly absorb. Sections 3, 4, 5, 9 and 10 have narrow implementations with their unbuilt halves recorded under each; 6 and 7 are built; 11's transport is built. Section 7 is built. Sections 8–11 depend on 3–5 and are sketches, not designs.
 
 The gap between this document and the README is deliberate. The README describes only what runs.

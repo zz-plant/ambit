@@ -4,9 +4,9 @@ import { spawnSync } from "child_process";
 import { readFileSync, existsSync, readdirSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { resolveDbPath } from "../shared/db-path.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH_DEFAULT = join(__dirname, "..", "..", "toolchain-viz.db");
 // OPENCODE_CONFIG is the documented way to point the engine at another config
 // (README, "Using other configs"); it was accepted by bootstrap.sh but never
 // read here, so seeding always used the default path regardless.
@@ -31,8 +31,7 @@ interface Db {
 }
 
 function getDb(dbPath?: string): Db {
-  const envPath = process.env.TOOLCHAIN_DB;
-  const path = dbPath || envPath || DB_PATH_DEFAULT;
+  const path = dbPath || resolveDbPath();
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
@@ -170,6 +169,19 @@ function planFor(db: Db, goal?: string) {
   }
   const gatedBy = humanFor.get(id);
 
+  // How each step could be closed. Alternatives rather than one blessed
+  // answer, because the trade-off is rarely setup time alone: a hosted option
+  // is faster and adds a bill and a data boundary.
+  let tree: any = { nodes: [] };
+  try { tree = JSON.parse(readFileSync(join(__dirname, "techtree.json"), "utf8")); } catch {}
+  const recipeFor = new Map<string, any>(
+    (tree.nodes || []).filter((n: any) => n.acquisition).map((n: any) => [`combo:${n.id}`, n.acquisition])
+  );
+  for (const step of order) {
+    const recipe = recipeFor.get(step.id);
+    if (recipe?.alternatives?.length) step.options = recipe.alternatives;
+  }
+
   const totalSeconds = order.reduce((s, o) => s + (o.setup_seconds || 0), 0);
   return {
     goal: target.name,
@@ -180,6 +192,66 @@ function planFor(db: Db, goal?: string) {
     order,
     cyclic: cyclic || undefined,
   };
+}
+
+
+/**
+ * Records a task failure against the capability that was missing.
+ *
+ * The point is not the individual failure, it is the pattern. A deficit hit
+ * once is bad luck; the same one hit four times is infrastructure that should
+ * exist. `tt deficits` reports the recurring ones, which is the signal for
+ * turning friction into a capability rather than working around it again.
+ *
+ *   tt failed vector-store "semantic search over notes"
+ */
+function recordFailure(db: Db, capId?: string, note?: string) {
+  if (!capId) return { error: 'Usage: tt failed <capability> ["what you were trying to do"]' };
+  const id = capId.startsWith('combo:') || capId.includes(':') ? capId : `combo:${capId}`;
+  if (!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id)) {
+    return { error: `No capability ${id}. Use an id from tt combos, so deficits aggregate against something real.` };
+  }
+  db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('task', ?, 'blocked', 0, ?)"
+  ).run(id, note || null);
+  const count = db
+    .prepare("SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND action = 'blocked'")
+    .get(id);
+  return {
+    recorded: id,
+    times_blocked: count?.n ?? 1,
+    note: (count?.n ?? 1) >= 3
+      ? 'This has blocked work repeatedly. It is a structural deficit, not a one-off — see tt plan ' + id.replace('combo:', '')
+      : undefined,
+  };
+}
+
+/**
+ * Capability deficits that keep recurring, worst first.
+ *
+ * Distinguishes incidental friction from the structural kind: whether the same
+ * missing capability keeps stopping different work.
+ */
+function deficits(db: Db) {
+  const rows = db
+    .prepare(
+      `SELECT s.capability_id id, COUNT(*) AS times, MAX(s.timestamp) AS last_seen, c.name, c.state
+       FROM session_learning s JOIN capabilities c ON c.id = s.capability_id
+       WHERE s.action = 'blocked'
+       GROUP BY s.capability_id ORDER BY times DESC, last_seen DESC`
+    )
+    .all();
+  if (rows.length === 0) {
+    return { note: 'Nothing recorded. Use tt failed <capability> when a task is blocked by a missing one.' };
+  }
+  return rows.map((r: any) => ({
+    name: r.name,
+    id: r.id,
+    times_blocked: r.times,
+    last_seen: r.last_seen,
+    still_missing: r.state === 'locked',
+    verdict: r.times >= 3 && r.state === 'locked' ? 'structural — build it' : r.times >= 3 ? 'was structural; now reached' : 'incidental so far',
+  }));
 }
 
 // ─── Verification ─────────────────────────────────────────────────────────────
@@ -456,8 +528,12 @@ function parseMapping(mappingStr?: string): Record<string, any> {
 
 function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   const cp = configPath || CONFIG_DEFAULT;
-  if (!existsSync(cp)) return 0;
-  const config = JSON.parse(readFileSync(cp, "utf8"));
+  // A missing config used to abort the seed entirely, which left the database
+  // with no tables at all — every first run without OpenCode installed ended in
+  // a raw SQLite error from the next query. The curated capability model does
+  // not come from the config, so seed it anyway: the graph is then a valid,
+  // empty-of-your-stuff frontier rather than nothing.
+  const config = existsSync(cp) ? JSON.parse(readFileSync(cp, "utf8")) : {};
   const mapping = parseMapping(mappingStr);
 
   let count = 0;
@@ -1181,6 +1257,12 @@ function main() {
     return;
   }
   switch (cmd) {
+    case "failed":
+      emit(recordFailure(db, arg, process.argv.slice(4).filter(a => !a.startsWith('--'))[0]));
+      break;
+    case "deficits":
+      emit(deficits(db));
+      break;
     case "plan":
       emit(planFor(db, arg));
       break;
@@ -1233,11 +1315,21 @@ function main() {
       if (!wanted) console.log(`${C.grey}tt explain <term> for one of these on its own.${C.reset}\n`);
       break;
     }
-    case "seed":
+    case "seed": {
+      const cfg = CONFIG_DEFAULT;
       seedFromConfig(db, undefined, mappingOverride);
       const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();
       console.log(`${C.green}✓${C.reset} ${c.cnt} capabilities`);
+      // Say so rather than reporting a curated-model-only graph as if it had
+      // read the environment. Silence here reads as "your stack is empty".
+      if (!existsSync(cfg)) {
+        console.log(`${C.yellow}!${C.reset} No agent config at ${C.grey}${cfg}${C.reset}`);
+        console.log(`${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`);
+        console.log(`${C.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${C.reset}`);
+        console.log(`${C.grey}  Another format: see "Other configurations" in the README (CONFIG_MAPPING).${C.reset}`);
+      }
       break;
+    }
     case "stats": case "context": {
       const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities").get();
       console.log(`Toolchain: ${g.unlocked}/${g.total}`);
@@ -1266,4 +1358,4 @@ function main() {
 }
 
 if (import.meta.main) main();
-export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval };
+export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits };

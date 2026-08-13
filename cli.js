@@ -46,6 +46,8 @@ if (cmd === "--help" || cmd === "help") {
 
   ${B}Upkeep${R}
     tt decay             What have I stopped tending?
+    tt failed <id>       Record that a missing capability blocked work
+    tt deficits          Which deficits keep recurring
     tt diff              What changed since last time?
     tt ledger            Every recorded frontier observation
     tt since [when]      What became reachable since then, and what emerged

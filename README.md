@@ -179,13 +179,17 @@ To launch the visualizer:
 ./bootstrap.sh web
 ```
 
-Homebrew installs the CLI on its own:
+Bootstrap links the `tt` command into `~/.local/bin` when that directory is on your PATH. If it isn't, bootstrap prints the one-line `ln -s` to run instead; until then the CLI works in place as `./cli.js`.
+
+Homebrew installs the CLI on its own, as `tt`:
 
 ```bash
 brew install zz-plant/tap/ambit
 ```
 
-**Requires** Bun for the visualizer and server, Node 22+ for the engine and CLI.
+**Requires** Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both before doing anything.
+
+Without an agent config, bootstrap still seeds the curated capability model and says so — you get the graph with nothing of yours in it yet, rather than an error. Point it at your own config with `OPENCODE_CONFIG`, or map a different format with `CONFIG_MAPPING` (see [Other configurations](#other-configurations)).
 
 ## Ask better questions about your stack
 
@@ -194,7 +198,7 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 ```
 Explore    stats · context · health · profile · export · explain
 Verify     verify [id] · evidence <id> · authority
-Maintain   decay · diff · trend · prune · prune <id> · ledger · since
+Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
 Plan       plan <id>
 Plan       near · combos · fork · insight
 Analyze    bottlenecks · impact <id> · budget <setup> <tokens>
@@ -276,10 +280,32 @@ Every command prints for a person by default and takes `--json` for scripts.
 Ambit ships an MCP server exposing the graph directly to an agent:
 
 ```
-tt_stats   tt_context  tt_recs    tt_cap     tt_decay   tt_combos
-tt_diff    tt_health   tt_impact  tt_budget  tt_trend   tt_near
+tt_stats   tt_context  tt_recs    tt_cap     tt_decay    tt_combos
+tt_diff    tt_health   tt_impact  tt_budget  tt_trend    tt_near
 tt_insight tt_profile  tt_prune   tt_fork    tt_bottlenecks
+
+tt_verify  tt_evidence tt_authority tt_plan  tt_since    tt_ledger
+tt_blocked tt_deficits
 ```
+
+The second group is the capability lifecycle: is this real, may I act, what is missing, and — when the answer is *nothing here can do that* — recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again.
+
+Register it with Claude Code:
+
+```bash
+claude mcp add ambit -- node --experimental-sqlite /path/to/ambit/src/mcp/server.ts
+```
+
+Or in `opencode.json` — and in any other runtime that takes a stdio command:
+
+```json
+{ "mcp": { "ambit": {
+    "type": "local",
+    "command": ["node", "--experimental-sqlite", "/path/to/ambit/src/mcp/server.ts"],
+    "enabled": true } } }
+```
+
+It reads the same database `bootstrap.sh` writes. Set `TOOLCHAIN_DB` if you keep the graph somewhere else; the engine, the MCP server and the visualizer API all resolve that one variable.
 
 This matters because Ambit is not only a dashboard for the user. An agent should be able to ask:
 

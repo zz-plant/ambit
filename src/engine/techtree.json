@@ -365,6 +365,17 @@
       "authority": {
         "observe": "autonomous",
         "execute": "confirm"
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "read-only database MCP",
+            "setup_seconds": 600,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "note": "start read-only; widening is easier than narrowing"
+          }
+        ]
       }
     },
     {
@@ -386,7 +397,23 @@
         ]
       },
       "setup_seconds": 600,
-      "hint": "Configure an embedding model; a small local one is usually enough"
+      "hint": "Configure an embedding model; a small local one is usually enough",
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "nomic-embed via local runtime",
+            "setup_seconds": 600,
+            "recurring_cost": "none",
+            "privacy": "local"
+          },
+          {
+            "name": "hosted embedding API",
+            "setup_seconds": 180,
+            "recurring_cost": "per-token",
+            "privacy": "hosted"
+          }
+        ]
+      }
     },
     {
       "id": "vector-store",
@@ -410,7 +437,30 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Add a vector store \u2014 pgvector or a local LanceDB is enough to start"
+      "hint": "Add a vector store \u2014 pgvector or a local LanceDB is enough to start",
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "pgvector on existing Postgres",
+            "setup_seconds": 900,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "note": "no new service if Postgres is already running"
+          },
+          {
+            "name": "LanceDB (embedded)",
+            "setup_seconds": 600,
+            "recurring_cost": "none",
+            "privacy": "local"
+          },
+          {
+            "name": "Pinecone",
+            "setup_seconds": 300,
+            "recurring_cost": "monthly",
+            "privacy": "hosted"
+          }
+        ]
+      }
     },
     {
       "id": "retrieval",
@@ -470,7 +520,17 @@
         ]
       },
       "setup_seconds": 600,
-      "hint": "Enable session compaction so long-running work survives the window"
+      "hint": "Enable session compaction so long-running work survives the window",
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "enable session compaction in the runtime",
+            "setup_seconds": 300,
+            "recurring_cost": "none",
+            "privacy": "local"
+          }
+        ]
+      }
     },
     {
       "id": "subagents",
@@ -557,6 +617,29 @@
       "authority": {
         "observe": "autonomous",
         "execute": "confirm"
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "systemd timer or launchd",
+            "setup_seconds": 900,
+            "recurring_cost": "none",
+            "privacy": "local"
+          },
+          {
+            "name": "cron on an always-on host",
+            "setup_seconds": 600,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "note": "needs a host that stays up"
+          },
+          {
+            "name": "hosted scheduler",
+            "setup_seconds": 300,
+            "recurring_cost": "monthly",
+            "privacy": "hosted"
+          }
+        ]
       }
     },
     {
@@ -677,7 +760,23 @@
         ]
       },
       "setup_seconds": 1800,
-      "hint": "Log agent runs somewhere you can query later"
+      "hint": "Log agent runs somewhere you can query later",
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "Netdata on the host",
+            "setup_seconds": 1200,
+            "recurring_cost": "none",
+            "privacy": "local"
+          },
+          {
+            "name": "OpenTelemetry to a hosted backend",
+            "setup_seconds": 1800,
+            "recurring_cost": "monthly",
+            "privacy": "hosted"
+          }
+        ]
+      }
     },
     {
       "id": "continuous-delivery",
@@ -772,6 +871,16 @@
       "authority": {
         "observe": "confirm",
         "execute": "confirm"
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "route sensitive work to local models by policy",
+            "setup_seconds": 1800,
+            "recurring_cost": "none",
+            "privacy": "local"
+          }
+        ]
       }
     },
     {
