@@ -58,6 +58,13 @@
       "seen": "tt combos, tt near, tt fork"
     },
     {
+      "key": "frontier",
+      "term": "Frontier",
+      "short": "What the system can do, as of a moment",
+      "long": "Every seed records the state of every capability, so the graph can answer what was reachable at a past date rather than only now. `tt since` compares two of those observations. Its useful column is the emergent one: capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
+      "seen": "tt ledger, tt since"
+    },
+    {
       "key": "domain",
       "term": "Domain",
       "short": "The area of work a capability belongs to",
