@@ -1,16 +1,26 @@
-# Capability Graph
+# Ambit
 
 <p align="center">
-  <img src="docs/assets/capability-graph-demo.gif" alt="capability graph demo" width="720">
+  <img src="docs/assets/capability-graph-demo.gif" alt="Ambit demo" width="720">
   <br>
   <a href="https://zz-plant.github.io/capability-graph/"><strong>Live Demo</strong></a>
 </p>
 
-You added an MCP server eight months ago. Is it still doing anything? Which of your agents point at a model you've since stopped using? What did you connect last quarter and never touch again?
+**The combined action space of you, your agents, and your machines — and a way to grow it deliberately.**
 
-`opencode.json` can't answer that. It's a flat file with no history and no edges — every entry looks equally load-bearing whether you use it hourly or added it once and forgot.
+You added an MCP server eight months ago. Is it still doing anything? Which of your agents point at a model you have since stopped using? What did you connect last quarter and never touch again?
 
-Capability Graph reads that config, maps it onto a curated tech tree of agent capabilities, and tells you where you actually are: what you have reached, what is one step away, and what you have half-built without noticing. Local models get a full branch of their own, from "a runtime is installed" to "the whole loop runs with the network off".
+`opencode.json` cannot answer that. It is a flat file with no history and no edges, where every entry looks equally load-bearing whether you use it hourly or added it once and forgot.
+
+Ambit reads that config, places it on a curated tech tree of agent capabilities, and tells you where you actually are: what you have reached, what is one step away, and what you have half-built without noticing. Local models get a full branch of their own, from "a runtime is installed" to "the whole loop runs with the network off".
+
+### Why it is not called a visualiser
+
+The graph is a means, not the point. The thing worth modelling is not *the tools you own* — it is what you, your agents, and your hardware can jointly do, and which cheap changes would let you do more.
+
+That reframes the question an agent can ask. Not only *what capabilities exist*, but *what could we become capable of next*, and eventually *given what you are trying to accomplish, what should we change about ourselves*.
+
+Today Ambit answers the first question well and the second in a limited way: it can tell you what is one dependency away and what would break if a given thing disappeared. It cannot yet take a goal, compute the gap, and propose routes across it. That is [the roadmap](./ROADMAP.md), and the distinction is deliberate — this file describes only what runs.
 
 ## Quick Start
 
@@ -230,6 +240,16 @@ This maps the `tools` key of `my-project.json` into the graph. The default mappi
 
 - **Bun** for the visualizer and API server
 - **Node 22+** for the engine and CLI, which use `node:sqlite` behind `--experimental-sqlite`
+
+## Where this is going
+
+Ambit currently models what exists. The work ahead is modelling what can be **acquired**, under one principle:
+
+> A capability is not something configured. A capability is an action the system has evidence it can perform.
+
+That implies separating capabilities from the providers that satisfy them, putting the human and the hardware in the graph as actors with their own authorities, giving each capability an acquisition recipe and an executable verification, and closing the loop so repeated friction turns into infrastructure rather than repeated effort.
+
+See [ROADMAP.md](./ROADMAP.md). Nothing there is implemented; if it were, it would be documented above.
 
 ## Contributing
 

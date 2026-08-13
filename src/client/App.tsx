@@ -307,8 +307,8 @@ export default function App() {
         {!items.length && !loading && (
           <div className="app-welcome">
             <div className="app-welcome-hero">
-              <div className="app-welcome-title">CAPABILITY GRAPH</div>
-              <div className="app-welcome-tagline">Your OpenCode toolchain, mapped as a capability graph:<br/>what you have built, what connects, and what is possible.</div>
+              <div className="app-welcome-title">AMBIT</div>
+              <div className="app-welcome-tagline">What you, your agents and your machines can jointly do —<br/>what you have reached, and what is one step away.</div>
               <div className="app-welcome-diagram">
                 <svg width="300" height="100" viewBox="0 0 300 100"><rect x={0} y={0} width={300} height={100} rx={6} fill="#e8d5a8" opacity={0.5}/><line x1={52} y1={50} x2={128} y2={30} stroke="#8b6914" strokeWidth={1.5}/><line x1={152} y1={50} x2={128} y2={30} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><line x1={52} y1={50} x2={128} y2={70} stroke="#8b6914" strokeWidth={1.5}/><line x1={252} y1={50} x2={128} y2={70} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><circle cx={52} cy={50} r={16} fill="#b8860b"/><text x={52} y={55} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◈</text><circle cx={252} cy={50} r={16} fill="#cd853f"/><text x={252} y={55} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◆</text><circle cx={128} cy={30} r={14} fill="#b87333"/><text x={128} y={34} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>●</text><circle cx={128} cy={70} r={14} fill="#6b8e23"/><text x={128} y={74} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◇</text><circle cx={128} cy={30} r={18} fill="none" stroke="#b8860b" strokeWidth={2} strokeDasharray="84 29" strokeLinecap="round" transform="rotate(-90 128 30)"/><circle cx={128} cy={70} r={18} fill="none" stroke="#b8860b" strokeWidth={1.5} strokeDasharray="40 73" strokeLinecap="round" transform="rotate(-90 128 70)"/></svg>
               </div>
@@ -406,7 +406,7 @@ export default function App() {
       )}
 
       <footer className="app-footer">
-        <span className="app-footer-title">◈ CAPABILITY GRAPH</span>
+        <span className="app-footer-title">◈ AMBIT</span>
         <span className="app-footer-info">
           {items.length} capabilities · {items.filter(i => i.status === 'built').length} built
         </span>

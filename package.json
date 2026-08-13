@@ -1,8 +1,8 @@
 {
-  "name": "capability-graph",
+  "name": "ambit",
   "version": "0.3.0",
   "private": false,
-  "description": "A capability graph for your OpenCode toolchain",
+  "description": "The combined action space of you, your agents, and your machines \u2014 and a way to grow it deliberately",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"bun run server\" \"vite\"",
@@ -37,10 +37,13 @@
   },
   "bin": "./cli.js",
   "keywords": [
-    "opencode",
-    "toolchain",
     "capability-graph",
-    "tech-tree"
+    "tech-tree",
+    "agents",
+    "mcp",
+    "opencode",
+    "local-models",
+    "developer-tools"
   ],
   "repository": {
     "type": "git",

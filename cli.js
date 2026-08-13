@@ -18,7 +18,7 @@ if (cmd === "--help" || cmd === "help") {
   // A bare list of verbs taught nothing. Lead with the two commands worth
   // running first, group the rest by the question each answers.
   console.log(`
-  Capability graph — your agent setup, placed on a tech tree.
+  Ambit — what you, your agents and your machines can jointly do.
 
   ${B}Start here${R}
     tt near              What is one step away from where I am?
