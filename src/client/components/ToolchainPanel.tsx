@@ -41,7 +41,7 @@ export default function ToolchainPanel() {
         <>
           <div style={{ padding: '6px', borderBottom: '1px solid var(--border)' }}>
             <button className="tp-btn" style={{ width: '100%', fontSize: '10px', padding: '6px' }} onClick={() => setShowUplinkModal(true)}>
-              🔌 ESTABLISH UPLINK
+              🔌 ADD MCP SERVER
             </button>
           </div>
 

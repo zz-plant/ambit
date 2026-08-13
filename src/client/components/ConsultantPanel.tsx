@@ -42,7 +42,7 @@ export default function DiagnosticsPanel() {
       </div>
 
       {itemCount === 0 && (
-        <div className="dp-empty">No contacts in sensor range</div>
+        <div className="dp-empty">Select a capability to run checks on it</div>
       )}
 
       {overall !== null && (
@@ -164,7 +164,7 @@ export default function DiagnosticsPanel() {
                 </div>
               )}
               {result && findings.length === 0 && (
-                <div className="dp-clean">NOMINAL</div>
+                <div className="dp-clean">NO ISSUES FOUND</div>
               )}
             </div>
           );

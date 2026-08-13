@@ -204,7 +204,7 @@ export function StarNode({ item, isSelected, isHovered, onSelect, onHover }: Pro
         <TargetBracket pos={[0, 0, 0]} color={color} pulse={pulseRef.current} />
       )}
 
-      {/* Designation tag */}
+      {/* Name label */}
       <Html
         position={[0, -baseRadius - 0.4, 0]}
         center

@@ -92,7 +92,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         <div className="sp-hdr">
           <span className="sp-sig" style={{ color: 'var(--accent)' }}>🔌</span>
           <div className="sp-title-group">
-            <div className="sp-designation">ESTABLISH UPLINK</div>
+            <div className="sp-designation">ADD MCP SERVER</div>
             <div className="sp-class">GENERATE MCP CONFIG SNIPPET</div>
           </div>
           <button className="sp-close" onClick={onClose}>✕</button>
@@ -374,7 +374,7 @@ export default function App() {
       {showImport && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowImport(false)}>
           <div style={{ background:'#faf3e0', borderRadius:8, maxWidth:500, width:'90%', padding:28, border:'1px solid #c4a96a' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin:'0 0 4px 0', fontSize:14, fontWeight:700, letterSpacing:1.5, color:'#6b5b3a' }}>IMPORT CAPABILITY GRAPH</h3>
+            <h3 style={{ margin:'0 0 4px 0', fontSize:14, fontWeight:700, letterSpacing:1.5, color:'#6b5b3a' }}>IMPORT A GRAPH</h3>
             <p style={{ margin:'0 0 12px 0', fontSize:12, color:'#8b7355' }}>Run <code style={{background:'#f0dbb8', padding:'1px 4px', borderRadius:3}}>tt export</code> locally, copy the output, and paste below.</p>
             <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from tt export here..." style={{ width:'100%', height:200, fontFamily:'monospace', fontSize:13, padding:10, border:'1px solid #c4a96a', borderRadius:4, background:'#f0dbb8', resize:'vertical', color:'#4a3728' }} />
             <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'flex-end' }}>
