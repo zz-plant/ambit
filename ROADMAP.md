@@ -183,6 +183,14 @@ Classification compares against the ids recorded in the snapshot rather than tim
 
 What remains from the original sketch: nothing writes evidence of *use*, so the ledger records changes in reachability, not in demonstrated reliability. That waits on §4.
 
+## 7b. Affordance domains
+
+The domain vocabulary was entirely software, so anything acting on the world collapsed into `meta`. `physical` now exists and infrastructure devices land there — a robot arm and a neural decoder seed and render alongside MCP servers.
+
+`cognitive`, `institutional` and `economic` do not. They are the domains that make the [theory](./docs/affordance-frontier.md) more than a metaphor, and each needs more than a keyword: an institutional capability implies an authority holder, an economic one implies a budget and a counterparty. Adding the words without the structure would be worse than leaving them out.
+
+Related and unbuilt: the distinction between human-gated, human-composed, and machine-composed-human capability. The first is approval, which §9 covers. The other two require the human to be a node with capabilities of their own (§2), and are what a tight interface — a BCI being the extreme case — actually produces.
+
 ## 8. A runtime adapter layer — partly built
 
 `scripts/adapters/hermes.ts` reads a Hermes installation and contributes its capabilities to the same graph, with `AMBIT_RUNTIME` attributing them to a runtime node. Ids are deliberately not namespaced: a git MCP under either runtime is one capability with two providers, and the runtime edges keep that legible.

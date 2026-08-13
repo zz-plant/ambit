@@ -5,8 +5,8 @@ import { useToolchainStore } from '../store/toolchainStore';
 const TYPE_FILTERS = ['all', 'server', 'agent', 'skill', 'combo'] as const;
 type Filter = typeof TYPE_FILTERS[number];
 
-const DOMAIN_ORDER = ['infra', 'devops', 'backend', 'frontend', 'ai-ml', 'quality', 'meta', 'security'];
-const ERA_LABELS: Record<string, string> = { infra:'Foundation', devops:'Pipeline', backend:'Services', frontend:'Interface', 'ai-ml':'Intelligence', quality:'Guard', meta:'Orchestration', security:'Fortress' };
+const DOMAIN_ORDER = ['physical', 'infra', 'devops', 'backend', 'frontend', 'ai-ml', 'quality', 'meta', 'security'];
+const ERA_LABELS: Record<string, string> = { physical:'Physical', infra:'Foundation', devops:'Pipeline', backend:'Services', frontend:'Interface', 'ai-ml':'Intelligence', quality:'Guard', meta:'Orchestration', security:'Fortress' };
 /** meta is an untyped bag; these narrow the two fields the tree reads. */
 const domainOf = (item: Item): string => (item.meta?.domain as string) || 'meta';
 /** Tech-tree items carry an era; config items fall back to their domain. */

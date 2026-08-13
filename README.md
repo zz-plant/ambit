@@ -10,7 +10,7 @@
 [![Bun](https://img.shields.io/badge/bun-runtime-fbf0df?style=flat-square)](https://bun.sh)
 [![Server](https://img.shields.io/badge/server-loopback%20only-b8860b?style=flat-square)](#security)
 
-[**Live demo**](https://zz-plant.github.io/ambit/) · [Quick start](#start-here) · [CLI](#ask-better-questions-about-your-stack) · [MCP](#agents-can-query-it-too) · [Roadmap](./ROADMAP.md) · [Why Ambit](./docs/why-ambit.md)
+[**Live demo**](https://zz-plant.github.io/ambit/) · [Quick start](#start-here) · [CLI](#ask-better-questions-about-your-stack) · [MCP](#agents-can-query-it-too) · [Roadmap](./ROADMAP.md) · [Why Ambit](./docs/why-ambit.md) · [Theory](./docs/affordance-frontier.md)
 
 </div>
 
@@ -286,6 +286,8 @@ Agent capabilities do not stop at the model boundary. A local GPU, NAS, browser 
 
 Ambit scans infrastructure from an explicit local manifest (`INFRA_MANIFEST`, default `~/.config/opencode/infrastructure.json`). With no manifest it returns an empty scan rather than an error — no host addresses are baked in.
 
+The manifest is not specific to servers. A device is anything that can act — a Pi, a GPU host, a robot arm, a sensor, a decoder — and they seed as first-class nodes in a `physical` domain. Whether that generalisation is the right one is argued in [the affordance frontier](./docs/affordance-frontier.md); what is implemented is that the model does not assume software.
+
 The goal is not another homelab inventory. It is to treat infrastructure as capability-bearing:
 
 ```
@@ -375,7 +377,7 @@ A mature capability graph could make several invariants explicit — no autonomo
 
 The larger idea is simple: **make capability accumulation explicit rather than accidental.**
 
-There is a longer version of this argument in [why-ambit.md](./docs/why-ambit.md).
+There is a longer version of this argument in [why-ambit.md](./docs/why-ambit.md), and the theory it rests on — affordances as relational, robotics and BCIs as the cases that test the abstraction, and the intellectual genealogy — in [affordance-frontier.md](./docs/affordance-frontier.md).
 
 ## Architecture
 
