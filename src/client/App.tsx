@@ -254,7 +254,7 @@ export default function App() {
         const pngUrl = URL.createObjectURL(b);
         const a = document.createElement('a');
         a.href = pngUrl;
-        a.download = 'capability-graph.png';
+        a.download = 'ambit.png';
         a.click();
         URL.revokeObjectURL(pngUrl);
       });
@@ -315,9 +315,9 @@ export default function App() {
               <div className="app-welcome-actions">
                 <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>▶  LOAD DEMO</button>
                 <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowImport(true)}>📋  PASTE</button>
-                <a href="https://github.com/zz-plant/capability-graph" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">⭐  GITHUB</a>
+                <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">⭐  GITHUB</a>
               </div>
-              <div className="app-welcome-code"><code>git clone https://github.com/zz-plant/capability-graph.git &amp;&amp; cd capability-graph &amp;&amp; ./bootstrap.sh</code></div>
+              <div className="app-welcome-code"><code>git clone https://github.com/zz-plant/ambit.git &amp;&amp; cd ambit &amp;&amp; ./bootstrap.sh</code></div>
               <div className="app-welcome-modes"><span>Click <em>LOAD DEMO</em> to see a sample capability graph</span><span>Select any node and check <em>DIAGNOSTICS</em> in the sidebar</span><span>Toggle <em>ERAS</em> layout mode for an era-column tech tree view</span></div>
             </div>
           </div>
