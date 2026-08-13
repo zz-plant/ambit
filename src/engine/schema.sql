@@ -48,3 +48,20 @@ CREATE TABLE IF NOT EXISTS session_learning (
 CREATE INDEX IF NOT EXISTS idx_capabilities_domain ON capabilities(domain);
 CREATE INDEX IF NOT EXISTS idx_capabilities_state ON capabilities(state);
 CREATE INDEX IF NOT EXISTS idx_session_learning_cap ON session_learning(capability_id, action);
+
+-- Frontier ledger. `capabilities` holds the present state and is overwritten
+-- on every seed, so it cannot answer "what could this system do at time T".
+-- Each row here is one observation of the whole frontier, written on seed only
+-- when the state actually differs from the previous observation — so the table
+-- records changes rather than runs.
+CREATE TABLE IF NOT EXISTS frontier_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    taken_at TEXT NOT NULL DEFAULT (datetime('now')),
+    reached INTEGER NOT NULL,
+    total INTEGER NOT NULL,
+    -- id -> state for every capability, so a past frontier can be reconstructed
+    -- exactly rather than inferred from counts.
+    states TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_frontier_taken ON frontier_snapshots(taken_at);

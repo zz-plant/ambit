@@ -11,8 +11,8 @@ const ENGINE = join(import.meta.dir, 'engine.ts');
 let dir: string;
 
 /** Seed a throwaway database from an inline config and return a handle. */
-function seed(config: unknown): Database {
-  const configPath = join(dir, 'config.json');
+function seed(config: unknown, opts: { name?: string } = {}): Database {
+  const configPath = join(dir, (opts.name || 'config') + '.json');
   const dbPath = join(dir, 'graph.db');
   writeFileSync(configPath, JSON.stringify(config));
   // Seeding also scans the machine's skill directories, which would let the
@@ -168,4 +168,76 @@ test('detection does not match short tokens inside unrelated words', () => {
   const db = seed({ agent: { 'commercial-decision-writer': { description: 'writes' } } });
   const cd = rows(db, "SELECT state FROM capabilities WHERE id = 'combo:continuous-delivery'");
   expect(cd[0]?.state).toBe('locked');
+});
+
+
+// ── Ledger ──────────────────────────────────────────────────────────────────
+
+/** Run the CLI against the database this test's `seed` writes to. */
+function cli(cmd: string, arg?: string): any {
+  const out = execFileSync(
+    'node',
+    ['--experimental-sqlite', ENGINE, cmd, ...(arg ? [arg] : []), '--json'],
+    { env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db') }, encoding: 'utf8' }
+  );
+  return JSON.parse(out);
+}
+
+const LOCAL_ONLY = {
+  provider: { ollama: { models: { 'qwen3-coder': {} } } },
+  agent: { 'offline-resilience-engineer': { description: 'keeps things working air-gapped' } },
+};
+// Same setup plus an embedding model — one addition.
+const PLUS_EMBEDDINGS = {
+  provider: { ollama: { models: { 'qwen3-coder': {}, 'nomic-embed-text': {} } } },
+  agent: { 'offline-resilience-engineer': { description: 'keeps things working air-gapped' } },
+};
+
+test('seeding records the frontier, and an unchanged re-seed does not', () => {
+  seed(LOCAL_ONLY).close();
+  expect(cli('ledger').length).toBe(1);
+  seed(LOCAL_ONLY).close(); // identical config
+  expect(cli('ledger').length).toBe(1);
+});
+
+test('re-seeding updates derived state', () => {
+  // The tech-tree insert is OR IGNORE, so without an explicit update every node
+  // stayed frozen at whatever the first seed computed and the tree never moved.
+  const first = seed(LOCAL_ONLY);
+  const before = (first.prepare("SELECT state FROM capabilities WHERE id = 'combo:embeddings'").get() as any).state;
+  first.close();
+
+  const second = seed(PLUS_EMBEDDINGS);
+  const after = (second.prepare("SELECT state FROM capabilities WHERE id = 'combo:embeddings'").get() as any).state;
+  expect(before).toBe('locked');
+  expect(after).toBe('unlocked');
+});
+
+test('the ledger separates what was acquired from what emerged', () => {
+  seed(LOCAL_ONLY).close();
+  seed(PLUS_EMBEDDINGS).close();
+
+  const since = cli('since');
+  expect(since.frontier_now).toBeGreaterThan(since.frontier_then);
+
+  const gained = since.gained.map((g: any) => g.id);
+  const emergent = since.emergent.map((e: any) => e.id);
+
+  // Embeddings arrived because a model providing it was added.
+  expect(gained).toContain('combo:embeddings');
+
+  // Offline Capable was already provided by an agent that did not change; it
+  // became reachable only because its prerequisites were satisfied elsewhere.
+  // This is the entry a per-component changelog cannot produce.
+  expect(emergent).toContain('combo:offline-capable');
+  expect(gained).not.toContain('combo:offline-capable');
+});
+
+test('a frontier query before any history explains itself', () => {
+  const db = seed(LOCAL_ONLY);
+  db.close();
+  // One observation exists, so `since` compares against it rather than erroring.
+  const since = cli('since');
+  expect(since.since).toBeDefined();
+  expect(since.emergent).toEqual([]);
 });

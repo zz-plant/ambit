@@ -41,6 +41,8 @@ if (cmd === "--help" || cmd === "help") {
   ${B}Upkeep${R}
     tt decay             What have I stopped tending?
     tt diff              What changed since last time?
+    tt ledger            Every recorded frontier observation
+    tt since [when]      What became reachable since then, and what emerged
     tt trend <days>      Projected health
     tt prune             Removal candidates
     tt prune <id>        Remove it, writing a .bak first

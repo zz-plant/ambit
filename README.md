@@ -71,6 +71,8 @@ That second description is **effective capability**, and it is the object Ambit 
 | **Delegated** | a human or another agent supplies a missing step | roadmap |
 | **Persistent** | it can operate beyond the current interaction | roadmap |
 
+Capability *change* is now recorded over time — see [the ledger](#the-ledger) — which is the accounting half of that table rather than a seventh state.
+
 Three of seven, and the README says which. [The roadmap](./ROADMAP.md) is the rest.
 
 The compressed form of the same point:
@@ -174,7 +176,7 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 
 ```
 Explore    stats · context · health · profile · export · explain
-Maintain   decay · diff · trend · prune · prune <id>
+Maintain   decay · diff · trend · prune · prune <id> · ledger · since
 Plan       near · combos · fork · insight
 Analyze    bottlenecks · impact <id> · budget <setup> <tokens>
 ```
@@ -186,6 +188,7 @@ Analyze    bottlenecks · impact <id> · budget <setup> <tokens>
 | `tt impact <id>` | What becomes unavailable if this disappears? |
 | `tt fork` | Which nearby path has the best trade-off between setup cost, regret, and downstream leverage? |
 | `tt decay` | Which parts of the system appear to be rusting? |
+| `tt since` | What became reachable since a past date — and what emerged rather than being added? |
 
 Real output — one dependency away, and the dependency it names gates four further capabilities:
 
@@ -209,6 +212,22 @@ Self-Hosted Stack  configured, but Observability is not in place yet
 ```
 
 Nothing declared those. They fall out of the dependency structure, and they are invisible in every file you own.
+
+### The ledger
+
+`capabilities` holds the present state and is overwritten on every seed, so on its own the graph can only say what the system can do *now*. Every seed also records the whole frontier, which lets it answer what was reachable at a past date:
+
+```console
+$ tt since
+  frontier then: 13
+  frontier now:  19
+  gained:    Embeddings · Local Embeddings · nomic-embed-text
+  emergent:  Model Routing · Offline Capable · Subagents
+```
+
+One embedding model was added. Six capabilities moved. The three under `emergent` became reachable although **nothing providing them was added** — their prerequisites were satisfied by something else entirely. Offline Capable was already provided by an agent that did not change.
+
+That is the entry a per-component changelog structurally cannot produce, because no single change explains it. Accumulated capacity to act is a graph property, and this is where it shows up.
 
 Every command prints for a person by default and takes `--json` for scripts.
 

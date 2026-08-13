@@ -163,24 +163,25 @@ The tree already tells you to write a SKILL.md for anything you explain more tha
 
 > **Repeated friction should become infrastructure.**
 
-## 7. The ledger
+## 7. The ledger — shipped
 
-Capability accounting gets substantially more interesting longitudinally. Rather than describing only today's environment, record: *at time T, what could this system do — and what changed since?*
+Built. `frontier_snapshots` records every capability's state on each seed, written only when the state differs from the previous observation, so the table logs changes rather than runs. `tt ledger` lists the observations; `tt since [when]` compares two.
 
+The entry that justified the table works:
+
+```console
+$ tt since
+  frontier then: 13
+  frontier now:  19
+  gained:    Embeddings · Local Embeddings · nomic-embed-text
+  emergent:  Model Routing · Offline Capable · Subagents
 ```
-gains a machine → then network access → then credentials → then a scheduler
-→ then memory → then authority to deploy → then the ability to create agents
-```
 
-Each addition is not only an infrastructure change but a change in the reachable capability frontier. That turns the graph into something closer to a balance sheet for agency: traditional accounting records accumulated economic claims, IAM records accumulated authority, a CMDB records accumulated infrastructure — this would record **accumulated capacity for action**.
+`emergent` is the column a per-component changelog cannot produce: those three became reachable although nothing providing them was added. Offline Capable was already provided by an agent that did not change — it flipped because its prerequisites were satisfied elsewhere. One embedding model was added; six capabilities moved.
 
-The interesting entries are the ones no single change explains:
+Classification compares against the ids recorded in the snapshot rather than timestamps. `created_at > taken_at` looked equivalent and was not: `datetime('now')` resolves to the second, so two seeds inside the same second classified every addition as pre-existing.
 
-> The system acquired autonomous incident-recovery capability yesterday, although no component added yesterday was itself an incident-recovery system.
-
-Agency emerging as a graph property is exactly what a per-component changelog cannot show.
-
-**This is nearer than the rest of this document, because the schema is already there.** `capabilities` carries `created_at` and `updated_at`; `session_learning` carries `session_id`, `capability_id`, `action`, `outcome_score`, `timestamp`. What is missing is that nothing writes a time series of *frontier state*, and no command can answer a question as of a past date — `tt diff`, `tt profile` and `tt trend` all read current state. The work is a snapshot-on-change writer and a reader that takes a timestamp.
+What remains from the original sketch: nothing writes evidence of *use*, so the ledger records changes in reachability, not in demonstrated reliability. That waits on §4.
 
 ## 8. A runtime adapter layer
 
@@ -292,6 +293,6 @@ do real work → discover friction → identify the capability deficit
 
 ## Honest status
 
-Sections 1–2 are data-model work the current schema can mostly absorb. Sections 3–5 are the substance and are not started. Section 7 is nearer than its position suggests — the tables exist, only the writer and the time-aware reader are missing. Sections 8–11 depend on 3–5 and are sketches, not designs.
+Sections 1–2 are data-model work the current schema can mostly absorb. Sections 3–5 are the substance and are not started. Section 7 is built. Sections 8–11 depend on 3–5 and are sketches, not designs.
 
 The gap between this document and the README is deliberate. The README describes only what runs.
