@@ -1,0 +1,383 @@
+{
+  "$comment": "Curated capability tree for AI agent setups. Like a Civ tech tree, this is authored content: every user gets the same tree and differs only in where they are on it. Nodes are matched against the capabilities discovered in a user's config via `detect` patterns (regex, tested against capability ids). A node with all prerequisites met but nothing detected is what `tt near` and `tt recs` surface as researchable next.",
+  "eras": {
+    "1": "Foundation",
+    "2": "Model Access",
+    "3": "Tool Use",
+    "4": "Memory",
+    "5": "Autonomy",
+    "6": "Assurance",
+    "7": "Sovereignty"
+  },
+  "nodes": [
+    {
+      "id": "shell-execution",
+      "name": "Shell Execution",
+      "era": 1,
+      "domain": "infra",
+      "description": "The agent can run commands and read their output",
+      "detect": { "any": ["^tool:bash$"] },
+      "setup_seconds": 0,
+      "hint": "Built in to OpenCode"
+    },
+    {
+      "id": "file-editing",
+      "name": "File Editing",
+      "era": 1,
+      "domain": "meta",
+      "description": "The agent can read and modify files directly",
+      "detect": { "any": ["^tool:edit$"] },
+      "setup_seconds": 0,
+      "hint": "Built in to OpenCode"
+    },
+    {
+      "id": "code-intelligence",
+      "name": "Code Intelligence",
+      "era": 1,
+      "domain": "quality",
+      "description": "Language-server diagnostics, so the agent sees errors as an IDE would",
+      "requires": ["file-editing"],
+      "detect": { "any": ["^tool:lsp$"] },
+      "setup_seconds": 120,
+      "hint": "Enable LSP for the languages you work in"
+    },
+    {
+      "id": "version-control",
+      "name": "Version Control",
+      "era": 1,
+      "domain": "devops",
+      "description": "Git operations, so agent work is reviewable and revertible",
+      "requires": ["shell-execution"],
+      "detect": { "any": ["\\bgit\\b", "github", "gitlab"] },
+      "setup_seconds": 300,
+      "hint": "Add a git or GitHub MCP server so the agent can branch, diff, and open PRs"
+    },
+
+    {
+      "id": "hosted-inference",
+      "name": "Hosted Inference",
+      "era": 2,
+      "domain": "ai-ml",
+      "description": "At least one hosted model provider configured",
+      "requires": ["shell-execution"],
+      "detect": { "any": ["^provider:(?!local)", "^model:(?!local)"] },
+      "setup_seconds": 300,
+      "hint": "Configure a provider with an API key"
+    },
+    {
+      "id": "local-runtime",
+      "name": "Local Runtime",
+      "era": 2,
+      "domain": "ai-ml",
+      "description": "A model server running on your own hardware — Ollama, llama.cpp, MLX, or LiteRT",
+      "requires": ["shell-execution"],
+      "detect": { "any": ["ollama", "llamacpp", "llama-cpp", "mlx", "litert", "lmstudio", "vllm", "^provider:local"] },
+      "setup_seconds": 1800,
+      "hint": "Install Ollama (or llama.cpp / MLX on Apple silicon) and pull one model"
+    },
+    {
+      "id": "local-tool-calling",
+      "name": "Local Tool Calling",
+      "era": 2,
+      "domain": "ai-ml",
+      "description": "A local model that reliably emits tool calls — the threshold where local models stop being chat toys and start doing agent work",
+      "requires": ["local-runtime"],
+      "detect": { "any": ["qwen", "hermes", "firefunction", "command-r", "mistral-nemo", "llama-?3\\.[123]", "gpt-oss"] },
+      "setup_seconds": 900,
+      "hint": "Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls — many local models claim support and fail in practice"
+    },
+    {
+      "id": "extended-context",
+      "name": "Extended Context",
+      "era": 2,
+      "domain": "ai-ml",
+      "description": "A model configured well past the default window, so long files and sessions survive",
+      "requires": ["local-tool-calling"],
+      "detect": { "any": ["\\b(32k|64k|128k|200k|256k|1m)\\b", "-32768", "-65536", "-131072"] },
+      "setup_seconds": 600,
+      "hint": "Set an explicit context limit per model — most runtimes silently default to 4K and truncate"
+    },
+    {
+      "id": "model-routing",
+      "name": "Model Routing",
+      "era": 2,
+      "domain": "ai-ml",
+      "description": "More than one model available, with agents pinned to the right tier for their work",
+      "requires": ["hosted-inference"],
+      "optional": ["local-runtime"],
+      "detect": { "any": ["^agent:.*"], "min_models": 2 },
+      "setup_seconds": 600,
+      "hint": "Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning"
+    },
+
+    {
+      "id": "tool-protocol",
+      "name": "Tool Protocol",
+      "era": 3,
+      "domain": "backend",
+      "description": "At least one MCP server, giving the agent capabilities beyond its own context",
+      "requires": ["shell-execution"],
+      "detect": { "any": ["^mcp:"] },
+      "setup_seconds": 600,
+      "hint": "Add your first MCP server"
+    },
+    {
+      "id": "browser-automation",
+      "name": "Browser Automation",
+      "era": 3,
+      "domain": "frontend",
+      "description": "The agent can drive a real browser — see rendered pages, click, and verify its own UI work",
+      "requires": ["tool-protocol"],
+      "detect": { "any": ["playwright", "puppeteer", "browser", "chrome", "selenium"] },
+      "setup_seconds": 900,
+      "hint": "Add a Playwright or browser MCP server so the agent can check its own frontend changes"
+    },
+    {
+      "id": "web-research",
+      "name": "Web Research",
+      "era": 3,
+      "domain": "meta",
+      "description": "Live search and fetch, so the agent is not limited to its training cutoff",
+      "requires": ["tool-protocol"],
+      "detect": { "any": ["search", "fetch", "exa", "tavily", "perplexity", "brave", "firecrawl"] },
+      "setup_seconds": 300,
+      "hint": "Add a search or fetch MCP server"
+    },
+    {
+      "id": "secret-management",
+      "name": "Secret Management",
+      "era": 3,
+      "domain": "security",
+      "description": "Credentials resolved from a vault or env references instead of literals in config",
+      "requires": ["tool-protocol"],
+      "detect": { "any": ["1password", "vault", "bitwarden", "doppler", "keychain", "sops"] },
+      "setup_seconds": 900,
+      "hint": "Move API keys out of opencode.json into a vault or environment references"
+    },
+    {
+      "id": "data-access",
+      "name": "Data Access",
+      "era": 3,
+      "domain": "backend",
+      "description": "The agent can query real data rather than reasoning about schemas it cannot see",
+      "requires": ["tool-protocol"],
+      "detect": { "any": ["postgres", "sqlite", "mysql", "d1", "bigquery", "duckdb", "supabase", "database"] },
+      "setup_seconds": 600,
+      "hint": "Connect a database MCP server, ideally read-only to start"
+    },
+
+    {
+      "id": "embeddings",
+      "name": "Embeddings",
+      "era": 4,
+      "domain": "ai-ml",
+      "description": "Text can be turned into vectors — the prerequisite for any retrieval",
+      "requires": ["hosted-inference"],
+      "detect": { "any": ["embed", "bge-", "nomic", "minilm", "gte-"] },
+      "setup_seconds": 600,
+      "hint": "Configure an embedding model; a small local one is usually enough"
+    },
+    {
+      "id": "vector-store",
+      "name": "Vector Store",
+      "era": 4,
+      "domain": "backend",
+      "description": "Somewhere to keep and search those vectors",
+      "requires": ["embeddings"],
+      "detect": { "any": ["vectorize", "pinecone", "qdrant", "weaviate", "chroma", "lancedb", "pgvector", "milvus"] },
+      "setup_seconds": 900,
+      "hint": "Add a vector store — pgvector or a local LanceDB is enough to start"
+    },
+    {
+      "id": "retrieval",
+      "name": "Retrieval",
+      "era": 4,
+      "domain": "ai-ml",
+      "description": "The agent pulls relevant context on demand instead of being handed everything up front",
+      "requires": ["vector-store"],
+      "detect": { "any": ["\\brag\\b", "retriev", "knowledge-?base", "semantic-?search"] },
+      "setup_seconds": 1800,
+      "hint": "Wire retrieval into a skill or agent so context is fetched rather than pasted"
+    },
+    {
+      "id": "persistent-memory",
+      "name": "Persistent Memory",
+      "era": 4,
+      "domain": "meta",
+      "description": "Facts survive between sessions, so the agent stops relearning your setup every time",
+      "requires": ["tool-protocol"],
+      "detect": { "any": ["memory", "recall", "mem0", "zep"] },
+      "setup_seconds": 900,
+      "hint": "Add a memory MCP server or a durable notes file the agent reads on start"
+    },
+    {
+      "id": "context-compaction",
+      "name": "Context Compaction",
+      "era": 4,
+      "domain": "meta",
+      "description": "Long sessions summarize instead of falling over at the context limit",
+      "requires": ["extended-context"],
+      "detect": { "any": ["compact", "summariz", "lifeline", "checkpoint"] },
+      "setup_seconds": 600,
+      "hint": "Enable session compaction so long-running work survives the window"
+    },
+
+    {
+      "id": "subagents",
+      "name": "Subagents",
+      "era": 5,
+      "domain": "meta",
+      "description": "Named agents with their own prompts and models, delegated to for specific work",
+      "requires": ["model-routing"],
+      "detect": { "any": ["^agent:"] },
+      "setup_seconds": 600,
+      "hint": "Define your first subagent with a narrow job and its own model"
+    },
+    {
+      "id": "skill-library",
+      "name": "Skill Library",
+      "era": 5,
+      "domain": "meta",
+      "description": "Reusable procedures the agent loads on demand, so expertise is not retyped per session",
+      "requires": ["file-editing"],
+      "detect": { "any": ["^skill:"] },
+      "setup_seconds": 900,
+      "hint": "Write a SKILL.md for a workflow you explain more than twice"
+    },
+    {
+      "id": "parallel-execution",
+      "name": "Parallel Execution",
+      "era": 5,
+      "domain": "meta",
+      "description": "Several agents working at once on independent pieces",
+      "requires": ["subagents"],
+      "optional": ["local-tool-calling"],
+      "detect": { "any": ["parallel", "fan-?out", "swarm", "orchestrat", "workflow"] },
+      "setup_seconds": 1800,
+      "hint": "Split a broad task across subagents that do not touch the same files"
+    },
+    {
+      "id": "scheduled-work",
+      "name": "Scheduled Work",
+      "era": 5,
+      "domain": "devops",
+      "description": "Agents that run on a schedule or a trigger, without you starting them",
+      "requires": ["subagents"],
+      "detect": { "any": ["cron", "schedul", "trigger", "webhook", "queue"] },
+      "setup_seconds": 1800,
+      "hint": "Move a recurring check onto a schedule instead of remembering to run it"
+    },
+    {
+      "id": "notifications",
+      "name": "Notifications",
+      "era": 5,
+      "domain": "infra",
+      "description": "Long-running work can reach you when it finishes or needs a decision",
+      "requires": ["scheduled-work"],
+      "detect": { "any": ["ntfy", "pushover", "slack", "discord", "telegram", "notif"] },
+      "setup_seconds": 600,
+      "hint": "Add a push channel so background agents can surface results"
+    },
+
+    {
+      "id": "automated-tests",
+      "name": "Automated Tests",
+      "era": 6,
+      "domain": "quality",
+      "description": "A suite the agent can run to check its own work",
+      "requires": ["code-intelligence"],
+      "detect": { "any": ["vitest", "jest", "pytest", "playwright", "cypress", "^tool:test", "testing"] },
+      "setup_seconds": 1800,
+      "hint": "Give the agent a test command it can run unprompted"
+    },
+    {
+      "id": "review-loop",
+      "name": "Review Loop",
+      "era": 6,
+      "domain": "quality",
+      "description": "A second agent checks the first one's output before you see it",
+      "requires": ["subagents", "automated-tests"],
+      "detect": { "any": ["review", "critic", "audit", "gatekeeper", "guardian", "verif"] },
+      "setup_seconds": 900,
+      "hint": "Add a reviewer subagent with a different prompt and a mandate to disagree"
+    },
+    {
+      "id": "evaluation",
+      "name": "Evaluation",
+      "era": 6,
+      "domain": "quality",
+      "description": "Agent output measured against known-good cases rather than judged by vibes",
+      "requires": ["review-loop"],
+      "detect": { "any": ["\\beval", "benchmark", "golden", "regression-?suite"] },
+      "setup_seconds": 3600,
+      "hint": "Collect cases where the agent failed and turn them into a suite you can re-run"
+    },
+    {
+      "id": "observability",
+      "name": "Observability",
+      "era": 6,
+      "domain": "quality",
+      "description": "Traces of what agents did, so failures are diagnosable after the fact",
+      "requires": ["automated-tests"],
+      "detect": { "any": ["langfuse", "langsmith", "otel", "opentelemetry", "datadog", "sentry", "netdata", "trace"] },
+      "setup_seconds": 1800,
+      "hint": "Log agent runs somewhere you can query later"
+    },
+    {
+      "id": "continuous-delivery",
+      "name": "Continuous Delivery",
+      "era": 6,
+      "domain": "devops",
+      "description": "Agent changes ship through the same gate as human ones",
+      "requires": ["version-control", "automated-tests"],
+      "detect": { "any": ["actions", "\\bci\\b", "wrangler", "vercel", "netlify", "deploy", "docker", "fly\\.io"] },
+      "setup_seconds": 1800,
+      "hint": "Put agent commits behind CI so nothing merges unverified"
+    },
+
+    {
+      "id": "local-embeddings",
+      "name": "Local Embeddings",
+      "era": 7,
+      "domain": "ai-ml",
+      "description": "Retrieval that never sends your text to a third party",
+      "requires": ["embeddings", "local-runtime"],
+      "detect": { "any": ["nomic-embed", "bge-.*local", "local.*embed", "embed.*local"] },
+      "setup_seconds": 900,
+      "hint": "Run the embedding model locally — nomic-embed or bge-small are small enough"
+    },
+    {
+      "id": "offline-capable",
+      "name": "Offline Capable",
+      "era": 7,
+      "domain": "ai-ml",
+      "description": "The full loop — inference, tools, retrieval — runs with the network off",
+      "requires": ["local-tool-calling", "local-embeddings"],
+      "detect": { "any": ["offline", "air-?gap"] },
+      "setup_seconds": 3600,
+      "hint": "Verify the agent still completes a real task with the network disabled"
+    },
+    {
+      "id": "private-data-handling",
+      "name": "Private Data Handling",
+      "era": 7,
+      "domain": "security",
+      "description": "Sensitive material is processed only by models you control",
+      "requires": ["local-tool-calling", "secret-management"],
+      "detect": { "any": ["private", "redact", "\\bpii\\b", "sanitiz", "local-only"] },
+      "setup_seconds": 1800,
+      "hint": "Route work touching sensitive data to local models by policy, not by habit"
+    },
+    {
+      "id": "self-hosted-stack",
+      "name": "Self-Hosted Stack",
+      "era": 7,
+      "domain": "infra",
+      "description": "Your own hardware serving models and tools to your agents",
+      "requires": ["local-runtime", "observability"],
+      "detect": { "any": ["tailscale", "homelab", "^device:", "proxmox", "unraid", "k3s", "self-?host"] },
+      "setup_seconds": 7200,
+      "hint": "Move inference onto a machine you own and reach it over a private network"
+    }
+  ]
+}

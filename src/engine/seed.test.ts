@@ -15,8 +15,20 @@ function seed(config: unknown): Database {
   const configPath = join(dir, 'config.json');
   const dbPath = join(dir, 'graph.db');
   writeFileSync(configPath, JSON.stringify(config));
+  // Seeding also scans the machine's skill directories, which would let the
+  // developer's own setup decide these assertions. Override the mapping with
+  // the stock config keys and no skill dirs so each case is hermetic.
+  const mapping = JSON.stringify({
+    config_keys: {
+      mcp: { type: 'mcp', domain_field: 'type', domain_map: { remote: 'backend', local: 'infra' }, desc_template: '{type} server' },
+      agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
+      provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
+      command: { type: 'tool', domain: 'devops', desc_field: 'description' },
+    },
+    skill_dirs: [],
+  });
   execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: { ...process.env, OPENCODE_CONFIG: configPath, TOOLCHAIN_DB: dbPath },
+    env: { ...process.env, OPENCODE_CONFIG: configPath, TOOLCHAIN_DB: dbPath, CONFIG_MAPPING: mapping },
     stdio: 'ignore',
   });
   return new Database(dbPath);
@@ -107,4 +119,53 @@ test('seeding is idempotent — re-running adds no duplicate edges', () => {
   const second = seed(config); // same dir, same db path
   const after = (second.prepare('SELECT COUNT(*) n FROM dependencies').get() as any).n;
   expect(after).toBe(before);
+});
+
+test('the curated tech tree places a minimal setup at the bottom of the tree', () => {
+  const db = seed({ provider: { acme: { models: { 'fast-1': {} } } } });
+
+  // Everyone gets the same tree; only placement differs.
+  const nodes = rows(db, "SELECT id, state FROM capabilities WHERE category = 'combo'");
+  expect(nodes.length).toBeGreaterThan(20);
+
+  const state = (id: string) => nodes.find(n => n.id === `combo:${id}`)?.state;
+  expect(state('shell-execution')).toBe('unlocked');   // seeded as a base tool
+  expect(state('hosted-inference')).toBe('unlocked');  // a provider exists
+  expect(state('local-runtime')).toBe('locked');       // nothing local configured
+  expect(state('offline-capable')).toBe('locked');     // far up the tree
+});
+
+test('a local-first setup unlocks the local branch', () => {
+  const db = seed({
+    provider: { ollama: { models: { 'qwen3-coder': {} } } },
+    mcp: { playwright: {} },
+  });
+  const state = (id: string) =>
+    (rows(db, "SELECT id, state FROM capabilities WHERE category = 'combo'")
+      .find(n => n.id === `combo:${id}`) || {}).state;
+
+  expect(state('local-runtime')).toBe('unlocked');      // ollama detected
+  expect(state('local-tool-calling')).toBe('unlocked'); // qwen is tool-capable
+  expect(state('browser-automation')).toBe('unlocked'); // playwright
+});
+
+test('a node is never unlocked while its prerequisites are not', () => {
+  // The tree must not contradict itself — this guards the era-ordered pass.
+  const db = seed({ provider: { acme: {} }, agent: { x: { description: 'offline air-gap work' } } });
+  const byId = new Map(
+    rows(db, "SELECT id, state FROM capabilities WHERE category = 'combo'").map(n => [n.id, n.state])
+  );
+  const reqs = rows(db, `SELECT from_capability f, to_capability t FROM dependencies
+                         WHERE description = 'Tech tree prerequisite'`);
+  for (const { f, t } of reqs) {
+    if (byId.get(t) === 'unlocked') expect(byId.get(f)).toBe('unlocked');
+  }
+});
+
+test('detection does not match short tokens inside unrelated words', () => {
+  // "ci" once matched agent:commercial-validation and agent:brief-decision,
+  // unlocking Continuous Delivery for a setup with no CI at all.
+  const db = seed({ agent: { 'commercial-decision-writer': { description: 'writes' } } });
+  const cd = rows(db, "SELECT state FROM capabilities WHERE id = 'combo:continuous-delivery'");
+  expect(cd[0]?.state).toBe('locked');
 });

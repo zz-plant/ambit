@@ -10,7 +10,7 @@ You added an MCP server eight months ago. Is it still doing anything? Which of y
 
 `opencode.json` can't answer that. It's a flat file with no history and no edges — every entry looks equally load-bearing whether you use it hourly or added it once and forgot.
 
-Capability Graph reads that config and builds a structure that can answer it: every capability as a typed node with a domain, a maturity score that decays when things go unmaintained, and a timestamp on every change. Then it gives you a terminal, an agent, and a visual to ask questions of.
+Capability Graph reads that config, maps it onto a curated tech tree of agent capabilities, and tells you where you actually are: what you have reached, what is one step away, and what you have half-built without noticing. Local models get a full branch of their own, from "a runtime is installed" to "the whole loop runs with the network off".
 
 ## Quick Start
 
@@ -38,17 +38,46 @@ Installing...
 
 To see what it would find without building anything, run `./bootstrap.sh --dry-run`.
 
-### What seeding builds
+### The tech tree
 
-Seeding reads your config and writes both nodes and the edges the config states outright:
+Seeding places you on a curated tree of AI-agent capabilities. Like a Civ tech tree, it is authored content: everyone gets the same tree and differs only in where they are on it. Nothing to define before it works.
+
+Seven eras, from Foundation up to Sovereignty:
 
 ```
-provider:acme  ──requires──▶  model:acme/fast-1  ──requires──▶  agent:writer
+1 Foundation    shell · files · code intelligence · version control
+2 Model Access  hosted inference · local runtime · local tool calling ·
+                extended context · model routing
+3 Tool Use      MCP · browser automation · web research · secrets · data access
+4 Memory        embeddings · vector store · retrieval · persistent memory ·
+                context compaction
+5 Autonomy      subagents · skills · parallel execution · scheduling ·
+                notifications
+6 Assurance     tests · review loop · evaluation · observability · CD
+7 Sovereignty   local embeddings · offline capable · private data ·
+                self-hosted stack
 ```
 
-A provider is a hard prerequisite for the models it serves; a model is a hard prerequisite for any agent pinned to it. Those relationships are declared in `opencode.json`, so they are read rather than guessed. That is what makes `tt bottlenecks`, `tt impact`, and `tt health` return something on a first run — for example, a local provider showing as a bottleneck because six models and two agents fall over if it goes away.
+The local-model path is a full spine of its own — local runtime, tool calling that actually works, extended context, local embeddings, and finally running the whole loop with the network off.
 
-**Combos are not inferred.** A combo says "these capabilities together unlock something," which is a judgement about your work, not a fact in a config file — so the engine will not invent one. Define them and the unlock analyses (`tt combos`, `tt near`, `tt fork`) light up; leave them undefined and those commands return empty, which is accurate rather than broken:
+Each node is matched against what your config already contains, so a run tells you three things:
+
+- **Reached** — something in your setup provides it, and the graph records which capability proved it
+- **Next** — prerequisites met, nothing detected yet. This is what `tt near` and `tt insight` surface, with a hint for how to get there
+- **Blocked** — you have the tooling but a prerequisite is missing. Usually the most useful thing it says: *"Retrieval — configured, but Vector Store is not in place yet"*
+
+```
+$ tt near
+Local Embeddings — 1 dependency away (70% existing maturity). Add Embeddings
+```
+
+The tree also gives `tt impact` something real to reason about: remove a provider and it can tell you which models, agents, and capabilities fall over with it.
+
+Toggle **TECH TREE** in the visualizer to see it as a map, with locked nodes drawn as outlines.
+
+Seeding writes the edges your config states outright too — a provider is a hard prerequisite for the models it serves, and a model for any agent pinned to it. Those are read from `opencode.json`, not guessed.
+
+**Adding your own.** The curated tree is a starting point, not a ceiling. Define combos for capabilities specific to your work and they join the same analyses:
 
 ```json
 {
@@ -63,7 +92,7 @@ A provider is a hard prerequisite for the models it serves; a model is a hard pr
 }
 ```
 
-Add that block to `opencode.json` (or to `CONFIG_MAPPING`) and re-run `./bootstrap.sh`. Prerequisites that don't resolve to a real capability are skipped, so a typo yields a missing combo rather than a permanently unreachable one.
+Prerequisites that don't resolve to a real capability are skipped, so a typo yields a missing combo rather than an unreachable one.
 
 Then start the visualizer:
 
@@ -78,6 +107,7 @@ Homebrew (`brew install zz-plant/tap/capability-graph`) installs the `tt` CLI on
 | Component | What it does |
 |---|---|
 | **Visualizer** | Four layout modes: ERAS (era-column tech tree with hover tooltips, prerequisite highlighting, and a type filter), CONSTELLATION (3D hex map), ORBITAL (concentric shells by type), and FLAT (2D force-directed). Inline legend, DOCS modal, one-click PNG export. |
+| **Tech tree** | A curated tree of 33 agent capabilities across 7 eras, matched against your config — what you have reached, what is next, and what is blocked. |
 | **CLI** | 14 commands for querying the graph from a terminal — see [CLI reference](#cli-reference). |
 | **MCP server** | 17 tools your agent can call inside an OpenCode session — see [MCP reference](#mcp-reference). |
 | **Tracking plugin** | Records configuration changes: what you build, connect, keep, and remove. Not invocation counts. Installs to `~/.config/opencode/plugins/`. |
@@ -155,6 +185,8 @@ toolchain-viz.db       ←─ capabilities · dependencies · session_learning
         │       ├── /api/infrastructure/scan  device and service topology
         │       ├── /api/snapshots          saved graph states
         │       └── /api/trending           newly published MCP servers
+        │
+        │       └── /api/tech-tree          the graph, for the visualizer
         │
         ├──► src/mcp/server.ts      ←─ 17 MCP tools, JSON-RPC over stdio
         │

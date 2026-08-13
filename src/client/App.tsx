@@ -217,6 +217,10 @@ export default function App() {
   const [importText, setImportText] = useState('');
   const [showImport, setShowImport] = useState(false);
 
+  const loadTechTree = useToolchainStore(s => s.loadTechTree);
+  const loadConfigSource = useToolchainStore(s => s.loadConfig);
+  const [source, setSource] = useState<'config' | 'tree'>('config');
+
   const captureGraph = () => {
     const svg = document.querySelector<SVGSVGElement>('.app-scene svg');
     if (!svg) return;
@@ -321,6 +325,16 @@ export default function App() {
         <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle panel"> {leftOpen ? '◀' : '▶'} </button>
         <button className="app-hud-btn" onClick={() => { setShowDocs(true); setShowGuide(false); }} style={{fontWeight:600,fontSize:9,letterSpacing:1}}>DOCS</button>
         <button className="app-hud-btn" onClick={captureGraph}>📷</button>
+        <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
+          {([['config', 'CONFIG'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
+            <button key={id} className="app-hud-btn"
+              style={{ width:'auto', padding:'0 8px', border:'none', background: source === id ? 'var(--accent)' : 'transparent', color: source === id ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: source === id ? 700 : 'normal', fontSize:'9px', height:'22px' }}
+              onClick={() => { setSource(id); id === 'tree' ? loadTechTree() : loadConfigSource(); }}
+              title={id === 'tree' ? 'Curated capability tree — what you have reached and what is next' : 'Your config as a graph'}>
+              {label}
+            </button>
+          ))}
+        </div>
         {selectedId && (<button className="app-hud-btn" onClick={() => selectItem(null)} title="Deselect"> ✕ </button>)}
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
           {LAYOUT_MODES.map(({ id: m, label, title }) => (

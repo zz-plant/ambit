@@ -93,6 +93,7 @@ interface StoreState {
   loadConfig: () => Promise<void>;
   toggleMcpEnabled: (name: string, enabled: boolean) => Promise<boolean>;
   buildMcpSnippet: (name: string, mcpConfig: any) => Promise<{ snippet: string; configPath: string } | null>;
+  loadTechTree: () => Promise<boolean>;
   applyFindingAction: (action: { type: string; target: string }) => Promise<boolean>;
 
   runConsultant: (id: string) => void;
@@ -530,6 +531,27 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   // Returns a snippet to paste rather than writing the config. An MCP entry
   // carries a command OpenCode executes, so it must not be reachable through an
   // HTTP request — see the security note in AGENTS.md.
+  // Loads the engine's graph — the curated tech tree plus the user's own
+  // capabilities — instead of the config-derived view. Locked nodes arrive as
+  // 'specified', which the renderers already draw as not-yet-built.
+  loadTechTree: async () => {
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch('/api/tech-tree');
+      if (!res.ok) {
+        set({ error: 'No graph yet. Run ./bootstrap.sh to seed one.', loading: false });
+        return false;
+      }
+      const { items, connections } = await res.json();
+      set({ items, connections, loading: false, error: null });
+      get().layoutItems();
+      return true;
+    } catch (e) {
+      set({ error: 'Tech tree unavailable: ' + (e as Error).message, loading: false });
+      return false;
+    }
+  },
+
   buildMcpSnippet: async (name: string, mcpConfig: any) => {
     try {
       const res = await fetch('/api/config/mcp-snippet', {

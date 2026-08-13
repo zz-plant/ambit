@@ -5,6 +5,10 @@ import { execFileSync } from 'node:child_process';
 const DB_PATH = Bun.env.HOME + '/.config/opencode/toolchain-viz.db';
 const CONFIG_PATH = Bun.env.HOME + '/.config/opencode/opencode.json';
 const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
+// The graph the engine builds. Its default lives beside the engine (and is what
+// bootstrap.sh writes), which is not where this server keeps its own snapshot
+// database — reading DB_PATH here would silently return an empty tree.
+const GRAPH_DB_PATH = Bun.env.TOOLCHAIN_DB || process.cwd() + '/toolchain-viz.db';
 const INFRA_MANIFEST_PATH = Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
 const API_PORT = 3001;
 
@@ -443,6 +447,54 @@ const server = Bun.serve({
         configPath: CONFIG_PATH,
         snippet: JSON.stringify({ mcp: { [name]: { ...body.config, enabled: true } } }, null, 2),
       }, { headers });
+    }
+
+    // GET /api/tech-tree — the engine's capability graph, including the curated
+    // tech tree, in the shape the visualizer already renders.
+    if (url.pathname === '/api/tech-tree' && req.method === 'GET') {
+      if (!existsSync(GRAPH_DB_PATH)) {
+        return Response.json(
+          { error: 'No graph yet. Run ./bootstrap.sh to seed one.', items: [], connections: [] },
+          { status: 404, headers }
+        );
+      }
+      // Not { readonly: true }: the engine puts this database in WAL mode, and
+      // SQLite must write the -shm sidecar even to read one, so a readonly
+      // handle fails with SQLITE_CANTOPEN. Only SELECTs are issued below.
+      const graph = new Database(GRAPH_DB_PATH);
+      try {
+        const caps = graph.query(
+          'SELECT id, name, domain, description, category, state, maturity_score, unlock_cost_setup FROM capabilities'
+        ).all() as any[];
+        const deps = graph.query(
+          'SELECT from_capability, to_capability, is_hard_requisite FROM dependencies'
+        ).all() as any[];
+
+        const items = caps.map(c => ({
+          id: c.id,
+          name: c.name,
+          // Locked tech-tree nodes render as the 'specified' (wireframe) state,
+          // which is how the visualizer already draws something not yet built.
+          type: c.category === 'combo' ? 'possibility' : (c.category === 'mcp' ? 'mcp-server' : c.category),
+          status: c.state === 'locked' ? 'specified' : 'built',
+          description: c.description,
+          position: { x: 0, y: 0, z: 0 },
+          meta: {
+            domain: c.domain,
+            maturity: c.maturity_score,
+            state: c.state,
+            setupSeconds: c.unlock_cost_setup,
+          },
+        }));
+        const connections = deps.map(d => ({
+          from: d.from_capability,
+          to: d.to_capability,
+          type: d.is_hard_requisite ? 'hard-dep' : 'soft-dep',
+        }));
+        return Response.json({ items, connections }, { headers });
+      } finally {
+        graph.close();
+      }
     }
 
     // GET /api/infrastructure/scan — read-only device/service topology
