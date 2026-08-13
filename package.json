@@ -2,7 +2,7 @@
   "name": "ambit",
   "version": "0.4.0",
   "private": false,
-  "description": "The combined action space of you, your agents, and your machines \u2014 and a way to grow it deliberately",
+  "description": "A capability model and planning layer for personal agent infrastructure",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"bun run server\" \"vite\"",
@@ -38,11 +38,12 @@
   "bin": "./cli.js",
   "keywords": [
     "capability-graph",
-    "tech-tree",
-    "agents",
+    "agent-infrastructure",
     "mcp",
-    "opencode",
-    "local-models",
+    "mcp-server",
+    "local-llm",
+    "dependency-graph",
+    "planning",
     "developer-tools"
   ],
   "repository": {

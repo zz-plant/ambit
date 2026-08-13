@@ -2,59 +2,95 @@
 
 # Ambit
 
-**The combined action space of you, your agents, and your machines — and a way to grow it deliberately.**
+**A capability model and planning layer for personal agent infrastructure.**
 
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-22%2B-43853d?style=flat-square)](https://nodejs.org)
 [![Bun](https://img.shields.io/badge/bun-runtime-fbf0df?style=flat-square)](https://bun.sh)
-[![Local first](https://img.shields.io/badge/server-loopback%20only-b8860b?style=flat-square)](#security)
+[![Server](https://img.shields.io/badge/server-loopback%20only-b8860b?style=flat-square)](#security)
 
-[**Live demo**](https://zz-plant.github.io/ambit/) · [Quick start](#quick-start) · [Roadmap](./ROADMAP.md) · [CLI](#cli-reference)
-
-<img src="docs/assets/screenshot-tree.png" alt="Ambit tech tree: seven era columns from Foundation to Sovereignty, with reached capabilities filled, researchable ones outlined in teal with time estimates, and locked ones faded" width="900">
-
-<sub>Seven eras, left to right. Filled = reached · dashed teal = researchable now, with what it costs · faded = still locked.</sub>
+[**Live demo**](https://zz-plant.github.io/ambit/) · [Quick start](#quick-start) · [Roadmap](./ROADMAP.md) · [CLI](#cli-reference) · [MCP](#mcp-reference)
 
 </div>
 
----
+## Know what your agent stack can actually do
 
-You added an MCP server eight months ago. Is it still doing anything? Which of your agents point at a model you have since stopped using? What did you connect last quarter and never touch again?
+Ambit builds a capability graph across your agents, tools, models, and infrastructure — so you can inspect dependencies, see what is merely configured versus actually working, and reason about what to add next.
 
-`opencode.json` cannot answer that. It is a flat file with no history and no edges, where every entry looks equally load-bearing whether you use it hourly or added it once and forgot.
+You have six agents, eleven MCP servers, three model providers, a GPU box, a handful of scheduled jobs, and some custom skills. Which capabilities are available to which agents? Which are only declared? What breaks if one provider goes away? What are you one dependency away from being able to do?
 
-Ambit reads that config, places it on a curated tech tree of agent capabilities, and tells you where you actually are: what you have reached, what is one step away, and what you have half-built without noticing.
+Nothing in the stack answers that. Config files say what is *declared*. Observability says what *ran*. IAM says what is *permitted*. Service discovery says what *exists*. Agent frameworks say what one runtime can *call*. None of them say:
 
-<table>
-<tr><td width="33%" valign="top">
+> **What can this whole system reliably do, why can it do it, and what would change that?**
 
-**Reached**
+<div align="center">
+<img src="docs/assets/screenshot-tree.png" alt="Ambit capability graph: seven columns from Foundation to Sovereignty, with reached capabilities filled, currently-reachable ones outlined with time estimates, and unreachable ones faded" width="900">
+<br><sub>Filled = effective · outlined = reachable now, with setup cost · faded = blocked by a missing prerequisite</sub>
+</div>
 
-Something in your config provides it, and the graph records which capability proved it.
+## Capabilities compose, and Ambit derives that
 
-</td><td width="33%" valign="top">
+The value is not knowing that eleven capabilities exist. It is that they compose, and no config file states the composition. Run against a real setup, `tt near` reports what the graph puts within reach:
 
-**Researchable**
+```console
+$ tt near
 
-Prerequisites met, nothing configured yet — with an estimate of what it costs to take.
+  Local Embeddings
+    missing: 1
+    met count: 1
+    total required: 2
+    met maturity: 70
+    investment: Add Embeddings
+```
 
-</td><td width="33%" valign="top">
+One dependency away, and the dependency it names — Embeddings — gates four further capabilities: Vector Store, Retrieval, Local Embeddings, Offline Capable. `tt bottlenecks` ranks capabilities by exactly that.
 
-**Blocked**
+More useful is where composition *fails*. Capabilities you have already half-built carry the reason in the graph:
 
-You have the tooling but a prerequisite is missing. Usually the most informative of the three.
+```
+Retrieval          configured, but Vector Store is not in place yet
+Offline Capable    configured, but Local Embeddings is not in place yet
+Self-Hosted Stack  configured, but Observability is not in place yet
+```
 
-</td></tr>
-</table>
+Nothing declared those. They fall out of the dependency structure — a semantic-search agent with no vector store configured, an offline path with no local embedding model. That state is the most informative of the three, and it is invisible in every file you own.
 
-### Why it is not called a visualiser
+## Effective capability
 
-The graph is a means, not the point. The thing worth modelling is not *the tools you own* — it is what you, your agents, and your hardware can jointly do, and which cheap changes would let you do more.
+The object Ambit models is not the configured capability but the effective one.
 
-That reframes the question an agent can ask. Not only *what capabilities exist*, but *what could we become capable of next*, and eventually *given what you are trying to accomplish, what should we change about ourselves*.
+*Configured* is "there is a Playwright MCP." *Effective* is "this agent can currently navigate and inspect a rendered application, under these credentials and network conditions, with this observed reliability."
 
-Today Ambit answers the first question well and the second in a limited way: it can tell you what is one dependency away and what would break if a given thing disappeared. It cannot yet take a goal, compute the gap, and propose routes across it. That is [the roadmap](./ROADMAP.md), and the distinction is deliberate — this file describes only what runs.
+```
+installed  ≠  callable  ≠  working  ≠  reliable  ≠  authorized  ≠  appropriate
+```
+
+Today Ambit models the first three of those distinctions and records which capability provided the evidence. Verification and authority are the next two layers — see [ROADMAP.md](./ROADMAP.md).
+
+Infrastructure enters the model the same way: a GPU host is not a capability, it is a resource that can *bear* one. Ambit treats machines as capability-bearing rather than as a separate inventory, which is what lets it observe that a host is technically capable of serving local embeddings while no agent has a routable path to it.
+
+Human actions are modelled as legitimate dependencies, not as failures of automation. A path can require agent work, then approval, then physical intervention, then agent verification. The objective is not maximum autonomy — it is minimum *unnecessary* human coordination.
+
+## What Ambit is not
+
+| | why not |
+|---|---|
+| An MCP marketplace | the question is not "what should I install" |
+| Agent orchestration | it does not own the runtime |
+| Observability | traces are evidence *about* capability, not the model of it |
+| A CMDB | a CMDB models assets; Ambit models actionability |
+| IAM | permissions are one determinant of effective capability |
+| A homelab dashboard | machines are resources that provide possible capabilities |
+| A benchmark dashboard | evals establish whether a supposed capability deserves to be trusted |
+
+Ambit takes what is currently scattered across configuration, topology, permissions, runtime evidence, and human knowledge, and makes **capability** the first-class object connecting them.
+
+## The graph is queryable by your agents
+
+The same model is exposed over MCP, so an agent can begin a task by asking what means exist for accomplishing it rather than rediscovering the environment every session. See the [MCP reference](#mcp-reference).
+
+Longer term this is what makes capability acquisition explicit: when a task falls outside the current action space, derive what is missing, compare ways to add it, and verify that the result actually works. That is [the roadmap](./ROADMAP.md), and none of it is built — this file describes only what runs.
 
 ## Quick Start
 
@@ -82,9 +118,9 @@ Installing...
 
 To see what it would find without building anything, run `./bootstrap.sh --dry-run`.
 
-### The tech tree
+### The reference model
 
-Seeding places you on a curated tree of AI-agent capabilities. Like a Civ tech tree, it is authored content: everyone gets the same tree and differs only in where they are on it. Nothing to define before it works.
+Seeding places your setup against a curated model of agent capabilities and their prerequisites. It is authored content — everyone is measured against the same model and differs only in position on it — which is what makes it work with nothing to define first. The visualiser renders it as era columns, so progression reads left to right.
 
 Seven eras, from Foundation up to Sovereignty:
 
