@@ -58,6 +58,20 @@
       "seen": "tt combos, tt near, tt fork"
     },
     {
+      "key": "evidence",
+      "term": "Verified",
+      "short": "Proven to work, not just configured",
+      "long": "Detection proves a name appears in a config file. Verification runs a declared read-only check and records the result, so a capability can be said to work rather than to exist. Reliability is the share of recorded runs that passed, which is why the history is kept: one success is a weaker claim than forty-seven of fifty. Checks execute, so they live in the repository and run only when asked — never on seed.",
+      "seen": "tt verify, tt evidence"
+    },
+    {
+      "key": "authority",
+      "term": "Authority",
+      "short": "Whether it may run, not whether it can",
+      "long": "Being technically able to perform an action is not permission to perform it. Authority is tracked separately per capability — observe and execute, each autonomous, confirm, or forbidden — so a reached capability can still require approval. This is what lets a larger technical surface stay governable: the limits are explicit rather than implied.",
+      "seen": "tt authority"
+    },
+    {
       "key": "frontier",
       "term": "Frontier",
       "short": "What the system can do, as of a moment",

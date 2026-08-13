@@ -16,9 +16,25 @@
       "era": 1,
       "domain": "infra",
       "description": "The agent can run commands and read their output",
-      "detect": { "any": ["^tool:bash$"] },
+      "detect": {
+        "any": [
+          "^tool:bash$"
+        ]
+      },
       "setup_seconds": 0,
-      "hint": "Built in to OpenCode"
+      "hint": "Built in to OpenCode",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "echo ambit"
+        ],
+        "timeout_seconds": 10
+      },
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm"
+      }
     },
     {
       "id": "file-editing",
@@ -26,9 +42,25 @@
       "era": 1,
       "domain": "meta",
       "description": "The agent can read and modify files directly",
-      "detect": { "any": ["^tool:edit$"] },
+      "detect": {
+        "any": [
+          "^tool:edit$"
+        ]
+      },
       "setup_seconds": 0,
-      "hint": "Built in to OpenCode"
+      "hint": "Built in to OpenCode",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "test -w ."
+        ],
+        "timeout_seconds": 10
+      },
+      "authority": {
+        "observe": "autonomous",
+        "execute": "autonomous"
+      }
     },
     {
       "id": "code-intelligence",
@@ -36,10 +68,24 @@
       "era": 1,
       "domain": "quality",
       "description": "Language-server diagnostics, so the agent sees errors as an IDE would",
-      "requires": ["file-editing"],
-      "detect": { "any": ["^tool:lsp$"] },
+      "requires": [
+        "file-editing"
+      ],
+      "detect": {
+        "any": [
+          "^tool:lsp$"
+        ]
+      },
       "setup_seconds": 120,
-      "hint": "Enable LSP for the languages you work in"
+      "hint": "Enable LSP for the languages you work in",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v tsc || command -v pyright || command -v gopls"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "version-control",
@@ -47,20 +93,45 @@
       "era": 1,
       "domain": "devops",
       "description": "Git operations, so agent work is reviewable and revertible",
-      "requires": ["shell-execution"],
-      "detect": { "any": ["\\bgit\\b", "github", "gitlab"] },
+      "requires": [
+        "shell-execution"
+      ],
+      "detect": {
+        "any": [
+          "\\bgit\\b",
+          "github",
+          "gitlab"
+        ]
+      },
       "setup_seconds": 300,
-      "hint": "Add a git or GitHub MCP server so the agent can branch, diff, and open PRs"
+      "hint": "Add a git or GitHub MCP server so the agent can branch, diff, and open PRs",
+      "verify": {
+        "command": [
+          "git",
+          "--version"
+        ],
+        "timeout_seconds": 10
+      },
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm"
+      }
     },
-
     {
       "id": "hosted-inference",
       "name": "Hosted Inference",
       "era": 2,
       "domain": "ai-ml",
       "description": "At least one hosted model provider configured",
-      "requires": ["shell-execution"],
-      "detect": { "any": ["^provider:(?!local)", "^model:(?!local)"] },
+      "requires": [
+        "shell-execution"
+      ],
+      "detect": {
+        "any": [
+          "^provider:(?!local)",
+          "^model:(?!local)"
+        ]
+      },
       "setup_seconds": 300,
       "hint": "Configure a provider with an API key"
     },
@@ -69,22 +140,60 @@
       "name": "Local Runtime",
       "era": 2,
       "domain": "ai-ml",
-      "description": "A model server running on your own hardware — Ollama, llama.cpp, MLX, or LiteRT",
-      "requires": ["shell-execution"],
-      "detect": { "any": ["ollama", "llamacpp", "llama-cpp", "mlx", "litert", "lmstudio", "vllm", "^provider:local", "gguf", "q4_k", "q5_k", "q6_k", "q8_0"] },
+      "description": "A model server running on your own hardware \u2014 Ollama, llama.cpp, MLX, or LiteRT",
+      "requires": [
+        "shell-execution"
+      ],
+      "detect": {
+        "any": [
+          "ollama",
+          "llamacpp",
+          "llama-cpp",
+          "mlx",
+          "litert",
+          "lmstudio",
+          "vllm",
+          "^provider:local",
+          "gguf",
+          "q4_k",
+          "q5_k",
+          "q6_k",
+          "q8_0"
+        ]
+      },
       "setup_seconds": 1800,
-      "hint": "Install Ollama (or llama.cpp / MLX on Apple silicon) and pull one model"
+      "hint": "Install Ollama (or llama.cpp / MLX on Apple silicon) and pull one model",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "curl -sf -m 3 http://127.0.0.1:11434/api/tags >/dev/null || curl -sf -m 3 http://127.0.0.1:8080/health >/dev/null"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "local-tool-calling",
       "name": "Local Tool Calling",
       "era": 2,
       "domain": "ai-ml",
-      "description": "A local model that reliably emits tool calls — the threshold where local models stop being chat toys and start doing agent work",
-      "requires": ["local-runtime"],
-      "detect": { "any": ["qwen", "hermes", "firefunction", "command-r", "mistral-nemo", "llama-?3\\.[123]", "gpt-oss"] },
+      "description": "A local model that reliably emits tool calls \u2014 the threshold where local models stop being chat toys and start doing agent work",
+      "requires": [
+        "local-runtime"
+      ],
+      "detect": {
+        "any": [
+          "qwen",
+          "hermes",
+          "firefunction",
+          "command-r",
+          "mistral-nemo",
+          "llama-?3\\.[123]",
+          "gpt-oss"
+        ]
+      },
       "setup_seconds": 900,
-      "hint": "Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls — many local models claim support and fail in practice"
+      "hint": "Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls \u2014 many local models claim support and fail in practice"
     },
     {
       "id": "extended-context",
@@ -92,10 +201,19 @@
       "era": 2,
       "domain": "ai-ml",
       "description": "A model configured well past the default window, so long files and sessions survive",
-      "requires": ["local-tool-calling"],
-      "detect": { "any": ["\\b(32k|64k|128k|200k|256k|1m)\\b", "-32768", "-65536", "-131072"] },
+      "requires": [
+        "local-tool-calling"
+      ],
+      "detect": {
+        "any": [
+          "\\b(32k|64k|128k|200k|256k|1m)\\b",
+          "-32768",
+          "-65536",
+          "-131072"
+        ]
+      },
       "setup_seconds": 600,
-      "hint": "Set an explicit context limit per model — most runtimes silently default to 4K and truncate"
+      "hint": "Set an explicit context limit per model \u2014 most runtimes silently default to 4K and truncate"
     },
     {
       "id": "model-routing",
@@ -103,21 +221,35 @@
       "era": 2,
       "domain": "ai-ml",
       "description": "More than one model available, with agents pinned to the right tier for their work",
-      "requires": ["hosted-inference"],
-      "optional": ["local-runtime"],
-      "detect": { "any": ["^agent:.*"], "min_models": 2 },
+      "requires": [
+        "hosted-inference"
+      ],
+      "optional": [
+        "local-runtime"
+      ],
+      "detect": {
+        "any": [
+          "^agent:.*"
+        ],
+        "min_models": 2
+      },
       "setup_seconds": 600,
       "hint": "Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning"
     },
-
     {
       "id": "tool-protocol",
       "name": "Tool Protocol",
       "era": 3,
       "domain": "backend",
       "description": "At least one MCP server, giving the agent capabilities beyond its own context",
-      "requires": ["shell-execution"],
-      "detect": { "any": ["^mcp:"] },
+      "requires": [
+        "shell-execution"
+      ],
+      "detect": {
+        "any": [
+          "^mcp:"
+        ]
+      },
       "setup_seconds": 600,
       "hint": "Add your first MCP server"
     },
@@ -126,11 +258,29 @@
       "name": "Browser Automation",
       "era": 3,
       "domain": "frontend",
-      "description": "The agent can drive a real browser — see rendered pages, click, and verify its own UI work",
-      "requires": ["tool-protocol"],
-      "detect": { "any": ["playwright", "puppeteer", "browser", "chrome", "selenium"] },
+      "description": "The agent can drive a real browser \u2014 see rendered pages, click, and verify its own UI work",
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "playwright",
+          "puppeteer",
+          "browser",
+          "chrome",
+          "selenium"
+        ]
+      },
       "setup_seconds": 900,
-      "hint": "Add a Playwright or browser MCP server so the agent can check its own frontend changes"
+      "hint": "Add a Playwright or browser MCP server so the agent can check its own frontend changes",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v chromium || ls /Applications/Google\\ Chrome.app >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "web-research",
@@ -138,10 +288,30 @@
       "era": 3,
       "domain": "meta",
       "description": "Live search and fetch, so the agent is not limited to its training cutoff",
-      "requires": ["tool-protocol"],
-      "detect": { "any": ["search", "fetch", "exa", "tavily", "perplexity", "brave", "firecrawl"] },
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "search",
+          "fetch",
+          "exa",
+          "tavily",
+          "perplexity",
+          "brave",
+          "firecrawl"
+        ]
+      },
       "setup_seconds": 300,
-      "hint": "Add a search or fetch MCP server"
+      "hint": "Add a search or fetch MCP server",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "curl -sf -m 5 https://example.com >/dev/null"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "secret-management",
@@ -149,10 +319,25 @@
       "era": 3,
       "domain": "security",
       "description": "Credentials resolved from a vault or env references instead of literals in config",
-      "requires": ["tool-protocol"],
-      "detect": { "any": ["1password", "vault", "bitwarden", "doppler", "keychain", "sops"] },
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "1password",
+          "vault",
+          "bitwarden",
+          "doppler",
+          "keychain",
+          "sops"
+        ]
+      },
       "setup_seconds": 900,
-      "hint": "Move API keys out of opencode.json into a vault or environment references"
+      "hint": "Move API keys out of opencode.json into a vault or environment references",
+      "authority": {
+        "observe": "confirm",
+        "execute": "forbidden"
+      }
     },
     {
       "id": "data-access",
@@ -160,20 +345,46 @@
       "era": 3,
       "domain": "backend",
       "description": "The agent can query real data rather than reasoning about schemas it cannot see",
-      "requires": ["tool-protocol"],
-      "detect": { "any": ["postgres", "sqlite", "mysql", "d1", "bigquery", "duckdb", "supabase", "database"] },
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "postgres",
+          "sqlite",
+          "mysql",
+          "d1",
+          "bigquery",
+          "duckdb",
+          "supabase",
+          "database"
+        ]
+      },
       "setup_seconds": 600,
-      "hint": "Connect a database MCP server, ideally read-only to start"
+      "hint": "Connect a database MCP server, ideally read-only to start",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm"
+      }
     },
-
     {
       "id": "embeddings",
       "name": "Embeddings",
       "era": 4,
       "domain": "ai-ml",
-      "description": "Text can be turned into vectors — the prerequisite for any retrieval",
-      "requires": ["hosted-inference"],
-      "detect": { "any": ["embed", "bge-", "nomic", "minilm", "gte-"] },
+      "description": "Text can be turned into vectors \u2014 the prerequisite for any retrieval",
+      "requires": [
+        "hosted-inference"
+      ],
+      "detect": {
+        "any": [
+          "embed",
+          "bge-",
+          "nomic",
+          "minilm",
+          "gte-"
+        ]
+      },
       "setup_seconds": 600,
       "hint": "Configure an embedding model; a small local one is usually enough"
     },
@@ -183,10 +394,23 @@
       "era": 4,
       "domain": "backend",
       "description": "Somewhere to keep and search those vectors",
-      "requires": ["embeddings"],
-      "detect": { "any": ["vectorize", "pinecone", "qdrant", "weaviate", "chroma", "lancedb", "pgvector", "milvus"] },
+      "requires": [
+        "embeddings"
+      ],
+      "detect": {
+        "any": [
+          "vectorize",
+          "pinecone",
+          "qdrant",
+          "weaviate",
+          "chroma",
+          "lancedb",
+          "pgvector",
+          "milvus"
+        ]
+      },
       "setup_seconds": 900,
-      "hint": "Add a vector store — pgvector or a local LanceDB is enough to start"
+      "hint": "Add a vector store \u2014 pgvector or a local LanceDB is enough to start"
     },
     {
       "id": "retrieval",
@@ -194,8 +418,17 @@
       "era": 4,
       "domain": "ai-ml",
       "description": "The agent pulls relevant context on demand instead of being handed everything up front",
-      "requires": ["vector-store"],
-      "detect": { "any": ["\\brag\\b", "retriev", "knowledge-?base", "semantic-?search"] },
+      "requires": [
+        "vector-store"
+      ],
+      "detect": {
+        "any": [
+          "\\brag\\b",
+          "retriev",
+          "knowledge-?base",
+          "semantic-?search"
+        ]
+      },
       "setup_seconds": 1800,
       "hint": "Wire retrieval into a skill or agent so context is fetched rather than pasted"
     },
@@ -205,8 +438,17 @@
       "era": 4,
       "domain": "meta",
       "description": "Facts survive between sessions, so the agent stops relearning your setup every time",
-      "requires": ["tool-protocol"],
-      "detect": { "any": ["memory", "recall", "mem0", "zep"] },
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "memory",
+          "recall",
+          "mem0",
+          "zep"
+        ]
+      },
       "setup_seconds": 900,
       "hint": "Add a memory MCP server or a durable notes file the agent reads on start"
     },
@@ -216,20 +458,34 @@
       "era": 4,
       "domain": "meta",
       "description": "Long sessions summarize instead of falling over at the context limit",
-      "requires": ["extended-context"],
-      "detect": { "any": ["compact", "summariz", "lifeline", "checkpoint"] },
+      "requires": [
+        "extended-context"
+      ],
+      "detect": {
+        "any": [
+          "compact",
+          "summariz",
+          "lifeline",
+          "checkpoint"
+        ]
+      },
       "setup_seconds": 600,
       "hint": "Enable session compaction so long-running work survives the window"
     },
-
     {
       "id": "subagents",
       "name": "Subagents",
       "era": 5,
       "domain": "meta",
       "description": "Named agents with their own prompts and models, delegated to for specific work",
-      "requires": ["model-routing"],
-      "detect": { "any": ["^agent:"] },
+      "requires": [
+        "model-routing"
+      ],
+      "detect": {
+        "any": [
+          "^agent:"
+        ]
+      },
       "setup_seconds": 600,
       "hint": "Define your first subagent with a narrow job and its own model"
     },
@@ -239,8 +495,14 @@
       "era": 5,
       "domain": "meta",
       "description": "Reusable procedures the agent loads on demand, so expertise is not retyped per session",
-      "requires": ["file-editing"],
-      "detect": { "any": ["^skill:"] },
+      "requires": [
+        "file-editing"
+      ],
+      "detect": {
+        "any": [
+          "^skill:"
+        ]
+      },
       "setup_seconds": 900,
       "hint": "Write a SKILL.md for a workflow you explain more than twice"
     },
@@ -250,11 +512,27 @@
       "era": 5,
       "domain": "meta",
       "description": "Several agents working at once on independent pieces",
-      "requires": ["subagents"],
-      "optional": ["local-tool-calling"],
-      "detect": { "any": ["parallel", "fan-?out", "swarm", "orchestrat", "workflow"] },
+      "requires": [
+        "subagents"
+      ],
+      "optional": [
+        "local-tool-calling"
+      ],
+      "detect": {
+        "any": [
+          "parallel",
+          "fan-?out",
+          "swarm",
+          "orchestrat",
+          "workflow"
+        ]
+      },
       "setup_seconds": 1800,
-      "hint": "Split a broad task across subagents that do not touch the same files"
+      "hint": "Split a broad task across subagents that do not touch the same files",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "autonomous"
+      }
     },
     {
       "id": "scheduled-work",
@@ -262,10 +540,24 @@
       "era": 5,
       "domain": "devops",
       "description": "Agents that run on a schedule or a trigger, without you starting them",
-      "requires": ["subagents"],
-      "detect": { "any": ["cron", "schedul", "trigger", "webhook", "queue"] },
+      "requires": [
+        "subagents"
+      ],
+      "detect": {
+        "any": [
+          "cron",
+          "schedul",
+          "trigger",
+          "webhook",
+          "queue"
+        ]
+      },
       "setup_seconds": 1800,
-      "hint": "Move a recurring check onto a schedule instead of remembering to run it"
+      "hint": "Move a recurring check onto a schedule instead of remembering to run it",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm"
+      }
     },
     {
       "id": "notifications",
@@ -273,22 +565,52 @@
       "era": 5,
       "domain": "infra",
       "description": "Long-running work can reach you when it finishes or needs a decision",
-      "requires": ["scheduled-work"],
-      "detect": { "any": ["ntfy", "pushover", "slack", "discord", "telegram", "notif"] },
+      "requires": [
+        "scheduled-work"
+      ],
+      "detect": {
+        "any": [
+          "ntfy",
+          "pushover",
+          "slack",
+          "discord",
+          "telegram",
+          "notif"
+        ]
+      },
       "setup_seconds": 600,
       "hint": "Add a push channel so background agents can surface results"
     },
-
     {
       "id": "automated-tests",
       "name": "Automated Tests",
       "era": 6,
       "domain": "quality",
       "description": "A suite the agent can run to check its own work",
-      "requires": ["code-intelligence"],
-      "detect": { "any": ["vitest", "jest", "pytest", "playwright", "cypress", "^tool:test", "testing"] },
+      "requires": [
+        "code-intelligence"
+      ],
+      "detect": {
+        "any": [
+          "vitest",
+          "jest",
+          "pytest",
+          "playwright",
+          "cypress",
+          "^tool:test",
+          "testing"
+        ]
+      },
       "setup_seconds": 1800,
-      "hint": "Give the agent a test command it can run unprompted"
+      "hint": "Give the agent a test command it can run unprompted",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "test -f package.json && grep -q '\"test\"' package.json"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "review-loop",
@@ -296,8 +618,20 @@
       "era": 6,
       "domain": "quality",
       "description": "A second agent checks the first one's output before you see it",
-      "requires": ["subagents", "automated-tests"],
-      "detect": { "any": ["review", "critic", "audit", "gatekeeper", "guardian", "verif"] },
+      "requires": [
+        "subagents",
+        "automated-tests"
+      ],
+      "detect": {
+        "any": [
+          "review",
+          "critic",
+          "audit",
+          "gatekeeper",
+          "guardian",
+          "verif"
+        ]
+      },
       "setup_seconds": 900,
       "hint": "Add a reviewer subagent with a different prompt and a mandate to disagree"
     },
@@ -307,8 +641,17 @@
       "era": 6,
       "domain": "quality",
       "description": "Agent output measured against known-good cases rather than judged by vibes",
-      "requires": ["review-loop"],
-      "detect": { "any": ["\\beval", "benchmark", "golden", "regression-?suite"] },
+      "requires": [
+        "review-loop"
+      ],
+      "detect": {
+        "any": [
+          "\\beval",
+          "benchmark",
+          "golden",
+          "regression-?suite"
+        ]
+      },
       "setup_seconds": 3600,
       "hint": "Collect cases where the agent failed and turn them into a suite you can re-run"
     },
@@ -318,8 +661,21 @@
       "era": 6,
       "domain": "quality",
       "description": "Traces of what agents did, so failures are diagnosable after the fact",
-      "requires": ["automated-tests"],
-      "detect": { "any": ["langfuse", "langsmith", "otel", "opentelemetry", "datadog", "sentry", "netdata", "trace"] },
+      "requires": [
+        "automated-tests"
+      ],
+      "detect": {
+        "any": [
+          "langfuse",
+          "langsmith",
+          "otel",
+          "opentelemetry",
+          "datadog",
+          "sentry",
+          "netdata",
+          "trace"
+        ]
+      },
       "setup_seconds": 1800,
       "hint": "Log agent runs somewhere you can query later"
     },
@@ -329,31 +685,66 @@
       "era": 6,
       "domain": "devops",
       "description": "Agent changes ship through the same gate as human ones",
-      "requires": ["version-control", "automated-tests"],
-      "detect": { "any": ["actions", "\\bci\\b", "wrangler", "vercel", "netlify", "deploy", "docker", "fly\\.io"] },
+      "requires": [
+        "version-control",
+        "automated-tests"
+      ],
+      "detect": {
+        "any": [
+          "actions",
+          "\\bci\\b",
+          "wrangler",
+          "vercel",
+          "netlify",
+          "deploy",
+          "docker",
+          "fly\\.io"
+        ]
+      },
       "setup_seconds": 1800,
-      "hint": "Put agent commits behind CI so nothing merges unverified"
+      "hint": "Put agent commits behind CI so nothing merges unverified",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm"
+      }
     },
-
     {
       "id": "local-embeddings",
       "name": "Local Embeddings",
       "era": 7,
       "domain": "ai-ml",
       "description": "Retrieval that never sends your text to a third party",
-      "requires": ["embeddings", "local-runtime"],
-      "detect": { "any": ["nomic-embed", "bge-.*local", "local.*embed", "embed.*local"] },
+      "requires": [
+        "embeddings",
+        "local-runtime"
+      ],
+      "detect": {
+        "any": [
+          "nomic-embed",
+          "bge-.*local",
+          "local.*embed",
+          "embed.*local"
+        ]
+      },
       "setup_seconds": 900,
-      "hint": "Run the embedding model locally — nomic-embed or bge-small are small enough"
+      "hint": "Run the embedding model locally \u2014 nomic-embed or bge-small are small enough"
     },
     {
       "id": "offline-capable",
       "name": "Offline Capable",
       "era": 7,
       "domain": "ai-ml",
-      "description": "The full loop — inference, tools, retrieval — runs with the network off",
-      "requires": ["local-tool-calling", "local-embeddings"],
-      "detect": { "any": ["offline", "air-?gap"] },
+      "description": "The full loop \u2014 inference, tools, retrieval \u2014 runs with the network off",
+      "requires": [
+        "local-tool-calling",
+        "local-embeddings"
+      ],
+      "detect": {
+        "any": [
+          "offline",
+          "air-?gap"
+        ]
+      },
       "setup_seconds": 3600,
       "hint": "Verify the agent still completes a real task with the network disabled"
     },
@@ -363,10 +754,25 @@
       "era": 7,
       "domain": "security",
       "description": "Sensitive material is processed only by models you control",
-      "requires": ["local-tool-calling", "secret-management"],
-      "detect": { "any": ["private", "redact", "\\bpii\\b", "sanitiz", "local-only"] },
+      "requires": [
+        "local-tool-calling",
+        "secret-management"
+      ],
+      "detect": {
+        "any": [
+          "private",
+          "redact",
+          "\\bpii\\b",
+          "sanitiz",
+          "local-only"
+        ]
+      },
       "setup_seconds": 1800,
-      "hint": "Route work touching sensitive data to local models by policy, not by habit"
+      "hint": "Route work touching sensitive data to local models by policy, not by habit",
+      "authority": {
+        "observe": "confirm",
+        "execute": "confirm"
+      }
     },
     {
       "id": "self-hosted-stack",
@@ -374,10 +780,27 @@
       "era": 7,
       "domain": "infra",
       "description": "Your own hardware serving models and tools to your agents",
-      "requires": ["local-runtime", "observability"],
-      "detect": { "any": ["tailscale", "homelab", "^device:", "proxmox", "unraid", "k3s", "self-?host"] },
+      "requires": [
+        "local-runtime",
+        "observability"
+      ],
+      "detect": {
+        "any": [
+          "tailscale",
+          "homelab",
+          "^device:",
+          "proxmox",
+          "unraid",
+          "k3s",
+          "self-?host"
+        ]
+      },
       "setup_seconds": 7200,
-      "hint": "Move inference onto a machine you own and reach it over a private network"
+      "hint": "Move inference onto a machine you own and reach it over a private network",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm"
+      }
     }
   ]
 }

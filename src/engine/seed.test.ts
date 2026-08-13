@@ -295,3 +295,63 @@ test('skills symlinked into a runtime directory are discovered', () => {
   const db = new Database(dbPath);
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'skill:deploying'").length).toBe(1);
 });
+
+// ── Verification, authority, planning ───────────────────────────────────────
+
+test('verification records evidence rather than trusting configuration', () => {
+  seed(LOCAL_ONLY).close();
+  // shell-execution's declared check is `echo`, so this is deterministic.
+  const first = cli('verify', 'shell-execution');
+  expect(first.results[0].status).toBe('verified');
+  expect(first.results[0].reliability).toBe('1/1');
+
+  // Evidence accumulates: one success is a weaker claim than several.
+  cli('verify', 'shell-execution');
+  const evidence = cli('evidence', 'shell-execution');
+  expect(evidence.length).toBe(2);
+  expect(evidence.every((e: any) => e.action === 'verified')).toBe(true);
+});
+
+test('a capability with no declared check is not reported as verified', () => {
+  seed(LOCAL_ONLY).close();
+  const r = cli('verify', 'retrieval');
+  expect(r.results[0].status).toBe('unverifiable');
+  // And it leaves no evidence, so nothing later mistakes it for a passing run.
+  expect(cli('evidence', 'retrieval').length).toBe(0);
+});
+
+test('authority is tracked apart from whether a capability is reached', () => {
+  seed(LOCAL_ONLY).close();
+  const a = cli('authority');
+  // Reached and permitted are different claims: shell execution is available
+  // on any machine and still should not run unattended.
+  expect(a.needs_approval).toContain('Shell Execution');
+  expect(a.forbidden).toContain('Secret Management');
+  expect(a.autonomous).not.toContain('Shell Execution');
+});
+
+test('planning orders the prerequisites of an unreached capability', () => {
+  seed(LOCAL_ONLY).close();
+  const p = cli('plan', 'offline-capable');
+  expect(p.steps).toBeGreaterThan(0);
+  const order = p.order.map((o: any) => o.id);
+  // Embeddings gates Local Embeddings, so it has to come first.
+  expect(order.indexOf('combo:embeddings')).toBeLessThan(order.indexOf('combo:local-embeddings'));
+  expect(p.estimated_setup).toMatch(/\d+(m|\.\dh)/);
+});
+
+test('planning a capability already reached says so instead of inventing steps', () => {
+  seed(LOCAL_ONLY).close();
+  const p = cli('plan', 'shell-execution');
+  expect(p.reachable).toBe(true);
+  expect(p.missing).toEqual([]);
+});
+
+test('a flag is not mistaken for a command argument', () => {
+  // `tt verify --json` looked for a capability named "--json"; every command
+  // taking both an argument and a flag inherited that.
+  seed(LOCAL_ONLY).close();
+  const all = cli('verify');
+  expect(all.checked).toBeGreaterThan(1);
+  expect(all.error).toBeUndefined();
+});

@@ -106,7 +106,7 @@ rollback:
 
 At that point the tech tree behaves less like a diagram and more like a package manager for agency.
 
-## 4. Detection becomes verification
+## 4. Detection becomes verification — partly built
 
 Today detection is regex against discovered configuration. That is a reasonable bootstrap, and it is honest about what it proves — *something named Ollama exists* — but it does not prove an agent can use Ollama to finish a task.
 
@@ -126,9 +126,13 @@ Local Tool Calling
   reliable:  47/50 fixture tasks passed
 ```
 
-This philosophy is already latent in the tree — the Local Tool Calling node exists precisely because models claim tool support and fail in practice. Section 4 is making that universal.
+Built: nodes may declare a read-only `verify` command; `tt verify` runs it and records the outcome in `session_learning`, which had carried the right columns since the first schema and had no writer. `tt evidence <id>` returns the history, and reliability is reported as passes over runs — one success is a weaker claim than forty-seven of fifty. Eight nodes declare a check today.
 
-## 5. Goal → capability delta
+Checks execute, so they live in this repository, are read-only by construction, and run only when asked. Nothing verifies on seed.
+
+Unbuilt: the lifecycle above is not yet a stored state — a capability is still `reached` or not, with evidence alongside rather than promoting it. Verification also does not yet gate anything: a capability with a failing check still reads as reached.
+
+## 5. Goal → capability delta — partly built
 
 The headline capability of the mature system. Given a goal, compute the gap and the routes across it:
 
@@ -147,7 +151,16 @@ plan("maintain homelab unattended")
                                                    regret-if-abandoned high
 ```
 
-This is `near` + `fork` + `budget` + `bottlenecks` generalised from configuration into means-end planning. The analytical primitives already exist; what is missing is a goal to point them at.
+Built for the narrow case: `tt plan <capability>` walks hard prerequisites depth-first and returns them in the order they must be closed, with an estimate.
+
+```console
+$ tt plan offline-capable
+  goal: Offline Capable · steps: 2 · estimated setup: 25m
+  1. Embeddings        10m
+  2. Local Embeddings  15m
+```
+
+Unbuilt: the goal must be a capability the model already knows. A free-form goal — "maintain the homelab unattended" — still has no route in, and comparing *alternative* paths with their risks and lock-in is untouched. That is the substance of this section.
 
 ## 6. Failure becomes an input
 
@@ -214,7 +227,7 @@ Do not model "Claude has tool X, Hermes has tool Y". Model what each runtime *pr
 
 The point is durability. You stop maintaining a setup for one assistant and start maintaining a capability fabric that different intelligences attach to — which matters more each time the model landscape shifts.
 
-## 9. Authority as a first-class edge
+## 9. Authority as a first-class edge — partly built
 
 The server already refuses to create MCP entries because those entries contain commands that get executed, binds to loopback, and rejects foreign origins. That boundary should be **generalised, never weakened**.
 
@@ -232,6 +245,10 @@ docker-container-management
 ```
 
 This is not guardrails instead of capability. Granular, legible authority is what makes it safe to grant a much larger total action surface — the agent can be given more precisely because the limits are explicit.
+
+Built: ten nodes declare `authority` with `observe` and `execute`, each autonomous, confirm, or forbidden. `tt authority` splits reached capabilities into what may run unattended and what may not — Shell Execution is reached everywhere and still gated; Secret Management is forbidden outright.
+
+Unbuilt: authority is declared per capability rather than derived from the runtime that would execute it, though Hermes states its own (`approvals.mode`, `approvals.cron_mode`) and the adapter already reads it. Nothing enforces any of this — Ambit describes authority, it does not mediate action.
 
 ## 10. A second-generation MCP
 
@@ -311,6 +328,6 @@ do real work → discover friction → identify the capability deficit
 
 ## Honest status
 
-Sections 1–2 are data-model work the current schema can mostly absorb. Sections 3–5 are the substance and are not started. Section 7 is built. Sections 8–11 depend on 3–5 and are sketches, not designs.
+Sections 1–2 are data-model work the current schema can mostly absorb. Section 3 is not started; 4, 5 and 9 have narrow implementations with their unbuilt halves recorded under each. Section 7 is built. Sections 8–11 depend on 3–5 and are sketches, not designs.
 
 The gap between this document and the README is deliberate. The README describes only what runs.

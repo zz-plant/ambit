@@ -24,6 +24,11 @@ if (cmd === "--help" || cmd === "help") {
     tt near              What is one step away from where I am?
     tt explain           What do the terms in this tool mean?
 
+  ${B}Is it real${R}
+    tt verify [id]       Run the declared check; record what happened
+    tt evidence <id>     Verification history for one capability
+    tt authority         What may run unattended, and what may not
+
   ${B}Where am I${R}
     tt stats             Counts by domain, overall maturity
     tt health            Per-domain composite scores
@@ -32,6 +37,7 @@ if (cmd === "--help" || cmd === "help") {
 
   ${B}What next${R}
     tt insight           Top actions, ranked
+    tt plan <id>         What is missing for this, in order
     tt combos            Capabilities whose prerequisites are met
     tt fork              Compare candidates by efficiency
     tt bottlenecks       What the most things depend on
