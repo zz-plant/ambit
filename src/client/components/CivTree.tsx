@@ -86,7 +86,11 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         ))}
       </div>
 
-      <svg width="100%" height={contentHeight} viewBox={`0 0 ${START_X + colOrder.length * COL_W + 60} ${contentHeight}`}
+      {/* xMinYMin: the default centres the viewBox, and once the tallest column
+          makes the graph taller than it is wide, that centring pushes every node
+          below the fold — the canvas looks empty until you scroll past the gap. */}
+      <svg width="100%" height={contentHeight} preserveAspectRatio="xMinYMin meet"
+        viewBox={`0 0 ${START_X + colOrder.length * COL_W + 60} ${contentHeight}`}
         style={{ background: '#f5e6c8', marginTop: 32 }}>
         
         {/* Era column bands */}

@@ -95,6 +95,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
 
   count += seedModels(db, config, insert);
   seedDependencies(db, config);
+  count += seedTechTree(db, insert);
   count += seedCombos(db, config, mapping, insert);
 
   return count;
@@ -165,6 +166,108 @@ function seedDependencies(db: Db, config: any): number {
       // Model not declared in config; the provider dependency still holds.
       link.run(`provider:${provider}`, `agent:${name}`, 1, 'Agent pinned to provider');
       count++;
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Places the user on the curated capability tree in techtree.json.
+ *
+ * The tree is authored content, the way a Civ tech tree is: everyone gets the
+ * same one and differs only in where they are on it. That is what makes the
+ * unlock analyses work without the user hand-authoring the interesting half —
+ * previously they returned empty until someone wrote their own combos.
+ *
+ * Each node is matched against the ids already seeded from the user's config:
+ *   detected                        → unlocked, with an edge from what proved it
+ *   prerequisites met, not detected → locked, and surfaced as researchable next
+ *   prerequisites unmet             → locked, further out
+ *
+ * Nodes are stored with a `combo:` prefix and category, because that is what
+ * the existing unlock analyses select on.
+ */
+function seedTechTree(db: Db, insert: any): number {
+  let tree: any;
+  try {
+    tree = JSON.parse(readFileSync(join(__dirname, "techtree.json"), "utf8"));
+  } catch {
+    return 0; // A missing or unreadable tree degrades to config-only seeding.
+  }
+
+  const owned: string[] = db
+    .prepare("SELECT id FROM capabilities WHERE id NOT LIKE 'combo:%'")
+    .all()
+    .map((r: any) => r.id);
+  const modelCount = owned.filter(id => id.startsWith('model:')).length;
+
+  const link = db.prepare(
+    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, ?, ?)"
+  );
+
+  // Which of the user's capabilities, if any, prove each node.
+  const evidence = new Map<string, string[]>();
+  for (const node of tree.nodes || []) {
+    const patterns: string[] = node.detect?.any || [];
+    const hits = owned.filter(id =>
+      patterns.some(p => {
+        try { return new RegExp(p, 'i').test(id); } catch { return false; }
+      })
+    );
+    const meetsMin = !node.detect?.min_models || modelCount >= node.detect.min_models;
+    evidence.set(node.id, hits.length && meetsMin ? hits : []);
+  }
+
+  // Resolve in era order so a node's prerequisites are settled before it is.
+  // Without this the tree contradicts itself — reporting Offline Capable as
+  // reached while Local Embeddings, which it requires, is still locked.
+  const ordered = [...(tree.nodes || [])].sort((a: any, b: any) => (a.era || 0) - (b.era || 0));
+  const unlocked = new Set<string>();
+
+  let count = 0;
+  for (const node of ordered) {
+    const id = `combo:${node.id}`;
+    const proof = evidence.get(node.id) || [];
+    const missing: string[] = (node.requires || []).filter((r: string) => !unlocked.has(r));
+    const reached = proof.length > 0 && missing.length === 0;
+    if (reached) unlocked.add(node.id);
+
+    // Having the tooling for a node whose prerequisites are unmet is the most
+    // useful thing the tree can tell you, so say it rather than hiding it.
+    const blocked = proof.length > 0 && missing.length > 0;
+    const names = (ids: string[]) =>
+      ids.map(r => (tree.nodes.find((n: any) => n.id === r)?.name || r)).join(', ');
+    const description = reached
+      ? node.description
+      : blocked
+        ? `${node.description} — configured, but ${names(missing)} is not in place yet`
+        : `${node.description} — ${node.hint || ''}`.trim();
+
+    insert.run(
+      id,
+      node.name,
+      node.domain || 'meta',
+      description,
+      'combo',
+      reached ? 'unlocked' : 'locked',
+      reached ? 0.7 : 0
+    );
+    db.prepare("UPDATE capabilities SET unlock_cost_setup = ?, unlock_cost_tokens = ? WHERE id = ?")
+      .run(node.setup_seconds || 0, node.tokens || 0, id);
+    count++;
+
+    // Edges from the user's own capabilities to the node they unlock, so
+    // `tt impact` can answer what breaks if a given tool goes away.
+    for (const hit of proof.slice(0, 6)) {
+      link.run(hit, id, 1, 'Provides this capability');
+    }
+    // Tier progression between tree nodes.
+    for (const req of node.requires || []) {
+      link.run(`combo:${req}`, id, 1, 'Tech tree prerequisite');
+    }
+    for (const opt of node.optional || []) {
+      link.run(`combo:${opt}`, id, 0, 'Strengthens this capability');
     }
   }
 
