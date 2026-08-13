@@ -4,6 +4,9 @@
   "private": false,
   "description": "A capability model and planning layer for personal agent infrastructure",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"bun run server\" \"vite\"",
     "build": "bun run typecheck && vite build",

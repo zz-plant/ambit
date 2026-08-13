@@ -1,0 +1,124 @@
+name: Release
+
+# Releasing was entirely manual: tag, write notes, then hand-edit the Homebrew
+# tap's url, version and checksum. Every manual step is a step that gets skipped,
+# which is how the tap drifts behind the repo and how the formula ended up with
+# no sha256 at all. Pushing a v* tag now does the mechanical parts.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)publish, e.g. v0.4.1'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      sha256: ${{ steps.meta.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # A release that fails its own checks should not exist.
+      - name: Verify
+        run: |
+          bun test
+          bun run build
+
+      - name: Tag and checksum
+        id: meta
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # The exact tarball Homebrew downloads, so the checksum is the one the
+          # formula needs rather than one computed over something else.
+          URL="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz"
+          curl -fsSL "$URL" -o source.tar.gz
+          echo "sha256=$(sha256sum source.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Check the version matches the tag
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "$TAG" ]; then
+            echo "package.json is $PKG but the tag is $TAG — bump one of them."
+            exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          SHA: ${{ steps.meta.outputs.sha256 }}
+        run: |
+          # Release notes are written by hand — they explain what changed and
+          # why, which nothing here can generate. If a release already exists
+          # for this tag, keep its notes and only attach the formula details.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; leaving its notes alone."
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
+          echo "Formula values for the tap:"
+          echo "  url    https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz"
+          echo "  sha256 ${SHA}"
+
+  tap:
+    needs: release
+    runs-on: ubuntu-latest
+    # Needs a token with write access to zz-plant/homebrew-tap; without it the
+    # release still succeeds and prints the two values to paste by hand.
+    if: ${{ github.repository_owner == 'zz-plant' }}
+    steps:
+      - name: Update the Homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.TAP_TOKEN }}
+          TAG: ${{ needs.release.outputs.tag }}
+          SHA: ${{ needs.release.outputs.sha256 }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "No TAP_TOKEN secret set — skipping. Formula values are in the release job's log."
+            exit 0
+          fi
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/zz-plant/homebrew-tap" tap
+          cd tap
+          VERSION="${TAG#v}"
+          python3 - "$VERSION" "$SHA" <<'PY'
+          import re, sys
+          version, sha = sys.argv[1], sys.argv[2]
+          path = 'Formula/ambit.rb'
+          f = open(path).read()
+          f = re.sub(r'url "[^"]*"', f'url "https://github.com/zz-plant/ambit/archive/refs/tags/v{version}.tar.gz"', f)
+          f = re.sub(r'version "[^"]*"', f'version "{version}"', f)
+          if 'sha256 "' in f:
+              f = re.sub(r'sha256 "[^"]*"', f'sha256 "{sha}"', f)
+          else:
+              # The formula shipped without one, so brew warned that it could
+              # not verify what it was installing. Add it next to the url.
+              f = re.sub(r'(url "[^"]*"\n)', rf'\1  sha256 "{sha}"\n', f)
+          open(path, 'w').write(f)
+          PY
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -am "ambit ${VERSION}"
+          git push
