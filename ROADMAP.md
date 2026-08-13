@@ -8,6 +8,19 @@ Nothing below is implemented unless it appears in the README. Sections are order
 
 ---
 
+## Four layers
+
+Ordered by ambition. Each is defensible on its own; each depends on the one above it.
+
+| | | status |
+|---|---|---|
+| **1 · Inventory** | discover the capabilities implicit in configuration and infrastructure, model their dependencies, costs, and failure cascades | shipping |
+| **2 · Assurance** | distinguish *configured* from *demonstrated* — `installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate` | §3–4 |
+| **3 · Planning** | given a desired outcome, compute the capability delta and compare paths that close it | §5 |
+| **4 · Reflexive infrastructure** | agents use the model to improve the environment they themselves operate in | §6–10 |
+
+"Reflexive infrastructure" rather than "self-improving": the system can inspect the conditions of its own action and propose modifications to them, and a human approves every one.
+
 ## The change in one line
 
 > A capability is not something configured. A capability is an action the system has evidence it can perform.
