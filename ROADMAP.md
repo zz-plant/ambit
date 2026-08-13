@@ -61,7 +61,7 @@ Netdata MCP    SSH / shell
 
 Once providers are separate, `tt fork` stops comparing capabilities and starts comparing **ways of obtaining the same capability** — which is the comparison that actually matters when deciding what to build.
 
-## 2. Put the human and the machines in the graph
+## 2. Put the human and the machines in the graph — partly built
 
 The interesting unit is not the agent. It is **user + agent population + infrastructure**, and each brings something the others cannot.
 
@@ -78,6 +78,10 @@ human:kanav
 Hardware stops being "some computers" and becomes addressable capacity: 24GB of always-on VRAM reachable over Tailscale is *latent local inference, embeddings, browser workers, and batch evaluation* — and the graph can then observe that you already own most of what private semantic search requires.
 
 The payoff is that a plan can include the human as a step. Instead of "I can't do that", the answer becomes: *eight of these ten steps are mine; you need to authorise the device and press the reset button; then I finish and verify the rest.*
+
+Built: an `actors` block seeds people as nodes. `provides` becomes a capability only that person supplies; `authorizes` becomes a hard prerequisite edge, so `tt plan continuous-delivery` reports `requires_person: Kanav` rather than presenting the path as autonomous. Approval is a dependency, not a policy note.
+
+Unbuilt: preferences, cost and risk tolerance are not modelled, so nothing reasons about *which* human should be asked or when a step is worth their attention. Machines are in the graph through the infrastructure manifest but are not yet capability-bearing in the way §1 requires.
 
 ## 3. Acquisition recipes
 
@@ -265,7 +269,15 @@ cg_opportunities  cg_compound
 
 `cg_simulate_acquisition` matters as much as `cg_plan`: showing the graph as it *would* be, before anything changes, is what makes approval meaningful rather than ceremonial.
 
-## 11. The visualiser becomes a negotiating surface
+## 11. The visualiser becomes a negotiating surface — transport built
+
+Ambit implements the state subset of [AG-UI](https://docs.ag-ui.com), the Agent-User Interaction protocol: `/api/events` streams `RunStarted` and `StateSnapshot` over SSE, and the client reloads when the graph changes underneath it. The immediate benefit is a view that does not go stale when a seed or an adapter rewrites the graph; the durable one is that the transport an agent would use to propose a change, and a human to approve it, already speaks a standard vocabulary rather than one invented here.
+
+Not implemented: runs, messages, tool calls, reasoning events, and `StateDelta` (RFC 6902 patches). Snapshots are correct and this graph is small enough that patches would be an optimisation. Calling Ambit "AG-UI compatible" would overstate it — it implements a subset deliberately.
+
+**A2UI was evaluated and rejected.** It is a generative UI specification: agents describe components and the front end renders them. Ambit's interface is a designed visual grammar — era columns, three states, dependency edges, a legend — and its legibility is the product. Letting an agent improvise components would replace a representation that was reasoned about with one that is generated per response. A2UI suits surfaces where the agent's output shape is unknown in advance; here it is known and deliberate.
+
+
 
 Today it explains the graph to you. It should become where you and an agent agree on changes to your shared capability:
 

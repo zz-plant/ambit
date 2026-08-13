@@ -355,3 +355,55 @@ test('a flag is not mistaken for a command argument', () => {
   expect(all.checked).toBeGreaterThan(1);
   expect(all.error).toBeUndefined();
 });
+
+// ── People ──────────────────────────────────────────────────────────────────
+
+const WITH_PEOPLE = {
+  provider: { ollama: { models: { 'qwen3-coder': {} } } },
+  actors: {
+    kanav: {
+      name: 'Kanav',
+      provides: ['physical-access', 'approve-purchases'],
+      authorizes: ['combo:continuous-delivery'],
+    },
+  },
+};
+
+test('people are nodes, and what they supply becomes a capability', () => {
+  const db = seed(WITH_PEOPLE);
+  const person = rows(db, "SELECT id, category, state FROM capabilities WHERE id = 'human:kanav'");
+  expect(person[0]?.category).toBe('human');
+
+  const supplied = rows(db, "SELECT id FROM capabilities WHERE category = 'human-action'").map(r => r.id);
+  expect(supplied).toContain('act:physical-access');
+
+  const edges = rows(db, `SELECT to_capability t FROM dependencies
+                          WHERE from_capability = 'human:kanav' AND description = 'Supplied by a person'`);
+  expect(edges.map(e => e.t)).toContain('act:physical-access');
+});
+
+test('approval is a dependency, not a policy note', () => {
+  const db = seed(WITH_PEOPLE);
+  const gated = rows(db, `SELECT from_capability f FROM dependencies
+                          WHERE to_capability = 'combo:continuous-delivery'
+                          AND description = 'Requires approval from a person'`);
+  expect(gated.map(g => g.f)).toContain('human:kanav');
+});
+
+test('a plan names the person a step depends on', () => {
+  seed(WITH_PEOPLE).close();
+  const plan = cli('plan', 'continuous-delivery');
+  // A plan that hides the human step reads as autonomous when it is not.
+  expect(plan.requires_person).toContain('Kanav');
+});
+
+test('authorizing a capability that does not exist leaves no dangling edge', () => {
+  const db = seed({
+    provider: { acme: {} },
+    actors: { sam: { name: 'Sam', authorizes: ['combo:nonexistent'] } },
+  });
+  const dangling = rows(db, `SELECT d.to_capability t FROM dependencies d
+                             LEFT JOIN capabilities c ON c.id = d.to_capability
+                             WHERE c.id IS NULL`);
+  expect(dangling).toEqual([]);
+});

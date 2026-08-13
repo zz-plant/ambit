@@ -450,6 +450,83 @@ const server = Bun.serve({
       }, { headers });
     }
 
+
+    // GET /api/events — AG-UI shaped state stream.
+    //
+    // AG-UI is the Agent-User Interaction protocol: an event stream over SSE
+    // carrying state between an agentic backend and a front end. Ambit
+    // implements its state subset — StateSnapshot on connect, and again when
+    // the graph changes — which makes the visualiser live and, more usefully,
+    // means the transport for an agent proposing a capability change and a
+    // human approving it already speaks a standard vocabulary rather than one
+    // invented here. See ROADMAP §11.
+    //
+    // This is not full AG-UI: no runs, messages, tool calls or reasoning
+    // events, and StateDelta (RFC 6902 patches) is not implemented — snapshots
+    // are correct and the graph is small enough that patches would be an
+    // optimisation, not a fix.
+    if (url.pathname === '/api/events' && req.method === 'GET') {
+      const encoder = new TextEncoder();
+      let timer: ReturnType<typeof setInterval> | undefined;
+
+      const stream = new ReadableStream({
+        start(controller) {
+          const send = (type: string, payload: Record<string, unknown>) => {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type, timestamp: Date.now(), ...payload })}\n\n`)
+            );
+          };
+
+          const snapshot = () => {
+            if (!existsSync(GRAPH_DB_PATH)) return { reached: 0, total: 0, observations: 0 };
+            const graph = new Database(GRAPH_DB_PATH);
+            // Queried separately and guarded separately. A single try around
+            // both meant a database predating frontier_snapshots threw on the
+            // second query and zeroed the counts from the first — reporting an
+            // empty graph for a full one.
+            let reached = 0, total = 0, observations = 0;
+            try {
+              const counts = graph.query(
+                "SELECT COUNT(*) AS total, SUM(CASE WHEN state != 'locked' THEN 1 ELSE 0 END) AS reached FROM capabilities"
+              ).get() as any;
+              total = counts?.total ?? 0;
+              reached = counts?.reached ?? 0;
+            } catch { /* no capabilities table yet */ }
+            try {
+              observations = (graph.query("SELECT COUNT(*) AS n FROM frontier_snapshots").get() as any)?.n ?? 0;
+            } catch { /* ledger predates this database */ }
+            graph.close();
+            return { reached, total, observations };
+          };
+
+          let last = snapshot();
+          send('RunStarted', { runId: `ambit-${Date.now()}` });
+          send('StateSnapshot', { snapshot: last });
+
+          // The graph changes when something re-seeds it, which is an external
+          // process — so this polls rather than being notified.
+          timer = setInterval(() => {
+            const next = snapshot();
+            if (JSON.stringify(next) === JSON.stringify(last)) return;
+            last = next;
+            send('StateSnapshot', { snapshot: next });
+          }, 2000);
+        },
+        cancel() {
+          if (timer) clearInterval(timer);
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          ...headers,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
     // GET /api/tech-tree — the engine's capability graph, including the curated
     // tech tree, in the shape the visualizer already renders.
     if (url.pathname === '/api/tech-tree' && req.method === 'GET') {

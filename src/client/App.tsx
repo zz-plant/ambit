@@ -270,6 +270,31 @@ export default function App() {
   };
   const [leftOpen, setLeftOpen] = useState(true);
 
+  // AG-UI state stream: the graph is rebuilt by an external process (a seed, an
+  // adapter), so the view goes stale with no way to know. StateSnapshot events
+  // say when to reload. Only the state subset of AG-UI is implemented; see the
+  // note on /api/events in server.ts.
+  useEffect(() => {
+    if (typeof EventSource === 'undefined') return;
+    const es = new EventSource('/api/events');
+    let last = '';
+    es.onmessage = e => {
+      try {
+        const event = JSON.parse(e.data);
+        if (event.type !== 'StateSnapshot') return;
+        const fingerprint = JSON.stringify(event.snapshot);
+        if (last && fingerprint !== last) {
+          source === 'tree' ? loadTechTree() : loadConfig();
+        }
+        last = fingerprint;
+      } catch { /* a malformed frame should not take the view down */ }
+    };
+    // Deliberately no onerror handler that closes: EventSource reconnects on
+    // its own, and closing on the first transient error disabled live updates
+    // permanently for the rest of the session.
+    return () => es.close();
+  }, [source, loadTechTree, loadConfig]);
+
   useEffect(() => {
     const wanted = params.get('layout');
     const alias: Record<string, LayoutMode> = { eras: 'civ', civ: 'civ',
