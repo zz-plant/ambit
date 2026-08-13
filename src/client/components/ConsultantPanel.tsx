@@ -30,8 +30,22 @@ export default function DiagnosticsPanel() {
   const defList = defs();
   const hasResults = Object.keys(results).length > 0;
 
-  const overall = hasResults
-    ? Math.round(defList.reduce((s, d) => s + (results[d.id]?.score ?? 0), 0) / defList.length)
+  // The old headline was a 0-100 "rating" averaged from an invented penalty
+  // scale (100 minus 35 per error, 20 per warning, 5 per note). Nobody could
+  // check it, and it read as a measurement. These counts are the input to that
+  // number and are directly verifiable against the list below.
+  const tally = hasResults
+    ? defList.reduce(
+        (acc, d) => {
+          for (const f of results[d.id]?.findings || []) {
+            if (f.severity === 'error') acc.errors++;
+            else if (f.severity === 'warn') acc.warnings++;
+            else acc.notes++;
+          }
+          return acc;
+        },
+        { errors: 0, warnings: 0, notes: 0 }
+      )
     : null;
 
   return (
@@ -45,19 +59,11 @@ export default function DiagnosticsPanel() {
         <div className="dp-empty">Select a capability to run checks on it</div>
       )}
 
-      {overall !== null && (
-        <div className="dp-scoreboard">
-          <div className="dp-score-ring" style={{
-            background: `conic-gradient(${scoreColor(overall)} ${overall * 3.6}deg, #101e30 0deg)`,
-          }}>
-            <div className="dp-score-inner">
-              <span className="dp-score-num">{overall}</span>
-              <span className="dp-score-lbl">rating</span>
-            </div>
-          </div>
-          {/* The per-category breakdown that sat here repeated every label and
-              score from the cards below it, in the same scrolling column. The
-              cards already carry both, plus the description and findings. */}
+      {tally !== null && (
+        <div className="dp-tally">
+          <span className="dp-tally-item dp-tally-error">{tally!.errors} problem{tally!.errors === 1 ? '' : 's'}</span>
+          <span className="dp-tally-item dp-tally-warn">{tally!.warnings} warning{tally!.warnings === 1 ? '' : 's'}</span>
+          <span className="dp-tally-item dp-tally-note">{tally!.notes} note{tally!.notes === 1 ? '' : 's'}</span>
         </div>
       )}
 
@@ -78,10 +84,10 @@ export default function DiagnosticsPanel() {
                   <div className="dp-card-desc">{def.description}</div>
                 </div>
                 {result && (
-                  <span className="dp-card-score" style={{
-                    color: scoreColor(result.score),
-                    borderColor: scoreColor(result.score),
-                  }}>{result.score}</span>
+                  <span className="dp-card-score" title={`${findings.length} finding${findings.length === 1 ? '' : 's'}`}
+                    style={{ color: scoreColor(result.score), borderColor: scoreColor(result.score) }}>
+                    {findings.length}
+                  </span>
                 )}
               </div>
               {findings.length > 0 && (

@@ -9,11 +9,32 @@ const DOMAIN_ORDER = ['infra', 'devops', 'backend', 'frontend', 'ai-ml', 'qualit
 const ERA_LABELS: Record<string, string> = { infra:'Foundation', devops:'Pipeline', backend:'Services', frontend:'Interface', 'ai-ml':'Intelligence', quality:'Guard', meta:'Orchestration', security:'Fortress' };
 /** meta is an untyped bag; these narrow the two fields the tree reads. */
 const domainOf = (item: Item): string => (item.meta?.domain as string) || 'meta';
+/** Tech-tree items carry an era; config items fall back to their domain. */
+const eraOf = (item: Item): number | undefined =>
+  typeof item.meta?.era === 'number' ? (item.meta.era as number) : undefined;
+const columnOf = (item: Item): string => {
+  const era = eraOf(item);
+  return era ? `era:${era}` : domainOf(item);
+};
+const columnLabel = (key: string, items: Item[]): string => {
+  if (!key.startsWith('era:')) return ERA_LABELS[key] || key;
+  const named = items.find(i => i.meta?.eraName);
+  return (named?.meta?.eraName as string) || `Era ${key.slice(4)}`;
+};
+/** Prerequisites met, nothing detected — the frontier you can take next. */
+const isNext = (item: Item): boolean => item.meta?.next === true;
+const costOf = (item: Item): string => {
+  const s = Number(item.meta?.setupSeconds) || 0;
+  if (!s) return '';
+  return s >= 3600 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 60)}m`;
+};
 const maturityOf = (item: Item): number => Number(item.meta?.maturity) || 0;
 
 const NODE_R = 28, COL_W = 170, ROW_H = 105, START_X = 90, START_Y = 70;
 
 interface CivTreeProps {
+  /** Pixels of the scene covered by the docked panel, so column one is visible. */
+  leftInset?: number;
   items: Item[];
   connections: Connection[];
   selectedId: string | null;
@@ -22,7 +43,7 @@ interface CivTreeProps {
   onHover: (id: string | null) => void;
 }
 
-export default function CivTree({ items, connections, selectedId, hoveredId, onSelect, onHover }: CivTreeProps) {
+export default function CivTree({ items, connections, selectedId, hoveredId, onSelect, onHover, leftInset = 0 }: CivTreeProps) {
   // Owned by the store so the HUD can render the control; see App.tsx.
   const filter = useToolchainStore(s => s.treeFilter) as Filter;
 
@@ -49,6 +70,10 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
   }, [connections, selectedId]);
 
   const filtered = useMemo(() => {
+    // If any item carries an era we are looking at the tech tree; show that
+    // alone, so the columns mean one thing and prerequisites read left to right.
+    const eraItems = items.filter(i => eraOf(i) !== undefined);
+    if (eraItems.length > 0) return eraItems;
     if (filter === 'all') return items;
     const tm: Record<string, string> = { server: 'mcp-server', agent: 'agent', skill: 'skill', combo: 'possibility' };
     return items.filter(i => i.type === tm[filter] || i.type === 'framework');
@@ -59,11 +84,14 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
   const { cols, colOrder } = useMemo(() => {
     const c: Record<string, Item[]> = {};
     for (const item of filtered) {
-      const d = domainOf(item);
+      const d = columnOf(item);
       if (!c[d]) c[d] = [];
       c[d].push(item);
     }
-    const order = DOMAIN_ORDER.filter(d => c[d]?.length);
+    // Eras run in numeric order so the tree reads left to right, oldest first.
+    const eras = Object.keys(c).filter(k => k.startsWith('era:'))
+      .sort((a, b) => Number(a.slice(4)) - Number(b.slice(4)));
+    const order = [...eras, ...DOMAIN_ORDER.filter(d => c[d]?.length)];
     for (const d of Object.keys(c)) if (!order.includes(d)) order.push(d);
     return { cols: c, colOrder: order };
   }, [filtered]);
@@ -75,7 +103,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
   const contentHeight = Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 40;
 
   return (
-    <div style={{ position:'relative', width:'100%', height:'100%', overflow:'auto' }}>
+    <div style={{ position:'relative', width:'100%', height:'100%', overflow:'auto', paddingLeft: leftInset }}>
 
       {/* xMinYMin: the default centres the viewBox, and once the tallest column
           makes the graph taller than it is wide, that centring pushes every node
@@ -92,8 +120,8 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
               <rect x={x - 5} y={START_Y - 45} width={COL_W - 20} height={contentHeight - START_Y + 20}
                 fill={i % 2 === 0 ? '#f0dbb8' : '#f8ecd0'} rx={6} opacity={0.5}/>
               <text x={x + COL_W/2 - 40} y={START_Y - 22} textAnchor="middle" fill="#6b5b3a" fontSize={13} fontWeight={700}
-                letterSpacing={2} style={{ textTransform: 'uppercase' }}>{ERA_LABELS[d] || d}</text>
-              <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="#9b8b6a" fontSize={12}>{(d || '').toUpperCase()}</text>
+                letterSpacing={2} style={{ textTransform: 'uppercase' }}>{columnLabel(d, cols[d] || [])}</text>
+              <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="#9b8b6a" fontSize={12}>{d.startsWith('era:') ? `ERA ${d.slice(4)}` : (d || '').toUpperCase()}</text>
               <line x1={x + 10} y1={START_Y - 2} x2={x + COL_W - 50} y2={START_Y - 2} stroke="#c4a96a" strokeWidth={0.8}/>
             </g>
           );
@@ -104,8 +132,8 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           const from = items.find(it => it.id === conn.from);
           const to = items.find(it => it.id === conn.to);
           if (!from || !to) return null;
-          const fd = domainOf(from);
-          const td = domainOf(to);
+          const fd = columnOf(from);
+          const td = columnOf(to);
           const fi = colOrder.indexOf(fd);
           const ti = colOrder.indexOf(td);
           const fa = (cols[fd] || []).findIndex((it: Item) => it.id === from.id);
@@ -138,7 +166,12 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 const inChain = chainIds.has(item.id);
                 const selected = item.id === selectedId;
                 const dimmed = chainIds.size > 0 && !inChain;
-                const baseOpacity = dimmed ? 0.15 : item.status === 'built' ? 1 : 0.35;
+                // Civ's three states. Previously "not built" was one flat 0.35
+                // fade, which collapsed "you could take this next" into the
+                // same look as "this is far away".
+                const next = isNext(item);
+                const reached = item.status === 'built';
+                const baseOpacity = dimmed ? 0.15 : reached ? 1 : next ? 0.92 : 0.3;
                 const mat = maturityOf(item);
                 const ringCirc = 2 * Math.PI * (NODE_R + 5);
                 const sc = inChain && !selected ? '#d4a017' : selected ? '#d4a017' : color;
@@ -163,8 +196,22 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                         strokeDasharray={`${ringCirc * mat} ${ringCirc * (1 - mat)}`} opacity={0.5}/>
                     )}
                     
-                    {/* Main node */}
-                    <circle r={NODE_R} fill={color} stroke={sc} strokeWidth={sw} opacity={0.9}/>
+                    {/* Researchable now: dashed halo plus what it costs to take */}
+                    {next && !dimmed && (
+                      <>
+                        <circle r={NODE_R + 9} fill="none" stroke="#1f7a8c" strokeWidth={2}
+                          strokeDasharray="5,4" opacity={0.9}/>
+                        {costOf(item) && (
+                          <text y={-NODE_R - 14} textAnchor="middle" fill="#1f7a8c"
+                            fontSize={12} fontWeight={700}>{costOf(item)}</text>
+                        )}
+                      </>
+                    )}
+
+                    {/* Main node. Unreached capabilities are hollow so a filled
+                        circle always means "you have this". */}
+                    <circle r={NODE_R} fill={reached ? color : '#f5e6c8'} stroke={next ? '#1f7a8c' : sc}
+                      strokeWidth={next ? 2.5 : sw} opacity={0.9}/>
                     <text y={3} textAnchor="middle" fill={dimmed ? '#8b7355' : '#faebd7'} fontSize={15} fontWeight={700}>{sym}</text>
                     <text y={NODE_R + 18} textAnchor="middle" fill={dimmed ? '#6b5b3a' : '#4a3728'} fontSize={12} fontWeight={500}>{label}</text>
                   </g>
@@ -182,8 +229,8 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         {hoverTarget && (() => {
           const ni = items.find(i => i.id === hoverTarget);
           if (!ni) return null;
-          const di = colOrder.indexOf(domainOf(ni));
-          const ai = (cols[domainOf(ni)] || []).findIndex((i: Item) => i.id === hoverTarget);
+          const di = colOrder.indexOf(columnOf(ni));
+          const ai = (cols[columnOf(ni)] || []).findIndex((i: Item) => i.id === hoverTarget);
           if (di < 0 || ai < 0) return null;
 
           // SVG text does not wrap, so break the description by hand.

@@ -1552,3 +1552,19 @@ html, body, #root {
   content: ''; position: absolute; left: -6px; top: 4px; bottom: 4px;
   width: 1px; background: var(--border);
 }
+
+/* Four layout buttons collapsed into one control that names the current mode. */
+.app-hud-select {
+  background: var(--bg-surface); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--font); font-size: var(--fs-sm);
+  height: 26px; padding: 0 6px; cursor: pointer; max-width: 210px;
+}
+.app-hud-select:hover { border-color: var(--border-bright); }
+
+/* Finding counts replace the derived 0-100 rating. */
+.dp-tally { display: flex; gap: 14px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.dp-tally-item { font-size: var(--fs-sm); }
+.dp-tally-error { color: var(--error); }
+.dp-tally-warn { color: var(--warn); }
+.dp-tally-note { color: var(--text-muted); }
