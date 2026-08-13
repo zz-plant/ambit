@@ -174,10 +174,10 @@ test('detection does not match short tokens inside unrelated words', () => {
 // ── Ledger ──────────────────────────────────────────────────────────────────
 
 /** Run the CLI against the database this test's `seed` writes to. */
-function cli(cmd: string, arg?: string): any {
+function cli(cmd: string, ...args: string[]): any {
   const out = execFileSync(
     'node',
-    ['--experimental-sqlite', ENGINE, cmd, ...(arg ? [arg] : []), '--json'],
+    ['--experimental-sqlite', ENGINE, cmd, ...args, '--json'],
     { env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db') }, encoding: 'utf8' }
   );
   return JSON.parse(out);
@@ -561,4 +561,72 @@ test('plan returns the same shape whether or not there is work to do', () => {
     expect(done).toHaveProperty(key);
     expect(todo).toHaveProperty(key);
   }
+});
+
+// ── Inverses and approval ───────────────────────────────────────────────────
+
+test('a plan includes the goal itself', () => {
+  seed({ mcp: { git: {} }, provider: { ollama: { models: { 'qwen3-coder': {} } } } }).close();
+  // Excluding it meant a capability whose prerequisites were already met
+  // produced an empty plan — nothing to do, for the case where the one thing
+  // to do is acquire it.
+  const plan = cli('plan', 'web-research');
+  expect(plan.steps).toBe(1);
+  expect(plan.order[0].id).toBe('combo:web-research');
+});
+
+test('the goal comes last, after what it depends on', () => {
+  seed(LOCAL_ONLY).close();
+  const plan = cli('plan', 'offline-capable');
+  expect(plan.order[plan.order.length - 1].id).toBe('combo:offline-capable');
+});
+
+test('a declarative acquisition gets an inverse; others are refused one', () => {
+  seed({ mcp: { git: {} }, provider: { ollama: { models: { 'qwen3-coder': {} } } } }).close();
+  const declarative = cli('propose', 'web-research');
+  expect(declarative.steps[0].inverse).not.toBeNull();
+  expect(declarative.applicable).toBe(true);
+
+  // Nothing is applicable when a step cannot be undone.
+  const withInstaller = cli('propose', 'offline-capable');
+  expect(withInstaller.applicable).toBe(false);
+  expect(withInstaller.steps.some((s: any) => s.inverse === null)).toBe(true);
+});
+
+test('applicable and executable are different claims', () => {
+  seed({ mcp: { git: {} }, provider: { ollama: { models: { 'qwen3-coder': {} } } } }).close();
+  const p = cli('propose', 'web-research');
+  // Safe to apply if apply existed; apply does not exist.
+  expect(p.applicable).toBe(true);
+  expect(p.executable).toBe(false);
+});
+
+test('approval must name someone accountable in the graph', () => {
+  seed(WITH_PEOPLE).close();
+  const p = cli('propose', 'web-research');
+  const ghost = cli('approve', p.proposal, 'nobody');
+  expect(ghost.error).toContain('not a person in the graph');
+});
+
+test('approval is recorded as evidence, not a flag', () => {
+  seed(WITH_PEOPLE).close();
+  const p = cli('propose', 'web-research');
+  const ok = cli('approve', p.proposal, 'kanav');
+  expect(ok.approved_by).toBe('Kanav');
+
+  // Recorded against the person, so the ledger can later answer who
+  // authorised a given expansion of the frontier.
+  const evidence = cli('evidence', 'human:kanav');
+  expect(evidence.length).toBe(0); // evidence() filters to verification actions
+  const stored = cli('proposal', p.proposal);
+  expect(stored.status).toBe('approved');
+  expect(stored.approved_by).toBe('human:kanav');
+});
+
+test('a proposal cannot be approved twice', () => {
+  seed(WITH_PEOPLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  const again = cli('approve', p.proposal, 'kanav');
+  expect(again.error).toContain('already approved');
 });

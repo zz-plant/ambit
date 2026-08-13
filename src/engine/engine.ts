@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { DatabaseSync } from "node:sqlite";
 import { spawnSync } from "child_process";
-import { readFileSync, existsSync, readdirSync, writeFileSync } from "fs";
+import { readFileSync, existsSync, readdirSync, writeFileSync, statSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { resolveDbPath } from "../shared/db-path.ts";
@@ -151,8 +151,12 @@ function planFor(db: Db, goal?: string) {
     }
     stack.delete(node);
     seen.add(node);
+    // The goal belongs in its own plan. Excluding it meant that a capability
+    // whose prerequisites were already met produced an empty order — "nothing
+    // to do" for the case where the one thing to do is acquire it — and callers
+    // reading `steps === 0` concluded it was already reached.
     const c = info.get(node);
-    if (c && c.state === 'locked' && node !== id) {
+    if (c && c.state === 'locked') {
       order.push({ id: node, name: c.name, setup_seconds: c.unlock_cost_setup || 0 });
     }
   };
@@ -260,6 +264,78 @@ function deficits(db: Db) {
 }
 
 
+
+/**
+ * The inverse of a declarative config patch: remove exactly what it adds.
+ *
+ * This is the gate for ever applying anything. A step may only run if its undo
+ * is computed and stored *before* execution — not "we could probably reverse
+ * this", but written down first or refused. Only additive patches over known
+ * keys qualify, which is why an acquisition needing an installer or a running
+ * service gets no inverse and is therefore not a candidate.
+ *
+ * Returns null when no inverse can be derived, and null is a refusal.
+ */
+function inverseOf(patch: any, currentConfig: any): any | null {
+  if (!patch || typeof patch !== 'object') return null;
+  const remove: string[] = [];
+  const restore: Record<string, unknown> = {};
+
+  for (const [section, entries] of Object.entries<any>(patch)) {
+    if (!entries || typeof entries !== 'object' || Array.isArray(entries)) return null;
+    for (const key of Object.keys(entries)) {
+      const existing = currentConfig?.[section]?.[key];
+      // Overwriting something means the inverse must put the old value back,
+      // and guessing at that is exactly the kind of "probably reversible" this
+      // is meant to exclude.
+      if (existing !== undefined) restore[`${section}.${key}`] = existing;
+      else remove.push(`${section}.${key}`);
+    }
+  }
+  return { remove, restore: Object.keys(restore).length ? restore : undefined };
+}
+
+/**
+ * Records that a person approved a proposal.
+ *
+ * The approval is an edge from a `human:` node, so it is evidence in the graph
+ * rather than a flag on a row — which means the ledger can later answer who
+ * authorised a given expansion of the frontier. Approving changes nothing
+ * about the world; it changes what is permitted to change it.
+ */
+function approveProposal(db: Db, proposalId?: string, who?: string) {
+  if (!proposalId) return { error: 'Usage: tt approve <proposal-id> <person>' };
+  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
+  if (!row) return { error: `No proposal ${proposalId}.` };
+  if (row.status === 'approved') return { error: `${proposalId} is already approved by ${row.approved_by}.` };
+
+  const humanId = who ? (who.startsWith('human:') ? who : `human:${who}`) : null;
+  if (!humanId) return { error: 'Name the person approving: tt approve <proposal-id> <person>' };
+  const person = db.prepare("SELECT id, name FROM capabilities WHERE id = ? AND category = 'human'").get(humanId);
+  if (!person) {
+    return { error: `${humanId} is not a person in the graph. Declare them in the actors block first — an approval has to come from someone accountable.` };
+  }
+
+  const steps = JSON.parse(row.steps);
+  const blocking = steps.filter((s: any) => !s.inverse);
+  db.prepare("UPDATE proposals SET status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ?")
+    .run(humanId, proposalId);
+  db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'approved', 1, ?)"
+  ).run(humanId, `${proposalId}: ${row.goal}`);
+
+  return {
+    proposal: proposalId,
+    goal: row.goal,
+    approved_by: person.name,
+    applicable: blocking.length === 0,
+    steps_without_inverse: blocking.length ? blocking.map((s: any) => s.name) : undefined,
+    note: blocking.length
+      ? 'Approved, and still not applicable: these steps have no computed inverse, and nothing runs without one.'
+      : 'Approved. Every step has an inverse. Applying is not implemented — this records permission, not action.',
+  };
+}
+
 // ─── Proposals ────────────────────────────────────────────────────────────────
 
 /**
@@ -333,9 +409,12 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
   if (!goal) return { error: 'Usage: tt propose <capability> [option-number]' };
   const plan = planFor(db, goal) as any;
   if (plan.error) return plan;
-  if (plan.reachable && plan.steps === 0) {
+  if (plan.note === 'already reached') {
     return { goal: plan.goal, note: 'Already reached. Nothing to propose.' };
   }
+
+  let currentConfig: any = {};
+  try { currentConfig = JSON.parse(readFileSync(CONFIG_DEFAULT, "utf8")); } catch { /* no config is fine */ }
 
   const steps = (plan.order || []).map((step: any) => {
     const options = step.options || [];
@@ -348,9 +427,12 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
       recurring_cost: chosen?.recurring_cost,
       privacy: chosen?.privacy,
       requires_person: step.requires_person,
-      // The gate for stage 3: an inverse must be computed before a step may
-      // execute. None can be yet, so none of these are executable.
-      inverse: null,
+      // The gate: a step may only ever execute if its undo was computed first.
+      // Declarative additive patches qualify; anything needing an installer or
+      // a running service does not, and null here is a refusal rather than a
+      // gap to be filled in later.
+      config_patch: chosen?.config_patch,
+      inverse: chosen?.config_patch ? inverseOf(chosen.config_patch, currentConfig) : null,
     };
   });
 
@@ -372,8 +454,11 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
     requires_person: plan.requires_person,
     steps,
     simulated,
+    // Two different claims. `applicable` is about this proposal being safe to
+    // apply; `executable` is about apply existing at all, which it does not.
+    applicable: steps.every((s: any) => s.inverse),
     executable: false,
-    note: 'Draft only. Nothing here runs — no step has an inverse, and applying without one is refused by design.',
+    note: 'Draft only. Applying is not implemented; a step without an inverse could not run even if it were.',
   };
 }
 
@@ -1462,6 +1547,21 @@ function main() {
   const positional = process.argv.slice(3).filter(a => !a.startsWith("--"));
   const arg = positional[0];
   const mappingOverride = process.env.CONFIG_MAPPING;
+
+  // An unseeded graph answered every question with "Nothing to report", which
+  // is what a healthy graph with no findings says too. A Homebrew install
+  // never runs bootstrap.sh, so that was the entire first-run experience:
+  // a tool that appears to work and reports an empty world.
+  if (cmd && cmd !== "seed" && cmd !== "where" && cmd !== "explain") {
+    const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
+    if (!seeded?.n) {
+      console.log(`${C.yellow}No graph yet.${C.reset} Nothing has been discovered on this machine.`);
+      console.log(`  ${C.bold}tt seed${C.reset}    read your agent config and build the graph`);
+      console.log(`  ${C.grey}tt where${C.reset}   ${C.grey}where the graph is stored${C.reset}`);
+      db.close();
+      return;
+    }
+  }
   if (!cmd || cmd === "help") {
     console.log(`tech-tree - Toolchain capability graph\n`);
     console.log("  seed              Seed from opencode config (default)");
@@ -1481,6 +1581,9 @@ function main() {
     return;
   }
   switch (cmd) {
+    case "approve":
+      emit(approveProposal(db, arg, process.argv.slice(4).filter(a => !a.startsWith('--'))[0]));
+      break;
     case "propose":
       emit(propose(db, arg, Number(process.argv.slice(4).filter(a => !a.startsWith('--'))[0]) || undefined));
       break;
@@ -1591,10 +1694,26 @@ function main() {
 
     case "near": emit(nearMissCombos(db)); break;
     case "insight": emit(insights(db)); break;
+    // Where the graph lives is not obvious once the CLI is installed rather
+    // than cloned, and every other component resolves the same path.
+    case "where": {
+      const path = resolveDbPath();
+      // Not whether the file exists — opening it creates it, so that is always
+      // true by the time this runs. Whether it holds a graph is the question.
+      const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get()?.n ?? 0;
+      emit({
+        graph: path,
+        capabilities: seeded,
+        seeded: seeded > 0 ? true : "no — run tt seed",
+        bytes: existsSync(path) ? statSync(path).size : 0,
+        override: "TOOLCHAIN_DB",
+      });
+      break;
+    }
     default: console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
   }
   db.close();
 }
 
 if (import.meta.main) main();
-export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal };
+export { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, applyRemoval, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, approveProposal, inverseOf };

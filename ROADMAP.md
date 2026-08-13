@@ -289,7 +289,13 @@ Built, the two safe stages. `tt simulate <capability>` computes the frontier as 
 
 Every step carries an `inverse` that is null. That is the gate, not an omission: no step may execute without one, so nothing drafted today is applicable by construction.
 
-Unbuilt, and the threshold: apply, approval-as-evidence, and rollback. The order matters — an inverse must be computed and stored before a step runs, verification must promote state only on evidence, and a failed apply must run its inverse automatically. None of that starts until proposals have been in use long enough to know whether they are any good.
+Also built, both sides of the threshold except the act itself. Alternatives whose acquisition genuinely *is* a config change carry a declarative `config_patch`, and `inverseOf` derives the undo from it — removing what it adds, or restoring what it overwrites when the key already exists. Anything needing an installer or a running service gets no inverse, and null is a refusal rather than a gap: a proposal is `applicable` only when every step has one.
+
+`tt approve <proposal> <person>` records approval as evidence against a `human:` node, so the ledger can later answer who authorised an expansion of the frontier. It refuses a name that is not a person in the graph — an approval has to come from someone accountable — and refuses to approve twice. Deliberately CLI-only and not exposed over MCP: an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
+
+`applicable` and `executable` are kept apart on purpose. The first says this proposal could be applied safely; the second says apply does not exist.
+
+Unbuilt, and the threshold: apply and rollback. The order matters — an inverse must be computed and stored before a step runs, verification must promote state only on evidence, and a failed apply must run its inverse automatically. None of that starts until proposals have been in use long enough to know whether they are any good.
 
 Built: the surface went from 17 analytical tools to 25, adding `tt_verify`, `tt_evidence`, `tt_authority`, `tt_plan`, `tt_since`, `tt_ledger`, `tt_blocked` and `tt_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent.
 
