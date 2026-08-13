@@ -1541,3 +1541,14 @@ html, body, #root {
   font-family: var(--font); font-size: var(--fs-sm); cursor: pointer;
 }
 .app-guide-more:hover { background: var(--bg-surface); }
+
+/* The HUD ran its three concerns — panel/docs/export, data source, and layout —
+   together as one undifferentiated row of ten buttons. Space them apart so the
+   groups read as groups. */
+.app-hud { gap: 10px; }
+.app-hud > div { margin-left: 0 !important; }
+.app-hud > div + div { position: relative; }
+.app-hud > div + div::before {
+  content: ''; position: absolute; left: -6px; top: 4px; bottom: 4px;
+  width: 1px; background: var(--border);
+}
