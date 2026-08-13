@@ -295,7 +295,17 @@ Also built, both sides of the threshold except the act itself. Alternatives whos
 
 `applicable` and `executable` are kept apart on purpose. The first says this proposal could be applied safely; the second says apply does not exist.
 
-Unbuilt, and the threshold: apply and rollback. The order matters — an inverse must be computed and stored before a step runs, verification must promote state only on evidence, and a failed apply must run its inverse automatically. None of that starts until proposals have been in use long enough to know whether they are any good.
+Built, with the two decisions made explicitly.
+
+**Scope is configuration, structurally.** A step carries a declarative patch or it carries nothing; there is no field that holds a command, so no data file in this repository can cause something to be executed. That is the shape `addMcp` over HTTP had, and refusing it permanently is worth more than gating it.
+
+**Approval stays in the terminal.** The write path is off the network entirely. A browser-reachable apply would reopen the surface this project spent its early work closing; the visualiser can display proposals without being able to authorise them.
+
+`tt apply` refuses in this order: unknown proposal, already applied, not approved by a person, any step without an inverse, any step that is not a configuration change. It backs the file up before the first byte changes, writes, records the act against the approver, then verifies the goal — and if verification fails, rolls back automatically and reports the change as reversed rather than as a success.
+
+`tt rollback` uses the stored inverse rather than the backup, because the inverse describes only what the proposal changed; restoring a whole backup would discard anything edited since.
+
+What remains: nothing re-seeds automatically after an apply, so the graph reflects the change on the next seed rather than immediately. And a capability with no declared check applies unverified, which is reported rather than hidden. The order matters — an inverse must be computed and stored before a step runs, verification must promote state only on evidence, and a failed apply must run its inverse automatically. None of that starts until proposals have been in use long enough to know whether they are any good.
 
 Built: the surface went from 17 analytical tools to 25, adding `tt_verify`, `tt_evidence`, `tt_authority`, `tt_plan`, `tt_since`, `tt_ledger`, `tt_blocked` and `tt_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent.
 

@@ -82,7 +82,9 @@ CREATE TABLE IF NOT EXISTS proposals (
     steps TEXT NOT NULL,
     simulated TEXT NOT NULL,
     approved_by TEXT,
-    approved_at TEXT
+    approved_at TEXT,
+    applied_at TEXT,
+    backup_path TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);

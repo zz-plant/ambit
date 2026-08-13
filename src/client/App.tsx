@@ -268,7 +268,27 @@ export default function App() {
     };
     img.src = url;
   };
-  const [leftOpen, setLeftOpen] = useState(true);
+  // The panel is 340px of absolutely-positioned overlay. On a phone that is the
+  // whole screen: it covered the landing page, including the button that loads
+  // the demo, so the published demo was unusable on the device most people
+  // follow a link from. Narrow screens start with it closed, and it opens as a
+  // bottom sheet rather than a left rail — see the mobile block in App.css.
+  const NARROW = '(max-width: 768px)';
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(NARROW).matches
+  );
+  const [leftOpen, setLeftOpen] = useState(() => !isNarrow);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia(NARROW);
+    const onChange = (e: MediaQueryListEvent) => {
+      setIsNarrow(e.matches);
+      setLeftOpen(!e.matches);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   // AG-UI state stream: the graph is rebuilt by an external process (a seed, an
   // adapter), so the view goes stale with no way to know. StateSnapshot events
@@ -326,7 +346,9 @@ export default function App() {
             className="app-guide"
             // Centred on the scene, the side panels covered half of it. Inset by
             // whichever panels are actually open so it centres on free space.
-            style={{ left: leftOpen ? 340 : 0, right: showStarPanel && selectedId ? 340 : 0 }}
+            // On a narrow screen the panels are sheets, not rails, so insetting
+            // by their width would push this off the side entirely.
+            style={isNarrow ? undefined : { left: leftOpen ? 340 : 0, right: showStarPanel && selectedId ? 340 : 0 }}
           >
             <div className="app-guide-head">
               <strong>Start here</strong>
@@ -361,7 +383,7 @@ export default function App() {
           </div>
         )}
         {items.length > 0 && layoutMode === 'civ' ? (
-          <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} leftInset={leftOpen ? 348 : 8} />
+          <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} leftInset={leftOpen && !isNarrow ? 348 : 8} />
         ) : items.length > 0 ? (
           <Suspense fallback={<div className="app-loading">LOADING 3D VIEW…</div>}>
             <Constellation />

@@ -203,6 +203,7 @@ Explore    stats · context · health · profile · export · explain
 Verify     verify [id] · evidence <id> · authority
 Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
 Plan       plan <id> · simulate <id> · propose <id> [n] · proposals · proposal <id>
+Act        approve <id> <who> · apply <id> · rollback <id>
 Plan       near · combos · fork · insight
 Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
 ```
@@ -301,7 +302,18 @@ $ tt approve prop-msrrv9c2 kanav
   Approved. Applying is not implemented — this records permission, not action.
 ```
 
-**Nothing executes.** `applicable` and `executable` are separate claims: the first says a proposal could be applied safely, the second says apply does not exist. Approval is CLI-only and not exposed over MCP — an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
+```console
+$ tt apply prop-msrsqzij
+  applied: true · keys: mcp.fetch
+  backup: opencode.json.ambit-prop-msrsqzij.bak
+
+$ tt rollback prop-msrsqzij
+  removed: mcp.fetch          # git survives — the inverse reverses only this
+```
+
+**Apply only edits configuration, and cannot do otherwise.** A step carries a declarative patch or nothing; there is no field that holds a command. It refuses a proposal no person approved, and any step without an inverse. It backs up first, and if verification fails afterwards it rolls back automatically and says the change was reversed.
+
+`applicable` and `executable` are separate claims: the first says a proposal could be applied safely, the second says apply does not exist. Approval is CLI-only and not exposed over MCP — an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
 
 ### The ledger
 

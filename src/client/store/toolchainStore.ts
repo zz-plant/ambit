@@ -12,6 +12,11 @@ import { computeLayout } from '../utils/layoutEngine';
  * Only optional calls use this. Loading the config still reports its own
  * failure, because there the API not being up is the answer to the question.
  */
+/** Matches the mobile breakpoint in App.css, where the panels become sheets. */
+function isNarrowViewport(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+}
+
 let backendProbe: Promise<boolean> | null = null;
 function backendAvailable(): Promise<boolean> {
   backendProbe ??= fetch('/api/health')
@@ -408,7 +413,9 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     ];
     set({ items: items.map((i,idx) => ({...i, position:{x:100+(idx%6)*80, y:50+Math.floor(idx/6)*70, z:0}})), connections, loading:false, error:null });
     get().layoutItems();
-    get().selectItem('mcp:cloudflare');
+    // Not on a phone: the inspector is a sheet there, so opening one unasked
+    // covers the graph the visitor came to look at.
+    if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
   },
   setShowUplinkModal: (show) => set({ showUplinkModal: show }),
 
@@ -520,7 +527,8 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       const itemIds = new Set([...base.items, ...infra.items].map(i => i.id));
       const connections = [...base.connections, ...infra.connections].filter(c => itemIds.has(c.from) && itemIds.has(c.to));
       set({ items: [...base.items, ...infra.items], connections, loading: false });
-      get().layoutItems(); get().selectItem("mcp:cloudflare");
+      get().layoutItems();
+      if (!isNarrowViewport()) get().selectItem("mcp:cloudflare");
       get().fetchTrends();
     } catch (e) {
       set({ error: 'Could not load: ' + (e as Error).message, loading: false });

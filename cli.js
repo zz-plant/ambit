@@ -43,6 +43,8 @@ if (cmd === "--help" || cmd === "help") {
     tt proposals         Drafts so far
     tt proposal <id>     One draft in full
     tt approve <id> <who>  Record that a person approved a draft
+    tt apply <id>        Apply an approved draft to your config
+    tt rollback <id>     Reverse an applied draft
     tt combos            Capabilities whose prerequisites are met
     tt fork              Compare candidates by efficiency
     tt bottlenecks       What the most things depend on
