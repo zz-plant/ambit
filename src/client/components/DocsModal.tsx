@@ -1,86 +1,154 @@
-import React from 'react';
+import React, { useState } from 'react';
+import concepts from '../../shared/concepts.json';
 
 interface DocsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type Tab = 'concepts' | 'reading' | 'doing';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'concepts', label: 'WHAT THINGS MEAN' },
+  { id: 'reading', label: 'READING THE MAP' },
+  { id: 'doing', label: 'WHAT TO DO' },
+];
+
+const NODE_TYPES = [
+  { color: '#b8860b', sym: '★', label: 'Framework', desc: 'The agent runtime itself' },
+  { color: '#daa520', sym: '▣', label: 'MCP server', desc: 'A tool the agent can call' },
+  { color: '#cd853f', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
+  { color: '#6b8e23', sym: '✦', label: 'Skill', desc: 'A procedure loaded on demand' },
+  { color: '#a0853c', sym: '⬢', label: 'Provider / model', desc: 'Where inference happens' },
+  { color: '#b87333', sym: '⬡', label: 'Tech tree node', desc: 'A capability you reach by having others' },
+];
+
+const ACTIONS = [
+  { cmd: 'tt near', answers: 'What is one step away from where I am?' },
+  { cmd: 'tt insight', answers: 'What should I do next, ranked?' },
+  { cmd: 'tt bottlenecks', answers: 'What would hurt most to lose?' },
+  { cmd: 'tt impact <id>', answers: 'If this went away, what breaks?' },
+  { cmd: 'tt decay', answers: 'What have I stopped tending?' },
+  { cmd: 'tt prune <id>', answers: 'Remove it, with a backup first' },
+];
+
 export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
+  const [tab, setTab] = useState<Tab>('concepts');
   if (!isOpen) return null;
+
   return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }}
-      onClick={onClose}>
-      <div style={{ background:'#faf3e0', borderRadius:8, maxWidth:560, maxHeight:'80vh', overflow:'auto', padding:28, border:'1px solid #c4a96a' }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <h2 style={{ margin:0, fontSize:16, fontWeight:700, letterSpacing:2, color:'#6b5b3a' }}>HOW TO READ THIS</h2>
-          <button onClick={onClose} style={{ background:'none', border:'none', fontSize:18, cursor:'pointer', color:'#8b7355' }}>✕</button>
+    <div className="docs-overlay" onClick={onClose}>
+      <div className="docs-panel" onClick={e => e.stopPropagation()}>
+        <div className="docs-header">
+          <div>
+            <h2 className="docs-title">How to read this</h2>
+            <p className="docs-subtitle">Your setup, placed on a tree of agent capabilities</p>
+          </div>
+          <button className="docs-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        <DocSection title="Node types" items={[
-          { color:'#b8860b', sym:'★', label:'Framework', desc:'Core tool or platform (OpenCode, Shell, LSP)' },
-          { color:'#daa520', sym:'◈', label:'MCP Server', desc:'External service integration (Cloudflare, GitHub, Playwright)' },
-          { color:'#cd853f', sym:'◆', label:'Agent', desc:'Subagent with specific domain expertise' },
-          { color:'#6b8e23', sym:'◇', label:'Skill', desc:'Loadable prompt instruction set' },
-          { color:'#b87333', sym:'●', label:'Combo / Possibility', desc:'Capability unlocked by combining prerequisites' },
-        ]}/>
+        <div className="docs-tabs" role="tablist">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`docs-tab ${tab === t.id ? 'is-active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        <DocSection title="Maturity rings" desc="The ring around each node shows how established the capability is. A full ring means it's well-maintained. A thin sliver means it's new or rarely touched. The percentage below the node shows the exact score." />
+        <div className="docs-body">
+          {tab === 'concepts' && (
+            <>
+              <p className="docs-lede">
+                Nine terms carry all the meaning here. Everything the tool says is built from them.
+              </p>
+              {concepts.concepts.map(c => (
+                <div key={c.key} className="docs-concept">
+                  <div className="docs-concept-head">
+                    <span className="docs-concept-term">{c.term}</span>
+                    <span className="docs-concept-short">{c.short}</span>
+                  </div>
+                  <p className="docs-concept-long">{c.long}</p>
+                  <p className="docs-concept-seen">Where you see it: {c.seen}</p>
+                </div>
+              ))}
+            </>
+          )}
 
-        <DocSection title="Connection lines" iconItems={[
-          { style:{width:40, height:2, background:'#8b6914', display:'inline-block', marginRight:8}, label:'Hard dependency', desc:'Required to unlock a combo' },
-          { style:{width:40, height:1.2, background:'transparent', borderTop:'2px dashed #b8a060', display:'inline-block', marginRight:8}, label:'Soft dependency', desc:'Helpful but not required' },
-          { style:{width:40, height:1, background:'transparent', borderTop:'2px dotted #d4a017', display:'inline-block', marginRight:8}, label:'Connection', desc:'General relationship between capabilities' },
-        ]}/>
+          {tab === 'reading' && (
+            <>
+              <p className="docs-lede">
+                Columns are areas of work. Height is roughly how far up the tree something sits.
+              </p>
+              <h3 className="docs-h3">The circles</h3>
+              {NODE_TYPES.map(n => (
+                <div key={n.label} className="docs-row">
+                  <span className="docs-swatch" style={{ background: n.color }}>{n.sym}</span>
+                  <span><strong>{n.label}</strong> — {n.desc}</span>
+                </div>
+              ))}
 
-        <DocSection title="Selecting a node" desc="Click any node to highlight its entire dependency chain. Connected capabilities glow gold. Unrelated ones dim to 15% opacity. The Diagnostics panel in the sidebar shows automated findings about the selected capability." />
+              <h3 className="docs-h3">Solid vs outlined</h3>
+              <p className="docs-p">
+                A solid circle is something you have. An outlined one is a capability you have not
+                reached — its description tells you what is missing or what to add.
+              </p>
 
-        <DocSection title="Tree filter" desc="Use the filter buttons above the tree to show only specific capability types. ALL shows everything. SERVER shows only MCP server integrations. AGENT shows subagents. SKILL shows loadable skills. COMBO shows combined capabilities." />
+              <h3 className="docs-h3">The lines</h3>
+              <div className="docs-row">
+                <span className="docs-line-solid" />
+                <span><strong>Hard prerequisite</strong> — required; without it the dependent capability cannot work</span>
+              </div>
+              <div className="docs-row">
+                <span className="docs-line-dashed" />
+                <span><strong>Soft prerequisite</strong> — helps, but does not gate</span>
+              </div>
 
-        <DocSection title="Layout modes" desc="Toggle between four views in the toolbar: CIV (era-column tech tree), CONSTELLATION (3D hex map), ORBITAL (circular), and FLAT (2D force-directed)." />
+              <h3 className="docs-h3">The ring</h3>
+              <p className="docs-p">
+                The arc around a circle is maturity — a rough sense of how established something is.
+                Compare rings to each other; do not read a single number as a measurement.
+              </p>
 
-        <DocSection title="This is a demo" desc="The graph shows seeded example data. To see your own toolchain, clone the repo and run the bootstrap script." code="git clone https://github.com/zz-plant/capability-graph.git && cd capability-graph && ./bootstrap.sh" />
+              <h3 className="docs-h3">Two sources</h3>
+              <p className="docs-p">
+                <strong>CONFIG</strong> shows your <code>opencode.json</code> as a graph.{' '}
+                <strong>TECH TREE</strong> shows the curated capability tree with your position on it.
+                Same renderer, different question.
+              </p>
+            </>
+          )}
+
+          {tab === 'doing' && (
+            <>
+              <p className="docs-lede">
+                Click any circle to see what depends on it. Everything below is also available in the
+                terminal, where the output is easier to keep.
+              </p>
+              {ACTIONS.map(a => (
+                <div key={a.cmd} className="docs-action">
+                  <code className="docs-cmd">{a.cmd}</code>
+                  <span className="docs-answers">{a.answers}</span>
+                </div>
+              ))}
+              <h3 className="docs-h3">Start here</h3>
+              <p className="docs-p">
+                If you only run one, run <code className="docs-cmd-inline">tt near</code>. It answers
+                "what is one step away", which is the question the rest of the tool exists to support.
+              </p>
+              <p className="docs-p docs-muted">
+                Run <code className="docs-cmd-inline">tt explain</code> for these same definitions in
+                the terminal.
+              </p>
+            </>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
-
-interface DocSectionProps {
-  title: string;
-  /** Coloured circle + symbol rows. */
-  items?: { color: string; sym: string; label: string; desc: string }[];
-  /** Arbitrary swatch rows styled inline. */
-  iconItems?: { style: React.CSSProperties; label: string; desc: string }[];
-  desc?: string;
-  code?: string;
-}
-
-function DocSection({ title, items, iconItems, desc, code }: DocSectionProps) {
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <h3 style={{ margin:'0 0 8px 0', fontSize:12, fontWeight:700, letterSpacing:1.5, color:'#8b6914', textTransform:'uppercase' }}>{title}</h3>
-      {items && items.map((it, i) => (
-        <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
-          <div style={{ width:28, height:28, borderRadius:'50%', background:it.color, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <span style={{ color:'#faebd7', fontSize:12, fontWeight:700 }}>{it.sym}</span>
-          </div>
-          <div>
-            <div style={{ fontSize:11, fontWeight:600, color:'#4a3728' }}>{it.label}</div>
-            <div style={{ fontSize:10, color:'#8b7355' }}>{it.desc}</div>
-          </div>
-        </div>
-      ))}
-      {iconItems && iconItems.map((it, i) => (
-        <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
-          <span style={it.style} />
-          <div>
-            <div style={{ fontSize:11, fontWeight:600, color:'#4a3728' }}>{it.label}</div>
-            <div style={{ fontSize:10, color:'#8b7355' }}>{it.desc}</div>
-          </div>
-        </div>
-      ))}
-      {desc && <p style={{ fontSize:10, color:'#8b7355', lineHeight:1.5, margin:0 }}>{desc}</p>}
-      {code && <code style={{ display:'block', fontSize:10, background:'#f0dbb8', padding:'6px 10px', borderRadius:4, marginTop:6, color:'#4a3728' }}>{code}</code>}
     </div>
   );
 }

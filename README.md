@@ -121,6 +121,16 @@ Most of the tools report. `tt prune <id>` acts: it removes the entry from `openc
 tt prune mcp:seq
 ```
 
+## Learning it
+
+Three places explain the vocabulary, all reading the same definitions from `src/shared/concepts.json`:
+
+- **`tt explain`** — every term in the terminal; `tt explain maturity` for one
+- **`tt --help`** — commands grouped by the question each answers, starting with the two worth running first
+- **DOCS in the visualizer** — the same definitions, plus how to read the map
+
+If you run one command, run `tt near`. It answers "what is one step away", which is the question the rest of the tool supports.
+
 ## CLI reference
 
 ```
