@@ -117,12 +117,12 @@ export interface ConsultantDef {
 }
 
 const consultantDefs: ConsultantDef[] = [
-  { id: 'architecture', label: 'Architecture', icon: '◈', color: '#00d4ff', description: 'Topology, coupling, domain cohesion', prompt: 'Analyze coupling and redundancy.' },
-  { id: 'efficiency', label: 'Efficiency', icon: '⚡', color: '#f59e0b', description: 'Bottlenecks, cold starts, waste', prompt: 'Find bottlenecks and waste.' },
-  { id: 'security', label: 'Security', icon: '🔒', color: '#ef4444', description: 'Auth gaps, exposure, vulns', prompt: 'Audit for credential and access risk.' },
-  { id: 'cost', label: 'Cost', icon: '💰', color: '#10b981', description: 'Redundancy, consolidation', prompt: 'Find savings.' },
-  { id: 'reliability', label: 'Reliability', icon: '🛡️', color: '#3b82f6', description: 'SPOF, backup, DR', prompt: 'Review failure propagation.' },
-  { id: 'dx', label: 'Dev Experience', icon: '✨', color: '#8b5cf6', description: 'Context switching, docs', prompt: 'Evaluate workflow friction.' },
+  { id: 'architecture', label: 'Architecture', icon: '◈', color: '#00d4ff', description: 'Is anything over-connected, orphaned, or sprawling?', prompt: 'Analyze coupling and redundancy.' },
+  { id: 'efficiency', label: 'Efficiency', icon: '⚡', color: '#f59e0b', description: 'What is configured but never actually used?', prompt: 'Find bottlenecks and waste.' },
+  { id: 'security', label: 'Security', icon: '🔒', color: '#ef4444', description: 'Are any credentials or endpoints exposed?', prompt: 'Audit for credential and access risk.' },
+  { id: 'cost', label: 'Cost', icon: '💰', color: '#10b981', description: 'Where are you paying for the same thing twice?', prompt: 'Find savings.' },
+  { id: 'reliability', label: 'Reliability', icon: '🛡️', color: '#3b82f6', description: 'What single failure would take the most down?', prompt: 'Review failure propagation.' },
+  { id: 'dx', label: 'Dev Experience', icon: '✨', color: '#8b5cf6', description: 'What makes this setup awkward to work in?', prompt: 'Evaluate workflow friction.' },
 ];
 
 import { importConfig } from '../utils/configImporter';

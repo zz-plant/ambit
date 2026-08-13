@@ -184,24 +184,64 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         })}
 
         {/* Hover tooltip */}
-        {hoverTarget && hoverDownstream.length > 0 && (() => {
+        {/* Hover detail. This used to require hoverDownstream.length > 0, so a
+            capability you have not reached — whose description carries the whole
+            point, "configured, but Vector Store is not in place yet" — showed
+            nothing at all on hover. */}
+        {hoverTarget && (() => {
           const ni = items.find(i => i.id === hoverTarget);
           if (!ni) return null;
           const di = colOrder.indexOf(domainOf(ni));
           const ai = (cols[domainOf(ni)] || []).findIndex((i: Item) => i.id === hoverTarget);
           if (di < 0 || ai < 0) return null;
-          const tx = START_X + di * COL_W + COL_W/2 - 40 + NODE_R + 10;
+
+          // SVG text does not wrap, so break the description by hand.
+          const wrap = (text: string, perLine = 30, max = 4) => {
+            const out: string[] = [];
+            let line = '';
+            for (const word of text.split(' ')) {
+              if ((line + word).length > perLine) { out.push(line.trim()); line = ''; }
+              if (out.length === max) return [...out.slice(0, max - 1), out[max - 1] + '…'];
+              line += word + ' ';
+            }
+            if (line.trim()) out.push(line.trim());
+            return out;
+          };
+
+          const unreached = ni.status !== 'built';
+          const lines = unreached && ni.description ? wrap(ni.description) : [];
+          const enables = hoverDownstream.slice(0, 4);
+          const W = 190;
+          const headH = 20;
+          const descH = lines.length * 14;
+          const enablesH = enables.length ? 18 + enables.length * 15 : 0;
+          const boxH = headH + descH + enablesH + 10;
+
+          const tx = START_X + di * COL_W + COL_W / 2 - 40 + NODE_R + 10;
           const ty = START_Y + ai * ROW_H + NODE_R - 10;
-          const boxH = Math.min(hoverDownstream.length * 16 + 28, 90);
+
           return (
-            <g transform={`translate(${tx}, ${ty})`}>
-              <rect x={0} y={0} width={150} height={boxH} rx={5} fill="#faf3e0" stroke="#b8860b" strokeWidth={1}/>
-              <text x={10} y={16} fill="#6b5b3a" fontSize={12} fontWeight={700} letterSpacing={1}>ENABLES</text>
-              {hoverDownstream.slice(0, 4).map((did, i) => {
+            <g transform={`translate(${tx}, ${ty})`} pointerEvents="none">
+              <rect x={0} y={0} width={W} height={boxH} rx={5} fill="#faf3e0" stroke="#b8860b" strokeWidth={1}/>
+              <text x={10} y={15} fill="#6b5b3a" fontSize={12} fontWeight={700}>
+                {unreached ? 'NOT REACHED YET' : ni.name}
+              </text>
+              {lines.map((line, i) => (
+                <text key={i} x={10} y={headH + 12 + i * 14} fill="#4a3728" fontSize={12}>{line}</text>
+              ))}
+              {enables.length > 0 && (
+                <text x={10} y={headH + descH + 14} fill="#6b5b3a" fontSize={12} fontWeight={700}>ENABLES</text>
+              )}
+              {enables.map((did, i) => {
                 const dep = items.find(it => it.id === did);
-                return <text key={did} x={12} y={32 + i * 16} fill="#4a3728" fontSize={12}>{dep ? (dep.name.length > 20 ? dep.name.slice(0, 18) + '…' : dep.name) : did}</text>;
+                const label = dep ? (dep.name.length > 22 ? dep.name.slice(0, 20) + '…' : dep.name) : did;
+                return (
+                  <text key={did} x={12} y={headH + descH + 29 + i * 15} fill="#4a3728" fontSize={12}>{label}</text>
+                );
               })}
-              {hoverDownstream.length > 4 && <text x={12} y={boxH - 8} fill="#8b7355" fontSize={12}>+{hoverDownstream.length - 4} more</text>}
+              {hoverDownstream.length > 4 && (
+                <text x={12} y={boxH - 6} fill="#8b7355" fontSize={12}>+{hoverDownstream.length - 4} more</text>
+              )}
             </g>
           );
         })()}

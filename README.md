@@ -110,7 +110,7 @@ Homebrew (`brew install zz-plant/tap/capability-graph`) installs the `tt` CLI on
 | **Tech tree** | A curated tree of 33 agent capabilities across 7 eras, matched against your config — what you have reached, what is next, and what is blocked. |
 | **CLI** | 14 commands for querying the graph from a terminal — see [CLI reference](#cli-reference). |
 | **MCP server** | 17 tools your agent can call inside an OpenCode session — see [MCP reference](#mcp-reference). |
-| **Tracking plugin** | Records configuration changes: what you build, connect, keep, and remove. Not invocation counts. Installs to `~/.config/opencode/plugins/`. |
+| **Tracking plugin** | Records configuration changes: what you build, connect, keep, and remove. Not invocation counts. Ships in `plugins/`; copy it to `~/.config/opencode/plugins/` and add it to `plugin` in `opencode.json`. |
 | **Consultant agent** | A subagent that knows how to query the graph and interpret what comes back. |
 
 ## Execution, not just advice
@@ -200,8 +200,8 @@ toolchain-viz.db       ←─ capabilities · dependencies · session_learning
         │
         ├──► src/mcp/server.ts      ←─ 17 MCP tools, JSON-RPC over stdio
         │
-        ├──► plugin                 ←─ passive config-event tracking
-        │       └── installs to ~/.config/opencode/plugins/
+        ├──► plugins/               ←─ passive config-event tracking
+        │       └── copy to ~/.config/opencode/plugins/
         │
         └──► consultant agent
 ```
