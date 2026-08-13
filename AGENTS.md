@@ -1,5 +1,7 @@
 # Agent Guide
 
+Ambit — the combined action space of the user, their agents, and their machines. See [ROADMAP.md](./ROADMAP.md) for where the data model is heading; treat it as direction, not as description of what exists.
+
 Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP server, passive tracking plugin, consultant agent, and teachable skill.
 
 ## Tech Stack
