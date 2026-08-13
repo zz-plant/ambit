@@ -671,6 +671,40 @@ function main() {
     return;
   }
   switch (cmd) {
+    case "explain": {
+      // Same definitions the visualizer shows, read from the shared file so
+      // the two surfaces cannot drift.
+      const { concepts } = JSON.parse(readFileSync(join(__dirname, "..", "shared", "concepts.json"), "utf8"));
+      const wanted = (process.argv[3] || "").toLowerCase();
+      const picked = wanted
+        ? concepts.filter((c: any) => c.key.includes(wanted) || c.term.toLowerCase().includes(wanted))
+        : concepts;
+      if (picked.length === 0) {
+        console.log(`${C.yellow}No concept matching "${wanted}".${C.reset}`);
+        console.log(`Try: ${concepts.map((c: any) => c.key).join(", ")}`);
+        break;
+      }
+      // Wrap to a readable measure rather than emitting one long line.
+      const wrap = (text: string, width = 76, indent = "  ") => {
+        const out: string[] = [];
+        let line = "";
+        for (const word of text.split(" ")) {
+          if ((line + word).length > width) { out.push(indent + line.trim()); line = ""; }
+          line += word + " ";
+        }
+        if (line.trim()) out.push(indent + line.trim());
+        return out.join("\n");
+      };
+      console.log("");
+      for (const c of picked) {
+        console.log(`${C.bold}${c.term}${C.reset} ${C.grey}— ${c.short}${C.reset}`);
+        console.log(wrap(c.long));
+        console.log(`  ${C.grey}Where you see it: ${c.seen}${C.reset}`);
+        console.log("");
+      }
+      if (!wanted) console.log(`${C.grey}tt explain <term> for one of these on its own.${C.reset}\n`);
+      break;
+    }
     case "seed":
       seedFromConfig(db, undefined, mappingOverride);
       const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();

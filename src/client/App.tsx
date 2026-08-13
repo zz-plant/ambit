@@ -213,7 +213,15 @@ export default function App() {
 
   const [leftTab, setLeftTab] = useState<Tab>('diagnostics');
   const [showDocs, setShowDocs] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
+  // Shown once on first run, for real configs as well as the demo — it used to
+  // fire only after LOAD DEMO, so the normal path taught nothing.
+  const [showGuide, setShowGuide] = useState(() => {
+    try { return localStorage.getItem('cg.seenGuide') !== '1'; } catch { return true; }
+  });
+  const dismissGuide = () => {
+    setShowGuide(false);
+    try { localStorage.setItem('cg.seenGuide', '1'); } catch { /* private mode */ }
+  };
   const [importText, setImportText] = useState('');
   const [showImport, setShowImport] = useState(false);
 
@@ -274,10 +282,24 @@ export default function App() {
           </div>
         )}
         {showGuide && items.length > 0 && (
-          <div style={{ position:'absolute', bottom:80, left:'50%', transform:'translateX(-50%)', zIndex:5, background:'#faf3e0cc', backdropFilter:'blur(4px)', border:'1px solid #b8860b', borderRadius:8, padding:'12px 20px', maxWidth:500, textAlign:'center' }}>
-            <p style={{ margin:0, fontSize:11, color:'#4a3728', lineHeight:1.5 }}>
-              <strong>Click any circle</strong> to see what it enables and highlight its dependencies. <strong>Hover</strong> for connection details. <strong>Toggle ERAS</strong> for era-column view.
-            </p>
+          <div
+            className="app-guide"
+            // Centred on the scene, the side panels covered half of it. Inset by
+            // whichever panels are actually open so it centres on free space.
+            style={{ left: leftOpen ? 340 : 0, right: showStarPanel && selectedId ? 340 : 0 }}
+          >
+            <div className="app-guide-head">
+              <strong>Start here</strong>
+              <button className="app-guide-close" onClick={dismissGuide} aria-label="Dismiss">✕</button>
+            </div>
+            <ol className="app-guide-steps">
+              <li><strong>Click any circle</strong> to see what depends on it.</li>
+              <li><strong>Outlined circles</strong> are capabilities you have not reached — their description says what is missing.</li>
+              <li><strong>TECH TREE</strong> shows where you are on the capability tree; <strong>CONFIG</strong> shows your config as a graph.</li>
+            </ol>
+            <button className="app-guide-more" onClick={() => { setShowDocs(true); dismissGuide(); }}>
+              What do these terms mean? →
+            </button>
           </div>
         )}
         {!items.length && !loading && (
@@ -286,10 +308,10 @@ export default function App() {
               <div className="app-welcome-title">CAPABILITY GRAPH</div>
               <div className="app-welcome-tagline">Your OpenCode toolchain, mapped as a capability graph:<br/>what you have built, what connects, and what is possible.</div>
               <div className="app-welcome-diagram">
-                <svg width="300" height="100" viewBox="0 0 300 100"><rect x={0} y={0} width={300} height={100} rx={6} fill="#e8d5a8" opacity={0.5}/><line x1={52} y1={50} x2={128} y2={30} stroke="#8b6914" strokeWidth={1.5}/><line x1={152} y1={50} x2={128} y2={30} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><line x1={52} y1={50} x2={128} y2={70} stroke="#8b6914" strokeWidth={1.5}/><line x1={252} y1={50} x2={128} y2={70} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><circle cx={52} cy={50} r={16} fill="#b8860b"/><text x={52} y={55} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>◈</text><circle cx={252} cy={50} r={16} fill="#cd853f"/><text x={252} y={55} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>◆</text><circle cx={128} cy={30} r={14} fill="#b87333"/><text x={128} y={34} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>●</text><circle cx={128} cy={70} r={14} fill="#6b8e23"/><text x={128} y={74} textAnchor="middle" fill="#faebd7" fontSize={11} fontWeight={700}>◇</text><circle cx={128} cy={30} r={18} fill="none" stroke="#b8860b" strokeWidth={2} strokeDasharray="84 29" strokeLinecap="round" transform="rotate(-90 128 30)"/><circle cx={128} cy={70} r={18} fill="none" stroke="#b8860b" strokeWidth={1.5} strokeDasharray="40 73" strokeLinecap="round" transform="rotate(-90 128 70)"/></svg>
+                <svg width="300" height="100" viewBox="0 0 300 100"><rect x={0} y={0} width={300} height={100} rx={6} fill="#e8d5a8" opacity={0.5}/><line x1={52} y1={50} x2={128} y2={30} stroke="#8b6914" strokeWidth={1.5}/><line x1={152} y1={50} x2={128} y2={30} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><line x1={52} y1={50} x2={128} y2={70} stroke="#8b6914" strokeWidth={1.5}/><line x1={252} y1={50} x2={128} y2={70} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><circle cx={52} cy={50} r={16} fill="#b8860b"/><text x={52} y={55} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◈</text><circle cx={252} cy={50} r={16} fill="#cd853f"/><text x={252} y={55} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◆</text><circle cx={128} cy={30} r={14} fill="#b87333"/><text x={128} y={34} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>●</text><circle cx={128} cy={70} r={14} fill="#6b8e23"/><text x={128} y={74} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◇</text><circle cx={128} cy={30} r={18} fill="none" stroke="#b8860b" strokeWidth={2} strokeDasharray="84 29" strokeLinecap="round" transform="rotate(-90 128 30)"/><circle cx={128} cy={70} r={18} fill="none" stroke="#b8860b" strokeWidth={1.5} strokeDasharray="40 73" strokeLinecap="round" transform="rotate(-90 128 70)"/></svg>
               </div>
               <div className="app-welcome-actions">
-                <button className="app-welcome-btn" onClick={() => { seedDemo(); setTimeout(() => setShowGuide(true), 600); }}>▶  LOAD DEMO</button>
+                <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>▶  LOAD DEMO</button>
                 <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowImport(true)}>📋  PASTE</button>
                 <a href="https://github.com/zz-plant/capability-graph" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">⭐  GITHUB</a>
               </div>
@@ -323,7 +345,7 @@ export default function App() {
 
       <div className="app-hud">
         <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle panel"> {leftOpen ? '◀' : '▶'} </button>
-        <button className="app-hud-btn" onClick={() => { setShowDocs(true); setShowGuide(false); }} style={{fontWeight:600,fontSize:9,letterSpacing:1}}>DOCS</button>
+        <button className="app-hud-btn" onClick={() => { setShowDocs(true); dismissGuide(); }} style={{fontWeight:600,fontSize:12,letterSpacing:1}}>DOCS</button>
         <button className="app-hud-btn" onClick={captureGraph}>📷</button>
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
           {([['config', 'CONFIG'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
@@ -338,7 +360,7 @@ export default function App() {
         {selectedId && (<button className="app-hud-btn" onClick={() => selectItem(null)} title="Deselect"> ✕ </button>)}
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
           {LAYOUT_MODES.map(({ id: m, label, title }) => (
-            <button key={m} className="app-hud-btn" style={{ width:'auto', padding:'0 8px', border:'none', background: layoutMode === m ? 'var(--accent)' : 'transparent', color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: layoutMode === m ? 700 : 'normal', fontSize:'9px', height:'22px' }} onClick={() => { setLayoutMode(m); setShowGuide(false); }} title={`${title} layout`}>
+            <button key={m} className="app-hud-btn" style={{ width:'auto', padding:'0 8px', border:'none', background: layoutMode === m ? 'var(--accent)' : 'transparent', color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: layoutMode === m ? 700 : 'normal', fontSize:'9px', height:'22px' }} onClick={() => { setLayoutMode(m); dismissGuide(); }} title={`${title} layout`}>
               {label}
             </button>
           ))}
@@ -353,11 +375,11 @@ export default function App() {
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowImport(false)}>
           <div style={{ background:'#faf3e0', borderRadius:8, maxWidth:500, width:'90%', padding:28, border:'1px solid #c4a96a' }} onClick={e => e.stopPropagation()}>
             <h3 style={{ margin:'0 0 4px 0', fontSize:14, fontWeight:700, letterSpacing:1.5, color:'#6b5b3a' }}>IMPORT CAPABILITY GRAPH</h3>
-            <p style={{ margin:'0 0 12px 0', fontSize:10, color:'#8b7355' }}>Run <code style={{background:'#f0dbb8', padding:'1px 4px', borderRadius:3}}>tt export</code> locally, copy the output, and paste below.</p>
-            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from tt export here..." style={{ width:'100%', height:200, fontFamily:'monospace', fontSize:11, padding:10, border:'1px solid #c4a96a', borderRadius:4, background:'#f0dbb8', resize:'vertical', color:'#4a3728' }} />
+            <p style={{ margin:'0 0 12px 0', fontSize:12, color:'#8b7355' }}>Run <code style={{background:'#f0dbb8', padding:'1px 4px', borderRadius:3}}>tt export</code> locally, copy the output, and paste below.</p>
+            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from tt export here..." style={{ width:'100%', height:200, fontFamily:'monospace', fontSize:13, padding:10, border:'1px solid #c4a96a', borderRadius:4, background:'#f0dbb8', resize:'vertical', color:'#4a3728' }} />
             <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'flex-end' }}>
-              <button onClick={() => setShowImport(false)} style={{ padding:'6px 14px', fontSize:10, fontWeight:600, letterSpacing:1, border:'1px solid #c4a96a', background:'transparent', color:'#8b7355', borderRadius:3, cursor:'pointer' }}>CANCEL</button>
-              <button onClick={() => { if (loadFromJSON(importText)) { setShowImport(false); setImportText(''); } }} style={{ padding:'6px 14px', fontSize:10, fontWeight:600, letterSpacing:1, border:'1px solid #b8860b', background:'#b8860b', color:'#faf3e0', borderRadius:3, cursor:'pointer' }}>LOAD GRAPH</button>
+              <button onClick={() => setShowImport(false)} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #c4a96a', background:'transparent', color:'#8b7355', borderRadius:3, cursor:'pointer' }}>CANCEL</button>
+              <button onClick={() => { if (loadFromJSON(importText)) { setShowImport(false); setImportText(''); } }} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #b8860b', background:'#b8860b', color:'#faf3e0', borderRadius:3, cursor:'pointer' }}>LOAD GRAPH</button>
             </div>
           </div>
         </div>

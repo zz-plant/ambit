@@ -1,0 +1,68 @@
+{
+  "$comment": "The vocabulary this tool uses, defined once and read by both the visualizer (DocsModal) and the CLI (`tt explain`), so the two can never drift apart. Every term here appears somewhere in the UI or command output; if a term is added there, add it here.",
+  "concepts": [
+    {
+      "key": "capability",
+      "term": "Capability",
+      "short": "One thing your agent setup can do",
+      "long": "Every MCP server, agent, skill, provider, model and command in your config becomes a capability. So do the nodes of the curated tech tree. A capability is the unit everything else is measured against.",
+      "seen": "Every node in the graph"
+    },
+    {
+      "key": "era",
+      "term": "Era",
+      "short": "How far up the tree a capability sits",
+      "long": "The tech tree runs through seven eras: Foundation, Model Access, Tool Use, Memory, Autonomy, Assurance, Sovereignty. Later eras depend on earlier ones — you cannot run fully offline before you have a local runtime. Eras describe ordering, not importance.",
+      "seen": "Column headers in the ERAS view"
+    },
+    {
+      "key": "state",
+      "term": "Reached, next, blocked",
+      "short": "Where you are on a tech tree node",
+      "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next: prerequisites are met but nothing was detected — this is the useful frontier, and `tt near` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
+      "seen": "Solid nodes are reached; outlined nodes are not"
+    },
+    {
+      "key": "prerequisite",
+      "term": "Hard vs soft prerequisite",
+      "short": "Whether a dependency is required or merely helpful",
+      "long": "A hard prerequisite must be in place or the dependent capability cannot work — a model cannot run without its provider. A soft prerequisite strengthens something without gating it. Only hard prerequisites block a node from being reached; both are drawn, with soft ones fainter.",
+      "seen": "Solid vs dashed connection lines"
+    },
+    {
+      "key": "maturity",
+      "term": "Maturity",
+      "short": "A 0-1 estimate of how established a capability is",
+      "long": "Seeded from what kind of thing it is and whether it is enabled, then adjusted as your config changes. It is a rough ordering signal, not a measurement — treat a 0.8 as 'more settled than a 0.5', not as a score that means anything on its own.",
+      "seen": "The ring around each node, and MATURITY in the detail panel"
+    },
+    {
+      "key": "decay",
+      "term": "Decay",
+      "short": "What you have stopped tending",
+      "long": "`tt decay` ranks capabilities by how long since their configuration last changed. It tracks configuration decisions, not how often you invoke something — a server you use daily but never reconfigure will look static, which is intentional. The question it answers is 'what have I stopped tending', not 'what do I use least'.",
+      "seen": "tt decay"
+    },
+    {
+      "key": "bottleneck",
+      "term": "Bottleneck",
+      "short": "A capability many others depend on",
+      "long": "Ranked by how many capabilities would be affected if it disappeared. High-leverage to invest in, and risky to leave unmaintained. `tt impact <id>` shows exactly what falls over.",
+      "seen": "tt bottlenecks, tt impact"
+    },
+    {
+      "key": "combo",
+      "term": "Combo",
+      "short": "A capability several others unlock",
+      "long": "The tech tree nodes are combos, and you can define your own in a `combos` block for things specific to your work. A combo is a judgement about what composes into something new, which is why the tool never invents one from your config.",
+      "seen": "tt combos, tt near, tt fork"
+    },
+    {
+      "key": "domain",
+      "term": "Domain",
+      "short": "The area of work a capability belongs to",
+      "long": "infra, devops, backend, frontend, ai-ml, quality, security, or meta. Inferred from the capability's name, which means a stack unlike the keyword table's assumptions will land more things in the meta fallback — that table is the first thing to edit.",
+      "seen": "Column grouping, and DOMAIN in the detail panel"
+    }
+  ]
+}

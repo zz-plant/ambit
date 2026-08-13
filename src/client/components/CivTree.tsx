@@ -77,7 +77,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
       <div style={{ position:'absolute', top:10, left:14, display:'flex', gap:5, zIndex:10 }}>
         {TYPE_FILTERS.map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            style={{ padding:'3px 10px', fontSize:10, fontWeight:600, letterSpacing:1.2,
+            style={{ padding:'3px 10px', fontSize:12, fontWeight:600, letterSpacing:1.2,
               border: filter===f ? '1.5px solid #b8860b':'1px solid #c4a96a',
               background: filter===f ? '#b8860b':'#faf3e0', borderRadius:3, cursor:'pointer',
               color: filter===f ? '#fff':'#8b7355', textTransform:'uppercase', transition:'all .15s' }}>
@@ -100,9 +100,9 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             <g key={`band-${d}`}>
               <rect x={x - 5} y={START_Y - 45} width={COL_W - 20} height={contentHeight - START_Y + 20}
                 fill={i % 2 === 0 ? '#f0dbb8' : '#f8ecd0'} rx={6} opacity={0.5}/>
-              <text x={x + COL_W/2 - 40} y={START_Y - 22} textAnchor="middle" fill="#6b5b3a" fontSize={12} fontWeight={700}
+              <text x={x + COL_W/2 - 40} y={START_Y - 22} textAnchor="middle" fill="#6b5b3a" fontSize={13} fontWeight={700}
                 letterSpacing={2} style={{ textTransform: 'uppercase' }}>{ERA_LABELS[d] || d}</text>
-              <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="#9b8b6a" fontSize={10}>{(d || '').toUpperCase()}</text>
+              <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="#9b8b6a" fontSize={12}>{(d || '').toUpperCase()}</text>
               <line x1={x + 10} y1={START_Y - 2} x2={x + COL_W - 50} y2={START_Y - 2} stroke="#c4a96a" strokeWidth={0.8}/>
             </g>
           );
@@ -174,8 +174,8 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     
                     {/* Main node */}
                     <circle r={NODE_R} fill={color} stroke={sc} strokeWidth={sw} opacity={0.9}/>
-                    <text y={3} textAnchor="middle" fill={dimmed ? '#8b7355' : '#faebd7'} fontSize={14} fontWeight={700}>{sym}</text>
-                    <text y={NODE_R + 18} textAnchor="middle" fill={dimmed ? '#6b5b3a' : '#4a3728'} fontSize={10} fontWeight={500}>{label}</text>
+                    <text y={3} textAnchor="middle" fill={dimmed ? '#8b7355' : '#faebd7'} fontSize={15} fontWeight={700}>{sym}</text>
+                    <text y={NODE_R + 18} textAnchor="middle" fill={dimmed ? '#6b5b3a' : '#4a3728'} fontSize={12} fontWeight={500}>{label}</text>
                   </g>
                 );
               })}
@@ -196,12 +196,12 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           return (
             <g transform={`translate(${tx}, ${ty})`}>
               <rect x={0} y={0} width={150} height={boxH} rx={5} fill="#faf3e0" stroke="#b8860b" strokeWidth={1}/>
-              <text x={10} y={16} fill="#6b5b3a" fontSize={10} fontWeight={700} letterSpacing={1}>ENABLES</text>
+              <text x={10} y={16} fill="#6b5b3a" fontSize={12} fontWeight={700} letterSpacing={1}>ENABLES</text>
               {hoverDownstream.slice(0, 4).map((did, i) => {
                 const dep = items.find(it => it.id === did);
-                return <text key={did} x={12} y={32 + i * 16} fill="#4a3728" fontSize={10}>{dep ? (dep.name.length > 20 ? dep.name.slice(0, 18) + '…' : dep.name) : did}</text>;
+                return <text key={did} x={12} y={32 + i * 16} fill="#4a3728" fontSize={12}>{dep ? (dep.name.length > 20 ? dep.name.slice(0, 18) + '…' : dep.name) : did}</text>;
               })}
-              {hoverDownstream.length > 4 && <text x={12} y={boxH - 8} fill="#8b7355" fontSize={9}>+{hoverDownstream.length - 4} more</text>}
+              {hoverDownstream.length > 4 && <text x={12} y={boxH - 8} fill="#8b7355" fontSize={12}>+{hoverDownstream.length - 4} more</text>}
             </g>
           );
         })()}
@@ -224,12 +224,12 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 {l.color ? (
                   <>
                     <circle r={8} fill={l.color} opacity={0.85}/>
-                    <text y={3} textAnchor="middle" fill="#faebd7" fontSize={9} fontWeight={700}>{l.sym}</text>
+                    <text y={3} textAnchor="middle" fill="#faebd7" fontSize={12} fontWeight={700}>{l.sym}</text>
                   </>
                 ) : (
                   <line x1={-12} y1={0} x2={12} y2={0} stroke={l.stroke} strokeWidth={1.5} strokeDasharray={l.style === 'dashed' ? '5,3' : 'none'}/>
                 )}
-                <text x={16} y={3} fill="#6b5b3a" fontSize={9}>{l.label}</text>
+                <text x={16} y={3} fill="#6b5b3a" fontSize={12}>{l.label}</text>
               </g>
             );
           })}

@@ -9,21 +9,48 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // of the package entirely and every command failed to find the engine.
 const ROOT = __dirname;
 
+const B = "\x1b[1m", R = "\x1b[0m", D = "\x1b[90m";
+
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
 
 if (!cmd || cmd === "--help") {
-  console.log("  Toolchain capability graph\n");
-  console.log("  Bootstrap: ./bootstrap.sh");
-  console.log("");
-  console.log("  Explore:   stats  export  context  health  profile");
-  console.log("  Maintain:  decay  prune  prune <id>  diff  trend");
-  console.log("  Plan:      near  combos  fork  insight");
-  console.log("  Analyze:   bottlenecks  impact <id>  budget <s> <t>");
-  console.log("");
-  console.log("  Web:       tt web  — visualizer at http://localhost:3000");
-  console.log("");
-  console.log("  recs and cap are MCP-only tools, available inside OpenCode sessions.");
+  // A bare list of verbs taught nothing. Lead with the two commands worth
+  // running first, group the rest by the question each answers.
+  console.log(`
+  Capability graph — your agent setup, placed on a tech tree.
+
+  ${B}Start here${R}
+    tt near              What is one step away from where I am?
+    tt explain           What do the terms in this tool mean?
+
+  ${B}Where am I${R}
+    tt stats             Counts by domain, overall maturity
+    tt health            Per-domain composite scores
+    tt context           A summary block to hand an agent
+    tt export            Dump the graph as JSON
+
+  ${B}What next${R}
+    tt insight           Top actions, ranked
+    tt combos            Capabilities whose prerequisites are met
+    tt fork              Compare candidates by efficiency
+    tt bottlenecks       What the most things depend on
+    tt impact <id>       If this went away, what breaks?
+    tt budget <s> <t>    Best moves within a setup-time and token budget
+
+  ${B}Upkeep${R}
+    tt decay             What have I stopped tending?
+    tt diff              What changed since last time?
+    tt trend <days>      Projected health
+    tt prune             Removal candidates
+    tt prune <id>        Remove it, writing a .bak first
+
+  ${B}Setup${R}
+    ./bootstrap.sh       Build or refresh the graph
+    ./bootstrap.sh web   Open the visualizer
+
+  ${D}recs and cap are MCP-only, available inside an agent session.${R}
+`);
   process.exit(0);
 }
 
