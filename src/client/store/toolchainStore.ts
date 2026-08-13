@@ -3,6 +3,35 @@ import type { Item, Connection, LayoutMode } from '../utils/configImporter';
 import type { TrendItem } from '../utils/knowledgeBase';
 import { computeLayout } from '../utils/layoutEngine';
 
+/**
+ * The published demo is static files on GitHub Pages with no API behind it, so
+ * every optional call — trends, infrastructure scan, consultant logging,
+ * snapshots — failed in the console of exactly the audience most likely to
+ * open one. Probe once, remember the answer, and let those calls opt out.
+ *
+ * Only optional calls use this. Loading the config still reports its own
+ * failure, because there the API not being up is the answer to the question.
+ */
+let backendProbe: Promise<boolean> | null = null;
+function backendAvailable(): Promise<boolean> {
+  backendProbe ??= fetch('/api/health')
+    .then(r => r.ok)
+    .catch(() => false);
+  return backendProbe;
+}
+
+/** Fire-and-forget against an endpoint that may not exist. */
+async function postIfLive(url: string, body: unknown): Promise<void> {
+  if (!(await backendAvailable())) return;
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {}
+}
+
 interface ConsultantFinding {
   severity: 'warn' | 'info' | 'error';
   message: string;
@@ -499,6 +528,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   },
 
   loadInfrastructureScan: async () => {
+    if (!(await backendAvailable())) return null;
     try {
       const res = await fetch('/api/infrastructure/scan');
       if (!res.ok) return null;
@@ -511,6 +541,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   },
 
   fetchTrends: async () => {
+    if (!(await backendAvailable())) return;
     try {
       const res = await fetch('/api/trending');
       if (res.ok) {
@@ -620,11 +651,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     const score = allFindings.length === 0 ? 100 : Math.max(0, 100 - allFindings.reduce((s, f) => s + (f.severity === 'error' ? 35 : f.severity === 'warn' ? 20 : 5), 0));
     const result = { id: consultantId, timestamp: new Date().toISOString(), findings: allFindings, score, itemCount: state.items.length };
     
-    fetch('/api/consultant/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ consultantId, score, findings: allFindings, itemCount: state.items.length })
-    }).catch(console.error);
+    postIfLive('/api/consultant/log', { consultantId, score, findings: allFindings, itemCount: state.items.length });
 
     return {
       consultantResults: {
@@ -662,11 +689,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       const score = allFindings.length === 0 ? 100 : Math.max(0, 100 - allFindings.reduce((s, f) => s + (f.severity === 'error' ? 35 : f.severity === 'warn' ? 20 : 5), 0));
       results[def.id] = { id: def.id, timestamp: new Date().toISOString(), findings: allFindings, score, itemCount: state.items.length };
 
-      fetch('/api/consultant/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultantId: def.id, score, findings: allFindings, itemCount: state.items.length })
-      }).catch(console.error);
+      postIfLive('/api/consultant/log', { consultantId: def.id, score, findings: allFindings, itemCount: state.items.length });
     });
     return { consultantResults: results };
   }),
@@ -682,12 +705,8 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       connections: JSON.parse(JSON.stringify(state.connections)),
     };
     
-    // Log snapshot back to API
-    fetch('/api/snapshots', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: snap.label, items: snap.items, connections: snap.connections })
-    }).catch(console.error);
+    // Log snapshot back to API, when there is one
+    postIfLive('/api/snapshots', { label: snap.label, items: snap.items, connections: snap.connections });
 
     return {
       snapshots: [...state.snapshots, snap],

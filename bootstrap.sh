@@ -34,9 +34,11 @@ if [ ! -d node_modules ]; then echo "Installing..."; bun install --silent; fi
 # summary below; the engine now reports for itself when it found no config.
 node --experimental-sqlite "$ROOT/src/engine/engine.ts" seed
 
-# Must match the shared resolver in src/shared/db-path.ts, or the summary reads
-# a different database than seed just wrote and always reports an empty graph.
-DB="${TOOLCHAIN_DB:-$ROOT/toolchain-viz.db}"
+# Ask the engine where it put the graph rather than reconstructing the rule.
+# Guessing is how the summary previously ended up reading a different database
+# than seed had just written, and always reporting an empty graph.
+DB="$(node --experimental-sqlite "$ROOT/src/engine/engine.ts" where --json | sed -n 's/.*"graph": *"\([^"]*\)".*/\1/p')"
+DB="${DB:-$ROOT/toolchain-viz.db}"
 node --experimental-sqlite -e "
 const {DatabaseSync}=require('node:sqlite');
 const db=new DatabaseSync('$DB');

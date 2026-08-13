@@ -1,8 +1,26 @@
 #!/usr/bin/env node --experimental-sqlite
+import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
 import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
+const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
+
+/**
+ * An unseeded graph answers every question with zeroes, which an agent reads
+ * as "this environment has no capabilities" rather than "this tool was never
+ * set up" — the exact confusion Ambit exists to remove. Say which it is.
+ */
+function emptyGraphNotice(db) {
+  const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
+  if (seeded?.n) return null;
+  return {
+    graph: "not seeded",
+    meaning: "This is not an environment without capabilities — Ambit has not been run here yet. Do not report the user's stack as empty.",
+    fix: "Run `tt seed` in a shell, or ./bootstrap.sh from a checkout, then ask again.",
+    database: DB_PATH,
+  };
+}
 
 function respond(id, r) { process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, result: r }) + "\n"); }
 function err(id, c, m) { process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, error: { code: c, message: m } }) + "\n"); }
@@ -54,7 +72,10 @@ function handleLine(line) {
       const msg = JSON.parse(line);
       const { id, method, params } = msg;
       switch (method) {
-        case "initialize": return respond(id, { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "tech-tree", version: "1.0.0" } });
+        // The server used to introduce itself as "tech-tree" at version 1.0.0,
+        // which is neither the name of the product nor its version — an agent
+        // that connected had no way to tell what it was talking to.
+        case "initialize": return respond(id, { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "ambit", version: VERSION } });
         case "tools/list": return respond(id, { tools: TOOLS });
         case "tools/call": {
           const { name, arguments: args } = params;
@@ -93,6 +114,8 @@ function handleLine(line) {
               case "tt_insight": res = tt(db => insights(db)); break;
               default: return err(id, -32601, `Unknown: ${name}`);
             }
+            const notice = tt(db => emptyGraphNotice(db));
+            if (notice) res = { ...notice, result: res };
             return respond(id, { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] });
           } catch (e) { return err(id, -32000, e.message); }
         }

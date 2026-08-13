@@ -311,6 +311,28 @@
           "curl -sf -m 5 https://example.com >/dev/null"
         ],
         "timeout_seconds": 10
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "search or fetch MCP",
+            "setup_seconds": 300,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "config_patch": {
+              "mcp": {
+                "fetch": {
+                  "type": "local",
+                  "command": [
+                    "uvx",
+                    "mcp-server-fetch"
+                  ],
+                  "enabled": true
+                }
+              }
+            }
+          }
+        ]
       }
     },
     {
@@ -368,6 +390,26 @@
       },
       "acquisition": {
         "alternatives": [
+          {
+            "name": "read-only database MCP",
+            "setup_seconds": 300,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "config_patch": {
+              "mcp": {
+                "sqlite": {
+                  "type": "local",
+                  "command": [
+                    "uvx",
+                    "mcp-server-sqlite",
+                    "--db-path",
+                    "REPLACE_ME"
+                  ],
+                  "enabled": true
+                }
+              }
+            }
+          },
           {
             "name": "read-only database MCP",
             "setup_seconds": 600,
@@ -500,7 +542,30 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Add a memory MCP server or a durable notes file the agent reads on start"
+      "hint": "Add a memory MCP server or a durable notes file the agent reads on start",
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "memory MCP",
+            "setup_seconds": 300,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "config_patch": {
+              "mcp": {
+                "memory": {
+                  "type": "local",
+                  "command": [
+                    "npx",
+                    "-y",
+                    "@modelcontextprotocol/server-memory"
+                  ],
+                  "enabled": true
+                }
+              }
+            }
+          }
+        ]
+      }
     },
     {
       "id": "context-compaction",

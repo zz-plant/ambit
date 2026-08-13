@@ -42,6 +42,7 @@ if (cmd === "--help" || cmd === "help") {
     tt propose <id> [n]  Draft a reviewable acquisition, using alternative n
     tt proposals         Drafts so far
     tt proposal <id>     One draft in full
+    tt approve <id> <who>  Record that a person approved a draft
     tt combos            Capabilities whose prerequisites are met
     tt fork              Compare candidates by efficiency
     tt bottlenecks       What the most things depend on
@@ -61,8 +62,14 @@ if (cmd === "--help" || cmd === "help") {
     tt prune <id>        Remove it, writing a .bak first
 
   ${B}Setup${R}
-    ./bootstrap.sh       Build or refresh the graph
-    ./bootstrap.sh web   Open the visualizer
+    tt seed              Read your agent config and build the graph
+    tt where             Where the graph is stored
+    tt web               Open the visualizer
+
+  ${D}Installed via Homebrew or npm? tt seed is how you build the graph —
+  bootstrap.sh is the equivalent for a git checkout, and does the same thing
+  plus installing dependencies. tt web needs a checkout: the visualizer is
+  built with dev dependencies an installed copy does not carry.${R}
 
   ${D}recs and cap are MCP-only, available inside an agent session.${R}
 `);

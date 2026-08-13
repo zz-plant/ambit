@@ -181,13 +181,16 @@ To launch the visualizer:
 
 Bootstrap links the `tt` command into `~/.local/bin` when that directory is on your PATH. If it isn't, bootstrap prints the one-line `ln -s` to run instead; until then the CLI works in place as `./cli.js`.
 
-Homebrew installs the CLI on its own, as `tt`:
+Homebrew installs the CLI on its own, as `tt`. There is no clone, so build the graph with `tt seed`:
 
 ```bash
 brew install zz-plant/tap/ambit
+tt seed
 ```
 
-**Requires** Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both before doing anything.
+The graph is a local SQLite file — `~/.local/share/ambit/graph.db` for an installed copy, or the checkout itself when you cloned. `tt where` prints the path, and `TOOLCHAIN_DB` overrides it. The engine, the MCP server and the visualizer all read the same one. Nothing is uploaded.
+
+**Requires** Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both before doing anything. The visualizer needs a checkout; an installed copy carries the engine, CLI and MCP server.
 
 Without an agent config, bootstrap still seeds the curated capability model and says so — you get the graph with nothing of yours in it yet, rather than an error. Point it at your own config with `OPENCODE_CONFIG`, or map a different format with `CONFIG_MAPPING` (see [Other configurations](#other-configurations)).
 
@@ -290,7 +293,15 @@ $ tt propose retrieval
 
 Choosing the hosted alternatives (`tt propose retrieval 1`) takes it to 13 minutes, at a per-token bill and a data boundary.
 
-**Nothing executes.** Every step carries a null `inverse`, and that is the gate rather than an omission: no step may run without one, so no proposal is applicable by construction. Ambit describes and previews; it does not act.
+Where an acquisition genuinely *is* a config change, the step carries a declarative patch and Ambit derives its undo — removing what it adds, or restoring what it overwrites. Anything needing an installer gets no inverse, and a proposal is `applicable` only when every step has one.
+
+```console
+$ tt approve prop-msrrv9c2 kanav
+  approved by: Kanav · applicable: true
+  Approved. Applying is not implemented — this records permission, not action.
+```
+
+**Nothing executes.** `applicable` and `executable` are separate claims: the first says a proposal could be applied safely, the second says apply does not exist. Approval is CLI-only and not exposed over MCP — an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
 
 ### The ledger
 
