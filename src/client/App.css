@@ -1568,3 +1568,8 @@ html, body, #root {
 .dp-tally-error { color: var(--error); }
 .dp-tally-warn { color: var(--warn); }
 .dp-tally-note { color: var(--text-muted); }
+
+/* The export button gained a text label and wrapped inside the fixed square
+   width, overlapping its neighbour. Let labelled HUD buttons size to content. */
+.app-hud-btn { white-space: nowrap; }
+.app-hud > .app-hud-btn { width: auto; min-width: 26px; padding: 0 8px; }

@@ -1,18 +1,52 @@
+<div align="center">
+
 # Ambit
 
-<p align="center">
-  <img src="docs/assets/capability-graph-demo.gif" alt="Ambit demo" width="720">
-  <br>
-  <a href="https://zz-plant.github.io/ambit/"><strong>Live Demo</strong></a>
-</p>
-
 **The combined action space of you, your agents, and your machines — and a way to grow it deliberately.**
+
+[![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-22%2B-43853d?style=flat-square)](https://nodejs.org)
+[![Bun](https://img.shields.io/badge/bun-runtime-fbf0df?style=flat-square)](https://bun.sh)
+[![Local first](https://img.shields.io/badge/server-loopback%20only-b8860b?style=flat-square)](#security)
+
+[**Live demo**](https://zz-plant.github.io/ambit/) · [Quick start](#quick-start) · [Roadmap](./ROADMAP.md) · [CLI](#cli-reference)
+
+<img src="docs/assets/screenshot-tree.png" alt="Ambit tech tree: seven era columns from Foundation to Sovereignty, with reached capabilities filled, researchable ones outlined in teal with time estimates, and locked ones faded" width="900">
+
+<sub>Seven eras, left to right. Filled = reached · dashed teal = researchable now, with what it costs · faded = still locked.</sub>
+
+</div>
+
+---
 
 You added an MCP server eight months ago. Is it still doing anything? Which of your agents point at a model you have since stopped using? What did you connect last quarter and never touch again?
 
 `opencode.json` cannot answer that. It is a flat file with no history and no edges, where every entry looks equally load-bearing whether you use it hourly or added it once and forgot.
 
-Ambit reads that config, places it on a curated tech tree of agent capabilities, and tells you where you actually are: what you have reached, what is one step away, and what you have half-built without noticing. Local models get a full branch of their own, from "a runtime is installed" to "the whole loop runs with the network off".
+Ambit reads that config, places it on a curated tech tree of agent capabilities, and tells you where you actually are: what you have reached, what is one step away, and what you have half-built without noticing.
+
+<table>
+<tr><td width="33%" valign="top">
+
+**Reached**
+
+Something in your config provides it, and the graph records which capability proved it.
+
+</td><td width="33%" valign="top">
+
+**Researchable**
+
+Prerequisites met, nothing configured yet — with an estimate of what it costs to take.
+
+</td><td width="33%" valign="top">
+
+**Blocked**
+
+You have the tooling but a prerequisite is missing. Usually the most informative of the three.
+
+</td></tr>
+</table>
 
 ### Why it is not called a visualiser
 
@@ -112,6 +146,23 @@ Then start the visualizer:
 
 Homebrew (`brew install zz-plant/tap/ambit`) installs the `tt` CLI on its own, without the visualizer.
 
+## Two views
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/assets/screenshot-config.png" alt="Config view: capabilities grouped into domain columns with a diagnostics sidebar" width="100%">
+<br><sub><b>CONFIG</b> — your <code>opencode.json</code> as a graph, grouped by domain, with diagnostics down the side.</sub>
+</td>
+<td width="50%" valign="top">
+<img src="docs/assets/screenshot-docs.png" alt="The concept guide, explaining capability, era, and the reached/next/blocked states" width="100%">
+<br><sub><b>DOCS</b> — nine terms carry all the meaning. The same definitions back <code>tt explain</code>.</sub>
+</td>
+</tr>
+</table>
+
+Any view is linkable: `?view=tree`, `?layout=constellation`, `?docs=open`.
+
 ## What you get
 
 | Component | What it does |
@@ -142,6 +193,43 @@ Three places explain the vocabulary, all reading the same definitions from `src/
 If you run one command, run `tt near`. It answers "what is one step away", which is the question the rest of the tool supports.
 
 ## CLI reference
+
+Run `tt` with no arguments and it shows where you are, what is one step away, and what to do next:
+
+```console
+$ tt
+
+Where you are
+Toolchain: 156/168
+  ai-ml        22/26
+  backend      6/8
+  devops       7/8
+  infra        26/28
+  meta         88/89
+  quality      5/6
+  security     1/2
+
+What is one step away
+
+  Local Embeddings
+    missing: 1
+    met maturity: 70
+    investment: Add Embeddings
+```
+
+`tt impact` answers what falls over if something goes away — here, a local provider taking six models and two agents with it:
+
+```console
+$ tt impact provider:local-code
+
+  capability: local-code
+  decayed:
+    Gemma 4 31B (VISION QUALITY tier ...)   becomes unavailable: true
+    Qwen3-Next 80B-A3B 2-bit (QUALITY ...)  becomes unavailable: true
+    ...
+```
+
+Every command prints for a person by default and takes `--json` for scripts.
 
 ```
 Explore     stats  export  context  health  profile
@@ -217,6 +305,15 @@ toolchain-viz.db       ←─ capabilities · dependencies · session_learning
 ```
 
 The server binds `127.0.0.1` and rejects non-local origins. It can toggle an MCP on or off and edit an existing agent's description or model, but it cannot create config entries — an MCP entry carries a command OpenCode executes, so new servers are added by hand. The visualizer's "add server" screen generates a snippet for you to paste. See [AGENTS.md](./AGENTS.md) for the full reasoning.
+
+## Security
+
+The server reads and writes `opencode.json`, so two invariants hold and are documented in [AGENTS.md](./AGENTS.md):
+
+- **Loopback only.** It binds `127.0.0.1` and rejects non-local origins **before routing** — CORS headers alone are not enough, because a simple request skips preflight and reaches the handler regardless.
+- **It cannot create config entries.** An MCP entry carries a command OpenCode executes, so creating one over HTTP would be remote code execution. The API can toggle an MCP and edit an existing agent's description or model; adding a server generates a snippet you paste yourself.
+
+Nothing is sent anywhere. There is no telemetry, and the only outbound requests are the ones you can see in `/api/trending`.
 
 ## How it works
 
