@@ -219,6 +219,12 @@ html, body, #root {
   z-index: 25;
 }
 
+/* Clears the floating view controls; the mobile block raises it further, where
+   those controls wrap onto a second row. */
+.civ-tree-svg {
+  margin-top: 32px;
+}
+
 .sp-hdr {
   display: flex;
   align-items: flex-start;
@@ -1366,6 +1372,64 @@ html, body, #root {
 
 /* ─── Mobile ─── */
 @media (max-width: 768px) {
+  /* The console is a 340px left rail on a desktop and the entire screen on a
+     phone, where it sat over the landing page and its LOAD DEMO button. Below
+     768px it becomes a bottom sheet: the scene stays visible above it, and it
+     slides down out of the way instead of across. */
+  .app-console {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 36px;
+    width: auto;
+    max-height: 55vh;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    transform: translateY(calc(100% + 36px));
+  }
+  .app-console--open {
+    transform: translateY(0);
+  }
+
+  /* Same treatment for the inspector. Selecting a node opens it, and at this
+     width a 300px panel anchored below the toolbar covered the graph it was
+     describing — including the toolbar itself once its content ran long. */
+  .app-panel-overlay {
+    left: 6px;
+    right: 6px;
+    top: auto;
+    bottom: 36px;
+  }
+  .star-panel {
+    width: auto;
+    max-width: 100%;
+    max-height: 45vh;
+  }
+
+  /* The view controls and the console tabs occupy the same corner at this
+     width and overlapped each other. Let them wrap, and keep them above the
+     scene rather than over the panel. */
+  .app-hud {
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+  .app-hud-select {
+    max-width: 55vw;
+  }
+
+  /* Seven era columns cannot be legible across 375px. Hold a readable width
+     and let the container scroll sideways, rather than shrinking the whole
+     tree until the labels are unreadable. */
+  .civ-tree-svg {
+    min-width: 820px;
+    /* The view controls wrap onto two rows here and float over the canvas. */
+    margin-top: 76px;
+  }
+
   .app-welcome-hero {
     max-width: 90vw;
     padding: 24px;
@@ -1384,9 +1448,6 @@ html, body, #root {
   .app-hud {
     flex-wrap: wrap;
     gap: 4px;
-  }
-  .app-console {
-    max-width: 70vw;
   }
 }
 

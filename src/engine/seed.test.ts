@@ -1,6 +1,6 @@
 import { test, expect, beforeEach, afterEach } from 'bun:test';
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, rmSync, mkdtempSync, mkdirSync, symlinkSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, rmSync, mkdtempSync, mkdirSync, symlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 // The engine runs under Node (node:sqlite); these assertions run under Bun,
@@ -178,7 +178,16 @@ function cli(cmd: string, ...args: string[]): any {
   const out = execFileSync(
     'node',
     ['--experimental-sqlite', ENGINE, cmd, ...args, '--json'],
-    { env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db') }, encoding: 'utf8' }
+    // OPENCODE_CONFIG is pinned to this test's temp file. Without it a command
+    // that writes configuration would target the developer's real one.
+    {
+      env: {
+        ...process.env,
+        TOOLCHAIN_DB: join(dir, 'graph.db'),
+        OPENCODE_CONFIG: join(dir, 'config.json'),
+      },
+      encoding: 'utf8',
+    }
   );
   return JSON.parse(out);
 }
@@ -629,4 +638,79 @@ test('a proposal cannot be approved twice', () => {
   cli('approve', p.proposal, 'kanav');
   const again = cli('approve', p.proposal, 'kanav');
   expect(again.error).toContain('already approved');
+});
+
+// ── Apply ───────────────────────────────────────────────────────────────────
+
+const APPLIABLE = {
+  provider: { ollama: { models: { 'qwen3-coder': {} } } },
+  mcp: { git: {} },
+  actors: { kanav: { name: 'Kanav' } },
+};
+
+/** The config this test's engine reads and writes. */
+const readConfig = () => JSON.parse(readFileSync(join(dir, 'config.json'), 'utf8'));
+
+test('apply refuses a proposal no person has approved', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  const refused = cli('apply', p.proposal);
+  expect(refused.error).toContain('approve');
+  // And nothing was written.
+  expect(Object.keys(readConfig().mcp)).toEqual(['git']);
+});
+
+test('apply refuses anything that cannot be undone', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'offline-capable'); // steps need installers, not config
+  cli('approve', p.proposal, 'kanav');
+  const refused = cli('apply', p.proposal);
+  expect(refused.error).toContain('inverse');
+});
+
+test('an approved config change is applied, and backed up first', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  const result = cli('apply', p.proposal);
+
+  expect(result.applied).toBe(true);
+  expect(readConfig().mcp).toHaveProperty('fetch');
+  expect(existsSync(result.backup)).toBe(true);
+});
+
+test('rollback reverses exactly what was applied', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  cli('apply', p.proposal);
+  const before = Object.keys(readConfig().mcp);
+  expect(before).toContain('fetch');
+
+  const undo = cli('rollback', p.proposal);
+  expect(undo.rolled_back).toBe(true);
+  // git survives: the inverse describes only what this proposal changed, so a
+  // rollback cannot discard edits made since.
+  expect(Object.keys(readConfig().mcp)).toEqual(['git']);
+});
+
+test('applying twice is refused', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  cli('apply', p.proposal);
+  expect(cli('apply', p.proposal).error).toContain('already applied');
+});
+
+test('every act is recorded against the person who authorised it', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  cli('apply', p.proposal);
+
+  const db = new Database(join(dir, 'graph.db'));
+  const acts = rows(db, `SELECT action, capability_id FROM session_learning
+                         WHERE session_id IN ('approval','apply') ORDER BY id`);
+  expect(acts.map(a => a.action)).toEqual(['approved', 'applied']);
+  expect(acts.every(a => a.capability_id === 'human:kanav')).toBe(true);
 });

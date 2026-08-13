@@ -101,6 +101,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
   const contentHeight = Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 40;
+  const contentWidth = START_X + colOrder.length * COL_W + 60;
 
   return (
     <div style={{ position:'relative', width:'100%', height:'100%', overflow:'auto', paddingLeft: leftInset }}>
@@ -108,9 +109,15 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
       {/* xMinYMin: the default centres the viewBox, and once the tallest column
           makes the graph taller than it is wide, that centring pushes every node
           below the fold — the canvas looks empty until you scroll past the gap. */}
-      <svg width="100%" height={contentHeight} preserveAspectRatio="xMinYMin meet"
-        viewBox={`0 0 ${START_X + colOrder.length * COL_W + 60} ${contentHeight}`}
-        style={{ background: '#f5e6c8', marginTop: 32 }}>
+      {/* height came from the viewBox rather than from how wide the svg
+          actually rendered, so whenever width was the binding constraint —
+          any phone — the tree scaled down to a strip at the top and left the
+          rest of a full-height canvas empty. An aspect ratio ties the two
+          together at every width. */}
+      <svg width="100%" height="auto" preserveAspectRatio="xMinYMin meet"
+        viewBox={`0 0 ${contentWidth} ${contentHeight}`}
+        className="civ-tree-svg"
+        style={{ background: '#f5e6c8', aspectRatio: `${contentWidth} / ${contentHeight}` }}>
         
         {/* Era column bands */}
         {colOrder.map((d, i) => {
