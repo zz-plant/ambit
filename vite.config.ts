@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/capability-graph/',
+  base: '/ambit/',
   root: 'src/client',
   server: {
     port: 3000,

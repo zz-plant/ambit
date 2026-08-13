@@ -3,7 +3,7 @@
 <p align="center">
   <img src="docs/assets/capability-graph-demo.gif" alt="Ambit demo" width="720">
   <br>
-  <a href="https://zz-plant.github.io/capability-graph/"><strong>Live Demo</strong></a>
+  <a href="https://zz-plant.github.io/ambit/"><strong>Live Demo</strong></a>
 </p>
 
 **The combined action space of you, your agents, and your machines — and a way to grow it deliberately.**
@@ -25,8 +25,8 @@ Today Ambit answers the first question well and the second in a limited way: it 
 ## Quick Start
 
 ```bash
-git clone https://github.com/zz-plant/capability-graph.git
-cd capability-graph
+git clone https://github.com/zz-plant/ambit.git
+cd ambit
 ./bootstrap.sh
 ```
 
@@ -110,7 +110,7 @@ Then start the visualizer:
 ./bootstrap.sh web
 ```
 
-Homebrew (`brew install zz-plant/tap/capability-graph`) installs the `tt` CLI on its own, without the visualizer.
+Homebrew (`brew install zz-plant/tap/ambit`) installs the `tt` CLI on its own, without the visualizer.
 
 ## What you get
 
@@ -167,7 +167,7 @@ Analyze     bottlenecks  impact <id>  budget <setup> <tokens>
 | `tt impact <id>` | What if this decays? Downstream damage |
 | `tt budget <s> <t>` | What's optimal given a setup-time and token budget? |
 | `tt prune [id]` | What should I remove? With an ID, performs the removal |
-| `tt export` | Dumps capabilities and connections as JSON — paste it on the [demo site](https://zz-plant.github.io/capability-graph/) to view a graph without installing anything |
+| `tt export` | Dumps capabilities and connections as JSON — paste it on the [demo site](https://zz-plant.github.io/ambit/) to view a graph without installing anything |
 
 ## MCP reference
 

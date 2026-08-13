@@ -697,9 +697,9 @@ const server = Bun.serve({
 
     // Serve built SPA whenever dist exists; Vite dev still proxies /api separately.
     if (url.pathname === '/' || !url.pathname.startsWith('/api')) {
-      // The build sets base '/capability-graph/' for GitHub Pages, so asset
-      // URLs carry that prefix; strip it when serving dist locally.
-      const stripped = url.pathname.replace(/^\/capability-graph/, '') || '/';
+      // The build sets base '/ambit/' for GitHub Pages, so asset URLs carry
+      // that prefix; strip it when serving dist locally.
+      const stripped = url.pathname.replace(/^\/ambit/, '') || '/';
       const filePath = stripped === '/' ? '/index.html' : stripped;
       const f = Bun.file('dist' + filePath);
       const exists = await f.exists();
