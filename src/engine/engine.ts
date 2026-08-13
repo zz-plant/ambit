@@ -235,6 +235,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   const mapping = parseMapping(mappingStr);
 
   let count = 0;
+  const contributed: string[] = [];
   const insert = db.prepare("INSERT OR IGNORE INTO capabilities (id, name, domain, description, category, state, maturity_score) VALUES (?, ?, ?, ?, ?, ?, ?)");
 
   for (const [key, cfg] of Object.entries<any>(mapping.config_keys || {})) {
@@ -244,6 +245,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
       const domain = cfg.domain || (cfg.domain_map && cfg.domain_map[val[cfg.domain_field || 'type']]) || 'infra';
       const desc = (cfg.desc_field ? (val[cfg.desc_field] || '') : cfg.desc_template ? cfg.desc_template.replace('{type}', val.type || type) : '') || '';
       insert.run(`${type}:${name}`, name, domain, desc.slice(0, 80), type, 'unlocked', 0.5);
+      contributed.push(`${type}:${name}`);
       count++;
     }
   }
@@ -252,9 +254,15 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
     const dir = dirPattern.replace(/^~/, process.env.HOME || "/");
     if (!existsSync(dir)) continue;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
+      // Not entry.isDirectory(): a Dirent reports false for a symlink, and
+      // symlinking skills into a runtime's directory is how they get shared
+      // between runtimes. That silently skipped 23 of 47 skills in a real
+      // Hermes install, all of them pointing at the same shared directory
+      // OpenCode reads — precisely the capabilities two runtimes have in
+      // common. existsSync follows the link.
       if (!existsSync(join(dir, entry.name, "SKILL.md"))) continue;
       insert.run(`skill:${entry.name}`, entry.name, 'meta', 'Agent skill', 'skill', 'unlocked', 0.55);
+      contributed.push(`skill:${entry.name}`);
       count++;
     }
   }
@@ -268,6 +276,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   db.prepare("UPDATE capabilities SET state = 'active' WHERE id IN ('core:reasoning','tool:bash','tool:edit','tool:lsp')").run();
 
   count += seedModels(db, config, insert);
+  count += attributeToRuntime(db, insert, contributed);
   seedDependencies(db, config);
   count += seedTechTree(db, insert);
   count += seedCombos(db, config, mapping, insert);
@@ -346,6 +355,31 @@ function seedDependencies(db: Db, config: any): number {
   }
 
   return count;
+}
+
+
+/**
+ * Records which runtime contributed these capabilities.
+ *
+ * Two runtimes commonly configure the same MCP server. That is one capability
+ * with two providers, not two capabilities, so the ids deliberately collide and
+ * merge — but the graph then cannot say which runtime supplies what, or what
+ * would be lost if one went away. A runtime node with an edge to everything it
+ * contributed answers both, and makes `tt impact runtime:hermes` meaningful.
+ *
+ * The runtime is an ordinary node: Ambit represents agent runtimes rather than
+ * being one, so no runtime owns the graph.
+ */
+function attributeToRuntime(db: Db, insert: any, contributed: string[]): number {
+  const runtime = process.env.AMBIT_RUNTIME || 'opencode';
+  if (contributed.length === 0) return 0;
+  const id = `runtime:${runtime}`;
+  insert.run(id, runtime, 'meta', `Agent runtime — contributes ${contributed.length} capabilities`, 'runtime', 'unlocked', 0.9);
+  const link = db.prepare(
+    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, 1, 'Contributed by runtime')"
+  );
+  for (const capability of contributed) link.run(id, capability);
+  return 1;
 }
 
 /**
