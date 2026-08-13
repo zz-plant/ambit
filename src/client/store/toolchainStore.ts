@@ -260,9 +260,17 @@ function infrastructureToGraph(scan: InfrastructureScan): { items: Item[]; conne
     status: statusToItemStatus(node.status),
     description: node.description,
     position: { x: 0, y: 0, z: 0 },
-    group: 'Household Edge',
+    group: 'Infrastructure',
     meta: {
       ...(node.meta || {}),
+      // Without a domain these all collapsed into the 'meta' column. The
+      // vocabulary was entirely software, which left no honest home for a
+      // resource that acts on the world: an arm, a sensor, a vehicle, a
+      // decoder. Those are `physical`; the rest keep their software domain.
+      domain:
+        (node.meta as any)?.domain ||
+        (node.kind === 'device' ? 'physical' : node.kind === 'network' ? 'infra' : 'backend'),
+      maturity: node.status === 'online' ? 0.8 : node.status === 'degraded' ? 0.4 : 0.2,
       health: node.status,
       source: 'infrastructure-scan',
       generatedAt: scan.generatedAt,

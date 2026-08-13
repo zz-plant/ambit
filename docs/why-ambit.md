@@ -94,6 +94,8 @@ A mature version of this should be able to say: *this model did not change, but 
 
 Ambit does not measure how intelligent the AI is. It tries to measure what intelligence has acquired the means to do.
 
+The same argument extends past software — robots add physical actuation, and brain-computer interfaces erode the boundary between human and machine capability entirely. Those cases are where the abstraction is tested rather than merely asserted, and they are worked through in [the affordance frontier](./affordance-frontier.md).
+
 ---
 
 **What actually exists today** is narrower than the argument above, deliberately so: capability discovery, dependency mapping, maturity and decay analysis, failure-cascade analysis, near-miss discovery, and an MCP-readable model of the environment. Verified capability, explicit authority, and goal-to-capability planning are [the roadmap](../ROADMAP.md), not the product.
