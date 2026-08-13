@@ -471,6 +471,17 @@ export default function App() {
           {items.length} capabilities · {items.filter(i => i.status === 'built').length} built
         </span>
       </footer>
+
+      {/* Selecting a node opens a panel elsewhere in the document, which is a
+          silent change to anyone not watching it happen. */}
+      <div className="visually-hidden" role="status" aria-live="polite">
+        {selectedId
+          ? (() => {
+              const item = items.find(i => i.id === selectedId);
+              return item ? `Selected ${item.name}. ${item.status === 'built' ? 'Reached' : 'Not reached'}.` : '';
+            })()
+          : ''}
+      </div>
     </div>
   );
 }

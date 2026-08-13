@@ -63,6 +63,28 @@ html, body, #root {
   inset: 0;
 }
 
+/* Announced, not shown. `display: none` would remove it from the accessibility
+   tree along with everything else. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Keyboard focus has to be visible on the graph, where selection is otherwise
+   carried entirely by colour. */
+.civ-tree-svg g[role='button']:focus-visible {
+  outline: 2px solid #1f7a8c;
+  outline-offset: 3px;
+}
+
 /* Loading */
 .app-loading {
   position: absolute;

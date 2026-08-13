@@ -188,7 +188,22 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 
                 return (
                   <g key={item.id} transform={`translate(${cx}, ${cy})`} opacity={baseOpacity}
+                    // Nodes were reachable by mouse only: no capability could be
+                    // focused, and status is carried by fill and outline, which
+                    // says nothing to a screen reader. The label states what the
+                    // colour encodes.
+                    tabIndex={0}
+                    role="button"
+                    aria-pressed={selected}
+                    aria-label={`${item.name}, ${item.type}, ${item.status === 'built' ? 'reached' : 'not reached'}${item.description ? `. ${item.description}` : ''}`}
                     onClick={() => onSelect(selected ? null : item.id)}
+                    onKeyDown={e => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return;
+                      e.preventDefault();          // Space scrolls the container otherwise
+                      onSelect(selected ? null : item.id);
+                    }}
+                    onFocus={() => { onHover?.(item.id); setHoverItem(item.id); }}
+                    onBlur={() => { onHover?.(null); setHoverItem(null); }}
                     onMouseEnter={() => { onHover?.(item.id); setHoverItem(item.id); }}
                     onMouseLeave={() => { onHover?.(null); setHoverItem(null); }}
                     style={{ cursor:'pointer', transition:'opacity .2s' }}>

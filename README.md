@@ -381,9 +381,12 @@ The agent no longer has to reconstruct the environment from conversational conte
 Ambit represents agent runtimes rather than being one. A runtime becomes a node, and everything it contributes hangs off it — so two runtimes configuring the same MCP server produce **one capability with two providers**, not two capabilities.
 
 ```bash
-bun run scripts/adapters/hermes.ts          # what Hermes provides
-bun run scripts/adapters/hermes.ts --seed   # add it to the graph
+bun run scripts/adapters/claude-code.ts          # what Claude Code provides
+bun run scripts/adapters/claude-code.ts --seed   # add it to the graph
+bun run scripts/adapters/hermes.ts               # the same for Hermes
 ```
+
+The Claude Code adapter reads `~/.claude.json` and `~/.claude/` — MCP servers global and per project, skills, subagents, a pinned model — plus the authority the runtime states outright: permission mode, and how many allow, deny and ask rules are in force. Rule *names* only; an allow rule can name a path, and those are not Ambit's to copy into a graph you may export.
 
 Against a real install, that yields:
 
