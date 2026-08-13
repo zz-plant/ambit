@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const DB_PATH = Bun.env.HOME + '/.config/opencode/toolchain-viz.db';
@@ -470,6 +471,29 @@ const server = Bun.serve({
           'SELECT from_capability, to_capability, is_hard_requisite FROM dependencies'
         ).all() as any[];
 
+        // Era and the "researchable now" state are what make this read as a
+        // tech tree rather than a list: Civ's whole grammar is reached / can be
+        // researched next / still locked, laid out left to right by era.
+        let tree: any = { nodes: [], eras: {} };
+        try {
+          tree = JSON.parse(readFileSync(join(import.meta.dir, 'src', 'engine', 'techtree.json'), 'utf8'));
+        } catch { /* tech tree optional */ }
+        const eraById = new Map<string, number>(
+          (tree.nodes || []).map((n: any) => [`combo:${n.id}`, n.era])
+        );
+
+        const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
+        const hardPrereqs = new Map<string, string[]>();
+        for (const d of deps) {
+          if (!d.is_hard_requisite) continue;
+          if (!hardPrereqs.has(d.to_capability)) hardPrereqs.set(d.to_capability, []);
+          hardPrereqs.get(d.to_capability)!.push(d.from_capability);
+        }
+        /** Locked, but everything it requires is already reached. */
+        const isNext = (id: string, state: string) =>
+          state === 'locked' &&
+          (hardPrereqs.get(id) || []).every(p => stateById.get(p) !== 'locked');
+
         const items = caps.map(c => ({
           id: c.id,
           name: c.name,
@@ -484,6 +508,9 @@ const server = Bun.serve({
             maturity: c.maturity_score,
             state: c.state,
             setupSeconds: c.unlock_cost_setup,
+            era: eraById.get(c.id),
+            eraName: eraById.has(c.id) ? tree.eras?.[String(eraById.get(c.id))] : undefined,
+            next: isNext(c.id, c.state),
           },
         }));
         const connections = deps.map(d => ({

@@ -73,7 +73,7 @@ Local Embeddings — 1 dependency away (70% existing maturity). Add Embeddings
 
 The tree also gives `tt impact` something real to reason about: remove a provider and it can tell you which models, agents, and capabilities fall over with it.
 
-Toggle **TECH TREE** in the visualizer to see it as a map, with locked nodes drawn as outlines.
+Toggle **TECH TREE** in the visualizer to see it as a map: eras run left to right, filled circles are what you have reached, dashed outlines with a time estimate are what you can take next, and faded ones are further off.
 
 Seeding writes the edges your config states outright too — a provider is a hard prerequisite for the models it serves, and a model for any agent pinned to it. Those are read from `opencode.json`, not guessed.
 

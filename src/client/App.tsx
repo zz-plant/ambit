@@ -323,7 +323,7 @@ export default function App() {
           </div>
         )}
         {items.length > 0 && layoutMode === 'civ' ? (
-          <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} />
+          <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} leftInset={leftOpen ? 348 : 8} />
         ) : items.length > 0 ? (
           <Suspense fallback={<div className="app-loading">LOADING 3D VIEW…</div>}>
             <Constellation />
@@ -353,22 +353,27 @@ export default function App() {
           {([['config', 'CONFIG'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
             <button key={id} className="app-hud-btn"
               style={{ width:'auto', padding:'0 8px', border:'none', background: source === id ? 'var(--accent)' : 'transparent', color: source === id ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: source === id ? 700 : 'normal', fontSize:'9px', height:'22px' }}
-              onClick={() => { setSource(id); id === 'tree' ? loadTechTree() : loadConfigSource(); }}
+              onClick={() => { setSource(id); selectItem(null); id === 'tree' ? loadTechTree() : loadConfigSource(); }}
               title={id === 'tree' ? 'Curated capability tree — what you have reached and what is next' : 'Your config as a graph'}>
               {label}
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
+        {/* Four buttons for a single choice. One control says the same thing
+            and names the mode you are in. */}
+        <select
+          className="app-hud-select"
+          value={layoutMode}
+          onChange={e => { setLayoutMode(e.target.value as LayoutMode); dismissGuide(); }}
+          title="How to draw the graph"
+        >
           {LAYOUT_MODES.map(({ id: m, label, title }) => (
-            <button key={m} className="app-hud-btn" style={{ width:'auto', padding:'0 8px', border:'none', background: layoutMode === m ? 'var(--accent)' : 'transparent', color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: layoutMode === m ? 700 : 'normal', fontSize:'9px', height:'22px' }} onClick={() => { setLayoutMode(m); dismissGuide(); }} title={`${title} layout`}>
-              {label}
-            </button>
+            <option key={m} value={m}>{label} — {title}</option>
           ))}
-        </div>
+        </select>
         {/* Only ERAS filters by type; the 3D layouts render every item, so
             showing this there would be an inert control. */}
-        {layoutMode === 'civ' && (
+        {layoutMode === 'civ' && source === 'config' && (
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px' }}>
           {(['all', 'server', 'agent', 'skill', 'combo'] as const).map(f => (
             <button key={f} className="app-hud-btn"
