@@ -407,3 +407,43 @@ test('authorizing a capability that does not exist leaves no dangling edge', () 
                              WHERE c.id IS NULL`);
   expect(dangling).toEqual([]);
 });
+
+test('a plan step offers alternatives with their trade-offs', () => {
+  seed(LOCAL_ONLY).close();
+  const plan = cli('plan', 'offline-capable');
+  const embeddings = plan.order.find((o: any) => o.id === 'combo:embeddings');
+  expect(embeddings?.options?.length).toBeGreaterThan(1);
+  // The trade-off is rarely setup time alone; a faster hosted option costs
+  // money and moves data, and the plan has to say so.
+  const hosted = embeddings.options.find((o: any) => o.privacy === 'hosted');
+  const local = embeddings.options.find((o: any) => o.privacy === 'local');
+  expect(hosted.setup_seconds).toBeLessThan(local.setup_seconds);
+  expect(hosted.recurring_cost).not.toBe('none');
+});
+
+// ── Deficits ────────────────────────────────────────────────────────────────
+
+test('a repeated deficit is distinguished from incidental friction', () => {
+  seed(LOCAL_ONLY).close();
+  const once = cli('failed', 'vector-store');
+  expect(once.times_blocked).toBe(1);
+  expect(once.note).toBeUndefined(); // one failure is bad luck
+
+  cli('failed', 'vector-store');
+  const third = cli('failed', 'vector-store');
+  expect(third.times_blocked).toBe(3);
+  expect(third.note).toContain('structural');
+
+  const report = cli('deficits');
+  expect(report[0].id).toBe('combo:vector-store');
+  expect(report[0].verdict).toContain('structural');
+  expect(report[0].still_missing).toBe(true);
+});
+
+test('a deficit against an unknown capability is refused, not silently kept', () => {
+  // Otherwise deficits accumulate against ids nothing can act on.
+  seed(LOCAL_ONLY).close();
+  const r = cli('failed', 'not-a-capability');
+  expect(r.error).toContain('No capability');
+  expect(cli('deficits').note).toContain('Nothing recorded');
+});

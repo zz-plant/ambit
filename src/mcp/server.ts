@@ -1,7 +1,8 @@
 #!/usr/bin/env node --experimental-sqlite
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights } from "../engine/engine.ts";
+import { resolveDbPath } from "../shared/db-path.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits } from "../engine/engine.ts";
 
-const DB_PATH = process.env.TOOLCHAIN_DB || process.env.HOME + "/.config/opencode/toolchain-viz.db";
+const DB_PATH = resolveDbPath();
 
 function respond(id, r) { process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, result: r }) + "\n"); }
 function err(id, c, m) { process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, error: { code: c, message: m } }) + "\n"); }
@@ -26,14 +27,24 @@ const TOOLS = [
   { name: "tt_profile", description: "Graph evolution — density, build history, removals, maturation over time", inputSchema: { type: "object", properties: {} } },
   { name: "tt_near", description: "Near-miss combos — 1-2 prerequisites away with high existing maturity", inputSchema: { type: "object", properties: {} } },
   { name: "tt_insight", description: "Top actionable items — what to build, maintain, or prune right now", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_verify", description: "Run a capability's declared check and record the outcome. Proves the action works rather than that it is configured. Omit capId to run every declared check.", inputSchema: { type: "object", properties: { capId: { type: "string", description: "Capability to verify, e.g. local-runtime" } } } },
+  { name: "tt_evidence", description: "Verification history for one capability — what was tried, when, and whether it passed", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
+  { name: "tt_authority", description: "Which reached capabilities may run unattended and which require approval. Being able to perform an action is not permission to.", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_plan", description: "What is missing for a capability, in the order it must be closed, including which steps require a person", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
+  { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
+  { name: "tt_blocked", description: "Record that a task was blocked by a missing capability. The pattern matters more than the instance: the same deficit hit repeatedly is infrastructure that should exist.", inputSchema: { type: "object", properties: { capId: { type: "string" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
+  { name: "tt_deficits", description: "Recurring capability deficits, worst first — which missing capabilities keep stopping different work", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_ledger", description: "Every recorded frontier observation — how the system's capacity for action has changed over time", inputSchema: { type: "object", properties: {} } },
 ];
 
 let buf = "";
-process.stdin.on("data", (chunk) => {
-  buf += chunk.toString();
-  const lines = buf.split("\n"); buf = lines.pop() || "";
-  for (const line of lines) {
-    if (!line.trim()) continue;
+// Each line is handled in its own function because the body returns to reply.
+// Inlined in the loop, that `return` exited the whole stdin handler, so only
+// the first message in a chunk was ever answered — and a client that batches
+// initialize with tools/list, or whose requests simply arrive coalesced, would
+// hang waiting for a response that was never going to come.
+function handleLine(line) {
+    if (!line.trim()) return;
     try {
       const msg = JSON.parse(line);
       const { id, method, params } = msg;
@@ -58,6 +69,14 @@ process.stdin.on("data", (chunk) => {
               case "tt_budget": res = tt(db => optimizeBudget(db, args.setup || 120, args.tokens || 8000)); break;
               case "tt_trend": res = tt(db => projectTrends(db, args.days || 30)); break;
               case "tt_prune": res = tt(db => pruneRecommendations(db)); break;
+              case "tt_verify": res = tt(db => runVerification(db, args?.capId)); break;
+              case "tt_evidence": res = tt(db => evidenceFor(db, String(args.capId).startsWith("combo:") ? args.capId : `combo:${args.capId}`)); break;
+              case "tt_authority": res = tt(db => authorityReport(db)); break;
+              case "tt_plan": res = tt(db => planFor(db, args.capId)); break;
+              case "tt_since": res = tt(db => ledgerSince(db, args?.when)); break;
+              case "tt_ledger": res = tt(db => ledgerHistory(db)); break;
+              case "tt_blocked": res = tt(db => recordFailure(db, args.capId, args.note)); break;
+              case "tt_deficits": res = tt(db => deficits(db)); break;
               case "tt_fork": res = tt(db => forkComparison(db)); break;
               case "tt_profile": res = tt(db => graphProfile(db)); break;
               case "tt_near": res = tt(db => nearMissCombos(db)); break;
@@ -70,6 +89,11 @@ process.stdin.on("data", (chunk) => {
         default: if (method !== "notifications/initialized") err(id, -32601, `Unknown: ${method}`);
       }
     } catch {}
-  }
+}
+
+process.stdin.on("data", (chunk) => {
+  buf += chunk.toString();
+  const lines = buf.split("\n"); buf = lines.pop() || "";
+  for (const line of lines) handleLine(line);
 });
 process.stdin.on("end", () => process.exit(0));

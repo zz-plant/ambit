@@ -2,14 +2,17 @@ import { Database } from 'bun:sqlite';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { resolveDbPath } from './src/shared/db-path.ts';
 
 const DB_PATH = Bun.env.HOME + '/.config/opencode/toolchain-viz.db';
 const CONFIG_PATH = Bun.env.HOME + '/.config/opencode/opencode.json';
 const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
 // The graph the engine builds. Its default lives beside the engine (and is what
 // bootstrap.sh writes), which is not where this server keeps its own snapshot
-// database — reading DB_PATH here would silently return an empty tree.
-const GRAPH_DB_PATH = Bun.env.TOOLCHAIN_DB || process.cwd() + '/toolchain-viz.db';
+// database — reading DB_PATH here would silently return an empty tree. Resolved
+// through the shared helper so the engine, the MCP server and this API cannot
+// drift onto three different files again.
+const GRAPH_DB_PATH = resolveDbPath();
 const INFRA_MANIFEST_PATH = Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
 const API_PORT = 3001;
 
