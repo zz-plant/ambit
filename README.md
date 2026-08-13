@@ -139,6 +139,8 @@ Ambit also records explicit dependency edges from your configuration: `provider 
 
 Any view is linkable: `?view=tree`, `?layout=constellation`, `?docs=open`.
 
+The view updates itself when the graph changes underneath it. `/api/events` streams [AG-UI](https://docs.ag-ui.com) `StateSnapshot` events over SSE — the state subset of that protocol, chosen so the transport an agent would use to propose a change and a human to approve it is a standard one rather than invented. Runs, messages and tool calls are not implemented.
+
 ## Start here
 
 ```bash
@@ -229,6 +231,27 @@ Self-Hosted Stack  configured, but Observability is not in place yet
 ```
 
 Nothing declared those. They fall out of the dependency structure, and they are invisible in every file you own.
+
+### People in the graph
+
+Humans supply what machines cannot — legal authority, money, physical access, judgement — so they are nodes rather than users of the graph. An `actors` block declares them:
+
+```json
+{ "actors": { "kanav": {
+    "provides": ["physical-access", "approve-purchases"],
+    "authorizes": ["combo:continuous-delivery"] } } }
+```
+
+`provides` becomes a capability only that person supplies. `authorizes` becomes a hard prerequisite, so a plan says whose step it is:
+
+```console
+$ tt plan continuous-delivery
+  goal: Continuous Delivery
+  requires a person: Kanav
+  steps: 1 · estimated setup: 30m
+```
+
+A plan that hides the human step reads as autonomous when it is not.
 
 ### The ledger
 

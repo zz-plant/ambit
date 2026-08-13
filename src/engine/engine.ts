@@ -154,9 +154,26 @@ function planFor(db: Db, goal?: string) {
   };
   walk(id, new Set());
 
+  // Which steps are somebody's rather than the machine's. A plan that hides
+  // this reads as autonomous when it is not.
+  const humanEdges = db
+    .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE description IN ('Requires approval from a person','Supplied by a person')")
+    .all();
+  const humanFor = new Map<string, string[]>();
+  for (const e of humanEdges) {
+    if (!humanFor.has(e.t)) humanFor.set(e.t, []);
+    humanFor.get(e.t)!.push((info.get(e.f) as any)?.name || e.f);
+  }
+  for (const step of order) {
+    const people = humanFor.get(step.id);
+    if (people?.length) step.requires_person = people;
+  }
+  const gatedBy = humanFor.get(id);
+
   const totalSeconds = order.reduce((s, o) => s + (o.setup_seconds || 0), 0);
   return {
     goal: target.name,
+    requires_person: gatedBy,
     reachable: order.every(o => o.id.startsWith('combo:')),
     steps: order.length,
     estimated_setup: totalSeconds >= 3600 ? `${(totalSeconds / 3600).toFixed(1)}h` : `${Math.round(totalSeconds / 60)}m`,
@@ -489,6 +506,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   seedDependencies(db, config);
   count += seedTechTree(db, insert);
   count += seedCombos(db, config, mapping, insert);
+  count += seedActors(db, config, mapping, insert);
 
   recordFrontier(db);
 
@@ -706,6 +724,59 @@ function seedTechTree(db: Db, insert: any): number {
     }
   }
 
+  return count;
+}
+
+
+/**
+ * Seeds the people in the system.
+ *
+ * Humans are not users of the graph, they are nodes in it. They supply things
+ * machines cannot manufacture — legal authority, money, physical access,
+ * subjective judgement, account ownership — and a capability that needs one of
+ * those is not autonomous, however complete its technical dependencies are.
+ *
+ *   "actors": {
+ *     "kanav": {
+ *       "name": "Kanav",
+ *       "provides": ["physical-access", "approve-purchases"],
+ *       "authorizes": ["combo:continuous-delivery"]
+ *     }
+ *   }
+ *
+ * `provides` becomes a capability the person supplies. `authorizes` becomes a
+ * hard prerequisite edge, which is what makes a plan able to say that a step is
+ * someone's rather than the machine's.
+ */
+function seedActors(db: Db, config: any, mapping: any, insert: any): number {
+  const actors = { ...(mapping.actors || {}), ...(config.actors || {}) };
+  const link = db.prepare(
+    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, 1, ?)"
+  );
+  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  let count = 0;
+
+  for (const [key, spec] of Object.entries<any>(actors)) {
+    const id = key.startsWith('human:') ? key : `human:${key}`;
+    const name = spec?.name || key;
+    insert.run(id, name, 'social', spec?.role || 'Person in the system', 'human', 'active', 1.0);
+    count++;
+
+    // Things only this person can supply.
+    for (const provided of spec?.provides || []) {
+      const pid = provided.includes(':') ? provided : `act:${provided}`;
+      insert.run(pid, provided.replace(/-/g, ' '), 'social', `Provided by ${name}`, 'human-action', 'unlocked', 1.0);
+      link.run(id, pid, 'Supplied by a person');
+      count++;
+    }
+
+    // Approval as a dependency rather than a policy note. Only for capabilities
+    // that exist — a typo should leave a missing edge, not a dangling one.
+    for (const gated of spec?.authorizes || []) {
+      const gid = gated.startsWith('combo:') || gated.includes(':') ? gated : `combo:${gated}`;
+      if (has(gid)) link.run(id, gid, 'Requires approval from a person');
+    }
+  }
   return count;
 }
 
