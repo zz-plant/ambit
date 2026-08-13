@@ -55,19 +55,9 @@ export default function DiagnosticsPanel() {
               <span className="dp-score-lbl">rating</span>
             </div>
           </div>
-          <div className="dp-breakdown">
-            {defList.map(d => {
-              const r = results[d.id];
-              const s = r?.score ?? 0;
-              return (
-                <div key={d.id} className="dp-row" onClick={() => runConsultant(d.id)}>
-                  <span className="dp-dot" style={{ background: scoreColor(s) }} />
-                  <span className="dp-row-name">{d.icon} {d.label}</span>
-                  <span className="dp-row-val" style={{ color: scoreColor(s) }}>{s}</span>
-                </div>
-              );
-            })}
-          </div>
+          {/* The per-category breakdown that sat here repeated every label and
+              score from the cards below it, in the same scrolling column. The
+              cards already carry both, plus the description and findings. */}
         </div>
       )}
 

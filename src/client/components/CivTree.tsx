@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
+import { useToolchainStore } from '../store/toolchainStore';
 
 const TYPE_FILTERS = ['all', 'server', 'agent', 'skill', 'combo'] as const;
 type Filter = typeof TYPE_FILTERS[number];
@@ -22,7 +23,8 @@ interface CivTreeProps {
 }
 
 export default function CivTree({ items, connections, selectedId, hoveredId, onSelect, onHover }: CivTreeProps) {
-  const [filter, setFilter] = useState<Filter>('all');
+  // Owned by the store so the HUD can render the control; see App.tsx.
+  const filter = useToolchainStore(s => s.treeFilter) as Filter;
 
   const { downstream, chainIds } = useMemo(() => {
     const down = new Map<string, string[]>(), up = new Map<string, string[]>();
@@ -74,17 +76,6 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
   return (
     <div style={{ position:'relative', width:'100%', height:'100%', overflow:'auto' }}>
-      <div style={{ position:'absolute', top:10, left:14, display:'flex', gap:5, zIndex:10 }}>
-        {TYPE_FILTERS.map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            style={{ padding:'3px 10px', fontSize:12, fontWeight:600, letterSpacing:1.2,
-              border: filter===f ? '1.5px solid #b8860b':'1px solid #c4a96a',
-              background: filter===f ? '#b8860b':'#faf3e0', borderRadius:3, cursor:'pointer',
-              color: filter===f ? '#fff':'#8b7355', textTransform:'uppercase', transition:'all .15s' }}>
-            {f}
-          </button>
-        ))}
-      </div>
 
       {/* xMinYMin: the default centres the viewBox, and once the tallest column
           makes the graph taller than it is wide, that centring pushes every node

@@ -66,6 +66,7 @@ interface StoreState {
   showStarPanel: boolean;
   showUplinkModal: boolean;
   layoutMode: LayoutMode;
+  treeFilter: 'all' | 'server' | 'agent' | 'skill' | 'combo';
   loading: boolean;
   error: string | null;
   trends: TrendItem[];
@@ -84,6 +85,7 @@ interface StoreState {
   setSearch: (q: string) => void;
   toggleStarPanel: () => void;
   setLayoutMode: (mode: LayoutMode) => void;
+  setTreeFilter: (f: 'all' | 'server' | 'agent' | 'skill' | 'combo') => void;
 
   updateItem: (id: string, updates: Partial<Item>) => void;
   deleteItem: (id: string) => void;
@@ -288,6 +290,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   showStarPanel: false,
   showUplinkModal: false,
   layoutMode: 'civ',
+  treeFilter: 'all',
   loading: false,
   error: null,
   trends: [],
@@ -398,6 +401,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     return false;
   },
 
+  setTreeFilter: (treeFilter) => set({ treeFilter }),
   setLayoutMode: (layoutMode) => {
     set({ layoutMode });
     const targetItems = computeLayout(get().items, get().connections, 60, layoutMode);

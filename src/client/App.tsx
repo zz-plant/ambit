@@ -228,6 +228,8 @@ export default function App() {
   const loadTechTree = useToolchainStore(s => s.loadTechTree);
   const loadConfigSource = useToolchainStore(s => s.loadConfig);
   const [source, setSource] = useState<'config' | 'tree'>('config');
+  const treeFilter = useToolchainStore(s => s.treeFilter);
+  const setTreeFilter = useToolchainStore(s => s.setTreeFilter);
 
   const captureGraph = () => {
     const svg = document.querySelector<SVGSVGElement>('.app-scene svg');
@@ -346,7 +348,7 @@ export default function App() {
       <div className="app-hud">
         <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle panel"> {leftOpen ? '◀' : '▶'} </button>
         <button className="app-hud-btn" onClick={() => { setShowDocs(true); dismissGuide(); }} style={{fontWeight:600,fontSize:12,letterSpacing:1}}>DOCS</button>
-        <button className="app-hud-btn" onClick={captureGraph}>📷</button>
+        <button className="app-hud-btn" onClick={captureGraph} title="Save the current view as a PNG">📷 PNG</button>
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
           {([['config', 'CONFIG'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
             <button key={id} className="app-hud-btn"
@@ -357,7 +359,6 @@ export default function App() {
             </button>
           ))}
         </div>
-        {selectedId && (<button className="app-hud-btn" onClick={() => selectItem(null)} title="Deselect"> ✕ </button>)}
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
           {LAYOUT_MODES.map(({ id: m, label, title }) => (
             <button key={m} className="app-hud-btn" style={{ width:'auto', padding:'0 8px', border:'none', background: layoutMode === m ? 'var(--accent)' : 'transparent', color: layoutMode === m ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: layoutMode === m ? 700 : 'normal', fontSize:'9px', height:'22px' }} onClick={() => { setLayoutMode(m); dismissGuide(); }} title={`${title} layout`}>
@@ -365,6 +366,20 @@ export default function App() {
             </button>
           ))}
         </div>
+        {/* Only ERAS filters by type; the 3D layouts render every item, so
+            showing this there would be an inert control. */}
+        {layoutMode === 'civ' && (
+        <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px' }}>
+          {(['all', 'server', 'agent', 'skill', 'combo'] as const).map(f => (
+            <button key={f} className="app-hud-btn"
+              style={{ width:'auto', padding:'0 8px', border:'none', background: treeFilter === f ? 'var(--accent)' : 'transparent', color: treeFilter === f ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: treeFilter === f ? 700 : 'normal', fontSize:'12px', height:'22px' }}
+              onClick={() => setTreeFilter(f)}
+              title={f === 'all' ? 'Show every capability' : `Show only ${f}s and frameworks`}>
+              {f.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        )}
       </div>
 
       <UplinkModal isOpen={showUplinkModal} onClose={() => setShowUplinkModal(false)} />
@@ -390,7 +405,6 @@ export default function App() {
         <span className="app-footer-info">
           {items.length} capabilities · {items.filter(i => i.status === 'built').length} built
         </span>
-        <span className="app-footer-hint">ERAS · CONSTELLATION</span>
       </footer>
     </div>
   );
