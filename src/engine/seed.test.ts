@@ -6,6 +6,9 @@ import { tmpdir } from 'node:os';
 // The engine runs under Node (node:sqlite); these assertions run under Bun,
 // which ships its own driver. Same file, different reader.
 import { Database } from 'bun:sqlite';
+// The visualizer API runs under Bun and migrates the graph itself, so the
+// migration has to work through this driver as well as the engine's.
+import { migrate } from './migrate.ts';
 
 const ENGINE = join(import.meta.dir, 'engine.ts');
 let dir: string;
@@ -226,6 +229,31 @@ test('redundancy is counted by kind, not by matching a sentence', () => {
   const spof = cli('spof');
   const listed = Array.isArray(spof) ? spof : [];
   expect(listed.some((s: any) => s.provider_id === 'mcp:git')).toBe(true);
+});
+
+test('a reader that is not the CLI can migrate the graph itself', () => {
+  const db = seed({ mcp: { git: { type: 'local' } } });
+  const before = rows(db, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n;
+
+  // Put the database back the way an older Ambit left it.
+  db.prepare('ALTER TABLE capabilities DROP COLUMN kind').run();
+  db.prepare('ALTER TABLE capabilities DROP COLUMN lifecycle').run();
+  db.prepare('ALTER TABLE dependencies DROP COLUMN kind').run();
+  db.prepare('DROP TABLE schema_meta').run();
+
+  // The visualizer API opens the graph under Bun without going through the
+  // engine's Node handle. When migration could only be reached that way,
+  // starting the server against a pre-upgrade database returned 500 from
+  // /api/tech-tree with `no such column: c.kind` until some other command
+  // happened to migrate for it.
+  migrate(db as unknown as Parameters<typeof migrate>[0]);
+
+  expect(rows(db, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe('provider');
+  expect(rows(db, `SELECT kind FROM dependencies
+    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`)[0].kind)
+    .toBe('provides');
+  expect(rows(db, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n).toBe(before);
+  db.close();
 });
 
 test('a graph seeded before kinds existed gets them without losing its history', () => {
@@ -451,6 +479,33 @@ test('authority is tracked apart from whether a capability is reached', () => {
   expect(a.needs_approval).toContain('Shell Execution');
   expect(a.forbidden).toContain('Secret Management');
   expect(a.autonomous).not.toContain('Shell Execution');
+});
+
+test('a runtime that tightens its permissions is not still reported as loose', () => {
+  const runtime = (mode: string, note: string) => ({
+    mcp: { git: { type: 'local' } },
+    authority: { runtime: { execute: mode, note } },
+  });
+  seed(runtime('autonomous', 'first')).close();
+  seed(runtime('forbidden', 'second')).close();
+
+  // `mode` is not part of the authority row's uniqueness key, so an insert that
+  // ignores conflicts kept the old one — and the stale direction was the
+  // permissive one, which is what this code is meant to rule out by
+  // construction: never describe a system as freer to act than the runtime in
+  // front of it permits.
+  const db = new Database(join(dir, 'graph.db'));
+  const grants = rows(db, "SELECT mode, note FROM authority WHERE source LIKE 'runtime:%'");
+  expect(grants).toEqual([{ mode: 'forbidden', note: 'second' }]);
+
+  // And a grant the runtime has stopped making disappears rather than lingering.
+  db.close();
+  seed({ mcp: { git: { type: 'local' } } }).close();
+  const after = new Database(join(dir, 'graph.db'));
+  expect(rows(after, "SELECT mode FROM authority WHERE source LIKE 'runtime:%'")).toEqual([]);
+  // The curated model's grants survive; only the source that re-ran is replaced.
+  expect(rows(after, "SELECT COUNT(*) n FROM authority WHERE source = 'techtree'")[0].n)
+    .toBeGreaterThan(0);
 });
 
 test('a runtime narrows what the model says an action is like in general', () => {
