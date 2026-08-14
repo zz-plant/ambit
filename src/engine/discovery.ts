@@ -137,7 +137,22 @@ function seedAuthority(db: Db, config: any): number {
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const source = `runtime:${process.env.AMBIT_RUNTIME || 'opencode'}`;
   let count = 0;
+
+  // Each source's grants are replaced wholesale rather than merged into.
+  //
+  // `mode` is not part of the uniqueness key — deliberately, since a source
+  // states one mode per action — so an INSERT OR IGNORE against an existing row
+  // silently kept the old one. A runtime that tightened from `autonomous` to
+  // `forbidden` went on being reported as autonomous, which is the direction
+  // this code is supposed to rule out by construction: never describe a system
+  // as freer to act than the runtime in front of it permits. A grant a source
+  // has stopped making also has to disappear, and only a delete does that.
+  //
+  // Only the sources this run speaks for. Seeding through the OpenCode adapter
+  // must not silently drop what Hermes said about itself.
+  db.prepare("DELETE FROM authority WHERE source IN ('techtree', ?)").run(source);
 
   // Declared on the curated model.
   let tree: any = { nodes: [] };
@@ -165,8 +180,7 @@ function seedAuthority(db: Db, config: any): number {
   // not copied onto each capability: a contribution made in a later run would
   // otherwise miss a grant recorded in an earlier one.
   const spec = config.authority || {};
-  const runtimeId = `runtime:${process.env.AMBIT_RUNTIME || 'opencode'}`;
-  const source = `runtime:${process.env.AMBIT_RUNTIME || 'opencode'}`;
+  const runtimeId = source;
   if (has(runtimeId)) {
     for (const [action, value] of Object.entries<any>(spec.runtime || {})) {
       if (action === 'note') continue;
