@@ -77,7 +77,12 @@ CREATE TABLE IF NOT EXISTS frontier_snapshots (
     total INTEGER NOT NULL,
     -- id -> state for every capability, so a past frontier can be reconstructed
     -- exactly rather than inferred from counts.
-    states TEXT NOT NULL
+    states TEXT NOT NULL,
+    -- id -> kind alongside it. Without this a snapshot cannot tell an expanding
+    -- system from an expanding vocabulary: the run that introduced action nodes
+    -- would read as forty capabilities gained on a machine where nothing
+    -- changed. Null on snapshots written before kinds existed.
+    kinds TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_frontier_taken ON frontier_snapshots(taken_at);
