@@ -67,13 +67,13 @@ That second description is **effective capability**, and it is the object Ambit 
 | **Reachable** | all necessary dependencies are currently accessible | ✅ |
 | **Composed** | several lower-level capabilities together make a higher-order action possible | ✅ |
 | **Verified** | the capability has actually succeeded | ✅ where a check is declared |
-| **Authorized** | the system has permission to use it | ✅ declared, not enforced |
-| **Delegated** | a human or another agent supplies a missing step | roadmap |
+| **Authorized** | the system has permission to use it | ✅ per action, declared, not enforced |
+| **Delegated** | a human or another agent supplies a missing step | ✅ people are nodes; who to ask is roadmap |
 | **Persistent** | it can operate beyond the current interaction | roadmap |
 
 Capability *change* is now recorded over time — see [the ledger](#the-ledger) — which is the accounting half of that table rather than a seventh state.
 
-Five of seven, with the two caveats stated in the table rather than hidden: checks exist for eight capabilities, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
+Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
 
 ```console
 $ tt verify              # run the declared checks, record what happened
@@ -84,6 +84,10 @@ $ tt authority           # reached is not the same as permitted
   autonomous      File Editing · Parallel Execution
   needs approval  Shell Execution · Version Control · Continuous Delivery
   forbidden       Secret Management
+
+$ tt actions version-control    # and permission is finer than a capability
+  exercisable     read_repository · commit_changes
+  needs approval  push_branch · merge_to_default
 
 $ tt plan offline-capable
   goal: Offline Capable · steps: 2 · estimated setup: 25m
@@ -123,6 +127,33 @@ Each node is in one of three states:
 - **Blocked** — an implementation exists but a prerequisite is missing
 
 Ambit also records explicit dependency edges from your configuration: `provider → model`, and `model → agent` for agents pinned to one.
+
+### What a node is
+
+Every node says what kind of thing it is, and every edge says what the relation means:
+
+```
+capability   an action the system can bring about — the curated model's nodes
+action       one concrete thing a capability confers, or that a person supplies
+provider     what supplies a capability — an MCP server, a skill, a tool
+resource     what a provider needs — a model, an inference endpoint, a machine
+actor        a person: authority, money, judgement, physical access
+runtime      an agent runtime, which contributes providers rather than owning them
+
+provides · contributes · requires · optional · authorizes · runs_on
+```
+
+Ten capabilities declare a `contract.can` — the actions they confer — and each becomes a node with its own authority. That is what lets the model say *may read the repository, may not merge to its default branch*, which the coarse node cannot. `tt actions` reports them; the visualizer leaves them out of the era columns on purpose, because legibility is the point of that view.
+
+Alongside `state`, each capability carries a **lifecycle** derived from its providers and its recorded evidence:
+
+```
+unknown → detected → configured → verified → reliable
+                                     ↓
+                                 degraded → broken
+```
+
+The two are separate columns because reachable and working are different claims. A capability whose check has started failing reads as `broken` and stays in the frontier.
 
 <table>
 <tr>
@@ -200,7 +231,7 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 
 ```
 Explore    stats · context · health · profile · export · explain
-Verify     verify [id] · evidence <id> · authority
+Verify     verify [id] · evidence <id> · authority · actions [id]
 Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
 Plan       plan <id> · simulate <id> · propose <id> [n] · proposals · proposal <id>
 Act        approve <id> <who> · apply <id> · rollback <id>
@@ -213,7 +244,8 @@ Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
 | `tt near` | What am I one or two dependencies away from being able to do? |
 | `tt bottlenecks` | Which capability would unlock the largest part of the graph? |
 | `tt impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |
-| `tt spof` | Which capabilities have only one provider? |
+| `tt spof` | Which capabilities have only one provider — and which actions has only one person? |
+| `tt actions <id>` | Which concrete actions does this confer, and which of them may run unattended? |
 | `tt fork` | Which nearby path has the best trade-off between setup cost, regret, and downstream leverage? |
 | `tt decay` | Which parts of the system appear to be rusting? |
 | `tt since` | What became reachable since a past date — and what emerged rather than being added? |
@@ -330,6 +362,17 @@ $ tt since
 One embedding model was added. Six capabilities moved. The three under `emergent` became reachable although **nothing providing them was added** — their prerequisites were satisfied by something else entirely. Offline Capable was already provided by an agent that did not change.
 
 That is the entry a per-component changelog structurally cannot produce, because no single change explains it. Accumulated capacity to act is a graph property, and this is where it shows up.
+
+A fourth class, **vocabulary**, exists to keep the first three honest. When Ambit starts modelling a part of your system it did not model before — a new action on a contract, or a capability added to the curated tree that your existing tools already provide — the node is new and nothing about the machine changed. Those are described and not counted, so `frontier_now` stays comparable with `frontier_then`:
+
+```console
+$ tt since
+  frontier then: 21
+  frontier now:  21
+  vocabulary: 12   act:shell-execution/run_command · act:file-editing/write_file · …
+```
+
+Without it, upgrading Ambit would read as a dozen capabilities acquired on a machine where nothing happened — which is exactly what this table exists not to do.
 
 Every command prints for a person by default and takes `--json` for scripts.
 
@@ -450,7 +493,9 @@ unknown → detected → configured → demonstrated
         → repeatedly verified → degraded → unavailable
 ```
 
-A capability should eventually mean more than "something with the right name exists". It should mean the system has evidence the action can be performed under known conditions. That distinction matters more as agents gain authority.
+A capability should mean more than "something with the right name exists". It should mean the system has evidence the action can be performed under known conditions. That distinction matters more as agents gain authority.
+
+That lifecycle is now a stored column rather than an aspiration — see [what a node is](#what-a-node-is). What it does not yet do is gate anything: `tt plan` will route a path through a `broken` capability without complaint.
 
 ## Capability and authority are different things
 
@@ -466,6 +511,10 @@ CAN ESCALATE   autonomous
 ```
 
 This lets technical capability accumulate without silently broadening delegated authority. It is not a restriction on the capability model — it is what makes a larger capability surface governable.
+
+Authority is recorded per action, and from two sources. The curated model says what an action is like in general; the runtime that would execute it says what it permits here — Hermes publishes `approvals.mode` and `approvals.cron_mode`, Claude Code publishes `permissions.defaultMode`, and both adapters pass them through. Where the two disagree the narrower wins, and `tt authority` names which source narrowed it.
+
+Two limits worth stating plainly. **Nothing is enforced** — Ambit describes authority, it does not mediate action. And **scope is declared, not checked**: a grant can say `repo:owner/name`, and nothing verifies that the scope is the one an action would touch.
 
 ## Why an AI might ask you to install Ambit
 
@@ -506,7 +555,7 @@ infrastructure manifest
     SQLite graph
         │
         ├──► CLI                tt
-        ├──► MCP server         17 tools, JSON-RPC over stdio
+        ├──► MCP server         31 tools, JSON-RPC over stdio
         ├──► visualizer API     Bun.serve, port 3001
         └──► tracking plugin    config-change events
 ```
@@ -544,7 +593,7 @@ The eventual goal is broader: different agent runtimes should attach to the same
 
 Ambit is early. Today it is strongest as capability discovery, dependency mapping, maturity and decay analysis, failure-cascade analysis, near-miss discovery, budget-aware planning, and an MCP-readable external model of an agent environment.
 
-The larger direction — verified capability, explicit authority, goal-to-capability planning, acquisition recipes, cross-runtime persistence — is the architecture the current graph is meant to grow toward. See [ROADMAP.md](./ROADMAP.md).
+Verified capability and explicit authority are built: the graph distinguishes capability from provider from resource from actor, records what each action confers, and holds authority from both the model and the runtime that would execute the step. What remains of the larger direction — goal-to-capability planning from a free-form goal, comparing acquisition paths by risk and lock-in, enforcement rather than description, and scope that is checked rather than declared — is the architecture the current graph is meant to grow toward. See [ROADMAP.md](./ROADMAP.md).
 
 The point is not to pretend those pieces exist. It is to build toward them without changing the fundamental object. That object is the system's **ambit**: the set of actions presently reachable by the combined capabilities of its human, agents, tools, and machines.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -48,6 +48,7 @@ const TOOLS = [
   { name: "tt_verify", description: "Run a capability's declared check and record the outcome. Proves the action works rather than that it is configured. Omit capId to run every declared check.", inputSchema: { type: "object", properties: { capId: { type: "string", description: "Capability to verify, e.g. local-runtime" } } } },
   { name: "tt_evidence", description: "Verification history for one capability — what was tried, when, and whether it passed", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_authority", description: "Which reached capabilities may run unattended and which require approval. Being able to perform an action is not permission to.", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_actions", description: "The concrete actions a capability confers and whether each may be performed — read a repository yes, merge to its default branch no. Ask this before acting, not tt_authority, which answers at the coarser grain.", inputSchema: { type: "object", properties: { capId: { type: "string", description: "Capability to list actions for; omit for all" } } } },
   { name: "tt_plan", description: "What is missing for a capability, in the order it must be closed, including which steps require a person", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
   { name: "tt_blocked", description: "Record that a task was blocked by a missing capability. The pattern matters more than the instance: the same deficit hit repeatedly is infrastructure that should exist.", inputSchema: { type: "object", properties: { capId: { type: "string" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
@@ -82,8 +83,8 @@ function handleLine(line) {
           try {
             let res;
             switch (name) {
-              case "tt_stats": res = tt(db => ({ stats: db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities").get(), domains: db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities GROUP BY domain ORDER BY domain").all() })); break;
-              case "tt_context": res = { text: tt(db => { const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities").get(); const d = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities GROUP BY domain ORDER BY domain").all(); return `Toolchain: ${g.unlocked}/${g.total}\n${d.map(s => `  ${s.domain.padEnd(12)} ${s.unlocked}/${s.total}`).join("\n")}`; }) }; break;
+              case "tt_stats": res = tt(db => ({ stats: db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action'").get(), domains: db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain").all() })); break;
+              case "tt_context": res = { text: tt(db => { const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action'").get(); const d = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain").all(); return `Toolchain: ${g.unlocked}/${g.total}\n${d.map(s => `  ${s.domain.padEnd(12)} ${s.unlocked}/${s.total}`).join("\n")}`; }) }; break;
               case "tt_recs": res = tt(db => { const caps = db.prepare("SELECT id, name, domain, unlock_cost_setup, unlock_cost_tokens, state FROM capabilities WHERE state = 'locked'").all(); const deps = db.prepare("SELECT from_capability, to_capability FROM dependencies").all(); const ds = {}; for (const d of deps) ds[d.from_capability] = (ds[d.from_capability] || 0) + 1; return caps.filter(c => ds[c.id]).map(c => ({ ...c, unlocks: ds[c.id] })).sort((a, b) => (b.unlocks || 0) - (a.unlocks || 0)).slice(0, 10); }); break;
               case "tt_cap": res = tt(db => db.prepare("SELECT id, name, domain, maturity_score, state, category FROM capabilities WHERE domain = ? OR name LIKE ? ORDER BY maturity_score DESC LIMIT 20").all(args.query, `%${args.query}%`)); break;
               case "tt_decay": res = tt(db => computeDecay(db).slice(0, 10)); break;
@@ -98,6 +99,7 @@ function handleLine(line) {
               case "tt_verify": res = tt(db => runVerification(db, args?.capId)); break;
               case "tt_evidence": res = tt(db => evidenceFor(db, String(args.capId).startsWith("combo:") ? args.capId : `combo:${args.capId}`)); break;
               case "tt_authority": res = tt(db => authorityReport(db)); break;
+              case "tt_actions": res = tt(db => actionsReport(db, args.capId)); break;
               case "tt_plan": res = tt(db => planFor(db, args.capId)); break;
               case "tt_since": res = tt(db => ledgerSince(db, args?.when)); break;
               case "tt_ledger": res = tt(db => ledgerHistory(db)); break;

@@ -6,6 +6,9 @@ import { tmpdir } from 'node:os';
 // The engine runs under Node (node:sqlite); these assertions run under Bun,
 // which ships its own driver. Same file, different reader.
 import { Database } from 'bun:sqlite';
+// The visualizer API runs under Bun and migrates the graph itself, so the
+// migration has to work through this driver as well as the engine's.
+import { migrate } from './migrate.ts';
 
 const ENGINE = join(import.meta.dir, 'engine.ts');
 let dir: string;
@@ -171,6 +174,110 @@ test('detection does not match short tokens inside unrelated words', () => {
 });
 
 
+// ── Ontology ────────────────────────────────────────────────────────────────
+
+test('every node carries the kind of thing it is', () => {
+  const db = seed({
+    mcp: { git: { type: 'local' } },
+    provider: { ollama: { models: { 'qwen3-coder': {} } } },
+    actors: { kanav: { name: 'Kanav', provides: ['physical-access'] } },
+  });
+  const kind = (id: string) =>
+    (rows(db, `SELECT kind FROM capabilities WHERE id = '${id}'`)[0] || {}).kind;
+
+  expect(kind('combo:version-control')).toBe('capability');
+  expect(kind('mcp:git')).toBe('provider');
+  expect(kind('model:ollama/qwen3-coder')).toBe('resource');
+  expect(kind('provider:ollama')).toBe('resource'); // an endpoint serving models
+  expect(kind('human:kanav')).toBe('actor');
+  expect(kind('runtime:opencode')).toBe('runtime');
+  expect(kind('act:physical-access')).toBe('action');
+
+  // Nothing is left at the column default by accident.
+  const unknown = rows(db, `SELECT id FROM capabilities WHERE kind NOT IN
+    ('capability','action','provider','resource','actor','runtime')`);
+  expect(unknown).toEqual([]);
+});
+
+test('every edge carries what it means, not just how much it matters', () => {
+  const db = seed({
+    mcp: { git: { type: 'local' } },
+    provider: { ollama: { models: { 'qwen3-coder': {} } } },
+    actors: { kanav: { name: 'Kanav', authorizes: ['combo:version-control'] } },
+  });
+  const edges = rows(db, 'SELECT from_capability f, to_capability t, kind FROM dependencies');
+  const kindOfEdge = (f: string, t: string) => edges.find(e => e.f === f && e.t === t)?.kind;
+
+  expect(kindOfEdge('mcp:git', 'combo:version-control')).toBe('provides');
+  expect(kindOfEdge('runtime:opencode', 'mcp:git')).toBe('contributes');
+  expect(kindOfEdge('provider:ollama', 'model:ollama/qwen3-coder')).toBe('runs_on');
+  expect(kindOfEdge('human:kanav', 'combo:version-control')).toBe('authorizes');
+  expect(kindOfEdge('combo:shell-execution', 'combo:version-control')).toBe('requires');
+});
+
+test('redundancy is counted by kind, not by matching a sentence', () => {
+  const db = seed({ mcp: { git: { type: 'local' } } });
+
+  // The prose match this replaces was silent when it failed. Rewriting the
+  // description of a provision edge used to remove it from the redundancy
+  // count; now only the kind decides, so the analysis survives rewording.
+  db.prepare(
+    "UPDATE dependencies SET description = 'Supplies this' WHERE from_capability = 'mcp:git'"
+  ).run();
+  db.close();
+
+  const spof = cli('spof');
+  const listed = Array.isArray(spof) ? spof : [];
+  expect(listed.some((s: any) => s.provider_id === 'mcp:git')).toBe(true);
+});
+
+test('a reader that is not the CLI can migrate the graph itself', () => {
+  const db = seed({ mcp: { git: { type: 'local' } } });
+  const before = rows(db, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n;
+
+  // Put the database back the way an older Ambit left it.
+  db.prepare('ALTER TABLE capabilities DROP COLUMN kind').run();
+  db.prepare('ALTER TABLE capabilities DROP COLUMN lifecycle').run();
+  db.prepare('ALTER TABLE dependencies DROP COLUMN kind').run();
+  db.prepare('DROP TABLE schema_meta').run();
+
+  // The visualizer API opens the graph under Bun without going through the
+  // engine's Node handle. When migration could only be reached that way,
+  // starting the server against a pre-upgrade database returned 500 from
+  // /api/tech-tree with `no such column: c.kind` until some other command
+  // happened to migrate for it.
+  migrate(db as unknown as Parameters<typeof migrate>[0]);
+
+  expect(rows(db, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe('provider');
+  expect(rows(db, `SELECT kind FROM dependencies
+    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`)[0].kind)
+    .toBe('provides');
+  expect(rows(db, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n).toBe(before);
+  db.close();
+});
+
+test('a graph seeded before kinds existed gets them without losing its history', () => {
+  const db = seed({ mcp: { git: { type: 'local' } } });
+  const before = rows(db, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n;
+
+  // Put the database back the way an older Ambit left it: no kind columns, no
+  // record that the backfill ran. Losing this graph would lose the ledger, and
+  // a ledger cannot be re-derived.
+  db.prepare('ALTER TABLE capabilities DROP COLUMN kind').run();
+  db.prepare('ALTER TABLE dependencies DROP COLUMN kind').run();
+  db.prepare('DROP TABLE schema_meta').run();
+  db.close();
+
+  const where = cli('where');
+  expect(where.seeded).toBe(true);
+
+  const reopened = new Database(join(dir, 'graph.db'));
+  expect(rows(reopened, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n).toBe(before);
+  expect(rows(reopened, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe('provider');
+  expect(rows(reopened, `SELECT kind FROM dependencies
+    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`)[0].kind).toBe('provides');
+});
+
 // ── Ledger ──────────────────────────────────────────────────────────────────
 
 /** Run the CLI against the database this test's `seed` writes to. */
@@ -240,6 +347,41 @@ test('the ledger separates what was acquired from what emerged', () => {
   // This is the entry a per-component changelog cannot produce.
   expect(emergent).toContain('combo:offline-capable');
   expect(gained).not.toContain('combo:offline-capable');
+});
+
+test('an expanding vocabulary is not an expanding frontier', () => {
+  const db = seed(LOCAL_ONLY);
+
+  // Stand in for the observation an older Ambit wrote: one taken before action
+  // nodes were modelled at all. Everything that confers them was already there,
+  // so nothing about this machine changed between the two observations.
+  const snapshot = rows(db, 'SELECT id, states FROM frontier_snapshots ORDER BY id DESC LIMIT 1')[0];
+  const states = JSON.parse(snapshot.states);
+  const withoutActions = Object.fromEntries(
+    Object.entries(states).filter(([id]) => !id.startsWith('act:'))
+  );
+  db.prepare('UPDATE frontier_snapshots SET states = ?, kinds = NULL WHERE id = ?')
+    .run(JSON.stringify(withoutActions), snapshot.id);
+  db.close();
+
+  const since = cli('since');
+  const vocabulary = since.vocabulary.map((v: any) => v.id);
+  expect(vocabulary).toContain('act:shell-execution/run_command');
+
+  // The point of the class: they are described, not counted. Reporting them as
+  // gains would say the machine could suddenly do a dozen more things.
+  expect(since.gained.map((g: any) => g.id)).not.toContain('act:shell-execution/run_command');
+  expect(since.frontier_now).toBe(since.frontier_then);
+  expect(since.nodes_now).toBeGreaterThan(since.frontier_now);
+});
+
+test('a real acquisition is still a gain, not vocabulary', () => {
+  seed(LOCAL_ONLY).close();
+  seed(PLUS_EMBEDDINGS).close();
+  const since = cli('since');
+  // Its provider is new, so this is the system changing rather than the model.
+  expect(since.gained.map((g: any) => g.id)).toContain('combo:embeddings');
+  expect(since.vocabulary.map((v: any) => v.id)).not.toContain('combo:embeddings');
 });
 
 test('a frontier query before any history explains itself', () => {
@@ -337,6 +479,191 @@ test('authority is tracked apart from whether a capability is reached', () => {
   expect(a.needs_approval).toContain('Shell Execution');
   expect(a.forbidden).toContain('Secret Management');
   expect(a.autonomous).not.toContain('Shell Execution');
+});
+
+test('a runtime that tightens its permissions is not still reported as loose', () => {
+  const runtime = (mode: string, note: string) => ({
+    mcp: { git: { type: 'local' } },
+    authority: { runtime: { execute: mode, note } },
+  });
+  seed(runtime('autonomous', 'first')).close();
+  seed(runtime('forbidden', 'second')).close();
+
+  // `mode` is not part of the authority row's uniqueness key, so an insert that
+  // ignores conflicts kept the old one — and the stale direction was the
+  // permissive one, which is what this code is meant to rule out by
+  // construction: never describe a system as freer to act than the runtime in
+  // front of it permits.
+  const db = new Database(join(dir, 'graph.db'));
+  const grants = rows(db, "SELECT mode, note FROM authority WHERE source LIKE 'runtime:%'");
+  expect(grants).toEqual([{ mode: 'forbidden', note: 'second' }]);
+
+  // And a grant the runtime has stopped making disappears rather than lingering.
+  db.close();
+  seed({ mcp: { git: { type: 'local' } } }).close();
+  const after = new Database(join(dir, 'graph.db'));
+  expect(rows(after, "SELECT mode FROM authority WHERE source LIKE 'runtime:%'")).toEqual([]);
+  // The curated model's grants survive; only the source that re-ran is replaced.
+  expect(rows(after, "SELECT COUNT(*) n FROM authority WHERE source = 'techtree'")[0].n)
+    .toBeGreaterThan(0);
+});
+
+test('a runtime narrows what the model says an action is like in general', () => {
+  // File editing is autonomous in the curated model. A runtime that requires
+  // approval for everything it executes overrides that, because the runtime is
+  // the thing that would actually perform the step.
+  seed({
+    ...LOCAL_ONLY,
+    authority: {
+      runtime: { execute: 'confirm', note: 'approvals: manual' },
+      scoped: { execute: { mode: 'forbidden', scope: 'scheduled', note: 'cron_mode: deny' } },
+    },
+  }).close();
+
+  const a = cli('authority');
+  const entry = a.detail.find((d: any) => d.id === 'combo:local-runtime' && d.action === 'execute' && !d.scope);
+  expect(entry.mode).toBe('confirm');
+  expect(entry.sources).toContain('runtime:opencode');
+  expect(a.forbidden.some((f: string) => f.endsWith('· scheduled'))).toBe(true);
+});
+
+test('the narrower of two disagreeing sources wins', () => {
+  seed({
+    ...LOCAL_ONLY,
+    authority: { capabilities: { 'combo:file-editing': { execute: 'forbidden' } } },
+  }).close();
+
+  const a = cli('authority');
+  const entry = a.detail.find((d: any) => d.id === 'combo:file-editing' && d.action === 'execute');
+  expect(entry.mode).toBe('forbidden');           // not the model's 'autonomous'
+  expect(entry.sources).toContain('techtree');
+  expect(entry.narrowed_by).toBe('runtime:opencode');
+});
+
+test('a capability confers actions, and authority is per action', () => {
+  seed({ mcp: { git: { type: 'local' } } }).close();
+
+  const a = cli('actions', 'version-control');
+  expect(a.actions).toBe(4);
+  // The distinction the coarse node cannot make: reading a repository is not
+  // merging to its default branch, and both belong to one reached capability.
+  expect(a.exercisable).toContain('act:version-control/read_repository');
+  expect(a.needs_approval).toContain('act:version-control/merge_to_default');
+  expect(a.exercisable).not.toContain('act:version-control/merge_to_default');
+});
+
+test('an action is forbidden even when the capability conferring it is reached', () => {
+  const db = seed({ mcp: { postgres: { type: 'local' } } });
+  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'combo:data-access'")[0].state)
+    .not.toBe('locked');
+  db.close();
+
+  const a = cli('actions', 'data-access');
+  expect(a.exercisable).toContain('act:data-access/query');
+  expect(a.forbidden).toContain('act:data-access/drop_table');
+});
+
+test('an action can be planned for, and resolves to the capability conferring it', () => {
+  seed({ provider: { acme: { models: { 'fast-1': {} } } } }).close();
+
+  const plan = cli('plan', 'act:data-access/query');
+  expect(plan.error).toBeUndefined();
+  expect(plan.order.map((o: any) => o.id)).toContain('combo:data-access');
+  expect(plan.reachable).toBe(true);
+
+  // Simulating the action moves the frontier by the capability, not by the
+  // action — an action is conferred, never separately acquired.
+  const sim = cli('simulate', 'act:data-access/query');
+  expect(sim.acquired.map((c: any) => c.id)).toEqual(['combo:data-access']);
+});
+
+test('actions do not inflate leverage or fragility', () => {
+  seed({ mcp: { git: { type: 'local' } } }).close();
+
+  // An action has exactly one provider by definition. Reporting each as a
+  // single point of failure would bury the ones that are.
+  const spof = cli('spof');
+  expect(spof.some((s: any) => s.id.startsWith('act:version-control/'))).toBe(false);
+
+  // And a capability must not climb the bottleneck ranking because someone
+  // wrote more verbs into its contract.
+  const bottlenecks = cli('bottlenecks');
+  const versionControl = bottlenecks.find((b: any) => b.capability_id === 'combo:version-control');
+  if (versionControl) expect(versionControl.unlocks_count).toBeLessThan(4);
+});
+
+test('the tree does not detect itself on a re-seed', () => {
+  // Contract actions are created by the tree from its own nodes, so leaving
+  // them in the pool detection matches against makes a node its own evidence:
+  // `act:web-research/search` matches web-research's `search` pattern, and a
+  // capability nothing supplies would come up reached on the second run.
+  const config = { provider: { acme: { models: { 'fast-1': {} } } } };
+  seed(config).close();
+  const db = seed(config);
+
+  const selfProved = rows(db, `
+    SELECT d.from_capability f, d.to_capability t FROM dependencies d
+    JOIN capabilities c ON c.id = d.from_capability
+    WHERE c.kind = 'action' AND d.to_capability LIKE 'combo:%'`);
+  expect(selfProved).toEqual([]);
+  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'combo:web-research'")[0].state)
+    .toBe('locked');
+});
+
+test('an action a person supplies is still a single point of failure', () => {
+  // One provider is definitional for a conferred action and a real finding for
+  // a supplied one: only that person can do it.
+  seed({
+    mcp: { git: { type: 'local' } },
+    actors: { kanav: { name: 'Kanav', provides: ['physical-access'] } },
+  }).close();
+
+  const spof = cli('spof');
+  expect(spof.some((s: any) => s.id === 'act:physical-access')).toBe(true);
+});
+
+test('lifecycle separates configured from verified from reliable', () => {
+  seed(LOCAL_ONLY).close();
+  const lifecycle = (id: string) => {
+    const db = new Database(join(dir, 'graph.db'));
+    const row = rows(db, `SELECT lifecycle FROM capabilities WHERE id = 'combo:${id}'`)[0];
+    db.close();
+    return row?.lifecycle;
+  };
+
+  // Reached, with nothing run against it. Configured is not working.
+  expect(lifecycle('shell-execution')).toBe('configured');
+
+  cli('verify', 'shell-execution');
+  expect(lifecycle('shell-execution')).toBe('verified');
+
+  // Five passing runs is a different claim from one.
+  for (let i = 0; i < 4; i++) cli('verify', 'shell-execution');
+  expect(lifecycle('shell-execution')).toBe('reliable');
+
+  // Nothing supplies it and it is not reachable — not the same as untested.
+  expect(lifecycle('secret-management')).toBe('unknown');
+});
+
+test('a failing check breaks the capability rather than being reported alongside it', () => {
+  seed(LOCAL_ONLY).close();
+  cli('verify', 'shell-execution');
+
+  // Stand in for a check that has started failing.
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare(`INSERT INTO session_learning (session_id, capability_id, action, outcome_score)
+              VALUES ('verify', 'combo:shell-execution', 'failed', 0)`).run();
+  db.close();
+
+  // Verifying something else recomputes every lifecycle without adding a run
+  // to this one — retrieval declares no check, so it records nothing.
+  cli('verify', 'retrieval');
+  const after = new Database(join(dir, 'graph.db'));
+  expect(rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
+    .toBe('broken');
+  // And the frontier still has it: reachable and broken are different columns.
+  expect(rows(after, "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'")[0].state)
+    .not.toBe('locked');
 });
 
 test('planning orders the prerequisites of an unreached capability', () => {
