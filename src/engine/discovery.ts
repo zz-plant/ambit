@@ -3,6 +3,7 @@ import { join } from "path";
 import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
 import type { Db } from "./db.ts";
 import { kindOf, edgeKindOf } from "./ontology.ts";
+import { deriveLifecycles } from "./assurance.ts";
 import { recordFrontier } from "./ledger.ts";
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
@@ -101,8 +102,87 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   count += seedTechTree(db, insert);
   count += seedCombos(db, config, mapping, insert);
   count += seedActors(db, config, mapping, insert);
+  seedAuthority(db, config);
 
+  // After the graph is complete and before the frontier is recorded, because
+  // lifecycle is derived from both providers and evidence.
+  deriveLifecycles(db);
   recordFrontier(db);
+
+  return count;
+}
+
+/**
+ * Authority, from the two places that can legitimately state it.
+ *
+ * The curated model says what an action is like in general — restarting a
+ * container is a confirm, reading a repository is not. The runtime that would
+ * execute the step says what it permits on this machine, and that is not a
+ * schema Ambit invented: Hermes publishes `approvals.mode` and
+ * `approvals.cron_mode`, and an adapter can hand them over in the same config
+ * fragment it already hands over its MCP servers.
+ *
+ *   "authority": {
+ *     "runtime": { "execute": "confirm", "note": "approvals: manual" },
+ *     "scoped":  { "execute": { "mode": "forbidden", "scope": "scheduled" } },
+ *     "capabilities": { "combo:shell-execution": { "execute": "forbidden" } }
+ *   }
+ *
+ * Nothing here is enforced. Ambit describes authority; it does not mediate
+ * action, and saying so is more useful than implying otherwise.
+ */
+function seedAuthority(db: Db, config: any): number {
+  const grant = db.prepare(
+    `INSERT OR IGNORE INTO authority (capability_id, action, mode, holder, scope, source, note)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  let count = 0;
+
+  // Declared on the curated model.
+  let tree: any = { nodes: [] };
+  try { tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8")); } catch { /* no model */ }
+  for (const node of tree.nodes || []) {
+    const id = `combo:${node.id}`;
+    if (!node.authority || !has(id)) continue;
+    for (const [action, mode] of Object.entries<any>(node.authority)) {
+      if (typeof mode !== 'string') continue; // `actions` is handled with contracts
+      grant.run(id, action, mode, '', '', 'techtree', null);
+      count++;
+    }
+  }
+
+  // Stated by the runtime that would execute it. Held against the runtime node,
+  // not copied onto each capability: a contribution made in a later run would
+  // otherwise miss a grant recorded in an earlier one.
+  const spec = config.authority || {};
+  const runtimeId = `runtime:${process.env.AMBIT_RUNTIME || 'opencode'}`;
+  const source = `runtime:${process.env.AMBIT_RUNTIME || 'opencode'}`;
+  if (has(runtimeId)) {
+    for (const [action, value] of Object.entries<any>(spec.runtime || {})) {
+      if (action === 'note') continue;
+      const mode = typeof value === 'string' ? value : value?.mode;
+      if (!mode) continue;
+      grant.run(runtimeId, action, mode, runtimeId, '', source, spec.runtime.note || null);
+      count++;
+    }
+    for (const [action, value] of Object.entries<any>(spec.scoped || {})) {
+      const mode = typeof value === 'string' ? value : value?.mode;
+      if (!mode) continue;
+      grant.run(runtimeId, action, mode, runtimeId, value?.scope || '', source, value?.note || null);
+      count++;
+    }
+  }
+
+  for (const [capId, actions] of Object.entries<any>(spec.capabilities || {})) {
+    if (!has(capId)) continue;
+    for (const [action, value] of Object.entries<any>(actions || {})) {
+      const mode = typeof value === 'string' ? value : value?.mode;
+      if (!mode) continue;
+      grant.run(capId, action, mode, '', value?.scope || '', source, value?.note || null);
+      count++;
+    }
+  }
 
   return count;
 }
@@ -412,5 +492,5 @@ function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
 
 export {
   parseMapping, seedFromConfig, seedModels, seedDependencies, attributeToRuntime,
-  seedTechTree, seedActors, seedCombos,
+  seedTechTree, seedActors, seedCombos, seedAuthority,
 };

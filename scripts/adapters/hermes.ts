@@ -25,6 +25,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { authorityBlock } from './authority.ts';
 
 const HERMES_HOME = process.env.HERMES_HOME || join(process.env.HOME || '/', '.hermes');
 
@@ -127,9 +128,20 @@ if (!process.argv.includes('--seed')) {
 // keeps that legible is AMBIT_RUNTIME below, which attributes everything this
 // run contributes to a runtime node.
 const configPath = join(process.env.TMPDIR || '/tmp', `ambit-hermes-${process.pid}.json`);
+// Authority travels with the capabilities rather than being printed beside
+// them: what Hermes permits applies to everything Hermes contributes, and the
+// graph can only weigh that against the model's own declaration if it is in
+// the graph.
+const authority = authorityBlock({
+  execute: fragment.observed.approvalMode,
+  scheduled: fragment.observed.cronApprovalMode,
+  note: `hermes approvals: ${fragment.observed.approvalMode ?? 'unset'}`,
+  scheduledNote: `hermes cron_mode: ${fragment.observed.cronApprovalMode ?? 'unset'}`,
+});
+
 writeFileSync(
   configPath,
-  JSON.stringify({ mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider })
+  JSON.stringify({ mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider, authority })
 );
 
 const mapping = {
