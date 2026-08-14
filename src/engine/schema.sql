@@ -1,3 +1,14 @@
+-- Nodes. `kind` is the ontological one — capability, action, provider,
+-- resource, actor, runtime — and `category` is the older, looser label the
+-- visualiser styles by. Both are kept: ids and categories are load-bearing in
+-- stored frontier snapshots and in the client, and re-iding to make the prefix
+-- self-describing would invalidate the one component whose value is that its
+-- history is continuous. See ontology.ts.
+--
+-- `kind` is last in both tables rather than where it reads best, so a database
+-- created from this file and one migrated by ALTER TABLE have the same shape.
+-- Comments stay outside the parentheses: SQLite keeps the CREATE statement
+-- verbatim and cannot rewrite a table whose body has a trailing comment.
 CREATE TABLE IF NOT EXISTS capabilities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -11,9 +22,12 @@ CREATE TABLE IF NOT EXISTS capabilities (
     parallel_slots INTEGER NOT NULL DEFAULT 0,
     maturity_score REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    kind TEXT NOT NULL DEFAULT 'provider'
 );
 
+-- Edges. `kind` is what the edge means; `is_hard_requisite` is how much it
+-- matters. The second was being asked the first.
 CREATE TABLE IF NOT EXISTS dependencies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     from_capability TEXT NOT NULL REFERENCES capabilities(id),
@@ -22,6 +36,7 @@ CREATE TABLE IF NOT EXISTS dependencies (
     cost_tokens INTEGER NOT NULL DEFAULT 0,
     is_hard_requisite INTEGER NOT NULL DEFAULT 1,
     description TEXT,
+    kind TEXT NOT NULL DEFAULT 'requires',
     UNIQUE(from_capability, to_capability)
 );
 
@@ -88,3 +103,12 @@ CREATE TABLE IF NOT EXISTS proposals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
+
+-- What has already been done to this database. One-time backfills are recorded
+-- here rather than inferred, because a backfill that cannot tell "never set"
+-- from "set to the default" either runs forever or runs never.
+CREATE TABLE IF NOT EXISTS schema_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

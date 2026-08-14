@@ -2,9 +2,37 @@ import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
 import type { Db } from "./db.ts";
+import { kindOf, edgeKindOf } from "./ontology.ts";
 import { recordFrontier } from "./ledger.ts";
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Writers that stamp the ontological kind, so no seeder can omit it.
+ *
+ * Kind is derived from the same inputs the backfill uses rather than passed in
+ * at each of the ~15 call sites: one definition, and a new seeder cannot
+ * disagree with the migration about what it just wrote.
+ */
+function nodeWriter(db: Db) {
+  const stmt = db.prepare(
+    "INSERT OR IGNORE INTO capabilities (id, name, domain, description, kind, category, state, maturity_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  );
+  return {
+    run: (id: string, name: string, domain: string, description: string, category: string, state: string, maturity: number) =>
+      stmt.run(id, name, domain, description, kindOf(id, category), category, state, maturity),
+  };
+}
+
+function edgeWriter(db: Db) {
+  const stmt = db.prepare(
+    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description, kind) VALUES (?, ?, ?, ?, ?)"
+  );
+  return {
+    run: (from: string, to: string, isHard: number, description: string) =>
+      stmt.run(from, to, isHard, description, edgeKindOf(description, isHard)),
+  };
+}
 
 function parseMapping(mappingStr?: string): Record<string, any> {
   if (mappingStr) {
@@ -28,7 +56,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
 
   let count = 0;
   const contributed: string[] = [];
-  const insert = db.prepare("INSERT OR IGNORE INTO capabilities (id, name, domain, description, category, state, maturity_score) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  const insert = nodeWriter(db);
 
   for (const [key, cfg] of Object.entries<any>(mapping.config_keys || {})) {
     const entries = config[key] || {};
@@ -116,9 +144,7 @@ function seedModels(db: Db, config: any, insert: any): number {
 function seedDependencies(db: Db, config: any): number {
   const has = (id: string) =>
     !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
-  const link = db.prepare(
-    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, ?, ?)"
-  );
+  const link = edgeWriter(db);
   let count = 0;
 
   for (const [provider, pv] of Object.entries<any>(config.provider || {})) {
@@ -168,10 +194,8 @@ function attributeToRuntime(db: Db, insert: any, contributed: string[]): number 
   if (contributed.length === 0) return 0;
   const id = `runtime:${runtime}`;
   insert.run(id, runtime, 'meta', `Agent runtime — contributes ${contributed.length} capabilities`, 'runtime', 'unlocked', 0.9);
-  const link = db.prepare(
-    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, 1, 'Contributed by runtime')"
-  );
-  for (const capability of contributed) link.run(id, capability);
+  const link = edgeWriter(db);
+  for (const capability of contributed) link.run(id, capability, 1, 'Contributed by runtime');
   return 1;
 }
 
@@ -205,9 +229,7 @@ function seedTechTree(db: Db, insert: any): number {
     .map((r: any) => r.id);
   const modelCount = owned.filter(id => id.startsWith('model:')).length;
 
-  const link = db.prepare(
-    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, ?, ?)"
-  );
+  const link = edgeWriter(db);
 
   // Which of the user's capabilities, if any, prove each node.
   const evidence = new Map<string, string[]>();
@@ -316,9 +338,7 @@ function seedTechTree(db: Db, insert: any): number {
  */
 function seedActors(db: Db, config: any, mapping: any, insert: any): number {
   const actors = { ...(mapping.actors || {}), ...(config.actors || {}) };
-  const link = db.prepare(
-    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, 1, ?)"
-  );
+  const link = edgeWriter(db);
   const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
   let count = 0;
 
@@ -332,7 +352,7 @@ function seedActors(db: Db, config: any, mapping: any, insert: any): number {
     for (const provided of spec?.provides || []) {
       const pid = provided.includes(':') ? provided : `act:${provided}`;
       insert.run(pid, provided.replace(/-/g, ' '), 'social', `Provided by ${name}`, 'human-action', 'unlocked', 1.0);
-      link.run(id, pid, 'Supplied by a person');
+      link.run(id, pid, 1, 'Supplied by a person');
       count++;
     }
 
@@ -340,7 +360,7 @@ function seedActors(db: Db, config: any, mapping: any, insert: any): number {
     // that exist — a typo should leave a missing edge, not a dangling one.
     for (const gated of spec?.authorizes || []) {
       const gid = gated.startsWith('combo:') || gated.includes(':') ? gated : `combo:${gated}`;
-      if (has(gid)) link.run(id, gid, 'Requires approval from a person');
+      if (has(gid)) link.run(id, gid, 1, 'Requires approval from a person');
     }
   }
   return count;
@@ -363,9 +383,7 @@ function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
   const combos = { ...(mapping.combos || {}), ...(config.combos || {}) };
   const has = (id: string) =>
     !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
-  const link = db.prepare(
-    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description) VALUES (?, ?, ?, ?)"
-  );
+  const link = edgeWriter(db);
   let count = 0;
 
   for (const [key, spec] of Object.entries<any>(combos)) {

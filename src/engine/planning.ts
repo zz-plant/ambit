@@ -67,8 +67,14 @@ function planFor(db: Db, goal?: string) {
 
   // Which steps are somebody's rather than the machine's. A plan that hides
   // this reads as autonomous when it is not.
+  // Whose steps, asked of the graph rather than of two sentences: an edge whose
+  // source is a person, whether it supplies the step or authorises it.
   const humanEdges = db
-    .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE description IN ('Requires approval from a person','Supplied by a person')")
+    .prepare(
+      `SELECT d.from_capability f, d.to_capability t FROM dependencies d
+       JOIN capabilities c ON c.id = d.from_capability
+       WHERE c.kind = 'actor' AND d.kind IN ('provides', 'authorizes')`
+    )
     .all();
   const humanFor = new Map<string, string[]>();
   for (const e of humanEdges) {

@@ -171,6 +171,85 @@ test('detection does not match short tokens inside unrelated words', () => {
 });
 
 
+// ── Ontology ────────────────────────────────────────────────────────────────
+
+test('every node carries the kind of thing it is', () => {
+  const db = seed({
+    mcp: { git: { type: 'local' } },
+    provider: { ollama: { models: { 'qwen3-coder': {} } } },
+    actors: { kanav: { name: 'Kanav', provides: ['physical-access'] } },
+  });
+  const kind = (id: string) =>
+    (rows(db, `SELECT kind FROM capabilities WHERE id = '${id}'`)[0] || {}).kind;
+
+  expect(kind('combo:version-control')).toBe('capability');
+  expect(kind('mcp:git')).toBe('provider');
+  expect(kind('model:ollama/qwen3-coder')).toBe('resource');
+  expect(kind('provider:ollama')).toBe('resource'); // an endpoint serving models
+  expect(kind('human:kanav')).toBe('actor');
+  expect(kind('runtime:opencode')).toBe('runtime');
+  expect(kind('act:physical-access')).toBe('action');
+
+  // Nothing is left at the column default by accident.
+  const unknown = rows(db, `SELECT id FROM capabilities WHERE kind NOT IN
+    ('capability','action','provider','resource','actor','runtime')`);
+  expect(unknown).toEqual([]);
+});
+
+test('every edge carries what it means, not just how much it matters', () => {
+  const db = seed({
+    mcp: { git: { type: 'local' } },
+    provider: { ollama: { models: { 'qwen3-coder': {} } } },
+    actors: { kanav: { name: 'Kanav', authorizes: ['combo:version-control'] } },
+  });
+  const edges = rows(db, 'SELECT from_capability f, to_capability t, kind FROM dependencies');
+  const kindOfEdge = (f: string, t: string) => edges.find(e => e.f === f && e.t === t)?.kind;
+
+  expect(kindOfEdge('mcp:git', 'combo:version-control')).toBe('provides');
+  expect(kindOfEdge('runtime:opencode', 'mcp:git')).toBe('contributes');
+  expect(kindOfEdge('provider:ollama', 'model:ollama/qwen3-coder')).toBe('runs_on');
+  expect(kindOfEdge('human:kanav', 'combo:version-control')).toBe('authorizes');
+  expect(kindOfEdge('combo:shell-execution', 'combo:version-control')).toBe('requires');
+});
+
+test('redundancy is counted by kind, not by matching a sentence', () => {
+  const db = seed({ mcp: { git: { type: 'local' } } });
+
+  // The prose match this replaces was silent when it failed. Rewriting the
+  // description of a provision edge used to remove it from the redundancy
+  // count; now only the kind decides, so the analysis survives rewording.
+  db.prepare(
+    "UPDATE dependencies SET description = 'Supplies this' WHERE from_capability = 'mcp:git'"
+  ).run();
+  db.close();
+
+  const spof = cli('spof');
+  const listed = Array.isArray(spof) ? spof : [];
+  expect(listed.some((s: any) => s.provider_id === 'mcp:git')).toBe(true);
+});
+
+test('a graph seeded before kinds existed gets them without losing its history', () => {
+  const db = seed({ mcp: { git: { type: 'local' } } });
+  const before = rows(db, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n;
+
+  // Put the database back the way an older Ambit left it: no kind columns, no
+  // record that the backfill ran. Losing this graph would lose the ledger, and
+  // a ledger cannot be re-derived.
+  db.prepare('ALTER TABLE capabilities DROP COLUMN kind').run();
+  db.prepare('ALTER TABLE dependencies DROP COLUMN kind').run();
+  db.prepare('DROP TABLE schema_meta').run();
+  db.close();
+
+  const where = cli('where');
+  expect(where.seeded).toBe(true);
+
+  const reopened = new Database(join(dir, 'graph.db'));
+  expect(rows(reopened, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n).toBe(before);
+  expect(rows(reopened, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe('provider');
+  expect(rows(reopened, `SELECT kind FROM dependencies
+    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`)[0].kind).toBe('provides');
+});
+
 // ── Ledger ──────────────────────────────────────────────────────────────────
 
 /** Run the CLI against the database this test's `seed` writes to. */
