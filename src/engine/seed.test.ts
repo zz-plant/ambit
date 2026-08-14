@@ -418,6 +418,82 @@ test('authority is tracked apart from whether a capability is reached', () => {
   expect(a.autonomous).not.toContain('Shell Execution');
 });
 
+test('a runtime narrows what the model says an action is like in general', () => {
+  // File editing is autonomous in the curated model. A runtime that requires
+  // approval for everything it executes overrides that, because the runtime is
+  // the thing that would actually perform the step.
+  seed({
+    ...LOCAL_ONLY,
+    authority: {
+      runtime: { execute: 'confirm', note: 'approvals: manual' },
+      scoped: { execute: { mode: 'forbidden', scope: 'scheduled', note: 'cron_mode: deny' } },
+    },
+  }).close();
+
+  const a = cli('authority');
+  const entry = a.detail.find((d: any) => d.id === 'combo:local-runtime' && d.action === 'execute' && !d.scope);
+  expect(entry.mode).toBe('confirm');
+  expect(entry.sources).toContain('runtime:opencode');
+  expect(a.forbidden.some((f: string) => f.endsWith('· scheduled'))).toBe(true);
+});
+
+test('the narrower of two disagreeing sources wins', () => {
+  seed({
+    ...LOCAL_ONLY,
+    authority: { capabilities: { 'combo:file-editing': { execute: 'forbidden' } } },
+  }).close();
+
+  const a = cli('authority');
+  const entry = a.detail.find((d: any) => d.id === 'combo:file-editing' && d.action === 'execute');
+  expect(entry.mode).toBe('forbidden');           // not the model's 'autonomous'
+  expect(entry.sources).toContain('techtree');
+  expect(entry.narrowed_by).toBe('runtime:opencode');
+});
+
+test('lifecycle separates configured from verified from reliable', () => {
+  seed(LOCAL_ONLY).close();
+  const lifecycle = (id: string) => {
+    const db = new Database(join(dir, 'graph.db'));
+    const row = rows(db, `SELECT lifecycle FROM capabilities WHERE id = 'combo:${id}'`)[0];
+    db.close();
+    return row?.lifecycle;
+  };
+
+  // Reached, with nothing run against it. Configured is not working.
+  expect(lifecycle('shell-execution')).toBe('configured');
+
+  cli('verify', 'shell-execution');
+  expect(lifecycle('shell-execution')).toBe('verified');
+
+  // Five passing runs is a different claim from one.
+  for (let i = 0; i < 4; i++) cli('verify', 'shell-execution');
+  expect(lifecycle('shell-execution')).toBe('reliable');
+
+  // Nothing supplies it and it is not reachable — not the same as untested.
+  expect(lifecycle('secret-management')).toBe('unknown');
+});
+
+test('a failing check breaks the capability rather than being reported alongside it', () => {
+  seed(LOCAL_ONLY).close();
+  cli('verify', 'shell-execution');
+
+  // Stand in for a check that has started failing.
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare(`INSERT INTO session_learning (session_id, capability_id, action, outcome_score)
+              VALUES ('verify', 'combo:shell-execution', 'failed', 0)`).run();
+  db.close();
+
+  // Verifying something else recomputes every lifecycle without adding a run
+  // to this one — retrieval declares no check, so it records nothing.
+  cli('verify', 'retrieval');
+  const after = new Database(join(dir, 'graph.db'));
+  expect(rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
+    .toBe('broken');
+  // And the frontier still has it: reachable and broken are different columns.
+  expect(rows(after, "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'")[0].state)
+    .not.toBe('locked');
+});
+
 test('planning orders the prerequisites of an unreached capability', () => {
   seed(LOCAL_ONLY).close();
   const p = cli('plan', 'offline-capable');

@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS capabilities (
     maturity_score REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    kind TEXT NOT NULL DEFAULT 'provider'
+    kind TEXT NOT NULL DEFAULT 'provider',
+    lifecycle TEXT NOT NULL DEFAULT 'unknown'
 );
 
 -- Edges. `kind` is what the edge means; `is_hard_requisite` is how much it
@@ -103,6 +104,31 @@ CREATE TABLE IF NOT EXISTS proposals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
+
+-- Authority. Being able to perform an action is not permission to perform it,
+-- so the two are stored apart: `state` and `lifecycle` say what the system can
+-- do, this table says what it may do and who says so.
+--
+-- More than one source can speak about the same capability — the curated model
+-- declares what an action is like in general, and the runtime that would
+-- execute it declares what it permits here. They are stored as separate rows
+-- rather than merged on write, because which one narrowed a capability is the
+-- interesting half of the answer. `holder` and `scope` default to '' rather
+-- than NULL so that re-seeding cannot duplicate a row: SQLite treats NULLs in
+-- a UNIQUE constraint as distinct from each other.
+CREATE TABLE IF NOT EXISTS authority (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    capability_id TEXT NOT NULL REFERENCES capabilities(id),
+    action TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    holder TEXT NOT NULL DEFAULT '',
+    scope TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL,
+    note TEXT,
+    UNIQUE(capability_id, action, holder, scope, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_authority_cap ON authority(capability_id);
 
 -- What has already been done to this database. One-time backfills are recorded
 -- here rather than inferred, because a backfill that cannot tell "never set"

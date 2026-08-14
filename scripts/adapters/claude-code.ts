@@ -24,6 +24,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { authorityBlock } from './authority.ts';
 
 const HOME = process.env.HOME || '/';
 const CLAUDE_HOME = process.env.CLAUDE_HOME || join(HOME, '.claude');
@@ -166,10 +167,19 @@ if (!process.argv.includes('--seed')) {
   process.exit(0);
 }
 
+// `defaultMode` is what Claude Code will do without being asked, which is the
+// same question the graph asks of every capability. Allow and deny rules are
+// deliberately not translated: they name paths and commands, and this adapter
+// counts them rather than copying them into a graph the user may export.
+const authority = authorityBlock({
+  execute: fragment.observed.permissionMode ?? 'default',
+  note: `claude-code permissions.defaultMode: ${fragment.observed.permissionMode ?? 'default'}`,
+});
+
 const configPath = join(process.env.TMPDIR || '/tmp', `ambit-claude-code-${process.pid}.json`);
 writeFileSync(
   configPath,
-  JSON.stringify({ mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider })
+  JSON.stringify({ mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider, authority })
 );
 
 const mapping = {
