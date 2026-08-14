@@ -137,9 +137,21 @@ At that point, asking whether the intelligence resides in the person, the model,
 
 ## What this implies for the software
 
-The test of an abstraction is whether it survives cases it was not designed for. Two concrete consequences have already landed:
+The test of an abstraction is whether it survives cases it was not designed for. Four concrete consequences have landed:
 
 - The infrastructure manifest accepts devices of any kind. A robot arm and a neural decoder seed into the graph as first-class nodes with a `commands` edge between them, exactly as a Pi and a container do.
 - The domain vocabulary was entirely software, so anything acting on the world collapsed into the `meta` column. `physical` is now a domain, and such resources render in their own column.
+- The relational reading is now the data model rather than a gloss on it. A node declares what kind of thing it is — capability, action, provider, resource, actor, runtime — and an edge declares what the relation means. *Shell access* is a provider; the affordance is the action it confers, and the two are different rows. That is the paragraph above about hammers, made executable.
+- Actions carry their own authority and their own evidence. `read a repository` and `merge to its default branch` are one capability and two permissions, and the graph says so.
 
-What has not landed, and is the honest boundary: capabilities are still separated from providers only informally; authority is not modelled; nothing verifies that a capability works; and no cognitive or institutional domain exists. Those are [roadmap](../ROADMAP.md) items, and the theory above runs well ahead of all of them.
+The distinction the affordance reading forces — that an affordance exists only when reasoning, tool, target, and authorisation line up — is what the split buys. A capability is reached when something supplies it; an action is exercisable when it is reached *and* permitted *and* has evidence behind it, and those are three columns rather than one boolean.
+
+What has not landed, and is the honest boundary:
+
+- **Nothing is enforced.** Authority is recorded from the model and from the runtime that would execute the step, and the narrower of the two wins — but Ambit describes authority, it does not mediate action. A system that acts against what the graph records is not stopped by the graph.
+- **Scope is declared, not checked.** An authority row can say `repo:owner/name`, and nothing verifies that the scope is the one an action would actually touch. *Can modify repository X on branch Y* is expressible and unverified.
+- **Only the digital and physical domains exist.** `cognitive`, `institutional` and `economic` still do not, and each needs more than a keyword: an institutional capability implies an authority holder, an economic one a budget and a counterparty.
+- **The human-composed cases are not distinguished.** People are nodes and supply actions, so human-gated is modelled. Human-composed and machine-composed-human — the BCI cases — are not.
+- **Environment is not a term.** The robotics example above lists it alongside cognition, actuation and authority; the model has no way to say that an affordance holds in one workspace and not another.
+
+Those are [roadmap](../ROADMAP.md) items, and the theory above still runs ahead of them.
