@@ -64,8 +64,11 @@ function ledgerSince(db: Db, when?: string) {
   // second classified every addition as pre-existing.
   const addedSince = new Set(now.filter(c => past.states[c.id] === undefined).map(c => c.id));
 
+  // Provision only, not runtime attribution: a capability contributed by a
+  // runtime that already existed is not proof that something new supplied it,
+  // and counting it would classify composition as acquisition.
   const providers = db
-    .prepare("SELECT from_capability, to_capability FROM dependencies WHERE description = 'Provides this capability'")
+    .prepare("SELECT from_capability, to_capability FROM dependencies WHERE kind = 'provides'")
     .all();
   const provedBy = new Map<string, string[]>();
   for (const p of providers) {

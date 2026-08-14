@@ -1,4 +1,5 @@
 import type { Db } from "./db.ts";
+import { PROVISION_EDGES } from "./ontology.ts";
 
 // ─── Prune Recommendations ────────────────────────────────────────────────────
 
@@ -235,12 +236,17 @@ function findBottlenecks(db) {
  * you most want to distinguish from a single point of failure.
  */
 function providersOf(db: Db): Map<string, string[]> {
+  // Selected by kind rather than by matching three English sentences. The
+  // prose match was silent when it failed: an adapter writing 'Provided by
+  // this server' contributed a provider the redundancy analysis could not see,
+  // so a capability with two providers still reported as a single point of
+  // failure and its loss still read as critical.
   const rows = db
     .prepare(
       `SELECT from_capability f, to_capability t FROM dependencies
-       WHERE description IN ('Provides this capability', 'Contributed by runtime', 'Supplied by a person')`
+       WHERE kind IN (${PROVISION_EDGES.map(() => '?').join(', ')})`
     )
-    .all();
+    .all(...PROVISION_EDGES);
   const map = new Map<string, string[]>();
   for (const r of rows) {
     if (!map.has(r.t)) map.set(r.t, []);
