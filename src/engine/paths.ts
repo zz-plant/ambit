@@ -1,0 +1,15 @@
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+/**
+ * Where the engine's authored data lives — schema.sql, techtree.json,
+ * ../shared/concepts.json. Every module that reads one of those resolves it
+ * from here rather than from its own `__dirname`, so moving a module between
+ * directories cannot silently change which tree it reads.
+ */
+export const ENGINE_DIR = dirname(fileURLToPath(import.meta.url));
+
+// OPENCODE_CONFIG is the documented way to point the engine at another config
+// (README, "Using other configs"); it was accepted by bootstrap.sh but never
+// read here, so seeding always used the default path regardless.
+export const CONFIG_DEFAULT = process.env.OPENCODE_CONFIG || join(process.env.HOME || "/", ".config", "opencode", "opencode.json");

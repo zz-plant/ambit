@@ -1,0 +1,392 @@
+import type { Db } from "./db.ts";
+
+// ─── Prune Recommendations ────────────────────────────────────────────────────
+
+function pruneRecommendations(db) {
+  const caps = db.prepare("SELECT id, name, domain, maturity_score, parallel_slots, updated_at, state FROM capabilities WHERE state IN ('unlocked','active') ORDER BY maturity_score ASC").all();
+  const results = [];
+  for (const cap of caps) {
+    if (cap.updated_at) {
+      const daysSince = (Date.now() - new Date(cap.updated_at + 'Z').getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSince < 30) continue;
+    } else continue;
+    const slotCost = cap.parallel_slots || 1;
+    const deps = db.prepare("SELECT from_capability FROM dependencies WHERE to_capability = ?").all(cap.id);
+    const dependents = db.prepare("SELECT to_capability FROM dependencies WHERE from_capability = ?").all(cap.id);
+    const daysSince = Math.round((Date.now() - new Date(cap.updated_at + 'Z').getTime()) / (1000 * 60 * 60 * 24));
+    results.push({ id: cap.id, name: cap.name, domain: cap.domain, days_since_config_change: daysSince, token_cost: slotCost, dependent_count: dependents.length, prereq_count: deps.length, recommendation: `${daysSince} days since last config change. ${dependents.length} capabilities depend on it. ${deps.length} prerequisites still active.` });
+  }
+  return results.sort((a, b) => b.days_since_config_change - a.days_since_config_change).slice(0, 15);
+}
+
+// ─── Fork Comparison (best combo to unlock) ──────────────────────────────────
+
+function forkComparison(db) {
+  const locked = db.prepare("SELECT id, name, domain, unlock_cost_setup, unlock_cost_tokens FROM capabilities WHERE state = 'locked'").all();
+  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
+  const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
+  const comboGroups = new Map();
+  for (const d of deps) {
+    if (!comboGroups.has(d.to_capability)) comboGroups.set(d.to_capability, []);
+    comboGroups.get(d.to_capability).push(d);
+  }
+  const results = [];
+  for (const [id, prereqs] of comboGroups) {
+    const combo = capMap.get(id); if (!combo) continue;
+    const hardMet = prereqs.filter(p => p.is_hard_requisite).every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active'); });
+    if (!hardMet) continue;
+    const avgMaturity = prereqs.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / prereqs.length;
+    const regret = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning WHERE capability_id = ? AND action = 'regretted'").get(id) || {}).cnt || 0;
+    const cascade = db.prepare("SELECT COUNT(*) as cnt FROM dependencies WHERE from_capability = ?").get(id).cnt || 0;
+    const efficiency = Math.round((cascade + (1 - regret * 0.2)) * 100 / (combo.unlock_cost_setup || 1));
+    results.push({ name: combo.name, id, avg_maturity: Math.round(avgMaturity * 100), regret_count: regret, cascade_unlocks: cascade, efficiency, recommendation: regret > 0 ? `Previously regretted (${regret}x). ${cascade} cascade unlocks if committed.` : `${cascade} cascade unlocks with ${Math.round(avgMaturity * 100)}% avg prerequisite maturity.` });
+  }
+  return results.sort((a, b) => b.efficiency - a.efficiency);
+}
+
+// ─── Near-Miss Combos (1-2 prerequisites away) ───────────────────────────────
+
+function nearMissCombos(db) {
+  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
+  const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
+  const groups = new Map();
+  for (const d of deps) {
+    if (!groups.has(d.to_capability)) groups.set(d.to_capability, []);
+    groups.get(d.to_capability).push(d);
+  }
+  const results = [];
+  for (const [comboId, prereqs] of groups) {
+    const combo = capMap.get(comboId);
+    if (!combo || combo.state === 'unlocked' || combo.state === 'active') continue;
+    const hard = prereqs.filter(p => p.is_hard_requisite);
+    const metHard = hard.filter(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active'); });
+    const missingHard = hard.filter(p => { const c = capMap.get(p.from_capability); return !c || (c.state !== 'unlocked' && c.state !== 'active'); });
+    if (missingHard.length === 0) continue;
+    if (missingHard.length > 2) continue;
+    const avgMetMaturity = metHard.length > 0 ? metHard.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / metHard.length : 0;
+    if (avgMetMaturity < 0.6) continue;
+    results.push({
+      name: combo.name,
+      id: comboId,
+      missing: missingHard.length,
+      missing_names: missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability),
+      met_count: metHard.length,
+      total_required: hard.length,
+      met_maturity: Math.round(avgMetMaturity * 100),
+      investment: `Add ${missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`,
+    });
+  }
+  return results.sort((a, b) => b.met_maturity - a.met_maturity);
+}
+
+// ─── Insights (top actionable items) ──────────────────────────────────────────
+
+function insights(db) {
+  const items = [];
+  const nearMiss = nearMissCombos(db);
+  if (nearMiss.length > 0) {
+    items.push({ type: 'near_miss', count: nearMiss.length, detail: `${nearMiss[0].name} — ${nearMiss[0].missing} dependencies away (${nearMiss[0].met_maturity}% existing maturity). ${nearMiss[0].investment}`, near: nearMiss.slice(0, 3) });
+  }
+  const decay = computeDecay(db).filter(d => d.decayed).slice(0, 3);
+  if (decay.length > 0) {
+    items.push({ type: 'decay', count: decay.length, detail: `${decay[0].name} — ${decay[0].days_since_config_change} days since last change`, decaying: decay });
+  }
+  const bottlenecks = findBottlenecks(db).slice(0, 3);
+  if (bottlenecks.length > 0) {
+    items.push({ type: 'bottleneck', count: bottlenecks.length, detail: `${bottlenecks[0].name} unlocks ${bottlenecks[0].unlocks_count} downstream`, top: bottlenecks });
+  }
+  return items;
+}
+
+function computeDecay(db) {
+  const caps = db.prepare("SELECT id, name, domain, maturity_score, updated_at FROM capabilities WHERE state IN ('unlocked','active')").all();
+  const results = [];
+  for (const cap of caps) {
+    if (!cap.updated_at) continue;
+    const daysSince = (Date.now() - new Date(cap.updated_at + 'Z').getTime()) / (1000 * 60 * 60 * 24);
+    const decayAmount = Math.min(0.3, daysSince * 0.01);
+    const newMaturity = Math.max(0.1, cap.maturity_score - decayAmount);
+    results.push({ capability_id: cap.id, name: cap.name, domain: cap.domain, decayed: newMaturity < cap.maturity_score - 0.05, days_since_config_change: Math.round(daysSince), new_maturity: Math.round(newMaturity * 100) / 100 });
+  }
+  results.sort((a, b) => b.days_since_config_change - a.days_since_config_change);
+  return results;
+}
+
+// ─── Combo Discovery ──────────────────────────────────────────────────────────
+
+function discoverCombos(db) {
+  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
+  const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
+  const results = [];
+  const groups = new Map();
+  for (const d of deps) {
+    if (!groups.has(d.to_capability)) groups.set(d.to_capability, []);
+    groups.get(d.to_capability).push(d);
+  }
+  for (const [comboId, prereqs] of groups) {
+    const combo = capMap.get(comboId);
+    if (!combo || combo.state === 'unlocked' || combo.state === 'active') continue;
+    const hard = prereqs.filter(p => p.is_hard_requisite);
+    if (!hard.every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active'); })) continue;
+    const avg = prereqs.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / prereqs.length;
+    if (avg < 0.4) continue;
+    results.push({ name: combo.name, requirements: prereqs.map(p => capMap.get(p.from_capability)?.name || p.from_capability), unlocks: comboId, confidence: Math.min(1, avg + 0.2), reason: `All prereqs at ${Math.round(avg * 100)}% avg maturity` });
+  }
+  results.sort((a, b) => b.confidence - a.confidence);
+  return results;
+}
+
+// ─── Graph Profile (evolution over time) ──────────────────────────────────────
+
+function graphProfile(db) {
+  const now = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities").get();
+  const connections = db.prepare("SELECT COUNT(*) as cnt FROM dependencies").get().cnt || 0;
+  const combos = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE category = 'combo' AND state IN ('unlocked','active')").get().cnt || 0;
+  const density = now.total > 0 ? Math.round((connections / now.total) * 100) / 100 : 0;
+  const built = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning WHERE action = 'built'").get() || {}).cnt || 0;
+  const removed = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning WHERE action = 'removed'").get() || {}).cnt || 0;
+  const totalEvents = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning").get() || {}).cnt || 0;
+
+  const domainDensity = db.prepare(`
+    SELECT c.domain, COUNT(*) as caps, 
+    (SELECT COUNT(*) FROM dependencies d JOIN capabilities c2 ON c2.id = d.from_capability WHERE c2.domain = c.domain) as conns
+    FROM capabilities c WHERE c.state IN ('unlocked','active') GROUP BY c.domain
+  `).all();
+
+  return {
+    capabilities: { current: now.unlocked, total: now.total },
+    connections: connections,
+    combos: combos,
+    density: density,
+    build_history: { total_built: built, total_removed: removed, net: built - removed, total_events: totalEvents },
+    domains: domainDensity.map(d => ({ domain: d.domain, caps: d.caps, connections: d.conns, density: d.caps > 0 ? Math.round((d.conns / d.caps) * 100) / 100 : 0 })),
+  };
+}
+
+// ─── Session Diff ─────────────────────────────────────────────────────────────
+
+function sessionDiff(db) {
+  const caps = db.prepare("SELECT id, name, domain, maturity_score, state FROM capabilities WHERE state IN ('unlocked','active')").all();
+  const recent = db.prepare("SELECT capability_id, action, outcome_score FROM session_learning ORDER BY timestamp DESC LIMIT 50").all();
+  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
+  const domains = new Map();
+  for (const c of caps) {
+    if (!domains.has(c.domain)) domains.set(c.domain, { total: 0, unlocked: 0, changed_caps: [] });
+    const d = domains.get(c.domain); d.total++; if (c.state === 'unlocked' || c.state === 'active') d.unlocked++;
+  }
+  const seen = new Set();
+  for (const e of recent) {
+    if (seen.has(e.capability_id)) continue; seen.add(e.capability_id);
+    const cap = capMap.get(e.capability_id); if (!cap) continue;
+    const domain = domains.get(cap.domain); if (!domain) continue;
+    domain.changed_caps.push({ name: cap.name, change: e.outcome_score && e.outcome_score > 0.7 ? 'improved' : e.action === 'regretted' ? 'regretted' : 'practiced', detail: `${Math.round(cap.maturity_score * 100)}% maturity` });
+  }
+  return Array.from(domains.entries()).map(([d, v]) => ({ domain: d, ...v }));
+}
+
+// ─── Domain Health ────────────────────────────────────────────────────────────
+
+function domainHealth(db) {
+  const caps = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as active, AVG(maturity_score) as avg_maturity FROM capabilities GROUP BY domain").all();
+  const results = [];
+  for (const cap of caps) {
+    const regret = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning sl JOIN capabilities c ON c.id = sl.capability_id WHERE c.domain = ? AND sl.action = 'regretted' GROUP BY c.domain").get(cap.domain) || {}).cnt || 0;
+    const decayRisk = cap.active > 0 ? (db.prepare("SELECT AVG(CASE WHEN sl.timestamp < datetime('now', '-30 days') OR sl.timestamp IS NULL THEN 1 ELSE 0 END) as risk FROM capabilities c LEFT JOIN session_learning sl ON sl.capability_id = c.id AND sl.action = 'used' WHERE c.domain = ? AND c.state IN ('unlocked','active')").get(cap.domain) || {}).risk || 0 : 0;
+    const health = Math.max(0, Math.min(1, (cap.avg_maturity || 0) * 0.4 + (cap.active / Math.max(cap.total, 1)) * 0.3 + (1 - Math.min(regret / Math.max(cap.active, 1), 1)) * 0.2 + (1 - (decayRisk || 0)) * 0.1));
+    results.push({ domain: cap.domain, health: Math.round(health * 100) / 100, total: cap.total, active: cap.active, avg_maturity: Math.round((cap.avg_maturity || 0) * 100) / 100, decay_risk: Math.round((decayRisk || 0) * 100) / 100, regret_count: regret });
+  }
+  results.sort((a, b) => b.health - a.health);
+  return results;
+}
+
+// ─── Bottlenecks ──────────────────────────────────────────────────────────────
+
+function findBottlenecks(db) {
+  const caps = db.prepare("SELECT id, name, domain FROM capabilities WHERE state IN ('unlocked','active')").all();
+  const deps = db.prepare("SELECT from_capability, to_capability FROM dependencies").all();
+  const downstream = new Map();
+  const comboIds = new Set(deps.filter(d => d.to_capability.startsWith('combo:')).map(d => d.to_capability));
+  for (const d of deps) {
+    if (!downstream.has(d.from_capability)) downstream.set(d.from_capability, new Set());
+    downstream.get(d.from_capability).add(d.to_capability);
+  }
+  const results = [];
+  for (const cap of caps) {
+    const ds = downstream.get(cap.id);
+    if (!ds || ds.size === 0) continue;
+    let comboUnlocks = 0; ds.forEach(to => { if (comboIds.has(to)) comboUnlocks++; });
+    results.push({ capability_id: cap.id, name: cap.name, domain: cap.domain, unlocks_count: ds.size, is_bottleneck: comboUnlocks >= 2 });
+  }
+  results.sort((a, b) => b.unlocks_count - a.unlocks_count);
+  return results;
+}
+
+// ─── Impact Analysis ─────────────────────────────────────────────────────────
+
+/**
+ * Who supplies each capability.
+ *
+ * A capability with three providers survives losing one. Nothing consulted
+ * these edges, so every analysis treated each provider as though it were the
+ * only one — which inflates loss exactly where there is redundancy, the case
+ * you most want to distinguish from a single point of failure.
+ */
+function providersOf(db: Db): Map<string, string[]> {
+  const rows = db
+    .prepare(
+      `SELECT from_capability f, to_capability t FROM dependencies
+       WHERE description IN ('Provides this capability', 'Contributed by runtime', 'Supplied by a person')`
+    )
+    .all();
+  const map = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!map.has(r.t)) map.set(r.t, []);
+    if (!map.get(r.t)!.includes(r.f)) map.get(r.t)!.push(r.f);
+  }
+  return map;
+}
+
+/**
+ * What would actually be lost if this went away.
+ *
+ * Only the loss of the *last* provider takes a capability down. Anything else
+ * is a reduction in redundancy, which matters but is not the same claim.
+ */
+function analyzeImpact(db: Db, capId: string) {
+  const cap = db.prepare("SELECT id, name, maturity_score FROM capabilities WHERE id = ?").get(capId);
+  if (!cap) return { capability: capId, decayed: [], combos_at_risk: [] };
+
+  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies").all();
+  const allCaps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const capMap = new Map<string, Record<string, any>>(allCaps.map(c => [c.id, c]));
+  const providers = providersOf(db);
+
+  /** Nothing else supplies it, so removing this ends it. */
+  const isSoleProvider = (target: string) => {
+    const list = providers.get(target) || [];
+    return list.length > 0 && list.length === 1 && list[0] === capId;
+  };
+  const remaining = (target: string) => (providers.get(target) || []).filter(p => p !== capId);
+
+  const decayed = deps
+    .filter(d => d.from_capability === capId)
+    .map(d => {
+      const t = capMap.get(d.to_capability);
+      const others = remaining(d.to_capability);
+      return {
+        name: t?.name || d.to_capability,
+        becomes_unavailable: d.is_hard_requisite && isSoleProvider(d.to_capability),
+        also_provided_by: others.length ? others.length : undefined,
+      };
+    });
+
+  // Keyed by capability, not by edge. Iterating edges reported the same combo
+  // once per prerequisite — "Version Control" four times for one risk.
+  const risk = new Map<string, { name: string; severity: string; also_provided_by?: number }>();
+  for (const d of deps) {
+    if (!d.to_capability.startsWith('combo:')) continue;
+    if (d.from_capability !== capId) continue;
+    const combo = capMap.get(d.to_capability);
+    const others = remaining(d.to_capability);
+    const sole = isSoleProvider(d.to_capability);
+    risk.set(d.to_capability, {
+      name: combo?.name || d.to_capability,
+      severity: d.is_hard_requisite && sole ? 'critical' : others.length ? 'redundant' : 'warning',
+      also_provided_by: others.length || undefined,
+    });
+  }
+
+  return { capability: cap.name, decayed, combos_at_risk: [...risk.values()] };
+}
+
+/**
+ * Capabilities with exactly one provider — where redundancy is absent rather
+ * than merely thin. This is the question `tt bottlenecks` is often asked to
+ * answer and does not: it ranks by how much depends on something, which is
+ * leverage, not fragility.
+ */
+function singlePointsOfFailure(db: Db) {
+  const providers = providersOf(db);
+  const names = new Map(
+    db.prepare("SELECT id, name, state FROM capabilities").all().map((c: any) => [c.id, c])
+  );
+  const out: any[] = [];
+  for (const [target, list] of providers) {
+    if (list.length !== 1) continue;
+    const t = names.get(target) as any;
+    if (!t || t.state === 'locked') continue; // not yet reached; nothing to lose
+    out.push({
+      capability: t.name,
+      id: target,
+      sole_provider: (names.get(list[0]) as any)?.name || list[0],
+      provider_id: list[0],
+    });
+  }
+  return out.length
+    ? out
+    : { note: 'Every reached capability has more than one provider, or none are recorded.' };
+}
+
+
+// ─── Budget Optimization ─────────────────────────────────────────────────────
+
+function optimizeBudget(db, setupBudget, tokenBudget) {
+  const caps = db.prepare("SELECT id, name, unlock_cost_setup, unlock_cost_tokens FROM capabilities WHERE state = 'locked'").all();
+  const deps = db.prepare("SELECT from_capability, to_capability FROM dependencies").all();
+  const downstream = new Map();
+  for (const d of deps) downstream.set(d.from_capability, (downstream.get(d.from_capability) || 0) + 1);
+  const candidates = caps.map(c => ({ ...c, unlocks: downstream.get(c.id) || 0, efficiency: ((downstream.get(c.id) || 1) / (c.unlock_cost_setup + c.unlock_cost_tokens * 0.01 + 1)) }));
+  candidates.sort((a, b) => b.efficiency - a.efficiency);
+  let sRem = setupBudget, tRem = tokenBudget;
+  const selections = [];
+  for (const c of candidates) {
+    if (c.unlock_cost_setup <= sRem && c.unlock_cost_tokens <= tRem) {
+      selections.push({ name: c.name, cost_setup: c.unlock_cost_setup, cost_tokens: c.unlock_cost_tokens, unlocks: c.unlocks });
+      sRem -= c.unlock_cost_setup; tRem -= c.unlock_cost_tokens;
+    }
+  }
+  return { selections, total_setup: setupBudget - sRem, total_tokens: tokenBudget - tRem, total_unlocks: selections.reduce((s, c) => s + c.unlocks, 0) };
+}
+
+// ─── Trend Projection ────────────────────────────────────────────────────────
+
+function projectTrends(db, days) {
+  days = days || 30;
+  const health = domainHealth(db);
+  const rate = 0.02 * days;
+  return health.map(h => {
+    const riskCaps = db.prepare("SELECT c.name, c.maturity_score FROM session_learning sl JOIN capabilities c ON c.id = sl.capability_id WHERE c.domain = ? AND sl.action = 'used' AND sl.timestamp < datetime('now', ?) GROUP BY c.id HAVING MAX(sl.timestamp) < datetime('now', ?) ORDER BY c.maturity_score ASC LIMIT 5").all(h.domain, `-${days} days`, `-${days} days`);
+    const riskList = riskCaps.map(r => ({ name: r.name, current: Math.round(r.maturity_score * 100) / 100, projected: Math.round(Math.max(0.1, r.maturity_score - rate) * 100) / 100 }));
+    const projectedDecay = Math.min(1, (h.decay_risk || 0) + riskCaps.length * 0.1);
+    const projectedHealth = Math.max(0, h.health - (projectedDecay - (h.decay_risk || 0)) * 0.3);
+    return { domain: h.domain, current_health: h.health, projected_health: Math.round(projectedHealth * 100) / 100, delta: Math.round((projectedHealth - h.health) * 100) / 100, risk_caps: riskList };
+  });
+}
+
+function exportGraph(db) {
+  const caps = db.prepare("SELECT * FROM capabilities").all();
+  const deps = db.prepare("SELECT * FROM dependencies").all();
+  const items = caps.map(function(c) {
+    var type = c.category;
+    if (type === 'mcp') type = 'mcp-server';
+    if (type === 'combo') type = 'possibility';
+    var status = c.state;
+    if (status === 'active' || status === 'unlocked') status = 'built';
+    return { id: c.id, name: c.name, type: type, status: status, description: c.description, position: { x: 0, y: 0, z: 0 }, meta: { domain: c.domain, maturity: c.maturity_score } };
+  });
+  var conns = deps.map(function(d) {
+    var t = d.is_hard_requisite ? 'hard-dep' : 'soft-dep';
+    return { from: d.from_capability, to: d.to_capability, type: t };
+  });
+  return { items: items, connections: conns };
+}
+
+export {
+  pruneRecommendations, forkComparison, nearMissCombos, insights, computeDecay,
+  discoverCombos, graphProfile, sessionDiff, domainHealth, findBottlenecks,
+  providersOf, analyzeImpact, singlePointsOfFailure, optimizeBudget, projectTrends,
+  exportGraph,
+};
