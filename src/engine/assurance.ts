@@ -187,6 +187,22 @@ function authorityReport(db: Db) {
     if (!runtimeReach.has(r.runtime)) runtimeReach.set(r.runtime, new Set());
     runtimeReach.get(r.runtime)!.add(r.capability);
   }
+  // And one hop further, onto the actions those capabilities confer: a runtime
+  // that requires approval for everything it executes requires it for the
+  // individual actions too, or the finer vocabulary would quietly be the freer
+  // one.
+  const conferred = new Map<string, string[]>();
+  for (const r of db.prepare(
+    `SELECT d.from_capability capability, d.to_capability action
+     FROM dependencies d JOIN capabilities c ON c.id = d.to_capability
+     WHERE d.kind = 'provides' AND c.kind = 'action'`
+  ).all()) {
+    if (!conferred.has(r.capability)) conferred.set(r.capability, []);
+    conferred.get(r.capability)!.push(r.action);
+  }
+  for (const reach of runtimeReach.values()) {
+    for (const capId of [...reach]) for (const actionId of conferred.get(capId) || []) reach.add(actionId);
+  }
 
   // Collected first and resolved after, so which source wins does not depend on
   // the order rows come back in.
@@ -284,4 +300,69 @@ function runVerification(db: Db, which?: string) {
   };
 }
 
-export { verifyCapability, evidenceFor, authorityReport, runVerification, deriveLifecycles };
+/**
+ * The concrete actions a capability confers, and whether each may be performed.
+ *
+ * The coarse node answers "does this system have version control". This answers
+ * the question that actually decides what an agent may do next: it may read the
+ * repository and commit, and it may not merge to the default branch. Authority
+ * is per action because permission is per action; the capability being reached
+ * says nothing about which half of it is permitted.
+ */
+function actionsReport(db: Db, capId?: string) {
+  const scope = capId
+    ? (capId.startsWith('combo:') || capId.includes(':') ? capId : `combo:${capId}`)
+    : undefined;
+
+  const actions = db
+    .prepare(
+      `SELECT a.id, a.name, a.state, a.lifecycle, a.description, d.from_capability capability, c.name capability_name
+       FROM capabilities a
+       JOIN dependencies d ON d.to_capability = a.id AND d.kind = 'provides'
+       JOIN capabilities c ON c.id = d.from_capability
+       WHERE a.kind = 'action' AND c.kind = 'capability'
+       ORDER BY c.name, a.name`
+    )
+    .all()
+    .filter((r: any) => !scope || r.capability === scope);
+
+  if (actions.length === 0) {
+    return scope
+      ? { note: `${scope} declares no contract. Only some capabilities name their actions; see contract.can in the model.` }
+      : { note: 'No actions in the graph. Seed one, or declare contract.can on a capability in the model.' };
+  }
+
+  // Effective authority, resolved the same way `tt authority` resolves it, so
+  // the two surfaces cannot disagree about what is permitted.
+  const authority = authorityReport(db) as any;
+  const modeOf = new Map<string, any>();
+  for (const row of authority.detail || []) {
+    if (row.action !== 'execute' || row.scope) continue;
+    modeOf.set(row.id, row);
+  }
+
+  const rows = actions.map((a: any) => {
+    const grant = modeOf.get(a.id);
+    return {
+      name: a.name,
+      id: a.id,
+      capability: a.capability_name,
+      reached: a.state !== 'locked',
+      mode: grant?.mode || 'autonomous',
+      narrowed_by: grant?.narrowed_by,
+      lifecycle: a.lifecycle,
+    };
+  });
+
+  return {
+    actions: rows.length,
+    // Reached and permitted, which is the only combination an agent can act on
+    // unattended. The other three are each interesting for a different reason.
+    exercisable: rows.filter(r => r.reached && r.mode === 'autonomous').map(r => r.id),
+    needs_approval: rows.filter(r => r.reached && r.mode === 'confirm').map(r => r.id),
+    forbidden: rows.filter(r => r.mode === 'forbidden').map(r => r.id),
+    detail: rows,
+  };
+}
+
+export { verifyCapability, evidenceFor, authorityReport, actionsReport, runVerification, deriveLifecycles };

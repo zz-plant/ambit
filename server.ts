@@ -544,12 +544,26 @@ const server = Bun.serve({
       // handle fails with SQLITE_CANTOPEN. Only SELECTs are issued below.
       const graph = new Database(GRAPH_DB_PATH);
       try {
+        // Actions conferred by a capability are excluded deliberately. A
+        // capability confers several, so including them would multiply the node
+        // count without changing what the picture says — the era columns and
+        // the three states are a designed visual grammar, and legibility is the
+        // product. The finer vocabulary is answered by `tt actions`, which asks
+        // for one capability's actions rather than all of them at once.
+        //
+        // Actions a *person* supplies stay: there are few of them, and they are
+        // the only thing connecting a human node to the rest of the graph.
         const caps = graph.query(
-          'SELECT id, name, domain, description, category, state, maturity_score, unlock_cost_setup FROM capabilities'
+          `SELECT id, name, domain, description, category, state, maturity_score, unlock_cost_setup
+           FROM capabilities c WHERE c.kind != 'action' OR NOT EXISTS (
+             SELECT 1 FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
+             WHERE d.to_capability = c.id AND d.kind = 'provides' AND p.kind = 'capability'
+           )`
         ).all() as any[];
-        const deps = graph.query(
+        const visible = new Set(caps.map(c => c.id));
+        const deps = (graph.query(
           'SELECT from_capability, to_capability, is_hard_requisite FROM dependencies'
-        ).all() as any[];
+        ).all() as any[]).filter(d => visible.has(d.from_capability) && visible.has(d.to_capability));
 
         // Era and the "researchable now" state are what make this read as a
         // tech tree rather than a list: Civ's whole grammar is reached / can be

@@ -17,7 +17,10 @@ import { inverseOf } from "./governance.ts";
  */
 function planFor(db: Db, goal?: string) {
   if (!goal) return { error: "Usage: tt plan <capability-id>" };
-  const id = goal.startsWith('combo:') ? goal : `combo:${goal}`;
+  // A bare name is a tech-tree node; anything already carrying a prefix is
+  // taken as written, so an action — act:version-control/merge_to_default —
+  // can be planned for directly rather than only the capability conferring it.
+  const id = goal.includes(':') ? goal : `combo:${goal}`;
 
   const target = db.prepare("SELECT id, name, state FROM capabilities WHERE id = ?").get(id);
   if (!target) return { error: `No capability ${id}. Try tt combos for the list.` };
@@ -37,7 +40,7 @@ function planFor(db: Db, goal?: string) {
     prereqs.get(d.t)!.push(d.f);
   }
   const info = new Map(
-    db.prepare("SELECT id, name, state, unlock_cost_setup FROM capabilities").all().map((c: any) => [c.id, c])
+    db.prepare("SELECT id, name, state, kind, unlock_cost_setup FROM capabilities").all().map((c: any) => [c.id, c])
   );
 
   const order: any[] = [];
@@ -104,7 +107,9 @@ function planFor(db: Db, goal?: string) {
   return {
     goal: target.name,
     requires_person: gatedBy,
-    reachable: order.every(o => o.id.startsWith('combo:')),
+    // Every step is something the model can describe how to acquire. A step
+    // that is a raw provider is a thing to install, which this cannot plan.
+    reachable: order.every(o => ['capability', 'action'].includes((info.get(o.id) as any)?.kind)),
     steps: order.length,
     estimated_setup: totalSeconds >= 3600 ? `${(totalSeconds / 3600).toFixed(1)}h` : `${Math.round(totalSeconds / 60)}m`,
     order,
@@ -202,7 +207,22 @@ function simulateFrontier(db: Db, assume: string[]) {
 
   const nameOf = new Map(combos.map((c: any) => [c.id, c.name]));
   const before = new Set(combos.filter((c: any) => c.state !== 'locked').map((c: any) => c.id));
-  const assumed = new Set(assume.map(a => (a.startsWith('combo:') ? a : `combo:${a}`)));
+  // An action is conferred by a capability rather than acquired on its own, so
+  // assuming one means assuming the capability that confers it. Counting the
+  // action itself would inflate the frontier with something that was never
+  // separately obtainable.
+  const conferredBy = new Map<string, string>(
+    db.prepare(
+      `SELECT d.to_capability action, d.from_capability capability FROM dependencies d
+       JOIN capabilities c ON c.id = d.to_capability
+       WHERE d.kind = 'provides' AND c.kind = 'action'`
+    ).all().map((r: any) => [r.action, r.capability])
+  );
+  const normalise = (a: string) => {
+    const id = a.includes(':') ? a : `combo:${a}`;
+    return conferredBy.get(id) || id;
+  };
+  const assumed = new Set(assume.map(normalise));
   const after = new Set([...before, ...assumed]);
 
   // Fixpoint rather than a single pass: satisfying one prerequisite can unblock
@@ -273,7 +293,7 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
   });
 
   const simulated = simulateFrontier(db, steps.map((s: any) => s.id).concat(
-    goal.startsWith('combo:') ? goal : `combo:${goal}`
+    goal.includes(':') ? goal : `combo:${goal}`
   ));
 
   const id = `prop-${Date.now().toString(36)}`;

@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -48,6 +48,7 @@ const TOOLS = [
   { name: "tt_verify", description: "Run a capability's declared check and record the outcome. Proves the action works rather than that it is configured. Omit capId to run every declared check.", inputSchema: { type: "object", properties: { capId: { type: "string", description: "Capability to verify, e.g. local-runtime" } } } },
   { name: "tt_evidence", description: "Verification history for one capability — what was tried, when, and whether it passed", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_authority", description: "Which reached capabilities may run unattended and which require approval. Being able to perform an action is not permission to.", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_actions", description: "The concrete actions a capability confers and whether each may be performed — read a repository yes, merge to its default branch no. Ask this before acting, not tt_authority, which answers at the coarser grain.", inputSchema: { type: "object", properties: { capId: { type: "string", description: "Capability to list actions for; omit for all" } } } },
   { name: "tt_plan", description: "What is missing for a capability, in the order it must be closed, including which steps require a person", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
   { name: "tt_blocked", description: "Record that a task was blocked by a missing capability. The pattern matters more than the instance: the same deficit hit repeatedly is infrastructure that should exist.", inputSchema: { type: "object", properties: { capId: { type: "string" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
@@ -98,6 +99,7 @@ function handleLine(line) {
               case "tt_verify": res = tt(db => runVerification(db, args?.capId)); break;
               case "tt_evidence": res = tt(db => evidenceFor(db, String(args.capId).startsWith("combo:") ? args.capId : `combo:${args.capId}`)); break;
               case "tt_authority": res = tt(db => authorityReport(db)); break;
+              case "tt_actions": res = tt(db => actionsReport(db, args.capId)); break;
               case "tt_plan": res = tt(db => planFor(db, args.capId)); break;
               case "tt_since": res = tt(db => ledgerSince(db, args?.when)); break;
               case "tt_ledger": res = tt(db => ledgerHistory(db)); break;

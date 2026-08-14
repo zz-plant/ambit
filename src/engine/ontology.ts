@@ -78,6 +78,7 @@ export function kindOf(id: string, category?: string): Kind {
 /** The edge kind for the descriptions written before edges were typed. */
 const DESCRIPTION_KIND: Record<string, EdgeKind> = {
   'Provides this capability': 'provides',
+  'Provides this action': 'provides',
   'Supplied by a person': 'provides',
   'Contributed by runtime': 'contributes',
   'Tech tree prerequisite': 'requires',

@@ -450,6 +450,88 @@ test('the narrower of two disagreeing sources wins', () => {
   expect(entry.narrowed_by).toBe('runtime:opencode');
 });
 
+test('a capability confers actions, and authority is per action', () => {
+  seed({ mcp: { git: { type: 'local' } } }).close();
+
+  const a = cli('actions', 'version-control');
+  expect(a.actions).toBe(4);
+  // The distinction the coarse node cannot make: reading a repository is not
+  // merging to its default branch, and both belong to one reached capability.
+  expect(a.exercisable).toContain('act:version-control/read_repository');
+  expect(a.needs_approval).toContain('act:version-control/merge_to_default');
+  expect(a.exercisable).not.toContain('act:version-control/merge_to_default');
+});
+
+test('an action is forbidden even when the capability conferring it is reached', () => {
+  const db = seed({ mcp: { postgres: { type: 'local' } } });
+  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'combo:data-access'")[0].state)
+    .not.toBe('locked');
+  db.close();
+
+  const a = cli('actions', 'data-access');
+  expect(a.exercisable).toContain('act:data-access/query');
+  expect(a.forbidden).toContain('act:data-access/drop_table');
+});
+
+test('an action can be planned for, and resolves to the capability conferring it', () => {
+  seed({ provider: { acme: { models: { 'fast-1': {} } } } }).close();
+
+  const plan = cli('plan', 'act:data-access/query');
+  expect(plan.error).toBeUndefined();
+  expect(plan.order.map((o: any) => o.id)).toContain('combo:data-access');
+  expect(plan.reachable).toBe(true);
+
+  // Simulating the action moves the frontier by the capability, not by the
+  // action — an action is conferred, never separately acquired.
+  const sim = cli('simulate', 'act:data-access/query');
+  expect(sim.acquired.map((c: any) => c.id)).toEqual(['combo:data-access']);
+});
+
+test('actions do not inflate leverage or fragility', () => {
+  seed({ mcp: { git: { type: 'local' } } }).close();
+
+  // An action has exactly one provider by definition. Reporting each as a
+  // single point of failure would bury the ones that are.
+  const spof = cli('spof');
+  expect(spof.some((s: any) => s.id.startsWith('act:version-control/'))).toBe(false);
+
+  // And a capability must not climb the bottleneck ranking because someone
+  // wrote more verbs into its contract.
+  const bottlenecks = cli('bottlenecks');
+  const versionControl = bottlenecks.find((b: any) => b.capability_id === 'combo:version-control');
+  if (versionControl) expect(versionControl.unlocks_count).toBeLessThan(4);
+});
+
+test('the tree does not detect itself on a re-seed', () => {
+  // Contract actions are created by the tree from its own nodes, so leaving
+  // them in the pool detection matches against makes a node its own evidence:
+  // `act:web-research/search` matches web-research's `search` pattern, and a
+  // capability nothing supplies would come up reached on the second run.
+  const config = { provider: { acme: { models: { 'fast-1': {} } } } };
+  seed(config).close();
+  const db = seed(config);
+
+  const selfProved = rows(db, `
+    SELECT d.from_capability f, d.to_capability t FROM dependencies d
+    JOIN capabilities c ON c.id = d.from_capability
+    WHERE c.kind = 'action' AND d.to_capability LIKE 'combo:%'`);
+  expect(selfProved).toEqual([]);
+  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'combo:web-research'")[0].state)
+    .toBe('locked');
+});
+
+test('an action a person supplies is still a single point of failure', () => {
+  // One provider is definitional for a conferred action and a real finding for
+  // a supplied one: only that person can do it.
+  seed({
+    mcp: { git: { type: 'local' } },
+    actors: { kanav: { name: 'Kanav', provides: ['physical-access'] } },
+  }).close();
+
+  const spof = cli('spof');
+  expect(spof.some((s: any) => s.id === 'act:physical-access')).toBe(true);
+});
+
 test('lifecycle separates configured from verified from reliable', () => {
   seed(LOCAL_ONLY).close();
   const lifecycle = (id: string) => {

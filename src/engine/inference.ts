@@ -207,7 +207,15 @@ function domainHealth(db) {
 
 function findBottlenecks(db) {
   const caps = db.prepare("SELECT id, name, domain FROM capabilities WHERE state IN ('unlocked','active')").all();
-  const deps = db.prepare("SELECT from_capability, to_capability FROM dependencies").all();
+  // Edges onto an action are excluded. An action is conferred by exactly one
+  // capability, so counting them would make leverage a function of how many
+  // verbs a contract happens to name — write three more into version-control
+  // and it climbs the ranking without anything changing about the system.
+  const deps = db.prepare(
+    `SELECT d.from_capability, d.to_capability FROM dependencies d
+     JOIN capabilities t ON t.id = d.to_capability
+     WHERE t.kind != 'action'`
+  ).all();
   const downstream = new Map();
   const comboIds = new Set(deps.filter(d => d.to_capability.startsWith('combo:')).map(d => d.to_capability));
   for (const d of deps) {
@@ -317,13 +325,18 @@ function analyzeImpact(db: Db, capId: string) {
 function singlePointsOfFailure(db: Db) {
   const providers = providersOf(db);
   const names = new Map(
-    db.prepare("SELECT id, name, state FROM capabilities").all().map((c: any) => [c.id, c])
+    db.prepare("SELECT id, name, state, kind FROM capabilities").all().map((c: any) => [c.id, c])
   );
   const out: any[] = [];
   for (const [target, list] of providers) {
     if (list.length !== 1) continue;
     const t = names.get(target) as any;
     if (!t || t.state === 'locked') continue; // not yet reached; nothing to lose
+    // An action conferred by a capability has one provider by definition, not
+    // by fragility, and listing all of them would bury the real answers. An
+    // action a *person* supplies is a different matter — one provider there is
+    // exactly the finding, because only that person can do it.
+    if (t.kind === 'action' && (names.get(list[0]) as any)?.kind === 'capability') continue;
     out.push({
       capability: t.name,
       id: target,

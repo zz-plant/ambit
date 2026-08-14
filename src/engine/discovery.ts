@@ -146,8 +146,17 @@ function seedAuthority(db: Db, config: any): number {
     const id = `combo:${node.id}`;
     if (!node.authority || !has(id)) continue;
     for (const [action, mode] of Object.entries<any>(node.authority)) {
-      if (typeof mode !== 'string') continue; // `actions` is handled with contracts
+      if (typeof mode !== 'string') continue; // `actions` is the map below
       grant.run(id, action, mode, '', '', 'techtree', null);
+      count++;
+    }
+    // Per-action authority. `execute` on the action node itself, because the
+    // action is the thing being permitted — reading a repository and merging to
+    // its default branch are one capability and two different permissions.
+    for (const [action, mode] of Object.entries<any>(node.authority.actions || {})) {
+      const actionId = `act:${node.id}/${action}`;
+      if (typeof mode !== 'string' || !has(actionId)) continue;
+      grant.run(actionId, 'execute', mode, '', '', 'techtree', null);
       count++;
     }
   }
@@ -303,8 +312,14 @@ function seedTechTree(db: Db, insert: any): number {
     return 0; // A missing or unreadable tree degrades to config-only seeding.
   }
 
+  // What the environment actually turned up. Actions are excluded: they are
+  // created by this function from the tree's own contracts, so on a re-seed the
+  // tree would detect itself — `act:web-research/search` matches web-research's
+  // `search` pattern, and the node would appear to be provided by the node.
+  // Human-supplied actions are excluded for the same reason, which was already
+  // latent before contracts existed.
   const owned: string[] = db
-    .prepare("SELECT id FROM capabilities WHERE id NOT LIKE 'combo:%'")
+    .prepare("SELECT id FROM capabilities WHERE kind != 'capability' AND kind != 'action'")
     .all()
     .map((r: any) => r.id);
   const modelCount = owned.filter(id => id.startsWith('model:')).length;
@@ -377,6 +392,30 @@ function seedTechTree(db: Db, insert: any): number {
       id
     );
     count++;
+
+    // The concrete actions the capability confers, each a node of its own.
+    //
+    // This is the difference between knowing the system has Version Control and
+    // knowing it may read a repository and may not merge to its default branch.
+    // The action's state mirrors the capability's — an action is reachable
+    // exactly when the thing conferring it is — and its authority does not, so
+    // that a reached capability can still hold an action nobody may perform.
+    for (const action of node.contract?.can || []) {
+      const actionId = `act:${node.id}/${action}`;
+      insert.run(
+        actionId,
+        action,
+        node.domain || 'meta',
+        `${node.name} can ${String(action).replace(/_/g, ' ')}`,
+        'action',
+        reached ? 'unlocked' : 'locked',
+        reached ? 0.7 : 0
+      );
+      db.prepare("UPDATE capabilities SET state = ?, maturity_score = ? WHERE id = ?")
+        .run(reached ? 'unlocked' : 'locked', reached ? 0.7 : 0, actionId);
+      link.run(id, actionId, 1, 'Provides this action');
+      count++;
+    }
 
     // Edges from the user's own capabilities to the node they unlock, so
     // `tt impact` can answer what breaks if a given tool goes away.
