@@ -10,7 +10,7 @@ import {
   forkComparison, graphProfile, nearMissCombos, insights,
   singlePointsOfFailure, exportGraph,
 } from "./inference.ts";
-import { runVerification, evidenceFor, authorityReport } from "./assurance.ts";
+import { runVerification, evidenceFor, authorityReport, actionsReport } from "./assurance.ts";
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
 import { planFor, recordFailure, deficits, simulateFrontier, propose } from "./planning.ts";
 import {
@@ -115,6 +115,8 @@ function main() {
     console.log("  diff              Session diff");
     console.log("  bottlenecks        High-leverage capabilities");
     console.log("  impact <id>       Impact analysis for a capability");
+    console.log("  authority         What may run unattended, and what may not");
+    console.log("  actions [id]      The concrete actions a capability confers");
     console.log("  budget <s> <t>    Budget optimization");
     console.log("  trend <days>      Trend projection");
     db.close();
@@ -156,6 +158,9 @@ function main() {
       break;
     case "authority":
       emit(authorityReport(db));
+      break;
+    case "actions":
+      emit(actionsReport(db, arg));
       break;
     case "verify":
       emit(runVerification(db, arg));

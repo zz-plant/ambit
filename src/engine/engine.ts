@@ -21,7 +21,7 @@ export {
   analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations,
   forkComparison, graphProfile, nearMissCombos, insights, singlePointsOfFailure,
 } from "./inference.ts";
-export { runVerification, evidenceFor, authorityReport } from "./assurance.ts";
+export { runVerification, evidenceFor, authorityReport, actionsReport } from "./assurance.ts";
 export { ledgerSince, ledgerHistory } from "./ledger.ts";
 export { planFor, recordFailure, deficits, simulateFrontier, propose } from "./planning.ts";
 export {
