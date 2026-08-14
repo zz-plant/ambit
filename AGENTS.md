@@ -10,15 +10,26 @@ Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP serv
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `Bun.serve` in `server.ts` — visualizer API, consultant endpoints, and static `dist/` in production
-- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 17 tools
+- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 31 tools
 - **Plugin**: Hooks OpenCode config events from `~/.config/opencode/plugins/`
 
 ## Core Structure
 
 ```
-src/engine/engine.ts       Capability discovery, graph seeding, all analytical functions
-src/engine/schema.sql      SQLite schema (capabilities, dependencies, session_learning)
-src/mcp/server.ts          MCP server exposing 17 tt_* tools to OpenCode sessions
+src/engine/engine.ts       Entry point and public surface; re-exports the modules below
+src/engine/paths.ts        Where the authored data lives, and which config to read
+src/engine/db.ts           The handle, the schema, additive column migrations, backfills
+src/engine/ontology.ts     Node kinds and edge kinds — what a thing is, what a relation means
+src/engine/discovery.ts    Reading configs, runtimes, people, the curated tree, contracts
+src/engine/inference.ts    What follows from the graph — providers, impact, bottlenecks
+src/engine/assurance.ts    Verification, evidence, lifecycle, authority, actions
+src/engine/planning.ts     The gap to a capability, and simulating closing it
+src/engine/governance.ts   Approval, apply, rollback — everything that can change the world
+src/engine/ledger.ts       Frontier snapshots and how the frontier moved
+src/engine/cli.ts          Argument handling and human-readable output
+src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority,
+                           session_learning, frontier_snapshots, proposals, schema_meta)
+src/mcp/server.ts          MCP server exposing 31 tt_* tools to OpenCode sessions
 src/client/                React frontend
   components/
     Constellation.tsx       3D hex map (Three.js)

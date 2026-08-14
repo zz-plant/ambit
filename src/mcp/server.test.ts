@@ -52,7 +52,7 @@ test('every request in a batch is answered', () => {
 test('the capability lifecycle is reachable by an agent, not only the CLI', () => {
   const [list] = rpc([{ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }]);
   const names = list.result.tools.map((t: any) => t.name);
-  for (const tool of ['tt_verify', 'tt_evidence', 'tt_authority', 'tt_plan', 'tt_since', 'tt_ledger']) {
+  for (const tool of ['tt_verify', 'tt_evidence', 'tt_authority', 'tt_actions', 'tt_plan', 'tt_since', 'tt_ledger']) {
     expect(names).toContain(tool);
   }
 });
