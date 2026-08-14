@@ -15,7 +15,7 @@ Ordered by ambition. Each is defensible on its own; each depends on the one abov
 | | | status |
 |---|---|---|
 | **1 · Inventory** | discover the capabilities implicit in configuration and infrastructure, model their dependencies, costs, and failure cascades | shipping |
-| **2 · Assurance** | distinguish *configured* from *demonstrated* — `installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate` | §3–4 |
+| **2 · Assurance** | distinguish *configured* from *demonstrated* — `installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate` | shipping |
 | **3 · Planning** | given a desired outcome, compute the capability delta and compare paths that close it | §5 |
 | **4 · Reflexive infrastructure** | agents use the model to improve the environment they themselves operate in | §6–11 |
 
@@ -29,9 +29,9 @@ Everything here follows from taking that seriously.
 
 ---
 
-## 1. Separate capability from implementation — substitutability built
+## 1. Separate capability from implementation — built
 
-Today a node conflates two things: the capability (*web research*) and the thing providing it (*a Tavily MCP server*). Splitting them is the prerequisite for almost everything else, because it lets a capability survive a change of provider and lets two providers compete to satisfy one need.
+A node used to conflate two things: the capability (*web research*) and the thing providing it (*a Tavily MCP server*). Splitting them was the prerequisite for almost everything else, because it lets a capability survive a change of provider and lets two providers compete to satisfy one need.
 
 Six first-class object types:
 
@@ -61,11 +61,17 @@ Netdata MCP    SSH / shell
 
 Once providers are separate, `tt fork` stops comparing capabilities and starts comparing **ways of obtaining the same capability** — which is the comparison that actually matters when deciding what to build.
 
-Built, narrowly: the `provides` edges existed and no analysis consulted them, so every provider was treated as though it were the only one. `tt impact` now asks whether anything else supplies a capability before calling its loss critical — removing one of three git providers reports `redundant · also provided by 2` where it previously reported `critical` four times over, once per edge. `tt spof` lists capabilities with exactly one provider, which is fragility, as against `tt bottlenecks`, which ranks leverage.
+Built. Every node declares what kind of thing it is — `capability`, `action`, `provider`, `resource`, `actor`, `runtime` — and every edge declares what the relation means: `provides`, `contributes`, `requires`, `optional`, `authorizes`, `runs_on`. Authority and evidence are tables of their own. That is the six object types, with `goal` still absent because §5's free-form goals are.
 
-Unbuilt, and the reason this section stays open: capabilities and implementations are still the same rows. `mcp:git` is simultaneously a thing in your config and the capability it confers, and the only true capabilities are the coarse tech-tree nodes — *Tool Protocol*, not *read a repository*. The six object types, action-level capabilities, and the id rework they force are untouched.
+The narrow half came first: the `provides` edges existed and no analysis consulted them, so every provider was treated as though it were the only one. `tt impact` now asks whether anything else supplies a capability before calling its loss critical — removing one of three git providers reports `redundant · also provided by 2` where it previously reported `critical` four times over, once per edge. `tt spof` lists capabilities with exactly one provider, which is fragility, as against `tt bottlenecks`, which ranks leverage.
 
-That rework has a cost worth naming before anyone starts it: every id appears in the ledger's stored snapshots, so splitting capability from provider invalidates the history of the one component whose value is that its history is continuous. It should be designed with that migration rather than discovering it.
+Typing the edges was also a correctness fix rather than tidiness. `providersOf` matched three English sentences, so an adapter phrasing one differently dropped a provider out of both analyses with nothing failing: a capability with two providers still reported as a single point of failure.
+
+Action-level capabilities are built. A tech-tree node may declare `contract.can`, and each entry becomes an `act:<node>/<action>` node conferred by the capability and carrying its own authority — so the model can now say *may read the repository, may not merge to its default branch*, which is the distinction the coarse node could not make. Ten nodes declare a contract; the rest behave exactly as before.
+
+The id rework was avoided rather than done, deliberately. Every id appears in the ledger's stored snapshots, so re-iding would invalidate the history of the one component whose value is that its history is continuous. Kind is a column instead, existing databases migrate by `ALTER TABLE` and a one-time backfill, and `tt spof`, `tt impact`, `tt plan` and `tt since` return byte-identical output against a graph seeded by the previous version. The cost is that an id no longer tells you what it is, and callers must read the column.
+
+Unbuilt: scope. An authority row can carry `repo:owner/name`, and nothing checks that the scope is the one an action would actually touch — so *can modify repository X on branch Y* is expressible and unverified. `resource` is a kind without much behind it: a model and a machine are both resources, and nothing yet reasons about capacity, location or contention.
 
 ## 2. Put the human and the machines in the graph — partly built
 
@@ -118,9 +124,11 @@ At that point the tech tree behaves less like a diagram and more like a package 
 
 Built: seven capabilities carry `acquisition.alternatives`, and `tt plan` attaches them to each step. Alternatives rather than one blessed answer, because the trade-off is rarely setup time — the hosted embedding API is three minutes against ten and costs money and a data boundary, and the plan says so.
 
-Unbuilt: the contract (`can:`), executable verification per recipe, and rollback. A recipe today describes a choice; it does not perform or undo one.
+The contract is built. `contract.can` lists the actions a capability confers, ten nodes declare one, and each action is a node with its own authority — `tt actions version-control` reports that reading the repository and committing may happen unattended and that pushing a branch and merging to the default branch may not.
 
-## 4. Detection becomes verification — partly built
+Unbuilt: executable verification per recipe. A recipe describes a choice and, since §10, can perform and undo a configuration one; a contract action still cannot declare a check of its own.
+
+## 4. Detection becomes verification — built, and gates nothing
 
 Today detection is regex against discovered configuration. That is a reasonable bootstrap, and it is honest about what it proves — *something named Ollama exists* — but it does not prove an agent can use Ollama to finish a task.
 
@@ -144,7 +152,11 @@ Built: nodes may declare a read-only `verify` command; `tt verify` runs it and r
 
 Checks execute, so they live in this repository, are read-only by construction, and run only when asked. Nothing verifies on seed.
 
-Unbuilt: the lifecycle above is not yet a stored state — a capability is still `reached` or not, with evidence alongside rather than promoting it. Verification also does not yet gate anything: a capability with a failing check still reads as reached.
+The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `detected`, `configured`, `verified`, `reliable`, `degraded` or `broken`, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is `reliable`, one passing run is `verified`, and a check that has started failing is `broken`.
+
+`state` is untouched beside it, deliberately: `state` is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore `broken` and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.
+
+Unbuilt: verification still does not gate anything. Nothing refuses to plan through a `broken` capability, and `tt plan` will happily route a path through one.
 
 ## 5. Goal → capability delta — partly built
 
@@ -212,7 +224,9 @@ $ tt since
 
 Classification compares against the ids recorded in the snapshot rather than timestamps. `created_at > taken_at` looked equivalent and was not: `datetime('now')` resolves to the second, so two seeds inside the same second classified every addition as pre-existing.
 
-What remains from the original sketch: nothing writes evidence of *use*, so the ledger records changes in reachability, not in demonstrated reliability. That waits on §4.
+`tt since` also distinguishes a fourth thing: **vocabulary**. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system rather than the system having changed — the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so `frontier_now` stays on the same basis as `frontier_then`. Without it, upgrading would have reported twenty-eight capabilities gained on a machine where nothing happened, which is exactly what this table exists not to do.
+
+What remains from the original sketch: nothing writes evidence of *use*, so the ledger records changes in reachability, not in demonstrated reliability. Lifecycle (§4) now records demonstrated reliability per capability, but snapshots still store `state`, so the longitudinal series is still about what is reachable.
 
 ## 7b. Affordance domains
 
@@ -220,7 +234,7 @@ The domain vocabulary was entirely software, so anything acting on the world col
 
 `cognitive`, `institutional` and `economic` do not. They are the domains that make the [theory](./docs/affordance-frontier.md) more than a metaphor, and each needs more than a keyword: an institutional capability implies an authority holder, an economic one implies a budget and a counterparty. Adding the words without the structure would be worse than leaving them out.
 
-Related and unbuilt: the distinction between human-gated, human-composed, and machine-composed-human capability. The first is approval, which §9 covers. The other two require the human to be a node with capabilities of their own (§2), and are what a tight interface — a BCI being the extreme case — actually produces.
+Related and partly built: the distinction between human-gated, human-composed, and machine-composed-human capability. The first is approval, which §9 covers. The second now has somewhere to live — an action a person supplies is an `action` node like any other, so `tt spof` reports *only Kanav can do this* in the same breath as *only one MCP server supplies this*. The third, which a tight interface — a BCI being the extreme case — actually produces, has nothing.
 
 ## 8. A runtime adapter layer — partly built
 
@@ -231,6 +245,7 @@ What building it surfaced, and what remains:
 - Hermes exposes **authority as data** — `approvals.mode`, `approvals.cron_mode` — so §9 has a real source of truth to read rather than a schema to invent.
 - Detection was tuned to one runtime's naming. Hermes names a model `Jan-v1-4B-Q4_K_M` where OpenCode names the runtime `ollama`; quantisation suffixes are now a local-weights signal.
 - No runtime publishes a machine-readable capability surface. Reading another tool's private files works and is not the right contract. The durable version is an export the runtime owns.
+- Both adapters read authority and could only print it. They now hand it to the engine in the same fragment they hand over their MCP servers, so what a runtime permits reaches the graph and can narrow what the model says an action is like in general.
 
 
 
@@ -245,7 +260,7 @@ Do not model "Claude has tool X, Hermes has tool Y". Model what each runtime *pr
 
 The point is durability. You stop maintaining a setup for one assistant and start maintaining a capability fabric that different intelligences attach to — which matters more each time the model landscape shifts.
 
-## 9. Authority as a first-class edge — partly built
+## 9. Authority as a first-class edge — built, and enforces nothing
 
 The server already refuses to create MCP entries because those entries contain commands that get executed, binds to loopback, and rejects foreign origins. That boundary should be **generalised, never weakened**.
 
@@ -264,9 +279,13 @@ docker-container-management
 
 This is not guardrails instead of capability. Granular, legible authority is what makes it safe to grant a much larger total action surface — the agent can be given more precisely because the limits are explicit.
 
-Built: ten nodes declare `authority` with `observe` and `execute`, each autonomous, confirm, or forbidden. `tt authority` splits reached capabilities into what may run unattended and what may not — Shell Execution is reached everywhere and still gated; Secret Management is forbidden outright.
+Built. Authority is a table, not a blob on a node: each grant records its mode, its source, its holder and its scope. `tt authority` splits reached capabilities into what may run unattended and what may not — Shell Execution is reached everywhere and still gated; Secret Management is forbidden outright.
 
-Unbuilt: authority is declared per capability rather than derived from the runtime that would execute it, though Hermes states its own (`approvals.mode`, `approvals.cron_mode`) and the adapter already reads it. Nothing enforces any of this — Ambit describes authority, it does not mediate action.
+Also built: authority derived from the runtime that would execute the step. Hermes states `approvals.mode` and `approvals.cron_mode`, Claude Code states `permissions.defaultMode`, and both adapters now pass them through. A runtime's grant is held against the runtime node and resolved through what it contributes, so a capability added in a later run cannot miss a grant recorded in an earlier one. Where the model and the runtime disagree the narrower wins and the report names which source narrowed it, since that is the half worth knowing. An unrecognised approval setting becomes `confirm`, never `autonomous`: guessing permissively would describe a system as freer to act than the runtime in front of it permits.
+
+And the granularity the section asked for. The `docker-container-management` sketch above — inspect autonomous, recreate confirm, change_mount forbidden — is expressible now that a capability's contract actions are nodes with their own authority.
+
+Unbuilt: nothing enforces any of this. Ambit describes authority, it does not mediate action. Scope is recorded and unchecked.
 
 ## 10. A second-generation MCP — partly built
 
@@ -307,7 +326,7 @@ Built, with the two decisions made explicitly.
 
 What remains: nothing re-seeds automatically after an apply, so the graph reflects the change on the next seed rather than immediately. And a capability with no declared check applies unverified, which is reported rather than hidden. The order matters — an inverse must be computed and stored before a step runs, verification must promote state only on evidence, and a failed apply must run its inverse automatically. None of that starts until proposals have been in use long enough to know whether they are any good.
 
-Built: the surface went from 17 analytical tools to 25, adding `tt_verify`, `tt_evidence`, `tt_authority`, `tt_plan`, `tt_since`, `tt_ledger`, `tt_blocked` and `tt_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent.
+Built: the surface is 31 tools where it was 17 analytical ones, adding `tt_verify`, `tt_evidence`, `tt_authority`, `tt_actions`, `tt_plan`, `tt_since`, `tt_ledger`, `tt_blocked` and `tt_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent. `tt_actions` is the one an agent should reach for before acting: `tt_authority` answers at the capability grain, and permission is per action.
 
 Unbuilt: everything that changes the world. No `apply_step`, `request_approval`, `simulate` or `rollback`. Ambit still only describes.
 
@@ -382,6 +401,8 @@ do real work → discover friction → identify the capability deficit
 
 ## Honest status
 
-Sections 1–2 are data-model work the current schema can mostly absorb. Sections 3, 4, 5, 9 and 10 have narrow implementations with their unbuilt halves recorded under each; 6 and 7 are built; 11's transport is built. Section 7 is built. Sections 8–11 depend on 3–5 and are sketches, not designs.
+Sections 1, 6, 7 and 9 are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder. Section 5 — free-form goals, and comparing alternative paths by risk and lock-in — is the largest thing still open, and section 11 has its transport and none of its surface.
+
+The through-line in what remains is enforcement and scope. Ambit can now say what may be done, by whom, to what, and on what evidence. It still cannot say *on which repository, in which workspace, within what budget*, and it does not stop anything.
 
 The gap between this document and the README is deliberate. The README describes only what runs.

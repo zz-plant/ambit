@@ -1,3 +1,14 @@
+-- Nodes. `kind` is the ontological one — capability, action, provider,
+-- resource, actor, runtime — and `category` is the older, looser label the
+-- visualiser styles by. Both are kept: ids and categories are load-bearing in
+-- stored frontier snapshots and in the client, and re-iding to make the prefix
+-- self-describing would invalidate the one component whose value is that its
+-- history is continuous. See ontology.ts.
+--
+-- `kind` is last in both tables rather than where it reads best, so a database
+-- created from this file and one migrated by ALTER TABLE have the same shape.
+-- Comments stay outside the parentheses: SQLite keeps the CREATE statement
+-- verbatim and cannot rewrite a table whose body has a trailing comment.
 CREATE TABLE IF NOT EXISTS capabilities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -11,9 +22,13 @@ CREATE TABLE IF NOT EXISTS capabilities (
     parallel_slots INTEGER NOT NULL DEFAULT 0,
     maturity_score REAL NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    kind TEXT NOT NULL DEFAULT 'provider',
+    lifecycle TEXT NOT NULL DEFAULT 'unknown'
 );
 
+-- Edges. `kind` is what the edge means; `is_hard_requisite` is how much it
+-- matters. The second was being asked the first.
 CREATE TABLE IF NOT EXISTS dependencies (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     from_capability TEXT NOT NULL REFERENCES capabilities(id),
@@ -22,6 +37,7 @@ CREATE TABLE IF NOT EXISTS dependencies (
     cost_tokens INTEGER NOT NULL DEFAULT 0,
     is_hard_requisite INTEGER NOT NULL DEFAULT 1,
     description TEXT,
+    kind TEXT NOT NULL DEFAULT 'requires',
     UNIQUE(from_capability, to_capability)
 );
 
@@ -61,7 +77,12 @@ CREATE TABLE IF NOT EXISTS frontier_snapshots (
     total INTEGER NOT NULL,
     -- id -> state for every capability, so a past frontier can be reconstructed
     -- exactly rather than inferred from counts.
-    states TEXT NOT NULL
+    states TEXT NOT NULL,
+    -- id -> kind alongside it. Without this a snapshot cannot tell an expanding
+    -- system from an expanding vocabulary: the run that introduced action nodes
+    -- would read as forty capabilities gained on a machine where nothing
+    -- changed. Null on snapshots written before kinds existed.
+    kinds TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_frontier_taken ON frontier_snapshots(taken_at);
@@ -88,3 +109,37 @@ CREATE TABLE IF NOT EXISTS proposals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
+
+-- Authority. Being able to perform an action is not permission to perform it,
+-- so the two are stored apart: `state` and `lifecycle` say what the system can
+-- do, this table says what it may do and who says so.
+--
+-- More than one source can speak about the same capability — the curated model
+-- declares what an action is like in general, and the runtime that would
+-- execute it declares what it permits here. They are stored as separate rows
+-- rather than merged on write, because which one narrowed a capability is the
+-- interesting half of the answer. `holder` and `scope` default to '' rather
+-- than NULL so that re-seeding cannot duplicate a row: SQLite treats NULLs in
+-- a UNIQUE constraint as distinct from each other.
+CREATE TABLE IF NOT EXISTS authority (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    capability_id TEXT NOT NULL REFERENCES capabilities(id),
+    action TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    holder TEXT NOT NULL DEFAULT '',
+    scope TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL,
+    note TEXT,
+    UNIQUE(capability_id, action, holder, scope, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_authority_cap ON authority(capability_id);
+
+-- What has already been done to this database. One-time backfills are recorded
+-- here rather than inferred, because a backfill that cannot tell "never set"
+-- from "set to the default" either runs forever or runs never.
+CREATE TABLE IF NOT EXISTS schema_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

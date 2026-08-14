@@ -1,5 +1,5 @@
 {
-  "$comment": "Curated capability tree for AI agent setups. Like a Civ tech tree, this is authored content: every user gets the same tree and differs only in where they are on it. Nodes are matched against the capabilities discovered in a user's config via `detect` patterns (regex, tested against capability ids). A node with all prerequisites met but nothing detected is what `tt near` and `tt recs` surface as researchable next.",
+  "$comment": "Curated capability tree for AI agent setups. Like a Civ tech tree, this is authored content: every user gets the same tree and differs only in where they are on it. Nodes are matched against the capabilities discovered in a user's config via `detect` patterns (regex, tested against capability ids). A node with all prerequisites met but nothing detected is what `tt near` and `tt recs` surface as researchable next. A node may also declare a `contract.can` list: the concrete actions the capability confers. Each becomes an `act:<node>/<action>` node in its own right, so authority can be stated per action — reading a repository is not merging to its default branch — rather than only per capability.",
   "eras": {
     "1": "Foundation",
     "2": "Model Access",
@@ -33,7 +33,19 @@
       },
       "authority": {
         "observe": "autonomous",
-        "execute": "confirm"
+        "execute": "confirm",
+        "actions": {
+          "run_command": "confirm",
+          "read_output": "autonomous",
+          "install_package": "confirm"
+        }
+      },
+      "contract": {
+        "can": [
+          "run_command",
+          "read_output",
+          "install_package"
+        ]
       }
     },
     {
@@ -59,7 +71,19 @@
       },
       "authority": {
         "observe": "autonomous",
-        "execute": "autonomous"
+        "execute": "autonomous",
+        "actions": {
+          "read_file": "autonomous",
+          "write_file": "autonomous",
+          "delete_file": "confirm"
+        }
+      },
+      "contract": {
+        "can": [
+          "read_file",
+          "write_file",
+          "delete_file"
+        ]
       }
     },
     {
@@ -114,7 +138,21 @@
       },
       "authority": {
         "observe": "autonomous",
-        "execute": "confirm"
+        "execute": "confirm",
+        "actions": {
+          "read_repository": "autonomous",
+          "commit_changes": "autonomous",
+          "push_branch": "confirm",
+          "merge_to_default": "confirm"
+        }
+      },
+      "contract": {
+        "can": [
+          "read_repository",
+          "commit_changes",
+          "push_branch",
+          "merge_to_default"
+        ]
       }
     },
     {
@@ -140,7 +178,7 @@
       "name": "Local Runtime",
       "era": 2,
       "domain": "ai-ml",
-      "description": "A model server running on your own hardware \u2014 Ollama, llama.cpp, MLX, or LiteRT",
+      "description": "A model server running on your own hardware — Ollama, llama.cpp, MLX, or LiteRT",
       "requires": [
         "shell-execution"
       ],
@@ -177,7 +215,7 @@
       "name": "Local Tool Calling",
       "era": 2,
       "domain": "ai-ml",
-      "description": "A local model that reliably emits tool calls \u2014 the threshold where local models stop being chat toys and start doing agent work",
+      "description": "A local model that reliably emits tool calls — the threshold where local models stop being chat toys and start doing agent work",
       "requires": [
         "local-runtime"
       ],
@@ -193,7 +231,7 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls \u2014 many local models claim support and fail in practice"
+      "hint": "Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls — many local models claim support and fail in practice"
     },
     {
       "id": "extended-context",
@@ -213,7 +251,7 @@
         ]
       },
       "setup_seconds": 600,
-      "hint": "Set an explicit context limit per model \u2014 most runtimes silently default to 4K and truncate"
+      "hint": "Set an explicit context limit per model — most runtimes silently default to 4K and truncate"
     },
     {
       "id": "model-routing",
@@ -258,7 +296,7 @@
       "name": "Browser Automation",
       "era": 3,
       "domain": "frontend",
-      "description": "The agent can drive a real browser \u2014 see rendered pages, click, and verify its own UI work",
+      "description": "The agent can drive a real browser — see rendered pages, click, and verify its own UI work",
       "requires": [
         "tool-protocol"
       ],
@@ -280,6 +318,22 @@
           "command -v chromium || ls /Applications/Google\\ Chrome.app >/dev/null 2>&1"
         ],
         "timeout_seconds": 10
+      },
+      "contract": {
+        "can": [
+          "navigate",
+          "read_page",
+          "submit_form"
+        ]
+      },
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "navigate": "autonomous",
+          "read_page": "autonomous",
+          "submit_form": "confirm"
+        }
       }
     },
     {
@@ -333,6 +387,20 @@
             }
           }
         ]
+      },
+      "contract": {
+        "can": [
+          "search",
+          "fetch_page"
+        ]
+      },
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "search": "autonomous",
+          "fetch_page": "autonomous"
+        }
       }
     },
     {
@@ -358,7 +426,19 @@
       "hint": "Move API keys out of opencode.json into a vault or environment references",
       "authority": {
         "observe": "confirm",
-        "execute": "forbidden"
+        "execute": "forbidden",
+        "actions": {
+          "list_secret_names": "confirm",
+          "read_secret": "forbidden",
+          "write_secret": "forbidden"
+        }
+      },
+      "contract": {
+        "can": [
+          "list_secret_names",
+          "read_secret",
+          "write_secret"
+        ]
       }
     },
     {
@@ -386,7 +466,12 @@
       "hint": "Connect a database MCP server, ideally read-only to start",
       "authority": {
         "observe": "autonomous",
-        "execute": "confirm"
+        "execute": "confirm",
+        "actions": {
+          "query": "autonomous",
+          "write_row": "confirm",
+          "drop_table": "forbidden"
+        }
       },
       "acquisition": {
         "alternatives": [
@@ -418,6 +503,13 @@
             "note": "start read-only; widening is easier than narrowing"
           }
         ]
+      },
+      "contract": {
+        "can": [
+          "query",
+          "write_row",
+          "drop_table"
+        ]
       }
     },
     {
@@ -425,7 +517,7 @@
       "name": "Embeddings",
       "era": 4,
       "domain": "ai-ml",
-      "description": "Text can be turned into vectors \u2014 the prerequisite for any retrieval",
+      "description": "Text can be turned into vectors — the prerequisite for any retrieval",
       "requires": [
         "hosted-inference"
       ],
@@ -479,7 +571,7 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Add a vector store \u2014 pgvector or a local LanceDB is enough to start",
+      "hint": "Add a vector store — pgvector or a local LanceDB is enough to start",
       "acquisition": {
         "alternatives": [
           {
@@ -522,7 +614,23 @@
         ]
       },
       "setup_seconds": 1800,
-      "hint": "Wire retrieval into a skill or agent so context is fetched rather than pasted"
+      "hint": "Wire retrieval into a skill or agent so context is fetched rather than pasted",
+      "contract": {
+        "can": [
+          "index_document",
+          "search_documents",
+          "forget_document"
+        ]
+      },
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "index_document": "autonomous",
+          "search_documents": "autonomous",
+          "forget_document": "confirm"
+        }
+      }
     },
     {
       "id": "persistent-memory",
@@ -681,7 +789,12 @@
       "hint": "Move a recurring check onto a schedule instead of remembering to run it",
       "authority": {
         "observe": "autonomous",
-        "execute": "confirm"
+        "execute": "confirm",
+        "actions": {
+          "list_jobs": "autonomous",
+          "create_job": "confirm",
+          "delete_job": "confirm"
+        }
       },
       "acquisition": {
         "alternatives": [
@@ -705,6 +818,13 @@
             "privacy": "hosted"
           }
         ]
+      },
+      "contract": {
+        "can": [
+          "list_jobs",
+          "create_job",
+          "delete_job"
+        ]
       }
     },
     {
@@ -727,7 +847,19 @@
         ]
       },
       "setup_seconds": 600,
-      "hint": "Add a push channel so background agents can surface results"
+      "hint": "Add a push channel so background agents can surface results",
+      "contract": {
+        "can": [
+          "send_notification"
+        ]
+      },
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "send_notification": "autonomous"
+        }
+      }
     },
     {
       "id": "automated-tests",
@@ -891,14 +1023,14 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Run the embedding model locally \u2014 nomic-embed or bge-small are small enough"
+      "hint": "Run the embedding model locally — nomic-embed or bge-small are small enough"
     },
     {
       "id": "offline-capable",
       "name": "Offline Capable",
       "era": 7,
       "domain": "ai-ml",
-      "description": "The full loop \u2014 inference, tools, retrieval \u2014 runs with the network off",
+      "description": "The full loop — inference, tools, retrieval — runs with the network off",
       "requires": [
         "local-tool-calling",
         "local-embeddings"
