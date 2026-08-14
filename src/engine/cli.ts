@@ -224,10 +224,16 @@ function main() {
       break;
     }
     case "stats": case "context": {
-      const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities").get();
+      // Actions are counted apart. Folding them in would have made the release
+      // that introduced them look like a machine that suddenly did half as much
+      // again, which is the same false reading `tt since` reports as vocabulary
+      // rather than as gain.
+      const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action'").get();
       console.log(`Toolchain: ${g.unlocked}/${g.total}`);
-      const domains = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities GROUP BY domain ORDER BY domain").all();
+      const domains = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain").all();
       for (const d of domains) console.log(`  ${d.domain.padEnd(12)} ${d.unlocked}/${d.total}`);
+      const a = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind = 'action'").get();
+      if (a?.total) console.log(`  ${'actions'.padEnd(12)} ${a.reached}/${a.total}  ${C.grey}tt actions${C.reset}`);
       break;
     }
     case "health": emit(domainHealth(db)); break;

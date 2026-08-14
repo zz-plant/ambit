@@ -46,6 +46,7 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ["capabilities", "kind", "TEXT NOT NULL DEFAULT 'provider'"],
   ["capabilities", "lifecycle", "TEXT NOT NULL DEFAULT 'unknown'"],
   ["dependencies", "kind", "TEXT NOT NULL DEFAULT 'requires'"],
+  ["frontier_snapshots", "kinds", "TEXT"],
 ];
 
 function addMissingColumns(db: Db) {
