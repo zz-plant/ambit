@@ -5,6 +5,7 @@ import type { Db } from "./db.ts";
 import { providersOf } from "./inference.ts";
 import { inverseOf } from "./governance.ts";
 import { usable } from "./assurance.ts";
+import { opportunityFor, economicCaseFor } from "./opportunities.ts";
 
 /**
  * Where a chosen way to close a step fights how a required person prefers
@@ -414,7 +415,18 @@ function simulateFrontier(db: Db, assume: string[]) {
  */
 function propose(db: Db, goal?: string, optionIndex?: number) {
   if (!goal) return { error: 'Usage: tt propose <capability> [option-number]' };
-  const plan = planFor(db, goal) as any;
+  let target: string = goal;
+
+  // An opportunity id proposes its capability, carrying the observed case.
+  const opp = /^opp-(\d+)$/.exec(target);
+  let fromOpportunity: any = null;
+  if (opp) {
+    const resolved = opportunityFor(db, target);
+    if ('capability_id' in resolved) { fromOpportunity = resolved; target = resolved.capability_id; }
+    else return resolved;
+  }
+
+  const plan = planFor(db, target) as any;
   if (plan.error) return plan;
   if (plan.degraded) {
     return { goal: plan.goal, degraded: true, lifecycle: plan.lifecycle, note: plan.note };
@@ -451,13 +463,21 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
   });
 
   const simulated = simulateFrontier(db, steps.map((s: any) => s.id).concat(
-    goal.includes(':') ? goal : `combo:${goal}`
+    target.includes(':') ? target : `combo:${target}`
   ));
+
+  // The economic case: the goal capability's observed middleware burden, from
+  // the opportunity engine. Null when nothing recurring was recorded — the
+  // proposal then carries no predicted savings, which is the honest claim.
+  const goalId = steps[steps.length - 1]?.id || (target.includes(':') ? target : `combo:${target}`);
+  const economic = fromOpportunity
+    ? { observed: fromOpportunity.burden, predicted: fromOpportunity.expected, confidence: fromOpportunity.confidence, note: fromOpportunity.note }
+    : economicCaseFor(db, goalId);
 
   const id = `prop-${Date.now().toString(36)}`;
   db.prepare(
-    "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES (?, ?, 'draft', ?, ?)"
-  ).run(id, plan.goal, JSON.stringify(steps), JSON.stringify(simulated));
+    "INSERT INTO proposals (id, goal, status, steps, simulated, economic_case) VALUES (?, ?, 'draft', ?, ?, ?)"
+  ).run(id, plan.goal, JSON.stringify(steps), JSON.stringify(simulated), economic ? JSON.stringify(economic) : null);
 
   const totalSeconds = steps.reduce((t: number, s: any) => t + (s.setup_seconds || 0), 0);
   return {
@@ -468,6 +488,7 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
     requires_person: plan.requires_person,
     steps,
     simulated,
+    economic_case: economic ?? undefined,
     // Two different claims. `applicable` is about this proposal being safe to
     // apply; `executable` is about apply existing at all, which it does not.
     applicable: steps.every((s: any) => s.inverse),

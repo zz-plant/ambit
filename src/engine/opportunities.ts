@@ -255,4 +255,32 @@ function opportunityFor(db: Migratable, id?: string) {
   return o;
 }
 
-export { opportunitiesFor, opportunityFor, clusters, priceCluster };
+/**
+ * The economic case for one capability, or null when nothing recurring was
+ * observed. `propose` attaches this to a proposal so an approval refers to a
+ * stated consequence rather than a hope.
+ */
+function economicCaseFor(db: Migratable, capabilityId: string) {
+  const cs = clusters(db).filter(c =>
+    (MIDDLEWARE.has(c.kind) || c.kind === 'deficit') && c.capability_id === capabilityId
+  );
+  if (cs.length === 0) return null;
+  const case_ = priceCluster(db, cs[0], 'human:kanav', 0);
+  return {
+    observed: {
+      interventions_month: case_.burden.interventions_month,
+      human_hours_month: case_.burden.human_hours_month,
+      attention_dollars_month: case_.burden.attention_dollars_month,
+      runs_affected: case_.burden.runs_affected,
+    },
+    predicted: {
+      savings_dollars_month: case_.expected.savings_dollars_month,
+      human_hours_saved_per_year: Math.round(case_.burden.human_hours_month * REDUCTION * 12 * 10) / 10,
+      payback_months: case_.payback_months,
+    },
+    confidence: case_.confidence,
+    note: case_.note,
+  };
+}
+
+export { opportunitiesFor, opportunityFor, economicCaseFor, clusters, priceCluster };

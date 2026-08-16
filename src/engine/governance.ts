@@ -90,6 +90,7 @@ function showProposal(db: Db, id?: string) {
     ...row,
     steps: JSON.parse(row.steps),
     simulated: JSON.parse(row.simulated),
+    economic_case: row.economic_case ? JSON.parse(row.economic_case) : undefined,
   };
 }
 

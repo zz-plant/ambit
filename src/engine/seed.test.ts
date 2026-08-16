@@ -1668,3 +1668,42 @@ test('opportunities rank by objective and expose one case', () => {
   expect(detail.proposal.setup_hours).toBeGreaterThan(0);
   expect(detail.roi_annual).toBeGreaterThan(0);
 });
+
+// ── Proposals carry the economic case (WP-6) ─────────────────────────────────
+
+test('a proposal carries the observed case when burden exists, and none when it does not', () => {
+  seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r = beginRun(db, { goal: 'search the web for me' });
+  // Three clerical interventions on a capability that is still locked: the
+  // human is doing the work the missing capability should do.
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1200 });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1200 });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1200 });
+  (db as any).close();
+
+  const withCase = cli('propose', 'web-research');
+  expect(withCase.error).toBeUndefined();
+  expect(withCase.economic_case).toBeDefined();
+  expect(withCase.economic_case.observed.interventions_month).toBe(3);
+  expect(withCase.economic_case.predicted.human_hours_saved_per_year).toBeGreaterThan(0);
+  expect(withCase.economic_case.confidence).toBe('medium');
+
+  // A capability with no recorded burden proposes without inventing savings.
+  const bare = cli('propose', 'continuous-delivery');
+  expect(bare.economic_case).toBeUndefined();
+});
+
+test('an opportunity id proposes its capability with the observed case', () => {
+  seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r = beginRun(db, { goal: 'move data' });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  (db as any).close();
+
+  const p = cli('propose', 'opp-1');
+  expect(p.proposal).toBeDefined();
+  expect(p.economic_case).toBeDefined();
+  expect(p.economic_case.observed.interventions_month).toBe(2);
+});
