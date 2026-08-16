@@ -9,8 +9,8 @@ export interface Item {
   group?: string;
 }
 
-/** The four layout modes selectable in the HUD. */
-export type LayoutMode = 'constellation' | 'civ' | 'orbital' | 'flat';
+/** The single layout mode: era columns. Position is computed by CivTree. */
+export type LayoutMode = 'civ';
 
 export interface Connection {
   from: string;

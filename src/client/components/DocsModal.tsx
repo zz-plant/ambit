@@ -109,10 +109,10 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
                 <span><strong>Soft prerequisite</strong> — helps, but does not gate</span>
               </div>
 
-              <h3 className="docs-h3">The ring</h3>
+              <h3 className="docs-h3">The states</h3>
               <p className="docs-p">
-                The arc around a circle is maturity — a rough sense of how established something is.
-                Compare rings to each other; do not read a single number as a measurement.
+                Filled circles are reached capabilities. Outlined circles are not yet reached;
+                the halo marks what you could take next, with its setup cost beside it.
               </p>
 
               <h3 className="docs-h3">Two sources</h3>

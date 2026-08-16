@@ -6,13 +6,12 @@ import { getDb, migrate } from "./db.ts";
 import { seedFromConfig } from "./discovery.ts";
 import {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
-  analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations,
-  forkComparison, graphProfile, nearMissCombos, insights,
-  singlePointsOfFailure, exportGraph, affordanceDomains, surfaceFor,
+  analyzeImpact, nearMissCombos, singlePointsOfFailure, exportGraph,
+  affordanceDomains, surfaceFor,
 } from "./inference.ts";
 import { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport } from "./assurance.ts";
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
-import { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
+import { recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 import { goalFor, pathsFor } from "./goals.ts";
 import { humanDigest, notify } from "./attention.ts";
 import {
@@ -52,7 +51,6 @@ function emit(data: any): void {
       if (k === headKey || skip(k, v) || typeof v === "object") continue;
       console.log(`${indent}  ${C.grey}${label(k)}:${C.reset} ${scalar(v)}`);
     }
-    // One level of nesting is common (near-misses carry their own list).
     for (const [k, v] of Object.entries(row)) {
       if (Array.isArray(v) && v.some(x => typeof x === "object")) {
         console.log(`${indent}  ${C.grey}${label(k)}:${C.reset}`);
@@ -79,6 +77,95 @@ function emit(data: any): void {
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 
+const HELP = `ambit - what your system can do, what it costs, what to change
+
+  status            health · degraded · spofs · deficits · pending approvals
+  graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
+  goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
+                    delta, compare acquisition paths, or check preferences
+  attention [days]  how much work still runs through the human, and what is reducible
+  notify <topic>    push the attention digest to ntfy — nothing is sent without a topic
+  impact <id>       what actually breaks if a capability goes away
+  verify [cap] [--history]   run the declared check, or show past verification
+  authority [cap] [scope <target>]   what may run unattended, what each action
+                    may touch, and whether a scope covers a target
+  history [since <when>]   how the frontier moved
+  propose <cap> [option]    draft a reviewable acquisition (with its simulation)
+  proposals / proposal <id>
+  approve <id> <person>
+  apply <id> / rollback <id>
+  record <cap> [class] [note]   record that a task was blocked by a capability
+  seed              seed from the agent config
+  where             where the graph is stored
+  help [term]       this list, or one concept explained`;
+
+// The report `status` composes. One surface for "how are we doing", so the
+// person does not have to learn six commands to answer one question.
+function statusReport(db: any) {
+  const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'").get();
+  const domains = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain").all();
+  const actions = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind = 'action'").get();
+
+  // Degraded means configured but not working — the decision-relevant reading
+  // of "decay". A lifecycle-failing capability is a repair, not an acquisition.
+  const degraded = db.prepare(
+    `SELECT id, name, domain FROM capabilities
+     WHERE state IN ('unlocked','active') AND lifecycle IN ('degraded','broken')
+     ORDER BY id`
+  ).all();
+
+  const proposals = listProposals(db);
+  const pending = Array.isArray(proposals)
+    ? proposals.filter((p: any) => p.status === 'draft' || p.status === 'approved')
+    : [];
+
+  return {
+    reached: g.reached,
+    total: g.total,
+    verified: g.verified,
+    failing: g.failing,
+    actions: actions?.total ? { reached: actions.reached, total: actions.total } : undefined,
+    domains,
+    degraded: degraded.length ? degraded : undefined,
+    spofs: singlePointsOfFailure(db),
+    bottlenecks: findBottlenecks(db).slice(0, 10),
+    deficits: deficits(db),
+    frontier: ledgerHistory(db).slice(-5),
+    pending,
+  };
+}
+
+/** The concept glossary, shared with the visualiser so the two cannot drift. */
+function explain(wanted: string): void {
+  const { concepts } = JSON.parse(readFileSync(join(ENGINE_DIR, "..", "shared", "concepts.json"), "utf8"));
+  const picked = wanted
+    ? concepts.filter((c: any) => c.key.includes(wanted) || c.term.toLowerCase().includes(wanted))
+    : concepts;
+  if (picked.length === 0) {
+    console.log(`${C.yellow}No concept matching "${wanted}".${C.reset}`);
+    console.log(`Try: ${concepts.map((c: any) => c.key).join(", ")}`);
+    return;
+  }
+  const wrap = (text: string, width = 76, indent = "  ") => {
+    const out: string[] = [];
+    let line = "";
+    for (const word of text.split(" ")) {
+      if ((line + word).length > width) { out.push(indent + line.trim()); line = ""; }
+      line += word + " ";
+    }
+    if (line.trim()) out.push(indent + line.trim());
+    return out.join("\n");
+  };
+  console.log("");
+  for (const c of picked) {
+    console.log(`${C.bold}${c.term}${C.reset} ${C.grey}— ${c.short}${C.reset}`);
+    console.log(wrap(c.long));
+    console.log(`  ${C.grey}Where you see it: ${c.seen}${C.reset}`);
+    console.log("");
+  }
+  if (!wanted) console.log(`${C.grey}ambit help <term> for one of these on its own.${C.reset}\n`);
+}
+
 async function main() {
   const db = getDb();
   migrate(db);
@@ -88,97 +175,51 @@ async function main() {
   // silently inherited.
   const positional = process.argv.slice(3).filter(a => !a.startsWith("--"));
   const arg = positional[0];
+  const flags = new Set(process.argv.slice(3).filter(a => a.startsWith("--")));
   const mappingOverride = process.env.CONFIG_MAPPING;
 
   // An unseeded graph answered every question with "Nothing to report", which
   // is what a healthy graph with no findings says too. A Homebrew install
   // never runs bootstrap.sh, so that was the entire first-run experience:
   // a tool that appears to work and reports an empty world.
-  if (cmd && cmd !== "seed" && cmd !== "where" && cmd !== "explain") {
+  if (cmd && cmd !== "seed" && cmd !== "where" && cmd !== "help") {
     const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
     if (!seeded?.n) {
       console.log(`${C.yellow}No graph yet.${C.reset} Nothing has been discovered on this machine.`);
-      console.log(`  ${C.bold}tt seed${C.reset}    read your agent config and build the graph`);
-      console.log(`  ${C.grey}tt where${C.reset}   ${C.grey}where the graph is stored${C.reset}`);
+      console.log(`  ${C.bold}ambit seed${C.reset}    read your agent config and build the graph`);
+      console.log(`  ${C.grey}ambit where${C.reset}   ${C.grey}where the graph is stored${C.reset}`);
       db.close();
       return;
     }
   }
   if (!cmd || cmd === "help") {
-    console.log(`tech-tree - Toolchain capability graph\n`);
-    console.log("  seed              Seed from opencode config (default)");
-    console.log("                    Set CONFIG_MAPPING env var for other configs");
-    console.log("                    Example: CONFIG_MAPPING='{\"config_keys\":{\"tools\":{\"type\":\"tool\",\"domain\":\"devops\"}}}' node engine.ts seed");
-    console.log("  stats             Maturity overview");
-    console.log("  context           Session context block");
-    console.log("  health            Domain health scores");
-    console.log("  decay             Decaying capabilities");
-    console.log("  combos            Auto-discovered combos");
-    console.log("  diff              Session diff");
-    console.log("  bottlenecks        High-leverage capabilities");
-    console.log("  plan <cap>        Steps to a capability, in the order to close them");
-    console.log("  goal <sentence>   Route a free-form goal to the capabilities that cover it");
-    console.log("  paths <cap>       The alternative ways to reach a capability, with risk and lock-in");
-    console.log("  preferences [who] Who prefers what, and which plans would fight it");
-    console.log("  authority         What may run unattended, and what may not");
-    console.log("  actions [id]      The concrete actions a capability confers");
-    console.log("  affordances       The structural domain of each capability — institutional, economic, cognitive, physical");
-    console.log("  digest [days]     How much work still runs through the human, and what is reducible");
-    console.log("  notify <topic>    Push the digest to ntfy — nothing is sent without a topic");
-    console.log("  budget <s> <t>    Budget optimization");
-    console.log("  trend <days>      Trend projection");
+    if (cmd === "help" && arg) { explain(arg.toLowerCase()); db.close(); return; }
+    console.log(HELP);
     db.close();
     return;
   }
   switch (cmd) {
-    case "apply":
-      emit(applyProposal(db, arg));
+    case "status":
+      emit(statusReport(db));
       break;
-    case "rollback":
-      emit(rollbackProposal(db, arg));
+    case "graph": {
+      // The graph is one thing with several views; none of them is a headline.
+      if (arg === "surface") console.log(JSON.stringify(surfaceFor(db), null, 2));
+      else if (arg === "combos") emit(discoverCombos(db));
+      else if (arg === "affordances") emit(affordanceDomains(db));
+      else console.log(JSON.stringify(exportGraph(db)));
       break;
-    case "approve":
-      emit(approveProposal(db, arg, process.argv.slice(4).filter(a => !a.startsWith('--'))[0]));
+    }
+    case "goal": {
+      // One entry for the gap-to-capability question, with the folds as flags:
+      // paths, simulation and preferences are views of the same decision.
+      if (flags.has("--prefs")) emit(preferencesReport(db, arg));
+      else if (flags.has("--paths")) emit(arg ? pathsFor(db, arg) : { error: 'Usage: ambit goal <capability> --paths' });
+      else if (flags.has("--simulate")) emit(arg ? simulateFrontier(db, [arg]) : { error: 'Usage: ambit goal <capability> --simulate' });
+      else emit(goalFor(db, arg));
       break;
-    case "propose":
-      emit(propose(db, arg, Number(process.argv.slice(4).filter(a => !a.startsWith('--'))[0]) || undefined));
-      break;
-    case "proposals":
-      emit(listProposals(db));
-      break;
-    case "proposal":
-      emit(showProposal(db, arg));
-      break;
-    case "simulate":
-      emit(arg ? simulateFrontier(db, [arg]) : { error: 'Usage: tt simulate <capability>' });
-      break;
-    case "spof":
-      emit(singlePointsOfFailure(db));
-      break;
-    case "failed":
-      emit(recordFailure(db, arg, positional[1], positional[2]));
-      break;
-    case "deficits":
-      emit(deficits(db));
-      break;
-    case "plan":
-      emit(planFor(db, arg));
-      break;
-    case "goal":
-      emit(goalFor(db, arg));
-      break;
-    case "paths":
-      emit(pathsFor(db, arg));
-      break;
-    case "preferences":
-      emit(preferencesReport(db, arg));
-      break;
-    case "scope":
-      emit(scopeReport(db, arg));
-      break;
-    case "affordances":
-      emit(affordanceDomains(db));
-      break;
+    }
+    case "attention":
     case "digest":
       emit(humanDigest(db, arg));
       break;
@@ -186,63 +227,53 @@ async function main() {
       // async: the push is an HTTP POST and must complete before close.
       emit(await notify(db, arg));
       break;
-    case "authority":
-      emit(authorityReport(db));
-      break;
-    case "actions":
-      emit(actionsReport(db, arg));
+    case "impact":
+      emit(analyzeImpact(db, arg));
       break;
     case "verify":
-      emit(runVerification(db, arg));
-      break;
-    case "evidence":
-      emit(arg ? evidenceFor(db, arg.includes(':') ? arg : `combo:${arg}`) : { error: "Usage: tt evidence <id>" });
-      break;
-    case "ledger":
-      emit(ledgerHistory(db));
-      break;
-    case "since":
-      emit(ledgerSince(db, arg));
-      break;
-    case "explain": {
-      // Same definitions the visualizer shows, read from the shared file so
-      // the two surfaces cannot drift.
-      const { concepts } = JSON.parse(readFileSync(join(ENGINE_DIR, "..", "shared", "concepts.json"), "utf8"));
-      const wanted = (process.argv[3] || "").toLowerCase();
-      const picked = wanted
-        ? concepts.filter((c: any) => c.key.includes(wanted) || c.term.toLowerCase().includes(wanted))
-        : concepts;
-      if (picked.length === 0) {
-        console.log(`${C.yellow}No concept matching "${wanted}".${C.reset}`);
-        console.log(`Try: ${concepts.map((c: any) => c.key).join(", ")}`);
-        break;
+      if (flags.has("--history")) {
+        emit(arg ? evidenceFor(db, arg.includes(':') ? arg : `combo:${arg}`) : { error: "Usage: ambit verify <id> --history" });
+      } else {
+        emit(runVerification(db, arg));
       }
-      // Wrap to a readable measure rather than emitting one long line.
-      const wrap = (text: string, width = 76, indent = "  ") => {
-        const out: string[] = [];
-        let line = "";
-        for (const word of text.split(" ")) {
-          if ((line + word).length > width) { out.push(indent + line.trim()); line = ""; }
-          line += word + " ";
-        }
-        if (line.trim()) out.push(indent + line.trim());
-        return out.join("\n");
-      };
-      console.log("");
-      for (const c of picked) {
-        console.log(`${C.bold}${c.term}${C.reset} ${C.grey}— ${c.short}${C.reset}`);
-        console.log(wrap(c.long));
-        console.log(`  ${C.grey}Where you see it: ${c.seen}${C.reset}`);
-        console.log("");
-      }
-      if (!wanted) console.log(`${C.grey}tt explain <term> for one of these on its own.${C.reset}\n`);
+      break;
+    case "authority": {
+      // Grants, then per-capability actions, then scope coverage — one verb.
+      if (arg === "scope") emit(scopeReport(db, positional[1]));
+      else if (arg) emit(actionsReport(db, arg));
+      else emit(authorityReport(db));
       break;
     }
+    case "history":
+      if (arg === "since") emit(ledgerSince(db, positional[1]));
+      else emit(ledgerHistory(db));
+      break;
+    case "propose":
+      emit(propose(db, arg, Number(positional[1]) || undefined));
+      break;
+    case "proposals":
+      emit(listProposals(db));
+      break;
+    case "proposal":
+      emit(showProposal(db, arg));
+      break;
+    case "approve":
+      emit(approveProposal(db, arg, positional[1]));
+      break;
+    case "apply":
+      emit(applyProposal(db, arg));
+      break;
+    case "rollback":
+      emit(rollbackProposal(db, arg));
+      break;
+    case "record":
+      emit(recordFailure(db, arg, positional[1], positional[2]));
+      break;
     case "seed": {
       const cfg = CONFIG_DEFAULT;
       seedFromConfig(db, undefined, mappingOverride);
       const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();
-      console.log(`${C.green}✓${C.reset} ${c.cnt} capabilities`);
+      console.log(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities`);
       // Say so rather than reporting a curated-model-only graph as if it had
       // read the environment. Silence here reads as "your stack is empty".
       if (!existsSync(cfg)) {
@@ -253,40 +284,6 @@ async function main() {
       }
       break;
     }
-    case "stats": case "context": {
-      // Actions are counted apart. Folding them in would have made the release
-      // that introduced them look like a machine that suddenly did half as much
-      // again, which is the same false reading `tt since` reports as vocabulary
-      // rather than as gain.
-      //
-      // Reached stays structural; verified and failing are the demonstrated
-      // half. The block handed to agents must never let one be mistaken for the
-      // other: a capability whose check last failed is configured but not
-      // working, and the failing count names how many are in that state.
-      const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'").get();
-      console.log(`Toolchain: ${g.unlocked}/${g.total} reached · ${g.verified} verified · ${g.failing} failing`);
-      const domains = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain").all();
-      for (const d of domains) console.log(`  ${d.domain.padEnd(12)} ${d.unlocked}/${d.total}`);
-      const a = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind = 'action'").get();
-      if (a?.total) console.log(`  ${'actions'.padEnd(12)} ${a.reached}/${a.total}  ${C.grey}tt actions${C.reset}`);
-      break;
-    }
-    case "health": emit(domainHealth(db)); break;
-    case "decay": emit(computeDecay(db)); break;
-    case "combos": emit(discoverCombos(db)); break;
-    case "diff": emit(sessionDiff(db)); break;
-    case "bottlenecks": emit(findBottlenecks(db)); break;
-    case "impact": emit(analyzeImpact(db, arg)); break;
-    case "budget": emit(optimizeBudget(db, parseInt(arg) || 120, parseInt(process.argv[4]) || 8000)); break;
-    case "trend": emit(projectTrends(db, parseInt(arg) || 30)); break;
-    case "prune": emit(pruneRecommendations(db)); break;
-    case "fork": emit(forkComparison(db)); break;
-    case "profile": emit(graphProfile(db)); break;
-    case "export": console.log(JSON.stringify(exportGraph(db))); break;
-    case "surface": console.log(JSON.stringify(surfaceFor(db), null, 2)); break;
-
-    case "near": emit(nearMissCombos(db)); break;
-    case "insight": emit(insights(db)); break;
     // Where the graph lives is not obvious once the CLI is installed rather
     // than cloned, and every other component resolves the same path.
     case "where": {
@@ -297,7 +294,7 @@ async function main() {
       emit({
         graph: path,
         capabilities: seeded,
-        seeded: seeded > 0 ? true : "no — run tt seed",
+        seeded: seeded > 0 ? true : "no — run ambit seed",
         bytes: existsSync(path) ? statSync(path).size : 0,
         override: "TOOLCHAIN_DB",
       });
@@ -307,6 +304,5 @@ async function main() {
   }
   db.close();
 }
-
 
 export { emit, main };

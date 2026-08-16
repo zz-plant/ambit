@@ -226,7 +226,7 @@ test('redundancy is counted by kind, not by matching a sentence', () => {
   ).run();
   db.close();
 
-  const spof = cli('spof');
+  const spof = cli('status').spofs;
   const listed = Array.isArray(spof) ? spof : [];
   expect(listed.some((s: any) => s.provider_id === 'mcp:git')).toBe(true);
 });
@@ -311,9 +311,9 @@ const PLUS_EMBEDDINGS = {
 
 test('seeding records the frontier, and an unchanged re-seed does not', () => {
   seed(LOCAL_ONLY).close();
-  expect(cli('ledger').length).toBe(1);
+  expect(cli('history').length).toBe(1);
   seed(LOCAL_ONLY).close(); // identical config
-  expect(cli('ledger').length).toBe(1);
+  expect(cli('history').length).toBe(1);
 });
 
 test('re-seeding updates derived state', () => {
@@ -333,7 +333,7 @@ test('the ledger separates what was acquired from what emerged', () => {
   seed(LOCAL_ONLY).close();
   seed(PLUS_EMBEDDINGS).close();
 
-  const since = cli('since');
+  const since = cli('history', 'since');
   expect(since.frontier_now).toBeGreaterThan(since.frontier_then);
 
   const gained = since.gained.map((g: any) => g.id);
@@ -364,7 +364,7 @@ test('an expanding vocabulary is not an expanding frontier', () => {
     .run(JSON.stringify(withoutActions), snapshot.id);
   db.close();
 
-  const since = cli('since');
+  const since = cli('history', 'since');
   const vocabulary = since.vocabulary.map((v: any) => v.id);
   expect(vocabulary).toContain('act:shell-execution/run_command');
 
@@ -378,7 +378,7 @@ test('an expanding vocabulary is not an expanding frontier', () => {
 test('a real acquisition is still a gain, not vocabulary', () => {
   seed(LOCAL_ONLY).close();
   seed(PLUS_EMBEDDINGS).close();
-  const since = cli('since');
+  const since = cli('history', 'since');
   // Its provider is new, so this is the system changing rather than the model.
   expect(since.gained.map((g: any) => g.id)).toContain('combo:embeddings');
   expect(since.vocabulary.map((v: any) => v.id)).not.toContain('combo:embeddings');
@@ -388,7 +388,7 @@ test('a frontier query before any history explains itself', () => {
   const db = seed(LOCAL_ONLY);
   db.close();
   // One observation exists, so `since` compares against it rather than erroring.
-  const since = cli('since');
+  const since = cli('history', 'since');
   expect(since.since).toBeDefined();
   expect(since.emergent).toEqual([]);
 });
@@ -458,7 +458,7 @@ test('verification records evidence rather than trusting configuration', () => {
 
   // Evidence accumulates: one success is a weaker claim than several.
   cli('verify', 'shell-execution');
-  const evidence = cli('evidence', 'shell-execution');
+  const evidence = cli('verify', 'shell-execution', '--history');
   expect(evidence.length).toBe(2);
   expect(evidence.every((e: any) => e.action === 'verified')).toBe(true);
 });
@@ -468,7 +468,7 @@ test('a capability with no declared check is not reported as verified', () => {
   const r = cli('verify', 'retrieval');
   expect(r.results[0].status).toBe('unverifiable');
   // And it leaves no evidence, so nothing later mistakes it for a passing run.
-  expect(cli('evidence', 'retrieval').length).toBe(0);
+  expect(cli('verify', 'retrieval', '--history').length).toBe(0);
 });
 
 test('authority is tracked apart from whether a capability is reached', () => {
@@ -543,7 +543,7 @@ test('the narrower of two disagreeing sources wins', () => {
 test('a capability confers actions, and authority is per action', () => {
   seed({ mcp: { git: { type: 'local' } } }).close();
 
-  const a = cli('actions', 'version-control');
+  const a = cli('authority', 'version-control');
   expect(a.actions).toBe(4);
   // The distinction the coarse node cannot make: reading a repository is not
   // merging to its default branch, and both belong to one reached capability.
@@ -558,7 +558,7 @@ test('an action is forbidden even when the capability conferring it is reached',
     .not.toBe('locked');
   db.close();
 
-  const a = cli('actions', 'data-access');
+  const a = cli('authority', 'data-access');
   expect(a.exercisable).toContain('act:data-access/query');
   expect(a.forbidden).toContain('act:data-access/drop_table');
 });
@@ -566,14 +566,14 @@ test('an action is forbidden even when the capability conferring it is reached',
 test('an action can be planned for, and resolves to the capability conferring it', () => {
   seed({ provider: { acme: { models: { 'fast-1': {} } } } }).close();
 
-  const plan = cli('plan', 'act:data-access/query');
+  const plan = cli('goal', 'act:data-access/query');
   expect(plan.error).toBeUndefined();
   expect(plan.order.map((o: any) => o.id)).toContain('combo:data-access');
   expect(plan.reachable).toBe(true);
 
   // Simulating the action moves the frontier by the capability, not by the
   // action — an action is conferred, never separately acquired.
-  const sim = cli('simulate', 'act:data-access/query');
+  const sim = cli('goal', 'act:data-access/query', '--simulate');
   expect(sim.acquired.map((c: any) => c.id)).toEqual(['combo:data-access']);
 });
 
@@ -589,18 +589,18 @@ test('scope is checked, not just recorded', () => {
   }).close();
 
   // The grant scoped to repo:owner/name covers that repo...
-  const covered = cli('scope', 'repo:owner/name');
+  const covered = cli('authority', 'scope', 'repo:owner/name');
   const vc = covered.grants.find((g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name');
   expect(vc.covers).toBe(true);
 
   // ...and the grant scoped elsewhere does not cover a different target.
-  const other = cli('scope', 'repo:someone/else');
+  const other = cli('authority', 'scope', 'repo:someone/else');
   const scoped = other.grants.find((g: any) => g.scope === 'repo:other/thing');
   expect(scoped.covers).toBe(false);
   expect(other.excluded).toBeGreaterThan(0);
 
   // Scope is a prefix claim: a branch under the repo is covered by it.
-  const branch = cli('scope', 'repo:owner/name/feature');
+  const branch = cli('authority', 'scope', 'repo:owner/name/feature');
   const vcBranch = branch.grants.find((g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name');
   expect(vcBranch.covers).toBe(true);
 });
@@ -610,12 +610,12 @@ test('actions do not inflate leverage or fragility', () => {
 
   // An action has exactly one provider by definition. Reporting each as a
   // single point of failure would bury the ones that are.
-  const spof = cli('spof');
+  const spof = cli('status').spofs;
   expect(spof.some((s: any) => s.id.startsWith('act:version-control/'))).toBe(false);
 
   // And a capability must not climb the bottleneck ranking because someone
   // wrote more verbs into its contract.
-  const bottlenecks = cli('bottlenecks');
+  const bottlenecks = cli('status').bottlenecks;
   const versionControl = bottlenecks.find((b: any) => b.capability_id === 'combo:version-control');
   if (versionControl) expect(versionControl.unlocks_count).toBeLessThan(4);
 });
@@ -646,7 +646,7 @@ test('an action a person supplies is still a single point of failure', () => {
     actors: { kanav: { name: 'Kanav', provides: ['physical-access'] } },
   }).close();
 
-  const spof = cli('spof');
+  const spof = cli('status').spofs;
   expect(spof.some((s: any) => s.id === 'act:physical-access')).toBe(true);
 });
 
@@ -718,7 +718,7 @@ test('a broken capability stops reading as available', () => {
   db.close();
 
   // A plan refuses to treat it as an acquisition.
-  const p = cli('plan', 'shell-execution');
+  const p = cli('goal', 'shell-execution');
   expect(p.degraded).toBe(true);
   expect(p.reachable).toBe(false);
   expect(p.note).toContain('re-verify');
@@ -731,7 +731,7 @@ test('a broken capability stops reading as available', () => {
   expect(a.needs_approval).not.toContain('Shell Execution');
 
   // A simulation of something built on it says why it will not cascade.
-  const sim = cli('simulate', 'version-control');
+  const sim = cli('goal', 'version-control', '--simulate');
   expect(sim.blocked_by_degraded.map((b: any) => b.id)).toContain('combo:version-control');
 });
 
@@ -747,7 +747,7 @@ test('a re-passing verification releases the gate', () => {
   expect(rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
     .toBe('degraded');
   db.close();
-  expect(cli('plan', 'shell-execution').reachable).toBe(false);
+  expect(cli('goal', 'shell-execution').reachable).toBe(false);
 
   // Five consecutive passes are a different claim, and the gate opens.
   for (let i = 0; i < 4; i++) recordVerification('combo:shell-execution', 'verified');
@@ -757,7 +757,7 @@ test('a re-passing verification releases the gate', () => {
   expect(rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
     .toBe('reliable');
   after.close();
-  const p = cli('plan', 'shell-execution');
+  const p = cli('goal', 'shell-execution');
   expect(p.reachable).toBe(true);
   expect(p.degraded).toBeUndefined();
 });
@@ -770,7 +770,7 @@ test('a plan names a degraded prerequisite as broken, not missing', () => {
   recordVerification('combo:local-runtime', 'failed');
   seed(LOCAL_ONLY).close();
 
-  const p = cli('plan', 'local-embeddings');
+  const p = cli('goal', 'local-embeddings');
   expect(p.degraded.map((d: any) => d.name)).toContain('Local Runtime');
   expect(p.order.map((o: any) => o.id)).not.toContain('combo:local-runtime'); // not something to acquire
   expect(p.note).toContain('failing verification');
@@ -783,7 +783,7 @@ test('the ledger records demonstrated reliability beside reach', () => {
   cli('verify', 'shell-execution');
   seed(PLUS_EMBEDDINGS).close(); // a state change forces the next observation
 
-  const ledger = cli('ledger');
+  const ledger = cli('history');
   expect(ledger.length).toBe(2);
   expect(ledger[0].verified).toBe(0); // before anything had passed a check
   expect(ledger[1].verified).toBe(1); // shell-execution is now demonstrated
@@ -794,7 +794,7 @@ test('since reports a capability that stopped working', () => {
   recordVerification('combo:shell-execution', 'failed');
   seed(LOCAL_ONLY).close();
 
-  const since = cli('since');
+  const since = cli('history', 'since');
   // Structural reach did not move — nothing was removed — but the capability
   // stopped being usable, and the ledger has to say so.
   expect(since.frontier_now).toBe(since.frontier_then);
@@ -805,7 +805,7 @@ test('since reports a capability that stopped working', () => {
 
 test('planning orders the prerequisites of an unreached capability', () => {
   seed(LOCAL_ONLY).close();
-  const p = cli('plan', 'offline-capable');
+  const p = cli('goal', 'offline-capable');
   expect(p.steps).toBeGreaterThan(0);
   const order = p.order.map((o: any) => o.id);
   // Embeddings gates Local Embeddings, so it has to come first.
@@ -815,7 +815,7 @@ test('planning orders the prerequisites of an unreached capability', () => {
 
 test('planning a capability already reached says so instead of inventing steps', () => {
   seed(LOCAL_ONLY).close();
-  const p = cli('plan', 'shell-execution');
+  const p = cli('goal', 'shell-execution');
   expect(p.reachable).toBe(true);
   expect(p.missing).toEqual([]);
 });
@@ -843,7 +843,7 @@ test('a contract action can declare a check of its own', () => {
   expect(r.results[0].status).toMatch(/verified|failed/);
 
   // Evidence landed against the action, reachable by its own id.
-  const evidence = cli('evidence', 'act:version-control/commit_changes');
+  const evidence = cli('verify', 'act:version-control/commit_changes', '--history');
   expect(evidence.length).toBe(1);
   expect(evidence[0].action).toMatch(/verified|failed/);
 });
@@ -884,7 +884,7 @@ test('approval is a dependency, not a policy note', () => {
 
 test('a plan names the person a step depends on', () => {
   seed(WITH_PEOPLE).close();
-  const plan = cli('plan', 'continuous-delivery');
+  const plan = cli('goal', 'continuous-delivery');
   // A plan that hides the human step reads as autonomous when it is not.
   expect(plan.requires_person).toContain('Kanav');
 });
@@ -902,7 +902,7 @@ test('authorizing a capability that does not exist leaves no dangling edge', () 
 
 test('a plan step offers alternatives with their trade-offs', () => {
   seed(LOCAL_ONLY).close();
-  const plan = cli('plan', 'offline-capable');
+  const plan = cli('goal', 'offline-capable');
   const embeddings = plan.order.find((o: any) => o.id === 'combo:embeddings');
   expect(embeddings?.options?.length).toBeGreaterThan(1);
   // The trade-off is rarely setup time alone; a faster hosted option costs
@@ -933,7 +933,7 @@ test('a person can declare how they prefer things done', () => {
   expect(prefs.sort()).toEqual(['local-when-practical', 'minimize-recurring-cost']);
 
   db.close();
-  const report = cli('preferences', 'kanav');
+  const report = cli('goal', '--prefs', 'kanav');
   expect(report.name).toBe('Kanav');
   expect(report.preferences).toContain('local-when-practical');
 });
@@ -944,7 +944,7 @@ test('a plan names where a step fights a person\'s stated preferences', () => {
   // noting the conflict reads as if the choice is theirs when the default is
   // already the thing they said they'd avoid.
   seed(WITH_PREFS).close();
-  const plan = cli('plan', 'continuous-delivery');
+  const plan = cli('goal', 'continuous-delivery');
   expect(plan.requires_person).toContain('Kanav');
   const conflicting = (plan.order || []).find((s: any) => s.preference_conflicts?.length);
   expect(conflicting).toBeDefined();
@@ -984,7 +984,7 @@ test('institutional and economic domains are derived from structure, not pasted 
   // implies a budget and a counterparty — economic. One capability, two
   // structural domains, both named.
   seed(WITH_PREFS).close();
-  const report = cli('affordances');
+  const report = cli('graph', 'affordances');
   const cd = report.capabilities.find((c: any) => c.name === 'Continuous Delivery');
   expect(cd).toBeDefined();
   expect(cd.domain).toBe('institutional');
@@ -1001,7 +1001,7 @@ test('institutional and economic domains are derived from structure, not pasted 
 
 test('tt surface emits the vocabulary a runtime would own', () => {
   seed(WITH_PREFS).close();
-  const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'surface'], {
+  const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'graph', 'surface'], {
     env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json') },
     encoding: 'utf8',
   });
@@ -1038,7 +1038,7 @@ test('the digest counts human interventions and names the reducible ones', () =>
   recordHumanAct('approval', 'human:kanav', 'approved');
   recordHumanAct('approval', 'human:kanav', 'approved');
 
-  const d = cli('digest');
+  const d = cli('attention');
   expect(d.interventions).toBe(2);
   expect(d.reducible.length).toBe(1);
   expect(d.reducible[0].kind).toBe('approval');
@@ -1049,7 +1049,7 @@ test('a one-off intervention is recorded but not called reducible', () => {
   seed(WITH_PREFS).close();
   recordHumanAct('approval', 'human:kanav', 'approved');
 
-  const d = cli('digest');
+  const d = cli('attention');
   expect(d.interventions).toBe(1);
   expect(d.reducible).toBeUndefined();
 });
@@ -1062,7 +1062,7 @@ test('the digest reports a broken capability separately from reducible friction'
   recordHumanAct('verify', 'combo:shell-execution', 'failed');
   recordHumanAct('verify', 'combo:shell-execution', 'failed');
 
-  const d = cli('digest');
+  const d = cli('attention');
   expect(d.broken.length).toBe(1);
   expect(d.broken[0].capability).toBe('Shell Execution');
   expect(d.reducible).toBeUndefined();
@@ -1078,16 +1078,16 @@ test('ntfy is opt-in — nothing is pushed without a topic', async () => {
 
 test('a repeated deficit is distinguished from incidental friction', () => {
   seed(LOCAL_ONLY).close();
-  const once = cli('failed', 'vector-store');
+  const once = cli('record', 'vector-store');
   expect(once.times_blocked).toBe(1);
   expect(once.note).toBeUndefined(); // one failure is bad luck
 
-  cli('failed', 'vector-store');
-  const third = cli('failed', 'vector-store');
+  cli('record', 'vector-store');
+  const third = cli('record', 'vector-store');
   expect(third.times_blocked).toBe(3);
   expect(third.note).toContain('structural');
 
-  const report = cli('deficits');
+  const report = cli('status').deficits;
   expect(report[0].id).toBe('combo:vector-store');
   expect(report[0].verdict).toContain('structural');
   expect(report[0].still_missing).toBe(true);
@@ -1095,14 +1095,14 @@ test('a repeated deficit is distinguished from incidental friction', () => {
 
 test('a deficit records why it was blocked, and the cause recurs separately', () => {
   seed(LOCAL_ONLY).close();
-  const r = cli('failed', 'vector-store', 'tool', 'semantic search over notes');
+  const r = cli('record', 'vector-store', 'tool', 'semantic search over notes');
   expect(r.classification).toBe('tool');
   expect(r.times_as_this_class).toBe(1);
 
   // The same capability blocked for a different reason is a different signal:
   // the capability recurs, but not as one structural cause.
-  cli('failed', 'vector-store', 'permission');
-  const report = cli('deficits');
+  cli('record', 'vector-store', 'permission');
+  const report = cli('status').deficits;
   expect(report[0].id).toBe('combo:vector-store');
   expect(report[0].causes).toContain('tool ×1');
   expect(report[0].causes).toContain('permission ×1');
@@ -1112,7 +1112,7 @@ test('an unknown classification is treated as a note, not a class', () => {
   // `tt failed <cap> "what you were doing"` predates classification; the second
   // positional that is not a known class must remain the note.
   seed(LOCAL_ONLY).close();
-  const r = cli('failed', 'vector-store', 'just keep hitting the same wall');
+  const r = cli('record', 'vector-store', 'just keep hitting the same wall');
   expect(r.classification).toBe('unclassified');
   expect(r.times_blocked).toBe(1);
 });
@@ -1120,9 +1120,9 @@ test('an unknown classification is treated as a note, not a class', () => {
 test('a deficit against an unknown capability is refused, not silently kept', () => {
   // Otherwise deficits accumulate against ids nothing can act on.
   seed(LOCAL_ONLY).close();
-  const r = cli('failed', 'not-a-capability');
+  const r = cli('record', 'not-a-capability');
   expect(r.error).toContain('No capability');
-  expect(cli('deficits').note).toContain('Nothing recorded');
+  expect(cli('status').deficits.note).toContain('Nothing recorded');
 });
 
 // ── Substitutability ────────────────────────────────────────────────────────
@@ -1164,7 +1164,7 @@ test('losing the only provider is critical', () => {
 
 test('single points of failure are distinguished from high-leverage capabilities', () => {
   seed(TWO_PROVIDERS).close();
-  const spof = cli('spof');
+  const spof = cli('status').spofs;
   const ids = Array.isArray(spof) ? spof.map((s: any) => s.id) : [];
   // Version Control has two providers, so it is not a single point of failure
   // however much depends on it — which is what bottlenecks measures instead.
@@ -1178,14 +1178,14 @@ test('simulation reports what comes with an acquisition, not just the acquisitio
   // A capability already provided but held back by a prerequisite should
   // appear once that prerequisite is satisfied — that cascade is the reason
   // to read a preview before approving.
-  const sim = cli('simulate', 'embeddings');
+  const sim = cli('goal', 'embeddings', '--simulate');
   expect(sim.frontier_after).toBeGreaterThan(sim.frontier_before);
   expect(sim.acquired.map((a: any) => a.id)).toContain('combo:embeddings');
 });
 
 test('simulation does not conjure capabilities nothing provides', () => {
   seed(LOCAL_ONLY).close();
-  const sim = cli('simulate', 'embeddings');
+  const sim = cli('goal', 'embeddings', '--simulate');
   // Satisfying prerequisites is not enough; something must supply it.
   const unblockedIds = sim.unblocked.map((u: any) => u.id);
   for (const id of unblockedIds) {
@@ -1232,8 +1232,8 @@ test('plan returns the same shape whether or not there is work to do', () => {
   // A caller should not have to special-case the already-reached branch; a
   // guard on `steps === 0` failed silently when the field was simply absent.
   seed(LOCAL_ONLY).close();
-  const done = cli('plan', 'shell-execution');
-  const todo = cli('plan', 'offline-capable');
+  const done = cli('goal', 'shell-execution');
+  const todo = cli('goal', 'offline-capable');
   for (const key of ['goal', 'reachable', 'steps', 'order']) {
     expect(done).toHaveProperty(key);
     expect(todo).toHaveProperty(key);
@@ -1247,14 +1247,14 @@ test('a plan includes the goal itself', () => {
   // Excluding it meant a capability whose prerequisites were already met
   // produced an empty plan — nothing to do, for the case where the one thing
   // to do is acquire it.
-  const plan = cli('plan', 'web-research');
+  const plan = cli('goal', 'web-research');
   expect(plan.steps).toBe(1);
   expect(plan.order[0].id).toBe('combo:web-research');
 });
 
 test('the goal comes last, after what it depends on', () => {
   seed(LOCAL_ONLY).close();
-  const plan = cli('plan', 'offline-capable');
+  const plan = cli('goal', 'offline-capable');
   expect(plan.order[plan.order.length - 1].id).toBe('combo:offline-capable');
 });
 
@@ -1293,7 +1293,7 @@ test('approval is recorded as evidence, not a flag', () => {
 
   // Recorded against the person, so the ledger can later answer who
   // authorised a given expansion of the frontier.
-  const evidence = cli('evidence', 'human:kanav');
+  const evidence = cli('verify', 'human:kanav', '--history');
   expect(evidence.length).toBe(0); // evidence() filters to verification actions
   const stored = cli('proposal', p.proposal);
   expect(stored.status).toBe('approved');
@@ -1436,7 +1436,7 @@ test('paths compares alternatives by risk and lock-in', () => {
   seed(APPLIABLE).close();
   // Web Research's only declared acquisition is a config change, so the path
   // to it is reversible — §10 could undo it — and local with no bill.
-  const paths = cli('paths', 'web-research');
+  const paths = cli('goal', 'web-research', '--paths');
   expect(paths.goal).toBe('Web Research');
   expect(paths.paths).toBeGreaterThan(0);
   const p = paths.options[0];
@@ -1447,6 +1447,6 @@ test('paths compares alternatives by risk and lock-in', () => {
 
 test('paths does not claim an already-reached capability needs closing', () => {
   seed(APPLIABLE).close();
-  const paths = cli('paths', 'shell-execution');
+  const paths = cli('goal', 'shell-execution', '--paths');
   expect(paths.note).toContain('already reached');
 });

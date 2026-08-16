@@ -1,6 +1,5 @@
 import { test, expect } from 'bun:test';
 import { importConfig } from './configImporter';
-import { computeLayout } from './layoutEngine';
 
 // Every item needs meta.domain — without it CivTree drops the item into the
 // 'meta' column and the whole era tree collapses to a single stripe.
@@ -35,21 +34,4 @@ test('disabled MCP servers import as specified, not built', () => {
   const { items, connections } = importConfig({ mcp: { off: { enabled: false } } });
   expect(items.find(i => i.id === 'mcp:off')?.status).toBe('specified');
   expect(connections.some(c => c.to === 'mcp:off')).toBe(false);
-});
-
-test('computeLayout returns finite positions in every mode', () => {
-  const { items, connections } = importConfig({
-    mcp: { a: {}, b: {} },
-    agent: { c: { description: 'x' } },
-  });
-
-  for (const mode of ['constellation', 'orbital', 'flat', 'civ'] as const) {
-    const laid = computeLayout(items, connections, 10, mode);
-    expect(laid).toHaveLength(items.length);
-    for (const item of laid) {
-      expect(Number.isFinite(item.position.x)).toBe(true);
-      expect(Number.isFinite(item.position.y)).toBe(true);
-      expect(Number.isFinite(item.position.z)).toBe(true);
-    }
-  }
 });

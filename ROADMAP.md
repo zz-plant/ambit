@@ -434,10 +434,40 @@ do real work → discover friction → identify the capability deficit
      └──────── more becomes possible ◄── record it in the graph
 ```
 
+## The economic half (unbuilt)
+
+The loop above is the graph half, and it is built. The loop that pays for it is not:
+
+```
+real work happens → Ambit observes where time/money/humans were consumed
+→ recurring bottleneck identified → durable fixes compared → economic return
+estimated → human approves a bounded change → system implements it →
+capability verified → Ambit measures whether the predicted savings happened
+```
+
+Everything that loop needs and does not yet have: a work ledger (runs, events,
+human interventions, resource consumption), a cost model on actors and
+capabilities, an opportunity engine ranking investments by observed value, an
+approval broker, and before/after ROI. The product question is not *how
+advanced is my agent stack* but *where is my system wasting scarce resources,
+and which capability investment has the highest return*.
+
+## Sunset
+
+Anything that told you something interesting about the graph without changing
+what you should do is not a first-class feature. The 3D visualiser, `trend`,
+`recs`, `fork`, `insight`, `profile`, `prune`, the setup/token `budget`, the
+consultant/snapshot/trending stores, and `maturity_score` as a headline are
+gone or demoted. The CLI is a handful of operating verbs — `status`, `graph`,
+`goal`, `attention`, `notify`, `impact`, `verify`, `authority`, `history`,
+`propose`, `approve`, `apply`, `rollback`, `record` — with everything else a
+view inside them. What stays is what establishes truth, measures dependence,
+supports decisions, and governs change.
+
 ## Honest status
 
 Sections 1, 5, 6, 7, 9 and 11's state stream are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder.
 
-The through-line in what remains is enforcement and scope. Ambit can now say what may be done, by whom, to what, and on what evidence. It still cannot say *on which repository, in which workspace, within what budget*, and it does not stop anything.
+The through-line in what remains is enforcement and scope. Ambit can now say what may be done, by whom, to what, and on what evidence. It still cannot say *on which repository, in which workspace, within what budget*, and it does not stop anything. And it still cannot say what the work it observes costs — the economic half above is the next program.
 
 The gap between this document and the README is deliberate. The README describes only what runs.

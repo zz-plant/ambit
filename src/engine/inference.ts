@@ -5,51 +5,6 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { ENGINE_DIR } from "./paths.ts";
 
-// ─── Prune Recommendations ────────────────────────────────────────────────────
-
-function pruneRecommendations(db) {
-  const caps = db.prepare("SELECT id, name, domain, maturity_score, parallel_slots, updated_at, state FROM capabilities WHERE state IN ('unlocked','active') ORDER BY maturity_score ASC").all();
-  const results = [];
-  for (const cap of caps) {
-    if (cap.updated_at) {
-      const daysSince = (Date.now() - new Date(cap.updated_at + 'Z').getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSince < 30) continue;
-    } else continue;
-    const slotCost = cap.parallel_slots || 1;
-    const deps = db.prepare("SELECT from_capability FROM dependencies WHERE to_capability = ?").all(cap.id);
-    const dependents = db.prepare("SELECT to_capability FROM dependencies WHERE from_capability = ?").all(cap.id);
-    const daysSince = Math.round((Date.now() - new Date(cap.updated_at + 'Z').getTime()) / (1000 * 60 * 60 * 24));
-    results.push({ id: cap.id, name: cap.name, domain: cap.domain, days_since_config_change: daysSince, token_cost: slotCost, dependent_count: dependents.length, prereq_count: deps.length, recommendation: `${daysSince} days since last config change. ${dependents.length} capabilities depend on it. ${deps.length} prerequisites still active.` });
-  }
-  return results.sort((a, b) => b.days_since_config_change - a.days_since_config_change).slice(0, 15);
-}
-
-// ─── Fork Comparison (best combo to unlock) ──────────────────────────────────
-
-function forkComparison(db) {
-  const locked = db.prepare("SELECT id, name, domain, unlock_cost_setup, unlock_cost_tokens FROM capabilities WHERE state = 'locked'").all();
-  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
-  const caps = db.prepare("SELECT id, name, maturity_score, state, lifecycle FROM capabilities").all();
-  const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
-  const comboGroups = new Map();
-  for (const d of deps) {
-    if (!comboGroups.has(d.to_capability)) comboGroups.set(d.to_capability, []);
-    comboGroups.get(d.to_capability).push(d);
-  }
-  const results = [];
-  for (const [id, prereqs] of comboGroups) {
-    const combo = capMap.get(id); if (!combo) continue;
-    const hardMet = prereqs.filter(p => p.is_hard_requisite).every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle); });
-    if (!hardMet) continue;
-    const avgMaturity = prereqs.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / prereqs.length;
-    const regret = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning WHERE capability_id = ? AND action = 'regretted'").get(id) || {}).cnt || 0;
-    const cascade = db.prepare("SELECT COUNT(*) as cnt FROM dependencies WHERE from_capability = ?").get(id).cnt || 0;
-    const efficiency = Math.round((cascade + (1 - regret * 0.2)) * 100 / (combo.unlock_cost_setup || 1));
-    results.push({ name: combo.name, id, avg_maturity: Math.round(avgMaturity * 100), regret_count: regret, cascade_unlocks: cascade, efficiency, recommendation: regret > 0 ? `Previously regretted (${regret}x). ${cascade} cascade unlocks if committed.` : `${cascade} cascade unlocks with ${Math.round(avgMaturity * 100)}% avg prerequisite maturity.` });
-  }
-  return results.sort((a, b) => b.efficiency - a.efficiency);
-}
-
 // ─── Near-Miss Combos (1-2 prerequisites away) ───────────────────────────────
 
 function nearMissCombos(db) {
@@ -95,25 +50,6 @@ function nearMissCombos(db) {
   return results.sort((a, b) => b.met_maturity - a.met_maturity);
 }
 
-// ─── Insights (top actionable items) ──────────────────────────────────────────
-
-function insights(db) {
-  const items = [];
-  const nearMiss = nearMissCombos(db);
-  if (nearMiss.length > 0) {
-    items.push({ type: 'near_miss', count: nearMiss.length, detail: `${nearMiss[0].name} — ${nearMiss[0].missing} dependencies away (${nearMiss[0].met_maturity}% existing maturity). ${nearMiss[0].investment}`, near: nearMiss.slice(0, 3) });
-  }
-  const decay = computeDecay(db).filter(d => d.decayed).slice(0, 3);
-  if (decay.length > 0) {
-    items.push({ type: 'decay', count: decay.length, detail: `${decay[0].name} — ${decay[0].days_since_config_change} days since last change`, decaying: decay });
-  }
-  const bottlenecks = findBottlenecks(db).slice(0, 3);
-  if (bottlenecks.length > 0) {
-    items.push({ type: 'bottleneck', count: bottlenecks.length, detail: `${bottlenecks[0].name} unlocks ${bottlenecks[0].unlocks_count} downstream`, top: bottlenecks });
-  }
-  return items;
-}
-
 function computeDecay(db) {
   const caps = db.prepare("SELECT id, name, domain, maturity_score, updated_at FROM capabilities WHERE state IN ('unlocked','active')").all();
   const results = [];
@@ -151,33 +87,6 @@ function discoverCombos(db) {
   }
   results.sort((a, b) => b.confidence - a.confidence);
   return results;
-}
-
-// ─── Graph Profile (evolution over time) ──────────────────────────────────────
-
-function graphProfile(db) {
-  const now = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities").get();
-  const connections = db.prepare("SELECT COUNT(*) as cnt FROM dependencies").get().cnt || 0;
-  const combos = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE category = 'combo' AND state IN ('unlocked','active')").get().cnt || 0;
-  const density = now.total > 0 ? Math.round((connections / now.total) * 100) / 100 : 0;
-  const built = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning WHERE action = 'built'").get() || {}).cnt || 0;
-  const removed = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning WHERE action = 'removed'").get() || {}).cnt || 0;
-  const totalEvents = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning").get() || {}).cnt || 0;
-
-  const domainDensity = db.prepare(`
-    SELECT c.domain, COUNT(*) as caps, 
-    (SELECT COUNT(*) FROM dependencies d JOIN capabilities c2 ON c2.id = d.from_capability WHERE c2.domain = c.domain) as conns
-    FROM capabilities c WHERE c.state IN ('unlocked','active') GROUP BY c.domain
-  `).all();
-
-  return {
-    capabilities: { current: now.unlocked, total: now.total },
-    connections: connections,
-    combos: combos,
-    density: density,
-    build_history: { total_built: built, total_removed: removed, net: built - removed, total_events: totalEvents },
-    domains: domainDensity.map(d => ({ domain: d.domain, caps: d.caps, connections: d.conns, density: d.caps > 0 ? Math.round((d.conns / d.caps) * 100) / 100 : 0 })),
-  };
 }
 
 // ─── Session Diff ─────────────────────────────────────────────────────────────
@@ -364,41 +273,6 @@ function singlePointsOfFailure(db: Db) {
 }
 
 
-// ─── Budget Optimization ─────────────────────────────────────────────────────
-
-function optimizeBudget(db, setupBudget, tokenBudget) {
-  const caps = db.prepare("SELECT id, name, unlock_cost_setup, unlock_cost_tokens FROM capabilities WHERE state = 'locked'").all();
-  const deps = db.prepare("SELECT from_capability, to_capability FROM dependencies").all();
-  const downstream = new Map();
-  for (const d of deps) downstream.set(d.from_capability, (downstream.get(d.from_capability) || 0) + 1);
-  const candidates = caps.map(c => ({ ...c, unlocks: downstream.get(c.id) || 0, efficiency: ((downstream.get(c.id) || 1) / (c.unlock_cost_setup + c.unlock_cost_tokens * 0.01 + 1)) }));
-  candidates.sort((a, b) => b.efficiency - a.efficiency);
-  let sRem = setupBudget, tRem = tokenBudget;
-  const selections = [];
-  for (const c of candidates) {
-    if (c.unlock_cost_setup <= sRem && c.unlock_cost_tokens <= tRem) {
-      selections.push({ name: c.name, cost_setup: c.unlock_cost_setup, cost_tokens: c.unlock_cost_tokens, unlocks: c.unlocks });
-      sRem -= c.unlock_cost_setup; tRem -= c.unlock_cost_tokens;
-    }
-  }
-  return { selections, total_setup: setupBudget - sRem, total_tokens: tokenBudget - tRem, total_unlocks: selections.reduce((s, c) => s + c.unlocks, 0) };
-}
-
-// ─── Trend Projection ────────────────────────────────────────────────────────
-
-function projectTrends(db, days) {
-  days = days || 30;
-  const health = domainHealth(db);
-  const rate = 0.02 * days;
-  return health.map(h => {
-    const riskCaps = db.prepare("SELECT c.name, c.maturity_score FROM session_learning sl JOIN capabilities c ON c.id = sl.capability_id WHERE c.domain = ? AND sl.action = 'used' AND sl.timestamp < datetime('now', ?) GROUP BY c.id HAVING MAX(sl.timestamp) < datetime('now', ?) ORDER BY c.maturity_score ASC LIMIT 5").all(h.domain, `-${days} days`, `-${days} days`);
-    const riskList = riskCaps.map(r => ({ name: r.name, current: Math.round(r.maturity_score * 100) / 100, projected: Math.round(Math.max(0.1, r.maturity_score - rate) * 100) / 100 }));
-    const projectedDecay = Math.min(1, (h.decay_risk || 0) + riskCaps.length * 0.1);
-    const projectedHealth = Math.max(0, h.health - (projectedDecay - (h.decay_risk || 0)) * 0.3);
-    return { domain: h.domain, current_health: h.health, projected_health: Math.round(projectedHealth * 100) / 100, delta: Math.round((projectedHealth - h.health) * 100) / 100, risk_caps: riskList };
-  });
-}
-
 function exportGraph(db) {
   const caps = db.prepare("SELECT * FROM capabilities").all();
   const deps = db.prepare("SELECT * FROM dependencies").all();
@@ -579,8 +453,8 @@ function affordanceDomains(db: Db) {
 }
 
 export {
-  pruneRecommendations, forkComparison, nearMissCombos, insights, computeDecay,
-  discoverCombos, graphProfile, sessionDiff, domainHealth, findBottlenecks,
-  providersOf, analyzeImpact, singlePointsOfFailure, optimizeBudget, projectTrends,
+  nearMissCombos, computeDecay,
+  discoverCombos, sessionDiff, domainHealth, findBottlenecks,
+  providersOf, analyzeImpact, singlePointsOfFailure,
   exportGraph, affordanceDomains, surfaceFor,
 };

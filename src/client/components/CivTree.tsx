@@ -28,7 +28,6 @@ const costOf = (item: Item): string => {
   if (!s) return '';
   return s >= 3600 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 60)}m`;
 };
-const maturityOf = (item: Item): number => Number(item.meta?.maturity) || 0;
 
 const NODE_R = 28, COL_W = 170, ROW_H = 105, START_X = 90, START_Y = 70;
 
@@ -179,8 +178,6 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 const next = isNext(item);
                 const reached = item.status === 'built';
                 const baseOpacity = dimmed ? 0.15 : reached ? 1 : next ? 0.92 : 0.3;
-                const mat = maturityOf(item);
-                const ringCirc = 2 * Math.PI * (NODE_R + 5);
                 const sc = inChain && !selected ? '#d4a017' : selected ? '#d4a017' : color;
                 const sw = inChain ? 3 : selected ? 3 : 1.5;
                 const sym = item.type === 'framework' ? '★' : item.type === 'mcp-server' ? '◈' : item.type === 'agent' ? '◆' : item.type === 'skill' ? '◇' : '●';
@@ -210,14 +207,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     
                     {/* Outer glow when selected */}
                     {selected && <circle r={NODE_R + 10} fill="none" stroke="#d4a017" strokeWidth={4} opacity={0.3}/>}
-                    
-                    {/* Maturity ring */}
-                    {mat > 0 && (
-                      <circle r={NODE_R + 5} fill="none" stroke={selected ? '#d4a017' : '#b8860b'}
-                        strokeWidth={3} strokeLinecap="round" transform="rotate(-90)"
-                        strokeDasharray={`${ringCirc * mat} ${ringCirc * (1 - mat)}`} opacity={0.5}/>
-                    )}
-                    
+
                     {/* Researchable now: dashed halo plus what it costs to take */}
                     {next && !dimmed && (
                       <>
