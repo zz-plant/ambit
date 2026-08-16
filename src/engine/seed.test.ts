@@ -1884,3 +1884,52 @@ test('roi on an unapplied proposal says so', () => {
   const roi = cli('roi', p.proposal);
   expect(roi.error).toContain('apply');
 });
+
+// ── Federation (WP-10) ───────────────────────────────────────────────────────
+
+test('a federation export carries aggregates and never credentials', () => {
+  seed(WITH_PREFS).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r = beginRun(db, { goal: 'move data' });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  (db as any).close();
+
+  const summary = JSON.parse(execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
+    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), AMBIT_APPROVAL_KEY: 'test-approval-key' },
+    encoding: 'utf8',
+  }));
+  expect(summary.schema_version).toBe(1);
+  expect(summary.capabilities.length).toBeGreaterThan(0);
+  expect(summary.capabilities.some((c: any) => c.reached)).toBe(true);
+  expect(summary.burden.some((b: any) => b.capability_id === 'combo:data-access')).toBe(true);
+  // Aggregates only: no config paths, no commands, no notes, no session text.
+  // (The word "configured" legitimately appears as a lifecycle state.)
+  const text = JSON.stringify(summary);
+  expect(text).not.toMatch(/opencode\.json|\"command\"|\"notes\"|session_learning|api[_-]?key|token/i);
+  // Signed when a key is present.
+  expect(summary.signed).toBe(true);
+});
+
+test('a federation import stores a receipt and merges nothing', () => {
+  seed(WITH_PREFS).close();
+  const before = (new Database(join(dir, 'graph.db')).prepare("SELECT COUNT(*) n FROM capabilities").get() as any).n;
+
+  // Export to a file, then import that file back into the same graph.
+  const summary = JSON.parse(execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
+    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), AMBIT_APPROVAL_KEY: 'test-approval-key' },
+    encoding: 'utf8',
+  }));
+  const path = join(dir, 'summary.json');
+  writeFileSync(path, JSON.stringify(summary));
+
+  const receipt = cli('federation', 'import', path);
+  expect(receipt.capabilities).toBeGreaterThan(0);
+  expect(receipt.note).toContain('receipt');
+
+  const db = new Database(join(dir, 'graph.db'));
+  const rowsIn = db.prepare("SELECT COUNT(*) n FROM federation_imports").get() as any;
+  expect(rowsIn.n).toBe(1);
+  // Nothing leaked into the graph: capability count unchanged.
+  expect((db.prepare("SELECT COUNT(*) n FROM capabilities").get() as any).n).toBe(before);
+  db.close();
+});

@@ -18,6 +18,7 @@ import { workReport, usageReport } from "./telemetry.ts";
 import { economicsReport } from "./economics.ts";
 import { opportunitiesFor, opportunityFor } from "./opportunities.ts";
 import { roiFor } from "./roi.ts";
+import { exportSummary, importSummary } from "./federation.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -97,6 +98,7 @@ const HELP = `ambit - what your system can do, what it costs, what to change
                     investments — observed burden, priced, compared
   opportunity <id>  one ranked case in full
   roi <proposal-id>   what an applied proposal actually changed — before/after
+  federation export|import   the signed summary a portfolio layer reads
   impact <id>       what actually breaks if a capability goes away
   verify [cap] [--history]   run the declared check, or show past verification
   authority [cap] [scope <target>]   what may run unattended, what each action
@@ -269,6 +271,20 @@ async function main() {
     case "roi":
       emit(roiFor(db, arg));
       break;
+    case "federation": {
+      const verb = arg;
+      if (verb === "export") {
+        const summary = exportSummary(db);
+        console.log(JSON.stringify(summary, null, 2));
+        break;
+      }
+      if (verb === "import") {
+        emit(importSummary(db, positional[1]));
+        break;
+      }
+      emit({ error: 'Usage: ambit federation export [path] | ambit federation import <path>' });
+      break;
+    }
     case "impact":
       emit(analyzeImpact(db, arg));
       break;

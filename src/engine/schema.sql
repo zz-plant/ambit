@@ -318,3 +318,16 @@ CREATE TABLE IF NOT EXISTS budgets (
     spent_cents REAL NOT NULL DEFAULT 0,
     UNIQUE(capability_id, action, scope)
 );
+
+-- Signed summaries received from another environment's Ambit. A portfolio
+-- layer reads these; it does not merge them into this graph. The row is the
+-- receipt, so an import is auditable and re-imports are idempotent.
+CREATE TABLE IF NOT EXISTS federation_imports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    environment TEXT NOT NULL,
+    received_at TEXT NOT NULL DEFAULT (datetime('now')),
+    schema_version INTEGER NOT NULL,
+    signed INTEGER NOT NULL DEFAULT 0,
+    summary TEXT NOT NULL,
+    UNIQUE(environment, received_at)
+);
