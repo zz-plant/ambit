@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { resolveDbPath } from './src/shared/db-path.ts';
 import { migrate } from './src/engine/migrate.ts';
+import { beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome } from './src/engine/telemetry.ts';
 
 const CONFIG_PATH = Bun.env.HOME + '/.config/opencode/opencode.json';
 const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
@@ -232,6 +233,56 @@ async function buildInfrastructureScan(): Promise<{
  * MCP server — an arbitrary command OpenCode later runs — that was a path from
  * "visit a page" to "code runs on this machine".
  */
+/**
+ * SSE subscribers of /api/events. The graph is polled; work is pushed. Every
+ * /api/telemetry observation is broadcast to the open connections so the AG-UI
+ * stream narrates real work as it happens, not only graph changes.
+ */
+const eventClients = new Set<ReadableStreamDefaultController>();
+const eventEncoder = new TextEncoder();
+function broadcast(payload: Record<string, unknown>): void {
+  const frame = eventEncoder.encode(`data: ${JSON.stringify({ ...payload, timestamp: Date.now() })}\n\n`);
+  for (const controller of [...eventClients]) {
+    try {
+      controller.enqueue(frame);
+    } catch {
+      eventClients.delete(controller);
+    }
+  }
+}
+
+/**
+ * Records a work observation from the /api/telemetry payload.
+ *
+ * The body is structured around the ledger's verbs so an adapter says what it
+ * means rather than fighting a foreign schema: { run: {...} } begins a run,
+ * { end: {...} } closes it, { event | use | intervention | resource | outcome }
+ * each record one row. Everything is written to the graph database, which the
+ * server opens like every other reader, and which the telemetry recorder's
+ * driver-agnostic surface lets this Bun process write as easily as the Node
+ * engine does.
+ */
+function ingestTelemetry(graph: Database, body: any): Record<string, unknown> {
+  const db = graph as unknown as Parameters<typeof beginRun>[0];
+  if (body.run) return beginRun(db, body.run);
+  if (body.end) return endRun(db, body.end.runId, body.end.outcome, body.end.outcomeValueCents);
+  if (body.event) return addEvent(db, body.event.runId, body.event);
+  if (body.use) return recordUse(db, body.use.runId, body.use.capabilityId, body.use);
+  if (body.intervention) {
+    const i = body.intervention;
+    return recordIntervention(db, i.runId, i.actorId, i);
+  }
+  if (body.resource) {
+    const r = body.resource;
+    return recordResource(db, r.runId, r.resourceId, r.kind, r);
+  }
+  if (body.outcome) {
+    const o = body.outcome;
+    return recordOutcome(db, o.runId, o.achieved, o);
+  }
+  return { error: 'Nothing to record. Send one of: run, end, event, use, intervention, resource, outcome.' };
+}
+
 function isAllowedOrigin(origin: string): boolean {
   if (!origin) return true; // same-origin and non-browser clients send no Origin
   try {
@@ -386,9 +437,12 @@ const server = Bun.serve({
     if (url.pathname === '/api/events' && req.method === 'GET') {
       const encoder = new TextEncoder();
       let timer: ReturnType<typeof setInterval> | undefined;
+      let ctrl: ReadableStreamDefaultController | undefined;
 
       const stream = new ReadableStream({
         start(controller) {
+          ctrl = controller as ReadableStreamDefaultController;
+          eventClients.add(ctrl);
           const send = (type: string, payload: Record<string, unknown>) => {
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ type, timestamp: Date.now(), ...payload })}\n\n`)
@@ -454,6 +508,7 @@ const server = Bun.serve({
           }, 2000);
         },
         cancel() {
+          if (ctrl) eventClients.delete(ctrl);
           if (timer) clearInterval(timer);
         },
       });
@@ -466,6 +521,33 @@ const server = Bun.serve({
           Connection: 'keep-alive',
         },
       });
+    }
+
+    // POST /api/telemetry — record a work observation from a runtime adapter or
+    // an AG-UI ingestion path. Loopback and origin-allowlisted like everything
+    // else; the payload is the ledger's own verbs (run, end, event, use,
+    // intervention, resource, outcome), never a command. The observation is
+    // written to the graph database and broadcast to open /api/events
+    // connections so the stream narrates work as it happens.
+    if (url.pathname === '/api/telemetry' && req.method === 'POST') {
+      let body: any;
+      try {
+        body = await req.json();
+      } catch {
+        return Response.json({ error: 'Invalid JSON' }, { status: 400, headers });
+      }
+      if (!body || typeof body !== 'object') {
+        return Response.json({ error: 'Invalid payload' }, { status: 400, headers });
+      }
+      const graph = new Database(GRAPH_DB_PATH, { create: true });
+      try {
+        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        const result = ingestTelemetry(graph, body);
+        broadcast({ type: 'WorkEvent', ...body });
+        return Response.json(result, { headers });
+      } finally {
+        graph.close();
+      }
     }
 
     // GET /api/tech-tree — the engine's capability graph, including the curated
