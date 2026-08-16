@@ -21,7 +21,7 @@ export {
   analyzeImpact, nearMissCombos, singlePointsOfFailure,
   affordanceDomains, surfaceFor,
 } from "./inference.ts";
-export { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport } from "./assurance.ts";
+export { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport, canExecute, recordSpend } from "./assurance.ts";
 export { ledgerSince, ledgerHistory } from "./ledger.ts";
 export { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 export { goalFor, pathsFor } from "./goals.ts";

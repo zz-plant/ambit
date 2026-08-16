@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from "fs";
 import { CONFIG_DEFAULT } from "./paths.ts";
 import { getDb, type Db } from "./db.ts";
 import { runVerification } from "./assurance.ts";
+import { canExecute } from "./assurance.ts";
 import { seedFromConfig } from "./discovery.ts";
 import { mintApproval, verifyApproval } from "./approval.ts";
 
@@ -136,6 +137,7 @@ function applyProposal(db: Db, proposalId?: string) {
   }
 
   const steps = JSON.parse(row.steps);
+
   const noInverse = steps.filter((s: any) => !s.inverse).map((s: any) => s.name);
   if (noInverse.length) {
     return { error: `Refused. No inverse for: ${noInverse.join(', ')}. Nothing runs that cannot be undone.` };
@@ -143,6 +145,16 @@ function applyProposal(db: Db, proposalId?: string) {
   const noPatch = steps.filter((s: any) => !s.config_patch).map((s: any) => s.name);
   if (noPatch.length) {
     return { error: `Refused. These are not configuration changes: ${noPatch.join(', ')}. Apply only edits configuration.` };
+  }
+
+  // Authority, enforced: every step must be permitted for its capability, or
+  // the apply is refused even with a valid approval. CONFIRM is satisfied by
+  // the approval; DENY is a hard no.
+  for (const step of steps) {
+    const decision = canExecute(db, { actor: row.approved_by, capability: step.id, action: 'execute' });
+    if (decision.decision === 'DENY') {
+      return { error: `Refused. ${step.name} is not permitted: ${decision.reason}.` };
+    }
   }
 
   const configPath = CONFIG_DEFAULT;

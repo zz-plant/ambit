@@ -697,6 +697,24 @@ function seedEconomics(db: Db, config: any): number {
     count++;
   }
 
+  // Budgets: what a granted action may cost, per period. Dollars in, cents out.
+  const budget = db.prepare(
+    "INSERT OR REPLACE INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES (?, ?, ?, ?, ?, 0)"
+  );
+  for (const [id, actions] of Object.entries<any>(config.budgets || {})) {
+    for (const [action, spec] of Object.entries<any>(actions)) {
+      if (typeof spec !== 'object' || spec === null) continue;
+      budget.run(
+        id,
+        action,
+        spec.scope || '',
+        spec.budget_cents != null ? spec.budget_cents : (spec.budget_dollars != null ? spec.budget_dollars * 100 : 0),
+        spec.period || 'month'
+      );
+      count++;
+    }
+  }
+
   return count;
 }
 

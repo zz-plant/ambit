@@ -302,3 +302,19 @@ CREATE TABLE IF NOT EXISTS goals (
     success_value_cents REAL,
     failure_cost_cents REAL
 );
+
+-- How much a granted action may cost. The authority table says what may be
+-- done; this says within what budget, so canExecute can refuse a spend that
+-- would exceed it rather than merely reporting permission.
+--
+--   "budgets": { "combo:shell-execution": { "execute": { "budget_cents": 50000, "period": "month" } } }
+CREATE TABLE IF NOT EXISTS budgets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    capability_id TEXT NOT NULL,
+    action TEXT NOT NULL DEFAULT 'execute',
+    scope TEXT NOT NULL DEFAULT '',
+    budget_cents REAL NOT NULL,
+    period TEXT NOT NULL DEFAULT 'month',
+    spent_cents REAL NOT NULL DEFAULT 0,
+    UNIQUE(capability_id, action, scope)
+);
