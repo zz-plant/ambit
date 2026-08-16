@@ -35,6 +35,7 @@ export {
 } from "./economics.ts";
 export { opportunitiesFor, opportunityFor, economicCaseFor } from "./opportunities.ts";
 export { roiFor } from "./roi.ts";
+export { exportSummary, importSummary } from "./federation.ts";
 export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,

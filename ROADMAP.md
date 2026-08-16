@@ -434,23 +434,25 @@ do real work → discover friction → identify the capability deficit
      └──────── more becomes possible ◄── record it in the graph
 ```
 
-## The economic half (unbuilt)
+## The economic half
 
-The loop above is the graph half, and it is built. The loop that pays for it is not:
+The loop above is the graph half, and it is built. The loop that pays for it is now built too, first turn:
 
 ```
-real work happens → Ambit observes where time/money/humans were consumed
-→ recurring bottleneck identified → durable fixes compared → economic return
-estimated → human approves a bounded change → system implements it →
-capability verified → Ambit measures whether the predicted savings happened
+real work happens → the work ledger observes (runs, events, interventions,
+consumption) → attention prices the human burden → opportunities ranks the
+durable fixes → propose carries the observed case → the approval broker mints
+a signed, expiring artifact → apply enforces canExecute and verifies → roi
+measures before/after and writes the observation back
 ```
 
-Everything that loop needs and does not yet have: a work ledger (runs, events,
-human interventions, resource consumption), a cost model on actors and
-capabilities, an opportunity engine ranking investments by observed value, an
-approval broker, and before/after ROI. The product question is not *how
-advanced is my agent stack* but *where is my system wasting scarce resources,
-and which capability investment has the highest return*.
+What exists: the work ledger and its AG-UI ingestion, the attention report
+that never flags judgment, the economic model (dollars declare, cents store),
+the opportunity engine ranked by attention/cash/roi/reliability/frontier,
+economic proposals, the signed approval broker with browser approval, and
+realized ROI. What does not yet: the catalog supply side, the capital
+allocator (`opportunities --budget N`), and federation beyond a signed
+summary skeleton — those wait for real observed demand.
 
 ## Sunset
 
