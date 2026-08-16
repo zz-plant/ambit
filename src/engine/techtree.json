@@ -13,6 +13,7 @@
     {
       "id": "shell-execution",
       "name": "Shell Execution",
+      "goal": ["run commands", "execute", "terminal", "install things", "automate the shell"],
       "era": 1,
       "domain": "infra",
       "description": "The agent can run commands and read their output",
@@ -51,6 +52,7 @@
     {
       "id": "file-editing",
       "name": "File Editing",
+      "goal": ["edit files", "write code", "change a file", "read my code"],
       "era": 1,
       "domain": "meta",
       "description": "The agent can read and modify files directly",
@@ -114,6 +116,7 @@
     {
       "id": "version-control",
       "name": "Version Control",
+      "goal": ["git", "version control", "commit", "pull request", "branch"],
       "era": 1,
       "domain": "devops",
       "description": "Git operations, so agent work is reviewable and revertible",
@@ -158,6 +161,7 @@
     {
       "id": "hosted-inference",
       "name": "Hosted Inference",
+      "goal": ["use a hosted model", "api access", "claude api", "gpt", "cloud model"],
       "era": 2,
       "domain": "ai-ml",
       "description": "At least one hosted model provider configured",
@@ -176,6 +180,7 @@
     {
       "id": "local-runtime",
       "name": "Local Runtime",
+      "goal": ["run a local model", "ollama", "offline model", "private inference", "llama.cpp"],
       "era": 2,
       "domain": "ai-ml",
       "description": "A model server running on your own hardware — Ollama, llama.cpp, MLX, or LiteRT",
@@ -294,6 +299,7 @@
     {
       "id": "browser-automation",
       "name": "Browser Automation",
+      "goal": ["drive a browser", "test the ui", "click through", "automate a website", "scrape"],
       "era": 3,
       "domain": "frontend",
       "description": "The agent can drive a real browser — see rendered pages, click, and verify its own UI work",
@@ -339,6 +345,7 @@
     {
       "id": "web-research",
       "name": "Web Research",
+      "goal": ["search the web", "look something up", "research", "current information", "find out"],
       "era": 3,
       "domain": "meta",
       "description": "Live search and fetch, so the agent is not limited to its training cutoff",
@@ -406,6 +413,7 @@
     {
       "id": "secret-management",
       "name": "Secret Management",
+      "goal": ["store secrets", "credentials", "vault", "api keys", "don't hardcode"],
       "era": 3,
       "domain": "security",
       "description": "Credentials resolved from a vault or env references instead of literals in config",
@@ -444,6 +452,7 @@
     {
       "id": "data-access",
       "name": "Data Access",
+      "goal": ["query a database", "read data", "sql", "look up records", "analytics"],
       "era": 3,
       "domain": "backend",
       "description": "The agent can query real data rather than reasoning about schemas it cannot see",
@@ -515,6 +524,7 @@
     {
       "id": "embeddings",
       "name": "Embeddings",
+      "goal": ["embed text", "vectors", "semantic similarity"],
       "era": 4,
       "domain": "ai-ml",
       "description": "Text can be turned into vectors — the prerequisite for any retrieval",
@@ -552,6 +562,7 @@
     {
       "id": "vector-store",
       "name": "Vector Store",
+      "goal": ["search over notes", "vector database", "semantic index", "find similar"],
       "era": 4,
       "domain": "backend",
       "description": "Somewhere to keep and search those vectors",
@@ -599,6 +610,7 @@
     {
       "id": "retrieval",
       "name": "Retrieval",
+      "goal": ["semantic search", "rag", "retrieve context", "find relevant", "ask my notes"],
       "era": 4,
       "domain": "ai-ml",
       "description": "The agent pulls relevant context on demand instead of being handed everything up front",
@@ -635,6 +647,7 @@
     {
       "id": "persistent-memory",
       "name": "Persistent Memory",
+      "goal": ["remember between sessions", "memory", "recall", "don't forget"],
       "era": 4,
       "domain": "meta",
       "description": "Facts survive between sessions, so the agent stops relearning your setup every time",
@@ -708,6 +721,7 @@
     {
       "id": "subagents",
       "name": "Subagents",
+      "goal": ["delegate work", "parallel agents", "specialist agents", "hand off"],
       "era": 5,
       "domain": "meta",
       "description": "Named agents with their own prompts and models, delegated to for specific work",
@@ -725,6 +739,7 @@
     {
       "id": "skill-library",
       "name": "Skill Library",
+      "goal": ["procedures", "skills", "reusable playbooks", "teach the agent"],
       "era": 5,
       "domain": "meta",
       "description": "Reusable procedures the agent loads on demand, so expertise is not retyped per session",
@@ -770,6 +785,7 @@
     {
       "id": "scheduled-work",
       "name": "Scheduled Work",
+      "goal": ["unattended", "automate", "schedule", "hands-off", "run on a timer", "without me"],
       "era": 5,
       "domain": "devops",
       "description": "Agents that run on a schedule or a trigger, without you starting them",
@@ -830,6 +846,7 @@
     {
       "id": "notifications",
       "name": "Notifications",
+      "goal": ["notify me", "ping me", "alert me", "tell me when", "message me"],
       "era": 5,
       "domain": "infra",
       "description": "Long-running work can reach you when it finishes or needs a decision",
@@ -864,6 +881,7 @@
     {
       "id": "automated-tests",
       "name": "Automated Tests",
+      "goal": ["tests", "test suite", "regression", "verify my code", "ci checks"],
       "era": 6,
       "domain": "quality",
       "description": "A suite the agent can run to check its own work",
@@ -895,6 +913,7 @@
     {
       "id": "review-loop",
       "name": "Review Loop",
+      "goal": ["second opinion", "review my work", "catch mistakes", "critique"],
       "era": 6,
       "domain": "quality",
       "description": "A second agent checks the first one's output before you see it",
@@ -938,6 +957,7 @@
     {
       "id": "observability",
       "name": "Observability",
+      "goal": ["monitor", "diagnose", "see what is happening", "status of", "logs", "troubleshoot", "maintain", "keep running", "watch over"],
       "era": 6,
       "domain": "quality",
       "description": "Traces of what agents did, so failures are diagnosable after the fact",
@@ -978,6 +998,7 @@
     {
       "id": "continuous-delivery",
       "name": "Continuous Delivery",
+      "goal": ["deploy", "ship", "release", "publish", "ci"],
       "era": 6,
       "domain": "devops",
       "description": "Agent changes ship through the same gate as human ones",
@@ -1028,6 +1049,7 @@
     {
       "id": "offline-capable",
       "name": "Offline Capable",
+      "goal": ["offline", "air gap", "no network", "disconnected", "privacy", "local only"],
       "era": 7,
       "domain": "ai-ml",
       "description": "The full loop — inference, tools, retrieval — runs with the network off",
@@ -1083,6 +1105,7 @@
     {
       "id": "self-hosted-stack",
       "name": "Self-Hosted Stack",
+      "goal": ["homelab", "own hardware", "run it myself", "private server", "on my machines"],
       "era": 7,
       "domain": "infra",
       "description": "Your own hardware serving models and tools to your agents",

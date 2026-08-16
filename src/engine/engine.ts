@@ -24,6 +24,7 @@ export {
 export { runVerification, evidenceFor, authorityReport, actionsReport } from "./assurance.ts";
 export { ledgerSince, ledgerHistory } from "./ledger.ts";
 export { planFor, recordFailure, deficits, simulateFrontier, propose } from "./planning.ts";
+export { goalFor, pathsFor } from "./goals.ts";
 export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,

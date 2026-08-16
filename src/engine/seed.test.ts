@@ -1150,3 +1150,54 @@ test('every act is recorded against the person who authorised it', () => {
   expect(acts.map(a => a.action)).toEqual(['approved', 'applied']);
   expect(acts.every(a => a.capability_id === 'human:kanav')).toBe(true);
 });
+
+// ── Free-form goals (§5) ─────────────────────────────────────────────────────
+
+test('a free-form goal routes to the capabilities whose words cover it', () => {
+  seed(LOCAL_ONLY).close();
+  // The roadmap's example sentence. The vocabulary has to catch "homelab",
+  // "unattended" and "maintain" and rank by how much of the goal is covered.
+  const g = cli('goal', 'maintain the homelab unattended');
+  expect(g.error).toBeUndefined();
+  const ids = g.candidates.map((c: any) => c.id);
+  expect(ids).toContain('combo:self-hosted-stack');
+  expect(ids).toContain('combo:scheduled-work');
+  expect(ids).toContain('combo:observability');
+  // Each candidate carries its plan delta, so the shortlist is also a plan.
+  const selfHosted = g.candidates.find((c: any) => c.id === 'combo:self-hosted-stack');
+  expect(selfHosted.matched_phrases).toContain('homelab');
+  expect(selfHosted.steps).toBeDefined();
+});
+
+test('a goal that is already a capability plans directly', () => {
+  seed(LOCAL_ONLY).close();
+  const g = cli('goal', 'shell-execution');
+  expect(g.exact).toBe(true);
+  expect(g.reachable).toBe(true);
+});
+
+test('an unrecognised goal says so instead of inventing a plan', () => {
+  seed(LOCAL_ONLY).close();
+  const g = cli('goal', 'teleport myself to mars');
+  expect(g.candidates).toEqual([]);
+  expect(g.note).toContain('No capability');
+});
+
+test('paths compares alternatives by risk and lock-in', () => {
+  seed(APPLIABLE).close();
+  // Web Research's only declared acquisition is a config change, so the path
+  // to it is reversible — §10 could undo it — and local with no bill.
+  const paths = cli('paths', 'web-research');
+  expect(paths.goal).toBe('Web Research');
+  expect(paths.paths).toBeGreaterThan(0);
+  const p = paths.options[0];
+  expect(p.privacy).toBe('local');
+  expect(p.lock_in).toContain('reversible');
+  expect(p.risk).toBe('low');
+});
+
+test('paths does not claim an already-reached capability needs closing', () => {
+  seed(APPLIABLE).close();
+  const paths = cli('paths', 'shell-execution');
+  expect(paths.note).toContain('already reached');
+});

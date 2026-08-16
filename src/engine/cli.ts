@@ -13,6 +13,7 @@ import {
 import { runVerification, evidenceFor, authorityReport, actionsReport } from "./assurance.ts";
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
 import { planFor, recordFailure, deficits, simulateFrontier, propose } from "./planning.ts";
+import { goalFor, pathsFor } from "./goals.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -114,7 +115,9 @@ function main() {
     console.log("  combos            Auto-discovered combos");
     console.log("  diff              Session diff");
     console.log("  bottlenecks        High-leverage capabilities");
-    console.log("  impact <id>       Impact analysis for a capability");
+    console.log("  plan <cap>        Steps to a capability, in the order to close them");
+    console.log("  goal <sentence>   Route a free-form goal to the capabilities that cover it");
+    console.log("  paths <cap>       The alternative ways to reach a capability, with risk and lock-in");
     console.log("  authority         What may run unattended, and what may not");
     console.log("  actions [id]      The concrete actions a capability confers");
     console.log("  budget <s> <t>    Budget optimization");
@@ -155,6 +158,12 @@ function main() {
       break;
     case "plan":
       emit(planFor(db, arg));
+      break;
+    case "goal":
+      emit(goalFor(db, arg));
+      break;
+    case "paths":
+      emit(pathsFor(db, arg));
       break;
     case "authority":
       emit(authorityReport(db));
