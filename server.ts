@@ -7,7 +7,7 @@ import { migrate } from './src/engine/migrate.ts';
 import { beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome } from './src/engine/telemetry.ts';
 import { mintApproval } from './src/engine/approval.ts';
 
-const CONFIG_PATH = Bun.env.HOME + '/.config/opencode/opencode.json';
+const CONFIG_PATH = Bun.env.OPENCODE_CONFIG || Bun.env.HOME + '/.config/opencode/opencode.json';
 const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
 // The graph the engine builds. Its default lives beside the engine (and is what
 // bootstrap.sh writes). Resolved through the shared helper so the engine, the

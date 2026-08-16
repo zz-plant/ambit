@@ -429,6 +429,11 @@ real work happens → the ledger observes → attention prices the human burden
 → roi measures before/after and writes the observation back
 ```
 
+<div align="center">
+<img src="docs/assets/capability-graph-demo.gif" alt="The loop in motion: the capability tree at rest, a new capability becoming reachable, an approval arriving as a negotiation toast, and the graph settling with the change in place" width="900">
+<br><sub>The loop in motion — the tree at rest, a capability becoming reachable, an approval toast arriving, the graph settling.</sub>
+</div>
+
 - `ambit attention` prices the human half of the ledger and, critically, **classifies agency**: clerical, exception, physical and authority-as-repeated-gate are reducible — *the human is the duct* — while judgment and knowledge are keepers, never proposed for removal however often they recur.
 - `ambit economics` is the declared model: attention value per hour, purchase and recurring costs, goal values. Dollars declare, cents store. An undeclared actor's attention defaults to $250/hr and is reported as such.
 - `ambit opportunities` ranks the durable fixes — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence (high = observed five-plus times, low = deficits only). Rank by `--by=attention|cash|roi|reliability|frontier`, or allocate a budget: `--budget=N` returns the best combination of investments within $N. Each opportunity carries its acquisition options from the catalog, so it is a purchase decision, not a report.
