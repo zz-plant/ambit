@@ -33,6 +33,22 @@ Ambit makes that action space explicit.
 <br><sub>Filled = reached · outlined = next, with setup cost · faded = blocked by a missing prerequisite</sub>
 </div>
 
+## Try it — 30 seconds, nothing to install
+
+[**Open the live demo**](https://zz-plant.github.io/ambit/) and click **LOAD DEMO**. No install, no config, no agent environment — just a working capability graph to click around.
+
+If you want it against your own setup, the CLI needs **one thing: Node 22**. No dependencies, no build step:
+
+```bash
+git clone https://github.com/zz-plant/ambit.git
+cd ambit
+node src/engine/engine.ts seed      # read your agent config, build the graph
+node src/engine/engine.ts status    # health, degraded, spofs, deficits, pending
+node src/engine/engine.ts opportunities   # what is worth building next, priced
+```
+
+The visualizer needs **Bun** as well — but you do not need it to get value from the CLI, and `./bootstrap.sh` installs and seeds everything in one command when you are ready for the graph view.
+
 ## Why Ambit exists
 
 Agent systems are becoming capable through composition.
@@ -212,7 +228,7 @@ To launch the visualizer:
 
 Bootstrap links the `ambit` command into `~/.local/bin` when that directory is on your PATH. If it isn't, bootstrap prints the one-line `ln -s` to run instead; until then the CLI works in place as `./cli.js`.
 
-Homebrew installs the CLI on its own, as `ambit`. There is no clone, so build the graph with `ambit seed`:
+Homebrew installs the CLI on its own. There is no clone, so build the graph with `ambit seed`:
 
 ```bash
 brew install zz-plant/tap/ambit
@@ -221,7 +237,7 @@ ambit seed
 
 The graph is a local SQLite file — `~/.local/share/ambit/graph.db` for an installed copy, or the checkout itself when you cloned. `ambit where` prints the path, and `TOOLCHAIN_DB` overrides it. The engine, the MCP server and the visualizer all read the same one. Nothing is uploaded.
 
-**Requires** Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both before doing anything. The visualizer needs a checkout; an installed copy carries the engine, CLI and MCP server.
+**Requirements, honestly split.** The engine, CLI and MCP server run on **Node 22** and nothing else — no dependencies, no build step. The visualizer and its dev server additionally need **Bun** and the frontend packages, which `./bootstrap.sh` installs. The visualizer needs a checkout; an installed copy carries the engine, CLI and MCP server.
 
 Without an agent config, bootstrap still seeds the curated capability model and says so — you get the graph with nothing of yours in it yet, rather than an error. Point it at your own config with `OPENCODE_CONFIG`, or map a different format with `CONFIG_MAPPING` (see [Other configurations](#other-configurations)).
 
@@ -442,7 +458,7 @@ real work happens → the ledger observes → attention prices the human burden
 - `ambit audit` is the governance trail: a run end to end, a proposal's steps/approval/enforcement/result, or one person's approvals and interventions.
 - `ambit portfolio` reads `federation` imports across environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most. A portfolio layer reads signed receipts; it never merges graphs, and the receipts carry aggregates only — no credentials, no raw sessions.
 
-The loop is only as valuable as the telemetry that feeds it. With no runs recorded, `opportunities` correctly says "nothing observed." Its real test is the first month of real work flowing through the ledger, then comparing the first prediction to the first `roi`.
+The graph half is useful the moment you seed — `status`, `plan`, `verify` and `authority` need no telemetry at all. The economic loop fills in as you use it: `ambit attention` starts counting your interventions immediately, and the plugin bridge makes every OpenCode session feed the ledger automatically, so `opportunities` stops saying "nothing observed" within days, not months.
 
 ## Agents can query it too
 
@@ -665,11 +681,11 @@ The eventual goal is broader: different agent runtimes should attach to the same
 
 ## Status
 
-Ambit is early, and its two halves are at different depths. The **graph half** is strong: capability discovery, dependency mapping, failure-cascade analysis, near-miss discovery, verification and the lifecycle gate, authority per action, and an MCP-readable external model of an agent environment. The **economic half** is built end to end but young — the ledger, attention, economics, opportunities, the approval broker, enforcement, ROI, the catalog, incidents, audit, portfolio and federation all exist, and they are only as good as the telemetry that feeds them.
+See it working first: the [live demo](https://zz-plant.github.io/ambit/) needs nothing, and against your own setup the CLI is one command away (`node src/engine/engine.ts seed`). What you will find is two halves at different depths. The **graph half** is strong: capability discovery, dependency mapping, failure-cascade analysis, near-miss discovery, verification and the lifecycle gate, authority per action, and an MCP-readable external model of an agent environment. The **economic half** is built end to end but young — the ledger, attention, economics, opportunities, the approval broker, enforcement, ROI, the catalog, incidents, audit, portfolio and federation all exist, and they get sharper as the ledger fills.
 
 What remains of the larger direction is the accumulation: real work flowing through the ledger so the first predictions have observed baselines, demand filling the catalog before any marketplace exists, and the portfolio reading many environments instead of one. See [ROADMAP.md](./ROADMAP.md).
 
-The point is not to pretend those pieces are finished. It is to build toward them without changing the fundamental object. That object is the system's **ambit**: the set of actions presently reachable by the combined capabilities of its human, agents, tools, and machines — and the evidence about which of them is worth buying next.
+That object is the system's **ambit**: the set of actions presently reachable by the combined capabilities of its human, agents, tools, and machines — and the evidence about which of them is worth buying next.
 
 ## Contributing
 
