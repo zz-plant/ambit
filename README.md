@@ -2,7 +2,7 @@
 
 # Ambit
 
-**A capability graph for agent stacks.**
+**Where your system is wasting scarce resources — and which capability investment has the highest return.**
 
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
@@ -49,7 +49,7 @@ As agent environments grow, several different questions collapse into one:
 
 > **What can this system actually do?**
 
-Ambit treats that as a graph problem. It models capabilities, dependencies, costs, maturity, and composition so that both humans and agents can reason over the environment they share.
+Ambit treats that as a graph problem. It models capabilities, dependencies, costs, and composition so that both humans and agents can reason over the environment they share.
 
 ## The core idea
 
@@ -67,13 +67,13 @@ That second description is **effective capability**, and it is the object Ambit 
 | **Reachable** | all necessary dependencies are currently accessible | ✅ |
 | **Composed** | several lower-level capabilities together make a higher-order action possible | ✅ |
 | **Verified** | the capability has actually succeeded | ✅ a passing check; a failing one reads as `degraded`/`broken` and stops being available |
-| **Authorized** | the system has permission to use it | ✅ per action, declared, not enforced |
-| **Delegated** | a human or another agent supplies a missing step | ✅ people are nodes; who to ask is roadmap |
+| **Authorized** | the system has permission to use it | ✅ per action, declared, and enforced by `canExecute` on apply |
+| **Delegated** | a human or another agent supplies a missing step | ✅ people are nodes; a plan names the person a step needs |
 | **Persistent** | it can operate beyond the current interaction | roadmap |
 
 Capability *change* is now recorded over time — see [the ledger](#the-ledger) — which is the accounting half of that table rather than a seventh state.
 
-Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities — and, since §3, for individual contract actions, so `tt verify act:version-control/commit_changes` proves the action rather than the capability that confers it — a check that last failed now **gates** the capability out of everything that decides availability, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
+Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities — and, since §3, for individual contract actions, so `ambit verify act:version-control/commit_changes` proves the action rather than the capability that confers it — a check that last failed now **gates** the capability out of everything that decides availability, and authority is enforced where it matters most: nothing applies without a signed approval artifact and a per-step `canExecute` pass. [The roadmap](./ROADMAP.md) is the rest.
 
 ```console
 $ ambit verify            # run the declared checks, record what happened
@@ -158,8 +158,8 @@ The two are separate columns because reachable and working are different claims.
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/assets/screenshot-config.png" alt="Config view: capabilities grouped into domain columns with a diagnostics sidebar" width="100%">
-<br><sub><b>CONFIG</b> — your configuration as a graph, with diagnostics.</sub>
+<img src="docs/assets/screenshot-config.png" alt="Config view: capabilities grouped into domain columns with a capability list sidebar" width="100%">
+<br><sub><b>CONFIG</b> — your configuration as a graph.</sub>
 </td>
 <td width="50%" valign="top">
 <img src="docs/assets/screenshot-docs.png" alt="The concept guide explaining capability, era, and the reached/next/blocked states" width="100%">
@@ -168,9 +168,9 @@ The two are separate columns because reachable and working are different claims.
 </tr>
 </table>
 
-Any view is linkable: `?view=tree`, `?layout=constellation`, `?docs=open`.
+Any view is linkable: `?view=tree`, `?docs=open`.
 
-The view updates itself when the graph changes underneath it. `/api/events` streams [AG-UI](https://docs.ag-ui.com) `StateSnapshot` events over SSE — the state subset of that protocol, chosen so the transport an agent would use to propose a change and a human to approve it is a standard one rather than invented. Runs, messages and tool calls are not implemented.
+The view updates itself when the graph changes underneath it. `/api/events` streams [AG-UI](https://docs.ag-ui.com) `StateSnapshot` and `StateDelta` events over SSE, and carries the work stream too — telemetry observations and proposal approvals surface as they happen, so the visualizer narrates the loop, not only the graph. The transport an agent would use to propose a change and a human to approve it is a standard one rather than invented.
 
 ## Start here
 
@@ -210,16 +210,16 @@ To launch the visualizer:
 ./bootstrap.sh web
 ```
 
-Bootstrap links the `tt` command into `~/.local/bin` when that directory is on your PATH. If it isn't, bootstrap prints the one-line `ln -s` to run instead; until then the CLI works in place as `./cli.js`.
+Bootstrap links the `ambit` command into `~/.local/bin` when that directory is on your PATH. If it isn't, bootstrap prints the one-line `ln -s` to run instead; until then the CLI works in place as `./cli.js`.
 
-Homebrew installs the CLI on its own, as `tt`. There is no clone, so build the graph with `tt seed`:
+Homebrew installs the CLI on its own, as `ambit`. There is no clone, so build the graph with `ambit seed`:
 
 ```bash
 brew install zz-plant/tap/ambit
-tt seed
+ambit seed
 ```
 
-The graph is a local SQLite file — `~/.local/share/ambit/graph.db` for an installed copy, or the checkout itself when you cloned. `tt where` prints the path, and `TOOLCHAIN_DB` overrides it. The engine, the MCP server and the visualizer all read the same one. Nothing is uploaded.
+The graph is a local SQLite file — `~/.local/share/ambit/graph.db` for an installed copy, or the checkout itself when you cloned. `ambit where` prints the path, and `TOOLCHAIN_DB` overrides it. The engine, the MCP server and the visualizer all read the same one. Nothing is uploaded.
 
 **Requires** Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both before doing anything. The visualizer needs a checkout; an installed copy carries the engine, CLI and MCP server.
 
@@ -232,14 +232,16 @@ Run `ambit` with no arguments and it shows the surface. The whole CLI is a handf
 ```
 Operate    status · graph [surface|combos|affordances] · history [since <when>]
 Decide     goal <cap-or-sentence> [--paths|--simulate|--prefs] · attention [days]
-           notify <topic> · work [limit] · usage [days] · economics
-           opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
-           opportunity <id> · roi <proposal-id> · catalog <cap> · impact <id>
-           verify [cap] [--history]
+           notify <topic> · notify-approvals <topic> · work [limit] · usage [days]
+           economics · opportunities [--by=…] [--budget=N] · opportunity <id>
+           roi [proposal-id] · catalog <cap> · audit [run|prop|human|days]
+           incidents · incident resolve <svc> <outcome> · portfolio [--budget=N]
+           impact <id> · verify [cap] [--history]
            authority [cap] [scope <target>] · can <cap> [--target X] [--spend N]
            · propose <cap> [n] · proposals · proposal <id>
 Govern     approve <id> <who> · apply <id> · rollback <id>
-Record     record <cap> [class] [note] · seed · where · help [term]
+Record     record <cap> [class] [note] · federation export|import
+           · seed · where · help [term]
 ```
 
 | | asks |
@@ -257,6 +259,11 @@ Record     record <cap> [class] [note] · seed · where · help [term]
 | `ambit notify <topic>` | Push the attention digest to ntfy — nothing is sent without a topic |
 | `ambit opportunities` | Ranked structural changes worth making — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence. `--by=attention|cash|roi|reliability|frontier`; `--budget=N` allocates the best combination within $N |
 | `ambit catalog <cap>` | The ways to acquire a capability — build, buy, subscribe, delegate, hire — compared by setup, one-time and recurring cost, privacy, verification and rollback |
+| `ambit roi [proposal]` | One proposal's before/after verdict, or — with no argument — the cumulative headline: hours and dollars saved per year and forecast accuracy |
+| `ambit audit <run\|prop\|human>` | The trail: who approved what, what ran, against what target, under which grant, and whether it held |
+| `ambit incidents` | Probe the infrastructure manifest; open an incident run for every offline service with the authority decision for its recovery. `incident resolve <svc> <outcome>` closes it with MTTR |
+| `ambit portfolio [--budget=N]` | Across imported environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most |
+| `ambit federation export\|import` | The signed summary a portfolio layer reads — aggregates only, no credentials, no raw sessions |
 
 Real output — one dependency away, and the dependency it names gates four further capabilities:
 
@@ -362,9 +369,12 @@ Where an acquisition genuinely *is* a config change, the step carries a declarat
 
 ```console
 $ ambit approve prop-msrrv9c2 kanav
+  proposal: prop-msrrv9c2 · goal: Web Research
   approved by: Kanav · applicable: true
-  Approved. Applying is not implemented — this records permission, not action.
+  note: Approved. Every step has an inverse. The approval artifact is signed and expires in 24 hours.
 ```
+
+Approval mints a **signed artifact** — proposal hash, actor, budget, scope, expiry, timestamp, HMAC-signed with a machine-local key (`AMBIT_APPROVAL_KEY`, default `~/.config/opencode/ambit-approval.key`). It is also minted by the browser broker, `POST /api/proposals/:id/approve` (loopback, origin-allowlisted), which approves and signs but never applies. The visualizer's AG-UI stream surfaces the approval as a toast telling you exactly which terminal commands to run.
 
 ```console
 $ ambit apply prop-msrsqzij
@@ -375,9 +385,9 @@ $ ambit rollback prop-msrsqzij
   removed: mcp.fetch          # git survives — the inverse reverses only this
 ```
 
-**Apply only edits configuration, and cannot do otherwise.** A step carries a declarative patch or nothing; there is no field that holds a command. It refuses a proposal no person approved, and any step without an inverse. It backs up first, and if verification fails afterwards it rolls back automatically and says the change was reversed. A successful apply **re-seeds**, so the graph reflects the change immediately rather than on the next manual seed.
+**Apply is the only thing that can spend an approval.** It refuses a proposal no person approved, any step without an inverse, and any step authority denies — every step is gated through `canExecute` (ALLOW / CONFIRM / DENY + governing grant + remaining budget), and the signed artifact must be present, unexpired, and matching the proposal as stored. **Apply only edits configuration, and cannot do otherwise.** A step carries a declarative patch or nothing; there is no field that holds a command. It backs up first, and if verification fails afterwards it rolls back automatically and says the change was reversed. A successful apply **re-seeds**, so the graph reflects the change immediately rather than on the next manual seed.
 
-`applicable` and `executable` are separate claims: the first says a proposal could be applied safely, the second says apply does not exist. Approval is CLI-only and not exposed over MCP — an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
+Approval and apply stay off the MCP surface — an agent may draft, preview, and ask, but never approve or apply. Proposing more capability and granting more authority are different acts, and the artifact is what keeps them apart.
 
 ### The ledger
 
@@ -408,21 +418,47 @@ Without it, upgrading Ambit would read as a dozen capabilities acquired on a mac
 
 Every command prints for a person by default and takes `--json` for scripts.
 
+## The economic loop
+
+The graph half answers *what can this system do*. The loop that pays for it answers *where is the scarce resource going, and which durable fix is worth the next dollar or hour*:
+
+```
+real work happens → the ledger observes → attention prices the human burden
+→ opportunities ranks the fixes → propose carries the observed case
+→ approval mints a signed artifact → apply enforces and verifies
+→ roi measures before/after and writes the observation back
+```
+
+- `ambit attention` prices the human half of the ledger and, critically, **classifies agency**: clerical, exception, physical and authority-as-repeated-gate are reducible — *the human is the duct* — while judgment and knowledge are keepers, never proposed for removal however often they recur.
+- `ambit economics` is the declared model: attention value per hour, purchase and recurring costs, goal values. Dollars declare, cents store. An undeclared actor's attention defaults to $250/hr and is reported as such.
+- `ambit opportunities` ranks the durable fixes — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence (high = observed five-plus times, low = deficits only). Rank by `--by=attention|cash|roi|reliability|frontier`, or allocate a budget: `--budget=N` returns the best combination of investments within $N. Each opportunity carries its acquisition options from the catalog, so it is a purchase decision, not a report.
+- `ambit roi` closes the loop. With a proposal id it measures before/after on the affected capability — interventions, human hours, attention dollars, verification failures — and returns a verdict (performing near forecast, above, below, too early). With no argument it is the cumulative headline: hours and dollars saved per year and forecast accuracy, written back so the next prediction has evidence to learn from.
+- `ambit incidents` is the managed-ops vertical's first turn: probe the infrastructure manifest, open an incident run for every offline service, record detection, resolve the recovery against authority, and close it with MTTR from the ledger's own timestamps.
+- `ambit audit` is the governance trail: a run end to end, a proposal's steps/approval/enforcement/result, or one person's approvals and interventions.
+- `ambit portfolio` reads `federation` imports across environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most. A portfolio layer reads signed receipts; it never merges graphs, and the receipts carry aggregates only — no credentials, no raw sessions.
+
+The loop is only as valuable as the telemetry that feeds it. With no runs recorded, `opportunities` correctly says "nothing observed." Its real test is the first month of real work flowing through the ledger, then comparing the first prediction to the first `roi`.
+
 ## Agents can query it too
 
 Ambit ships an MCP server exposing the graph directly to an agent:
 
 ```
-tt_stats   tt_context tt_cap     tt_decay    tt_combos   tt_diff
-tt_health  tt_impact  tt_near    tt_bottlenecks           tt_spof
+Graph      tt_stats tt_context tt_cap   tt_combos tt_diff tt_health
+           tt_decay tt_near   tt_bottlenecks        tt_spof tt_impact
 
-tt_verify  tt_evidence tt_authority tt_actions tt_plan  tt_scope
-tt_since   tt_ledger  tt_blocked   tt_deficits tt_digest
-tt_goal    tt_paths   tt_preferences
-tt_simulate tt_propose tt_proposals tt_proposal tt_affordances
+Lifecycle  tt_verify tt_evidence tt_authority tt_actions tt_plan tt_goal
+           tt_paths  tt_preferences tt_scope  tt_affordances tt_since tt_ledger
+
+Operate    tt_work tt_usage tt_run_begin tt_run_end tt_work_event tt_digest
+           tt_economics tt_goal_value tt_opportunities tt_opportunity
+           tt_catalog tt_roi tt_roi_summary tt_audit tt_incidents
+           tt_incident_resolve tt_portfolio tt_can
+
+Propose    tt_blocked tt_deficits tt_simulate tt_propose tt_proposals tt_proposal
 ```
 
-The second group is the capability lifecycle: is this real, may I act, what is missing, and — when the answer is *nothing here can do that* — recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again. The third is the §5 and §2 surfaces: route a free-form goal into the graph, compare the paths that close it, and say who prefers what and which plans would fight them.
+The lifecycle group is "is this real, may I act, what is missing" — and when the answer is *nothing here can do that*, recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again. The operate group is the economic loop read and written by an agent: report work, record what it did, ask which investments rank, and — via `tt_can` — *ask* whether an action is permitted. An agent can ask; it can never approve or apply.
 
 Register it with Claude Code:
 
@@ -471,7 +507,7 @@ runtime:hermes   — contributes 32 capabilities
 shared by both   — mcp:fetch · mcp:filesystem · mcp:git · mcp:sequential-thinking
 ```
 
-`tt impact runtime:hermes` then answers what would be lost if that runtime went away — and the answer is smaller than its capability count, because the shared four survive.
+`ambit impact runtime:hermes` then answers what would be lost if that runtime went away — and the answer is smaller than its capability count, because the shared four survive.
 
 The adapter also reads what a config file cannot infer but the runtime states outright: Hermes reports `approvals: manual`, `cron_mode: deny`, eight messaging surfaces, a policy engine, and zero scheduled jobs — which is the difference between a capability that persists and one that lasts a session.
 
@@ -479,7 +515,7 @@ Hermes has no machine-readable config export today, so the adapter reads its doc
 
 ## The visualizer
 
-Four views: **ERAS** (capability model by era), **CONSTELLATION** (3D), **ORBITAL** (concentric by type), **FLAT** (force-directed).
+One renderer: the **ERAS** capability tree — era columns as filter metadata, filled for reached, outlined for next-with-cost, faded for blocked. The 3D modes were sunset: they told you something interesting about the graph without changing what you should do.
 
 The visualizer is a view over the model, not the product's ultimate abstraction. The underlying graph is meant to stay useful when no human is looking at it.
 
@@ -489,7 +525,7 @@ Agent capabilities do not stop at the model boundary. A local GPU, NAS, browser 
 
 Ambit scans infrastructure from an explicit local manifest (`INFRA_MANIFEST`, default `~/.config/opencode/infrastructure.json`). With no manifest it returns an empty scan rather than an error — no host addresses are baked in.
 
-The manifest is not specific to servers. A device is anything that can act — a Pi, a GPU host, a robot arm, a sensor, a decoder — and they seed as first-class nodes in a `physical` domain. Devices and services seed into the engine graph itself: a device is a `resource` with a `runs_on` edge to every service hosted on it, so `tt impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph counts. Whether that generalisation is the right one is argued in [the affordance frontier](./docs/affordance-frontier.md); what is implemented is that the model does not assume software.
+The manifest is not specific to servers. A device is anything that can act — a Pi, a GPU host, a robot arm, a sensor, a decoder — and they seed as first-class nodes in a `physical` domain. Devices and services seed into the engine graph itself: a device is a `resource` with a `runs_on` edge to every service hosted on it, so `ambit impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph counts. Whether that generalisation is the right one is argued in [the affordance frontier](./docs/affordance-frontier.md); what is implemented is that the model does not assume software.
 
 The goal is not another homelab inventory. It is to treat infrastructure as capability-bearing:
 
@@ -546,7 +582,7 @@ This lets technical capability accumulate without silently broadening delegated 
 
 Authority is recorded per action, and from two sources. The curated model says what an action is like in general; the runtime that would execute it says what it permits here — Hermes publishes `approvals.mode` and `approvals.cron_mode`, Claude Code publishes `permissions.defaultMode`, and both adapters pass them through. Where the two disagree the narrower wins, and `ambit authority` names which source narrowed it.
 
-Two limits worth stating plainly. **Nothing is enforced** — Ambit describes authority, it does not mediate action. And **scope is checked, not enforced**: `ambit authority scope <target>` verifies whether a grant's scope covers the target, and the check is a report, not a gate.
+Enforcement lands where it matters. `ambit can <cap> [--target X] [--spend N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. The one limit worth stating: enforcement is on Ambit's own apply path, not yet interposed between every runtime and every tool — the runtime adapters are the next boundary.
 
 ## Why an AI might ask you to install Ambit
 
@@ -586,13 +622,14 @@ infrastructure manifest
         ▼
     SQLite graph
         │
-        ├──► CLI                tt
-        ├──► MCP server         31 tools, JSON-RPC over stdio
+        ├──► CLI                ambit
+        ├──► MCP server         47 tools, JSON-RPC over stdio
         ├──► visualizer API     Bun.serve, port 3001
+        ├──► work ledger        /api/telemetry · AG-UI events · plugin bridge
         └──► tracking plugin    config-change events
 ```
 
-TypeScript · Node 22 with `node:sqlite` · Bun server · React + Vite · Three.js · JSON-RPC MCP · local-first state.
+TypeScript · Node 22 with `node:sqlite` · Bun server · React + Vite · JSON-RPC MCP · local-first state.
 
 ## Security
 
@@ -601,7 +638,7 @@ The server reads and writes `opencode.json`, so two invariants hold:
 - **Loopback only.** It binds `127.0.0.1` and rejects non-local origins **before routing** — CORS headers alone are insufficient, because a simple request skips preflight and reaches the handler regardless.
 - **It cannot create configuration entries.** An MCP entry carries a command your agent runtime executes, so creating one over HTTP would be remote code execution. The API can toggle an MCP and edit an existing agent's description or model; adding a server generates a snippet you paste yourself.
 
-Ambit should become more capable without making its own control surface casually dangerous. There is no telemetry.
+Ambit should become more capable without making its own control surface casually dangerous. Telemetry is loopback-only and structured: the work ledger is written through `POST /api/telemetry` or the plugin bridge, a payload is ledger verbs — `run`, `end`, `event`, `use`, `intervention`, `resource`, `outcome` — never a command, and nothing leaves the machine unless a runtime adapter or an opt-in ntfy push sends it.
 
 ## Other configurations
 
@@ -623,11 +660,11 @@ The eventual goal is broader: different agent runtimes should attach to the same
 
 ## Status
 
-Ambit is early. Today it is strongest as capability discovery, dependency mapping, maturity and decay analysis, failure-cascade analysis, near-miss discovery, budget-aware planning, and an MCP-readable external model of an agent environment.
+Ambit is early, and its two halves are at different depths. The **graph half** is strong: capability discovery, dependency mapping, failure-cascade analysis, near-miss discovery, verification and the lifecycle gate, authority per action, and an MCP-readable external model of an agent environment. The **economic half** is built end to end but young — the ledger, attention, economics, opportunities, the approval broker, enforcement, ROI, the catalog, incidents, audit, portfolio and federation all exist, and they are only as good as the telemetry that feeds them.
 
-Verified capability and explicit authority are built: the graph distinguishes capability from provider from resource from actor, records what each action confers, and holds authority from both the model and the runtime that would execute the step. What remains of the larger direction — goal-to-capability planning from a free-form goal, comparing acquisition paths by risk and lock-in, enforcement rather than description, and scope that is checked rather than declared — is the architecture the current graph is meant to grow toward. See [ROADMAP.md](./ROADMAP.md).
+What remains of the larger direction is the accumulation: real work flowing through the ledger so the first predictions have observed baselines, demand filling the catalog before any marketplace exists, and the portfolio reading many environments instead of one. See [ROADMAP.md](./ROADMAP.md).
 
-The point is not to pretend those pieces exist. It is to build toward them without changing the fundamental object. That object is the system's **ambit**: the set of actions presently reachable by the combined capabilities of its human, agents, tools, and machines.
+The point is not to pretend those pieces are finished. It is to build toward them without changing the fundamental object. That object is the system's **ambit**: the set of actions presently reachable by the combined capabilities of its human, agents, tools, and machines — and the evidence about which of them is worth buying next.
 
 ## Contributing
 

@@ -51,21 +51,22 @@ for(const s of d){const p=s.t>0?Math.round((s.u/s.t)*100):0;console.log('│ '+'
 console.log('└───────────────────────────────────────────────────────┘');
 db.close();"
 
-# bootstrap used to end by telling people to run \`tt\`, which the clone path
-# never created — it exists only in the Homebrew formula. Link it where the
-# shell will find it, and otherwise say exactly how to get it.
+# The CLI is \`ambit\`. Older installs knew it as \`tt\`; link the current name,
+# and keep \`tt\` as an alias when nothing already occupies it.
 echo ""
-if command -v tt >/dev/null 2>&1; then
+if command -v ambit >/dev/null 2>&1; then
   :
-elif [ -d "$HOME/.local/bin" ] && case ":$PATH:" in *":$HOME/.local/bin:"*) true ;; *) false ;; esac; then
-  ln -sf "$ROOT/cli.js" "$HOME/.local/bin/tt"
-  chmod +x "$ROOT/cli.js"
-  echo "Linked tt → ~/.local/bin/tt"
 else
   chmod +x "$ROOT/cli.js"
-  echo "To get the tt command on your PATH:"
-  echo "  ln -s $ROOT/cli.js /usr/local/bin/tt      # or any directory on your PATH"
-  echo "Until then, run it in place: $ROOT/cli.js near"
+  if [ -d "$HOME/.local/bin" ] && case ":$PATH:" in *":$HOME/.local/bin:"*) true ;; *) false ;; esac; then
+    ln -sf "$ROOT/cli.js" "$HOME/.local/bin/ambit"
+    command -v tt >/dev/null 2>&1 || ln -sf "$ROOT/cli.js" "$HOME/.local/bin/tt"
+    echo "Linked ambit → ~/.local/bin/ambit"
+  else
+    echo "To get the ambit command on your PATH:"
+    echo "  ln -s $ROOT/cli.js /usr/local/bin/ambit      # or any directory on your PATH"
+    echo "Until then, run it in place: $ROOT/cli.js status"
+  fi
 fi
 
 echo ""
@@ -73,8 +74,8 @@ if [ "$MODE" = "web" ]; then
   echo "Starting visualizer at http://localhost:3000"
   bun run dev
 else
-  echo "tt stats  — full overview"
-  echo "tt decay  — what needs maintenance"
-  echo "tt fork   — which combo to unlock"
-  echo "./bootstrap.sh web — start visualizer"
+  echo "ambit status        — health, degraded, spofs, deficits, pending approvals"
+  echo "ambit attention     — where the human's time actually goes"
+  echo "ambit opportunities — what is worth building next, priced and ranked"
+  echo "./bootstrap.sh web  — start visualizer"
 fi
