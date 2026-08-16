@@ -55,6 +55,8 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ["proposals", "scope_exclude", "TEXT"],
   ["proposals", "expires_at", "TEXT"],
   ["proposals", "approval_artifact", "TEXT"],
+  // What actually happened after an apply, so the next prediction can learn.
+  ["proposals", "observed_roi", "TEXT"],
 ];
 
 function addMissingColumns(db: Migratable) {

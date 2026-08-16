@@ -17,6 +17,7 @@ import { humanDigest, notify, notifyPending } from "./attention.ts";
 import { workReport, usageReport } from "./telemetry.ts";
 import { economicsReport } from "./economics.ts";
 import { opportunitiesFor, opportunityFor } from "./opportunities.ts";
+import { roiFor } from "./roi.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -95,6 +96,7 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   opportunities [--by=attention|cash|roi|reliability|frontier]   ranked
                     investments — observed burden, priced, compared
   opportunity <id>  one ranked case in full
+  roi <proposal-id>   what an applied proposal actually changed — before/after
   impact <id>       what actually breaks if a capability goes away
   verify [cap] [--history]   run the declared check, or show past verification
   authority [cap] [scope <target>]   what may run unattended, what each action
@@ -263,6 +265,9 @@ async function main() {
     }
     case "opportunity":
       emit(opportunityFor(db, arg));
+      break;
+    case "roi":
+      emit(roiFor(db, arg));
       break;
     case "impact":
       emit(analyzeImpact(db, arg));

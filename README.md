@@ -234,8 +234,10 @@ Operate    status · graph [surface|combos|affordances] · history [since <when>
 Decide     goal <cap-or-sentence> [--paths|--simulate|--prefs] · attention [days]
            notify <topic> · work [limit] · usage [days] · economics
            opportunities [--by=attention|cash|roi|reliability|frontier]
-           opportunity <id> · impact <id> · verify [cap] [--history]
-           authority [cap] [scope <target>] · propose <cap> [n] · proposals · proposal <id>
+           opportunity <id> · roi <proposal-id> · impact <id>
+           verify [cap] [--history]
+           authority [cap] [scope <target>] · can <cap> [--target X] [--spend N]
+           · propose <cap> [n] · proposals · proposal <id>
 Govern     approve <id> <who> · apply <id> · rollback <id>
 Record     record <cap> [class] [note] · seed · where · help [term]
 ```
