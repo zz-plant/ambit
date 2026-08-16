@@ -61,6 +61,18 @@ function exportSummary(db: Migratable) {
     human_hours_month: Math.round((r.active + r.waiting) / 3600 * 10) / 10,
   }));
 
+  // Person-specific single points of failure: a reached capability only a
+  // human supplies. The portfolio's "worst person-SPOF" question needs this
+  // on every environment's summary, and it is a count, not a person's data.
+  const person_spofs = (db.prepare(
+    `SELECT c.id FROM capabilities c
+     WHERE c.kind = 'capability' AND c.state != 'locked'
+       AND (SELECT COUNT(*) FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
+            WHERE d.to_capability = c.id AND d.kind IN ('provides','contributes')) = 1
+       AND (SELECT p.kind FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
+            WHERE d.to_capability = c.id AND d.kind IN ('provides','contributes') LIMIT 1) = 'actor'`
+  ).all() as any[]).map((r) => r.id);
+
   const operatingCost = (db.prepare(
     `SELECT resource_id, SUM(cost_cents) cost_cents FROM resource_consumption
      WHERE recorded_at >= datetime('now', '-30 days') GROUP BY resource_id ORDER BY cost_cents DESC`
@@ -84,6 +96,7 @@ function exportSummary(db: Migratable) {
     exported_at: new Date().toISOString(),
     capabilities,
     burden,
+    person_spofs,
     operating_cost_dollars_month: Math.round(operatingCost.reduce((s, r) => s + r.cost_cents, 0)) / 100,
     deficits: (db.prepare(
       `SELECT capability_id, COUNT(*) times FROM session_learning

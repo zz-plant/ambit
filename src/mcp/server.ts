@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, nearMissCombos, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport, affordanceDomains, humanDigest, beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome, workReport, usageReport, economicsReport, goalValue, opportunitiesFor, opportunityFor, canExecute, roiFor, catalogReport } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, nearMissCombos, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport, affordanceDomains, humanDigest, beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome, workReport, usageReport, economicsReport, goalValue, opportunitiesFor, opportunityFor, canExecute, roiFor, roiSummary, catalogReport, auditFor, incidents, resolveIncident, portfolio } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -60,7 +60,12 @@ const TOOLS = [
   { name: "tt_opportunity", description: "One ranked opportunity in full — burden, proposed capability, acquisition, expected effect, payback, confidence.", inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "tt_can", description: "The decision API: may this actor perform this action on this target within this spend? Returns ALLOW, CONFIRM or DENY with the governing grant, scope, and remaining budget. Ask before acting; an agent can ask, never grant.", inputSchema: { type: "object", properties: { capability: { type: "string" }, action: { type: "string" }, actor: { type: "string" }, target: { type: "string" }, spendCents: { type: "number" } }, required: ["capability"] } },
   { name: "tt_roi", description: "Realized ROI for an applied proposal: before/after intervention count, human hours, attention dollars and reliability on the affected capability, projected annually, verdict against the proposal's own prediction. Writes the observation back so future predictions learn.", inputSchema: { type: "object", properties: { proposalId: { type: "string" } }, required: ["proposalId"] } },
+  { name: "tt_roi_summary", description: "The cumulative headline: every applied proposal's observed hours and dollars saved per year, and forecast accuracy (average observed÷predicted ratio, count near forecast). The number to show a buyer.", inputSchema: { type: "object", properties: {} } },
   { name: "tt_catalog", description: "The ways to acquire a capability — build, buy, subscribe, delegate, hire — compared by setup, one-time and recurring cost, privacy, verification and rollback. The supply side for the demand the opportunity engine finds.", inputSchema: { type: "object", properties: { capability: { type: "string" } }, required: ["capability"] } },
+  { name: "tt_audit", description: "The audit trail: a run end to end, a proposal's steps/approval/enforcement/result, or one person's approvals and interventions. target is a run id, proposal id, human name, or a day window.", inputSchema: { type: "object", properties: { target: { type: "string", description: "run-… | prop-… | human:name | days" } } } },
+  { name: "tt_incidents", description: "Probe the infrastructure manifest and open an incident run for every offline service, recording detection and the authority decision for its recovery (restart ALLOW / CONFIRM / DENY). The managed-ops loop's first turn.", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_incident_resolve", description: "Close the open incident run for a service with its outcome. MTTR is the ledger's own elapsed time.", inputSchema: { type: "object", properties: { service: { type: "string", description: "svc:key" }, outcome: { type: "string" } }, required: ["service", "outcome"] } },
+  { name: "tt_portfolio", description: "Across imported federation receipts: where the same human burden recurs in several environments, person-specific SPOFs, and (with budget) which environment would gain most from capex. Reads receipts only, never merges.", inputSchema: { type: "object", properties: { budget: { type: "number", description: "dollars to allocate across environments" } } } },
   { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
   { name: "tt_blocked", description: "Record that a task was blocked by a missing capability, and why. The pattern matters more than the instance: the same deficit hit repeatedly as the same cause is infrastructure that should exist. Classification is one of reasoning, knowledge, tool, permission, infrastructure, reliability.", inputSchema: { type: "object", properties: { capId: { type: "string" }, classification: { type: "string", description: "Why it was blocked: reasoning, knowledge, tool, permission, infrastructure, or reliability" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
   { name: "tt_simulate", description: "The frontier as it would be if a capability were acquired, including what it unblocks. Pure preview — changes nothing.", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
@@ -120,7 +125,23 @@ function handleLine(line) {
               case "tt_opportunity": res = tt(db => opportunityFor(db, args.id)); break;
               case "tt_can": res = tt(db => canExecute(db, args)); break;
               case "tt_roi": res = tt(db => roiFor(db, args.proposalId)); break;
+              case "tt_audit": res = tt(db => auditFor(db, args.target)); break;
+              case "tt_incident_resolve": res = tt(db => resolveIncident(db, args.service, args.outcome)); break;
+              case "tt_portfolio": res = tt(db => portfolio(db, args?.budget)); break;
+              case "tt_roi_summary": res = tt(db => roiSummary(db)); break;
+              case "tt_incidents": {
+                // Async: probing the manifest is a set of HTTP checks. The
+                // db stays open until the probes settle.
+                const adb = getDb(DB_PATH);
+                migrate(adb);
+                incidents(adb).then((r) => {
+                  respond(id, { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] });
+                  adb.close();
+                });
+                return;
+              }
               case "tt_catalog": res = tt(db => catalogReport(db, args.capability)); break;
+              case "tt_audit": res = tt(db => auditFor(db, args.target)); break;
               case "tt_work": res = tt(db => workReport(db, args?.limit)); break;
               case "tt_usage": res = tt(db => usageReport(db, args?.days)); break;
               case "tt_run_begin": res = tt(db => beginRun(db, args || {})); break;
