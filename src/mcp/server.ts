@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -52,8 +52,10 @@ const TOOLS = [
   { name: "tt_plan", description: "What is missing for a capability, in the order it must be closed, including which steps require a person", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_goal", description: "Route a free-form goal (a sentence, not an id) to the capabilities that plausibly cover it, ranked, each with its plan delta. Use this when the user wants something and neither of you knows the capability id.", inputSchema: { type: "object", properties: { goal: { type: "string", description: "What the user wants to be able to do, in their words" } }, required: ["goal"] } },
   { name: "tt_paths", description: "The alternative ways to reach a capability, compared by setup time, risk and lock-in — which steps are a config change §10 can undo, and which are an installer that cannot be reversed", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
+  { name: "tt_preferences", description: "What each person prefers, and which plans would fight it — a preference is a word tt plan matches against a step's alternatives (local vs hosted, one-off vs recurring). Pass a name for one person.", inputSchema: { type: "object", properties: { who: { type: "string" } } } },
+  { name: "tt_scope", description: "What a scope actually covers, and what it does not. Given a target an action would touch (repo:owner/name, device:nuc, svc:ollama), lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope was recorded; this checks it.", inputSchema: { type: "object", properties: { target: { type: "string" } }, required: ["target"] } },
   { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
-  { name: "tt_blocked", description: "Record that a task was blocked by a missing capability. The pattern matters more than the instance: the same deficit hit repeatedly is infrastructure that should exist.", inputSchema: { type: "object", properties: { capId: { type: "string" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
+  { name: "tt_blocked", description: "Record that a task was blocked by a missing capability, and why. The pattern matters more than the instance: the same deficit hit repeatedly as the same cause is infrastructure that should exist. Classification is one of reasoning, knowledge, tool, permission, infrastructure, reliability.", inputSchema: { type: "object", properties: { capId: { type: "string" }, classification: { type: "string", description: "Why it was blocked: reasoning, knowledge, tool, permission, infrastructure, or reliability" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
   { name: "tt_simulate", description: "The frontier as it would be if a capability were acquired, including what it unblocks. Pure preview — changes nothing.", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_propose", description: "Draft a reviewable acquisition: ordered steps, the alternative chosen and its trade-offs, and the simulated result. Nothing executes; proposals have no inverse and so cannot be applied.", inputSchema: { type: "object", properties: { capId: { type: "string" }, option: { type: "number", description: "Which alternative to choose, 0-based" } }, required: ["capId"] } },
   { name: "tt_proposals", description: "Every proposal drafted so far, newest first", inputSchema: { type: "object", properties: {} } },
@@ -105,9 +107,11 @@ function handleLine(line) {
               case "tt_plan": res = tt(db => planFor(db, args.capId)); break;
               case "tt_goal": res = tt(db => goalFor(db, args.goal)); break;
               case "tt_paths": res = tt(db => pathsFor(db, args.capId)); break;
+              case "tt_preferences": res = tt(db => preferencesReport(db, args?.who)); break;
+              case "tt_scope": res = tt(db => scopeReport(db, args.target)); break;
               case "tt_since": res = tt(db => ledgerSince(db, args?.when)); break;
               case "tt_ledger": res = tt(db => ledgerHistory(db)); break;
-              case "tt_blocked": res = tt(db => recordFailure(db, args.capId, args.note)); break;
+              case "tt_blocked": res = tt(db => recordFailure(db, args.capId, args.classification, args.note)); break;
               case "tt_deficits": res = tt(db => deficits(db)); break;
               case "tt_spof": res = tt(db => singlePointsOfFailure(db)); break;
               case "tt_simulate": res = tt(db => simulateFrontier(db, [args.capId])); break;

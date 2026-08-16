@@ -71,7 +71,9 @@ Action-level capabilities are built. A tech-tree node may declare `contract.can`
 
 The id rework was avoided rather than done, deliberately. Every id appears in the ledger's stored snapshots, so re-iding would invalidate the history of the one component whose value is that its history is continuous. Kind is a column instead, existing databases migrate by `ALTER TABLE` and a one-time backfill, and `tt spof`, `tt impact`, `tt plan` and `tt since` return byte-identical output against a graph seeded by the previous version. The cost is that an id no longer tells you what it is, and callers must read the column.
 
-Unbuilt: scope. An authority row can carry `repo:owner/name`, and nothing checks that the scope is the one an action would actually touch — so *can modify repository X on branch Y* is expressible and unverified. `resource` is a kind without much behind it: a model and a machine are both resources, and nothing yet reasons about capacity, location or contention.
+Scope is now checked rather than merely recorded. `tt scope <target>` — `repo:owner/name`, `device:nuc`, `svc:ollama` — lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope is a prefix claim: `repo:owner/name` covers the repo and its branches, a grant scoped elsewhere is named as excluded rather than silently treated as covering. What remains: nothing *mediates* on the scope — the check is a report, not a gate, which is the same line every enforcement half of this roadmap sits behind.
+
+`resource` is still a kind without much behind it: a model and a machine are both resources, and nothing yet reasons about capacity, location or contention.
 
 ## 2. Put the human and the machines in the graph — partly built
 
@@ -93,7 +95,11 @@ The payoff is that a plan can include the human as a step. Instead of "I can't d
 
 Built: an `actors` block seeds people as nodes. `provides` becomes a capability only that person supplies; `authorizes` becomes a hard prerequisite edge, so `tt plan continuous-delivery` reports `requires_person: Kanav` rather than presenting the path as autonomous. Approval is a dependency, not a policy note.
 
-Unbuilt: preferences, cost and risk tolerance are not modelled, so nothing reasons about *which* human should be asked or when a step is worth their attention. Machines are in the graph through the infrastructure manifest but are not yet capability-bearing in the way §1 requires.
+Preferences are built. A person may declare how they like things done — `prefers: [local-when-practical, minimize-recurring-cost]` — stored as data and matched by `tt plan` against the alternatives a step's acquisition actually offers. Where the plan's default choice fights a stated preference, the plan names it and points at the alternative that matches: asking Kanav to approve a hosted, recurring CI default when they prefer local and one-off reads as if there is no choice, and the plan refuses to read that way. `tt preferences [who]` lists the declarations.
+
+Machines are now capability-bearing in the engine, not only in the visualiser. `INFRA_MANIFEST` devices seed as `resource` nodes with `runs_on` edges to the services hosted on them, so `tt impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph can count.
+
+Unbuilt: cost and risk *tolerance* are still not modelled — a preference is a word matched to an alternative's properties, not a budget or a threshold, so the plan cannot yet say "this step is not worth your attention" or "you asked not to spend more than this". The infrastructure manifest is read but not probed by the engine (the server probes it for the visualiser), so a device's reachability does not yet gate what runs on it.
 
 ## 3. Acquisition recipes — partly built
 
@@ -126,7 +132,9 @@ Built: seven capabilities carry `acquisition.alternatives`, and `tt plan` attach
 
 The contract is built. `contract.can` lists the actions a capability confers, ten nodes declare one, and each action is a node with its own authority — `tt actions version-control` reports that reading the repository and committing may happen unattended and that pushing a branch and merging to the default branch may not.
 
-Unbuilt: executable verification per recipe. A recipe describes a choice and, since §10, can perform and undo a configuration one; a contract action still cannot declare a check of its own.
+Built: executable verification per contract action. A contract entry may be a name or `{ id, verify }`, and `tt verify act:<capability>/<action>` runs the action's own check against the action node — reading a repository is a weaker claim than having read a particular repository, and the two now carry separate evidence. `tt verify` with no argument runs every declared node check and every action check; `tt verify <capability>` still answers "no check declared" rather than erroring.
+
+Unbuilt: a recipe's verification steps (the multi-step "store a nonce, restart, retrieve, delete" sequence) are not executable — a check is a single read-only command, not a procedure with an undo. That is the remaining executable half of §3.
 
 ## 4. Detection becomes verification — built, and gates
 
@@ -217,7 +225,9 @@ task failure → capability deficit → does it recur?
 
 Built. `tt failed <capability>` records that work was blocked by something missing; `tt deficits` reports which deficits recur. One is bad luck, three is a structural deficit and the verdict says so. Both are exposed over MCP as `tt_blocked` and `tt_deficits`, since an agent hitting the same wall is exactly who should record it.
 
-Unbuilt: the classification in the diagram above — reasoning versus knowledge versus tool versus permission — is not made. A block is recorded against a capability, so the answer is always "a missing capability", which is the easy case.
+Classification is built. `tt failed <capability> <class> ["what you were trying to do"]` records why work was blocked — reasoning, knowledge, tool, permission, infrastructure, or reliability — and `tt deficits` reports the causes beside the count, so a capability blocked four times as a missing tool and once as a missing permission reads as one structural deficit and one incident rather than five of a kind. `tt_blocked` accepts the same classification over MCP.
+
+Unbuilt: the classification is declared, not inferred — a person or agent says why work was blocked, and nothing yet reads the failure's own text to classify it. And the loop from "this cause recurs" to "propose the permanent upgrade" (§5/§10) is still a human step.
 
 The tree already tells you to write a SKILL.md for anything you explain more than twice. Generalised, that rule is the governing principle of the whole project:
 
@@ -341,7 +351,9 @@ Built, with the two decisions made explicitly.
 
 `tt rollback` uses the stored inverse rather than the backup, because the inverse describes only what the proposal changed; restoring a whole backup would discard anything edited since.
 
-What remains: nothing re-seeds automatically after an apply, so the graph reflects the change on the next seed rather than immediately. And a capability with no declared check applies unverified, which is reported rather than hidden. The order matters — an inverse must be computed and stored before a step runs, verification must promote state only on evidence, and a failed apply must run its inverse automatically. None of that starts until proposals have been in use long enough to know whether they are any good.
+An apply now re-seeds, so the graph reflects the change immediately rather than on the next manual seed — both on a successful apply and on the rollback that follows a failed verification, which is the "reversed" half of the same guarantee. The order that matters is enforced: the inverse is computed and stored before a step runs, verification promotes state only on evidence, and a failed apply runs its inverse automatically.
+
+What remains: a capability with no declared check applies unverified, which is reported rather than hidden — the honest answer to "did this work" is "it cannot say". Refusing unverified applies outright would break the acquisition path for every capability whose recipe is not a check, so it stays a report until executable verification per recipe (§3's multi-step remainder) can back it.
 
 Built: the surface is 31 tools where it was 17 analytical ones, adding `tt_verify`, `tt_evidence`, `tt_authority`, `tt_actions`, `tt_plan`, `tt_since`, `tt_ledger`, `tt_blocked` and `tt_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent. `tt_actions` is the one an agent should reach for before acting: `tt_authority` answers at the capability grain, and permission is per action.
 
@@ -418,7 +430,7 @@ do real work → discover friction → identify the capability deficit
 
 ## Honest status
 
-Sections 1, 6, 7 and 9 are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder. Section 5 — free-form goals, and comparing alternative paths by risk and lock-in — is the largest thing still open, and section 11 has its transport and none of its surface.
+Sections 1, 5, 6, 7 and 9 are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder. Section 11 has its transport and none of its surface.
 
 The through-line in what remains is enforcement and scope. Ambit can now say what may be done, by whom, to what, and on what evidence. It still cannot say *on which repository, in which workspace, within what budget*, and it does not stop anything.
 

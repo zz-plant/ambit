@@ -144,6 +144,22 @@ CREATE TABLE IF NOT EXISTS authority (
 
 CREATE INDEX IF NOT EXISTS idx_authority_cap ON authority(capability_id);
 
+-- Preferences. The human is an actor in the graph — what they supply and
+-- authorise is an edge — but *which* human to ask, and whether a step is worth
+-- their attention, is a matter of how they prefer things done. A preference is
+-- a statement a plan can match against the alternatives of a step: a person who
+-- prefers local-when-practical is the wrong ask for a step whose only option
+-- ships data to a hosted API. Declared in the actors block as `prefers`.
+CREATE TABLE IF NOT EXISTS preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_id TEXT NOT NULL REFERENCES capabilities(id),
+    preference TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(actor_id, preference)
+);
+
+CREATE INDEX IF NOT EXISTS idx_preferences_actor ON preferences(actor_id);
+
 -- What has already been done to this database. One-time backfills are recorded
 -- here rather than inferred, because a backfill that cannot tell "never set"
 -- from "set to the default" either runs forever or runs never.

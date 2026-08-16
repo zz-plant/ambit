@@ -73,7 +73,7 @@ That second description is **effective capability**, and it is the object Ambit 
 
 Capability *change* is now recorded over time — see [the ledger](#the-ledger) — which is the accounting half of that table rather than a seventh state.
 
-Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities, a check that last failed now **gates** the capability out of everything that decides availability, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
+Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities — and, since §3, for individual contract actions, so `tt verify act:version-control/commit_changes` proves the action rather than the capability that confers it — a check that last failed now **gates** the capability out of everything that decides availability, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
 
 ```console
 $ tt verify              # run the declared checks, record what happened
@@ -233,7 +233,7 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 Explore    stats · context · health · profile · export · explain
 Verify     verify [id] · evidence <id> · authority · actions [id]
 Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
-Plan       plan <id> · goal <sentence> · paths <id> · simulate <id> · propose <id> [n] · proposals · proposal <id>
+Plan       plan <id> · goal <sentence> · paths <id> · preferences [who] · simulate <id> · propose <id> [n] · proposals · proposal <id>
 Act        approve <id> <who> · apply <id> · rollback <id>
 Plan       near · combos · fork · insight
 Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
@@ -246,8 +246,10 @@ Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
 | `tt impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |
 | `tt spof` | Which capabilities have only one provider — and which actions has only one person? |
 | `tt actions <id>` | Which concrete actions does this confer, and which of them may run unattended? |
+| `tt scope <target>` | What a scope actually covers and what it does not — a grant scoped elsewhere is named as excluded |
 | `tt goal <sentence>` | Route a free-form goal — "deploy without me" — to the capabilities whose words cover it, each with its plan delta |
 | `tt paths <id>` | The alternative ways to reach a capability, compared by setup time, risk and lock-in |
+| `tt preferences [who]` | Who prefers what, and where a plan's default choice would fight them |
 | `tt fork` | Which nearby path has the best trade-off between setup cost, regret, and downstream leverage? |
 | `tt decay` | Which parts of the system appear to be rusting? |
 | `tt since` | What became reachable since a past date — and what emerged rather than being added? |
@@ -345,7 +347,7 @@ $ tt rollback prop-msrsqzij
   removed: mcp.fetch          # git survives — the inverse reverses only this
 ```
 
-**Apply only edits configuration, and cannot do otherwise.** A step carries a declarative patch or nothing; there is no field that holds a command. It refuses a proposal no person approved, and any step without an inverse. It backs up first, and if verification fails afterwards it rolls back automatically and says the change was reversed.
+**Apply only edits configuration, and cannot do otherwise.** A step carries a declarative patch or nothing; there is no field that holds a command. It refuses a proposal no person approved, and any step without an inverse. It backs up first, and if verification fails afterwards it rolls back automatically and says the change was reversed. A successful apply **re-seeds**, so the graph reflects the change immediately rather than on the next manual seed.
 
 `applicable` and `executable` are separate claims: the first says a proposal could be applied safely, the second says apply does not exist. Approval is CLI-only and not exposed over MCP — an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
 
@@ -389,10 +391,11 @@ tt_insight tt_profile  tt_prune   tt_fork    tt_bottlenecks
 
 tt_verify  tt_evidence tt_authority tt_plan  tt_since    tt_ledger
 tt_blocked tt_deficits tt_spof
+tt_goal    tt_paths   tt_preferences tt_scope
 tt_simulate tt_propose tt_proposals tt_proposal
 ```
 
-The second group is the capability lifecycle: is this real, may I act, what is missing, and — when the answer is *nothing here can do that* — recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again.
+The second group is the capability lifecycle: is this real, may I act, what is missing, and — when the answer is *nothing here can do that* — recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again. The third is the §5 and §2 surfaces: route a free-form goal into the graph, compare the paths that close it, and say who prefers what and which plans would fight them.
 
 Register it with Claude Code:
 
@@ -459,7 +462,7 @@ Agent capabilities do not stop at the model boundary. A local GPU, NAS, browser 
 
 Ambit scans infrastructure from an explicit local manifest (`INFRA_MANIFEST`, default `~/.config/opencode/infrastructure.json`). With no manifest it returns an empty scan rather than an error — no host addresses are baked in.
 
-The manifest is not specific to servers. A device is anything that can act — a Pi, a GPU host, a robot arm, a sensor, a decoder — and they seed as first-class nodes in a `physical` domain. Whether that generalisation is the right one is argued in [the affordance frontier](./docs/affordance-frontier.md); what is implemented is that the model does not assume software.
+The manifest is not specific to servers. A device is anything that can act — a Pi, a GPU host, a robot arm, a sensor, a decoder — and they seed as first-class nodes in a `physical` domain. Devices and services seed into the engine graph itself: a device is a `resource` with a `runs_on` edge to every service hosted on it, so `tt impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph counts. Whether that generalisation is the right one is argued in [the affordance frontier](./docs/affordance-frontier.md); what is implemented is that the model does not assume software.
 
 The goal is not another homelab inventory. It is to treat infrastructure as capability-bearing:
 

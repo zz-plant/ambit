@@ -166,6 +166,9 @@ function applyProposal(db: Db, proposalId?: string) {
 
   if (failed) {
     const undo = rollbackProposal(db, proposalId) as any;
+    // The rollback changed the config back; re-seed so the graph reflects the
+    // reverted state rather than waiting for the next manual seed.
+    seedFromConfig(db);
     return {
       proposal: proposalId,
       applied: false,
@@ -176,6 +179,11 @@ function applyProposal(db: Db, proposalId?: string) {
     };
   }
 
+  // The graph should reflect the change now, not whenever someone next runs
+  // bootstrap. Re-seeding folds the applied configuration (and the verification
+  // evidence just recorded) into the graph immediately.
+  const seeded = seedFromConfig(db);
+
   return {
     proposal: proposalId,
     applied: true,
@@ -183,7 +191,8 @@ function applyProposal(db: Db, proposalId?: string) {
     backup,
     verified: verification?.verified ? true : undefined,
     unverified: verification && !verification.verified ? 'no check declared for this capability' : undefined,
-    note: 'Re-run ./bootstrap.sh (or tt seed) to fold this into the graph.',
+    seeded,
+    note: 'Applied and re-seeded — the graph reflects this change now.',
   };
 }
 

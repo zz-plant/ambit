@@ -7,7 +7,7 @@ import type { Db } from "./db.ts";
 // ─── Verification ─────────────────────────────────────────────────────────────
 
 /**
- * Runs the declared check for a capability and records what happened.
+ * Runs a declared check and records what happened.
  *
  * Detection proves a name exists in a config file. This proves the action can
  * be performed — the difference between `installed` and `working`, and the
@@ -17,24 +17,25 @@ import type { Db } from "./db.ts";
  * read-only by construction, and run only when a person asks: nothing verifies
  * on seed. Treat adding one as you would adding a package script.
  *
- * Evidence lands in session_learning, which has carried the right columns since
- * the first schema and had no writer until now.
+ * A check belongs to a node, or to one of its contract actions. A capability
+ * that declares a check but no action-level ones verifies itself; a contract
+ * action may declare its own — reading a repository is a weaker claim than
+ * *having read a particular repository*, and the two should not be conflated.
  */
-function verifyCapability(db: Db, nodeId: string, node: any): {
+function verifyCheck(db: Db, id: string, name: string, verify: any): {
   id: string; name: string; status: string; detail?: string; ms: number;
 } {
-  const id = `combo:${nodeId}`;
   const started = Date.now();
   let status: 'verified' | 'failed' | 'unverifiable' = 'unverifiable';
   let detail: string | undefined;
 
-  if (!node?.verify?.command) {
+  if (!verify?.command) {
     detail = 'no check declared';
   } else {
-    const [cmd, ...args] = node.verify.command;
+    const [cmd, ...args] = verify.command;
     try {
       const out = spawnSync(cmd, args, {
-        timeout: (node.verify.timeout_seconds || 10) * 1000,
+        timeout: (verify.timeout_seconds || 10) * 1000,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
       });
@@ -60,7 +61,18 @@ function verifyCapability(db: Db, nodeId: string, node: any): {
       ).run(id, status, status === 'verified' ? 1 : 0, detail || null);
     }
   }
-  return { id, name: node?.name || nodeId, status, detail, ms };
+  return { id, name, status, detail, ms };
+}
+
+/** Verifies a capability node using its own declared check. */
+function verifyCapability(db: Db, nodeId: string, node: any) {
+  return verifyCheck(db, `combo:${nodeId}`, node?.name || nodeId, node?.verify);
+}
+
+/** Verifies one of a capability's contract actions using its own check. */
+function verifyAction(db: Db, node: any, action: any) {
+  const id = `act:${node.id}/${action.id ?? action}`;
+  return verifyCheck(db, id, String(action.id ?? action).replace(/_/g, ' '), action.verify);
 }
 
 /** Verification history for a capability, most recent first. */
@@ -283,15 +295,51 @@ function runVerification(db: Db, which?: string) {
   } catch {
     return { error: "No capability model to verify against." };
   }
+  // tt verify act:<capability>/<action> — an action's own check.
+  if (which && which.startsWith('act:')) {
+    const [capId, actionName] = which.replace(/^act:/, '').split('/');
+    const node = (tree.nodes || []).find((n: any) => n.id === capId);
+    const action = node?.contract?.can?.find((a: any) => (a.id ?? a) === actionName);
+    if (!node || !action) return { error: `No action ${which} in the model.` };
+    const r = verifyAction(db, node, action);
+    const history = evidenceFor(db, r.id);
+    const runs = history.length;
+    const passes = history.filter((h: any) => h.action === 'verified').length;
+    deriveLifecycles(db);
+    (r as any).lifecycle = db.prepare("SELECT lifecycle FROM capabilities WHERE id = ?").get(r.id)?.lifecycle;
+    return {
+      checked: 1,
+      verified: r.status === 'verified' ? 1 : 0,
+      failed: r.status === 'failed' ? 1 : 0,
+      results: [{ ...r, reliability: runs ? `${passes}/${runs}` : undefined }],
+    };
+  }
+  // A named node verifies itself even when it declares no check — the answer
+  // "no check declared" is as informative as "passed", and `tt verify <name>`
+  // is how you ask. Everything runs every declared node and action check.
   const nodes = (tree.nodes || []).filter((n: any) =>
     which ? n.id === which.replace(/^combo:/, '') : n.verify?.command
   );
+  if (which && nodes.length === 0) {
+    return { error: `No capability ${which} in the model.` };
+  }
   if (nodes.length === 0) {
-    return { error: which ? `No check declared for ${which}.` : "No checks declared." };
+    return { error: "No checks declared." };
   }
 
-  const results = nodes.map((n: any) => {
-    const r = verifyCapability(db, n.id, n);
+  const results = nodes.flatMap((n: any) => {
+    const own = n.verify?.command ? [verifyCapability(db, n.id, n)] : [];
+    // Contract actions that carry their own check — a capability declaring a
+    // check and an action declaring one are different claims about different
+    // granularities, and both get run.
+    const actions = (n.contract?.can || [])
+      .filter((a: any) => a?.verify?.command)
+      .map((a: any) => verifyAction(db, n, a));
+    // A named node with no check still answers: unverifiable.
+    return own.length ? [...own, ...actions] : actions.length ? actions : [verifyCapability(db, n.id, n)];
+  });
+
+  const withReliability = results.map((r) => {
     const history = evidenceFor(db, r.id);
     const runs = history.length;
     const passes = history.filter((h: any) => h.action === 'verified').length;
@@ -303,7 +351,7 @@ function runVerification(db: Db, which?: string) {
 
   // Evidence just changed, so what it is worth just changed too.
   deriveLifecycles(db);
-  for (const r of results as any[]) {
+  for (const r of withReliability as any[]) {
     r.lifecycle = db.prepare("SELECT lifecycle FROM capabilities WHERE id = ?").get(r.id)?.lifecycle;
   }
 
@@ -312,20 +360,20 @@ function runVerification(db: Db, which?: string) {
   // why a check is worth declaring in the first place. A capability that was
   // never reached reads as detected or unknown rather than failing, so it is
   // not listed here; there was nothing available to lose.
-  const nowUnavailable = results.filter((r: any) =>
+  const nowUnavailable = withReliability.filter((r: any) =>
     r.lifecycle === 'degraded' || r.lifecycle === 'broken'
   );
 
   return {
-    checked: results.length,
-    verified: results.filter(r => r.status === 'verified').length,
-    failed: results.filter(r => r.status === 'failed').length,
-    results,
+    checked: withReliability.length,
+    verified: withReliability.filter(r => r.status === 'verified').length,
+    failed: withReliability.filter(r => r.status === 'failed').length,
+    results: withReliability,
     now_unavailable: nowUnavailable.length
       ? nowUnavailable.map((r: any) => ({ id: r.id, name: r.name, lifecycle: r.lifecycle }))
       : undefined,
     gate: nowUnavailable.length
-      ? 'these capabilities now read as degraded or broken — configured, but their check is failing. They are excluded from plans, simulations and authority until re-verified.'
+      ? 'these now read as degraded or broken — configured, but their check is failing. They are excluded from plans, simulations and authority until re-verified.'
       : undefined,
   };
 }
@@ -398,4 +446,75 @@ function actionsReport(db: Db, capId?: string) {
   };
 }
 
-export { verifyCapability, evidenceFor, authorityReport, actionsReport, runVerification, deriveLifecycles };
+/**
+ * Whether a scope covers a target.
+ *
+ * Scope is a prefix claim: `repo:owner/name` covers `repo:owner/name` and
+ * anything under it (`repo:owner/name/branch`); `device:nuc` covers that device
+ * and the services on it. An empty scope is the un-scoped case — a grant that
+ * was never narrowed. This is the "checked" half of the roadmap's scope
+ * remainder: an authority row can carry a scope, and this answers whether that
+ * scope is the one an action would actually touch.
+ */
+function scopeCovers(scope: string, target: string): boolean {
+  if (!scope) return true; // un-scoped grants are global
+  if (target === scope) return true;
+  return target.startsWith(scope + '/') || target.startsWith(scope + ':');
+}
+
+/**
+ * What a scope actually covers, and what it does not.
+ *
+ *   tt scope repo:owner/name
+ *
+ * Lists every authority grant, whether its scope covers the target, and the
+ * effective mode the covering grants resolve to. The point is the mismatch: a
+ * grant scoped to `repo:other` does not cover `repo:owner/name`, and the graph
+ * should be able to say that out loud rather than leaving a stored string that
+ * reads like coverage until someone checks.
+ */
+function scopeReport(db: Db, target?: string) {
+  if (!target) return { error: 'Usage: tt scope <target> — e.g. repo:owner/name, device:nuc, svc:ollama' };
+  const grants = db
+    .prepare(
+      `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note,
+              c.name, c.state, c.kind, c.lifecycle
+       FROM authority a JOIN capabilities c ON c.id = a.capability_id
+       ORDER BY c.name, a.action, a.scope`
+    )
+    .all();
+  if (grants.length === 0) {
+    return { target, note: 'No authority declared. Seed a graph, or declare authority on a capability in the model.' };
+  }
+
+  const rows = grants.map((g: any) => ({
+    name: g.name,
+    id: g.capability_id,
+    action: g.action,
+    mode: g.mode,
+    source: g.source,
+    // The stored scope, and whether it actually covers the target asked about.
+    scope: g.scope || '(unscoped)',
+    covers: scopeCovers(g.scope || '', target),
+    note: g.note || undefined,
+  }));
+
+  const covering = rows.filter(r => r.covers);
+  const excluded = rows.filter(r => !r.covers);
+  return {
+    target,
+    covers: covering.length,
+    excluded: excluded.length,
+    grants: rows,
+    // The effective mode for the target: the narrowest of the covering grants,
+    // which is the answer to "may this target be touched, and how much".
+    effective: covering.length
+      ? covering.map(r => r.mode).reduce(narrower)
+      : 'forbidden',
+    note: excluded.length
+      ? `${excluded.length} grant(s) are scoped elsewhere and do not cover ${target}. The effective mode is from the covering grants only.`
+      : undefined,
+  };
+}
+
+export { verifyCapability, evidenceFor, authorityReport, actionsReport, runVerification, deriveLifecycles, scopeReport, scopeCovers };

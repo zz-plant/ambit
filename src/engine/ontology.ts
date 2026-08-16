@@ -59,6 +59,7 @@ const CATEGORY_KIND: Record<string, Kind> = {
   provider: 'resource',
   model: 'resource',
   device: 'resource',
+  service: 'resource',
 };
 
 /**
@@ -89,6 +90,8 @@ const DESCRIPTION_KIND: Record<string, EdgeKind> = {
   'Model served by provider': 'runs_on',
   'Agent pinned to model': 'runs_on',
   'Agent pinned to provider': 'runs_on',
+  'Hosts this service': 'runs_on',
+  'Controls this service': 'runs_on',
 };
 
 /**
