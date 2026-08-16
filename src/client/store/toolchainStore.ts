@@ -17,6 +17,16 @@ function isNarrowViewport(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 }
 
+function persistTreeFilter(): 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact' {
+  if (typeof window === 'undefined') return 'all';
+  const stored = localStorage.getItem('ambit.treeFilter');
+  if (stored) {
+    const parsed: string | null = stored;
+    if (parsed && ['all', 'server', 'agent', 'skill', 'combo', 'compact'].includes(parsed)) return parsed as 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
+  }
+  return 'all';
+}
+
 let backendProbe: Promise<boolean> | null = null;
 /**
  * A live backend answers /api/health with JSON. A static site (the published
@@ -69,7 +79,7 @@ interface StoreState {
   searchQuery: string;
   showStarPanel: boolean;
   showUplinkModal: boolean;
-  treeFilter: 'all' | 'server' | 'agent' | 'skill' | 'combo';
+  treeFilter: 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
   loading: boolean;
   error: string | null;
   infrastructureScan: InfrastructureScan | null;
@@ -86,7 +96,7 @@ interface StoreState {
   hoverItem: (id: string | null) => void;
   setSearch: (q: string) => void;
   toggleStarPanel: () => void;
-  setTreeFilter: (f: 'all' | 'server' | 'agent' | 'skill' | 'combo') => void;
+  setTreeFilter: (f: 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact') => void;
 
   updateItem: (id: string, updates: Partial<Item>) => void;
   deleteItem: (id: string) => void;
