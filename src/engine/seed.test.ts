@@ -1933,3 +1933,64 @@ test('a federation import stores a receipt and merges nothing', () => {
   expect((db.prepare("SELECT COUNT(*) n FROM capabilities").get() as any).n).toBe(before);
   db.close();
 });
+
+// ── Catalog (WP-11) and capital allocator (WP-12) ───────────────────────────
+
+test('the catalog compares acquisition options by first-year cost', () => {
+  seed({
+    ...LOCAL_ONLY,
+    actors: { kanav: { name: 'Kanav' } },
+    catalog: {
+      'combo:data-access': [
+        { provider: 'saas-x', kind: 'subscribe', setup_seconds: 1800, recurring_dollars_per_month: 490, privacy: 'hosted', rollback: 'revoke the credential' },
+        { provider: 'internal-api', kind: 'build', setup_seconds: 36000, cost_one_time_dollars: 4500, privacy: 'local', rollback: 'revert the merge' },
+      ],
+    },
+  }).close();
+
+  const catalog = cli('catalog', 'data-access');
+  const declared = catalog.options.filter((o: any) => o.source === 'declared');
+  expect(declared.length).toBe(2);
+  // Sorted by total first-year cost: the $4,500 one-time build (4500) outranks
+  // the $490/mo subscription (490×12 = 5880).
+  expect(declared[0].provider).toBe('internal-api');
+  expect(declared[0].total_first_year_dollars).toBe(4500);
+  expect(declared[0].kind).toBe('build');
+  expect(declared[1].provider).toBe('saas-x');
+  expect(declared[1].total_first_year_dollars).toBe(5880);
+  expect(declared[1].kind).toBe('subscribe');
+  expect(declared[1].rollback).toBe('revoke the credential');
+});
+
+test('the curated model contributes catalog rows for alternatives it names', () => {
+  seed(WITH_PREFS).close();
+  const catalog = cli('catalog', 'model-routing');
+  expect(catalog.options.length).toBeGreaterThan(0);
+  expect(catalog.options[0].source).toBe('techtree');
+  expect(catalog.options[0].setup).toBeDefined();
+});
+
+test('--budget allocates the best combination within it', () => {
+  seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  // Two clerical burdens: a small one and a large one, both priced.
+  const r = beginRun(db, { goal: 'move data' });
+  for (let i = 0; i < 6; i++) recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  const r2 = beginRun(db, { goal: 'search the web' });
+  for (let i = 0; i < 3; i++) recordIntervention(db, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1800 });
+  (db as any).close();
+
+  const withBudget = cli('opportunities', '--budget=5000');
+  expect(withBudget.allocation).toBeDefined();
+  expect(withBudget.allocation.budget_dollars).toBe(5000);
+  expect(withBudget.allocation.setup_dollars).toBeLessThanOrEqual(5000);
+  expect(withBudget.allocation.savings_per_year_dollars).toBeGreaterThan(0);
+  expect(withBudget.allocation.picks.length).toBeGreaterThan(0);
+  // Every pick is a real opportunity from the ranked list.
+  const ids = new Set(withBudget.opportunities.map((o: any) => o.id));
+  for (const pick of withBudget.allocation.picks) expect(ids.has(pick.id)).toBe(true);
+
+  // No budget → no allocation, just the ranked list.
+  const plain = cli('opportunities');
+  expect(plain.allocation).toBeUndefined();
+});

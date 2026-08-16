@@ -15,7 +15,7 @@
 import { main } from "./cli.ts";
 
 export { getDb, migrate } from "./db.ts";
-export { seedFromConfig, seedEconomics } from "./discovery.ts";
+export { seedFromConfig, seedEconomics, seedCatalog } from "./discovery.ts";
 export {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, nearMissCombos, singlePointsOfFailure,
@@ -36,6 +36,7 @@ export {
 export { opportunitiesFor, opportunityFor, economicCaseFor } from "./opportunities.ts";
 export { roiFor } from "./roi.ts";
 export { exportSummary, importSummary } from "./federation.ts";
+export { catalogReport } from "./catalog.ts";
 export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,

@@ -204,16 +204,66 @@ function priceCluster(db: Migratable, c: BurdenCluster, actor: string, idx: numb
 export type OpportunityObjective = 'attention' | 'cash' | 'roi' | 'reliability' | 'frontier';
 
 /**
+ * 0/1 knapsack over the priced opportunities: given a budget, which
+ * combination of capability investments creates the most annual value?
+ *
+ * Weight is the acquisition's setup cost in attention terms (hours × the
+ * actor's rate). Value is the annual savings the same model predicts. Worked
+ * in $10 units so the DP stays small for a real budget, and the report stays
+ * in dollars. The allocation is a projection of the same numbers the ranked
+ * list reports — it changes what to pick, not what anything costs.
+ */
+const UNIT_CENTS = 1000; // $10
+function allocate(items: OpportunityCase[], budgetCents: number, rate: number) {
+  const n = items.length;
+  const capacity = Math.max(1, Math.floor(budgetCents / UNIT_CENTS));
+  const weight = items.map((o) => Math.max(1, Math.round(o.proposal.setup_hours * rate / UNIT_CENTS)));
+  const value = items.map((o) => Math.round(o.burden.attention_dollars_month * REDUCTION * 12 * 100 / UNIT_CENTS));
+
+  // Classic 0/1 knapsack, bottom-up. keep[][] remembers the choice so the
+  // winning combination can be reconstructed rather than only valued.
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(capacity + 1).fill(0));
+  const keep: boolean[][] = Array.from({ length: n + 1 }, () => new Array(capacity + 1).fill(false));
+  for (let i = 1; i <= n; i++) {
+    for (let w = 0; w <= capacity; w++) {
+      if (weight[i - 1] <= w && dp[i - 1][w - weight[i - 1]] + value[i - 1] > dp[i - 1][w]) {
+        dp[i][w] = dp[i - 1][w - weight[i - 1]] + value[i - 1];
+        keep[i][w] = true;
+      } else {
+        dp[i][w] = dp[i - 1][w];
+      }
+    }
+  }
+
+  const picks: OpportunityCase[] = [];
+  let w = capacity;
+  for (let i = n; i >= 1; i--) {
+    if (keep[i][w]) {
+      picks.push(items[i - 1]);
+      w -= weight[i - 1];
+    }
+  }
+  return {
+    budget_dollars: Math.round(budgetCents) / 100,
+    setup_dollars: Math.round(picks.reduce((s, o) => s + o.proposal.setup_hours * rate, 0)) / 100,
+    savings_per_year_dollars: Math.round(picks.reduce((s, o) => s + o.burden.attention_dollars_month * REDUCTION * 12, 0) * 10) / 10,
+    picks: picks.map((o) => ({ id: o.id, title: o.title, capability: o.capability, setup_hours: o.proposal.setup_hours, savings_dollars_month: o.expected.savings_dollars_month })),
+  };
+}
+
+/**
  * The ranked shortlist.
  *
  *   ambit opportunities              → ranked by attention saved
- *   ambit opportunities --by cash    → attention + resource dollars
- *   ambit opportunities --by roi     → annualized return on setup cost
- *   ambit opportunities --by reliability  → burden on failing capabilities
- *   ambit opportunities --by frontier    → what acquiring would unlock
+ *   ambit opportunities --by=cash    → attention + resource dollars
+ *   ambit opportunities --by=roi     → annualized return on setup cost
+ *   ambit opportunities --by=reliability  → burden on failing capabilities
+ *   ambit opportunities --by=frontier    → what acquiring would unlock
+ *   ambit opportunities --budget=10000   → the best combination within $10k
  */
-function opportunitiesFor(db: Migratable, by: OpportunityObjective = 'attention') {
+function opportunitiesFor(db: Migratable, by: OpportunityObjective = 'attention', budgetDollars?: number) {
   const actor = 'human:kanav';
+  const rate = attentionValueCentsPerHour(db, actor);
   const cs = clusters(db);
   const middleware = cs.filter(c => MIDDLEWARE.has(c.kind) || c.kind === 'deficit');
   const keepers = cs.filter(c => KEEPERS.has(c.kind));
@@ -230,14 +280,22 @@ function opportunitiesFor(db: Migratable, by: OpportunityObjective = 'attention'
   };
   const ranked = priced.sort((a, b) => sortKey(b) - sortKey(a));
 
+  // The capital allocator: the combination within the budget, not just the
+  // single best item. Empty budget means "rank, do not allocate".
+  let allocation;
+  if (budgetDollars != null && budgetDollars > 0) {
+    allocation = allocate(priced, budgetDollars * 100, rate);
+  }
+
   if (ranked.length === 0 && keepers.length === 0) {
-    return { note: `No recurring middleware burden recorded in the last ${WINDOW_DAYS} days. Record work, or seed a deficit with ambit record.`, by, opportunities: [] };
+    return { note: `No recurring middleware burden recorded in the last ${WINDOW_DAYS} days. Record work, or seed a deficit with ambit record.`, by, opportunities: [], allocation };
   }
 
   return {
     by,
     window_days: WINDOW_DAYS,
     opportunities: ranked,
+    allocation,
     keepers: keepers.length ? keepers.map((k) => ({ capability: k.name, kind: k.kind, times: k.times })) : undefined,
     note: `ranked by ${by}. confidence: high = observed ≥5 times, medium = ≥2, low = deficits only. judgment/knowledge are never opportunities.`,
   };

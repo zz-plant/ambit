@@ -105,6 +105,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   count += seedInfrastructure(db, insert);
   seedAuthority(db, config);
   seedEconomics(db, config);
+  seedCatalog(db, config);
 
   // After the graph is complete and before the frontier is recorded, because
   // lifecycle is derived from both providers and evidence.
@@ -718,8 +719,76 @@ function seedEconomics(db: Db, config: any): number {
   return count;
 }
 
+/**
+ * Seeds the acquisition catalog: how a capability can be acquired, compared on
+ * cost, privacy, verification and rollback.
+ *
+ * Two sources. The config's `catalog` block declares the supply side with
+ * numbers — providers, setup, one-time and recurring cost in dollars (stored
+ * as cents), privacy, verification, runtimes, expected reliability, rollback.
+ * And every acquisition alternative the curated model names becomes a catalog
+ * row, so a capability the opportunity engine keeps proposing already has a
+ * supply side to compare even before anyone declares one.
+ */
+function seedCatalog(db: Db, config: any): number {
+  const put = db.prepare(
+    `INSERT OR REPLACE INTO catalog
+       (capability_id, provider, kind, setup_seconds, cost_one_time_cents, recurring_cents_per_month,
+        privacy, verification, runtimes, expected_reliability, rollback, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  let count = 0;
+
+  // The curated model's alternatives: qualitative, so recurring shows as a
+  // kind and no dollar figure is invented.
+  let tree: any = { nodes: [] };
+  try { tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8")); } catch {}
+  for (const n of tree.nodes || []) {
+    for (const a of n.acquisition?.alternatives || []) {
+      const recurring = a.recurring_cost || 'none';
+      put.run(
+        `combo:${n.id}`,
+        a.name,
+        recurring === 'monthly' ? 'subscribe' : recurring === 'per-token' ? 'buy' : 'build',
+        a.setup_seconds || 0,
+        null, null,
+        a.privacy || 'local',
+        a.note || null,
+        null, null,
+        a.config_patch ? 'reversible' : 'irreversible',
+        'techtree'
+      );
+      count++;
+    }
+  }
+
+  // The declared supply side, with numbers.
+  for (const [id, options] of Object.entries<any>(config.catalog || {})) {
+    for (const o of Array.isArray(options) ? options : [options]) {
+      if (!o?.provider) continue;
+      put.run(
+        id,
+        o.provider,
+        o.kind || 'build',
+        o.setup_seconds || 0,
+        o.cost_one_time_dollars != null ? o.cost_one_time_dollars * 100 : null,
+        o.recurring_dollars_per_month != null ? o.recurring_dollars_per_month * 100 : null,
+        o.privacy || 'local',
+        o.verification || null,
+        Array.isArray(o.runtimes) ? o.runtimes.join(',') : (o.runtimes || null),
+        o.expected_reliability ?? null,
+        o.rollback || null,
+        'declared'
+      );
+      count++;
+    }
+  }
+
+  return count;
+}
+
 export {
   parseMapping, seedFromConfig, seedModels, seedDependencies, attributeToRuntime,
   seedTechTree, seedActors, seedCombos, seedAuthority, seedInfrastructure,
-  seedEconomics,
+  seedEconomics, seedCatalog,
 };

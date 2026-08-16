@@ -331,3 +331,32 @@ CREATE TABLE IF NOT EXISTS federation_imports (
     summary TEXT NOT NULL,
     UNIQUE(environment, received_at)
 );
+
+-- The supply side: how a capability can be acquired, compared on cost,
+-- privacy, verification and rollback. Declared in the config's `catalog`
+-- block, plus a row per acquisition alternative the curated model names. A
+-- demand-first project: the catalog fills in for capabilities the opportunity
+-- engine keeps proposing, not an invented marketplace.
+--
+--   "catalog": { "combo:invoice-reconciliation": [
+--       { "provider": "saas-x", "kind": "subscribe",
+--         "setup_seconds": 1800, "recurring_dollars_per_month": 490,
+--         "privacy": "hosted", "verification": "API check",
+--         "runtimes": ["opencode"], "expected_reliability": 0.98,
+--         "rollback": "revoke the credential" } ] }
+CREATE TABLE IF NOT EXISTS catalog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    capability_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'build',
+    setup_seconds REAL NOT NULL DEFAULT 0,
+    cost_one_time_cents REAL,
+    recurring_cents_per_month REAL,
+    privacy TEXT NOT NULL DEFAULT 'local',
+    verification TEXT,
+    runtimes TEXT,
+    expected_reliability REAL,
+    rollback TEXT,
+    source TEXT NOT NULL DEFAULT 'declared',
+    UNIQUE(capability_id, provider, source)
+);
