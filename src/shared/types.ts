@@ -52,3 +52,65 @@ export interface ContractAction {
   id: string;
   verify?: string;
 }
+
+export type InfraHealth = 'online' | 'degraded' | 'offline' | 'unknown';
+
+export interface InfrastructureFinding {
+  severity: 'warn' | 'info' | 'error';
+  message: string;
+  relatedIds?: string[];
+}
+
+export interface InfrastructureScan {
+  generatedAt: string;
+  source: string;
+  nodes: InfrastructureNode[];
+  links: InfrastructureLink[];
+  findings: InfrastructureFinding[];
+  summary: { online: number; degraded: number; offline: number; unknown: number };
+}
+
+export interface DiscoveredCapability {
+  id: string;
+  name: string;
+  domain?: string;
+  kind?: NodeKind;
+  description?: string;
+  version?: string;
+  source?: string;
+  contract?: {
+    can?: (string | ContractAction)[];
+  };
+  meta?: Record<string, unknown>;
+}
+
+export interface AuthorityGrant {
+  id?: string;
+  capabilityId: string;
+  actionId?: string;
+  mode: AuthorityMode;
+  holder: string;
+  source: string;
+  scope?: string;
+}
+
+export interface SurfaceManifest {
+  schemaVersion: string;
+  generatedAt: string;
+  runtime: {
+    id: string;
+    version?: string;
+    description?: string;
+  };
+  capabilities: DiscoveredCapability[];
+  authorityGrants: AuthorityGrant[];
+}
+
+export interface RuntimeAdapter {
+  readonly runtimeId: string;
+  readConfig(path?: string): Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
+  extractCapabilities?(config: unknown): DiscoveredCapability[];
+  extractAuthority?(config: unknown): AuthorityGrant[];
+  exportSurface?(db: any): SurfaceManifest;
+}
+

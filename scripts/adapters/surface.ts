@@ -36,7 +36,7 @@ try {
 }
 
 if (!surface.schema_version || !Array.isArray(surface.capabilities)) {
-  console.error(`${path} is not a capability surface. Run tt surface to see the shape.`);
+  console.error(`${path} is not a capability surface. Run ambit surface to see the shape.`);
   process.exit(1);
 }
 

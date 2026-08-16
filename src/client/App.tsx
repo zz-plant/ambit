@@ -2,7 +2,7 @@ import React, { useEffect, useState, Suspense } from 'react';
 const CivTree = React.lazy(() => import('./components/CivTree'));
 import NodeDetailPanel from './components/NodeDetailPanel';
 
-import ToolchainPanel from './components/ToolchainPanel';
+import CapabilityListPanel from './components/CapabilityListPanel';
 import DocsModal from './components/DocsModal';
 import { useToolchainStore, backendAvailable } from './store/toolchainStore';
 import DemoDashboard from './components/DemoDashboard';
@@ -182,7 +182,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
 export default function App() {
   const items = useToolchainStore(s => s.items);
   const connections = useToolchainStore(s => s.connections);
-  const showStarPanel = useToolchainStore(s => s.showStarPanel);
+  const showDetailPanel = useToolchainStore(s => s.showDetailPanel);
   const selectedId = useToolchainStore(s => s.selectedItem);
   const selectItem = useToolchainStore(s => s.selectItem);
   const loading = useToolchainStore(s => s.loading);
@@ -385,7 +385,7 @@ export default function App() {
             // whichever panels are actually open so it centres on free space.
             // On a narrow screen the panels are sheets, not rails, so insetting
             // by their width would push this off the side entirely.
-            style={isNarrow ? undefined : { left: leftOpen ? 340 : 0, right: showStarPanel && selectedId ? 340 : 0 }}
+            style={isNarrow ? undefined : { left: leftOpen ? 340 : 0, right: showDetailPanel && selectedId ? 340 : 0 }}
           >
             <div className="app-guide-head">
               <strong>Start here</strong>
@@ -429,14 +429,14 @@ export default function App() {
         ) : null}
       </div>
 
-      {showStarPanel && selectedId && (
+      {showDetailPanel && selectedId && (
         <aside className="app-detail-panel" aria-label="Capability details">
           <NodeDetailPanel />
         </aside>
       )}
 
       <aside className={`app-console ${leftOpen ? 'app-console--open' : ''}`}>
-        <ToolchainPanel />
+        <CapabilityListPanel />
       </aside>
 
       <div className="app-hud">
