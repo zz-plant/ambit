@@ -17,9 +17,12 @@ import { humanDigest, notify, notifyPending } from "./attention.ts";
 import { workReport, usageReport } from "./telemetry.ts";
 import { economicsReport } from "./economics.ts";
 import { opportunitiesFor, opportunityFor } from "./opportunities.ts";
-import { roiFor } from "./roi.ts";
+import { roiFor, roiSummary } from "./roi.ts";
 import { exportSummary, importSummary } from "./federation.ts";
+import { portfolio } from "./portfolio.ts";
+import { incidents, resolveIncident } from "./incident.ts";
 import { catalogReport } from "./catalog.ts";
+import { auditFor } from "./audit.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -99,8 +102,14 @@ const HELP = `ambit - what your system can do, what it costs, what to change
                     ranked investments — observed burden, priced, compared;
                     --budget allocates the best combination within $N
   opportunity <id>  one ranked case in full
-  roi <proposal-id>   what an applied proposal actually changed — before/after
+  roi [proposal-id]  cumulative savings and forecast accuracy, or one proposal's
+                    before/after verdict
+  incidents         probe the manifest, open incident runs for offline services
+  incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
+  portfolio [--budget=N]   across imported environments — shared burden, spofs,
+                    where capex would produce the most
   catalog <cap>       the ways to acquire a capability, compared by cost
+  audit [run|prop|human|days]   the trail — who approved what, what ran, did it hold
   federation export|import   the signed summary a portfolio layer reads
   impact <id>       what actually breaks if a capability goes away
   verify [cap] [--history]   run the declared check, or show past verification
@@ -201,10 +210,11 @@ async function main() {
   // never runs bootstrap.sh, so that was the entire first-run experience:
   // a tool that appears to work and reports an empty world.
   //
-  // `work` and `usage` read the work ledger, which a runtime adapter can fill
-  // before any capability has been discovered — so they are exempt, and report
-  // an empty ledger rather than "no graph".
-  const ledgerCommands = new Set(['work', 'usage']);
+  // `work` and `usage` read the work ledger, `portfolio` reads federation
+  // imports, `incidents` probes a manifest — all can work before any
+  // capability has been discovered — so they are exempt, and report their own
+  // emptiness rather than "no graph".
+  const ledgerCommands = new Set(['work', 'usage', 'portfolio', 'incidents', 'incident']);
   if (cmd && !ledgerCommands.has(cmd) && cmd !== "seed" && cmd !== "where" && cmd !== "help") {
     const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
     if (!seeded?.n) {
@@ -274,10 +284,30 @@ async function main() {
       emit(opportunityFor(db, arg));
       break;
     case "roi":
-      emit(roiFor(db, arg));
+      // No proposal id means the cumulative headline: what every applied
+      // proposal saved, and whether the predictions held.
+      emit(arg ? roiFor(db, arg) : roiSummary(db));
       break;
+    case "incidents":
+      // async: probing the manifest is a set of HTTP checks.
+      emit(await incidents(db));
+      break;
+    case "incident": {
+      if (arg === "resolve") emit(resolveIncident(db, positional[1], positional[2]));
+      else emit({ error: 'Usage: ambit incident resolve <svc:key> <outcome>' });
+      break;
+    }
+    case "portfolio": {
+      const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
+      const budget = budgetFlag ? Number(budgetFlag.slice(9)) : undefined;
+      emit(portfolio(db, Number.isFinite(budget as any) ? budget : undefined));
+      break;
+    }
     case "catalog":
       emit(catalogReport(db, arg));
+      break;
+    case "audit":
+      emit(auditFor(db, arg));
       break;
     case "federation": {
       const verb = arg;

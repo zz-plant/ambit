@@ -34,9 +34,12 @@ export {
   valueCents, metricByEntity, attentionValueCentsPerHour, goalValue, economicsReport,
 } from "./economics.ts";
 export { opportunitiesFor, opportunityFor, economicCaseFor } from "./opportunities.ts";
-export { roiFor } from "./roi.ts";
+export { roiFor, roiSummary } from "./roi.ts";
 export { exportSummary, importSummary } from "./federation.ts";
+export { portfolio } from "./portfolio.ts";
+export { incidents, resolveIncident } from "./incident.ts";
 export { catalogReport } from "./catalog.ts";
+export { auditFor } from "./audit.ts";
 export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,

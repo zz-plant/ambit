@@ -1,6 +1,7 @@
 import type { Migratable } from "./migrate.ts";
 import { planFor, simulateFrontier, deficits } from "./planning.ts";
 import { attentionValueCentsPerHour, goalValue } from "./economics.ts";
+import { catalogReport } from "./catalog.ts";
 
 /**
  * The opportunity engine: where recurring friction becomes a proposed
@@ -116,6 +117,7 @@ interface OpportunityCase {
   capability_id: string;
   burden: { interventions_month: number; human_hours_month: number; attention_dollars_month: number; resource_dollars_month: number; runs_affected: number };
   proposal: { action: string; setup_hours: number; setup_estimate: boolean; recurring: boolean; frontier_gain: number };
+  acquisition_options?: { provider: string; kind: string; setup: string; total_first_year_dollars?: number; privacy: string; rollback?: string }[];
   expected: { human_hours_month_after: number; savings_dollars_month: number };
   payback_months: number | null;
   roi_annual: number;
@@ -145,6 +147,11 @@ function priceCluster(db: Migratable, c: BurdenCluster, actor: string, idx: numb
 
   const sim = simulateFrontier(db as any, [c.capability_id]);
   const frontierGain = (sim as any)?.frontier_after != null ? (sim as any).frontier_after - (sim as any).frontier_before : 0;
+
+  // The supply side, attached so an opportunity is a purchase decision rather
+  // than a report: the ways this capability can be acquired, cheapest first.
+  const cat = catalogReport(db, c.capability_id) as any;
+  const acquisition_options = Array.isArray(cat?.options) ? cat.options.slice(0, 4) : undefined;
 
   // Setup cost in attention terms: the hours it takes are hours you are not
   // doing the thing the opportunity replaces.
@@ -184,6 +191,7 @@ function priceCluster(db: Migratable, c: BurdenCluster, actor: string, idx: numb
       recurring,
       frontier_gain: frontierGain,
     },
+    acquisition_options,
     expected: {
       // hours − hours×REDUCTION, not hours×(1−REDUCTION): 1−0.9 is
       // 0.09999999999999998 in float, and the difference rounds down.

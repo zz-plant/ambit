@@ -37,13 +37,15 @@ interface WindowStats {
   failures: number;
 }
 
-function windowStats(db: Migratable, capabilityId: string, start: string, end: string, rate: number, endInclusive = false): WindowStats {
+function windowStats(db: Migratable, capabilityId: string, start: string, end: string, rate: number, endInclusive = false, startExclusive = false): WindowStats {
+  const startOp = startExclusive ? '>' : '>=';
+  const endOp = endInclusive ? '<=' : '<';
   const row = db.prepare(
     `SELECT COUNT(*) n, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
-     FROM human_intervention WHERE capability_id = ? AND started_at >= ? AND started_at ${endInclusive ? '<=' : '<'} ?`
+     FROM human_intervention WHERE capability_id = ? AND started_at ${startOp} ? AND started_at ${endOp} ?`
   ).get(capabilityId, start, end) as any;
   const failures = (db.prepare(
-    `SELECT COUNT(*) n FROM session_learning WHERE capability_id = ? AND action = 'failed' AND timestamp >= ? AND timestamp ${endInclusive ? '<=' : '<'} ?`
+    `SELECT COUNT(*) n FROM session_learning WHERE capability_id = ? AND action = 'failed' AND timestamp ${startOp} ? AND timestamp ${endOp} ?`
   ).get(capabilityId, start, end) as any)?.n || 0;
   const hours = ((row?.active || 0) + (row?.waiting || 0)) / 3600;
   return {
@@ -80,10 +82,13 @@ function roiFor(db: Migratable, proposalId?: string) {
   const applied = row.applied_at;
 
   // Windows computed in JS so the SQL stays a clean range comparison.
+  // The split is deliberately conservative: work recorded in the same SQLite
+  // second as the apply counts as *before*, never as post-apply savings — an
+  // ambiguous second must not inflate the measured result.
   const appliedDate = parseDatetime(applied);
   const beforeStart = sqliteDatetime(new Date(appliedDate.getTime() - WINDOW_DAYS * 864e5));
-  const before = capId ? windowStats(db, capId, beforeStart, applied, rate) : null;
-  const after = capId ? windowStats(db, capId, applied, sqliteDatetime(new Date()), rate, true) : null;
+  const before = capId ? windowStats(db, capId, beforeStart, applied, rate, true) : null;
+  const after = capId ? windowStats(db, capId, applied, sqliteDatetime(new Date()), rate, true, true) : null;
 
   const prediction = row.economic_case ? (() => {
     try { return JSON.parse(row.economic_case); } catch { return null; }
@@ -138,4 +143,67 @@ function roiFor(db: Migratable, proposalId?: string) {
   };
 }
 
-export { roiFor };
+/**
+ * The cumulative headline: what every applied proposal has saved, and whether
+ * the predictions held.
+ *
+ *   ambit roi            → this environment, year to date
+ *
+ * This is the sales artifact — the number you show a buyer in the first
+ * meeting — and the feedback number the opportunity engine's next predictions
+ * are checked against.
+ */
+function roiSummary(db: Migratable) {
+  const applied = db.prepare(
+    "SELECT id, goal, applied_at, economic_case, observed_roi FROM proposals WHERE status = 'applied' ORDER BY applied_at"
+  ).all() as any[];
+
+  const measured: any[] = [];
+  let pending = 0;
+  for (const p of applied) {
+    const obs = p.observed_roi ? (() => { try { return JSON.parse(p.observed_roi); } catch { return null; } })() : null;
+    if (!obs) { pending++; continue; }
+    const prediction = p.economic_case ? (() => { try { return JSON.parse(p.economic_case); } catch { return null; } })() : null;
+    measured.push({
+      id: p.id,
+      goal: p.goal,
+      applied_at: p.applied_at,
+      predicted_hours_per_year: prediction?.predicted?.human_hours_saved_per_year ?? null,
+      observed_hours_per_year: obs.projected_hours_saved_per_year ?? 0,
+      observed_dollars_per_year: obs.projected_attention_dollars_per_year ?? 0,
+      verdict: obs.verdict,
+    });
+  }
+
+  const hours = measured.reduce((s, m) => s + (m.observed_hours_per_year || 0), 0);
+  const dollars = measured.reduce((s, m) => s + (m.observed_dollars_per_year || 0), 0);
+
+  // Prediction accuracy: the ratio of observed to predicted, per proposal,
+  // with a verdict that is a range. Averages across measured proposals only.
+  const withPrediction = measured.filter((m) => m.predicted_hours_per_year != null && m.predicted_hours_per_year > 0);
+  const ratios = withPrediction.map((m) => m.observed_hours_per_year / m.predicted_hours_per_year);
+  const near = ratios.filter((r) => r >= 0.7 && r <= 1.3).length;
+  const accuracy = ratios.length
+    ? Math.round(ratios.reduce((s, r) => s + Math.min(r, 2), 0) / ratios.length * 100) / 100
+    : null;
+
+  return {
+    proposals_applied: applied.length,
+    measurements: measured.length,
+    pending_measurements: pending,
+    observed_hours_saved_per_year: Math.round(hours * 10) / 10,
+    observed_dollars_saved_per_year: Math.round(dollars),
+    prediction: accuracy != null
+      ? {
+          average_ratio: accuracy,
+          near_forecast: near,
+          of: ratios.length,
+          note: 'ratio = observed ÷ predicted; 1.0 means the forecast held, 0.7–1.3 is near forecast.',
+        }
+      : undefined,
+    per_proposal: measured,
+    note: 'observed figures come from before/after windows in the work ledger — measured, not estimated.',
+  };
+}
+
+export { roiFor, roiSummary };

@@ -10,7 +10,7 @@ Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP serv
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `Bun.serve` in `server.ts` — visualizer API, consultant endpoints, and static `dist/` in production
-- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 37 tools
+- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 47 tools
 - **Plugin**: Hooks OpenCode config events from `~/.config/opencode/plugins/`
 
 ## Core Structure
@@ -37,7 +37,7 @@ src/engine/cli.ts          Argument handling and human-readable output
 src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority,
                            session_learning, frontier_snapshots, proposals, schema_meta,
                            work ledger, economics, goals, budgets, federation_imports)
-src/mcp/server.ts          MCP server exposing 37 tt_* tools to OpenCode sessions
+src/mcp/server.ts          MCP server exposing 47 tt_* tools to OpenCode sessions
 src/client/                React frontend
   components/
     CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend

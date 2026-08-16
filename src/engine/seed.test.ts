@@ -1865,9 +1865,12 @@ test('roi measures before and after an apply, and writes the observation back', 
 
   const roi = cli('roi', p.proposal);
   expect(roi.goal).toBe('Web Research');
-  expect(roi.observed.before.human_hours).toBe(3);
-  expect(roi.observed.before.interventions).toBe(3);
-  expect(roi.observed.after.interventions).toBe(1);
+  // The three past-dated interventions are unambiguously before the apply. The
+  // one recorded right after it may share the apply's SQLite second, and the
+  // split counts an ambiguous second as *before* — so the total across both
+  // windows is what must hold, not the exact partition.
+  expect(roi.observed.before.human_hours).toBeGreaterThanOrEqual(3);
+  expect(roi.observed.before.interventions + roi.observed.after.interventions).toBe(4);
   expect(roi.observed.projected_hours_saved_per_year).toBeGreaterThan(30);
   expect(typeof roi.observed.verdict).toBe('string');
 
@@ -1993,4 +1996,141 @@ test('--budget allocates the best combination within it', () => {
   // No budget → no allocation, just the ranked list.
   const plain = cli('opportunities');
   expect(plain.allocation).toBeUndefined();
+});
+
+// ── The five legibility surfaces ─────────────────────────────────────────────
+
+test('audit assembles the trail for a run, a proposal, and a person', () => {
+  seed(APPLIABLE).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r = beginRun(db, { goal: 'restart the service', runType: 'incident', source: 'scan' });
+  addEvent(db, r.run, { kind: 'detected', actor: 'monitoring', capabilityId: 'svc:ollama', detail: 'down' });
+  addEvent(db, r.run, { kind: 'diagnosed', actor: 'agent', capabilityId: 'combo:observability' });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:shell-execution', activeSeconds: 30, waitingSeconds: 90 });
+  endRun(db, r.run, 'success');
+  (db as any).close();
+
+  const runAudit = cli('audit', r.run);
+  expect(runAudit.goal).toBe('restart the service');
+  expect(runAudit.events.length).toBe(2);
+  expect(runAudit.interventions[0].kind).toBe('authority');
+  expect(runAudit.outcome).toBe('success');
+
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  const propAudit = cli('audit', p.proposal);
+  expect(propAudit.approval.by).toBe('human:kanav');
+  expect(propAudit.approval.artifact.signed).toBe(true);
+  expect(propAudit.enforcement.length).toBeGreaterThan(0);
+  expect(propAudit.enforcement[0].decision).toBeDefined();
+
+  const humanAudit = cli('audit', 'human:kanav');
+  expect(humanAudit.approvals.some((a: any) => a.proposal === p.proposal)).toBe(true);
+
+  const recent = cli('audit');
+  expect(recent.runs.length).toBeGreaterThanOrEqual(1);
+  expect(recent.proposals.length).toBeGreaterThanOrEqual(1);
+});
+
+test('incidents open a run for an offline service and resolve with MTTR', () => {
+  seed(LOCAL_ONLY).close();
+  writeFileSync(join(dir, 'infra.json'), JSON.stringify({
+    services: [{ key: 'ollama', label: 'Ollama', url: 'http://127.0.0.1:1/health' }],
+  }));
+
+  const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'incidents', '--json'], {
+    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), INFRA_MANIFEST: join(dir, 'infra.json'), AMBIT_APPROVAL_KEY: 'test-approval-key' },
+    encoding: 'utf8',
+  });
+  const report = JSON.parse(out);
+  expect(report.incidents.length).toBe(1);
+  const inc = report.incidents[0];
+  expect(inc.service).toBe('svc:ollama');
+  expect(inc.status).toBe('down');
+  expect(inc.recovery.decision).toBeDefined();
+  expect(inc.recovery.action).toBe('restart svc:ollama');
+
+  const resolved = cli('incident', 'resolve', 'svc:ollama', 'recovered');
+  expect(resolved.mttr_seconds).toBeGreaterThanOrEqual(0);
+  expect(resolved.outcome).toBe('recovered');
+
+  // The closed run is now auditable with its MTTR in the ledger.
+  const audit = cli('audit', resolved.run);
+  expect(audit.goal).toContain('ollama');
+});
+
+test('portfolio reads shared burden and capex across imported environments', () => {
+  seed(WITH_PREFS).close();
+  // Two environments, both burdened on the same capability.
+  for (const env of ['acme-ltd', 'globex']) {
+    const e = env;
+    const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+    const r = beginRun(db, { goal: 'move data between systems' });
+    recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+    (db as any).close();
+    const summary = JSON.parse(execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
+      env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), AMBIT_ENV: e, AMBIT_APPROVAL_KEY: 'test-approval-key' },
+      encoding: 'utf8',
+    }));
+    const receipt = cli('federation', 'import', writeAndReturn(join(dir, `${env}.json`), summary));
+    expect(receipt.capabilities).toBeGreaterThan(0);
+  }
+
+  const pf = cli('portfolio');
+  expect(pf.environments).toBe(2);
+  expect(pf.environments_list.map((x: any) => x.environment).sort()).toEqual(['acme-ltd', 'globex']);
+  const shared = pf.shared_burden.find((s: any) => s.capability_id === 'combo:data-access');
+  expect(shared).toBeDefined();
+  expect(shared.environments).toBe(2);
+
+  const withBudget = cli('portfolio', '--budget=100000');
+  expect(withBudget.allocation.length).toBe(2);
+});
+
+function writeAndReturn(path: string, data: unknown): string {
+  writeFileSync(path, JSON.stringify(data));
+  return path;
+}
+
+test('roi with no argument is the cumulative headline', () => {
+  seed(APPLIABLE).close();
+  // Record burden first so the proposal carries a prediction to check.
+  const db0 = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r0 = beginRun(db0, { goal: 'search the web', goalId: 'combo:web-research' });
+  const past = new Date(Date.now() - 30 * 864e5).toISOString();
+  for (let i = 0; i < 4; i++) recordIntervention(db0, r0.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1800, startedAt: past });
+  (db0 as any).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  cli('apply', p.proposal);
+  cli('roi', p.proposal); // populate observed_roi
+
+  const summary = cli('roi');
+  expect(summary.proposals_applied).toBe(1);
+  expect(summary.measurements).toBe(1);
+  expect(summary.observed_hours_saved_per_year).toBeGreaterThanOrEqual(0);
+  expect(summary.prediction).toBeDefined();
+  expect(summary.prediction.of).toBeGreaterThan(0);
+});
+
+test('an opportunity carries its acquisition options', () => {
+  seed({
+    ...LOCAL_ONLY,
+    actors: { kanav: { name: 'Kanav' } },
+    catalog: {
+      'combo:data-access': [
+        { provider: 'saas-x', kind: 'subscribe', setup_seconds: 1800, recurring_dollars_per_month: 490, privacy: 'hosted', rollback: 'revoke the credential' },
+      ],
+    },
+  }).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r = beginRun(db, { goal: 'move data' });
+  for (let i = 0; i < 5; i++) recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  (db as any).close();
+
+  const o = cli('opportunities');
+  const da = o.opportunities.find((x: any) => x.kind === 'clerical');
+  expect(da.acquisition_options.length).toBeGreaterThan(0);
+  expect(da.acquisition_options[0].provider).toBe('saas-x');
+  expect(da.acquisition_options[0].kind).toBe('subscribe');
 });
