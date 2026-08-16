@@ -1,5 +1,6 @@
 import type { Db } from "./db.ts";
 import { PROVISION_EDGES } from "./ontology.ts";
+import { usable } from "./assurance.ts";
 
 // ─── Prune Recommendations ────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ function pruneRecommendations(db) {
 function forkComparison(db) {
   const locked = db.prepare("SELECT id, name, domain, unlock_cost_setup, unlock_cost_tokens FROM capabilities WHERE state = 'locked'").all();
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
-  const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const caps = db.prepare("SELECT id, name, maturity_score, state, lifecycle FROM capabilities").all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const comboGroups = new Map();
   for (const d of deps) {
@@ -35,7 +36,7 @@ function forkComparison(db) {
   const results = [];
   for (const [id, prereqs] of comboGroups) {
     const combo = capMap.get(id); if (!combo) continue;
-    const hardMet = prereqs.filter(p => p.is_hard_requisite).every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active'); });
+    const hardMet = prereqs.filter(p => p.is_hard_requisite).every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle); });
     if (!hardMet) continue;
     const avgMaturity = prereqs.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / prereqs.length;
     const regret = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning WHERE capability_id = ? AND action = 'regretted'").get(id) || {}).cnt || 0;
@@ -50,7 +51,7 @@ function forkComparison(db) {
 
 function nearMissCombos(db) {
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
-  const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const caps = db.prepare("SELECT id, name, maturity_score, state, lifecycle FROM capabilities").all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const groups = new Map();
   for (const d of deps) {
@@ -62,8 +63,11 @@ function nearMissCombos(db) {
     const combo = capMap.get(comboId);
     if (!combo || combo.state === 'unlocked' || combo.state === 'active') continue;
     const hard = prereqs.filter(p => p.is_hard_requisite);
-    const metHard = hard.filter(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active'); });
-    const missingHard = hard.filter(p => { const c = capMap.get(p.from_capability); return !c || (c.state !== 'unlocked' && c.state !== 'active'); });
+    const metHard = hard.filter(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle); });
+    const missingHard = hard.filter(p => { const c = capMap.get(p.from_capability); return !c || !((c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle)); });
+    // A missing prerequisite that is broken rather than absent: the capability
+    // is configured, but its check fails. That is a re-verify, not an add.
+    const degradedHard = missingHard.filter(p => capMap.get(p.from_capability)?.state !== 'locked' && !usable(capMap.get(p.from_capability)?.lifecycle));
     if (missingHard.length === 0) continue;
     if (missingHard.length > 2) continue;
     const avgMetMaturity = metHard.length > 0 ? metHard.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / metHard.length : 0;
@@ -73,10 +77,16 @@ function nearMissCombos(db) {
       id: comboId,
       missing: missingHard.length,
       missing_names: missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability),
+      degraded: degradedHard.length ? degradedHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability) : undefined,
       met_count: metHard.length,
       total_required: hard.length,
       met_maturity: Math.round(avgMetMaturity * 100),
-      investment: `Add ${missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`,
+      investment: degradedHard.length === missingHard.length
+        ? `Re-verify ${degradedHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`
+        : `Add ${missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`,
+      note: degradedHard.length
+        ? 'the missing prerequisite is configured but failing verification — re-verify, do not re-add'
+        : undefined,
     });
   }
   return results.sort((a, b) => b.met_maturity - a.met_maturity);
@@ -119,7 +129,7 @@ function computeDecay(db) {
 
 function discoverCombos(db) {
   const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
-  const caps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const caps = db.prepare("SELECT id, name, maturity_score, state, lifecycle FROM capabilities").all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const results = [];
   const groups = new Map();
@@ -131,7 +141,7 @@ function discoverCombos(db) {
     const combo = capMap.get(comboId);
     if (!combo || combo.state === 'unlocked' || combo.state === 'active') continue;
     const hard = prereqs.filter(p => p.is_hard_requisite);
-    if (!hard.every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active'); })) continue;
+    if (!hard.every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle); })) continue;
     const avg = prereqs.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / prereqs.length;
     if (avg < 0.4) continue;
     results.push({ name: combo.name, requirements: prereqs.map(p => capMap.get(p.from_capability)?.name || p.from_capability), unlocks: comboId, confidence: Math.min(1, avg + 0.2), reason: `All prereqs at ${Math.round(avg * 100)}% avg maturity` });
@@ -206,7 +216,8 @@ function domainHealth(db) {
 // ─── Bottlenecks ──────────────────────────────────────────────────────────────
 
 function findBottlenecks(db) {
-  const caps = db.prepare("SELECT id, name, domain FROM capabilities WHERE state IN ('unlocked','active')").all();
+  const caps = db.prepare("SELECT id, name, domain, lifecycle FROM capabilities WHERE state IN ('unlocked','active')").all()
+    .filter((c: any) => usable(c.lifecycle));
   // Edges onto an action are excluded. An action is conferred by exactly one
   // capability, so counting them would make leverage a function of how many
   // verbs a contract happens to name — write three more into version-control
@@ -325,13 +336,13 @@ function analyzeImpact(db: Db, capId: string) {
 function singlePointsOfFailure(db: Db) {
   const providers = providersOf(db);
   const names = new Map(
-    db.prepare("SELECT id, name, state, kind FROM capabilities").all().map((c: any) => [c.id, c])
+    db.prepare("SELECT id, name, state, kind, lifecycle FROM capabilities").all().map((c: any) => [c.id, c])
   );
   const out: any[] = [];
   for (const [target, list] of providers) {
     if (list.length !== 1) continue;
     const t = names.get(target) as any;
-    if (!t || t.state === 'locked') continue; // not yet reached; nothing to lose
+    if (!t || t.state === 'locked' || !usable(t.lifecycle)) continue; // not available; nothing to lose
     // An action conferred by a capability has one provider by definition, not
     // by fragility, and listing all of them would bury the real answers. An
     // action a *person* supplies is a different matter — one provider there is

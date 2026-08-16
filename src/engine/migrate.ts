@@ -45,6 +45,8 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ["capabilities", "lifecycle", "TEXT NOT NULL DEFAULT 'unknown'"],
   ["dependencies", "kind", "TEXT NOT NULL DEFAULT 'requires'"],
   ["frontier_snapshots", "kinds", "TEXT"],
+  ["frontier_snapshots", "verified", "INTEGER NOT NULL DEFAULT 0"],
+  ["frontier_snapshots", "lifecycles", "TEXT"],
 ];
 
 function addMissingColumns(db: Migratable) {

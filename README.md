@@ -66,14 +66,14 @@ That second description is **effective capability**, and it is the object Ambit 
 | **Available** | something appears to exist | ✅ |
 | **Reachable** | all necessary dependencies are currently accessible | ✅ |
 | **Composed** | several lower-level capabilities together make a higher-order action possible | ✅ |
-| **Verified** | the capability has actually succeeded | ✅ where a check is declared |
+| **Verified** | the capability has actually succeeded | ✅ a passing check; a failing one reads as `degraded`/`broken` and stops being available |
 | **Authorized** | the system has permission to use it | ✅ per action, declared, not enforced |
 | **Delegated** | a human or another agent supplies a missing step | ✅ people are nodes; who to ask is roadmap |
 | **Persistent** | it can operate beyond the current interaction | roadmap |
 
 Capability *change* is now recorded over time — see [the ledger](#the-ledger) — which is the accounting half of that table rather than a seventh state.
 
-Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
+Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities, a check that last failed now **gates** the capability out of everything that decides availability, and authority is described rather than mediated. [The roadmap](./ROADMAP.md) is the rest.
 
 ```console
 $ tt verify              # run the declared checks, record what happened
@@ -495,7 +495,7 @@ unknown → detected → configured → demonstrated
 
 A capability should mean more than "something with the right name exists". It should mean the system has evidence the action can be performed under known conditions. That distinction matters more as agents gain authority.
 
-That lifecycle is now a stored column rather than an aspiration — see [what a node is](#what-a-node-is). What it does not yet do is gate anything: `tt plan` will route a path through a `broken` capability without complaint.
+That lifecycle is a stored column rather than an aspiration — see [what a node is](#what-a-node-is) — and it now **gates**. A capability whose lifecycle is `degraded` or `broken` stops reading as available wherever availability is decided: `tt plan` refuses to route through it (and says "re-verify" rather than "add"), `tt simulate` reports it as `blocked_by_degraded`, `tt authority` and `tt actions` stop listing it as reachable, `tt near` flags it as a re-verify instead of an add, and `tt stats` reports it in a `failing` count. `tt verify` changes the lifecycle immediately; a re-seed reconciles it from the recorded evidence, and nothing verifies on seed.
 
 ## Capability and authority are different things
 

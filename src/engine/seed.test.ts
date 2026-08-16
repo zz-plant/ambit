@@ -666,6 +666,115 @@ test('a failing check breaks the capability rather than being reported alongside
     .not.toBe('locked');
 });
 
+// ── The lifecycle gates availability ─────────────────────────────────────────
+
+/** Record a verification outcome the way tt verify would, without running it. */
+function recordVerification(id: string, outcome: 'verified' | 'failed') {
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare("INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, 'recorded by test')")
+    .run(id, outcome, outcome === 'verified' ? 1 : 0);
+  db.close();
+}
+
+test('a broken capability stops reading as available', () => {
+  seed(LOCAL_ONLY).close();
+  // Shell Execution was reachable. Its check now fails, and the lifecycle gate
+  // must stop every decision surface from relying on it — configured is not
+  // working, and this is the case the model previously misrepresented.
+  recordVerification('combo:shell-execution', 'failed');
+  seed(LOCAL_ONLY).close(); // same config; the gate reads the recorded evidence
+
+  const db = new Database(join(dir, 'graph.db'));
+  expect(rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
+    .toBe('broken');
+  db.close();
+
+  // A plan refuses to treat it as an acquisition.
+  const p = cli('plan', 'shell-execution');
+  expect(p.degraded).toBe(true);
+  expect(p.reachable).toBe(false);
+  expect(p.note).toContain('re-verify');
+
+  // Authority: it is not in the available half of the report whatever its
+  // permission says — permission and a broken implementation are two different
+  // reasons it cannot run.
+  const a = cli('authority');
+  expect(a.detail.find((r: any) => r.name === 'Shell Execution')?.reached).toBe(false);
+  expect(a.needs_approval).not.toContain('Shell Execution');
+
+  // A simulation of something built on it says why it will not cascade.
+  const sim = cli('simulate', 'version-control');
+  expect(sim.blocked_by_degraded.map((b: any) => b.id)).toContain('combo:version-control');
+});
+
+test('a re-passing verification releases the gate', () => {
+  seed(LOCAL_ONLY).close();
+  recordVerification('combo:shell-execution', 'failed');
+  recordVerification('combo:shell-execution', 'verified');
+  seed(LOCAL_ONLY).close();
+
+  // One pass after a failure is a weaker claim than a clean record: the
+  // lifecycle moves broken → degraded, and the gate stays closed.
+  const db = new Database(join(dir, 'graph.db'));
+  expect(rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
+    .toBe('degraded');
+  db.close();
+  expect(cli('plan', 'shell-execution').reachable).toBe(false);
+
+  // Five consecutive passes are a different claim, and the gate opens.
+  for (let i = 0; i < 4; i++) recordVerification('combo:shell-execution', 'verified');
+  seed(LOCAL_ONLY).close();
+
+  const after = new Database(join(dir, 'graph.db'));
+  expect(rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
+    .toBe('reliable');
+  after.close();
+  const p = cli('plan', 'shell-execution');
+  expect(p.reachable).toBe(true);
+  expect(p.degraded).toBeUndefined();
+});
+
+test('a plan names a degraded prerequisite as broken, not missing', () => {
+  seed(LOCAL_ONLY).close();
+  // Local Embeddings is still locked (Embeddings is missing) and requires
+  // Local Runtime, which declares a check. Break the prerequisite: the plan
+  // must say "re-verify this", not "add this".
+  recordVerification('combo:local-runtime', 'failed');
+  seed(LOCAL_ONLY).close();
+
+  const p = cli('plan', 'local-embeddings');
+  expect(p.degraded.map((d: any) => d.name)).toContain('Local Runtime');
+  expect(p.order.map((o: any) => o.id)).not.toContain('combo:local-runtime'); // not something to acquire
+  expect(p.note).toContain('failing verification');
+});
+
+test('the ledger records demonstrated reliability beside reach', () => {
+  seed(LOCAL_ONLY).close();
+  // One passing run makes shell-execution verified — a different claim from
+  // merely reachable, and the ledger has to be able to show that over time.
+  cli('verify', 'shell-execution');
+  seed(PLUS_EMBEDDINGS).close(); // a state change forces the next observation
+
+  const ledger = cli('ledger');
+  expect(ledger.length).toBe(2);
+  expect(ledger[0].verified).toBe(0); // before anything had passed a check
+  expect(ledger[1].verified).toBe(1); // shell-execution is now demonstrated
+});
+
+test('since reports a capability that stopped working', () => {
+  seed(LOCAL_ONLY).close();
+  recordVerification('combo:shell-execution', 'failed');
+  seed(LOCAL_ONLY).close();
+
+  const since = cli('since');
+  // Structural reach did not move — nothing was removed — but the capability
+  // stopped being usable, and the ledger has to say so.
+  expect(since.frontier_now).toBe(since.frontier_then);
+  expect(since.diminished.map((d: any) => d.id)).toContain('combo:shell-execution');
+  expect(since.diminished.find((d: any) => d.id === 'combo:shell-execution').reason).toContain('verification');
+  expect(since.verified_now).toBe(0);
+});
+
 test('planning orders the prerequisites of an unreached capability', () => {
   seed(LOCAL_ONLY).close();
   const p = cli('plan', 'offline-capable');
