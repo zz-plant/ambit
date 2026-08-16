@@ -1775,3 +1775,65 @@ test('notify-approvals lists approved proposals awaiting apply', () => {
   expect(rows.map((r: any) => r.id)).toContain(p.proposal);
   db.close();
 });
+
+// ── canExecute (WP-8) ─────────────────────────────────────────────────────────
+
+test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
+  seed(LOCAL_ONLY).close();
+  // The plan's example, on a capability the model leaves ungranted so the
+  // scoped grants are the whole story: restart svc:ollama autonomous,
+  // svc:postgres confirm, device:nuc not covered at all.
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, ?, ?, '', ?, 'test')")
+    .run('combo:offline-capable', 'execute', 'autonomous', 'svc:ollama');
+  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, ?, ?, '', ?, 'test')")
+    .run('combo:offline-capable', 'execute', 'confirm', 'svc:postgres');
+  db.close();
+
+  const allow = cli('can', 'offline-capable', '--target=svc:ollama');
+  expect(allow.decision).toBe('ALLOW');
+
+  const confirm = cli('can', 'offline-capable', '--target=svc:postgres');
+  expect(confirm.decision).toBe('CONFIRM');
+
+  const deny = cli('can', 'offline-capable', '--target=device:nuc');
+  expect(deny.decision).toBe('DENY');
+  expect(deny.reason).toContain('no grant covers');
+
+  // Without a target, both grants cover and the narrowest (confirm) wins.
+  const mixed = cli('can', 'offline-capable');
+  expect(mixed.decision).toBe('CONFIRM');
+});
+
+test('a budget refuses a spend that would exceed it', () => {
+  seed(LOCAL_ONLY).close();
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'autonomous', '', '', 'test')")
+    .run('combo:offline-capable');
+  db.prepare("INSERT INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES (?, 'execute', '', 10000, 'month', 4000)").run('combo:offline-capable');
+  db.close();
+
+  const ok = cli('can', 'offline-capable', '--spend=5000');
+  expect(ok.decision).toBe('ALLOW');
+  expect(ok.remaining_budget_cents).toBe(6000);
+
+  const over = cli('can', 'offline-capable', '--spend=7000');
+  expect(over.decision).toBe('DENY');
+  expect(over.reason).toContain('exceeds');
+});
+
+test('apply refuses a step authority denies, even with an approval', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+
+  // Forbid exactly what the proposal would acquire.
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'forbidden', '', '', 'test')")
+    .run('combo:web-research');
+  db.close();
+
+  const refused = cli('apply', p.proposal);
+  expect(refused.applied).toBeUndefined();
+  expect(refused.error).toContain('not permitted');
+});

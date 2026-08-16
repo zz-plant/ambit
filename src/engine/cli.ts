@@ -9,7 +9,7 @@ import {
   analyzeImpact, nearMissCombos, singlePointsOfFailure, exportGraph,
   affordanceDomains, surfaceFor,
 } from "./inference.ts";
-import { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport } from "./assurance.ts";
+import { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport, canExecute } from "./assurance.ts";
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
 import { recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 import { goalFor, pathsFor } from "./goals.ts";
@@ -99,6 +99,7 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   verify [cap] [--history]   run the declared check, or show past verification
   authority [cap] [scope <target>]   what may run unattended, what each action
                     may touch, and whether a scope covers a target
+  can <cap> [--target X] [--spend N]   the decision API: ALLOW / CONFIRM / DENY
   history [since <when>]   how the frontier moved
   propose <cap> [option]    draft a reviewable acquisition (with its simulation)
   proposals / proposal <id>
@@ -278,6 +279,18 @@ async function main() {
       if (arg === "scope") emit(scopeReport(db, positional[1]));
       else if (arg) emit(actionsReport(db, arg));
       else emit(authorityReport(db));
+      break;
+    }
+    case "can": {
+      const target = [...flags].find(f => f.startsWith('--target='))?.slice(9);
+      const spend = [...flags].find(f => f.startsWith('--spend='))?.slice(8);
+      const actor = [...flags].find(f => f.startsWith('--actor='))?.slice(8);
+      emit(canExecute(db, {
+        actor,
+        capability: arg,
+        target,
+        spendCents: spend ? Number(spend) : undefined,
+      }));
       break;
     }
     case "history":
