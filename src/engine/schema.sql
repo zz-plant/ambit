@@ -168,3 +168,91 @@ CREATE TABLE IF NOT EXISTS schema_meta (
     value TEXT NOT NULL,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ─── Work ledger (the operating half) ─────────────────────────────────────────
+--
+-- `session_learning` records what the *configuration* did — approvals, applies,
+-- verifications, blocks. These tables record what the *work* was: one row per
+-- run of actual effort, its events, the capabilities it exercised, the times
+-- a human had to intervene, the resources it consumed, and what it achieved.
+-- This is the observation the economic loop runs on: recurring intervention +
+-- elapsed time + cost, per goal, is what an opportunity is a projection of.
+--
+-- Nothing here moves `capabilities.state` — the frontier stays structural. A
+-- run may change the world or merely observe it; either way the ledger records
+-- it, and `tt work` is the report a person reads.
+CREATE TABLE IF NOT EXISTS work_runs (
+    id TEXT PRIMARY KEY,
+    goal TEXT,
+    goal_id TEXT REFERENCES capabilities(id),
+    run_type TEXT NOT NULL DEFAULT 'task',
+    source TEXT NOT NULL DEFAULT 'manual',
+    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+    ended_at TEXT,
+    outcome TEXT,
+    outcome_value_cents REAL
+);
+
+CREATE TABLE IF NOT EXISTS work_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL REFERENCES work_runs(id),
+    at TEXT NOT NULL DEFAULT (datetime('now')),
+    kind TEXT NOT NULL,
+    actor TEXT,
+    capability_id TEXT,
+    action TEXT,
+    detail TEXT
+);
+
+CREATE TABLE IF NOT EXISTS capability_use (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL REFERENCES work_runs(id),
+    capability_id TEXT NOT NULL REFERENCES capabilities(id),
+    used_at TEXT NOT NULL DEFAULT (datetime('now')),
+    duration_seconds REAL,
+    source TEXT NOT NULL DEFAULT 'event'
+);
+
+CREATE TABLE IF NOT EXISTS human_intervention (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT REFERENCES work_runs(id),
+    actor_id TEXT NOT NULL,
+    -- What the human contributed. clerical and exception are the reducible
+    -- kinds; judgment and knowledge are the ones worth keeping, and an
+    -- opportunity engine must never propose removing those.
+    kind TEXT NOT NULL,
+    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+    ended_at TEXT,
+    active_seconds REAL,
+    waiting_seconds REAL,
+    capability_id TEXT,
+    action TEXT,
+    outcome TEXT
+);
+
+CREATE TABLE IF NOT EXISTS resource_consumption (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT REFERENCES work_runs(id),
+    resource_id TEXT,
+    kind TEXT NOT NULL,
+    quantity REAL NOT NULL DEFAULT 0,
+    unit TEXT,
+    cost_cents REAL,
+    recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS outcomes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL REFERENCES work_runs(id),
+    achieved TEXT NOT NULL,
+    objective_metric REAL,
+    objective_name TEXT,
+    value_cents REAL,
+    recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_work_runs_started ON work_runs(started_at);
+CREATE INDEX IF NOT EXISTS idx_work_events_run ON work_events(run_id);
+CREATE INDEX IF NOT EXISTS idx_capability_use_run ON capability_use(run_id, capability_id);
+CREATE INDEX IF NOT EXISTS idx_intervention_actor ON human_intervention(actor_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_resource_run ON resource_consumption(run_id);

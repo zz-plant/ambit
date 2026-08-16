@@ -9,6 +9,7 @@ import { Database } from 'bun:sqlite';
 // The visualizer API runs under Bun and migrates the graph itself, so the
 // migration has to work through this driver as well as the engine's.
 import { migrate } from './migrate.ts';
+import { beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome, workReport, usageReport } from './telemetry.ts';
 
 const ENGINE = join(import.meta.dir, 'engine.ts');
 let dir: string;
@@ -1449,4 +1450,73 @@ test('paths does not claim an already-reached capability needs closing', () => {
   seed(APPLIABLE).close();
   const paths = cli('goal', 'shell-execution', '--paths');
   expect(paths.note).toContain('already reached');
+});
+
+// ── Work ledger (the operating half) ─────────────────────────────────────────
+
+test('a run records events, interventions, usage and an outcome', () => {
+  seed(LOCAL_ONLY).close();
+  // The recorder is driver-agnostic (migrate.ts's surface); bun:sqlite's
+  // `all()` returns (Record | undefined)[] where the interface says Record[],
+  // so the handle is cast the same way the migration tests cast theirs.
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+
+  const b = beginRun(db, { goal: 'recover production service', runType: 'incident' });
+  addEvent(db, b.run, { kind: 'detected', actor: 'monitoring', detail: 'service down' });
+  addEvent(db, b.run, { kind: 'diagnosed', actor: 'agent', capabilityId: 'combo:observability', action: 'diagnose' });
+  recordUse(db, b.run, 'combo:observability', { durationSeconds: 120 });
+  recordIntervention(db, b.run, 'human:kanav', {
+    kind: 'authority', capabilityId: 'combo:shell-execution', action: 'restart',
+    startedAt: new Date(Date.now() - 90 * 1000).toISOString(), endedAt: new Date().toISOString(),
+    waitingSeconds: 60,
+  });
+  recordResource(db, b.run, 'provider:acme', 'api', { quantity: 42, unit: 'tokens', costCents: 12 });
+  recordOutcome(db, b.run, 'service restored', { objectiveMetric: 240, objectiveName: 'mttr_seconds' });
+  endRun(db, b.run, 'success', 5000);
+
+  const work = workReport(db, 5);
+  expect(work.length).toBe(1);
+  const r = work[0];
+  expect(r.goal).toBe('recover production service');
+  expect(r.outcome).toBe('success');
+  expect(r.events).toBe(2);
+  expect(r.capabilities).toHaveLength(1);
+  expect(r.capabilities[0].capability).toBe('Observability');
+  expect(r.interventions[0].kind).toBe('authority');
+  expect(r.interventions[0].times).toBe(1);
+  expect(r.resources[0].cost_cents).toBe(12);
+  expect(r.achieved).toBe('service restored');
+  expect(r.objective_name).toBe('mttr_seconds');
+  expect(r.elapsed_seconds).toBeGreaterThanOrEqual(0);
+
+  const usage = usageReport(db, 30);
+  const obs = usage.find((u: any) => u.capability === 'Observability');
+  expect(obs.times).toBe(1);
+  expect(obs.duration_seconds).toBe(120);
+  (db as any).close();
+});
+
+test('a run without an end is open and reports no outcome', () => {
+  seed(LOCAL_ONLY).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+  const b = beginRun(db, { goal: 'long task', runType: 'task' });
+  const work = workReport(db, 5);
+  expect(work[0].goal).toBe('long task');
+  expect(work[0].outcome).toBeUndefined();
+  expect(endRun(db, 'nope', 'success').error).toContain('No run');
+  (db as any).close();
+});
+
+test('a run records no capability state — the ledger observes, it does not reach', () => {
+  seed(LOCAL_ONLY).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+  const b = beginRun(db, { goal: 'observe only' });
+  recordUse(db, b.run, 'combo:shell-execution', { durationSeconds: 5 });
+  endRun(db, b.run, 'success');
+  (db as any).close();
+
+  const reopened = new Database(join(dir, 'graph.db'));
+  const state = rows(reopened, "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'")[0].state;
+  expect(state).toBe('unlocked'); // seed made it reachable; the run changed nothing
+  reopened.close();
 });
