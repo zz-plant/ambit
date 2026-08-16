@@ -10,7 +10,7 @@ Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP serv
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `Bun.serve` in `server.ts` — visualizer API, consultant endpoints, and static `dist/` in production
-- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 31 tools
+- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 37 tools
 - **Plugin**: Hooks OpenCode config events from `~/.config/opencode/plugins/`
 
 ## Core Structure
@@ -22,32 +22,36 @@ src/engine/db.ts           The handle, the schema, additive column migrations, b
 src/engine/ontology.ts     Node kinds and edge kinds — what a thing is, what a relation means
 src/engine/discovery.ts    Reading configs, runtimes, people, the curated tree, contracts
 src/engine/inference.ts    What follows from the graph — providers, impact, bottlenecks
-src/engine/assurance.ts    Verification, evidence, lifecycle, authority, actions
+src/engine/assurance.ts    Verification, evidence, lifecycle, authority, actions, canExecute
 src/engine/planning.ts     The gap to a capability, and simulating closing it
 src/engine/governance.ts   Approval, apply, rollback — everything that can change the world
 src/engine/ledger.ts       Frontier snapshots and how the frontier moved
+src/engine/telemetry.ts    The work ledger: runs, events, interventions, consumption
+src/engine/attention.ts    Human-agency accounting — what is reducible, what is keeper
+src/engine/economics.ts    Declared costs and goal values (dollars declare, cents store)
+src/engine/opportunities.ts The opportunity engine — ranked structural changes worth making
+src/engine/approval.ts     The approval broker — signed artifacts the executor verifies
+src/engine/roi.ts          Realized ROI — before/after windows, written back
+src/engine/federation.ts   Signed summaries a portfolio layer reads; receipts, no merging
 src/engine/cli.ts          Argument handling and human-readable output
 src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority,
-                           session_learning, frontier_snapshots, proposals, schema_meta)
-src/mcp/server.ts          MCP server exposing 31 tt_* tools to OpenCode sessions
+                           session_learning, frontier_snapshots, proposals, schema_meta,
+                           work ledger, economics, goals, budgets, federation_imports)
+src/mcp/server.ts          MCP server exposing 37 tt_* tools to OpenCode sessions
 src/client/                React frontend
   components/
-    Constellation.tsx       3D hex map (Three.js)
-    CivTree.tsx             ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend
-    StarNode.tsx            3D node with hover/select states
-    StarPanel.tsx           Node detail panel
-    ToolchainPanel.tsx      Flat list of all capabilities
-    ConsultantPanel.tsx     Runs diagnostic checks on selected nodes
-    ConnectionLine.tsx      Dependency lines between nodes
-    DocsModal.tsx           Documentation overlay with node type legend, connection types, and usage guide
-  store/toolchainStore.ts  All state, actions, demo data, layout modes (constellation, civ)
+    CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend
+    StarPanel.tsx          Node detail panel
+    ToolchainPanel.tsx     Flat list of all capabilities
+    DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
+  store/toolchainStore.ts  All state, actions, demo data
   utils/
     civLayout.ts           ERAS column positioning engine
 ```
 
-## Layout Modes
+## Layout
 
-Four layout modes toggleable in the HUD: CIV (era columns), CONSTELLATION (3D hex map), ORBITAL (circular), FLAT (2D force-directed). CIV renders through `CivTree.tsx` (SVG); the other three share the Three.js `Constellation.tsx`, which is lazy-loaded so the default CIV view never downloads the 3D bundle.
+One renderer: `CivTree.tsx` (SVG), era columns as filter metadata — the 3D modes and their Three.js bundle were sunset. The client is a view over the graph, and `/api/events` (AG-UI state + work/proposal events) keeps it live.
 
 ## Typechecking
 
@@ -87,4 +91,4 @@ worktree rather than sharing this one.
 4. **Config mapping**: The engine accepts any JSON config via `CONFIG_MAPPING` env var. OpenCode format is the default.
 5. **Domains**: `inferDomain` in `configImporter.ts` assigns every imported item a `meta.domain`, which decides its era column. An item with no domain collapses into `meta` and flattens the tree.
 6. **Tracking model**: Configuration decisions, not invocation frequency. Plugin writes `built`, `removed`, `unlocked` actions — never `used` counts.
-7. **Availability**: `state` is structural and is what the frontier ledger records — never change it to express verification. The gate is `lifecycle`: a capability whose lifecycle is `degraded` or `broken` is configured but not working, and every availability decision (plan, simulate, authority, actions, near, combos, fork, bottlenecks, spof, deficits, stats) must exclude it via `usable(lifecycle)`. Never write a state-only availability check; it silently re-admits broken capabilities. New snapshot columns (e.g. `lifecycles`) go through `ADDED_COLUMNS` in `migrate.ts`.
+7. **Availability**: `state` is structural and is what the frontier ledger records — never change it to express verification. The gate is `lifecycle`: a capability whose lifecycle is `degraded` or `broken` is configured but not working, and every availability decision (plan, simulate, goal, authority, actions, canExecute, near, combos, bottlenecks, spof, deficits, opportunities, roi, status) must exclude it via `usable(lifecycle)`. Never write a state-only availability check; it silently re-admits broken capabilities. New snapshot columns (e.g. `lifecycles`) go through `ADDED_COLUMNS` in `migrate.ts`.
