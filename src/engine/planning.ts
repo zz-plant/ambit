@@ -7,6 +7,50 @@ import { inverseOf } from "./governance.ts";
 import { usable } from "./assurance.ts";
 
 /**
+ * Where a chosen way to close a step fights how a required person prefers
+ * things done.
+ *
+ * A person's `prefers` are words — local-when-practical, minimize-recurring-
+ * cost — matched against the properties of the alternative actually chosen.
+ * The plan names the fight rather than hiding it, because the person is the
+ * one deciding, and an un-named conflict reads as "there is no choice".
+ * Returns the conflicts, or undefined when nothing disagrees.
+ */
+function conflictForChosen(step: any, chosen: any, db: Db): string[] | undefined {
+  if (!chosen) return undefined;
+  const people = step.requires_person || [];
+  if (!people.length) return undefined;
+  const rows = db
+    .prepare(
+      `SELECT p.preference, c.name FROM preferences p
+       JOIN capabilities c ON c.id = p.actor_id`
+    )
+    .all() as any[];
+  const prefsByPerson = new Map<string, string[]>();
+  for (const r of rows) {
+    if (!prefsByPerson.has(r.name)) prefsByPerson.set(r.name, []);
+    prefsByPerson.get(r.name)!.push(r.preference);
+  }
+
+  const hits: string[] = [];
+  for (const person of people) {
+    const prefs = prefsByPerson.get(person)?.join(' ') || '';
+    if (!prefs) continue;
+    const hosted = chosen.privacy === 'hosted';
+    const recurring = chosen.recurring_cost && chosen.recurring_cost !== 'none';
+    if (hosted && prefs.includes('local-when-practical')) {
+      const localAlt = (step.options || []).find((o: any) => o.privacy !== 'hosted');
+      hits.push(`${person} prefers local-when-practical; the choice (${chosen.name}) is hosted${localAlt ? ` — ${localAlt.name} matches` : ''}`);
+    }
+    if (recurring && prefs.includes('minimize-recurring-cost')) {
+      const oneOff = (step.options || []).find((o: any) => !o.recurring_cost || o.recurring_cost === 'none');
+      hits.push(`${person} prefers minimize-recurring-cost; the choice (${chosen.name}) is recurring${oneOff ? ` — ${oneOff.name} matches` : ''}`);
+    }
+  }
+  return hits.length ? hits : undefined;
+}
+
+/**
  * The gap between here and a named capability, and the order to close it in.
  *
  * This is the narrow, buildable half of goal-to-delta planning: the goal has to
@@ -118,6 +162,15 @@ function planFor(db: Db, goal?: string) {
     if (recipe?.alternatives?.length) step.options = recipe.alternatives;
   }
 
+  // Where the plan's default choice for a step fights how a required person
+  // prefers things done. Named, not enforced: the person is the one deciding,
+  // and a plan that hides the conflict reads as if there is no choice. Runs
+  // after options are attached, because the conflict is about the choice.
+  for (const step of order) {
+    const conflicts = step.options?.length ? conflictForChosen(step, step.options[0], db) : undefined;
+    if (conflicts) step.preference_conflicts = conflicts;
+  }
+
   const totalSeconds = order.reduce((s, o) => s + (o.setup_seconds || 0), 0);
   const degraded = [...degradedHits].map(id => ({ id, name: (info.get(id) as any)?.name || id }));
   return {
@@ -139,30 +192,68 @@ function planFor(db: Db, goal?: string) {
 
 
 /**
- * Records a task failure against the capability that was missing.
+ * Why a task was blocked, as distinct from *what* was missing.
+ *
+ * §6's unbuilt half. A block recorded against a capability says "the
+ * capability was missing", which is the easy case. The useful claim is the
+ * classification: was it a missing tool, a missing permission, missing
+ * knowledge, weak infrastructure, an unreliable capability, or plain
+ * reasoning? The same capability can be blocked by different causes on
+ * different days, and "structural" should mean the cause recurs, not that the
+ * capability name does.
+ */
+const BLOCK_CLASSES = ['reasoning', 'knowledge', 'tool', 'permission', 'infrastructure', 'reliability'] as const;
+type BlockClass = (typeof BLOCK_CLASSES)[number];
+
+const BLOCK_PREFIX = 'blocked:';
+
+/**
+ * The stored action for a classified block. `blocked` remains valid for rows
+ * recorded before classification existed; the prefix is what new rows carry.
+ */
+function blockedAction(classifier?: string): string {
+  return classifier ? `${BLOCK_PREFIX}${classifier}` : 'blocked';
+}
+
+/**
+ * Records a task failure against the capability that was missing, and why.
  *
  * The point is not the individual failure, it is the pattern. A deficit hit
  * once is bad luck; the same one hit four times is infrastructure that should
  * exist. `tt deficits` reports the recurring ones, which is the signal for
  * turning friction into a capability rather than working around it again.
  *
- *   tt failed vector-store "semantic search over notes"
+ *   tt failed vector-store tool "semantic search over notes"
+ *   tt failed vector-store reasoning
+ *
+ * The classification is one of: reasoning, knowledge, tool, permission,
+ * infrastructure, reliability. Omitting it records an unclassified block,
+ * which is exactly what the CLI did before classification existed.
  */
-function recordFailure(db: Db, capId?: string, note?: string) {
-  if (!capId) return { error: 'Usage: tt failed <capability> ["what you were trying to do"]' };
+function recordFailure(db: Db, capId?: string, classifier?: string, note?: string) {
+  if (!capId) return { error: 'Usage: tt failed <capability> [reasoning|knowledge|tool|permission|infrastructure|reliability] ["what you were trying to do"]' };
   const id = capId.startsWith('combo:') || capId.includes(':') ? capId : `combo:${capId}`;
   if (!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id)) {
     return { error: `No capability ${id}. Use an id from tt combos, so deficits aggregate against something real.` };
   }
+  // The second positional may be a classification or — for a call that predates
+  // classification — the note itself. Only a known class is taken as one.
+  const cls = classifier && BLOCK_CLASSES.includes(classifier as BlockClass) ? classifier : undefined;
+  const storedNote = cls ? note || null : (classifier || null);
   db.prepare(
-    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('task', ?, 'blocked', 0, ?)"
-  ).run(id, note || null);
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('task', ?, ?, 0, ?)"
+  ).run(id, blockedAction(cls), storedNote);
   const count = db
-    .prepare("SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND action = 'blocked'")
+    .prepare("SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND (action = 'blocked' OR action LIKE 'blocked:%')")
     .get(id);
+  const clsCount = cls
+    ? db.prepare("SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND action = ?").get(id, blockedAction(cls))
+    : undefined;
   return {
     recorded: id,
+    classification: cls || 'unclassified',
     times_blocked: count?.n ?? 1,
+    times_as_this_class: clsCount?.n ?? undefined,
     note: (count?.n ?? 1) >= 3
       ? 'This has blocked work repeatedly. It is a structural deficit, not a one-off — see tt plan ' + id.replace('combo:', '')
       : undefined,
@@ -173,26 +264,49 @@ function recordFailure(db: Db, capId?: string, note?: string) {
  * Capability deficits that keep recurring, worst first.
  *
  * Distinguishes incidental friction from the structural kind: whether the same
- * missing capability keeps stopping different work.
+ * missing capability keeps stopping different work — and, since §6, *why* it
+ * keeps stopping it. A capability blocked four times as a missing tool and
+ * once as a missing permission is one structural deficit about the tool and an
+ * incident about the permission; collapsing them would lose the distinction.
  */
 function deficits(db: Db) {
   const rows = db
     .prepare(
       `SELECT s.capability_id id, COUNT(*) AS times, MAX(s.timestamp) AS last_seen, c.name, c.state, c.lifecycle
        FROM session_learning s JOIN capabilities c ON c.id = s.capability_id
-       WHERE s.action = 'blocked'
+       WHERE s.action = 'blocked' OR s.action LIKE 'blocked:%'
        GROUP BY s.capability_id ORDER BY times DESC, last_seen DESC`
     )
     .all();
   if (rows.length === 0) {
     return { note: 'Nothing recorded. Use tt failed <capability> when a task is blocked by a missing one.' };
   }
+
+  const byClass = db
+    .prepare(
+      `SELECT s.capability_id id, replace(s.action, 'blocked:', '') AS class, COUNT(*) AS times
+       FROM session_learning s
+       WHERE s.action LIKE 'blocked:%'
+       GROUP BY s.capability_id, s.action ORDER BY times DESC`
+    )
+    .all();
+  const classOf = new Map<string, string[]>();
+  for (const r of byClass as any[]) {
+    if (!classOf.has(r.id)) classOf.set(r.id, []);
+    classOf.get(r.id)!.push(`${r.class} ×${r.times}`);
+  }
+
   return rows.map((r: any) => ({
     name: r.name,
     id: r.id,
     times_blocked: r.times,
     last_seen: r.last_seen,
     still_missing: r.state === 'locked' || !usable(r.lifecycle),
+    // The classification distribution, not just the count: a deficit that
+    // recurs as the same cause is structural; one that recurs as several
+    // causes is a capability that keeps failing for different reasons, which
+    // is a different signal.
+    causes: classOf.get(r.id),
     verdict: r.times >= 3 && r.state === 'locked' ? 'structural — build it'
       : r.times >= 3 && !usable(r.lifecycle) ? 'structural — configured but failing verification'
       : r.times >= 3 ? 'was structural; now reached' : 'incidental so far',
@@ -323,6 +437,10 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
       recurring_cost: chosen?.recurring_cost,
       privacy: chosen?.privacy,
       requires_person: step.requires_person,
+      // Where the chosen alternative fights how a required person prefers
+      // things done. `planFor` warns about the default option; this is the
+      // plan that actually picked one.
+      preference_conflicts: conflictForChosen(step, chosen, db),
       // The gate: a step may only ever execute if its undo was computed first.
       // Declarative additive patches qualify; anything needing an installer or
       // a running service does not, and null here is a refusal rather than a
@@ -358,4 +476,44 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
   };
 }
 
-export { planFor, recordFailure, deficits, simulateFrontier, propose };
+/**
+ * What each person prefers, and what a plan would be stepping on to ask them.
+ *
+ * §2's human half: the person is in the graph, and the graph can now say
+ * *which* person a step needs. Preferences are the next question — whether a
+ * step is worth a person's attention, and whether the only way to close it
+ * fights how they like things done. This lists the declarations; `tt plan`
+ * names the conflicts where an option disagrees with them.
+ */
+function preferencesReport(db: Db, who?: string) {
+  const rows = db
+    .prepare(
+      `SELECT p.actor_id, p.preference, c.name, c.state FROM preferences p
+       JOIN capabilities c ON c.id = p.actor_id
+       ORDER BY c.name, p.preference`
+    )
+    .all() as any[];
+  if (rows.length === 0) {
+    return { note: 'No preferences declared. Add a `prefers` list to an actor in the config.' };
+  }
+
+  const byPerson = new Map<string, { name: string; prefs: string[] }>();
+  for (const r of rows) {
+    if (!byPerson.has(r.actor_id)) byPerson.set(r.actor_id, { name: r.name, prefs: [] });
+    byPerson.get(r.actor_id)!.prefs.push(r.preference);
+  }
+
+  const people = [...byPerson.values()];
+  if (who) {
+    const hit = people.find(p => p.name.toLowerCase() === who.toLowerCase() || p.name === who);
+    if (!hit) return { error: `No preferences recorded for ${who}.` };
+    return { name: hit.name, preferences: hit.prefs, note: 'matched against a step\'s alternatives by tt plan — local vs hosted, one-off vs recurring' };
+  }
+
+  return {
+    people: people.map(p => ({ name: p.name, preferences: p.prefs })),
+    note: 'a preference is a word tt plan matches against a step\'s alternatives; a conflict is named, not hidden',
+  };
+}
+
+export { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport };

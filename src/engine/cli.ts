@@ -10,9 +10,9 @@ import {
   forkComparison, graphProfile, nearMissCombos, insights,
   singlePointsOfFailure, exportGraph,
 } from "./inference.ts";
-import { runVerification, evidenceFor, authorityReport, actionsReport } from "./assurance.ts";
+import { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport } from "./assurance.ts";
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
-import { planFor, recordFailure, deficits, simulateFrontier, propose } from "./planning.ts";
+import { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 import { goalFor, pathsFor } from "./goals.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
@@ -118,6 +118,7 @@ function main() {
     console.log("  plan <cap>        Steps to a capability, in the order to close them");
     console.log("  goal <sentence>   Route a free-form goal to the capabilities that cover it");
     console.log("  paths <cap>       The alternative ways to reach a capability, with risk and lock-in");
+    console.log("  preferences [who] Who prefers what, and which plans would fight it");
     console.log("  authority         What may run unattended, and what may not");
     console.log("  actions [id]      The concrete actions a capability confers");
     console.log("  budget <s> <t>    Budget optimization");
@@ -151,7 +152,7 @@ function main() {
       emit(singlePointsOfFailure(db));
       break;
     case "failed":
-      emit(recordFailure(db, arg, process.argv.slice(4).filter(a => !a.startsWith('--'))[0]));
+      emit(recordFailure(db, arg, positional[1], positional[2]));
       break;
     case "deficits":
       emit(deficits(db));
@@ -165,6 +166,12 @@ function main() {
     case "paths":
       emit(pathsFor(db, arg));
       break;
+    case "preferences":
+      emit(preferencesReport(db, arg));
+      break;
+    case "scope":
+      emit(scopeReport(db, arg));
+      break;
     case "authority":
       emit(authorityReport(db));
       break;
@@ -175,7 +182,7 @@ function main() {
       emit(runVerification(db, arg));
       break;
     case "evidence":
-      emit(arg ? evidenceFor(db, arg.startsWith('combo:') ? arg : `combo:${arg}`) : { error: "Usage: tt evidence <id>" });
+      emit(arg ? evidenceFor(db, arg.includes(':') ? arg : `combo:${arg}`) : { error: "Usage: tt evidence <id>" });
       break;
     case "ledger":
       emit(ledgerHistory(db));

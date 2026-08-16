@@ -577,6 +577,34 @@ test('an action can be planned for, and resolves to the capability conferring it
   expect(sim.acquired.map((c: any) => c.id)).toEqual(['combo:data-access']);
 });
 
+test('scope is checked, not just recorded', () => {
+  seed({
+    provider: { ollama: { models: { 'qwen3-coder': {} } } },
+    authority: {
+      capabilities: {
+        'combo:version-control': { execute: { mode: 'confirm', scope: 'repo:owner/name' } },
+      },
+      scoped: { execute: { mode: 'forbidden', scope: 'repo:other/thing' } },
+    },
+  }).close();
+
+  // The grant scoped to repo:owner/name covers that repo...
+  const covered = cli('scope', 'repo:owner/name');
+  const vc = covered.grants.find((g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name');
+  expect(vc.covers).toBe(true);
+
+  // ...and the grant scoped elsewhere does not cover a different target.
+  const other = cli('scope', 'repo:someone/else');
+  const scoped = other.grants.find((g: any) => g.scope === 'repo:other/thing');
+  expect(scoped.covers).toBe(false);
+  expect(other.excluded).toBeGreaterThan(0);
+
+  // Scope is a prefix claim: a branch under the repo is covered by it.
+  const branch = cli('scope', 'repo:owner/name/feature');
+  const vcBranch = branch.grants.find((g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name');
+  expect(vcBranch.covers).toBe(true);
+});
+
 test('actions do not inflate leverage or fragility', () => {
   seed({ mcp: { git: { type: 'local' } } }).close();
 
@@ -801,6 +829,25 @@ test('a flag is not mistaken for a command argument', () => {
   expect(all.error).toBeUndefined();
 });
 
+// ── Per-action verification (§3) ─────────────────────────────────────────────
+
+test('a contract action can declare a check of its own', () => {
+  seed(LOCAL_ONLY).close();
+  // commit_changes declares a check in the curated model. Verifying it runs
+  // that check against the action node, not the capability's — a different
+  // claim at a different granularity. (This test runs in a non-repo temp dir,
+  // so the check fails honestly; what is being asserted is that it ran.)
+  const r = cli('verify', 'act:version-control/commit_changes');
+  expect(r.checked).toBe(1);
+  expect(r.results[0].id).toBe('act:version-control/commit_changes');
+  expect(r.results[0].status).toMatch(/verified|failed/);
+
+  // Evidence landed against the action, reachable by its own id.
+  const evidence = cli('evidence', 'act:version-control/commit_changes');
+  expect(evidence.length).toBe(1);
+  expect(evidence[0].action).toMatch(/verified|failed/);
+});
+
 // ── People ──────────────────────────────────────────────────────────────────
 
 const WITH_PEOPLE = {
@@ -866,6 +913,69 @@ test('a plan step offers alternatives with their trade-offs', () => {
   expect(hosted.recurring_cost).not.toBe('none');
 });
 
+// ── Preferences and machines (§2) ────────────────────────────────────────────
+
+const WITH_PREFS = {
+  provider: { ollama: { models: { 'qwen3-coder': {} } } },
+  mcp: { git: {} },
+  actors: {
+    kanav: {
+      name: 'Kanav',
+      prefers: ['local-when-practical', 'minimize-recurring-cost'],
+      authorizes: ['combo:continuous-delivery'],
+    },
+  },
+};
+
+test('a person can declare how they prefer things done', () => {
+  const db = seed(WITH_PREFS);
+  const prefs = rows(db, `SELECT preference FROM preferences WHERE actor_id = 'human:kanav'`).map(r => r.preference);
+  expect(prefs.sort()).toEqual(['local-when-practical', 'minimize-recurring-cost']);
+
+  db.close();
+  const report = cli('preferences', 'kanav');
+  expect(report.name).toBe('Kanav');
+  expect(report.preferences).toContain('local-when-practical');
+});
+
+test('a plan names where a step fights a person\'s stated preferences', () => {
+  // Continuous Delivery needs Kanav's approval, and its default acquisition
+  // alternative is hosted and recurring. A plan that asks the person without
+  // noting the conflict reads as if the choice is theirs when the default is
+  // already the thing they said they'd avoid.
+  seed(WITH_PREFS).close();
+  const plan = cli('plan', 'continuous-delivery');
+  expect(plan.requires_person).toContain('Kanav');
+  const conflicting = (plan.order || []).find((s: any) => s.preference_conflicts?.length);
+  expect(conflicting).toBeDefined();
+  expect(conflicting.preference_conflicts.join(' ')).toMatch(/hosted/);
+});
+
+test('infrastructure manifest devices seed as capability-bearing resources', () => {
+  const dirPath = dir;
+  writeFileSync(join(dirPath, 'infra.json'), JSON.stringify({
+    devices: [{ id: 'nuc', name: 'NUC', description: 'homelab host' }],
+    services: [{ key: 'ollama', label: 'Ollama', host: 'nuc' }],
+  }));
+  // Re-seed the same graph with the manifest on the INFRA_MANIFEST path.
+  const dbPath = join(dirPath, 'graph.db');
+  const configPath = join(dirPath, 'config.json');
+  writeFileSync(configPath, JSON.stringify(WITH_PREFS));
+  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
+    env: { ...process.env, OPENCODE_CONFIG: configPath, TOOLCHAIN_DB: dbPath,
+           INFRA_MANIFEST: join(dirPath, 'infra.json'),
+           CONFIG_MAPPING: JSON.stringify({ config_keys: { mcp: { type: 'mcp', domain_field: 'type', domain_map: { remote: 'backend', local: 'infra' }, desc_template: '{type} server' }, agent: { type: 'agent', domain: 'meta', desc_field: 'description' }, provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' }, command: { type: 'tool', domain: 'devops', desc_field: 'description' } }, skill_dirs: [] }) },
+    stdio: 'ignore',
+  });
+  const db = new Database(dbPath);
+  const device = rows(db, "SELECT id, kind FROM capabilities WHERE id = 'device:nuc'");
+  expect(device[0]?.kind).toBe('resource');
+
+  // The device runs the service, so losing it takes the service down.
+  const runs = rows(db, `SELECT from_capability f FROM dependencies WHERE to_capability = 'svc:ollama' AND kind = 'runs_on'`);
+  expect(runs.map(r => r.f)).toContain('device:nuc');
+});
+
 // ── Deficits ────────────────────────────────────────────────────────────────
 
 test('a repeated deficit is distinguished from incidental friction', () => {
@@ -883,6 +993,30 @@ test('a repeated deficit is distinguished from incidental friction', () => {
   expect(report[0].id).toBe('combo:vector-store');
   expect(report[0].verdict).toContain('structural');
   expect(report[0].still_missing).toBe(true);
+});
+
+test('a deficit records why it was blocked, and the cause recurs separately', () => {
+  seed(LOCAL_ONLY).close();
+  const r = cli('failed', 'vector-store', 'tool', 'semantic search over notes');
+  expect(r.classification).toBe('tool');
+  expect(r.times_as_this_class).toBe(1);
+
+  // The same capability blocked for a different reason is a different signal:
+  // the capability recurs, but not as one structural cause.
+  cli('failed', 'vector-store', 'permission');
+  const report = cli('deficits');
+  expect(report[0].id).toBe('combo:vector-store');
+  expect(report[0].causes).toContain('tool ×1');
+  expect(report[0].causes).toContain('permission ×1');
+});
+
+test('an unknown classification is treated as a note, not a class', () => {
+  // `tt failed <cap> "what you were doing"` predates classification; the second
+  // positional that is not a known class must remain the note.
+  seed(LOCAL_ONLY).close();
+  const r = cli('failed', 'vector-store', 'just keep hitting the same wall');
+  expect(r.classification).toBe('unclassified');
+  expect(r.times_blocked).toBe(1);
 });
 
 test('a deficit against an unknown capability is refused, not silently kept', () => {
@@ -1113,6 +1247,23 @@ test('an approved config change is applied, and backed up first', () => {
   expect(result.applied).toBe(true);
   expect(readConfig().mcp).toHaveProperty('fetch');
   expect(existsSync(result.backup)).toBe(true);
+});
+
+test('an apply re-seeds, so the graph reflects the change immediately', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+
+  // Before the apply, the graph has not seen the fetch MCP server.
+  const db = new Database(join(dir, 'graph.db'));
+  expect(rows(db, "SELECT id FROM capabilities WHERE id = 'mcp:fetch'")).toEqual([]);
+  db.close();
+
+  cli('apply', p.proposal);
+
+  // After the apply, no manual re-seed needed: the graph knows it now.
+  const after = new Database(join(dir, 'graph.db'));
+  expect(rows(after, "SELECT id FROM capabilities WHERE id = 'mcp:fetch'").length).toBe(1);
 });
 
 test('rollback reverses exactly what was applied', () => {

@@ -102,6 +102,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   count += seedTechTree(db, insert);
   count += seedCombos(db, config, mapping, insert);
   count += seedActors(db, config, mapping, insert);
+  count += seedInfrastructure(db, insert);
   seedAuthority(db, config);
 
   // After the graph is complete and before the frontier is recorded, because
@@ -414,13 +415,18 @@ function seedTechTree(db: Db, insert: any): number {
     // The action's state mirrors the capability's — an action is reachable
     // exactly when the thing conferring it is — and its authority does not, so
     // that a reached capability can still hold an action nobody may perform.
+    //
+    // A contract entry is a name, or `{ id, verify }` when the action declares
+    // its own check — reading a repository is a weaker claim than having read a
+    // particular repository, and the action's evidence should be able to say so.
     for (const action of node.contract?.can || []) {
-      const actionId = `act:${node.id}/${action}`;
+      const actionName = action.id ?? action;
+      const actionId = `act:${node.id}/${actionName}`;
       insert.run(
         actionId,
-        action,
+        actionName,
         node.domain || 'meta',
-        `${node.name} can ${String(action).replace(/_/g, ' ')}`,
+        `${node.name} can ${String(actionName).replace(/_/g, ' ')}`,
         'action',
         reached ? 'unlocked' : 'locked',
         reached ? 0.7 : 0
@@ -461,18 +467,22 @@ function seedTechTree(db: Db, insert: any): number {
  *     "kanav": {
  *       "name": "Kanav",
  *       "provides": ["physical-access", "approve-purchases"],
- *       "authorizes": ["combo:continuous-delivery"]
+ *       "authorizes": ["combo:continuous-delivery"],
+ *       "prefers": ["local-when-practical", "minimize-recurring-cost"]
  *     }
  *   }
  *
  * `provides` becomes a capability the person supplies. `authorizes` becomes a
  * hard prerequisite edge, which is what makes a plan able to say that a step is
- * someone's rather than the machine's.
+ * someone's rather than the machine's. `prefers` becomes a preference row a
+ * plan can match against a step's alternatives — which is how a plan knows it
+ * is asking the right person, and asking them about the wrong option.
  */
 function seedActors(db: Db, config: any, mapping: any, insert: any): number {
   const actors = { ...(mapping.actors || {}), ...(config.actors || {}) };
   const link = edgeWriter(db);
   const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const pref = db.prepare("INSERT OR IGNORE INTO preferences (actor_id, preference) VALUES (?, ?)");
   let count = 0;
 
   for (const [key, spec] of Object.entries<any>(actors)) {
@@ -494,6 +504,15 @@ function seedActors(db: Db, config: any, mapping: any, insert: any): number {
     for (const gated of spec?.authorizes || []) {
       const gid = gated.startsWith('combo:') || gated.includes(':') ? gated : `combo:${gated}`;
       if (has(gid)) link.run(id, gid, 1, 'Requires approval from a person');
+    }
+
+    // How this person prefers things done. Stored as data, read by planning,
+    // and never interpreted here — a preference is a word matched against the
+    // properties a step's alternatives carry (local vs hosted, one-off vs
+    // recurring), and the plan says where they fit and where they fight.
+    for (const p of spec?.prefers || []) {
+      pref.run(id, String(p));
+      count++;
     }
   }
   return count;
@@ -543,7 +562,77 @@ function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
   return count;
 }
 
+/**
+ * Seeds machines from the infrastructure manifest as capability-bearing nodes.
+ *
+ * §2's unbuilt half: hardware is "some computers" in the visualiser and nothing
+ * in the engine. A device that is reachable over Tailscale and runs a model
+ * server is latent inference, embeddings, browser workers — capacity the graph
+ * should be able to point a plan at, and lose count of when it disappears.
+ *
+ *   INFRA_MANIFEST   path to the manifest (default ~/.config/opencode/
+ *                    infrastructure.json), the same file the server scans.
+ *
+ * Devices become `resource` nodes (the ontology's word for what a provider
+ * needs in order to supply a capability: a model, an endpoint, a machine) with
+ * a `runs_on` edge to every service hosted on them, so `tt impact device:nuc`
+ * can say what actually breaks. Without a manifest, seeding continues — a
+ * machine that is not declared cannot be assumed.
+ */
+function seedInfrastructure(db: Db, insert: any): number {
+  const path = process.env.INFRA_MANIFEST || join(process.env.HOME || "/", ".config", "opencode", "infrastructure.json");
+  let manifest: any = null;
+  try {
+    if (existsSync(path)) manifest = JSON.parse(readFileSync(path, "utf8"));
+  } catch { /* an unreadable manifest is a missing one */ }
+  if (!manifest) return 0;
+
+  const link = edgeWriter(db);
+  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  let count = 0;
+
+  for (const device of manifest.devices || []) {
+    insert.run(
+      `device:${device.id}`,
+      device.name,
+      'physical',
+      device.description || `Host ${device.name}`,
+      'device',
+      'unlocked',
+      0.7
+    );
+    count++;
+    // A declared status endpoint is what makes it observable; record it.
+    if (device.statusUrl) {
+      db.prepare("UPDATE capabilities SET description = ? WHERE id = ?")
+        .run(`${device.description || `Host ${device.name}`} · status: ${device.statusUrl}`, `device:${device.id}`);
+    }
+  }
+
+  for (const service of manifest.services || []) {
+    const id = `svc:${service.key}`;
+    insert.run(
+      id,
+      service.label || service.key,
+      service.host ? 'physical' : 'backend',
+      service.description || `Service ${service.key}`,
+      'service',
+      'unlocked',
+      0.5
+    );
+    count++;
+    if (service.host && has(`device:${service.host}`)) {
+      link.run(`device:${service.host}`, id, 1, 'Hosts this service');
+    }
+    if (service.expectedMcp && has(`mcp:${service.expectedMcp}`)) {
+      link.run(`mcp:${service.expectedMcp}`, id, 1, 'Controls this service');
+    }
+  }
+
+  return count;
+}
+
 export {
   parseMapping, seedFromConfig, seedModels, seedDependencies, attributeToRuntime,
-  seedTechTree, seedActors, seedCombos, seedAuthority,
+  seedTechTree, seedActors, seedCombos, seedAuthority, seedInfrastructure,
 };

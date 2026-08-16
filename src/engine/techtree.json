@@ -152,7 +152,13 @@
       "contract": {
         "can": [
           "read_repository",
-          "commit_changes",
+          {
+            "id": "commit_changes",
+            "verify": {
+              "command": ["git", "diff", "--exit-code"],
+              "timeout_seconds": 10
+            }
+          },
           "push_branch",
           "merge_to_default"
         ]
@@ -277,7 +283,24 @@
         "min_models": 2
       },
       "setup_seconds": 600,
-      "hint": "Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning"
+      "hint": "Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning",
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "self-hosted router with managed fallbacks",
+            "setup_seconds": 1200,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "note": "an OpenRouter-style gateway on your own hardware; provider failover without a per-token bill or a data boundary"
+          },
+          {
+            "name": "hosted routing layer",
+            "setup_seconds": 300,
+            "recurring_cost": "per-token",
+            "privacy": "hosted"
+          }
+        ]
+      }
     },
     {
       "id": "tool-protocol",
@@ -659,7 +682,8 @@
           "memory",
           "recall",
           "mem0",
-          "zep"
+          "zep",
+          "obsidian"
         ]
       },
       "setup_seconds": 900,
@@ -684,6 +708,13 @@
                 }
               }
             }
+          },
+          {
+            "name": "Obsidian vault as memory",
+            "setup_seconds": 600,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "note": "a vault is already a durable notes file; a memory MCP over it reuses what exists"
           }
         ]
       }
@@ -1015,7 +1046,11 @@
           "netlify",
           "deploy",
           "docker",
-          "fly\\.io"
+          "fly\\.io",
+          "buildkite",
+          "jenkins",
+          "tekton",
+          "gitops"
         ]
       },
       "setup_seconds": 1800,
@@ -1023,6 +1058,22 @@
       "authority": {
         "observe": "autonomous",
         "execute": "confirm"
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "hosted CI (GitHub Actions)",
+            "setup_seconds": 300,
+            "recurring_cost": "monthly",
+            "privacy": "hosted"
+          },
+          {
+            "name": "self-hosted runner",
+            "setup_seconds": 1800,
+            "recurring_cost": "none",
+            "privacy": "local"
+          }
+        ]
       }
     },
     {
@@ -1119,9 +1170,11 @@
           "homelab",
           "^device:",
           "proxmox",
+          "proxmoxmcp",
           "unraid",
           "k3s",
-          "self-?host"
+          "self-?host",
+          "gitops"
         ]
       },
       "setup_seconds": 7200,
