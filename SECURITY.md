@@ -18,9 +18,9 @@ Also in scope: anything that causes the engine to execute content from a scanned
 ## What is not
 
 - The declared verification checks run commands from the capability model by design. That model is code in this repository; changing it is equivalent to changing any other source file.
-- `tt prune <id>` and the visualizer's config editing modify your configuration on purpose, writing a `.bak` first.
+- `ambit apply <id>` and the visualizer's config editing modify your configuration on purpose, writing a `.bak` first.
 - Findings against a fork's own capability model, or against a configuration you supplied yourself, are not vulnerabilities in Ambit.
 
 ## Where your data is
 
-The graph is a local SQLite file — `tt where` prints its path. Nothing is uploaded. `tt export` and `tt stats` describe your machine, so redact before pasting either into an issue.
+The graph is a local SQLite file — `ambit where` prints its path. Nothing is uploaded. `ambit graph` and `ambit status` describe your machine, so redact before pasting either into an issue.

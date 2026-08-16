@@ -5,14 +5,11 @@ import { execFileSync } from 'node:child_process';
 import { resolveDbPath } from './src/shared/db-path.ts';
 import { migrate } from './src/engine/migrate.ts';
 
-const DB_PATH = Bun.env.HOME + '/.config/opencode/toolchain-viz.db';
 const CONFIG_PATH = Bun.env.HOME + '/.config/opencode/opencode.json';
 const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
 // The graph the engine builds. Its default lives beside the engine (and is what
-// bootstrap.sh writes), which is not where this server keeps its own snapshot
-// database — reading DB_PATH here would silently return an empty tree. Resolved
-// through the shared helper so the engine, the MCP server and this API cannot
-// drift onto three different files again.
+// bootstrap.sh writes). Resolved through the shared helper so the engine, the
+// MCP server and this API cannot drift onto three different files again.
 const GRAPH_DB_PATH = resolveDbPath();
 const INFRA_MANIFEST_PATH = Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
 const API_PORT = 3001;
@@ -38,37 +35,6 @@ interface InfraFinding {
   severity: 'info' | 'warn' | 'error';
   message: string;
   relatedIds?: string[];
-}
-
-function initDb(): Database {
-  const db = new Database(DB_PATH, { create: true });
-  db.run(`CREATE TABLE IF NOT EXISTS snapshots (
-    id TEXT PRIMARY KEY,
-    label TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    items TEXT NOT NULL,
-    connections TEXT NOT NULL
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS consultant_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    consultant_id TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    score INTEGER NOT NULL,
-    findings TEXT NOT NULL,
-    item_count INTEGER NOT NULL
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS trends (
-    id TEXT PRIMARY KEY,
-    source TEXT NOT NULL,
-    title TEXT NOT NULL,
-    url TEXT NOT NULL,
-    description TEXT,
-    score INTEGER DEFAULT 0,
-    category TEXT DEFAULT 'mcp',
-    created_at TEXT NOT NULL,
-    discovered_at TEXT NOT NULL
-  )`);
-  return db;
 }
 
 async function readConfig(): Promise<Record<string, unknown> | null> {
@@ -317,15 +283,6 @@ function corsHeaders(origin: string): Record<string, string> {
   return headers;
 }
 
-let db: Database;
-
-try {
-  db = initDb();
-} catch (e) {
-  console.error('DB init failed:', e);
-  process.exit(1);
-}
-
 const server = Bun.serve({
   port: API_PORT,
   // Loopback only. This server reads and writes the OpenCode config, so it must
@@ -394,50 +351,6 @@ const server = Bun.serve({
       if (!ok) {
         return Response.json({ error: 'Write failed' }, { status: 500, headers });
       }
-      return Response.json({ ok: true }, { headers });
-    }
-
-    // GET /api/snapshots — list from SQLite
-    if (url.pathname === '/api/snapshots' && req.method === 'GET') {
-      const rows = db.query('SELECT id, label, timestamp FROM snapshots ORDER BY timestamp DESC').all() as any[];
-      return Response.json({ snapshots: rows }, { headers });
-    }
-
-    // POST /api/snapshots — create
-    if (url.pathname === '/api/snapshots' && req.method === 'POST') {
-      const body = await req.json() as any;
-      const id = `snap-${Date.now()}`;
-      db.run('INSERT INTO snapshots (id, label, timestamp, items, connections) VALUES (?, ?, ?, ?, ?)',
-        [id, body.label || `Snapshot ${new Date().toLocaleDateString()}`, new Date().toISOString(), JSON.stringify(body.items), JSON.stringify(body.connections)]);
-      return Response.json({ id }, { headers });
-    }
-
-    // DELETE /api/snapshots/:id
-    if (url.pathname.startsWith('/api/snapshots/') && req.method === 'DELETE') {
-      const id = url.pathname.slice('/api/snapshots/'.length);
-      db.run('DELETE FROM snapshots WHERE id = ?', [id]);
-      return Response.json({ ok: true }, { headers });
-    }
-
-    // GET /api/snapshots/:id — restore snapshot data
-    if (url.pathname.startsWith('/api/snapshots/') && req.method === 'GET') {
-      const id = url.pathname.slice('/api/snapshots/'.length);
-      const row = db.query('SELECT * FROM snapshots WHERE id = ?').get(id) as any;
-      if (!row) return Response.json({ error: 'Not found' }, { status: 404, headers });
-      return Response.json({ snapshot: { ...row, items: JSON.parse(row.items), connections: JSON.parse(row.connections) } }, { headers });
-    }
-
-    // GET /api/consultant/history
-    if (url.pathname === '/api/consultant/history' && req.method === 'GET') {
-      const rows = db.query('SELECT * FROM consultant_log ORDER BY timestamp DESC LIMIT 50').all() as any[];
-      return Response.json({ history: rows.map(r => ({ ...r, findings: JSON.parse(r.findings) })) }, { headers });
-    }
-
-    // POST /api/consultant/log
-    if (url.pathname === '/api/consultant/log' && req.method === 'POST') {
-      const body = await req.json() as any;
-      db.run('INSERT INTO consultant_log (consultant_id, timestamp, score, findings, item_count) VALUES (?, ?, ?, ?, ?)',
-        [body.consultantId, new Date().toISOString(), body.score, JSON.stringify(body.findings), body.itemCount]);
       return Response.json({ ok: true }, { headers });
     }
 
@@ -587,7 +500,7 @@ const server = Bun.serve({
         // Actions a *person* supplies stay: there are few of them, and they are
         // the only thing connecting a human node to the rest of the graph.
         const caps = graph.query(
-          `SELECT id, name, domain, description, category, state, maturity_score, unlock_cost_setup
+          `SELECT id, name, domain, description, category, state, unlock_cost_setup
            FROM capabilities c WHERE c.kind != 'action' OR NOT EXISTS (
              SELECT 1 FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
              WHERE d.to_capability = c.id AND d.kind = 'provides' AND p.kind = 'capability'
@@ -632,7 +545,6 @@ const server = Bun.serve({
           position: { x: 0, y: 0, z: 0 },
           meta: {
             domain: c.domain,
-            maturity: c.maturity_score,
             state: c.state,
             setupSeconds: c.unlock_cost_setup,
             era: eraById.get(c.id),
@@ -660,13 +572,11 @@ const server = Bun.serve({
     // GET /api/health — return server status
     if (url.pathname === '/api/health' && req.method === 'GET') {
       const configExists = await Bun.file(CONFIG_PATH).exists();
-      const snapshots = db.query('SELECT COUNT(*) as c FROM snapshots').get() as { c: number } | null;
       return Response.json({
         status: 'ok',
         configPath: CONFIG_PATH,
         configExists,
         infraManifestPath: INFRA_MANIFEST_PATH,
-        snapshotCount: snapshots?.c || 0,
       }, { headers });
     }
 
@@ -731,96 +641,6 @@ const server = Bun.serve({
         repos,
       }, { headers });
     }
-
-    // GET /api/trending — ecosystem freshness signals from GitHub
-    if (url.pathname === '/api/trending' && req.method === 'GET') {
-      // Check cache first (1 hour TTL)
-      const cached = db.query('SELECT * FROM trends ORDER BY score DESC LIMIT 30').all() as any[];
-      if (cached.length > 0) {
-        const oldest = cached.reduce((a, b) => a.discovered_at < b.discovered_at ? a : b);
-        const age = Date.now() - new Date(oldest.discovered_at).getTime();
-        if (age < 3600000) { // 1 hour
-          return Response.json({ trends: cached, cached: true }, { headers });
-        }
-      }
-
-      // Fetch fresh signals from GitHub
-      const queries = [
-        'mcp-server+created:>2026-04-22&sort=stars',
-        'opencode+agent+created:>2026-04-22&sort=stars',
-        'modelcontextprotocol+created:>2026-04-22&sort=stars',
-        'topic:mcp-server+created:>2026-04-22&sort=stars',
-      ];
-
-      const newTrends: any[] = [];
-      const seen = new Set<string>();
-      const cutoff = new Date(Date.now() - 45 * 24 * 3600000).toISOString().slice(0, 10);
-
-      for (const q of queries) {
-        try {
-          const res = await fetch(`https://api.github.com/search/repositories?q=${q}&per_page=5`, {
-            headers: { 'User-Agent': 'toolchain-viz/0.3', 'Accept': 'application/vnd.github.v3+json' },
-            signal: AbortSignal.timeout(5000),
-          });
-          if (!res.ok) continue;
-          const data = await res.json() as any;
-          for (const repo of (data.items || [])) {
-            if (seen.has(repo.full_name)) continue;
-            seen.add(repo.full_name);
-            newTrends.push({
-              id: `gh-${repo.id}`,
-              source: 'github',
-              title: repo.full_name,
-              url: repo.html_url,
-              description: (repo.description || '').slice(0, 200),
-              score: repo.stargazers_count || 0,
-              category: repo.full_name.includes('mcp') ? 'mcp' : repo.full_name.includes('agent') ? 'agent' : 'tool',
-              created_at: repo.created_at || cutoff,
-              discovered_at: new Date().toISOString(),
-            });
-          }
-        } catch {}
-      }
-
-      // Also check npm for trending MCP packages
-      try {
-        const npmRes = await fetch('https://registry.npmjs.org/-/v1/search?text=keywords:mcp-server&size=5', {
-          signal: AbortSignal.timeout(5000),
-        });
-        if (npmRes.ok) {
-          const npmData = await npmRes.json() as any;
-          for (const pkg of (npmData.objects || [])) {
-            const name = pkg.package.name;
-            if (seen.has(name)) continue;
-            seen.add(name);
-            const downloads = (pkg.downloads?.monthly || 0) as number;
-            if (downloads > 100) {
-              newTrends.push({
-                id: `npm-${name}`,
-                source: 'npm',
-                title: name,
-                url: pkg.package.links?.npm || `https://www.npmjs.com/package/${name}`,
-                description: (pkg.package.description || '').slice(0, 200),
-                score: Math.min(500, downloads),
-                category: 'mcp',
-                created_at: pkg.package.date?.slice(0, 10) || cutoff,
-                discovered_at: new Date().toISOString(),
-              });
-            }
-          }
-        }
-      } catch {}
-
-      // Replace cache
-      db.run('DELETE FROM trends');
-      for (const t of newTrends.slice(0, 30)) {
-        db.run('INSERT OR REPLACE INTO trends (id, source, title, url, description, score, category, created_at, discovered_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [t.id, t.source, t.title, t.url, t.description, t.score, t.category, t.created_at, t.discovered_at]);
-      }
-
-      return Response.json({ trends: newTrends.slice(0, 30), cached: false }, { headers });
-    }
-
 
     // Serve built SPA whenever dist exists; Vite dev still proxies /api separately.
     if (url.pathname === '/' || !url.pathname.startsWith('/api')) {

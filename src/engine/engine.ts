@@ -18,8 +18,7 @@ export { getDb, migrate } from "./db.ts";
 export { seedFromConfig } from "./discovery.ts";
 export {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
-  analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations,
-  forkComparison, graphProfile, nearMissCombos, insights, singlePointsOfFailure,
+  analyzeImpact, nearMissCombos, singlePointsOfFailure,
   affordanceDomains, surfaceFor,
 } from "./inference.ts";
 export { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport } from "./assurance.ts";

@@ -15,70 +15,50 @@ const cmd = process.argv[2];
 const args = process.argv.slice(3);
 
 if (cmd === "--help" || cmd === "help") {
-  // A bare list of verbs taught nothing. Lead with the two commands worth
-  // running first, group the rest by the question each answers.
   console.log(`
-  Ambit — what you, your agents and your machines can jointly do.
+  Ambit — what you, your agents and your machines can jointly do,
+  and where the scarce resource is being spent.
 
-  ${B}Start here${R}
-    tt near              What is one step away from where I am?
-    tt explain           What do the terms in this tool mean?
+  ${B}Operate${R}
+    ambit status           Health · degraded · spofs · deficits · pending approvals
+    ambit graph            The graph as JSON (graph surface | combos | affordances)
+    ambit history [since]  How the frontier moved
 
-  ${B}Is it real${R}
-    tt verify [id]       Run the declared check; record what happened
-    tt evidence <id>     Verification history for one capability
-    tt authority         What may run unattended, and what may not
+  ${B}Decide${R}
+    ambit goal <cap-or-sentence> [--paths|--simulate|--prefs]
+                           Route a goal, plan the delta, compare paths, simulate
+    ambit attention [days] How much work still runs through the human
+    ambit notify <topic>   Push the attention digest to ntfy — opt-in only
+    ambit impact <id>      If this went away, what breaks?
+    ambit verify [id] [--history]   Run the declared check, or past verification
+    ambit authority [cap] [scope <target>]   What may run, on what, unattended
+    ambit propose <id> [n] Draft a reviewable acquisition, using alternative n
+    ambit proposals        Drafts so far ·  ambit proposal <id>  One in full
 
-  ${B}Where am I${R}
-    tt stats             Counts by domain, overall maturity
-    tt health            Per-domain composite scores
-    tt context           A summary block to hand an agent
-    tt export            Dump the graph as JSON
+  ${B}Govern${R}
+    ambit approve <id> <who>  Record that a person approved a draft
+    ambit apply <id>       Apply an approved draft to your config
+    ambit rollback <id>    Reverse an applied draft
 
-  ${B}What next${R}
-    tt insight           Top actions, ranked
-    tt plan <id>         What is missing for this, in order
-    tt simulate <id>     The frontier as it would be — changes nothing
-    tt propose <id> [n]  Draft a reviewable acquisition, using alternative n
-    tt proposals         Drafts so far
-    tt proposal <id>     One draft in full
-    tt approve <id> <who>  Record that a person approved a draft
-    tt apply <id>        Apply an approved draft to your config
-    tt rollback <id>     Reverse an applied draft
-    tt combos            Capabilities whose prerequisites are met
-    tt fork              Compare candidates by efficiency
-    tt bottlenecks       What the most things depend on
-    tt spof              Capabilities with only one provider
-    tt impact <id>       If this went away, what breaks?
-    tt budget <s> <t>    Best moves within a setup-time and token budget
-
-  ${B}Upkeep${R}
-    tt decay             What have I stopped tending?
-    tt failed <id>       Record that a missing capability blocked work
-    tt deficits          Which deficits keep recurring
-    tt diff              What changed since last time?
-    tt ledger            Every recorded frontier observation
-    tt since [when]      What became reachable since then, and what emerged
-    tt trend <days>      Projected health
-    tt prune             Removal candidates
-    tt prune <id>        Remove it, writing a .bak first
+  ${B}Record${R}
+    ambit record <id> [class] [note]   Record that a missing capability blocked work
 
   ${B}Setup${R}
-    tt seed              Read your agent config and build the graph
-    tt where             Where the graph is stored
-    tt web               Open the visualizer
+    ambit seed             Read your agent config and build the graph
+    ambit where            Where the graph is stored
+    ambit web              Open the visualizer
 
-  ${D}Installed via Homebrew or npm? tt seed is how you build the graph —
+  ${D}Installed via Homebrew or npm? ambit seed is how you build the graph —
   bootstrap.sh is the equivalent for a git checkout, and does the same thing
-  plus installing dependencies. tt web needs a checkout: the visualizer is
+  plus installing dependencies. ambit web needs a checkout: the visualizer is
   built with dev dependencies an installed copy does not carry.${R}
 
-  ${D}recs and cap are MCP-only, available inside an agent session.${R}
+  ${D}An MCP server exposes the same questions to an agent session.${R}
 `);
   process.exit(0);
 }
 
-// Bare `tt` used to print help — a list of things to read before doing
+// Bare `ambit` used to print help — a list of things to read before doing
 // anything. Showing where you actually are teaches more in one screen, and
 // the help is still one flag away.
 if (!cmd) {
@@ -86,12 +66,8 @@ if (!cmd) {
     spawnSync("node", ["--experimental-sqlite", resolve(ROOT, "src", "engine", "engine.ts"), c, ...args],
       { stdio: "inherit" });
   console.log(`\n${B}Where you are${R}`);
-  run("stats");
-  console.log(`\n${B}What is one step away${R}`);
-  run("near");
-  console.log(`\n${B}What to do next${R}`);
-  run("insight");
-  console.log(`\n${D}tt --help for every command · tt explain for what the terms mean${R}\n`);
+  run("status");
+  console.log(`\n${D}ambit --help for every command · ambit help <term> for what the terms mean${R}\n`);
   process.exit(0);
 }
 
