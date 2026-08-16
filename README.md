@@ -315,6 +315,19 @@ $ ambit attention 30
 
 `ambit notify <topic>` pushes that digest to [ntfy](https://ntfy.sh) — and only when a topic is given. Nothing leaves the machine otherwise; the push is a single HTTP POST of the digest text, no graph data.
 
+### Work telemetry
+
+The same ledger that `attention` reads is written by observation, not by hand. The visualizer API exposes a loopback `POST /api/telemetry` that speaks the ledger's own verbs — `run`, `end`, `event`, `use`, `intervention`, `resource`, `outcome` — so a runtime adapter records actual work without knowing the schema:
+
+```console
+$ echo '{"run":{"goal":"recover production service","runType":"incident"}}' \
+    | bun run scripts/adapters/telemetry.ts
+```
+
+`scripts/adapters/telemetry.ts` is the ingestion client (stdin → one JSON object per line → `POST /api/telemetry`). A plugin bridge ships at `plugins/tech-tree-telemetry.js`: copy it to `~/.config/opencode/plugins/` and every tool execution in an OpenCode session lands in the ledger as a work event, and every permission prompt as an `authority` intervention. The endpoint is loopback-only and origin-allowlisted like every other route, and a telemetry payload is structured data — never a command.
+
+`ambit work` reads the ledger back: each run with its elapsed time, events, capabilities exercised, interventions, resources, and outcome. `ambit usage <days>` aggregates where effort went per capability — the raw material the opportunity engine ranks.
+
 ### Previewing a change
 
 `ambit goal <cap> --simulate` computes the frontier as it would be, without touching anything. What makes it worth reading is the second line:

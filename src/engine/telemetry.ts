@@ -77,6 +77,9 @@ function addEvent(db: Migratable, runId: string, event: EventInput) {
 }
 
 function recordUse(db: Migratable, runId: string, capabilityId: string, input: { durationSeconds?: number; source?: string } = {}) {
+  if (!db.prepare("SELECT id FROM work_runs WHERE id = ?").get(runId)) {
+    return { error: `No run ${runId}. Begin one first.` };
+  }
   db.prepare(
     "INSERT INTO capability_use (run_id, capability_id, duration_seconds, source) VALUES (?, ?, ?, ?)"
   ).run(runId, capabilityId, input.durationSeconds ?? null, input.source || 'event');
@@ -119,6 +122,9 @@ function recordResource(db: Migratable, runId: string | null, resourceId: string
 }
 
 function recordOutcome(db: Migratable, runId: string, achieved: string, input: { objectiveMetric?: number; objectiveName?: string; valueCents?: number } = {}) {
+  if (!db.prepare("SELECT id FROM work_runs WHERE id = ?").get(runId)) {
+    return { error: `No run ${runId}. Begin one first.` };
+  }
   db.prepare(
     "INSERT INTO outcomes (run_id, achieved, objective_metric, objective_name, value_cents) VALUES (?, ?, ?, ?, ?)"
   ).run(runId, achieved, input.objectiveMetric ?? null, input.objectiveName || null, input.valueCents ?? null);

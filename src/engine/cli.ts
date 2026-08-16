@@ -185,7 +185,12 @@ async function main() {
   // is what a healthy graph with no findings says too. A Homebrew install
   // never runs bootstrap.sh, so that was the entire first-run experience:
   // a tool that appears to work and reports an empty world.
-  if (cmd && cmd !== "seed" && cmd !== "where" && cmd !== "help") {
+  //
+  // `work` and `usage` read the work ledger, which a runtime adapter can fill
+  // before any capability has been discovered — so they are exempt, and report
+  // an empty ledger rather than "no graph".
+  const ledgerCommands = new Set(['work', 'usage']);
+  if (cmd && !ledgerCommands.has(cmd) && cmd !== "seed" && cmd !== "where" && cmd !== "help") {
     const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
     if (!seeded?.n) {
       console.log(`${C.yellow}No graph yet.${C.reset} Nothing has been discovered on this machine.`);
