@@ -228,8 +228,13 @@ function main() {
       // that introduced them look like a machine that suddenly did half as much
       // again, which is the same false reading `tt since` reports as vocabulary
       // rather than as gain.
-      const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action'").get();
-      console.log(`Toolchain: ${g.unlocked}/${g.total}`);
+      //
+      // Reached stays structural; verified and failing are the demonstrated
+      // half. The block handed to agents must never let one be mistaken for the
+      // other: a capability whose check last failed is configured but not
+      // working, and the failing count names how many are in that state.
+      const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'").get();
+      console.log(`Toolchain: ${g.unlocked}/${g.total} reached · ${g.verified} verified · ${g.failing} failing`);
       const domains = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain").all();
       for (const d of domains) console.log(`  ${d.domain.padEnd(12)} ${d.unlocked}/${d.total}`);
       const a = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind = 'action'").get();

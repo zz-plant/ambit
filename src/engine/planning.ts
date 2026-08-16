@@ -4,6 +4,7 @@ import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
 import type { Db } from "./db.ts";
 import { providersOf } from "./inference.ts";
 import { inverseOf } from "./governance.ts";
+import { usable } from "./assurance.ts";
 
 /**
  * The gap between here and a named capability, and the order to close it in.
@@ -22,11 +23,20 @@ function planFor(db: Db, goal?: string) {
   // can be planned for directly rather than only the capability conferring it.
   const id = goal.includes(':') ? goal : `combo:${goal}`;
 
-  const target = db.prepare("SELECT id, name, state FROM capabilities WHERE id = ?").get(id);
+  const target = db.prepare("SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?").get(id);
   if (!target) return { error: `No capability ${id}. Try tt combos for the list.` };
   // Same shape as the planned case. Returning a different one here meant
   // callers had to special-case it, and a guard reading `steps === 0` silently
   // never fired because the field was absent rather than zero.
+  if (target.state !== 'locked' && !usable(target.lifecycle)) {
+    // Reachable, but its check is failing. This is not an acquisition and a
+    // plan that said "add it" would be proposing to buy what is already broken.
+    return {
+      goal: target.name, reachable: false, degraded: true, steps: 0, missing: [], order: [],
+      lifecycle: target.lifecycle,
+      note: 'configured, but verification is failing — re-verify with tt verify before relying on it',
+    };
+  }
   if (target.state !== 'locked') {
     return { goal: target.name, reachable: true, steps: 0, missing: [], order: [], note: "already reached" };
   }
@@ -40,10 +50,11 @@ function planFor(db: Db, goal?: string) {
     prereqs.get(d.t)!.push(d.f);
   }
   const info = new Map(
-    db.prepare("SELECT id, name, state, kind, unlock_cost_setup FROM capabilities").all().map((c: any) => [c.id, c])
+    db.prepare("SELECT id, name, state, kind, unlock_cost_setup, lifecycle FROM capabilities").all().map((c: any) => [c.id, c])
   );
 
   const order: any[] = [];
+  const degradedHits = new Set<string>();
   const seen = new Set<string>();
   let cyclic = false;
   const walk = (node: string, stack: Set<string>) => {
@@ -52,8 +63,12 @@ function planFor(db: Db, goal?: string) {
     stack.add(node);
     for (const p of prereqs.get(node) || []) {
       const c = info.get(p);
-      if (!c || c.state !== 'locked') continue; // already satisfied
-      walk(p, stack);
+      if (!c) continue;
+      if (c.state === 'locked') { walk(p, stack); continue; }
+      // A degraded or broken prerequisite is not satisfied — the capability is
+      // broken, and a plan must say so rather than silently planning on top of
+      // it. Re-verify, do not re-add.
+      if (!usable(c.lifecycle)) degradedHits.add(c.id);
     }
     stack.delete(node);
     seen.add(node);
@@ -104,6 +119,7 @@ function planFor(db: Db, goal?: string) {
   }
 
   const totalSeconds = order.reduce((s, o) => s + (o.setup_seconds || 0), 0);
+  const degraded = [...degradedHits].map(id => ({ id, name: (info.get(id) as any)?.name || id }));
   return {
     goal: target.name,
     requires_person: gatedBy,
@@ -113,6 +129,10 @@ function planFor(db: Db, goal?: string) {
     steps: order.length,
     estimated_setup: totalSeconds >= 3600 ? `${(totalSeconds / 3600).toFixed(1)}h` : `${Math.round(totalSeconds / 60)}m`,
     order,
+    degraded: degraded.length ? degraded : undefined,
+    note: degraded.length
+      ? 'these prerequisites are configured but failing verification — re-verify or repair them before acquiring anything that needs them'
+      : undefined,
     cyclic: cyclic || undefined,
   };
 }
@@ -158,7 +178,7 @@ function recordFailure(db: Db, capId?: string, note?: string) {
 function deficits(db: Db) {
   const rows = db
     .prepare(
-      `SELECT s.capability_id id, COUNT(*) AS times, MAX(s.timestamp) AS last_seen, c.name, c.state
+      `SELECT s.capability_id id, COUNT(*) AS times, MAX(s.timestamp) AS last_seen, c.name, c.state, c.lifecycle
        FROM session_learning s JOIN capabilities c ON c.id = s.capability_id
        WHERE s.action = 'blocked'
        GROUP BY s.capability_id ORDER BY times DESC, last_seen DESC`
@@ -172,8 +192,10 @@ function deficits(db: Db) {
     id: r.id,
     times_blocked: r.times,
     last_seen: r.last_seen,
-    still_missing: r.state === 'locked',
-    verdict: r.times >= 3 && r.state === 'locked' ? 'structural — build it' : r.times >= 3 ? 'was structural; now reached' : 'incidental so far',
+    still_missing: r.state === 'locked' || !usable(r.lifecycle),
+    verdict: r.times >= 3 && r.state === 'locked' ? 'structural — build it'
+      : r.times >= 3 && !usable(r.lifecycle) ? 'structural — configured but failing verification'
+      : r.times >= 3 ? 'was structural; now reached' : 'incidental so far',
   }));
 }
 
@@ -191,7 +213,7 @@ function deficits(db: Db) {
  */
 function simulateFrontier(db: Db, assume: string[]) {
   const combos = db
-    .prepare("SELECT id, name, state FROM capabilities WHERE category = 'combo'")
+    .prepare("SELECT id, name, state, lifecycle FROM capabilities WHERE category = 'combo'")
     .all();
   const hard = db
     .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE is_hard_requisite = 1")
@@ -206,7 +228,11 @@ function simulateFrontier(db: Db, assume: string[]) {
   }
 
   const nameOf = new Map(combos.map((c: any) => [c.id, c.name]));
-  const before = new Set(combos.filter((c: any) => c.state !== 'locked').map((c: any) => c.id));
+  // Only usable capabilities count toward the frontier and can satisfy
+  // prerequisites. A degraded or broken one is configured but failing
+  // verification, so it neither is reached nor can it unblock an acquisition.
+  const before = new Set(combos.filter((c: any) => c.state !== 'locked' && usable(c.lifecycle)).map((c: any) => c.id));
+  const failing = new Set(combos.filter((c: any) => c.state !== 'locked' && !usable(c.lifecycle)).map((c: any) => c.id));
   // An action is conferred by a capability rather than acquired on its own, so
   // assuming one means assuming the capability that confers it. Counting the
   // action itself would inflate the frontier with something that was never
@@ -242,14 +268,25 @@ function simulateFrontier(db: Db, assume: string[]) {
 
   const gained = [...assumed].filter(id => !before.has(id));
   const emergent = [...after].filter(id => !before.has(id) && !assumed.has(id));
+  // An assumed acquisition whose hard prerequisite is broken rather than
+  // missing: the preview must say why it will not cascade, or the plan reads
+  // as if adding the step fixes the prerequisite. It does not.
+  const blockedByDegraded = [...assumed].filter(id =>
+    (prereqs.get(id) || []).some(p => failing.has(p))
+  );
   return {
     frontier_before: before.size,
     frontier_after: after.size,
     acquired: gained.map(id => ({ id, name: nameOf.get(id) || id })),
     unblocked: emergent.map(id => ({ id, name: nameOf.get(id) || id })),
-    note: emergent.length
-      ? 'unblocked: already provided, held back only by a prerequisite this change satisfies'
+    blocked_by_degraded: blockedByDegraded.length
+      ? blockedByDegraded.map(id => ({ id, name: nameOf.get(id) || id }))
       : undefined,
+    note: blockedByDegraded.length
+      ? 'these are held back by a capability that is configured but failing verification — re-verify, do not re-add'
+      : emergent.length
+        ? 'unblocked: already provided, held back only by a prerequisite this change satisfies'
+        : undefined,
   };
 }
 
@@ -265,6 +302,9 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
   if (!goal) return { error: 'Usage: tt propose <capability> [option-number]' };
   const plan = planFor(db, goal) as any;
   if (plan.error) return plan;
+  if (plan.degraded) {
+    return { goal: plan.goal, degraded: true, lifecycle: plan.lifecycle, note: plan.note };
+  }
   if (plan.note === 'already reached') {
     return { goal: plan.goal, note: 'Already reached. Nothing to propose.' };
   }

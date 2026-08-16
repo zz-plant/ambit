@@ -128,7 +128,7 @@ The contract is built. `contract.can` lists the actions a capability confers, te
 
 Unbuilt: executable verification per recipe. A recipe describes a choice and, since §10, can perform and undo a configuration one; a contract action still cannot declare a check of its own.
 
-## 4. Detection becomes verification — built, and gates nothing
+## 4. Detection becomes verification — built, and gates
 
 Today detection is regex against discovered configuration. That is a reasonable bootstrap, and it is honest about what it proves — *something named Ollama exists* — but it does not prove an agent can use Ollama to finish a task.
 
@@ -156,7 +156,7 @@ The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `de
 
 `state` is untouched beside it, deliberately: `state` is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore `broken` and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.
 
-Unbuilt: verification still does not gate anything. Nothing refuses to plan through a `broken` capability, and `tt plan` will happily route a path through one.
+Unbuilt: the gate is read at the decision surfaces — plans, simulations, authority, near-miss and bottleneck analyses — but nothing enforces it. Ambit describes availability and permission; it does not mediate action, and the check whose failure flips a capability to `broken` still has to be re-verified by hand. The remaining half of §4's promise — verification that *promotes* a capability on evidence rather than only demoting it on failure — is the executable recipe in §3.
 
 ## 5. Goal → capability delta — partly built
 
@@ -226,7 +226,7 @@ Classification compares against the ids recorded in the snapshot rather than tim
 
 `tt since` also distinguishes a fourth thing: **vocabulary**. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system rather than the system having changed — the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so `frontier_now` stays on the same basis as `frontier_then`. Without it, upgrading would have reported twenty-eight capabilities gained on a machine where nothing happened, which is exactly what this table exists not to do.
 
-What remains from the original sketch: nothing writes evidence of *use*, so the ledger records changes in reachability, not in demonstrated reliability. Lifecycle (§4) now records demonstrated reliability per capability, but snapshots still store `state`, so the longitudinal series is still about what is reachable.
+What remains from the original sketch: nothing writes evidence of *use*, so the ledger still cannot answer which capabilities are actually exercised. It does now record demonstrated reliability beside reach: each snapshot carries a `verified` count and an id→lifecycle map, so `tt since` reports a capability that stopped working as `diminished` (with `reason: verification failing`) while `frontier_now` stays flat — the check started failing, nothing was removed. The *use* half is the part still waiting on §4's executable verification.
 
 ## 7b. Affordance domains
 

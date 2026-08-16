@@ -75,6 +75,10 @@ CREATE TABLE IF NOT EXISTS frontier_snapshots (
     taken_at TEXT NOT NULL DEFAULT (datetime('now')),
     reached INTEGER NOT NULL,
     total INTEGER NOT NULL,
+    -- How many capabilities carried passing verification at that observation.
+    -- The ledger records demonstrated reliability as well as reach: the two
+    -- move apart exactly when a declared check starts failing.
+    verified INTEGER NOT NULL DEFAULT 0,
     -- id -> state for every capability, so a past frontier can be reconstructed
     -- exactly rather than inferred from counts.
     states TEXT NOT NULL,
@@ -82,7 +86,12 @@ CREATE TABLE IF NOT EXISTS frontier_snapshots (
     -- system from an expanding vocabulary: the run that introduced action nodes
     -- would read as forty capabilities gained on a machine where nothing
     -- changed. Null on snapshots written before kinds existed.
-    kinds TEXT
+    kinds TEXT,
+    -- id -> lifecycle beside state. A capability whose check starts failing
+    -- loses its evidence worth without moving state; recording both lets the
+    -- ledger answer what the system could do *and* what that was worth.
+    -- Null on snapshots written before lifecycles existed.
+    lifecycles TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_frontier_taken ON frontier_snapshots(taken_at);

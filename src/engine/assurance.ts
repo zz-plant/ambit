@@ -96,6 +96,21 @@ function evidenceFor(db: Db, id: string) {
  */
 const RECENT_RUNS = 5;
 
+/**
+ * Lifecycle values that mean the capability is not currently working.
+ *
+ * `state` answers what the system can reach; `lifecycle` answers how much its
+ * evidence is worth. The gate is the second, applied where availability is
+ * decided: a capability that is reachable but degraded or broken must not be
+ * relied on, planned on top of, or reported as exercisable — configured is not
+ * working, and a check failing is evidence that it is not.
+ */
+export const FAILING_LIFECYCLES = ['degraded', 'broken'] as const;
+
+/** Whether a lifecycle value counts as usable. Unknown/detected imply unreached. */
+export const usable = (lifecycle?: string): boolean =>
+  !lifecycle || !FAILING_LIFECYCLES.includes(lifecycle as any);
+
 function lifecycleFrom(reached: boolean, hasProvider: boolean, history: { action: string }[]): string {
   if (!reached) return hasProvider ? 'detected' : 'unknown';
   if (history.length === 0) return 'configured';
@@ -165,7 +180,7 @@ function authorityReport(db: Db) {
   const grants = db
     .prepare(
       `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note,
-              c.name, c.state, c.kind
+              c.name, c.state, c.kind, c.lifecycle
        FROM authority a JOIN capabilities c ON c.id = a.capability_id
        ORDER BY c.name, a.action`
     )
@@ -207,16 +222,16 @@ function authorityReport(db: Db) {
   // Collected first and resolved after, so which source wins does not depend on
   // the order rows come back in.
   const collected = new Map<string, any>();
-  const record = (id: string, name: string, state: string, kind: string, action: string, mode: string, source: string, scope: string) => {
+  const record = (id: string, name: string, state: string, kind: string, lifecycle: string, action: string, mode: string, source: string, scope: string) => {
     const key = `${id}|${action}|${scope}`;
     if (!collected.has(key)) {
-      collected.set(key, { name, id, kind, action, scope: scope || undefined, reached: state !== 'locked', grants: [] });
+      collected.set(key, { name, id, kind, action, scope: scope || undefined, reached: state !== 'locked' && usable(lifecycle), lifecycle, grants: [] });
     }
     collected.get(key)!.grants.push({ source, mode });
   };
 
   const nodes = new Map(
-    db.prepare("SELECT id, name, state, kind FROM capabilities").all().map((c: any) => [c.id, c])
+    db.prepare("SELECT id, name, state, kind, lifecycle FROM capabilities").all().map((c: any) => [c.id, c])
   );
 
   for (const g of grants) {
@@ -225,11 +240,11 @@ function authorityReport(db: Db) {
       for (const capId of runtimeReach.get(g.capability_id) || []) {
         const target = nodes.get(capId) as any;
         if (!target) continue;
-        record(capId, target.name, target.state, target.kind, g.action, g.mode, g.source, g.scope);
+        record(capId, target.name, target.state, target.kind, target.lifecycle, g.action, g.mode, g.source, g.scope);
       }
       continue;
     }
-    record(g.capability_id, g.name, g.state, g.kind, g.action, g.mode, g.source, g.scope);
+    record(g.capability_id, g.name, g.state, g.kind, g.lifecycle, g.action, g.mode, g.source, g.scope);
   }
 
   const detail = [...collected.values()]
@@ -256,7 +271,7 @@ function authorityReport(db: Db) {
     needs_approval: named(execute.filter(r => r.reached && r.mode === 'confirm')),
     forbidden: named(execute.filter(r => r.mode === 'forbidden')),
     narrowed_by_runtime: named(execute.filter(r => r.narrowed_by)),
-    note: "reached means the system can perform it; mode says whether it may without asking",
+    note: "reached means the system can perform it; mode says whether it may without asking. A degraded or broken capability is not listed as reached however its permission reads.",
     detail,
   };
 }
@@ -292,11 +307,26 @@ function runVerification(db: Db, which?: string) {
     r.lifecycle = db.prepare("SELECT lifecycle FROM capabilities WHERE id = ?").get(r.id)?.lifecycle;
   }
 
+  // The gate, stated rather than implied: these now read as unavailable until
+  // re-verified. The transition is immediate — no re-seed required — and is
+  // why a check is worth declaring in the first place. A capability that was
+  // never reached reads as detected or unknown rather than failing, so it is
+  // not listed here; there was nothing available to lose.
+  const nowUnavailable = results.filter((r: any) =>
+    r.lifecycle === 'degraded' || r.lifecycle === 'broken'
+  );
+
   return {
     checked: results.length,
     verified: results.filter(r => r.status === 'verified').length,
     failed: results.filter(r => r.status === 'failed').length,
     results,
+    now_unavailable: nowUnavailable.length
+      ? nowUnavailable.map((r: any) => ({ id: r.id, name: r.name, lifecycle: r.lifecycle }))
+      : undefined,
+    gate: nowUnavailable.length
+      ? 'these capabilities now read as degraded or broken — configured, but their check is failing. They are excluded from plans, simulations and authority until re-verified.'
+      : undefined,
   };
 }
 
@@ -347,7 +377,10 @@ function actionsReport(db: Db, capId?: string) {
       name: a.name,
       id: a.id,
       capability: a.capability_name,
-      reached: a.state !== 'locked',
+      // Reachable is not enough to act on: a broken action cannot be performed
+      // whatever the capability's state says, and it must not read as
+      // exercisable.
+      reached: a.state !== 'locked' && usable(a.lifecycle),
       mode: grant?.mode || 'autonomous',
       narrowed_by: grant?.narrowed_by,
       lifecycle: a.lifecycle,
