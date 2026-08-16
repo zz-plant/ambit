@@ -459,16 +459,17 @@ const server = Bun.serve({
     //
     // AG-UI is the Agent-User Interaction protocol: an event stream over SSE
     // carrying state between an agentic backend and a front end. Ambit
-    // implements its state subset — StateSnapshot on connect, and again when
-    // the graph changes — which makes the visualiser live and, more usefully,
-    // means the transport for an agent proposing a capability change and a
-    // human approving it already speaks a standard vocabulary rather than one
-    // invented here. See ROADMAP §11.
+    // implements its state and run subset — StateSnapshot on connect, and
+    // StateDelta (RFC 6902 patches) when the graph changes — which makes the
+    // visualiser live and, more usefully, means the transport for an agent
+    // proposing a capability change and a human approving it already speaks a
+    // standard vocabulary rather than one invented here. See ROADMAP §11.
     //
-    // This is not full AG-UI: no runs, messages, tool calls or reasoning
-    // events, and StateDelta (RFC 6902 patches) is not implemented — snapshots
-    // are correct and the graph is small enough that patches would be an
-    // optimisation, not a fix.
+    // Runs are bounded: every connection opens a run with RunStarted and closes
+    // it with RunFinished (or RunError if the stream fails). Messages narrate
+    // the run in the protocol's own words. Tool calls and reasoning events are
+    // not emitted — Ambit does not execute agent steps, it models the
+    // environment those steps would run in, so fabricating them would be noise.
     if (url.pathname === '/api/events' && req.method === 'GET') {
       const encoder = new TextEncoder();
       let timer: ReturnType<typeof setInterval> | undefined;
@@ -503,17 +504,40 @@ const server = Bun.serve({
             return { reached, total, observations };
           };
 
+          // RFC 6902 diff of a flat state object. `replace` ops for every key
+          // whose value changed; nothing else can differ in a flat object, so
+          // this is a complete patch.
+          const diffState = (a: Record<string, number>, b: Record<string, number>) => {
+            const ops: any[] = [];
+            for (const key of Object.keys({ ...a, ...b })) {
+              if (a[key] !== b[key]) ops.push({ op: 'replace', path: `/${key}`, value: b[key] });
+            }
+            return ops;
+          };
+
+          const runId = `ambit-${Date.now()}`;
           let last = snapshot();
-          send('RunStarted', { runId: `ambit-${Date.now()}` });
+          send('RunStarted', { runId, threadId: 'ambit' });
           send('StateSnapshot', { snapshot: last });
+          send('TextMessageChunk', { messageId: runId, role: 'assistant', delta: `watching the graph — ${last.total} capabilities, ${last.reached} reached, ${last.observations} observations` });
 
           // The graph changes when something re-seeds it, which is an external
-          // process — so this polls rather than being notified.
+          // process — so this polls rather than being notified. Every change
+          // after the connect snapshot is an RFC 6902 delta: the client has the
+          // snapshot it was given on connect, and a delta is the difference
+          // from it. This is the protocol's reason for existing — a patch is
+          // smaller than a snapshot — and a client that kept the connect
+          // snapshot can apply it.
           timer = setInterval(() => {
             const next = snapshot();
             if (JSON.stringify(next) === JSON.stringify(last)) return;
+            const delta = diffState(last, next);
+            if (delta.length) send('StateDelta', { delta });
+            const gained = next.reached - last.reached;
+            const direction = gained >= 0 ? 'gained' : 'lost';
+            const verb = gained === 0 ? 'changed' : `${direction} ${Math.abs(gained)}`;
+            send('TextMessageChunk', { messageId: runId, delta: `graph ${verb}: reached ${last.reached} → ${next.reached}` });
             last = next;
-            send('StateSnapshot', { snapshot: next });
           }, 2000);
         },
         cancel() {

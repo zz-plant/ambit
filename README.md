@@ -232,11 +232,12 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 ```
 Explore    stats · context · health · profile · export · explain
 Verify     verify [id] · evidence <id> · authority · actions [id]
-Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
+Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits · digest · notify <topic>
 Plan       plan <id> · goal <sentence> · paths <id> · preferences [who] · simulate <id> · propose <id> [n] · proposals · proposal <id>
 Act        approve <id> <who> · apply <id> · rollback <id>
 Plan       near · combos · fork · insight
-Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
+Analyze    bottlenecks · impact <id> · spof · scope <target> · affordances · budget <setup> <tokens>
+Surface    surface · export
 ```
 
 | | asks |
@@ -247,12 +248,16 @@ Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
 | `tt spof` | Which capabilities have only one provider — and which actions has only one person? |
 | `tt actions <id>` | Which concrete actions does this confer, and which of them may run unattended? |
 | `tt scope <target>` | What a scope actually covers and what it does not — a grant scoped elsewhere is named as excluded |
+| `tt affordances` | The structural domain of each capability — institutional, economic, cognitive, physical, machine-composed-human — derived from the graph, not pasted on |
+| `tt surface` | The machine-readable capability surface a runtime would own — vocabulary by kind, edges by meaning, authority grants, no state |
 | `tt goal <sentence>` | Route a free-form goal — "deploy without me" — to the capabilities whose words cover it, each with its plan delta |
 | `tt paths <id>` | The alternative ways to reach a capability, compared by setup time, risk and lock-in |
 | `tt preferences [who]` | Who prefers what, and where a plan's default choice would fight them |
 | `tt fork` | Which nearby path has the best trade-off between setup cost, regret, and downstream leverage? |
 | `tt decay` | Which parts of the system appear to be rusting? |
 | `tt since` | What became reachable since a past date — and what emerged rather than being added? |
+| `tt digest [days]` | How much of the work still runs through the human, and which interventions are likely reducible |
+| `tt notify <topic>` | Push the digest to ntfy — nothing is sent without a topic |
 
 Real output — one dependency away, and the dependency it names gates four further capabilities:
 
@@ -305,6 +310,19 @@ diagnose hardware failure → request replacement → human approves expenditure
 ```
 
 The capability belongs to the human-machine system, not to either half — which lets partial, structured autonomy be described as it actually is, rather than forced into "fully autonomous" or "human controlled".
+
+Every intervention is recorded. `tt digest` counts the human acts in a window — approvals, applications, permission blocks, failed checks — and names the reducible ones: an approval given three times for the same capability is infrastructure shaped like a person, and the fix is a grant, not another reminder.
+
+```console
+$ tt digest 30
+  interventions: 12
+  3× approval: deploy to production
+  2× permission block: restart svc:ollama
+  2× failed: local embeddings
+  reducible: deploy to production — grant bounded authority rather than approving each time
+```
+
+`tt notify <topic>` pushes that digest to [ntfy](https://ntfy.sh) — and only when a topic is given. Nothing leaves the machine otherwise; the push is a single HTTP POST of the digest text, no graph data.
 
 ### Previewing a change
 

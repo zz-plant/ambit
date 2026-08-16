@@ -20,11 +20,13 @@ export {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations,
   forkComparison, graphProfile, nearMissCombos, insights, singlePointsOfFailure,
+  affordanceDomains, surfaceFor,
 } from "./inference.ts";
 export { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport } from "./assurance.ts";
 export { ledgerSince, ledgerHistory } from "./ledger.ts";
 export { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 export { goalFor, pathsFor } from "./goals.ts";
+export { humanDigest, digestMessage, notify } from "./attention.ts";
 export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,

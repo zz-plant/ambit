@@ -99,6 +99,8 @@ Preferences are built. A person may declare how they like things done — `prefe
 
 Machines are now capability-bearing in the engine, not only in the visualiser. `INFRA_MANIFEST` devices seed as `resource` nodes with `runs_on` edges to the services hosted on them, so `tt impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph can count.
 
+Every human act is recorded and counted. `tt digest` measures how much of the work still runs through the person — approvals, applications, permission blocks, failed checks — and names the reducible ones: the same approval demanded repeatedly is infrastructure shaped like a person, and the report says to grant the authority once. `tt notify <topic>` pushes that digest to ntfy, and only when a topic is given — the attention loop is opt-in and local-first, a single POST of the digest text. This is the first turn of "repeated demands on human effort become evidence about what the system should learn to do without the human."
+
 Unbuilt: cost and risk *tolerance* are still not modelled — a preference is a word matched to an alternative's properties, not a budget or a threshold, so the plan cannot yet say "this step is not worth your attention" or "you asked not to spend more than this". The infrastructure manifest is read but not probed by the engine (the server probes it for the visualiser), so a device's reachability does not yet gate what runs on it.
 
 ## 3. Acquisition recipes — partly built
@@ -259,9 +261,11 @@ What remains from the original sketch: nothing writes evidence of *use*, so the 
 
 The domain vocabulary was entirely software, so anything acting on the world collapsed into `meta`. `physical` now exists and infrastructure devices land there — a robot arm and a neural decoder seed and render alongside MCP servers.
 
-`cognitive`, `institutional` and `economic` do not. They are the domains that make the [theory](./docs/affordance-frontier.md) more than a metaphor, and each needs more than a keyword: an institutional capability implies an authority holder, an economic one implies a budget and a counterparty. Adding the words without the structure would be worse than leaving them out.
+`cognitive`, `institutional` and `economic` are built as **derived** domains, not keywords. `tt affordances` (and `tt_affordances` over MCP) reads each capability's domain off its structure: *institutional* when an actor authorises it (an authority holder must exist for it to be acquirable), *economic* when its acquisition carries a recurring cost (a budget and a counterparty are implied), *cognitive* when a person supplies it (human cognition is necessary to produce the action), *physical* when a provider runs on a device. A capability can satisfy several — Continuous Delivery is institutional *and* economic, and both are named.
 
-Related and partly built: the distinction between human-gated, human-composed, and machine-composed-human capability. The first is approval, which §9 covers. The second now has somewhere to live — an action a person supplies is an `action` node like any other, so `tt spof` reports *only Kanav can do this* in the same breath as *only one MCP server supplies this*. The third, which a tight interface — a BCI being the extreme case — actually produces, has nothing.
+Related and built: the distinction between human-gated, human-composed, and machine-composed-human capability. The first is approval, which §9 covers. The second has somewhere to live — an action a person supplies is an `action` node like any other, so `tt spof` reports *only Kanav can do this* in the same breath as *only one MCP server supplies this*. The third is now named: a capability supplied by both a person and a machine reads as `machine-composed-human`, the theory's BCI case given a structural home.
+
+Unbuilt: the visualiser does not render the new domains as columns — the era grammar is deliberately designed, and adding three columns to make the point would be design work, not model work. And the theory's *environment* term — an affordance holding in one workspace and not another — still has no representation.
 
 ## 8. A runtime adapter layer — partly built
 
@@ -271,7 +275,7 @@ What building it surfaced, and what remains:
 
 - Hermes exposes **authority as data** — `approvals.mode`, `approvals.cron_mode` — so §9 has a real source of truth to read rather than a schema to invent.
 - Detection was tuned to one runtime's naming. Hermes names a model `Jan-v1-4B-Q4_K_M` where OpenCode names the runtime `ollama`; quantisation suffixes are now a local-weights signal.
-- No runtime publishes a machine-readable capability surface. Reading another tool's private files works and is not the right contract. The durable version is an export the runtime owns.
+- No runtime publishes a machine-readable capability surface. Reading another tool's private files works and is not the right contract. The durable version is an export the runtime owns — and the export now exists: `tt surface` emits the graph's whole vocabulary (nodes by kind, edges by meaning, authority grants) in a schema-versioned manifest, and `scripts/adapters/surface.ts` consumes one, so a runtime that publishes a surface is read directly and file-parsing is only the fallback. The round-trip works, which is how the contract gets exercised before any other runtime adopts it.
 - Both adapters read authority and could only print it. They now hand it to the engine in the same fragment they hand over their MCP servers, so what a runtime permits reaches the graph and can narrow what the model says an action is like in general.
 
 
@@ -359,11 +363,13 @@ Built: the surface is 31 tools where it was 17 analytical ones, adding `tt_verif
 
 Unbuilt: everything that changes the world. No `apply_step`, `request_approval`, `simulate` or `rollback`. Ambit still only describes.
 
-## 11. The visualiser becomes a negotiating surface — transport built
+## 11. The visualiser becomes a negotiating surface — state stream built
 
-Ambit implements the state subset of [AG-UI](https://docs.ag-ui.com), the Agent-User Interaction protocol: `/api/events` streams `RunStarted` and `StateSnapshot` over SSE, and the client reloads when the graph changes underneath it. The immediate benefit is a view that does not go stale when a seed or an adapter rewrites the graph; the durable one is that the transport an agent would use to propose a change, and a human to approve it, already speaks a standard vocabulary rather than one invented here.
+Ambit implements the state and run subset of [AG-UI](https://docs.ag-ui.com), the Agent-User Interaction protocol: `/api/events` streams `RunStarted`, a `StateSnapshot` on connect, and — when the graph changes underneath the view — a `StateDelta` of RFC 6902 patches plus a `TextMessageChunk` narrating the change. The client reloads when the graph changes. The immediate benefit is a view that does not go stale when a seed or an adapter rewrites the graph; the durable one is that the transport an agent would use to propose a change, and a human to approve it, already speaks a standard vocabulary rather than one invented here.
 
-Not implemented: runs, messages, tool calls, reasoning events, and `StateDelta` (RFC 6902 patches). Snapshots are correct and this graph is small enough that patches would be an optimisation. Calling Ambit "AG-UI compatible" would overstate it — it implements a subset deliberately.
+`StateDelta` is the protocol's reason for existing: a patch is smaller than a snapshot, and a client that kept the connect snapshot can apply it. The delta is emitted for every change after the initial snapshot, so the transport is honest about what changed rather than resending the whole graph.
+
+Not implemented: tool calls and reasoning events. Ambit does not execute agent steps — it models the environment those steps would run in — so fabricating a tool-call or reasoning stream would be noise in the protocol's own vocabulary. Calling Ambit "AG-UI compatible" would still overstate it; it implements the state and run subset deliberately.
 
 **A2UI was evaluated and rejected.** It is a generative UI specification: agents describe components and the front end renders them. Ambit's interface is a designed visual grammar — era columns, three states, dependency edges, a legend — and its legibility is the product. Letting an agent improvise components would replace a representation that was reasoned about with one that is generated per response. A2UI suits surfaces where the agent's output shape is unknown in advance; here it is known and deliberate.
 
@@ -430,7 +436,7 @@ do real work → discover friction → identify the capability deficit
 
 ## Honest status
 
-Sections 1, 5, 6, 7 and 9 are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder. Section 11 has its transport and none of its surface.
+Sections 1, 5, 6, 7, 9 and 11's state stream are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder.
 
 The through-line in what remains is enforcement and scope. Ambit can now say what may be done, by whom, to what, and on what evidence. It still cannot say *on which repository, in which workspace, within what budget*, and it does not stop anything.
 

@@ -291,9 +291,11 @@ export default function App() {
   }, []);
 
   // AG-UI state stream: the graph is rebuilt by an external process (a seed, an
-  // adapter), so the view goes stale with no way to know. StateSnapshot events
-  // say when to reload. Only the state subset of AG-UI is implemented; see the
-  // note on /api/events in server.ts.
+  // adapter), so the view goes stale with no way to know. StateSnapshot and
+  // StateDelta events say when to reload — a delta is RFC 6902 patches against
+  // the last snapshot, and either one means the graph underneath changed. Only
+  // the state subset of AG-UI is implemented; see the note on /api/events in
+  // server.ts.
   useEffect(() => {
     if (typeof EventSource === 'undefined') return;
     const es = new EventSource('/api/events');
@@ -301,8 +303,13 @@ export default function App() {
     es.onmessage = e => {
       try {
         const event = JSON.parse(e.data);
-        if (event.type !== 'StateSnapshot') return;
-        const fingerprint = JSON.stringify(event.snapshot);
+        // StateSnapshot carries the whole state; StateDelta is a change to it.
+        // Either one is a signal to refetch the graph — the visualiser renders
+        // the graph, not the counts, so the patch itself is not applied here.
+        if (event.type !== 'StateSnapshot' && event.type !== 'StateDelta') return;
+        const fingerprint = event.type === 'StateDelta'
+          ? 'delta:' + JSON.stringify(event.delta)
+          : JSON.stringify(event.snapshot);
         if (last && fingerprint !== last) {
           source === 'tree' ? loadTechTree() : loadConfig();
         }

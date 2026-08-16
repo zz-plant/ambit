@@ -149,9 +149,8 @@ The distinction the affordance reading forces — that an affordance exists only
 What has not landed, and is the honest boundary:
 
 - **Nothing is enforced.** Authority is recorded from the model and from the runtime that would execute the step, and the narrower of the two wins — but Ambit describes authority, it does not mediate action. A system that acts against what the graph records is not stopped by the graph.
-- **Scope is declared, not checked.** An authority row can say `repo:owner/name`, and nothing verifies that the scope is the one an action would actually touch. *Can modify repository X on branch Y* is expressible and unverified.
-- **Only the digital and physical domains exist.** `cognitive`, `institutional` and `economic` still do not, and each needs more than a keyword: an institutional capability implies an authority holder, an economic one a budget and a counterparty.
-- **The human-composed cases are not distinguished.** People are nodes and supply actions, so human-gated is modelled. Human-composed and machine-composed-human — the BCI cases — are not.
+- **Scope is checked, not enforced.** `tt scope <target>` verifies whether a grant's scope covers a target — an authority row carrying `repo:owner/name` is now answerable, and a grant scoped elsewhere is named as excluded. The check is a report, not a gate.
+- **The non-digital domains are derived, not keyworded.** `tt affordances` reads each capability's structural domain off the graph — institutional when an authority holder is required, economic when a budget and counterparty are implied, cognitive when a person supplies it, physical when a device runs it, machine-composed-human when a person and a machine both supply it. The visualiser does not render them as columns.
 - **Environment is not a term.** The robotics example above lists it alongside cognition, actuation and authority; the model has no way to say that an affordance holds in one workspace and not another.
 
 Those are [roadmap](../ROADMAP.md) items, and the theory above still runs ahead of them.
