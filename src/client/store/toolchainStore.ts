@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Item, Connection } from '../utils/configImporter';
 import { importConfig } from '../utils/configImporter';
+import { demoSnapshot, type DemoSnapshot } from '../utils/demoSnapshot';
 
 /**
  * The published demo is static files on GitHub Pages with no API behind it, so
@@ -23,7 +24,7 @@ let backendProbe: Promise<boolean> | null = null;
  * so `r.ok` alone says "up". Requiring the JSON payload is what tells the two
  * apart, and it is why the demo shows its welcome screen instead of an error.
  */
-function backendAvailable(): Promise<boolean> {
+export function backendAvailable(): Promise<boolean> {
   backendProbe ??= fetch('/api/health')
     .then(r => r.json().then((j: any) => j?.status === 'ok').catch(() => false))
     .catch(() => false);
@@ -72,6 +73,8 @@ interface StoreState {
   loading: boolean;
   error: string | null;
   infrastructureScan: InfrastructureScan | null;
+  /** The loop snapshot the static demo renders (null off-demo). */
+  demo: DemoSnapshot | null;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
@@ -150,6 +153,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   loading: false,
   error: null,
   infrastructureScan: null,
+  demo: null,
 
   setItems: (items, connections) => set({ items, connections }),
 
@@ -218,7 +222,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       {from:'mcp:playwright',to:'combo:e2e',type:'soft-dep'},{from:'skill:vitest',to:'combo:e2e',type:'soft-dep'},
       {from:'skill:durable-objects',to:'combo:deploy',type:'soft-dep'},{from:'skill:agents-sdk',to:'combo:deploy',type:'soft-dep'},
     ];
-    set({ items: items.map((i,idx) => ({...i, position:{x:100+(idx%6)*80, y:50+Math.floor(idx/6)*70, z:0}})), connections, loading:false, error:null });
+    set({ items: items.map((i,idx) => ({...i, position:{x:100+(idx%6)*80, y:50+Math.floor(idx/6)*70, z:0}})), connections, loading:false, error:null, demo: demoSnapshot() });
     // Not on a phone: the inspector is a sheet there, so opening one unasked
     // covers the graph the visitor came to look at.
     if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
@@ -276,10 +280,10 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     // No live backend means the published demo: an empty graph and the
     // welcome screen, not an error. LOAD DEMO is the entry there.
     if (!(await backendAvailable())) {
-      set({ items: [], connections: [], loading: false, error: null });
+      set({ items: [], connections: [], loading: false, error: null, demo: null });
       return;
     }
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, demo: null });
     try {
       const res = await fetch('/api/config');
       if (!res.ok) {
@@ -338,10 +342,10 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   loadTechTree: async () => {
     // A static site has no engine to serve a tree — show the welcome screen.
     if (!(await backendAvailable())) {
-      set({ items: [], connections: [], loading: false, error: null });
+      set({ items: [], connections: [], loading: false, error: null, demo: null });
       return false;
     }
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, demo: null });
     try {
       const res = await fetch('/api/tech-tree');
       if (!res.ok) {
@@ -376,6 +380,6 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
 
   reset: () => set({
     items: [], connections: [], selectedItem: null, hoveredItem: null,
-    searchQuery: '', showStarPanel: false, loading: false, error: null, infrastructureScan: null,
+    searchQuery: '', showStarPanel: false, loading: false, error: null, infrastructureScan: null, demo: null,
   }),
 }));
