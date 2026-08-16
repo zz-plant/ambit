@@ -1837,3 +1837,50 @@ test('apply refuses a step authority denies, even with an approval', () => {
   expect(refused.applied).toBeUndefined();
   expect(refused.error).toContain('not permitted');
 });
+
+// ── Realized ROI (WP-9) ───────────────────────────────────────────────────────
+
+test('roi measures before and after an apply, and writes the observation back', () => {
+  seed(APPLIABLE).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+
+  // Three hours of clerical intervention on the target in the 60 days before
+  // the apply — the burden the proposal predicted removing.
+  const past = new Date(Date.now() - 30 * 864e5).toISOString();
+  const r1 = beginRun(db, { goal: 'search the web', goalId: 'combo:web-research' });
+  for (let i = 0; i < 3; i++) {
+    recordIntervention(db, r1.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 3600, startedAt: past });
+  }
+  (db as any).close();
+
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  cli('apply', p.proposal);
+
+  // After the apply: one short intervention remains.
+  const db2 = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r2 = beginRun(db2, { goal: 'search the web', goalId: 'combo:web-research' });
+  recordIntervention(db2, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 360 });
+  (db2 as any).close();
+
+  const roi = cli('roi', p.proposal);
+  expect(roi.goal).toBe('Web Research');
+  expect(roi.observed.before.human_hours).toBe(3);
+  expect(roi.observed.before.interventions).toBe(3);
+  expect(roi.observed.after.interventions).toBe(1);
+  expect(roi.observed.projected_hours_saved_per_year).toBeGreaterThan(30);
+  expect(typeof roi.observed.verdict).toBe('string');
+
+  // The observation is written back, so the next prediction can learn.
+  const reopened = new Database(join(dir, 'graph.db'));
+  const stored = (reopened.prepare("SELECT observed_roi FROM proposals WHERE id = ?").get(p.proposal) as any).observed_roi;
+  expect(JSON.parse(stored).projected_hours_saved_per_year).toBe(roi.observed.projected_hours_saved_per_year);
+  reopened.close();
+});
+
+test('roi on an unapplied proposal says so', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  const roi = cli('roi', p.proposal);
+  expect(roi.error).toContain('apply');
+});
