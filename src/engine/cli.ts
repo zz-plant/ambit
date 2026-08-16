@@ -404,7 +404,7 @@ async function main() {
         capabilities: seeded,
         seeded: seeded > 0 ? true : "no — run ambit seed",
         bytes: existsSync(path) ? statSync(path).size : 0,
-        override: "TOOLCHAIN_DB",
+        override: "AMBIT_DB (or TOOLCHAIN_DB)",
       });
       break;
     }

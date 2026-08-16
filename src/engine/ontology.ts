@@ -23,19 +23,10 @@
  * actor       a person, who supplies authority, money, judgement, physical access
  * runtime     an agent runtime, which contributes providers rather than owning them
  */
-export const KINDS = ['capability', 'action', 'provider', 'resource', 'actor', 'runtime'] as const;
-export type Kind = (typeof KINDS)[number];
+import { KINDS, EDGE_KINDS, type Kind, type EdgeKind, type NodeKind } from '../shared/types.ts';
+export { KINDS, EDGE_KINDS, type Kind, type EdgeKind, type NodeKind };
 
-/**
- * provides     from supplies to. The relation redundancy is counted over.
- * contributes  a runtime configured this provider. Provision, with attribution.
- * requires     to cannot be reached without from.
- * optional     from strengthens to without being necessary.
- * authorizes   from is a person whose approval to depends on.
- * runs_on      to executes on or is served by from.
- */
-export const EDGE_KINDS = ['provides', 'contributes', 'requires', 'optional', 'authorizes', 'runs_on'] as const;
-export type EdgeKind = (typeof EDGE_KINDS)[number];
+
 
 /** Prefixes carry no meaning of their own now; this is the one place that reads them. */
 const PREFIX_KIND: Record<string, Kind> = {
