@@ -55,15 +55,21 @@ test('the capability lifecycle is reachable by an agent, not only the CLI', () =
   for (const tool of ['tt_verify', 'tt_evidence', 'tt_authority', 'tt_actions', 'tt_plan', 'tt_since', 'tt_ledger']) {
     expect(names).toContain(tool);
   }
+  for (const tool of ['ambit_verify', 'ambit_evidence', 'ambit_authority', 'ambit_actions', 'ambit_plan', 'ambit_since', 'ambit_ledger']) {
+    expect(names).toContain(tool);
+  }
 });
 
-test('tt_plan returns an ordered gap through MCP', () => {
-  const [reply] = rpc([
+test('tt_plan and ambit_plan return an ordered gap through MCP', () => {
+  const [replyTt, replyAmbit] = rpc([
     { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'tt_plan', arguments: { capId: 'offline-capable' } } },
+    { jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'ambit_plan', arguments: { capabilityId: 'offline-capable' } } },
   ]);
-  const plan = JSON.parse(reply.result.content[0].text);
-  expect(plan.goal).toBe('Offline Capable');
-  expect(plan.order.length).toBeGreaterThan(0);
+  const planTt = JSON.parse(replyTt.result.content[0].text);
+  const planAmbit = JSON.parse(replyAmbit.result.content[0].text);
+  expect(planTt.goal).toBe('Offline Capable');
+  expect(planAmbit.goal).toBe('Offline Capable');
+  expect(planTt.order).toEqual(planAmbit.order);
 });
 
 test('an unknown tool is an error, not a silent success', () => {
@@ -72,3 +78,4 @@ test('an unknown tool is an error, not a silent success', () => {
   ]);
   expect(reply.error?.code).toBe(-32601);
 });
+

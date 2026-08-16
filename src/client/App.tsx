@@ -1,6 +1,6 @@
 import React, { useEffect, useState, Suspense } from 'react';
 const CivTree = React.lazy(() => import('./components/CivTree'));
-import StarPanel from './components/StarPanel';
+import NodeDetailPanel from './components/NodeDetailPanel';
 
 import ToolchainPanel from './components/ToolchainPanel';
 import DocsModal from './components/DocsModal';
@@ -430,9 +430,9 @@ export default function App() {
       </div>
 
       {showStarPanel && selectedId && (
-        <div className="app-panel-overlay">
-          <StarPanel />
-        </div>
+        <aside className="app-detail-panel" aria-label="Capability details">
+          <NodeDetailPanel />
+        </aside>
       )}
 
       <aside className={`app-console ${leftOpen ? 'app-console--open' : ''}`}>

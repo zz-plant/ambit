@@ -27,7 +27,7 @@ export function userDbPath(): string {
  *
  * Resolution order, and why:
  *
- *   1. TOOLCHAIN_DB — an explicit choice always wins.
+ *   1. AMBIT_DB or TOOLCHAIN_DB — an explicit choice always wins.
  *   2. A graph that already exists next to the code, so no one's history moves
  *      out from under them on upgrade.
  *   3. A git checkout keeps its graph in the checkout, where contributors and
@@ -39,7 +39,7 @@ export function userDbPath(): string {
  *      be rebuilt by re-seeding.
  */
 export function resolveDbPath(): string {
-  const explicit = process.env.TOOLCHAIN_DB;
+  const explicit = process.env.AMBIT_DB || process.env.TOOLCHAIN_DB;
   if (explicit) return explicit;
   if (existsSync(REPO_DB_PATH)) return REPO_DB_PATH;
   if (existsSync(join(__dirname, "..", "..", ".git"))) return REPO_DB_PATH;
