@@ -3,7 +3,9 @@ import StarPanel from './components/StarPanel';
 import CivTree from './components/CivTree';
 import ToolchainPanel from './components/ToolchainPanel';
 import DocsModal from './components/DocsModal';
-import { useToolchainStore } from './store/toolchainStore';
+import { useToolchainStore, backendAvailable } from './store/toolchainStore';
+import DemoDashboard from './components/DemoDashboard';
+import { demoGraphExport } from './utils/demoSnapshot';
 
 function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const buildMcpSnippet = useToolchainStore(s => s.buildMcpSnippet);
@@ -226,6 +228,11 @@ export default function App() {
   );
   const treeFilter = useToolchainStore(s => s.treeFilter);
   const setTreeFilter = useToolchainStore(s => s.setTreeFilter);
+  // The static demo's economic loop: GRAPH is the tree, LOOP is the priced
+  // report a backend-driven install answers from its own ledger. ?view=loop
+  // makes it linkable, like ?view=tree.
+  const demo = useToolchainStore(s => s.demo);
+  const [view, setView] = useState<'graph' | 'loop'>(params.get('view') === 'loop' ? 'loop' : 'graph');
 
   const captureGraph = () => {
     const svg = document.querySelector<SVGSVGElement>('.app-scene svg');
@@ -288,36 +295,44 @@ export default function App() {
   // server.ts.
   useEffect(() => {
     if (typeof EventSource === 'undefined') return;
-    const es = new EventSource('/api/events');
-    let last = '';
-    es.onmessage = e => {
-      try {
-        const event = JSON.parse(e.data);
-        // Proposal lifecycle events are the negotiation surface: a browser
-        // approval or a drafted proposal becomes a notice to act on, with the
-        // exact command the terminal would run.
-        if (event.type === 'ProposalApproved') {
-          setToast(`Approved: ${event.proposalId} — review with \`ambit proposal ${event.proposalId}\`, apply with \`ambit apply ${event.proposalId}\`.`);
-          return;
-        }
-        if (event.type === 'WorkEvent') return; // telemetry, not a view change
-        // StateSnapshot carries the whole state; StateDelta is a change to it.
-        // Either one is a signal to refetch the graph — the visualiser renders
-        // the graph, not the counts, so the patch itself is not applied here.
-        if (event.type !== 'StateSnapshot' && event.type !== 'StateDelta') return;
-        const fingerprint = event.type === 'StateDelta'
-          ? 'delta:' + JSON.stringify(event.delta)
-          : JSON.stringify(event.snapshot);
-        if (last && fingerprint !== last) {
-          source === 'tree' ? loadTechTree() : loadConfig();
-        }
-        last = fingerprint;
-      } catch { /* a malformed frame should not take the view down */ }
-    };
-    // Deliberately no onerror handler that closes: EventSource reconnects on
-    // its own, and closing on the first transient error disabled live updates
-    // permanently for the rest of the session.
-    return () => es.close();
+    // A static site (the published demo) has no /api/events; opening the
+    // stream there is a 404 that reconnects forever. Only subscribe when a
+    // live backend answered the health probe.
+    let es: EventSource | null = null;
+    let cancelled = false;
+    backendAvailable().then(ok => {
+      if (!ok || cancelled) return;
+      es = new EventSource('/api/events');
+      let last = '';
+      es.onmessage = e => {
+        try {
+          const event = JSON.parse(e.data);
+          // Proposal lifecycle events are the negotiation surface: a browser
+          // approval or a drafted proposal becomes a notice to act on, with the
+          // exact command the terminal would run.
+          if (event.type === 'ProposalApproved') {
+            setToast(`Approved: ${event.proposalId} — review with \`ambit proposal ${event.proposalId}\`, apply with \`ambit apply ${event.proposalId}\`.`);
+            return;
+          }
+          if (event.type === 'WorkEvent') return; // telemetry, not a view change
+          // StateSnapshot carries the whole state; StateDelta is a change to it.
+          // Either one is a signal to refetch the graph — the visualiser renders
+          // the graph, not the counts, so the patch itself is not applied here.
+          if (event.type !== 'StateSnapshot' && event.type !== 'StateDelta') return;
+          const fingerprint = event.type === 'StateDelta'
+            ? 'delta:' + JSON.stringify(event.delta)
+            : JSON.stringify(event.snapshot);
+          if (last && fingerprint !== last) {
+            source === 'tree' ? loadTechTree() : loadConfig();
+          }
+          last = fingerprint;
+        } catch { /* a malformed frame should not take the view down */ }
+      };
+      // Deliberately no onerror handler that closes: EventSource reconnects on
+      // its own, and closing on the first transient error disabled live updates
+      // permanently for the rest of the session.
+    });
+    return () => { cancelled = true; es?.close(); };
   }, [source, loadTechTree, loadConfig]);
 
   useEffect(() => {
@@ -342,7 +357,7 @@ export default function App() {
             <button className="tp-btn" onClick={() => loadConfig()}>RECONNECT</button>
           </div>
         )}
-        {showGuide && items.length > 0 && (
+        {showGuide && view === 'graph' && items.length > 0 && (
           <div
             className="app-guide"
             // Centred on the scene, the side panels covered half of it. Inset by
@@ -375,17 +390,20 @@ export default function App() {
               </div>
               <div className="app-welcome-actions">
                 <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>▶  LOAD DEMO</button>
+                <button className="app-welcome-btn" onClick={() => { seedDemo(); setView('loop'); }}>◈  SEE THE LOOP</button>
                 <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowImport(true)}>📋  PASTE</button>
                 <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">⭐  GITHUB</a>
               </div>
-              <div className="app-welcome-code"><code>git clone https://github.com/zz-plant/ambit.git &amp;&amp; cd ambit &amp;&amp; ./bootstrap.sh</code></div>
-              <div className="app-welcome-modes"><span>Click <em>LOAD DEMO</em> to see a sample capability graph</span><span>Select any node to see what depends on it</span><span>Toggle <em>TECH TREE</em> for the era-column capability view</span></div>
+              <div className="app-welcome-code"><code>node src/engine/engine.ts seed &amp;&amp; node src/engine/engine.ts status</code></div>
+              <div className="app-welcome-modes"><span><em>LOAD DEMO</em> — a sample capability graph to click around</span><span><em>SEE THE LOOP</em> — where time goes, what to build next, what it paid back</span><span>The real thing: Node 22, no dependencies — one command</span></div>
             </div>
           </div>
         )}
-        {items.length > 0 && (
+        {view === 'loop' && demo ? (
+          <DemoDashboard />
+        ) : items.length > 0 ? (
           <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} leftInset={leftOpen && !isNarrow ? 348 : 8} />
-        )}
+        ) : null}
       </div>
 
       {showStarPanel && selectedId && (
@@ -402,6 +420,18 @@ export default function App() {
         <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle panel"> {leftOpen ? '◀' : '▶'} </button>
         <button className="app-hud-btn" onClick={() => { setShowDocs(true); dismissGuide(); }} style={{fontWeight:600,fontSize:12,letterSpacing:1}}>DOCS</button>
         <button className="app-hud-btn" onClick={captureGraph} title="Save the current view as a PNG">📷 PNG</button>
+        {demo && (
+          <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
+            {([['graph', 'GRAPH'], ['loop', 'THE LOOP']] as const).map(([id, label]) => (
+              <button key={id} className="app-hud-btn"
+                style={{ width:'auto', padding:'0 8px', border:'none', background: view === id ? 'var(--accent)' : 'transparent', color: view === id ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: view === id ? 700 : 'normal', fontSize:'9px', height:'22px' }}
+                onClick={() => setView(id)}
+                title={id === 'loop' ? 'The economic loop — where time goes, what to build next, what it paid back' : 'The capability graph'}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
           {([['config', 'CONFIG'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
             <button key={id} className="app-hud-btn"
@@ -434,10 +464,11 @@ export default function App() {
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowImport(false)}>
           <div style={{ background:'#faf3e0', borderRadius:8, maxWidth:500, width:'90%', padding:28, border:'1px solid #c4a96a' }} onClick={e => e.stopPropagation()}>
             <h3 style={{ margin:'0 0 4px 0', fontSize:14, fontWeight:700, letterSpacing:1.5, color:'#6b5b3a' }}>IMPORT A GRAPH</h3>
-            <p style={{ margin:'0 0 12px 0', fontSize:12, color:'#8b7355' }}>Run <code style={{background:'#f0dbb8', padding:'1px 4px', borderRadius:3}}>ambit graph</code> locally, copy the output, and paste below.</p>
-            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from ambit graph here..." style={{ width:'100%', height:200, fontFamily:'monospace', fontSize:13, padding:10, border:'1px solid #c4a96a', borderRadius:4, background:'#f0dbb8', resize:'vertical', color:'#4a3728' }} />
+            <p style={{ margin:'0 0 12px 0', fontSize:12, color:'#8b7355' }}>Run <code style={{background:'#f0dbb8', padding:'1px 4px', borderRadius:3}}>ambit graph</code> locally and paste the output — or load a sample to see the shape.</p>
+            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from ambit graph here, or load a sample…" style={{ width:'100%', height:200, fontFamily:'monospace', fontSize:13, padding:10, border:'1px solid #c4a96a', borderRadius:4, background:'#f0dbb8', resize:'vertical', color:'#4a3728' }} />
             <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'flex-end' }}>
               <button onClick={() => setShowImport(false)} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #c4a96a', background:'transparent', color:'#8b7355', borderRadius:3, cursor:'pointer' }}>CANCEL</button>
+              <button onClick={() => setImportText(demoGraphExport())} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #c4a96a', background:'transparent', color:'#8b7355', borderRadius:3, cursor:'pointer' }}>LOAD SAMPLE</button>
               <button onClick={() => { if (loadFromJSON(importText)) { setShowImport(false); setImportText(''); } }} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #b8860b', background:'#b8860b', color:'#faf3e0', borderRadius:3, cursor:'pointer' }}>LOAD GRAPH</button>
             </div>
           </div>
