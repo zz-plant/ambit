@@ -229,16 +229,20 @@ export default function App() {
   );
   const treeFilter = useToolchainStore(s => s.treeFilter);
   const setTreeFilter = useToolchainStore(s => s.setTreeFilter);
-  // The static demo's economic loop: GRAPH is the tree, LOOP is the priced
-  // report a backend-driven install answers from its own ledger. ?view=loop
+  // ?view=tree and ?docs=open make a particular view linkable — useful for
+  // sharing a specific angle, and for capturing documentation screenshots
+  // reproducibly.
+  // ?treeFilter=compact remembers which domain filter you chose across sessions.
   // makes it linkable, like ?view=tree.
   const demo = useToolchainStore(s => s.demo);
   const [view, setView] = useState<'graph' | 'loop'>(params.get('view') === 'loop' ? 'loop' : 'graph');
   const [focusId, setFocusId] = useState<string | null>(params.get('focus') || null);
+  const [treeFilterFromURL, setTreeFilterFromURL] = useState<'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact'>(
+    params.get('treeFilter') as 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact' || 'all'
+  );
 
   const captureGraph = () => {
-    const svg = document.querySelector<SVGSVGElement>('.app-scene svg');
-    if (!svg) return;
+    const svg = document.querySelector<SVGSVGElement>('.app-scene svg')!;
     const clone = svg.cloneNode(true) as SVGSVGElement;
     const data = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([data], { type: 'image/svg+xml' });
@@ -463,14 +467,29 @@ export default function App() {
         </div>
         {source === 'config' && (
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px' }}>
-          {(['all', 'server', 'agent', 'skill', 'combo'] as const).map(f => (
-            <button key={f} className="app-hud-btn"
-              style={{ width:'auto', padding:'0 8px', border:'none', background: treeFilter === f ? 'var(--accent)' : 'transparent', color: treeFilter === f ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: treeFilter === f ? 700 : 'normal', fontSize:'12px', height:'22px' }}
-              onClick={() => setTreeFilter(f)}
-              title={f === 'all' ? 'Show every capability' : `Show only ${f}s and frameworks`}>
-              {f.toUpperCase()}
-            </button>
-          ))}
+          {(['all', 'server', 'agent', 'skill', 'combo', 'compact'] as const).map(f => {
+            const isFilter = treeFilter === f;
+            const fromURL = treeFilterFromURL === f;
+            // Use URL param on first mount with tree view, then store state
+            const initial = fromURL ? fromURL : (isFilter ? treeFilter : 'all');
+            return (
+              <button key={f} className="app-hud-btn"
+                style={{ width:'auto', padding:'0 8px', border:'none', background: initial === f ? 'var(--accent)' : 'transparent', color: initial === f ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: initial === f ? 700 : 'normal', fontSize:'12px', height:'22px' }}
+                onClick={() => {
+                  const newFilter = f === 'compact' ? 'compact' : f;
+                  setTreeFilter(newFilter);
+                  // Also update URL param for persistence (but don't cause a full reload)
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('treeFilter', newFilter);
+                    window.history.replaceState({}, document.title, url);
+                  }
+                }}
+                title={f === 'compact' ? 'Show only essential domains (ai-ml, backend, infra, frontend, meta, quality)' : `Show only ${f}s and frameworks`}>
+                {f.toUpperCase()}
+              </button>
+            );
+          })}
         </div>
         )}
       </div>
