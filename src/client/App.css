@@ -72,10 +72,27 @@ html, body, #root {
   margin: -1px;
   padding: 0;
   overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
   border: 0;
+}
+
+/* A transient notice from the AG-UI negotiation surface. */
+.ambit-toast {
+  position: fixed;
+  bottom: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  max-width: 560px;
+  padding: 10px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-family: var(--font);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
 }
 
 /* Keyboard focus has to be visible on the graph, where selection is otherwise

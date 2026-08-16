@@ -25,7 +25,7 @@ export { runVerification, evidenceFor, authorityReport, actionsReport, scopeRepo
 export { ledgerSince, ledgerHistory } from "./ledger.ts";
 export { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 export { goalFor, pathsFor } from "./goals.ts";
-export { humanDigest, digestMessage, notify } from "./attention.ts";
+export { humanDigest, digestMessage, notify, pendingApprovals, pendingMessage, notifyPending } from "./attention.ts";
 export {
   beginRun, endRun, addEvent, recordUse, recordIntervention,
   recordResource, recordOutcome, workReport, usageReport,
@@ -38,5 +38,6 @@ export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,
 } from "./governance.ts";
+export { proposalHash, mintApproval, verifyApproval } from "./approval.ts";
 
 if (import.meta.main) main();

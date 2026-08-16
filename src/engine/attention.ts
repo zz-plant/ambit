@@ -224,4 +224,48 @@ async function notify(db: Migratable, topic?: string, days?: number | string): P
   }
 }
 
-export { humanDigest, digestMessage, notify };
+/** Approved proposals still awaiting apply — the "jobs waiting on you" set. */
+function pendingApprovals(db: Migratable) {
+  const rows = db.prepare(
+    "SELECT id, goal, approved_at FROM proposals WHERE status = 'approved' ORDER BY approved_at ASC"
+  ).all() as any[];
+  return rows;
+}
+
+/** The attention router's other message: an approved proposal awaits apply. */
+function pendingMessage(db: Migratable): string {
+  const pending = pendingApprovals(db);
+  if (pending.length === 0) return 'Ambit: no approved proposals waiting on you.';
+  const lines = [`Ambit · ${pending.length} approved proposal${pending.length === 1 ? '' : 's'} await apply`];
+  for (const p of pending.slice(0, 5)) {
+    lines.push(`  ${p.id}: ${p.goal}${p.approved_at ? ` (approved ${p.approved_at})` : ''}`);
+  }
+  lines.push('Review with ambit proposal <id>, then ambit apply <id> — approvals expire.');
+  return lines.join('\n');
+}
+
+/**
+ * The attention router: pushes a message to ntfy, when — and only when — a
+ * topic is configured.
+ *
+ *   ambit notify-approvals <topic>   "N approved proposals await apply"
+ *   NTFY_SERVER=... overrides ntfy.sh for self-hosted instances.
+ */
+async function notifyPending(db: Migratable, topic?: string): Promise<any> {
+  if (!topic) return { error: 'Usage: ambit notify-approvals <topic> — nothing is sent without a topic.' };
+  const server = process.env.NTFY_SERVER || 'https://ntfy.sh';
+  const message = pendingMessage(db);
+  try {
+    const res = await fetch(`${server}/${encodeURIComponent(topic)}`, {
+      method: 'POST',
+      body: message,
+      headers: { 'Content-Type': 'text/plain', Title: 'Ambit · approvals awaiting apply' },
+    });
+    if (!res.ok) return { error: `ntfy refused: ${res.status} ${res.statusText}` };
+    return { pushed: topic, bytes: message.length, note: 'Sent. Only the message text above left the machine.' };
+  } catch (e: any) {
+    return { error: `Could not reach ${server}: ${e?.message || e}` };
+  }
+}
+
+export { humanDigest, digestMessage, notify, pendingApprovals, pendingMessage, notifyPending };
