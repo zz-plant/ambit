@@ -469,9 +469,10 @@ export default function App() {
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px' }}>
           {(['all', 'server', 'agent', 'skill', 'combo', 'compact'] as const).map(f => {
             const isFilter = treeFilter === f;
-            const fromURL = treeFilterFromURL === f;
-            // Use URL param on first mount with tree view, then store state
-            const initial = fromURL ? fromURL : (isFilter ? treeFilter : 'all');
+            // Check if URL has a treeFilter param that matches this button
+            const urlMatch = treeFilterFromURL === f;
+            // Initial: use URL param on first mount with tree view, then fall back to store state
+            const initial = urlMatch ? treeFilterFromURL : (isFilter ? treeFilter : 'all');
             return (
               <button key={f} className="app-hud-btn"
                 style={{ width:'auto', padding:'0 8px', border:'none', background: initial === f ? 'var(--accent)' : 'transparent', color: initial === f ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: initial === f ? 700 : 'normal', fontSize:'12px', height:'22px' }}
