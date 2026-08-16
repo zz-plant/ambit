@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations, forkComparison, graphProfile, nearMissCombos, insights, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport, affordanceDomains, humanDigest } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -54,6 +54,8 @@ const TOOLS = [
   { name: "tt_paths", description: "The alternative ways to reach a capability, compared by setup time, risk and lock-in — which steps are a config change §10 can undo, and which are an installer that cannot be reversed", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
   { name: "tt_preferences", description: "What each person prefers, and which plans would fight it — a preference is a word tt plan matches against a step's alternatives (local vs hosted, one-off vs recurring). Pass a name for one person.", inputSchema: { type: "object", properties: { who: { type: "string" } } } },
   { name: "tt_scope", description: "What a scope actually covers, and what it does not. Given a target an action would touch (repo:owner/name, device:nuc, svc:ollama), lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope was recorded; this checks it.", inputSchema: { type: "object", properties: { target: { type: "string" } }, required: ["target"] } },
+  { name: "tt_affordances", description: "The structural domain of each capability — derived from the graph, not pasted on. institutional needs an authority holder, economic a budget and counterparty, cognitive a person supplies it, physical a device runs it. Use this to reason about what kind of world an action operates in.", inputSchema: { type: "object", properties: {} } },
+  { name: "tt_digest", description: "How much of the work still runs through the human, and which interventions are likely reducible — approvals and permission blocks that recur against the same capability are infrastructure shaped like a person. Pass a window in days (default 7).", inputSchema: { type: "object", properties: { days: { type: "number" } } } },
   { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
   { name: "tt_blocked", description: "Record that a task was blocked by a missing capability, and why. The pattern matters more than the instance: the same deficit hit repeatedly as the same cause is infrastructure that should exist. Classification is one of reasoning, knowledge, tool, permission, infrastructure, reliability.", inputSchema: { type: "object", properties: { capId: { type: "string" }, classification: { type: "string", description: "Why it was blocked: reasoning, knowledge, tool, permission, infrastructure, or reliability" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
   { name: "tt_simulate", description: "The frontier as it would be if a capability were acquired, including what it unblocks. Pure preview — changes nothing.", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
@@ -109,6 +111,8 @@ function handleLine(line) {
               case "tt_paths": res = tt(db => pathsFor(db, args.capId)); break;
               case "tt_preferences": res = tt(db => preferencesReport(db, args?.who)); break;
               case "tt_scope": res = tt(db => scopeReport(db, args.target)); break;
+              case "tt_affordances": res = tt(db => affordanceDomains(db)); break;
+              case "tt_digest": res = tt(db => humanDigest(db, args?.days)); break;
               case "tt_since": res = tt(db => ledgerSince(db, args?.when)); break;
               case "tt_ledger": res = tt(db => ledgerHistory(db)); break;
               case "tt_blocked": res = tt(db => recordFailure(db, args.capId, args.classification, args.note)); break;

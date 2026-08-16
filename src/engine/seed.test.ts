@@ -976,6 +976,104 @@ test('infrastructure manifest devices seed as capability-bearing resources', () 
   expect(runs.map(r => r.f)).toContain('device:nuc');
 });
 
+// ── Affordance domains (§7b) ─────────────────────────────────────────────────
+
+test('institutional and economic domains are derived from structure, not pasted on', () => {
+  // Kanav authorises Continuous Delivery, so it needs an authority holder to be
+  // acquirable — institutional. Its acquisition has a recurring option, so it
+  // implies a budget and a counterparty — economic. One capability, two
+  // structural domains, both named.
+  seed(WITH_PREFS).close();
+  const report = cli('affordances');
+  const cd = report.capabilities.find((c: any) => c.name === 'Continuous Delivery');
+  expect(cd).toBeDefined();
+  expect(cd.domain).toBe('institutional');
+  expect(cd.structure).toContain('institutional');
+  expect(cd.structure).toContain('economic');
+
+  // A capability with no authority holder and only a one-off acquisition stays
+  // in its declared domain — no structure, no reclassification.
+  const shell = report.capabilities.find((c: any) => c.name === 'Shell Execution');
+  expect(shell).toBeUndefined();
+});
+
+// ── Capability surface (§8) ──────────────────────────────────────────────────
+
+test('tt surface emits the vocabulary a runtime would own', () => {
+  seed(WITH_PREFS).close();
+  const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'surface'], {
+    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json') },
+    encoding: 'utf8',
+  });
+  const surface = JSON.parse(out);
+  expect(surface.schema_version).toBe(1);
+  expect(surface.runtime).toBe('opencode');
+
+  // The surface is vocabulary, not state: every node by kind, every edge by
+  // meaning, every authority grant — nothing about reached or locked.
+  const kinds = new Set(surface.capabilities.map((c: any) => c.kind));
+  expect(kinds.has('capability')).toBe(true);
+  expect(kinds.has('provider')).toBe(true);
+  expect(kinds.has('actor')).toBe(true);
+  expect(surface.edges.length).toBeGreaterThan(0);
+  expect(surface.authority.length).toBeGreaterThan(0);
+  // No state column leaks into the export.
+  expect(JSON.stringify(surface)).not.toMatch(/"state"/);
+});
+
+// ── Human attention digest (ntfy / §loop) ────────────────────────────────────
+
+/** Record a human act the way the engine would. */
+function recordHumanAct(session: string, capId: string, action: string) {
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare("INSERT INTO session_learning (session_id, capability_id, action, outcome_score) VALUES (?, ?, ?, 1)")
+    .run(session, capId, action);
+  db.close();
+}
+
+test('the digest counts human interventions and names the reducible ones', () => {
+  seed(WITH_PREFS).close();
+  // The same approval twice is a recurring human demand — infrastructure shaped
+  // like a person, which is the whole point of counting interventions.
+  recordHumanAct('approval', 'human:kanav', 'approved');
+  recordHumanAct('approval', 'human:kanav', 'approved');
+
+  const d = cli('digest');
+  expect(d.interventions).toBe(2);
+  expect(d.reducible.length).toBe(1);
+  expect(d.reducible[0].kind).toBe('approval');
+  expect(d.reducible[0].suggested_fix).toMatch(/grant bounded authority/);
+});
+
+test('a one-off intervention is recorded but not called reducible', () => {
+  seed(WITH_PREFS).close();
+  recordHumanAct('approval', 'human:kanav', 'approved');
+
+  const d = cli('digest');
+  expect(d.interventions).toBe(1);
+  expect(d.reducible).toBeUndefined();
+});
+
+test('the digest reports a broken capability separately from reducible friction', () => {
+  seed(WITH_PREFS).close();
+  // Two failed verifications on the same capability are a repair problem, not
+  // an authority problem — the fix is fixing the capability, not granting
+  // permission.
+  recordHumanAct('verify', 'combo:shell-execution', 'failed');
+  recordHumanAct('verify', 'combo:shell-execution', 'failed');
+
+  const d = cli('digest');
+  expect(d.broken.length).toBe(1);
+  expect(d.broken[0].capability).toBe('Shell Execution');
+  expect(d.reducible).toBeUndefined();
+});
+
+test('ntfy is opt-in — nothing is pushed without a topic', async () => {
+  seed(WITH_PREFS).close();
+  const r = cli('notify');
+  expect(r.error).toContain('Usage');
+});
+
 // ── Deficits ────────────────────────────────────────────────────────────────
 
 test('a repeated deficit is distinguished from incidental friction', () => {

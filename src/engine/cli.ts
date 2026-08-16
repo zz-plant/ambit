@@ -8,12 +8,13 @@ import {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, optimizeBudget, projectTrends, pruneRecommendations,
   forkComparison, graphProfile, nearMissCombos, insights,
-  singlePointsOfFailure, exportGraph,
+  singlePointsOfFailure, exportGraph, affordanceDomains, surfaceFor,
 } from "./inference.ts";
 import { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport } from "./assurance.ts";
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
 import { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 import { goalFor, pathsFor } from "./goals.ts";
+import { humanDigest, notify } from "./attention.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -78,7 +79,7 @@ function emit(data: any): void {
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
 
-function main() {
+async function main() {
   const db = getDb();
   migrate(db);
   const cmd = process.argv[2];
@@ -121,6 +122,9 @@ function main() {
     console.log("  preferences [who] Who prefers what, and which plans would fight it");
     console.log("  authority         What may run unattended, and what may not");
     console.log("  actions [id]      The concrete actions a capability confers");
+    console.log("  affordances       The structural domain of each capability — institutional, economic, cognitive, physical");
+    console.log("  digest [days]     How much work still runs through the human, and what is reducible");
+    console.log("  notify <topic>    Push the digest to ntfy — nothing is sent without a topic");
     console.log("  budget <s> <t>    Budget optimization");
     console.log("  trend <days>      Trend projection");
     db.close();
@@ -171,6 +175,16 @@ function main() {
       break;
     case "scope":
       emit(scopeReport(db, arg));
+      break;
+    case "affordances":
+      emit(affordanceDomains(db));
+      break;
+    case "digest":
+      emit(humanDigest(db, arg));
+      break;
+    case "notify":
+      // async: the push is an HTTP POST and must complete before close.
+      emit(await notify(db, arg));
       break;
     case "authority":
       emit(authorityReport(db));
@@ -269,6 +283,7 @@ function main() {
     case "fork": emit(forkComparison(db)); break;
     case "profile": emit(graphProfile(db)); break;
     case "export": console.log(JSON.stringify(exportGraph(db))); break;
+    case "surface": console.log(JSON.stringify(surfaceFor(db), null, 2)); break;
 
     case "near": emit(nearMissCombos(db)); break;
     case "insight": emit(insights(db)); break;
