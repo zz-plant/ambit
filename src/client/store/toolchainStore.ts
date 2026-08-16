@@ -17,9 +17,15 @@ function isNarrowViewport(): boolean {
 }
 
 let backendProbe: Promise<boolean> | null = null;
+/**
+ * A live backend answers /api/health with JSON. A static site (the published
+ * demo on GitHub Pages) answers every path with index.html — which is a 200,
+ * so `r.ok` alone says "up". Requiring the JSON payload is what tells the two
+ * apart, and it is why the demo shows its welcome screen instead of an error.
+ */
 function backendAvailable(): Promise<boolean> {
   backendProbe ??= fetch('/api/health')
-    .then(r => r.ok)
+    .then(r => r.json().then((j: any) => j?.status === 'ok').catch(() => false))
     .catch(() => false);
   return backendProbe;
 }
@@ -267,6 +273,12 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   })),
 
   loadConfig: async () => {
+    // No live backend means the published demo: an empty graph and the
+    // welcome screen, not an error. LOAD DEMO is the entry there.
+    if (!(await backendAvailable())) {
+      set({ items: [], connections: [], loading: false, error: null });
+      return;
+    }
     set({ loading: true, error: null });
     try {
       const res = await fetch('/api/config');
@@ -320,13 +332,15 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     return false;
   },
 
-  // Returns a snippet to paste rather than writing the config. An MCP entry
-  // carries a command OpenCode executes, so it must not be reachable through an
-  // HTTP request — see the security note in AGENTS.md.
   // Loads the engine's graph — the curated tech tree plus the user's own
   // capabilities — instead of the config-derived view. Locked nodes arrive as
   // 'specified', which the renderers already draw as not-yet-built.
   loadTechTree: async () => {
+    // A static site has no engine to serve a tree — show the welcome screen.
+    if (!(await backendAvailable())) {
+      set({ items: [], connections: [], loading: false, error: null });
+      return false;
+    }
     set({ loading: true, error: null });
     try {
       const res = await fetch('/api/tech-tree');
@@ -343,6 +357,9 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     }
   },
 
+  // Returns a snippet to paste rather than writing the config. An MCP entry
+  // carries a command OpenCode executes, so it must not be reachable through an
+  // HTTP request — see the security note in AGENTS.md.
   buildMcpSnippet: async (name: string, mcpConfig: any) => {
     try {
       const res = await fetch('/api/config/mcp-snippet', {
