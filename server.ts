@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { resolveDbPath } from './src/shared/db-path.ts';
 import { migrate } from './src/engine/migrate.ts';
 import { beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome } from './src/engine/telemetry.ts';
+import { mintApproval } from './src/engine/approval.ts';
 
 const CONFIG_PATH = Bun.env.HOME + '/.config/opencode/opencode.json';
 const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
@@ -545,6 +546,49 @@ const server = Bun.serve({
         const result = ingestTelemetry(graph, body);
         broadcast({ type: 'WorkEvent', ...body });
         return Response.json(result, { headers });
+      } finally {
+        graph.close();
+      }
+    }
+
+    // POST /api/proposals/:id/approve — the browser approval broker.
+    //
+    // Approves a proposal and mints the signed artifact the executor verifies.
+    // That is all it does: it never applies, never writes a command, and never
+    // carries anything an agent could spend without the executor's checks. The
+    // separation between proposing more capability and granting more authority
+    // is the artifact — apply (CLI-only) is the only thing that can spend it.
+    const approveMatch = url.pathname.match(/^\/api\/proposals\/([^/]+)\/approve$/);
+    if (approveMatch && req.method === 'POST') {
+      const proposalId = approveMatch[1];
+      let body: any = {};
+      try { body = await req.json(); } catch { /* a body is optional */ }
+      const actor = typeof body?.actor === 'string' && body.actor ? body.actor : 'human:kanav';
+
+      const graph = new Database(GRAPH_DB_PATH, { create: true });
+      try {
+        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        const person = graph.query("SELECT id FROM capabilities WHERE id = ? AND category = 'human'").get(actor) as any;
+        if (!person) {
+          return Response.json({ error: `${actor} is not a person in the graph. Approval has to come from someone accountable.` }, { status: 400, headers });
+        }
+        const row = graph.query("SELECT * FROM proposals WHERE id = ?").get(proposalId) as any;
+        if (!row) return Response.json({ error: `No proposal ${proposalId}.` }, { status: 404, headers });
+        if (row.status === 'approved') {
+          return Response.json({ error: `${proposalId} is already approved by ${row.approved_by}.` }, { status: 409, headers });
+        }
+        graph.query("UPDATE proposals SET status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ?")
+          .run(actor, proposalId);
+        graph.query("INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'approved', 1, ?)")
+          .run(actor, `${proposalId}: ${row.goal}`);
+
+        const minted = mintApproval(graph as unknown as Parameters<typeof mintApproval>[0], proposalId, {
+          actor,
+          budgetCents: typeof body?.budgetCents === 'number' ? body.budgetCents : undefined,
+          ttlHours: typeof body?.ttlHours === 'number' ? body.ttlHours : 24,
+        });
+        broadcast({ type: 'ProposalApproved', proposalId, actor, scope: minted.artifact?.scope_exclude });
+        return Response.json({ proposal: proposalId, approved_by: actor, artifact: minted.artifact }, { headers });
       } finally {
         graph.close();
       }

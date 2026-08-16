@@ -293,6 +293,9 @@ function cli(cmd: string, ...args: string[]): any {
         ...process.env,
         TOOLCHAIN_DB: join(dir, 'graph.db'),
         OPENCODE_CONFIG: join(dir, 'config.json'),
+        // A fixed key so tests never read or create the real one on this
+        // machine, and so a forged artifact is provably forged.
+        AMBIT_APPROVAL_KEY: 'test-approval-key',
       },
       encoding: 'utf8',
     }
@@ -1706,4 +1709,69 @@ test('an opportunity id proposes its capability with the observed case', () => {
   expect(p.proposal).toBeDefined();
   expect(p.economic_case).toBeDefined();
   expect(p.economic_case.observed.interventions_month).toBe(2);
+});
+
+// ── Approval broker (WP-7) ───────────────────────────────────────────────────
+
+test('an approval mints a signed artifact the executor verifies', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  const ok = cli('approve', p.proposal, 'kanav');
+
+  expect(ok.artifact).toBeDefined();
+  expect(ok.artifact.proposal_hash).toBeDefined();
+  expect(ok.artifact.actor).toBe('human:kanav');
+  expect(ok.artifact.sig).toBeDefined();
+  expect(ok.artifact.expires_at).toBeDefined();
+  // The artifact binds the scope to exactly the steps being acquired.
+  expect(ok.artifact.scope_exclude).toContain('combo:web-research');
+
+  // A valid artifact applies cleanly.
+  const result = cli('apply', p.proposal);
+  expect(result.applied).toBe(true);
+});
+
+test('an artifact refuses to spend on a proposal that changed after approval', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+
+  // Tamper: rewrite the steps after the approval was minted.
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare("UPDATE proposals SET steps = ? WHERE id = ?")
+    .run(JSON.stringify([{ id: 'combo:something-else', inverse: {}, config_patch: { mcp: { evil: {} } } }]), p.proposal);
+  db.close();
+
+  const refused = cli('apply', p.proposal);
+  expect(refused.applied).toBeUndefined();
+  expect(refused.error).toContain('Refused');
+  expect(refused.error).toMatch(/signature|no longer hashes/i);
+});
+
+test('an expired approval is refused until re-approved', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+
+  const db = new Database(join(dir, 'graph.db'));
+  db.prepare("UPDATE proposals SET expires_at = '2000-01-01 00:00:00' WHERE id = ?").run(p.proposal);
+  db.close();
+
+  const refused = cli('apply', p.proposal);
+  expect(refused.error).toContain('expired');
+});
+
+test('notify-approvals lists approved proposals awaiting apply', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+
+  const r = cli('notify-approvals');
+  expect(r.error).toContain('Usage'); // opt-in: nothing is sent without a topic
+
+  // The pending set is readable through the engine directly.
+  const db = new Database(join(dir, 'graph.db'));
+  const rows = db.prepare("SELECT id FROM proposals WHERE status = 'approved'").all() as any[];
+  expect(rows.map((r: any) => r.id)).toContain(p.proposal);
+  db.close();
 });

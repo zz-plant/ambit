@@ -48,11 +48,13 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ["frontier_snapshots", "verified", "INTEGER NOT NULL DEFAULT 0"],
   ["frontier_snapshots", "lifecycles", "TEXT"],
   // The economic case, so an approval refers to a stated consequence rather
-  // than a hope. Budget/expiry/scope are the WP-7 approval-broker fields.
+  // than a hope. Budget/expiry/scope and the signed artifact are the
+  // approval-broker fields.
   ["proposals", "economic_case", "TEXT"],
   ["proposals", "budget_cents", "REAL"],
   ["proposals", "scope_exclude", "TEXT"],
   ["proposals", "expires_at", "TEXT"],
+  ["proposals", "approval_artifact", "TEXT"],
 ];
 
 function addMissingColumns(db: Migratable) {

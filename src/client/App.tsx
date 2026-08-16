@@ -205,6 +205,15 @@ export default function App() {
   };
   const [importText, setImportText] = useState('');
   const [showImport, setShowImport] = useState(false);
+  // A transient notice from the AG-UI stream — an approval minted in the
+  // browser broker, a proposal drafted — so the negotiation surface speaks
+  // even while the graph view is the focus.
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const loadTechTree = useToolchainStore(s => s.loadTechTree);
   const loadConfigSource = useToolchainStore(s => s.loadConfig);
@@ -284,6 +293,14 @@ export default function App() {
     es.onmessage = e => {
       try {
         const event = JSON.parse(e.data);
+        // Proposal lifecycle events are the negotiation surface: a browser
+        // approval or a drafted proposal becomes a notice to act on, with the
+        // exact command the terminal would run.
+        if (event.type === 'ProposalApproved') {
+          setToast(`Approved: ${event.proposalId} — review with \`ambit proposal ${event.proposalId}\`, apply with \`ambit apply ${event.proposalId}\`.`);
+          return;
+        }
+        if (event.type === 'WorkEvent') return; // telemetry, not a view change
         // StateSnapshot carries the whole state; StateDelta is a change to it.
         // Either one is a signal to refetch the graph — the visualiser renders
         // the graph, not the counts, so the patch itself is not applied here.
@@ -433,6 +450,12 @@ export default function App() {
           {items.length} capabilities · {items.filter(i => i.status === 'built').length} built
         </span>
       </footer>
+
+      {toast && (
+        <div role="status" className="ambit-toast" onClick={() => setToast(null)}>
+          {toast}
+        </div>
+      )}
 
       {/* Selecting a node opens a panel elsewhere in the document, which is a
           silent change to anyone not watching it happen. */}

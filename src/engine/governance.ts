@@ -3,6 +3,7 @@ import { CONFIG_DEFAULT } from "./paths.ts";
 import { getDb, type Db } from "./db.ts";
 import { runVerification } from "./assurance.ts";
 import { seedFromConfig } from "./discovery.ts";
+import { mintApproval, verifyApproval } from "./approval.ts";
 
 /**
  * The inverse of a declarative config patch: remove exactly what it adds.
@@ -63,15 +64,21 @@ function approveProposal(db: Db, proposalId?: string, who?: string) {
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'approved', 1, ?)"
   ).run(humanId, `${proposalId}: ${row.goal}`);
 
+  // The approval broker mints the signed artifact the executor will verify:
+  // proposal hash, actor, budget, scope, expiry, timestamp. Approving is
+  // permission; the artifact is what makes it spendable, and only by apply.
+  const minted = mintApproval(db, proposalId, { actor: humanId });
+
   return {
     proposal: proposalId,
     goal: row.goal,
     approved_by: person.name,
     applicable: blocking.length === 0,
+    artifact: minted.artifact,
     steps_without_inverse: blocking.length ? blocking.map((s: any) => s.name) : undefined,
     note: blocking.length
       ? 'Approved, and still not applicable: these steps have no computed inverse, and nothing runs without one.'
-      : 'Approved. Every step has an inverse. Applying is not implemented — this records permission, not action.',
+      : 'Approved. Every step has an inverse. The approval artifact is signed and expires in 24 hours.',
   };
 }
 
@@ -119,6 +126,13 @@ function applyProposal(db: Db, proposalId?: string) {
   if (row.status === 'applied') return { error: `${proposalId} is already applied.` };
   if (row.status !== 'approved') {
     return { error: `${proposalId} is ${row.status}. A person has to approve it first: tt approve ${proposalId} <person>` };
+  }
+
+  // The approval broker's signed artifact is what makes an approval spendable.
+  // An expired, forged, or mutated approval is refused before any step runs.
+  const checked = verifyApproval(db, proposalId, row.approved_by);
+  if (!checked.ok) {
+    return { error: `Refused. ${checked.reason}. Re-approve to mint a fresh artifact.` };
   }
 
   const steps = JSON.parse(row.steps);

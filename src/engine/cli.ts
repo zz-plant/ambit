@@ -13,7 +13,7 @@ import { runVerification, evidenceFor, authorityReport, actionsReport, scopeRepo
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
 import { recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
 import { goalFor, pathsFor } from "./goals.ts";
-import { humanDigest, notify } from "./attention.ts";
+import { humanDigest, notify, notifyPending } from "./attention.ts";
 import { workReport, usageReport } from "./telemetry.ts";
 import { economicsReport } from "./economics.ts";
 import { opportunitiesFor, opportunityFor } from "./opportunities.ts";
@@ -88,6 +88,7 @@ const HELP = `ambit - what your system can do, what it costs, what to change
                     delta, compare acquisition paths, or check preferences
   attention [days]  how much work still runs through the human, and what is reducible
   notify <topic>    push the attention digest to ntfy — nothing is sent without a topic
+  notify-approvals <topic>   push the approved-proposals-waiting count to ntfy
   work [limit]      recent runs, each with what it cost
   usage [days]      where capability effort actually went
   economics         declared costs and goal values
@@ -240,6 +241,9 @@ async function main() {
     case "notify":
       // async: the push is an HTTP POST and must complete before close.
       emit(await notify(db, arg));
+      break;
+    case "notify-approvals":
+      emit(await notifyPending(db, arg));
       break;
     case "work":
       emit(workReport(db, parseInt(arg) || 20));
