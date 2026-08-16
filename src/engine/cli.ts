@@ -15,6 +15,7 @@ import { recordFailure, deficits, simulateFrontier, propose, preferencesReport }
 import { goalFor, pathsFor } from "./goals.ts";
 import { humanDigest, notify } from "./attention.ts";
 import { workReport, usageReport } from "./telemetry.ts";
+import { economicsReport } from "./economics.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -88,6 +89,7 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   notify <topic>    push the attention digest to ntfy — nothing is sent without a topic
   work [limit]      recent runs, each with what it cost
   usage [days]      where capability effort actually went
+  economics         declared costs and goal values
   impact <id>       what actually breaks if a capability goes away
   verify [cap] [--history]   run the declared check, or show past verification
   authority [cap] [scope <target>]   what may run unattended, what each action
@@ -240,6 +242,9 @@ async function main() {
       break;
     case "usage":
       emit(usageReport(db, parseInt(arg) || 30));
+      break;
+    case "economics":
+      emit(economicsReport(db));
       break;
     case "impact":
       emit(analyzeImpact(db, arg));

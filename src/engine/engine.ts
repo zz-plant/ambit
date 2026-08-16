@@ -15,7 +15,7 @@
 import { main } from "./cli.ts";
 
 export { getDb, migrate } from "./db.ts";
-export { seedFromConfig } from "./discovery.ts";
+export { seedFromConfig, seedEconomics } from "./discovery.ts";
 export {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, nearMissCombos, singlePointsOfFailure,
@@ -30,6 +30,9 @@ export {
   beginRun, endRun, addEvent, recordUse, recordIntervention,
   recordResource, recordOutcome, workReport, usageReport,
 } from "./telemetry.ts";
+export {
+  valueCents, metricByEntity, attentionValueCentsPerHour, goalValue, economicsReport,
+} from "./economics.ts";
 export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,
