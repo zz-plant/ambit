@@ -1520,3 +1520,48 @@ test('a run records no capability state — the ledger observes, it does not rea
   expect(state).toBe('unlocked'); // seed made it reachable; the run changed nothing
   reopened.close();
 });
+
+// ── Human-agency accounting (WP-3) ───────────────────────────────────────────
+
+test('attention classifies agency: judgment is kept, clerical is reducible', () => {
+  seed(LOCAL_ONLY).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+
+  // Judgment, twice — the human's reason for being there. Never reducible.
+  const r1 = beginRun(db, { goal: 'architect the migration' });
+  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 600 });
+  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 300 });
+
+  // Clerical, three times across two runs — the human is the duct.
+  const r2 = beginRun(db, { goal: 'move data between systems' });
+  recordIntervention(db, r1.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 120, waitingSeconds: 900 });
+  recordIntervention(db, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 90, waitingSeconds: 300 });
+  recordIntervention(db, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 60, waitingSeconds: 600 });
+  (db as any).close();
+
+  const d = cli('attention');
+  const judgment = d.keepers.find((k: any) => k.kind === 'judgment');
+  expect(judgment.times).toBe(2);
+  // Reducible never contains judgment, however often it recurs.
+  expect(d.reducible?.some((r: any) => r.kind === 'judgment')).toBeFalsy();
+
+  const clerical = d.reducible.find((r: any) => r.kind === 'clerical');
+  expect(clerical.times).toBe(3);
+  expect(clerical.active_seconds).toBe(270);
+  expect(clerical.waiting_seconds).toBe(1800);
+  expect(clerical.runs_affected).toBe(2); // two distinct runs hit the same duct
+  expect(clerical.suggested_fix).toMatch(/mechanical/);
+});
+
+test('attention reports aggregate active and waiting time', () => {
+  seed(LOCAL_ONLY).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r = beginRun(db, { goal: 'restart service' });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:shell-execution', activeSeconds: 30, waitingSeconds: 120 });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:shell-execution', activeSeconds: 20, waitingSeconds: 60 });
+  (db as any).close();
+
+  const d = cli('attention');
+  expect(d.active_seconds).toBe(50);
+  expect(d.waiting_seconds).toBe(180);
+});
