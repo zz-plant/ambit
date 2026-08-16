@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
+const CivTree = React.lazy(() => import('./components/CivTree'));
 import StarPanel from './components/StarPanel';
-import CivTree from './components/CivTree';
+
 import ToolchainPanel from './components/ToolchainPanel';
 import DocsModal from './components/DocsModal';
 import { useToolchainStore, backendAvailable } from './store/toolchainStore';
@@ -233,6 +234,7 @@ export default function App() {
   // makes it linkable, like ?view=tree.
   const demo = useToolchainStore(s => s.demo);
   const [view, setView] = useState<'graph' | 'loop'>(params.get('view') === 'loop' ? 'loop' : 'graph');
+  const [focusId, setFocusId] = useState<string | null>(params.get('focus') || null);
 
   const captureGraph = () => {
     const svg = document.querySelector<SVGSVGElement>('.app-scene svg');
@@ -342,6 +344,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (focusId && items.length > 0) {
+      const item = items.find(i => i.id === focusId);
+      if (item) selectItem(item.id);
+    }
+  }, [focusId, items.length, selectItem]);
+
   return (
     <div className="app">
       <div className="app-scene">
@@ -355,6 +364,14 @@ export default function App() {
           <div className="app-error">
             <p>{error}</p>
             <button className="tp-btn" onClick={() => loadConfig()}>RECONNECT</button>
+            {typeof window !== 'undefined' &&
+              !backendAvailable() && (
+                <div style={{ marginTop: '8px', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                  <strong>Published demo note:</strong> Live updates require a running backend. 
+                  <a href="https://zz-plant.github.io/ambit/" style={{ color: 'var(--text-muted)' }} target="_blank" rel="noopener">Open the demo</a> 
+                  or <code>node src/engine/engine.ts seed</code> locally for full functionality.
+                </div>
+              )}
           </div>
         )}
         {showGuide && view === 'graph' && items.length > 0 && (
@@ -402,7 +419,9 @@ export default function App() {
         {view === 'loop' && demo ? (
           <DemoDashboard />
         ) : items.length > 0 ? (
-          <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} leftInset={leftOpen && !isNarrow ? 348 : 8} />
+          <Suspense fallback={<div className="app-loading"><div className="app-loading-ring" /><p>Loading capability graph…</p></div>}>
+            <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} leftInset={leftOpen && !isNarrow ? 348 : 8} />
+          </Suspense>
         ) : null}
       </div>
 
