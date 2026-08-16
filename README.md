@@ -232,7 +232,9 @@ Run `ambit` with no arguments and it shows the surface. The whole CLI is a handf
 ```
 Operate    status · graph [surface|combos|affordances] · history [since <when>]
 Decide     goal <cap-or-sentence> [--paths|--simulate|--prefs] · attention [days]
-           notify <topic> · impact <id> · verify [cap] [--history]
+           notify <topic> · work [limit] · usage [days] · economics
+           opportunities [--by=attention|cash|roi|reliability|frontier]
+           opportunity <id> · impact <id> · verify [cap] [--history]
            authority [cap] [scope <target>] · propose <cap> [n] · proposals · proposal <id>
 Govern     approve <id> <who> · apply <id> · rollback <id>
 Record     record <cap> [class] [note] · seed · where · help [term]
@@ -251,6 +253,7 @@ Record     record <cap> [class] [note] · seed · where · help [term]
 | `ambit history since <when>` | What became reachable since a past date — and what emerged rather than being added? |
 | `ambit attention [days]` | How much of the work still runs through the human, and which interventions are likely reducible |
 | `ambit notify <topic>` | Push the attention digest to ntfy — nothing is sent without a topic |
+| `ambit opportunities` | Ranked structural changes worth making — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence. `--by=attention|cash|roi|reliability|frontier` |
 
 Real output — one dependency away, and the dependency it names gates four further capabilities:
 

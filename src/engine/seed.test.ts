@@ -1615,3 +1615,56 @@ test('economics reports declared values in dollars and names their source', () =
   expect(g.failure_cost_dollars).toBe(500);
   expect(report.note).toContain('$250/hr');
 });
+
+// ── Opportunity engine (WP-5) ────────────────────────────────────────────────
+
+test('opportunities price observed middleware burden and never judge judgement', () => {
+  seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+
+  // Five clerical interventions, 30 minutes of active time each, on one
+  // capability, across three runs — the classic "the human is the duct" case.
+  const r1 = beginRun(db, { goal: 'move data between systems', goalId: 'combo:data-access' });
+  const r2 = beginRun(db, { goal: 'move data between systems', goalId: 'combo:data-access' });
+  const r3 = beginRun(db, { goal: 'move data between systems', goalId: 'combo:data-access' });
+  for (const r of [r1, r2, r2, r3, r3]) {
+    recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  }
+  // Judgment, twice — must never appear as an opportunity.
+  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 3600 });
+  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 3600 });
+  (db as any).close();
+
+  const o = cli('opportunities');
+  const da = o.opportunities.find((x: any) => x.kind === 'clerical');
+  expect(da).toBeDefined();
+  expect(da.burden.interventions_month).toBe(5);
+  expect(da.burden.human_hours_month).toBe(2.5);   // 5 × 30 min
+  expect(da.burden.attention_dollars_month).toBe(625); // 2.5h × $250/hr
+  expect(da.confidence).toBe('high');               // observed ≥ 5 times
+  expect(da.expected.human_hours_month_after).toBe(0.3); // 10% of 2.5h remains
+  expect(da.payback_months).toBeGreaterThan(0);
+  expect(da.note).toMatch(/middleware/);
+
+  // Judgment is reported as a keeper, not a candidate.
+  expect(o.opportunities.some((x: any) => x.kind === 'judgment')).toBe(false);
+  expect(o.keepers.some((k: any) => k.kind === 'judgment' && k.times === 2)).toBe(true);
+});
+
+test('opportunities rank by objective and expose one case', () => {
+  seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r = beginRun(db, { goal: 'approve the deploy' });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:continuous-delivery', activeSeconds: 60 });
+  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:continuous-delivery', activeSeconds: 60 });
+  (db as any).close();
+
+  const byRoi = cli('opportunities', '--by=roi');
+  expect(byRoi.by).toBe('roi');
+  expect(byRoi.opportunities.length).toBeGreaterThan(0);
+
+  const detail = cli('opportunity', byRoi.opportunities[0].id);
+  expect(detail.id).toBe(byRoi.opportunities[0].id);
+  expect(detail.proposal.setup_hours).toBeGreaterThan(0);
+  expect(detail.roi_annual).toBeGreaterThan(0);
+});

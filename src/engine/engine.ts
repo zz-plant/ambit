@@ -33,6 +33,7 @@ export {
 export {
   valueCents, metricByEntity, attentionValueCentsPerHour, goalValue, economicsReport,
 } from "./economics.ts";
+export { opportunitiesFor, opportunityFor } from "./opportunities.ts";
 export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,

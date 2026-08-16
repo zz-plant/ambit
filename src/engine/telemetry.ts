@@ -43,8 +43,13 @@ export interface BeginRunInput {
   source?: string;
 }
 
+// Date.now() has millisecond resolution, and runs begun in the same
+// millisecond would collide on the primary key. The counter is process-local
+// and enough: two run ids from one process cannot collide.
+let runCounter = 0;
+
 function beginRun(db: Migratable, input: BeginRunInput = {}) {
-  const id = input.id || `run-${Date.now().toString(36)}`;
+  const id = input.id || `run-${Date.now().toString(36)}-${runCounter++}`;
   db.prepare(
     "INSERT INTO work_runs (id, goal, goal_id, run_type, source) VALUES (?, ?, ?, ?, ?)"
   ).run(id, input.goal || null, input.goalId || null, input.runType || 'task', input.source || 'manual');
