@@ -19,6 +19,7 @@ import { economicsReport } from "./economics.ts";
 import { opportunitiesFor, opportunityFor } from "./opportunities.ts";
 import { roiFor } from "./roi.ts";
 import { exportSummary, importSummary } from "./federation.ts";
+import { catalogReport } from "./catalog.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -94,10 +95,12 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   work [limit]      recent runs, each with what it cost
   usage [days]      where capability effort actually went
   economics         declared costs and goal values
-  opportunities [--by=attention|cash|roi|reliability|frontier]   ranked
-                    investments — observed burden, priced, compared
+  opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
+                    ranked investments — observed burden, priced, compared;
+                    --budget allocates the best combination within $N
   opportunity <id>  one ranked case in full
   roi <proposal-id>   what an applied proposal actually changed — before/after
+  catalog <cap>       the ways to acquire a capability, compared by cost
   federation export|import   the signed summary a portfolio layer reads
   impact <id>       what actually breaks if a capability goes away
   verify [cap] [--history]   run the declared check, or show past verification
@@ -262,7 +265,9 @@ async function main() {
     case "opportunities": {
       const byFlag = [...flags].find(f => f.startsWith('--by='));
       const by = (byFlag ? byFlag.slice(5) : undefined) as any;
-      emit(opportunitiesFor(db, by));
+      const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
+      const budget = budgetFlag ? Number(budgetFlag.slice(9)) : undefined;
+      emit(opportunitiesFor(db, by, Number.isFinite(budget as any) ? budget : undefined));
       break;
     }
     case "opportunity":
@@ -270,6 +275,9 @@ async function main() {
       break;
     case "roi":
       emit(roiFor(db, arg));
+      break;
+    case "catalog":
+      emit(catalogReport(db, arg));
       break;
     case "federation": {
       const verb = arg;

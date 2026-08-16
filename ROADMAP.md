@@ -449,10 +449,11 @@ measures before/after and writes the observation back
 What exists: the work ledger and its AG-UI ingestion, the attention report
 that never flags judgment, the economic model (dollars declare, cents store),
 the opportunity engine ranked by attention/cash/roi/reliability/frontier,
-economic proposals, the signed approval broker with browser approval, and
-realized ROI. What does not yet: the catalog supply side, the capital
-allocator (`opportunities --budget N`), and federation beyond a signed
-summary skeleton — those wait for real observed demand.
+economic proposals, the signed approval broker with browser approval, the
+capital allocator (`opportunities --budget N`), the acquisition catalog (the
+supply side for the demand the opportunity engine finds), realized ROI, and a
+federation skeleton of signed summaries. What does not yet: the marketplace —
+deliberately, until real observed demand fills the catalog.
 
 ## Sunset
 

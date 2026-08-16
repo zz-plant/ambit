@@ -233,8 +233,8 @@ Run `ambit` with no arguments and it shows the surface. The whole CLI is a handf
 Operate    status · graph [surface|combos|affordances] · history [since <when>]
 Decide     goal <cap-or-sentence> [--paths|--simulate|--prefs] · attention [days]
            notify <topic> · work [limit] · usage [days] · economics
-           opportunities [--by=attention|cash|roi|reliability|frontier]
-           opportunity <id> · roi <proposal-id> · impact <id>
+           opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
+           opportunity <id> · roi <proposal-id> · catalog <cap> · impact <id>
            verify [cap] [--history]
            authority [cap] [scope <target>] · can <cap> [--target X] [--spend N]
            · propose <cap> [n] · proposals · proposal <id>
@@ -255,7 +255,8 @@ Record     record <cap> [class] [note] · seed · where · help [term]
 | `ambit history since <when>` | What became reachable since a past date — and what emerged rather than being added? |
 | `ambit attention [days]` | How much of the work still runs through the human, and which interventions are likely reducible |
 | `ambit notify <topic>` | Push the attention digest to ntfy — nothing is sent without a topic |
-| `ambit opportunities` | Ranked structural changes worth making — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence. `--by=attention|cash|roi|reliability|frontier` |
+| `ambit opportunities` | Ranked structural changes worth making — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence. `--by=attention|cash|roi|reliability|frontier`; `--budget=N` allocates the best combination within $N |
+| `ambit catalog <cap>` | The ways to acquire a capability — build, buy, subscribe, delegate, hire — compared by setup, one-time and recurring cost, privacy, verification and rollback |
 
 Real output — one dependency away, and the dependency it names gates four further capabilities:
 
