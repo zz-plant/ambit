@@ -41,35 +41,19 @@ export function backendAvailable(): Promise<boolean> {
   return backendProbe;
 }
 
-interface InfrastructureNode {
-  id: string;
-  name: string;
-  kind: 'device' | 'service' | 'api' | 'network' | 'workflow';
-  status: 'online' | 'degraded' | 'offline' | 'unknown';
-  description: string;
-  meta?: Record<string, unknown>;
-}
+import type {
+  InfrastructureNode,
+  InfrastructureLink,
+  InfrastructureFinding,
+  InfrastructureScan,
+} from '../../shared/types.ts';
 
-interface InfrastructureLink {
-  from: string;
-  to: string;
-  type: string;
-}
-
-interface InfrastructureFinding {
-  severity: 'warn' | 'info' | 'error';
-  message: string;
-  relatedIds?: string[];
-}
-
-export interface InfrastructureScan {
-  generatedAt: string;
-  source: string;
-  nodes: InfrastructureNode[];
-  links: InfrastructureLink[];
-  findings: InfrastructureFinding[];
-  summary: { online: number; degraded: number; offline: number; unknown: number };
-}
+export type {
+  InfrastructureNode,
+  InfrastructureLink,
+  InfrastructureFinding,
+  InfrastructureScan,
+};
 
 interface StoreState {
   items: Item[];
@@ -77,6 +61,8 @@ interface StoreState {
   selectedItem: string | null;
   hoveredItem: string | null;
   searchQuery: string;
+  showDetailPanel: boolean;
+  /** Backwards compatibility alias for showDetailPanel. */
   showStarPanel: boolean;
   showUplinkModal: boolean;
   treeFilter: 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
@@ -95,6 +81,8 @@ interface StoreState {
   selectItem: (id: string | null) => void;
   hoverItem: (id: string | null) => void;
   setSearch: (q: string) => void;
+  toggleDetailPanel: () => void;
+  /** Backwards compatibility alias for toggleDetailPanel. */
   toggleStarPanel: () => void;
   setTreeFilter: (f: 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact') => void;
 
@@ -157,6 +145,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   selectedItem: null,
   hoveredItem: null,
   searchQuery: '',
+  showDetailPanel: false,
   showStarPanel: false,
   showUplinkModal: false,
   treeFilter: 'all',
@@ -170,11 +159,12 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   selectItem: (id) => {
     const s = get();
     const next = s.selectedItem === id ? null : id;
-    set({ selectedItem: next, showStarPanel: next !== null });
+    set({ selectedItem: next, showDetailPanel: next !== null, showStarPanel: next !== null });
   },
   hoverItem: (id) => set({ hoveredItem: id }),
   setSearch: (q) => set({ searchQuery: q }),
-  toggleStarPanel: () => set(s => ({ showStarPanel: !s.showStarPanel })),
+  toggleDetailPanel: () => set(s => ({ showDetailPanel: !s.showDetailPanel, showStarPanel: !s.showDetailPanel })),
+  toggleStarPanel: () => set(s => ({ showDetailPanel: !s.showStarPanel, showStarPanel: !s.showStarPanel })),
   loadFromJSON: (jsonStr) => {
     try {
       const data = JSON.parse(jsonStr);
@@ -390,6 +380,8 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
 
   reset: () => set({
     items: [], connections: [], selectedItem: null, hoveredItem: null,
-    searchQuery: '', showStarPanel: false, loading: false, error: null, infrastructureScan: null, demo: null,
+    searchQuery: '', showDetailPanel: false, showStarPanel: false, loading: false, error: null, infrastructureScan: null, demo: null,
   }),
 }));
+
+export const useAmbitStore = useToolchainStore;

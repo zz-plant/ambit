@@ -16,28 +16,16 @@ const GRAPH_DB_PATH = resolveDbPath();
 const INFRA_MANIFEST_PATH = Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
 const API_PORT = 3001;
 
-type InfraHealth = 'online' | 'degraded' | 'offline' | 'unknown';
+import type {
+  InfrastructureNode,
+  InfrastructureLink,
+  InfrastructureFinding,
+  InfraHealth,
+} from './src/shared/types.ts';
 
-interface InfraNode {
-  id: string;
-  name: string;
-  kind: 'device' | 'service' | 'api' | 'network' | 'workflow';
-  status: InfraHealth;
-  description: string;
-  meta?: Record<string, unknown>;
-}
-
-interface InfraLink {
-  from: string;
-  to: string;
-  type: string;
-}
-
-interface InfraFinding {
-  severity: 'info' | 'warn' | 'error';
-  message: string;
-  relatedIds?: string[];
-}
+type InfraNode = InfrastructureNode;
+type InfraLink = InfrastructureLink;
+type InfraFinding = InfrastructureFinding;
 
 async function readConfig(): Promise<Record<string, unknown> | null> {
   try {

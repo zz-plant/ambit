@@ -12,13 +12,14 @@
     "build": "bun run typecheck && vite build",
     "test": "bun test",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "typecheck:client": "tsc --noEmit -p tsconfig.json",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "start": "NODE_ENV=production bun run server",
     "server": "bun run server.ts",
     "assets:check": "bun run scripts/check-assets.ts",
     "assets:generate": "bun run scripts/generate-scenes.ts"
   },
   "dependencies": {
-    "date-fns": "^2.29.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zustand": "^4.3.6"
