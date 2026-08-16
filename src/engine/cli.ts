@@ -16,6 +16,7 @@ import { goalFor, pathsFor } from "./goals.ts";
 import { humanDigest, notify } from "./attention.ts";
 import { workReport, usageReport } from "./telemetry.ts";
 import { economicsReport } from "./economics.ts";
+import { opportunitiesFor, opportunityFor } from "./opportunities.ts";
 import {
   approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
 } from "./governance.ts";
@@ -90,6 +91,9 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   work [limit]      recent runs, each with what it cost
   usage [days]      where capability effort actually went
   economics         declared costs and goal values
+  opportunities [--by=attention|cash|roi|reliability|frontier]   ranked
+                    investments — observed burden, priced, compared
+  opportunity <id>  one ranked case in full
   impact <id>       what actually breaks if a capability goes away
   verify [cap] [--history]   run the declared check, or show past verification
   authority [cap] [scope <target>]   what may run unattended, what each action
@@ -245,6 +249,15 @@ async function main() {
       break;
     case "economics":
       emit(economicsReport(db));
+      break;
+    case "opportunities": {
+      const byFlag = [...flags].find(f => f.startsWith('--by='));
+      const by = (byFlag ? byFlag.slice(5) : undefined) as any;
+      emit(opportunitiesFor(db, by));
+      break;
+    }
+    case "opportunity":
+      emit(opportunityFor(db, arg));
       break;
     case "impact":
       emit(analyzeImpact(db, arg));
