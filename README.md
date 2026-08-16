@@ -233,7 +233,7 @@ Run `tt` with no arguments and it shows where you are, what is one step away, an
 Explore    stats · context · health · profile · export · explain
 Verify     verify [id] · evidence <id> · authority · actions [id]
 Maintain   decay · diff · trend · prune · prune <id> · ledger · since · failed · deficits
-Plan       plan <id> · simulate <id> · propose <id> [n] · proposals · proposal <id>
+Plan       plan <id> · goal <sentence> · paths <id> · simulate <id> · propose <id> [n] · proposals · proposal <id>
 Act        approve <id> <who> · apply <id> · rollback <id>
 Plan       near · combos · fork · insight
 Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
@@ -246,6 +246,8 @@ Analyze    bottlenecks · impact <id> · spof · budget <setup> <tokens>
 | `tt impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |
 | `tt spof` | Which capabilities have only one provider — and which actions has only one person? |
 | `tt actions <id>` | Which concrete actions does this confer, and which of them may run unattended? |
+| `tt goal <sentence>` | Route a free-form goal — "deploy without me" — to the capabilities whose words cover it, each with its plan delta |
+| `tt paths <id>` | The alternative ways to reach a capability, compared by setup time, risk and lock-in |
 | `tt fork` | Which nearby path has the best trade-off between setup cost, regret, and downstream leverage? |
 | `tt decay` | Which parts of the system appear to be rusting? |
 | `tt since` | What became reachable since a past date — and what emerged rather than being added? |

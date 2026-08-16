@@ -186,7 +186,24 @@ $ tt plan offline-capable
   2. Local Embeddings  15m
 ```
 
-Unbuilt: the goal must be a capability the model already knows. A free-form goal — "maintain the homelab unattended" — still has no route in, and comparing *alternative* paths with their risks and lock-in is untouched. That is the substance of this section.
+The route in is built. The curated tree carries a `goal` vocabulary — the intent-side mirror of `detect`, which matches config ids: `detect` says "a git MCP named X is Version Control", `goal` says "a person wanting to *deploy without me* means Continuous Delivery and Scheduled Work". `tt goal <sentence>` ranks every capability whose words appear in the sentence, each with its plan delta, so a free-form goal becomes a shortlist of concrete plans rather than an error:
+
+```console
+$ tt goal "maintain the homelab unattended"
+  recommended: Scheduled Work
+  Scheduled Work       unattended          → steps 3 · 50m
+  Observability        maintain           → steps 1 · 30m
+  Self-Hosted Stack    homelab            → steps 2 · 2.5h
+```
+
+`tt paths <capability>` compares the alternative ways to close the gap, deriving risk from what the alternatives themselves carry — hosted moves data off the machine, recurring adds a bill, a step without a config patch cannot be undone by §10 — and folding identical paths together so the list is of choices, not accidents:
+
+```console
+$ tt paths web-research
+  5m   risk low   local   none   reversible
+```
+
+Unbuilt: the goal is routed to capabilities the model already knows, so a goal that names no known vocabulary still has no route in — "maintain the homelab unattended" reaches the three capabilities above but does not synthesise *service health observation* or *bounded restart authority* out of whole cloth. And the paths comparison derives risk from the alternatives that exist; whole-strategy alternatives (broad authority vs capability-scoped MCP vs kubernetes migration) still have to be authored for the goal to be offered as a choice at that grain. That is the remaining substance of this section.
 
 ## 6. Failure becomes an input — built
 
