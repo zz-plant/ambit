@@ -27,6 +27,10 @@ export { planFor, recordFailure, deficits, simulateFrontier, propose, preference
 export { goalFor, pathsFor } from "./goals.ts";
 export { humanDigest, digestMessage, notify } from "./attention.ts";
 export {
+  beginRun, endRun, addEvent, recordUse, recordIntervention,
+  recordResource, recordOutcome, workReport, usageReport,
+} from "./telemetry.ts";
+export {
   applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
   applyProposal, rollbackProposal,
 } from "./governance.ts";

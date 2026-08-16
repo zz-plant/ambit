@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, nearMissCombos, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport, affordanceDomains, humanDigest } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, nearMissCombos, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport, affordanceDomains, humanDigest, beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome, workReport, usageReport } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -49,6 +49,11 @@ const TOOLS = [
   { name: "tt_scope", description: "What a scope actually covers, and what it does not. Given a target an action would touch (repo:owner/name, device:nuc, svc:ollama), lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope was recorded; this checks it.", inputSchema: { type: "object", properties: { target: { type: "string" } }, required: ["target"] } },
   { name: "tt_affordances", description: "The structural domain of each capability — derived from the graph, not pasted on. institutional needs an authority holder, economic a budget and counterparty, cognitive a person supplies it, physical a device runs it. Use this to reason about what kind of world an action operates in.", inputSchema: { type: "object", properties: {} } },
   { name: "tt_digest", description: "How much of the work still runs through the human, and which interventions are likely reducible — approvals and permission blocks that recur against the same capability are infrastructure shaped like a person. Pass a window in days (default 7).", inputSchema: { type: "object", properties: { days: { type: "number" } } } },
+  { name: "tt_work", description: "Recent work runs, each with what it cost — elapsed time, events, capabilities exercised, human interventions, resources consumed. The observation the economic loop runs on.", inputSchema: { type: "object", properties: { limit: { type: "number" } } } },
+  { name: "tt_usage", description: "Where capability effort actually went over a window — times exercised, duration, interventions per capability. Pass a window in days (default 30).", inputSchema: { type: "object", properties: { days: { type: "number" } } } },
+  { name: "tt_run_begin", description: "Start a work run. Returns the run id every later telemetry call attaches to. The run is open until tt_run_end.", inputSchema: { type: "object", properties: { goal: { type: "string" }, goalId: { type: "string" }, runType: { type: "string" }, source: { type: "string" }, id: { type: "string" } } } },
+  { name: "tt_run_end", description: "Close a work run with its outcome, and the value of that outcome in cents when it is known.", inputSchema: { type: "object", properties: { runId: { type: "string" }, outcome: { type: "string" }, outcomeValueCents: { type: "number" } }, required: ["runId", "outcome"] } },
+  { name: "tt_work_event", description: "Record one observation into a run: a tool/event, a capability use, a human intervention, a resource, or the run's outcome. Kinds: event, use, intervention, resource, outcome. The kind of a human intervention is one of judgment, authority, knowledge, physical, clerical, exception.", inputSchema: { type: "object", properties: { runId: { type: "string" }, kind: { type: "string", description: "event | use | intervention | resource | outcome" }, eventKind: { type: "string" }, actor: { type: "string" }, capabilityId: { type: "string" }, action: { type: "string" }, detail: { type: "string" }, durationSeconds: { type: "number" }, interventionKind: { type: "string", description: "judgment | authority | knowledge | physical | clerical | exception" }, activeSeconds: { type: "number" }, waitingSeconds: { type: "number" }, resourceId: { type: "string" }, resourceKind: { type: "string" }, quantity: { type: "number" }, unit: { type: "string" }, costCents: { type: "number" }, achieved: { type: "string" }, objectiveName: { type: "string" }, objectiveMetric: { type: "number" }, valueCents: { type: "number" } }, required: ["runId", "kind"] } },
   { name: "tt_since", description: "What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition", inputSchema: { type: "object", properties: { when: { type: "string", description: "ISO timestamp; defaults to the earliest observation" } } } },
   { name: "tt_blocked", description: "Record that a task was blocked by a missing capability, and why. The pattern matters more than the instance: the same deficit hit repeatedly as the same cause is infrastructure that should exist. Classification is one of reasoning, knowledge, tool, permission, infrastructure, reliability.", inputSchema: { type: "object", properties: { capId: { type: "string" }, classification: { type: "string", description: "Why it was blocked: reasoning, knowledge, tool, permission, infrastructure, or reliability" }, note: { type: "string", description: "What you were trying to do" } }, required: ["capId"] } },
   { name: "tt_simulate", description: "The frontier as it would be if a capability were acquired, including what it unblocks. Pure preview — changes nothing.", inputSchema: { type: "object", properties: { capId: { type: "string" } }, required: ["capId"] } },
@@ -102,6 +107,26 @@ function handleLine(line) {
               case "tt_scope": res = tt(db => scopeReport(db, args.target)); break;
               case "tt_affordances": res = tt(db => affordanceDomains(db)); break;
               case "tt_digest": res = tt(db => humanDigest(db, args?.days)); break;
+              case "tt_work": res = tt(db => workReport(db, args?.limit)); break;
+              case "tt_usage": res = tt(db => usageReport(db, args?.days)); break;
+              case "tt_run_begin": res = tt(db => beginRun(db, args || {})); break;
+              case "tt_run_end": res = tt(db => endRun(db, args.runId, args.outcome, args.outcomeValueCents)); break;
+              case "tt_work_event": res = tt(db => {
+                switch (args.kind) {
+                  case 'use': return recordUse(db, args.runId, args.capabilityId, { durationSeconds: args.durationSeconds });
+                  case 'intervention': return recordIntervention(db, args.runId, args.actor, {
+                    kind: args.interventionKind || 'clerical',
+                    activeSeconds: args.activeSeconds, waitingSeconds: args.waitingSeconds,
+                    capabilityId: args.capabilityId, action: args.action,
+                  });
+                  case 'resource': return recordResource(db, args.runId, args.resourceId, args.resourceKind, { quantity: args.quantity, unit: args.unit, costCents: args.costCents });
+                  case 'outcome': return recordOutcome(db, args.runId, args.achieved, { objectiveMetric: args.objectiveMetric, objectiveName: args.objectiveName, valueCents: args.valueCents });
+                  default: return addEvent(db, args.runId, {
+                    kind: args.eventKind || args.kind, actor: args.actor,
+                    capabilityId: args.capabilityId, action: args.action, detail: args.detail,
+                  });
+                }
+              }); break;
               case "tt_since": res = tt(db => ledgerSince(db, args?.when)); break;
               case "tt_ledger": res = tt(db => ledgerHistory(db)); break;
               case "tt_blocked": res = tt(db => recordFailure(db, args.capId, args.classification, args.note)); break;
