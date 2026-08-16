@@ -104,6 +104,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   count += seedActors(db, config, mapping, insert);
   count += seedInfrastructure(db, insert);
   seedAuthority(db, config);
+  seedEconomics(db, config);
 
   // After the graph is complete and before the frontier is recorded, because
   // lifecycle is derived from both providers and evidence.
@@ -632,7 +633,75 @@ function seedInfrastructure(db: Db, insert: any): number {
   return count;
 }
 
+/**
+ * Seeds the economic model from the config's `economics` and `goals` blocks.
+ *
+ * The config declares dollars; the table stores cents, because every later
+ * comparison (acquisition vs recurring, attention vs cash) is one arithmetic
+ * operation away instead of a string to parse. The blocks are vocabulary over
+ * nodes that already exist:
+ *
+ *   "economics": { "actors": { "kanav": { "attention_value_per_hour": 250 } },
+ *                  "resources": { "device:nuc": { "purchase_cost": 3000 } },
+ *                  "providers": { "provider:acme": { "recurring_cost_per_month": 80 } } }
+ *
+ *   "goals": { "recover-production": { "name": "Recover production service",
+ *               "occurrence_rate_per_month": 2, "success_value_cents": 4000,
+ *               "failure_cost_cents": 50000 } }
+ *
+ * A metric is declared or it is not; nothing is guessed at seed time. An
+ * undeclared actor has no attention value until one is declared, and the
+ * opportunity engine says "estimate" rather than pretending to know.
+ */
+function seedEconomics(db: Db, config: any): number {
+  const put = db.prepare(
+    "INSERT OR REPLACE INTO economics (entity_type, entity_id, metric, value_cents, period, source) VALUES (?, ?, ?, ?, ?, 'declared')"
+  );
+  let count = 0;
+
+  // The config block names the kind of thing; the period is read from the
+  // metric's own name, so one block stays prose-free.
+  const entityTypeOf: Record<string, string> = {
+    actors: 'actor',
+    resources: 'resource',
+    providers: 'provider',
+    services: 'service',
+  };
+  const periodOf = (metric: string) =>
+    metric.includes('_per_hour') ? 'per_hour' : metric.includes('_per_month') ? 'per_month'
+      : metric.includes('_per_request') ? 'per_request' : metric.includes('_per_kwh') ? 'per_kwh' : 'one_time';
+
+  for (const [block, entityType] of Object.entries(entityTypeOf)) {
+    for (const [id, metrics] of Object.entries<any>(config.economics?.[block] || {})) {
+      for (const [metric, dollars] of Object.entries<any>(metrics)) {
+        if (typeof dollars !== 'number') continue;
+        put.run(entityType, id, metric, dollars * 100, periodOf(metric));
+        count++;
+      }
+    }
+  }
+
+  // Goals declare dollars; the table stores cents, like every other value.
+  const goal = db.prepare(
+    "INSERT OR REPLACE INTO goals (id, name, description, occurrence_rate_per_month, success_value_cents, failure_cost_cents) VALUES (?, ?, ?, ?, ?, ?)"
+  );
+  for (const [id, spec] of Object.entries<any>(config.goals || {})) {
+    goal.run(
+      id,
+      spec?.name || id,
+      spec?.description || null,
+      spec?.occurrence_rate_per_month ?? null,
+      spec?.success_value != null ? spec.success_value * 100 : null,
+      spec?.failure_cost != null ? spec.failure_cost * 100 : null
+    );
+    count++;
+  }
+
+  return count;
+}
+
 export {
   parseMapping, seedFromConfig, seedModels, seedDependencies, attributeToRuntime,
   seedTechTree, seedActors, seedCombos, seedAuthority, seedInfrastructure,
+  seedEconomics,
 };

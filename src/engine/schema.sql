@@ -256,3 +256,49 @@ CREATE INDEX IF NOT EXISTS idx_work_events_run ON work_events(run_id);
 CREATE INDEX IF NOT EXISTS idx_capability_use_run ON capability_use(run_id, capability_id);
 CREATE INDEX IF NOT EXISTS idx_intervention_actor ON human_intervention(actor_id, started_at);
 CREATE INDEX IF NOT EXISTS idx_resource_run ON resource_consumption(run_id);
+
+-- ─── Economics (WP-4) ─────────────────────────────────────────────────────────
+--
+-- What a unit of agency, capacity or service costs, declared in the config's
+-- `economics` block and normalised here to cents. The whole point of the model
+-- is to make acquisition alternatives and recurring friction comparable, so
+-- every value is a single number with a period; nothing is left as prose.
+--
+--   "economics": {
+--     "actors":    { "kanav": { "attention_value_per_hour": 250 } },
+--     "resources": { "device:nuc": { "purchase_cost": 3000,
+--                                    "power_cost_per_hour": 0.22 } },
+--     "providers": { "provider:acme": { "recurring_cost_per_month": 80,
+--                                       "marginal_cost_per_request": 0.002 } }
+--   }
+CREATE TABLE IF NOT EXISTS economics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    value_cents REAL NOT NULL,
+    period TEXT NOT NULL DEFAULT 'one_time',
+    source TEXT NOT NULL DEFAULT 'declared',
+    UNIQUE(entity_type, entity_id, metric, source)
+);
+
+CREATE INDEX IF NOT EXISTS idx_economics_entity ON economics(entity_type, entity_id);
+
+-- What a goal is worth, so a recurring one has a price. `occurrence_rate` and
+-- the value/failure columns are what turn a frequency from the work ledger into
+-- an annual figure an opportunity can rank. Declared in dollars; stored in
+-- cents like every other value in this model.
+--
+--   "goals": { "recover-production": {
+--       "name": "Recover production service",
+--       "occurrence_rate_per_month": 2,
+--       "success_value": 40,
+--       "failure_cost": 500 } }
+CREATE TABLE IF NOT EXISTS goals (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    occurrence_rate_per_month REAL,
+    success_value_cents REAL,
+    failure_cost_cents REAL
+);

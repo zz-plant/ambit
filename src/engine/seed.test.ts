@@ -1565,3 +1565,53 @@ test('attention reports aggregate active and waiting time', () => {
   expect(d.active_seconds).toBe(50);
   expect(d.waiting_seconds).toBe(180);
 });
+
+// ── Economic model (WP-4) ────────────────────────────────────────────────────
+
+const WITH_ECONOMICS = {
+  mcp: { git: {} },
+  actors: { kanav: { name: 'Kanav' } },
+  economics: {
+    actors: { 'human:kanav': { attention_value_per_hour: 250 } },
+    providers: { 'mcp:git': { recurring_cost_per_month: 30 } },
+  },
+  goals: {
+    'recover-production': {
+      name: 'Recover production service',
+      occurrence_rate_per_month: 2,
+      success_value: 40,
+      failure_cost: 500,
+    },
+  },
+};
+
+test('economics and goals seed from the config, stored as cents', () => {
+  seed(WITH_ECONOMICS).close();
+  const db = new Database(join(dir, 'graph.db'));
+  const attention = rows(db, `SELECT value_cents, period FROM economics WHERE entity_id = 'human:kanav' AND metric = 'attention_value_per_hour'`);
+  expect(attention[0].value_cents).toBe(25000);
+  expect(attention[0].period).toBe('per_hour');
+
+  const recurring = rows(db, `SELECT value_cents FROM economics WHERE entity_id = 'mcp:git' AND metric = 'recurring_cost_per_month'`);
+  expect(recurring[0].value_cents).toBe(3000);
+
+  const goal = rows(db, `SELECT occurrence_rate_per_month, success_value_cents, failure_cost_cents FROM goals WHERE id = 'recover-production'`);
+  expect(goal[0].occurrence_rate_per_month).toBe(2);
+  expect(goal[0].success_value_cents).toBe(4000);
+  expect(goal[0].failure_cost_cents).toBe(50000);
+  db.close();
+});
+
+test('economics reports declared values in dollars and names their source', () => {
+  seed(WITH_ECONOMICS).close();
+  const report = cli('economics');
+  const attention = report.economics.find((e: any) => e.entity === 'actor:human:kanav');
+  expect(attention.value_dollars).toBe(250);
+  expect(attention.period).toBe('per_hour');
+  expect(attention.source).toBe('declared');
+
+  const g = report.goals.find((x: any) => x.id === 'recover-production');
+  expect(g.success_value_dollars).toBe(40);
+  expect(g.failure_cost_dollars).toBe(500);
+  expect(report.note).toContain('$250/hr');
+});
