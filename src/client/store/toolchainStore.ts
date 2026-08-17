@@ -17,14 +17,19 @@ function isNarrowViewport(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 }
 
-function persistTreeFilter(): 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact' {
+export type TreeFilter = 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
+export const TREE_FILTERS: readonly TreeFilter[] = ['all', 'server', 'agent', 'skill', 'combo', 'compact'];
+
+/** The one place the filter's initial value comes from: URL param wins over a
+ *  saved preference, both are validated, everything else is 'all'. */
+function readInitialTreeFilter(): TreeFilter {
   if (typeof window === 'undefined') return 'all';
-  const stored = localStorage.getItem('ambit.treeFilter');
-  if (stored) {
-    const parsed: string | null = stored;
-    if (parsed && ['all', 'server', 'agent', 'skill', 'combo', 'compact'].includes(parsed)) return parsed as 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
-  }
-  return 'all';
+  const candidate =
+    new URLSearchParams(window.location.search).get('treeFilter') ??
+    localStorage.getItem('ambit.treeFilter');
+  return candidate && (TREE_FILTERS as readonly string[]).includes(candidate)
+    ? (candidate as TreeFilter)
+    : 'all';
 }
 
 let backendProbe: Promise<boolean> | null = null;
@@ -65,7 +70,7 @@ interface StoreState {
   /** Backwards compatibility alias for showDetailPanel. */
   showStarPanel: boolean;
   showUplinkModal: boolean;
-  treeFilter: 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
+  treeFilter: TreeFilter;
   loading: boolean;
   error: string | null;
   infrastructureScan: InfrastructureScan | null;
@@ -84,7 +89,7 @@ interface StoreState {
   toggleDetailPanel: () => void;
   /** Backwards compatibility alias for toggleDetailPanel. */
   toggleStarPanel: () => void;
-  setTreeFilter: (f: 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact') => void;
+  setTreeFilter: (f: TreeFilter) => void;
 
   updateItem: (id: string, updates: Partial<Item>) => void;
   deleteItem: (id: string) => void;
@@ -148,7 +153,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   showDetailPanel: false,
   showStarPanel: false,
   showUplinkModal: false,
-  treeFilter: 'all',
+  treeFilter: readInitialTreeFilter(),
   loading: false,
   error: null,
   infrastructureScan: null,
@@ -255,7 +260,14 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     return false;
   },
 
-  setTreeFilter: (treeFilter) => set({ treeFilter }),
+  setTreeFilter: (treeFilter) => {
+    set({ treeFilter });
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('ambit.treeFilter', treeFilter);
+    const url = new URL(window.location.href);
+    url.searchParams.set('treeFilter', treeFilter);
+    window.history.replaceState({}, document.title, url);
+  },
 
   updateItem: (id, updates) => set(state => ({
     items: state.items.map(i => i.id === id ? { ...i, ...updates } : i),

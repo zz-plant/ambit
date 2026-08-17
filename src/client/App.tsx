@@ -4,7 +4,7 @@ import NodeDetailPanel from './components/NodeDetailPanel';
 
 import CapabilityListPanel from './components/CapabilityListPanel';
 import DocsModal from './components/DocsModal';
-import { useToolchainStore, backendAvailable } from './store/toolchainStore';
+import { useToolchainStore, backendAvailable, TREE_FILTERS } from './store/toolchainStore';
 import DemoDashboard from './components/DemoDashboard';
 import { demoGraphExport } from './utils/demoSnapshot';
 
@@ -229,17 +229,12 @@ export default function App() {
   );
   const treeFilter = useToolchainStore(s => s.treeFilter);
   const setTreeFilter = useToolchainStore(s => s.setTreeFilter);
-  // ?view=tree and ?docs=open make a particular view linkable — useful for
-  // sharing a specific angle, and for capturing documentation screenshots
-  // reproducibly.
-  // ?treeFilter=compact remembers which domain filter you chose across sessions.
-  // makes it linkable, like ?view=tree.
+  // ?view=tree, ?docs=open, ?focus=<id> and ?treeFilter=<domain> make a
+  // particular state linkable and shareable; the filter itself is owned by the
+  // store (see readInitialTreeFilter), which persists it across sessions.
   const demo = useToolchainStore(s => s.demo);
   const [view, setView] = useState<'graph' | 'loop'>(params.get('view') === 'loop' ? 'loop' : 'graph');
   const [focusId, setFocusId] = useState<string | null>(params.get('focus') || null);
-  const [treeFilterFromURL, setTreeFilterFromURL] = useState<'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact'>(
-    params.get('treeFilter') as 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact' || 'all'
-  );
 
   const captureGraph = () => {
     const svg = document.querySelector<SVGSVGElement>('.app-scene svg')!;
@@ -467,30 +462,14 @@ export default function App() {
         </div>
         {source === 'config' && (
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px' }}>
-          {(['all', 'server', 'agent', 'skill', 'combo', 'compact'] as const).map(f => {
-            const isFilter = treeFilter === f;
-            // Check if URL has a treeFilter param that matches this button
-            const urlMatch = treeFilterFromURL === f;
-            // Initial: use URL param on first mount with tree view, then fall back to store state
-            const initial = urlMatch ? treeFilterFromURL : (isFilter ? treeFilter : 'all');
-            return (
-              <button key={f} className="app-hud-btn"
-                style={{ width:'auto', padding:'0 8px', border:'none', background: initial === f ? 'var(--accent)' : 'transparent', color: initial === f ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: initial === f ? 700 : 'normal', fontSize:'12px', height:'22px' }}
-                onClick={() => {
-                  const newFilter = f === 'compact' ? 'compact' : f;
-                  setTreeFilter(newFilter);
-                  // Also update URL param for persistence (but don't cause a full reload)
-                  if (typeof window !== 'undefined') {
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('treeFilter', newFilter);
-                    window.history.replaceState({}, document.title, url);
-                  }
-                }}
-                title={f === 'compact' ? 'Show only essential domains (ai-ml, backend, infra, frontend, meta, quality)' : `Show only ${f}s and frameworks`}>
-                {f.toUpperCase()}
-              </button>
-            );
-          })}
+          {TREE_FILTERS.map(f => (
+            <button key={f} className="app-hud-btn"
+              style={{ width:'auto', padding:'0 8px', border:'none', background: treeFilter === f ? 'var(--accent)' : 'transparent', color: treeFilter === f ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: treeFilter === f ? 700 : 'normal', fontSize:'12px', height:'22px' }}
+              onClick={() => setTreeFilter(f)}
+              title={f === 'compact' ? 'Show only essential domains (ai-ml, backend, infra, frontend, meta, quality)' : `Show only ${f}s and frameworks`}>
+              {f.toUpperCase()}
+            </button>
+          ))}
         </div>
         )}
       </div>
