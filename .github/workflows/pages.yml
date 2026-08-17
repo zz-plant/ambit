@@ -47,9 +47,29 @@ jobs:
           # A worktree over the existing branch, rather than a force-push of a
           # fresh history: the branch keeps its past deploys, and a build that
           # changes nothing produces no commit.
+          #
+          # --ignore-times: rsync's quick check (size + mtime) skips index.html
+          # when its length is stable across builds even though the asset hashes
+          # it names change — which served a stale page whose bundles 404'd. The
+          # -t in -a also preserves source times, so force a real transfer.
           git fetch origin gh-pages
           git worktree add /tmp/pages origin/gh-pages
-          rsync -a --delete --exclude '.git' dist/ /tmp/pages/
+          rsync -a --delete --ignore-times --exclude '.git' dist/ /tmp/pages/
+
+          # Coherence gate: every asset index.html names must actually exist in
+          # the published tree. A broken deploy fails here instead of shipping a
+          # blank page.
+          grep -oE '(src|href)="/[^"]*assets/[^"]+"' /tmp/pages/index.html \
+            | sed -E 's/^[^/]*"\/[^"]*assets\/([^"]+)"/\1/' \
+            | sort -u \
+            | while read -r f; do
+                if [ ! -f "/tmp/pages/assets/$f" ]; then
+                  echo "FAIL: index.html references missing asset: assets/$f"
+                  exit 1
+                fi
+              done
+          echo "index.html references are coherent."
+
           cd /tmp/pages
           git add -A
           if git diff --cached --quiet; then
