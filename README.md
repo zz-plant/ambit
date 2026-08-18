@@ -129,6 +129,11 @@ Ambit reads your config files and places what it finds on a curated tree of agen
 
 The interesting part is what falls out of the connections. Adding one piece can unlock capabilities *nothing new provides* — their prerequisites were just finally met. Removing one piece can silently break things three steps downstream. Neither fact is written in any config file; both are properties of the map.
 
+<div align="center">
+<img src="docs/assets/capability-graph-demo.gif" alt="The map updating live: the tree at rest, a capability filling in as its provider is added and a new one becoming reachable, then an approval notice appearing at the bottom of the screen" width="900">
+<br><sub>Live: a provider is added, Scheduled Work fills in, Notifications becomes reachable, and an approval arrives.</sub>
+</div>
+
 There's much more underneath — verification, per-action permissions, a work ledger, change proposals with signed approvals and automatic rollback. All of it is documented in the [deep dive](./docs/deep-dive.md).
 
 ## Security
