@@ -202,7 +202,9 @@ function roiSummary(db: Migratable) {
         }
       : undefined,
     per_proposal: measured,
-    note: 'observed figures come from before/after windows in the work ledger — measured, not estimated.',
+    note: applied.length === 0
+      ? 'Nothing applied yet — roi has nothing to measure until a proposal is approved and applied. Try `ambit opportunities` for what to propose first.'
+      : 'observed figures come from before/after windows in the work ledger — measured, not estimated.',
   };
 }
 

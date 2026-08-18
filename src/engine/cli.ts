@@ -1,9 +1,11 @@
-import { readFileSync, existsSync, statSync } from "fs";
+import { readFileSync, existsSync, statSync, writeFileSync } from "fs";
 import { join } from "path";
+import { tmpdir } from "os";
 import { resolveDbPath } from "../shared/db-path.ts";
 import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
 import { getDb, migrate } from "./db.ts";
 import { seedFromConfig } from "./discovery.ts";
+import { readClaudeCode, claudeCodeSeedInput } from "./claude-code.ts";
 import {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, nearMissCombos, singlePointsOfFailure, exportGraph,
@@ -92,6 +94,23 @@ function emit(data: any): void {
 }
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
+
+// Six commands cover most first sessions. Everything else is `help --all` —
+// forty verbs on first contact taught nothing; depth should be discovered.
+const HELP_SHORT = `ambit - what your system can do, what it costs, what to change
+
+  seed              seed from the agent config
+  status            health · degraded · spofs · deficits · pending approvals
+  graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
+  goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
+                    delta, compare acquisition paths, or check preferences
+  opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
+                    ranked investments — observed burden, priced, compared
+  verify [cap] [--history]   run the declared check, or show past verification
+  impact <id>       what actually breaks if a capability goes away
+
+  help --all        every command
+  help [term]       one concept explained`;
 
 const HELP = `ambit - what your system can do, what it costs, what to change
 
@@ -234,8 +253,8 @@ async function main() {
     }
   }
   if (!cmd || cmd === "help") {
-    if (cmd === "help" && arg) { explain(arg.toLowerCase()); db.close(); return; }
-    console.log(HELP);
+    if (cmd === "help" && arg && arg !== "--all") { explain(arg.toLowerCase()); db.close(); return; }
+    console.log(flags.has("--all") ? HELP : HELP_SHORT);
     db.close();
     return;
   }
@@ -390,12 +409,31 @@ async function main() {
       break;
     case "seed": {
       const cfg = CONFIG_DEFAULT;
-      seedFromConfig(db, undefined, mappingOverride);
+      // No opencode.json and nobody named a config or mapping explicitly —
+      // check for a Claude Code install before falling back to the curated
+      // model only. Claude Code's user base dwarfs OpenCode's, and reading
+      // ~/.claude.json for free is the difference between the first seed
+      // showing nothing of the user's and showing their actual stack.
+      let claudeCodeFallback = false;
+      if (!existsSync(cfg) && !process.env.OPENCODE_CONFIG && !mappingOverride) {
+        const fragment = readClaudeCode();
+        if (fragment) {
+          const { config, mapping } = claudeCodeSeedInput(fragment);
+          const tmp = join(tmpdir(), `ambit-claude-code-seed-${process.pid}.json`);
+          writeFileSync(tmp, JSON.stringify(config));
+          process.env.AMBIT_RUNTIME = "claude-code";
+          seedFromConfig(db, tmp, JSON.stringify(mapping));
+          claudeCodeFallback = true;
+        }
+      }
+      if (!claudeCodeFallback) seedFromConfig(db, undefined, mappingOverride);
       const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();
       console.log(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities`);
-      // Say so rather than reporting a curated-model-only graph as if it had
-      // read the environment. Silence here reads as "your stack is empty".
-      if (!existsSync(cfg)) {
+      if (claudeCodeFallback) {
+        console.log(`${C.grey}  Seeded from Claude Code (~/.claude.json, ~/.claude) — no opencode.json found.${C.reset}`);
+      } else if (!existsSync(cfg)) {
+        // Say so rather than reporting a curated-model-only graph as if it had
+        // read the environment. Silence here reads as "your stack is empty".
         console.log(`${C.yellow}!${C.reset} No agent config at ${C.grey}${cfg}${C.reset}`);
         console.log(`${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`);
         console.log(`${C.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${C.reset}`);

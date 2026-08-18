@@ -21,141 +21,16 @@
  *   bun run scripts/adapters/claude-code.ts --seed     # seed it into Ambit
  */
 
-import { existsSync, readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { authorityBlock } from './authority.ts';
+import { readClaudeCode, claudeCodeSeedInput } from '../../src/engine/claude-code.ts';
 
 const HOME = process.env.HOME || '/';
 const CLAUDE_HOME = process.env.CLAUDE_HOME || join(HOME, '.claude');
 const CLAUDE_JSON = process.env.CLAUDE_CONFIG || join(HOME, '.claude.json');
 
-interface Fragment {
-  runtime: string;
-  mcp: Record<string, { type?: string; command?: string[]; enabled?: boolean }>;
-  agent: Record<string, { description?: string; model?: string }>;
-  provider: Record<string, { models?: Record<string, unknown> }>;
-  skills: { paths: string[] };
-  /** Facts Ambit cannot infer from a config file but Claude Code states outright. */
-  observed: Record<string, unknown>;
-}
-
-function readJson(path: string): any {
-  try {
-    return JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
-    return null;
-  }
-}
-
-/** Directories holding SKILL.md subdirectories — user skills and plugin skills. */
-function skillDirs(): string[] {
-  const dirs: string[] = [];
-  const userSkills = join(CLAUDE_HOME, 'skills');
-  if (existsSync(userSkills)) dirs.push(userSkills);
-
-  // Plugins ship their own skills, and they are capabilities the same way user
-  // skills are — the marketplace layout nests them one level deeper.
-  const marketplaces = join(CLAUDE_HOME, 'plugins', 'marketplaces');
-  if (existsSync(marketplaces)) {
-    for (const entry of readdirSync(marketplaces)) {
-      for (const candidate of [join(marketplaces, entry, 'skills'), join(marketplaces, entry)]) {
-        if (!existsSync(candidate)) continue;
-        try {
-          if (!statSync(candidate).isDirectory()) continue;
-        } catch { continue; }
-        const holdsSkills = readdirSync(candidate).some(
-          name => existsSync(join(candidate, name, 'SKILL.md'))
-        );
-        if (holdsSkills) dirs.push(candidate);
-      }
-    }
-  }
-  return dirs;
-}
-
-function readClaudeCode(): Fragment | null {
-  if (!existsSync(CLAUDE_JSON) && !existsSync(CLAUDE_HOME)) return null;
-
-  const cfg = readJson(CLAUDE_JSON) || {};
-  const settings = readJson(join(CLAUDE_HOME, 'settings.json')) || {};
-
-  const fragment: Fragment = {
-    runtime: 'claude-code',
-    mcp: {},
-    agent: {},
-    provider: {},
-    skills: { paths: skillDirs() },
-    observed: {},
-  };
-
-  // MCP servers are declared globally and per project. A server configured in
-  // one project is still a capability this machine has, so both are collected —
-  // and because ids are not namespaced, the same server in several projects
-  // merges into one node rather than inflating the count.
-  const collectMcp = (servers: Record<string, any> | undefined) => {
-    for (const [name, server] of Object.entries<any>(servers || {})) {
-      if (fragment.mcp[name]) continue;
-      fragment.mcp[name] = {
-        type: server?.url || server?.type === 'http' || server?.type === 'sse' ? 'remote' : 'local',
-        command: server?.command ? [server.command, ...(server.args || [])].flat() : undefined,
-        enabled: server?.enabled !== false,
-      };
-    }
-  };
-  collectMcp(cfg.mcpServers);
-  const projects = Object.values<any>(cfg.projects || {});
-  for (const project of projects) collectMcp(project?.mcpServers);
-
-  // Subagents are markdown files with frontmatter; the description is what the
-  // runtime uses to route to them, so it is the honest description here too.
-  const agentsDir = join(CLAUDE_HOME, 'agents');
-  if (existsSync(agentsDir)) {
-    for (const file of readdirSync(agentsDir)) {
-      if (!file.endsWith('.md')) continue;
-      const name = file.replace(/\.md$/, '');
-      const body = readFileSync(join(agentsDir, file), 'utf8').slice(0, 2000);
-      const described = body.match(/^description:\s*(.+)$/m);
-      fragment.agent[name] = { description: described?.[1]?.trim().slice(0, 80) || 'Claude Code subagent' };
-    }
-  }
-
-  // A pinned model is a declared dependency; without one the runtime chooses,
-  // which is a different situation and should not be recorded as a model node.
-  const model = settings.model || cfg.model;
-  if (typeof model === 'string' && model) {
-    fragment.provider['anthropic'] = { models: { [model]: {} } };
-  }
-
-  const permissions = settings.permissions || {};
-  const skillCount = fragment.skills.paths.reduce(
-    (n, dir) => n + readdirSync(dir).filter(name => existsSync(join(dir, name, 'SKILL.md'))).length,
-    0
-  );
-
-  // Authority as the runtime states it, rather than as Ambit guesses. Names
-  // only — an allow rule can name a path, and the values are not ours to copy
-  // into a graph the user may well export.
-  fragment.observed = {
-    permissionMode: permissions.defaultMode ?? null,
-    allowRules: (permissions.allow || []).length,
-    denyRules: (permissions.deny || []).length,
-    askRules: (permissions.ask || []).length,
-    hooks: Object.keys(settings.hooks || {}),
-    projects: projects.length,
-    projectScopedMcp: projects.filter(p => Object.keys(p?.mcpServers || {}).length).length,
-    skillCount,
-    subagents: Object.keys(fragment.agent).length,
-    // A CLAUDE.md is memory that survives the session, which is a capability
-    // and not a preference.
-    userMemory: existsSync(join(CLAUDE_HOME, 'CLAUDE.md')),
-    statusline: Boolean(settings.statusLine),
-  };
-
-  return fragment;
-}
-
-const fragment = readClaudeCode();
+const fragment = readClaudeCode(CLAUDE_HOME, CLAUDE_JSON);
 if (!fragment) {
   console.error(`No Claude Code installation at ${CLAUDE_HOME} or ${CLAUDE_JSON}.`);
   console.error('Set CLAUDE_HOME / CLAUDE_CONFIG to point at one.');
@@ -171,30 +46,10 @@ if (!process.argv.includes('--seed')) {
 // same question the graph asks of every capability. Allow and deny rules are
 // deliberately not translated: they name paths and commands, and this adapter
 // counts them rather than copying them into a graph the user may export.
-const authority = authorityBlock({
-  execute: fragment.observed.permissionMode ?? 'default',
-  note: `claude-code permissions.defaultMode: ${fragment.observed.permissionMode ?? 'default'}`,
-});
+const { config, mapping } = claudeCodeSeedInput(fragment);
 
 const configPath = join(process.env.TMPDIR || '/tmp', `ambit-claude-code-${process.pid}.json`);
-writeFileSync(
-  configPath,
-  JSON.stringify({ mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider, authority })
-);
-
-const mapping = {
-  config_keys: {
-    mcp: {
-      type: 'mcp',
-      domain_field: 'type',
-      domain_map: { remote: 'backend', local: 'infra' },
-      desc_template: 'claude-code {type} server',
-    },
-    agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
-    provider: { type: 'provider', domain: 'ai-ml' },
-  },
-  skill_dirs: fragment.skills.paths,
-};
+writeFileSync(configPath, JSON.stringify(config));
 
 const engine = join(import.meta.dir, '..', '..', 'src', 'engine', 'engine.ts');
 const result = spawnSync('node', ['--experimental-sqlite', engine, 'seed'], {
