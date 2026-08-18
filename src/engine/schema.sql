@@ -9,6 +9,14 @@
 -- created from this file and one migrated by ALTER TABLE have the same shape.
 -- Comments stay outside the parentheses: SQLite keeps the CREATE statement
 -- verbatim and cannot rewrite a table whose body has a trailing comment.
+--
+-- A `credential` node holds the *identity* of a credential and nothing else.
+-- There is deliberately no column a secret could be written to, and adding one
+-- would be a change of kind rather than a feature: this database is read by the
+-- visualiser, copied into snapshots, and backed up before every apply. The
+-- value belongs in whatever already holds it. What Ambit needs is only which
+-- providers present the same one, because that is what decides whether their
+-- redundancy is real.
 CREATE TABLE IF NOT EXISTS capabilities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

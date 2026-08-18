@@ -155,9 +155,24 @@ provider     what supplies a capability — an MCP server, a skill, a tool
 resource     what a provider needs — a model, an inference endpoint, a machine
 actor        a person: authority, money, judgement, physical access
 runtime      an agent runtime, which contributes providers rather than owning them
+credential   what a provider authenticates with — the identity of one, never the secret
 
-provides · contributes · requires · optional · authorizes · runs_on
+provides · contributes · requires · optional · authorizes · runs_on · uses
 ```
+
+**Redundancy is counted by what fails together.** A capability with three providers survives losing one — unless all three present the same token. Counting providers assumes they fail independently, and providers sharing a credential do not: one revocation takes all of them at once, and the capability reads as robust the whole time. Worse, having several providers is what *excluded* it from the single-point-of-failure report.
+
+A `credentials` block declares the sharing:
+
+```json
+{ "credentials": {
+    "github/user-token": { "name": "GitHub user token",
+                           "used_by": ["mcp:github", "tool:bash"] } } }
+```
+
+`ambit status` then lists the capability among its spofs, `ambit impact` calls what survives `nominal` rather than `redundant`, and `ambit credentials` answers the question you have before rotating a token — what stops working. Only a credential *every* provider presents counts: given providers holding `{A}`, `{A,B}` and `{B}`, losing either leaves one standing, and calling that fragile would be the same overstatement inverted.
+
+**No secret is read or stored.** Only the name, the holders and a note are consulted, so there is no field a value could arrive in and no column it could be written to. Sharing is declared, never inferred — guessing it from environment variable names would produce a redundancy claim nobody made, and a wrong one is worse than none.
 
 Ten capabilities declare a `contract.can` — the actions they confer — and each becomes a node with its own authority. That is what lets the model say *may read the repository, may not merge to its default branch*, which the coarse node cannot. `ambit authority <cap>` reports them; the visualizer leaves them out of the era columns on purpose, because legibility is the point of that view.
 
@@ -466,7 +481,7 @@ Ambit ships an MCP server exposing the graph directly to an agent:
 
 ```
 Graph      tt_stats tt_context tt_cap   tt_combos tt_diff tt_health
-           tt_decay tt_near   tt_bottlenecks        tt_spof tt_impact
+           tt_decay tt_near   tt_bottlenecks        tt_spof tt_impact tt_credentials
 
 Lifecycle  tt_verify tt_evidence tt_authority tt_actions tt_plan tt_goal
            tt_paths  tt_preferences tt_scope  tt_affordances tt_since tt_ledger
@@ -644,7 +659,7 @@ infrastructure manifest
     SQLite graph
         │
         ├──► CLI                ambit
-        ├──► MCP server         47 tools, JSON-RPC over stdio
+        ├──► MCP server         48 tools, JSON-RPC over stdio
         ├──► visualizer API     Bun.serve, port 3001
         ├──► work ledger        /api/telemetry · AG-UI events · plugin bridge
         └──► tracking plugin    config-change events

@@ -73,7 +73,11 @@ The id rework was avoided rather than done, deliberately. Every id appears in th
 
 Scope is now checked rather than merely recorded. `ambit scope <target>` — `repo:owner/name`, `device:nuc`, `svc:ollama` — lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope is a prefix claim: `repo:owner/name` covers the repo and its branches, a grant scoped elsewhere is named as excluded rather than silently treated as covering. What remains: nothing *mediates* on the scope — the check is a report, not a gate, which is the same line every enforcement half of this roadmap sits behind.
 
-`resource` is still a kind without much behind it: a model and a machine are both resources, and nothing yet reasons about capacity, location or contention.
+Also built: `credential`, and the correction it exists for. Redundancy was counted by provider, so three things supplying one capability read as threefold redundancy — and if all three present the same token, one revocation takes them down together. Ambit called such a capability robust and, because having several providers is what kept it out of the single-point-of-failure report, excluded it by the very fact that made it fragile. A `uses` edge records what a provider authenticates with; `ambit status` lists such a capability among its spofs, `ambit impact` calls the survivors `nominal` rather than `redundant`, and `ambit credentials` answers what a revocation would end. The intersection, not the union: providers holding `{A}`, `{A,B}` and `{B}` survive losing either, and reporting that as fragile would be the same error inverted.
+
+A credential node holds an identity and never a secret — there is no field one could arrive in. And because nothing *provides* a credential, the ledger's vocabulary rule could not catch it: a new node with no providers classifies as `gained`, so declaring three credentials on an unchanged machine would have read as three capabilities acquired. Credentials are excluded from the frontier by kind, which leaves every existing kind counted exactly as before and keeps a snapshot taken now comparable with one taken before they existed.
+
+`resource` is still a kind without much behind it: a model and a machine are both resources, and nothing yet reasons about capacity, location or contention. The deeper gap it points at is that an action has no object: `act:version-control/commit` is a verb the model cannot attach to a repository, so *read repo A* and *write repo B* are one node. Scope checks a grant against a target string; it does not give the action a target of its own.
 
 ## 2. Put the human and the machines in the graph — partly built
 
@@ -471,6 +475,10 @@ supports decisions, and governs change.
 
 Sections 1, 5, 6, 7, 9 and 11's state stream are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder.
 
-The through-line in what remains is enforcement and scope. Ambit can now say what may be done, by whom, to what, and on what evidence. It still cannot say *on which repository, in which workspace, within what budget*, and it does not stop anything. And it still cannot say what the work it observes costs — the economic half above is the next program.
+The through-line in what remains is enforcement and objects. Ambit can now say what may be done, by whom, with what, on what evidence, and — since scope became checkable — whether a grant covers a given target. It still does not stop anything, and the target is a string the grant is compared against rather than something the action holds.
+
+That last distinction is the next architectural move, and it is not another object type: the object types are largely in place. What none of them expresses is that an action has no object. Every entry on the list the graph will eventually need — read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only — is a verb bound to a noun, and Ambit has only the verbs. Once actions carry objects, authority and evidence can refer to them per object, and the era tree stops being the ontology and becomes what it should be: a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist.
+
+And it still cannot say what the work it observes costs — the economic half above is the next program.
 
 The gap between this document and the README is deliberate. The README describes only what runs.

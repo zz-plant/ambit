@@ -19,7 +19,7 @@ export { seedFromConfig, seedEconomics, seedCatalog } from "./discovery.ts";
 export {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, nearMissCombos, singlePointsOfFailure,
-  affordanceDomains, surfaceFor,
+  affordanceDomains, surfaceFor, credentialReport,
 } from "./inference.ts";
 export { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport, canExecute, recordSpend } from "./assurance.ts";
 export { ledgerSince, ledgerHistory } from "./ledger.ts";
