@@ -1,5 +1,6 @@
 import React from 'react';
 import { useToolchainStore } from '../store/toolchainStore';
+import { typeLabel, statusLabel, metaKeyLabel } from '../utils/labels';
 
 const TYPE_COLORS: Record<string, string> = {
   framework: '#00d4ff',
@@ -88,7 +89,7 @@ export function NodeDetailPanel() {
         <div className="sp-title-group">
           <div className="sp-designation">{item.name}</div>
           <div className="sp-class">
-            {item.type} · <span style={{ color: item.status === 'built' ? 'var(--ok)' : item.status === 'specified' ? 'var(--warn)' : 'var(--error)' }}>{item.status}</span>
+            {typeLabel(item.type)} · <span style={{ color: item.status === 'built' ? 'var(--ok)' : item.status === 'specified' ? 'var(--warn)' : 'var(--error)' }}>{statusLabel(item.status)}</span>
           </div>
         </div>
         <button className="sp-close" onClick={() => selectItem(null)}>✕</button>
@@ -96,7 +97,7 @@ export function NodeDetailPanel() {
 
       {item.type === 'mcp-server' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px' }}>
-          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>STATUS: {item.status === 'built' ? 'ENABLED' : 'DISABLED'}</span>
+          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.status === 'built' ? 'Turned on' : 'Turned off'}</span>
           <button
             className="tp-btn"
             style={{ fontSize: '10px', padding: '4px 8px' }}
@@ -107,14 +108,14 @@ export function NodeDetailPanel() {
               await toggleMcpEnabled(name, nextState);
             }}
           >
-            {loading ? 'MUTATING...' : item.status === 'built' ? 'DISABLE' : 'ENABLE'}
+            {loading ? 'Working…' : item.status === 'built' ? 'Turn off' : 'Turn on'}
           </button>
         </div>
       )}
 
       {editing ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginBottom: '8px' }}>
-          <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>DESCRIPTION</label>
+          <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>Description</label>
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
@@ -122,7 +123,7 @@ export function NodeDetailPanel() {
           />
           {item.type === 'agent' && (
             <>
-              <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>MODEL</label>
+              <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>Model</label>
               <input
                 type="text"
                 value={model}
@@ -133,17 +134,17 @@ export function NodeDetailPanel() {
           )}
           <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
             <button className="tp-btn-sm" style={{ flex: 1 }} onClick={handleSave} disabled={loading}>
-              {loading ? 'SAVING...' : 'SAVE'}
+              {loading ? 'Saving…' : 'Save'}
             </button>
             <button className="tp-btn-sm" style={{ flex: 1 }} onClick={() => setEditing(false)} disabled={loading}>
-              CANCEL
+              Cancel
             </button>
           </div>
         </div>
       ) : (
         (item.type === 'agent' || item.type === 'command') && (
           <button className="tp-btn-sm" style={{ width: '100%', marginBottom: '8px' }} onClick={() => setEditing(true)}>
-            ✏️ EDIT METADATA
+            ✏️ Edit details
           </button>
         )
       )}
@@ -202,7 +203,7 @@ export function NodeDetailPanel() {
           <div className="sp-section-label">Details</div>
           {Object.entries(item.meta).map(([k, v]) => (
             <div key={k} className="sp-attr-row">
-              <span className="sp-attr-key">{k.replace(/([A-Z])/g, '_$1').toUpperCase()}</span>
+              <span className="sp-attr-key">{metaKeyLabel(k)}</span>
               <span className="sp-attr-val" title={String(v)}>{String(v)}</span>
             </div>
           ))}
