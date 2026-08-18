@@ -2,40 +2,50 @@
 
 # Ambit
 
-**Where your system is wasting scarce resources — and which capability investment has the highest return.**
+**See what your agent stack can actually do — and what one config change would unlock next.**
 
+[![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 [![Node](https://img.shields.io/badge/node-22%2B-43853d?style=flat-square)](https://nodejs.org)
 [![Bun](https://img.shields.io/badge/bun-runtime-fbf0df?style=flat-square)](https://bun.sh)
 [![Server](https://img.shields.io/badge/server-loopback%20only-b8860b?style=flat-square)](#security)
 
-[**Live demo**](https://zz-plant.github.io/ambit/) · [Quick start](#start-here) · [CLI](#ask-better-questions-about-your-stack) · [MCP](#agents-can-query-it-too) · [Roadmap](./ROADMAP.md) · [Why Ambit](./docs/why-ambit.md) · [Theory](./docs/affordance-frontier.md)
+[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Quick start](#start-here) · [CLI](#ask-better-questions-about-your-stack) · [MCP](#agents-can-query-it-too) · [Roadmap](./ROADMAP.md) · [Why Ambit](./docs/why-ambit.md) · [Theory](./docs/affordance-frontier.md)
 
 </div>
 
-Ambit is a capability-accounting system for agentic infrastructure. It gives agents and their users a persistent model of what their combined environment can actually do: which capabilities exist, what they depend on, what is one step away, what is decaying, and what would break if something disappeared.
+You have multiple models, MCP servers, skills, subagents, local machines, hosted services, credentials, scheduled jobs — maybe a homelab. Each piece is visible in its own config file. What the whole thing can actually *do*, together, is not.
 
-The premise is that the meaningful capabilities of an AI system do not reside entirely in the model. They arise from composition — models, tools, credentials, machines, networks, memory, schedulers, humans, policies, persistent processes — so the question worth answering is not what the model knows or what appears in a config file, but:
+Ambit reads your agent configuration, builds a capability graph from it, and answers three questions no single config file can:
 
-> **What can this human-machine system actually cause to happen right now?**
+- **What can this system do right now** — reached, one step away, or blocked on a missing prerequisite?
+- **What would break** if a given tool, model, or machine disappeared?
+- **What's the next capability worth building**, priced by the time it's already costing you?
 
-It is built for the point where an agent setup stops fitting comfortably in your head.
+```console
+$ ambit history since
+  frontier then: 13
+  frontier now:  19
+  gained:    Embeddings · Local Embeddings · nomic-embed-text
+  emergent:  Model Routing · Offline Capable · Subagents
+```
 
-You have multiple models. MCP servers. Skills. Subagents. Local machines. Hosted services. Credentials. Scheduled jobs. Maybe a homelab.
-
-The individual pieces are visible in configuration files. Their combined action space is not.
-
-Ambit makes that action space explicit.
+One embedding model was added. Six capabilities moved. Three of them — `emergent` — became reachable although **nothing providing them was added**; their prerequisites were satisfied by something already there. No config file says that. It's a property of the graph.
 
 <div align="center">
 <img src="docs/assets/screenshot-tree.png" alt="Ambit capability graph: seven era columns from Foundation to Sovereignty, with reached capabilities filled, reachable ones outlined with setup estimates, and blocked ones faded" width="900">
 <br><sub>Filled = reached · outlined = next, with setup cost · faded = blocked by a missing prerequisite</sub>
 </div>
 
+<div align="center">
+<img src="docs/assets/capability-graph-demo.gif" alt="The loop in motion: the capability tree at rest, a new capability becoming reachable, an approval arriving as a negotiation toast, and the graph settling with the change in place" width="900">
+<br><sub>The tree at rest, a capability becoming reachable, an approval toast arriving, the graph settling.</sub>
+</div>
+
 ## Try it — 30 seconds, nothing to install
 
-[**Open the live demo**](https://zz-plant.github.io/ambit/) and click **LOAD DEMO**. No install, no config, no agent environment — just a working capability graph to click around.
+[**Open the live demo**](https://zz-plant.github.io/ambit/?demo=1) — the capability graph loads immediately, no click required. No install, no config, no agent environment.
 
 If you want it against your own setup, the CLI needs **one thing: Node 22**. No dependencies, no build step:
 
@@ -49,23 +59,17 @@ node src/engine/engine.ts opportunities   # what is worth building next, priced
 
 The visualizer needs **Bun** as well — but you do not need it to get value from the CLI, and `./bootstrap.sh` installs and seeds everything in one command when you are ready for the graph view.
 
+**Local only.** The graph is a SQLite file on your machine. The server binds loopback only and rejects non-local origins. Nothing is uploaded unless you explicitly push a digest to [ntfy](https://ntfy.sh) — see [Security](#security).
+
+## How this is different from grepping your config
+
+Your MCP servers, skills, and agents are each declared somewhere — but *composition* and *dependency* aren't. Nothing today tells you that removing one MCP server silently breaks three capabilities downstream, or that adding one embedding model just made two unrelated things reachable. Ambit's job is specifically that gap: not another list of what's installed, but the graph of what those installs add up to.
+
 ## Why Ambit exists
 
-Agent systems are becoming capable through composition.
+Agent systems are becoming capable through composition — a shell, Tailscale, Docker, and monitoring may together amount to *"safely diagnose and recover a failed service without human intervention,"* and no individual config entry says that. The presence of a tool doesn't prove an agent can reliably use it, or that it's authorized to. As agent environments grow, several different questions collapse into one — **what can this system actually do?** — and Ambit treats that as a graph problem: capabilities, dependencies, costs, and composition, so both humans and agents can reason over the environment they share.
 
-A shell is one capability. Tailscale is another. Docker is another. Monitoring is another. Together, under the right conditions, they may amount to:
-
-> safely diagnose and recover a failed service without human intervention
-
-No individual config entry says that.
-
-Likewise, the presence of a tool does not prove an agent can reliably use it. A model may technically support tool calling and fail in practice. An agent may hold credentials for an action it is not authorised to take. A machine may have idle compute that no agent can actually reach.
-
-As agent environments grow, several different questions collapse into one:
-
-> **What can this system actually do?**
-
-Ambit treats that as a graph problem. It models capabilities, dependencies, costs, and composition so that both humans and agents can reason over the environment they share.
+The longer version of this argument is in [why-ambit.md](./docs/why-ambit.md), and the theory it rests on in [affordance-frontier.md](./docs/affordance-frontier.md).
 
 ## The core idea
 
@@ -254,7 +258,7 @@ The graph is a local SQLite file — `~/.local/share/ambit/graph.db` for an inst
 
 **Requirements, honestly split.** The engine, CLI and MCP server run on **Node 22** and nothing else — no dependencies, no build step. The visualizer and its dev server additionally need **Bun** and the frontend packages, which `./bootstrap.sh` installs. The visualizer needs a checkout; an installed copy carries the engine, CLI and MCP server.
 
-Without an agent config, bootstrap still seeds the curated capability model and says so — you get the graph with nothing of yours in it yet, rather than an error. Point it at your own config with `OPENCODE_CONFIG`, or map a different format with `CONFIG_MAPPING` (see [Other configurations](#other-configurations)).
+With no `opencode.json`, `ambit seed` checks for a Claude Code install (`~/.claude.json`, `~/.claude/`) next and reads that instead — MCP servers, subagents, skills, permission mode. Only with neither present does it fall back to the curated capability model alone, and it says so rather than reporting an empty stack as an error. Point it at an OpenCode-shaped config with `OPENCODE_CONFIG`, or map a different format with `CONFIG_MAPPING` (see [Other configurations](#other-configurations)).
 
 ## Ask better questions about your stack
 
@@ -460,10 +464,7 @@ real work happens → the ledger observes → attention prices the human burden
 → roi measures before/after and writes the observation back
 ```
 
-<div align="center">
-<img src="docs/assets/capability-graph-demo.gif" alt="The loop in motion: the capability tree at rest, a new capability becoming reachable, an approval arriving as a negotiation toast, and the graph settling with the change in place" width="900">
-<br><sub>The loop in motion — the tree at rest, a capability becoming reachable, an approval toast arriving, the graph settling.</sub>
-</div>
+(The loop in motion is the GIF at the top of this README — tree at rest, a capability becoming reachable, an approval toast arriving, the graph settling.)
 
 - `ambit attention` prices the human half of the ledger and, critically, **classifies agency**: clerical, exception, physical and authority-as-repeated-gate are reducible — *the human is the duct* — while judgment and knowledge are keepers, never proposed for removal however often they recur.
 - `ambit economics` is the declared model: attention value per hour, purchase and recurring costs, goal values. Dollars declare, cents store. An undeclared actor's attention defaults to $250/hr and is reported as such.
@@ -696,7 +697,7 @@ The eventual goal is broader: different agent runtimes should attach to the same
 
 ## Status
 
-See it working first: the [live demo](https://zz-plant.github.io/ambit/) needs nothing, and against your own setup the CLI is one command away (`node src/engine/engine.ts seed`). What you will find is two halves at different depths. The **graph half** is strong: capability discovery, dependency mapping, failure-cascade analysis, near-miss discovery, verification and the lifecycle gate, authority per action, and an MCP-readable external model of an agent environment. The **economic half** is built end to end but young — the ledger, attention, economics, opportunities, the approval broker, enforcement, ROI, the catalog, incidents, audit, portfolio and federation all exist, and they get sharper as the ledger fills.
+See it working first: the [live demo](https://zz-plant.github.io/ambit/?demo=1) needs nothing, and against your own setup the CLI is one command away (`node src/engine/engine.ts seed`). What you will find is two halves at different depths. The **graph half** is strong: capability discovery, dependency mapping, failure-cascade analysis, near-miss discovery, verification and the lifecycle gate, authority per action, and an MCP-readable external model of an agent environment. The **economic half** is built end to end but young — the ledger, attention, economics, opportunities, the approval broker, enforcement, ROI, the catalog, incidents, audit, portfolio and federation all exist, and they get sharper as the ledger fills.
 
 What remains of the larger direction is the accumulation: real work flowing through the ledger so the first predictions have observed baselines, demand filling the catalog before any marketplace exists, and the portfolio reading many environments instead of one. See [ROADMAP.md](./ROADMAP.md).
 
