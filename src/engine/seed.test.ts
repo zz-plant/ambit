@@ -1166,6 +1166,115 @@ test('losing the only provider is critical', () => {
   expect(vc.also_provided_by).toBeUndefined();
 });
 
+// ── Credentials ─────────────────────────────────────────────────────────────
+
+/** Both providers of Version Control present the same token. */
+const SHARED_CREDENTIAL = {
+  ...TWO_PROVIDERS,
+  credentials: {
+    'github/user-token': { name: 'GitHub user token', used_by: ['mcp:git', 'mcp:github'] },
+  },
+};
+
+test('providers sharing a credential are not redundant', () => {
+  seed(SHARED_CREDENTIAL).close();
+
+  // The report this corrects: two providers read as twofold redundancy, so the
+  // capability was excluded from `tt spof` by the very fact that makes it
+  // fragile. Revoking one token takes both providers down together.
+  const spof = cli('status').spofs;
+  const finding = spof.find((s: any) => s.id === 'combo:version-control');
+  expect(finding).toBeDefined();
+  expect(finding.credential_id).toBe('cred:github/user-token');
+  expect(finding.providers.length).toBe(2);
+});
+
+test('redundancy that survives a revocation is still redundancy', () => {
+  // Only one of the two providers presents the token, so losing it leaves the
+  // other working. Reporting this as fragile would be the same overstatement
+  // in the other direction.
+  seed({
+    ...TWO_PROVIDERS,
+    credentials: { 'github/user-token': { name: 'GitHub user token', used_by: ['mcp:github'] } },
+  }).close();
+
+  const spof = cli('status').spofs;
+  expect(spof.some((s: any) => s.id === 'combo:version-control')).toBe(false);
+});
+
+test('impact calls surviving redundancy nominal when it shares a credential', () => {
+  seed({
+    mcp: { git: {}, github: {}, gitlab: {} },
+    credentials: {
+      'github/user-token': { name: 'GitHub user token', used_by: ['mcp:git', 'mcp:github'] },
+    },
+  }).close();
+
+  // Removing gitlab leaves two providers — which the count calls redundant and
+  // one revocation would end.
+  const impact = cli('impact', 'mcp:gitlab');
+  const vc = impact.combos_at_risk.find((c: any) => c.name === 'Version Control');
+  expect(vc.severity).toBe('nominal');
+  expect(vc.but_all_share).toBe('GitHub user token');
+});
+
+test('a credential reports what revoking it would end', () => {
+  seed(SHARED_CREDENTIAL).close();
+  const creds = cli('credentials');
+  const token = creds.find((c: any) => c.id === 'cred:github/user-token');
+  expect(token.held_by.sort()).toEqual(['git', 'github']);
+  expect(token.ends).toContain('Version Control');
+});
+
+test('a credential is not a capability', () => {
+  // Nothing `provides` a credential, so the ledger's vocabulary rule cannot
+  // catch it: without the kind exclusion, declaring one on an unchanged machine
+  // reads as a capability gained. The frontier must not move.
+  seed(TWO_PROVIDERS).close();
+  const before = cli('history').at(-1).reached;
+
+  seed(SHARED_CREDENTIAL, { name: 'config' }).close();
+  const since = cli('history', 'since');
+  expect(since.gained.some((g: any) => g.id.startsWith('cred:'))).toBe(false);
+  expect(since.frontier_now).toBe(before);
+});
+
+test('a credential nothing holds is not seeded', () => {
+  // A typo in `used_by` should leave the credential out rather than create one
+  // with no edges, the same way an actor's authorizes target does.
+  const db = seed({
+    ...TWO_PROVIDERS,
+    credentials: { 'ghost/token': { name: 'Ghost', used_by: ['mcp:does-not-exist'] } },
+  });
+  expect(rows(db, "SELECT id FROM capabilities WHERE kind = 'credential'")).toEqual([]);
+  db.close();
+});
+
+test('a command whose answer is a list prints the list', () => {
+  seed({ mcp: { git: {} } }).close();
+  // The human surface is the primary one, and it was dropping every array of
+  // strings: `tt authority` printed the note about its four lists and none of
+  // the lists. `scalar` had an array branch nothing could reach, which is what
+  // showed the guard above it was catching more than it meant to.
+  const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'authority'], {
+    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json') },
+    encoding: 'utf8',
+  });
+  expect(out).toContain('autonomous:');
+  expect(out).toContain('needs approval:');
+});
+
+test('a graph declaring no credentials analyses exactly as before', () => {
+  seed(TWO_PROVIDERS).close();
+  // The bar every stage of this refactor holds itself to: the existing analyses
+  // must be untouched for anyone not using the new block.
+  const spof = cli('status').spofs;
+  expect(spof.every((s: any) => s.sole_credential === undefined)).toBe(true);
+  const impact = cli('impact', 'mcp:github');
+  expect(impact.combos_at_risk.every((c: any) => c.but_all_share === undefined)).toBe(true);
+  expect(cli('credentials').note).toContain('No credentials declared');
+});
+
 test('single points of failure are distinguished from high-leverage capabilities', () => {
   seed(TWO_PROVIDERS).close();
   const spof = cli('status').spofs;

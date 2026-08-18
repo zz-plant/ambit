@@ -3,11 +3,27 @@
  * Single source of truth across Node engine, Bun server, MCP server, and client.
  */
 
-export const KINDS = ['capability', 'action', 'provider', 'resource', 'actor', 'runtime'] as const;
+export const KINDS = ['capability', 'action', 'provider', 'resource', 'actor', 'runtime', 'credential'] as const;
 export type NodeKind = (typeof KINDS)[number];
 export type Kind = NodeKind;
 
-export const EDGE_KINDS = ['provides', 'contributes', 'requires', 'optional', 'authorizes', 'runs_on'] as const;
+/**
+ * Kinds that are not part of the frontier.
+ *
+ * A credential is not something the system can do; it is part of how a provider
+ * reaches what it supplies. Counting one would report acquiring a token as
+ * acquiring a capability — and because nothing `provides` a credential, the
+ * ledger's vocabulary rule cannot catch it: `ledgerSince` classifies a new node
+ * with no providers as `gained`, so declaring three credentials on an unchanged
+ * machine would read as three capabilities gained.
+ *
+ * Excluding one new kind leaves every existing kind counted exactly as before,
+ * so a snapshot taken now stays comparable with one taken before credentials
+ * existed. That comparability is the whole value of the ledger.
+ */
+export const NON_FRONTIER_KINDS: NodeKind[] = ['credential'];
+
+export const EDGE_KINDS = ['provides', 'contributes', 'requires', 'optional', 'authorizes', 'runs_on', 'uses'] as const;
 export type EdgeKind = (typeof EDGE_KINDS)[number];
 
 export const LIFECYCLES = ['unknown', 'detected', 'configured', 'verified', 'reliable', 'degraded', 'broken'] as const;
