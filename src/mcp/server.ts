@@ -1,7 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from "node:fs";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, nearMissCombos, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport, affordanceDomains, humanDigest, beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome, workReport, usageReport, economicsReport, goalValue, opportunitiesFor, opportunityFor, canExecute, roiFor, roiSummary, catalogReport, auditFor, incidents, resolveIncident, portfolio } from "../engine/engine.ts";
+import { getDb, migrate, seedFromConfig, computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks, analyzeImpact, nearMissCombos, runVerification, evidenceFor, authorityReport, actionsReport, planFor, ledgerSince, ledgerHistory, recordFailure, deficits, singlePointsOfFailure, credentialReport, simulateFrontier, propose, listProposals, showProposal, goalFor, pathsFor, preferencesReport, scopeReport, affordanceDomains, humanDigest, beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome, workReport, usageReport, economicsReport, goalValue, opportunitiesFor, opportunityFor, canExecute, roiFor, roiSummary, catalogReport, auditFor, incidents, resolveIncident, portfolio } from "../engine/engine.ts";
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -73,6 +73,7 @@ const BASE_TOOLS = [
   { name: "proposals", description: "Every proposal drafted so far, newest first", inputSchema: { type: "object", properties: {} } },
   { name: "proposal", description: "One proposal in full, with its steps and simulated frontier", inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] } },
   { name: "spof", description: "Capabilities with exactly one provider — where redundancy is absent. Distinct from bottlenecks, which ranks leverage rather than fragility.", inputSchema: { type: "object", properties: {} } },
+  { name: "credentials", description: "What revoking each credential would end. Providers presenting the same credential fail together, so several providers is not necessarily redundancy.", inputSchema: { type: "object", properties: {} } },
   { name: "deficits", description: "Recurring capability deficits, worst first — which missing capabilities keep stopping different work", inputSchema: { type: "object", properties: {} } },
   { name: "ledger", description: "Every recorded frontier observation — how the system's capacity for action has changed over time", inputSchema: { type: "object", properties: {} } },
 ];
@@ -173,6 +174,7 @@ function handleLine(line) {
               case "tt_blocked": res = tt(db => recordFailure(db, capId, args.classification, args.note)); break;
               case "tt_deficits": res = tt(db => deficits(db)); break;
               case "tt_spof": res = tt(db => singlePointsOfFailure(db)); break;
+              case "tt_credentials": res = tt(db => credentialReport(db)); break;
               case "tt_simulate": res = tt(db => simulateFrontier(db, [capId])); break;
               case "tt_propose": res = tt(db => propose(db, capId, args.option)); break;
               case "tt_proposals": res = tt(db => listProposals(db)); break;

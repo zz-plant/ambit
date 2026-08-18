@@ -187,6 +187,43 @@ function providersOf(db: Db): Map<string, string[]> {
 }
 
 /**
+ * What each provider authenticates with.
+ *
+ * Empty for a graph that declares no credentials, which is what keeps every
+ * analysis below identical to what it returned before they existed.
+ */
+function credentialsOf(db: Db): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const r of db.prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE kind = 'uses'").all()) {
+    if (!map.has(r.f)) map.set(r.f, []);
+    if (!map.get(r.f)!.includes(r.t)) map.get(r.f)!.push(r.t);
+  }
+  return map;
+}
+
+/**
+ * The credentials every one of these providers depends on.
+ *
+ * Redundancy assumes providers fail independently, and providers presenting the
+ * same token do not: revoking it takes all of them at once. So the question a
+ * count of providers cannot answer is whether anything is held *in common* —
+ * the intersection, not the union.
+ *
+ * The intersection rather than any shared credential, because partial sharing
+ * is genuinely not a single point of failure. Given providers holding {A},
+ * {A,B} and {B}, losing A leaves the third still working and losing B leaves
+ * the first — the capability survives either. Only a credential all of them
+ * present takes it down alone, and reporting the chained case as fragile would
+ * be the same overstatement in the other direction.
+ */
+function sharedCredentials(providers: string[], credsOf: Map<string, string[]>): string[] {
+  if (providers.length === 0) return [];
+  return (credsOf.get(providers[0]) || []).filter(c =>
+    providers.every(p => (credsOf.get(p) || []).includes(c))
+  );
+}
+
+/**
  * What would actually be lost if this went away.
  *
  * Only the loss of the *last* provider takes a capability down. Anything else
@@ -200,6 +237,7 @@ function analyzeImpact(db: Db, capId: string) {
   const allCaps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
   const capMap = new Map<string, Record<string, any>>(allCaps.map(c => [c.id, c]));
   const providers = providersOf(db);
+  const credsOf = credentialsOf(db);
 
   /** Nothing else supplies it, so removing this ends it. */
   const isSoleProvider = (target: string) => {
@@ -207,6 +245,16 @@ function analyzeImpact(db: Db, capId: string) {
     return list.length > 0 && list.length === 1 && list[0] === capId;
   };
   const remaining = (target: string) => (providers.get(target) || []).filter(p => p !== capId);
+  /**
+   * Whether what survives this loss is actually independent. Two providers left
+   * standing is not resilience if one revocation takes both, and the count on
+   * its own cannot say which case you are in.
+   */
+  const nominal = (others: string[]) => {
+    const shared = sharedCredentials(others, credsOf);
+    if (others.length < 2 || shared.length === 0) return undefined;
+    return capMap.get(shared[0])?.name || shared[0];
+  };
 
   const decayed = deps
     .filter(d => d.from_capability === capId)
@@ -217,22 +265,29 @@ function analyzeImpact(db: Db, capId: string) {
         name: t?.name || d.to_capability,
         becomes_unavailable: d.is_hard_requisite && isSoleProvider(d.to_capability),
         also_provided_by: others.length ? others.length : undefined,
+        but_all_share: nominal(others),
       };
     });
 
   // Keyed by capability, not by edge. Iterating edges reported the same combo
   // once per prerequisite — "Version Control" four times for one risk.
-  const risk = new Map<string, { name: string; severity: string; also_provided_by?: number }>();
+  const risk = new Map<string, { name: string; severity: string; also_provided_by?: number; but_all_share?: string }>();
   for (const d of deps) {
     if (!d.to_capability.startsWith('combo:')) continue;
     if (d.from_capability !== capId) continue;
     const combo = capMap.get(d.to_capability);
     const others = remaining(d.to_capability);
     const sole = isSoleProvider(d.to_capability);
+    const shared = nominal(others);
     risk.set(d.to_capability, {
       name: combo?.name || d.to_capability,
-      severity: d.is_hard_requisite && sole ? 'critical' : others.length ? 'redundant' : 'warning',
+      // `nominal` rather than `redundant` where what is left over shares a
+      // credential. Saying redundant there is the overstatement this whole
+      // change exists to remove — the survivors are not independent, so the
+      // count that makes them look safe is the reason they are not.
+      severity: d.is_hard_requisite && sole ? 'critical' : shared ? 'nominal' : others.length ? 'redundant' : 'warning',
       also_provided_by: others.length || undefined,
+      but_all_share: shared,
     });
   }
 
@@ -250,9 +305,9 @@ function singlePointsOfFailure(db: Db) {
   const names = new Map(
     db.prepare("SELECT id, name, state, kind, lifecycle FROM capabilities").all().map((c: any) => [c.id, c])
   );
+  const credsOf = credentialsOf(db);
   const out: any[] = [];
   for (const [target, list] of providers) {
-    if (list.length !== 1) continue;
     const t = names.get(target) as any;
     if (!t || t.state === 'locked' || !usable(t.lifecycle)) continue; // not available; nothing to lose
     // An action conferred by a capability has one provider by definition, not
@@ -260,18 +315,89 @@ function singlePointsOfFailure(db: Db) {
     // action a *person* supplies is a different matter — one provider there is
     // exactly the finding, because only that person can do it.
     if (t.kind === 'action' && (names.get(list[0]) as any)?.kind === 'capability') continue;
-    out.push({
-      capability: t.name,
-      id: target,
-      sole_provider: (names.get(list[0]) as any)?.name || list[0],
-      provider_id: list[0],
-    });
+
+    if (list.length === 1) {
+      out.push({
+        capability: t.name,
+        id: target,
+        sole_provider: (names.get(list[0]) as any)?.name || list[0],
+        provider_id: list[0],
+      });
+      continue;
+    }
+
+    // Several providers, and something they all present. The count says the
+    // capability is redundant and it is not: this is the case that would
+    // otherwise be excluded from this report by the very fact that makes it
+    // fragile.
+    const shared = sharedCredentials(list, credsOf);
+    for (const cred of shared) {
+      out.push({
+        capability: t.name,
+        id: target,
+        providers: list.map(p => (names.get(p) as any)?.name || p),
+        sole_credential: (names.get(cred) as any)?.name || cred,
+        credential_id: cred,
+      });
+    }
   }
   return out.length
     ? out
     : { note: 'Every reached capability has more than one provider, or none are recorded.' };
 }
 
+/**
+ * What revoking each credential would cost.
+ *
+ * The inverse of `tt spof`: that asks which capabilities are fragile, this asks
+ * which secret they are all hanging from. Rotating a token is a routine act,
+ * and the useful thing to know before doing it is which capabilities stop —
+ * not which providers, since a provider going down matters only where nothing
+ * else supplies what it supplied.
+ *
+ * `ends` is the strong claim and is deliberately narrow: the credential is
+ * presented by *every* provider of that capability, so revoking it leaves
+ * nothing. `weakens` is everything else the credential touches, where the
+ * capability survives on another provider.
+ */
+function credentialReport(db: Db) {
+  const creds = db.prepare("SELECT id, name, description FROM capabilities WHERE kind = 'credential' ORDER BY name").all();
+  if (creds.length === 0) {
+    return { note: "No credentials declared. Add a `credentials` block naming which providers share one." };
+  }
+  const providers = providersOf(db);
+  const credsOf = credentialsOf(db);
+  const nodes = new Map(db.prepare("SELECT id, name, state, kind, lifecycle FROM capabilities").all().map((c: any) => [c.id, c]));
+  const nameOf = (id: string) => (nodes.get(id) as any)?.name || id;
+
+  return creds.map((cred: any) => {
+    const holders = [...credsOf.entries()].filter(([, cs]) => cs.includes(cred.id)).map(([p]) => p);
+    const ends: string[] = [];
+    const weakens: string[] = [];
+    for (const [target, list] of providers) {
+      const t = nodes.get(target) as any;
+      // Availability read the same way `tt spof` reads it, so the two surfaces
+      // cannot disagree about what a revocation would cost. A capability whose
+      // check is already failing is not something this credential is holding up.
+      if (!t || t.state === 'locked' || !usable(t.lifecycle)) continue;
+      // Same exclusion `tt spof` makes: an action conferred by a capability
+      // goes down with it by definition, and listing both doubles every entry.
+      if (t.kind === 'action' && (nodes.get(list[0]) as any)?.kind === 'capability') continue;
+      if (!list.some(p => (credsOf.get(p) || []).includes(cred.id))) continue;
+      (sharedCredentials(list, credsOf).includes(cred.id) ? ends : weakens).push(t.name);
+    }
+    return {
+      credential: cred.name,
+      id: cred.id,
+      held_by: holders.map(nameOf),
+      ends,
+      weakens,
+      note: ends.length
+        ? `Revoking this ends ${ends.length} reached ${ends.length === 1 ? 'capability' : 'capabilities'}.`
+        : undefined,
+    };
+  });
+}
 
 function exportGraph(db) {
   const caps = db.prepare("SELECT * FROM capabilities").all();
@@ -457,4 +583,5 @@ export {
   discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   providersOf, analyzeImpact, singlePointsOfFailure,
   exportGraph, affordanceDomains, surfaceFor,
+  credentialsOf, sharedCredentials, credentialReport,
 };

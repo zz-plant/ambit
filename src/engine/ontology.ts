@@ -22,10 +22,11 @@
  *             inference endpoint, a machine
  * actor       a person, who supplies authority, money, judgement, physical access
  * runtime     an agent runtime, which contributes providers rather than owning them
+ * credential  what a provider authenticates with. Never the secret itself — the
+ *             id of one, and which providers present it.
  */
-import { KINDS, EDGE_KINDS, type Kind, type EdgeKind, type NodeKind } from '../shared/types.ts';
-export { KINDS, EDGE_KINDS, type Kind, type EdgeKind, type NodeKind };
-
+import { KINDS, EDGE_KINDS, NON_FRONTIER_KINDS, type Kind, type EdgeKind, type NodeKind } from '../shared/types.ts';
+export { KINDS, EDGE_KINDS, NON_FRONTIER_KINDS, type Kind, type EdgeKind, type NodeKind };
 
 
 /** Prefixes carry no meaning of their own now; this is the one place that reads them. */
@@ -40,6 +41,7 @@ const PREFIX_KIND: Record<string, Kind> = {
   provider: 'resource',
   model: 'resource',
   device: 'resource',
+  cred: 'credential',
 };
 
 const CATEGORY_KIND: Record<string, Kind> = {
@@ -51,6 +53,7 @@ const CATEGORY_KIND: Record<string, Kind> = {
   model: 'resource',
   device: 'resource',
   service: 'resource',
+  credential: 'credential',
 };
 
 /**
@@ -83,6 +86,7 @@ const DESCRIPTION_KIND: Record<string, EdgeKind> = {
   'Agent pinned to provider': 'runs_on',
   'Hosts this service': 'runs_on',
   'Controls this service': 'runs_on',
+  'Authenticates with': 'uses',
 };
 
 /**
