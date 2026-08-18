@@ -292,6 +292,9 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     // No live backend means the published demo: an empty graph and the
     // welcome screen, not an error. LOAD DEMO is the entry there.
     if (!(await backendAvailable())) {
+      // The health probe is async: if LOAD DEMO was clicked (or ?demo=1 ran)
+      // while this was in flight, don't clobber the seeded graph on resolve.
+      if (get().demo) return;
       set({ items: [], connections: [], loading: false, error: null, demo: null });
       return;
     }
