@@ -197,6 +197,10 @@ export default function App() {
   const setShowUplinkModal = useToolchainStore(s => s.setShowUplinkModal);
 
   const [showDocs, setShowDocs] = useState(() => new URLSearchParams(window.location.search).get('docs') === 'open');
+  // ?demo=1 skips the LOAD DEMO click so a shared link opens already showing the graph.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('demo') === '1') seedDemo();
+  }, []);
   // Shown once on first run, for real configs as well as the demo — it used to
   // fire only after LOAD DEMO, so the normal path taught nothing.
   const [showGuide, setShowGuide] = useState(() => {
@@ -338,6 +342,9 @@ export default function App() {
 
   useEffect(() => {
     if (params.get('guide') === 'off') dismissGuide();
+    // ?demo=1 already seeded the graph above; loadConfig()'s no-backend path
+    // would otherwise clobber that seeded data back to an empty graph.
+    if (params.get('demo') === '1') return;
     if (source === 'tree') loadTechTree(); else loadConfig();
     // Intentionally once on mount; the toggles drive later changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
