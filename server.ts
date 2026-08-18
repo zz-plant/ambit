@@ -484,7 +484,15 @@ const server = Bun.serve({
           // from it. This is the protocol's reason for existing — a patch is
           // smaller than a snapshot — and a client that kept the connect
           // snapshot can apply it.
+          // A quiet stream is indistinguishable from a dead one to every proxy
+          // between the server and the page — vite's dev proxy drops an SSE
+          // connection with no traffic for ~15s, silently, with no error event
+          // on the client. An SSE comment line is traffic that no client
+          // parses as an event, so it keeps the connection alive everywhere
+          // without appearing anywhere.
+          let ticks = 0;
           timer = setInterval(() => {
+            if (++ticks % 5 === 0) controller.enqueue(encoder.encode(`: keepalive\n\n`));
             const next = snapshot();
             if (JSON.stringify(next) === JSON.stringify(last)) return;
             const delta = diffState(last, next);
