@@ -69,7 +69,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
       setSnippet(result);
       setError('');
     } else {
-      setError('Could not build snippet. Check console or server logs.');
+      setError('Something went wrong building the snippet. Try again, or check that the local server is running.');
     }
   };
 
@@ -79,8 +79,8 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         <div className="sp-hdr">
           <span className="sp-sig" style={{ color: 'var(--accent)' }}>🔌</span>
           <div className="sp-title-group">
-            <div className="sp-designation">ADD MCP SERVER</div>
-            <div className="sp-class">GENERATE MCP CONFIG SNIPPET</div>
+            <div className="sp-designation">Connect a tool server</div>
+            <div className="sp-class">Builds a config snippet you paste in — nothing is changed for you</div>
           </div>
           <button className="sp-close" onClick={onClose}>✕</button>
         </div>
@@ -88,13 +88,13 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         {snippet ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              An MCP entry carries a command OpenCode runs, so this tool will not write it for you.
-              Merge this into <code>{snippet.configPath}</code>, then reload.
+              For safety, Ambit never edits your config itself — this entry tells your agent what command to run.
+              Copy it into <code>{snippet.configPath}</code>, then reload this page.
             </div>
             <pre style={{ fontSize: '10px', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '8px', overflow: 'auto', maxHeight: '220px', margin: 0 }}>{snippet.snippet}</pre>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="sp-action-btn" onClick={() => navigator.clipboard?.writeText(snippet.snippet)}>COPY</button>
-              <button type="button" className="sp-action-btn" onClick={() => { setSnippet(null); setName(''); setUrl(''); setCommand(''); setEnvStr(''); onClose(); }}>DONE</button>
+              <button type="button" className="sp-action-btn" onClick={() => navigator.clipboard?.writeText(snippet.snippet)}>Copy</button>
+              <button type="button" className="sp-action-btn" onClick={() => { setSnippet(null); setName(''); setUrl(''); setCommand(''); setEnvStr(''); onClose(); }}>Done</button>
             </div>
           </div>
         ) : (
@@ -102,7 +102,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
           {error && <div style={{ color: 'var(--error)', fontSize: '11px', border: '1px solid var(--error)', padding: '6px', background: 'rgba(255, 51, 68, 0.1)', borderRadius: 'var(--radius)' }}>{error}</div>}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>SERVER IDENTIFIER</label>
+            <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>Name (a short nickname for this server)</label>
             <input
               type="text"
               placeholder="e.g. github-mcp"
@@ -120,7 +120,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
               style={{ flex: 1, borderColor: type === 'local' ? 'var(--accent)' : 'var(--border)', color: type === 'local' ? 'var(--accent)' : 'var(--text-muted)' }}
               onClick={() => setType('local')}
             >
-              LOCAL
+              Runs on this computer
             </button>
             <button
               type="button"
@@ -128,13 +128,13 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
               style={{ flex: 1, borderColor: type === 'remote' ? 'var(--accent)' : 'var(--border)', color: type === 'remote' ? 'var(--accent)' : 'var(--text-muted)' }}
               onClick={() => setType('remote')}
             >
-              REMOTE (SSE)
+              Runs somewhere else (URL)
             </button>
           </div>
 
           {type === 'remote' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-              <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>ENDPOINT URL</label>
+              <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>Server address (URL)</label>
               <input
                 type="url"
                 placeholder="http://localhost:3000/sse"
@@ -146,7 +146,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-              <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>COMMAND / ARGUMENTS</label>
+              <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>Command that starts it</label>
               <input
                 type="text"
                 placeholder="e.g. npx -y @modelcontextprotocol/server-github"
@@ -159,7 +159,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>ENVIRONMENT VARIABLES (KEY=VALUE, one per line)</label>
+            <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>Settings it needs, if any (KEY=VALUE, one per line)</label>
             <textarea
               placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here"
               value={envStr}
@@ -170,7 +170,7 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
           </div>
 
           <button type="submit" className="tp-btn" style={{ width: '100%', marginTop: '10px' }} disabled={loading}>
-            {loading ? 'BUILDING...' : 'GENERATE CONFIG SNIPPET'}
+            {loading ? 'Building…' : 'Build the snippet'}
           </button>
         </form>
         )}
@@ -369,7 +369,7 @@ export default function App() {
         {error && (
           <div className="app-error">
             <p>{error}</p>
-            <button className="tp-btn" onClick={() => loadConfig()}>RECONNECT</button>
+            <button className="tp-btn" onClick={() => loadConfig()}>Try again</button>
             {typeof window !== 'undefined' &&
               !backendAvailable() && (
                 <div style={{ marginTop: '8px', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
@@ -396,7 +396,7 @@ export default function App() {
             <ol className="app-guide-steps">
               <li><strong>Click any circle</strong> to see what depends on it.</li>
               <li><strong>Outlined circles</strong> are capabilities you have not reached — their description says what is missing.</li>
-              <li><strong>TECH TREE</strong> shows where you are on the capability tree; <strong>CONFIG</strong> shows your config as a graph.</li>
+              <li><strong>TECH TREE</strong> shows where you are on the capability tree; <strong>MY SETUP</strong> shows everything in your setup and how it connects.</li>
             </ol>
             <button className="app-guide-more" onClick={() => { setShowDocs(true); dismissGuide(); }}>
               What do these terms mean? →
@@ -414,7 +414,7 @@ export default function App() {
               <div className="app-welcome-actions">
                 <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>▶  LOAD DEMO</button>
                 <button className="app-welcome-btn" onClick={() => { seedDemo(); setView('loop'); }}>◈  SEE THE LOOP</button>
-                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowImport(true)}>📋  PASTE</button>
+                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowImport(true)}>📋  PASTE YOUR OWN</button>
                 <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">⭐  GITHUB</a>
               </div>
               <div className="app-welcome-code"><code>node src/engine/engine.ts seed &amp;&amp; node src/engine/engine.ts status</code></div>
@@ -458,11 +458,11 @@ export default function App() {
           </div>
         )}
         <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
-          {([['config', 'CONFIG'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
+          {([['config', 'MY SETUP'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
             <button key={id} className="app-hud-btn"
               style={{ width:'auto', padding:'0 8px', border:'none', background: source === id ? 'var(--accent)' : 'transparent', color: source === id ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: source === id ? 700 : 'normal', fontSize:'9px', height:'22px' }}
               onClick={() => { setSource(id); selectItem(null); id === 'tree' ? loadTechTree() : loadConfigSource(); }}
-              title={id === 'tree' ? 'Curated capability tree — what you have reached and what is next' : 'Your config as a graph'}>
+              title={id === 'tree' ? 'The capability tree — what you have reached and what is next' : 'Everything in your setup, drawn as a map of what connects to what'}>
               {label}
             </button>
           ))}

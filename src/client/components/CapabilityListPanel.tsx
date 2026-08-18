@@ -1,5 +1,6 @@
 import React from 'react';
 import { useToolchainStore } from '../store/toolchainStore';
+import { typeLabel, statusLabel } from '../utils/labels';
 
 export function CapabilityListPanel() {
   const items = useToolchainStore(s => s.items);
@@ -25,7 +26,7 @@ export function CapabilityListPanel() {
 
       <div style={{ padding: '6px', borderBottom: '1px solid var(--border)' }}>
         <button className="tp-btn" style={{ width: '100%', fontSize: '10px', padding: '6px' }} onClick={() => setShowUplinkModal(true)}>
-          🔌 ADD MCP SERVER
+          🔌 Connect a tool server
         </button>
       </div>
 
@@ -40,7 +41,7 @@ export function CapabilityListPanel() {
       {/* Summary */}
       <div className="tp-summary">
         {Object.entries(countByType).map(([t, c]) => (
-          <span key={t} className="tp-tag">{t} ×{c}</span>
+          <span key={t} className="tp-tag">{typeLabel(t)} ×{c}</span>
         ))}
       </div>
 
@@ -52,15 +53,15 @@ export function CapabilityListPanel() {
           >
             <div className="tp-item-hdr">
               <span className="tp-item-name">{item.name}</span>
-              <span className={`tp-badge tp-badge--${item.status}`}>{item.status}</span>
+              <span className={`tp-badge tp-badge--${item.status}`}>{statusLabel(item.status)}</span>
             </div>
             <div className="tp-item-meta">
-              {item.type}
+              {typeLabel(item.type)}
             </div>
           </div>
         ))}
         {filtered.length === 0 && (
-          <div className="tp-empty">No capabilities match</div>
+          <div className="tp-empty">Nothing matches that search</div>
         )}
       </div>
     </div>
