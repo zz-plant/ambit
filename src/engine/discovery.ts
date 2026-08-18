@@ -103,6 +103,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   count += seedCombos(db, config, mapping, insert);
   count += seedActors(db, config, mapping, insert);
   count += seedInfrastructure(db, insert);
+  count += seedCredentials(db, config, mapping, insert);
   seedAuthority(db, config);
   seedEconomics(db, config);
   seedCatalog(db, config);
@@ -521,6 +522,65 @@ function seedActors(db: Db, config: any, mapping: any, insert: any): number {
 }
 
 /**
+ * Seeds what providers authenticate with.
+ *
+ * Redundancy was counted by provider, so three things supplying one capability
+ * read as threefold redundancy. If all three present the same token, revoking
+ * it takes all three down at once — and Ambit would have called the capability
+ * robust right up to the moment it was not, having actively excluded it from
+ * `tt spof`. A credential is the thing that makes providers fail together, so
+ * it has to be in the graph for the redundancy claim to mean anything.
+ *
+ *   "credentials": {
+ *     "github/user-token": {
+ *       "name": "GitHub user token",
+ *       "used_by": ["mcp:github", "tool:bash"],
+ *       "note": "classic PAT, repo scope"
+ *     }
+ *   }
+ *
+ * **No secret is ever read or stored.** Only `name`, `used_by` and `note` are
+ * consulted, so there is no field a value could arrive in and no column it
+ * could be written to. That is the same boundary the proposal system draws
+ * around executable content: refuse the shape permanently rather than gate it.
+ * `note` is displayed, so it is for provenance — "classic PAT, repo scope" —
+ * and not for the token.
+ *
+ * Declared, never inferred. Guessing which providers share an credential from
+ * environment variable names would produce a redundancy claim nobody stated,
+ * and a wrong one is worse here than an absent one.
+ */
+function seedCredentials(db: Db, config: any, mapping: any, insert: any): number {
+  const credentials = { ...(mapping.credentials || {}), ...(config.credentials || {}) };
+  const link = edgeWriter(db);
+  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  let count = 0;
+
+  for (const [key, spec] of Object.entries<any>(credentials)) {
+    const id = key.startsWith('cred:') ? key : `cred:${key}`;
+    // Only providers already in the graph. A typo should leave a credential
+    // holding nothing rather than a dangling edge, exactly as `seedActors`
+    // treats an authorizes target that does not exist.
+    const holders: string[] = (spec?.used_by || []).filter(has);
+    if (holders.length === 0) continue;
+
+    insert.run(
+      id,
+      spec?.name || key,
+      'meta',
+      spec?.note || 'Credential',
+      'credential',
+      'unlocked',
+      1.0,
+    );
+    count++;
+    for (const holder of holders) link.run(holder, id, 1, 'Authenticates with');
+  }
+
+  return count;
+}
+
+/**
  * Combos are the unit every unlock analysis is built on, and they are a
  * judgement about what capabilities compose — not something to infer from a
  * config file. They are read from an optional `combos` block, so a fabricated
@@ -790,5 +850,5 @@ function seedCatalog(db: Db, config: any): number {
 export {
   parseMapping, seedFromConfig, seedModels, seedDependencies, attributeToRuntime,
   seedTechTree, seedActors, seedCombos, seedAuthority, seedInfrastructure,
-  seedEconomics, seedCatalog,
+  seedEconomics, seedCatalog, seedCredentials,
 };

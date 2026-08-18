@@ -1,7 +1,17 @@
 import type { Db } from "./db.ts";
 import { usable, FAILING_LIFECYCLES } from "./assurance.ts";
+import { NON_FRONTIER_KINDS } from "./ontology.ts";
 
 // ─── Ledger ───────────────────────────────────────────────────────────────────
+
+/**
+ * Whether a node counts toward the frontier.
+ *
+ * Everything did, when every kind was something the system could do or
+ * something that supplied it. A credential is neither, so it is excluded — see
+ * NON_FRONTIER_KINDS for why the exclusion is by kind rather than by state.
+ */
+const inFrontier = (kind: string | undefined) => !NON_FRONTIER_KINDS.includes(kind as any);
 
 /**
  * Records the whole frontier if it differs from the last observation.
@@ -33,8 +43,9 @@ function recordFrontier(db: Db): 'recorded' | 'unchanged' {
     .get();
   if (last && last.states === serialised && last.lifecycles === lifecycleSerialised) return 'unchanged';
 
-  const reached = rows.filter(r => r.state !== 'locked').length;
-  const demonstrated = rows.filter(r => r.lifecycle === 'verified' || r.lifecycle === 'reliable').length;
+  const counted = rows.filter(r => inFrontier(r.kind));
+  const reached = counted.filter(r => r.state !== 'locked').length;
+  const demonstrated = counted.filter(r => r.lifecycle === 'verified' || r.lifecycle === 'reliable').length;
   db.prepare("INSERT INTO frontier_snapshots (reached, total, verified, states, kinds, lifecycles) VALUES (?, ?, ?, ?, ?, ?)")
     .run(reached, rows.length, demonstrated, serialised, JSON.stringify(kinds), lifecycleSerialised);
   return 'recorded';
@@ -99,6 +110,7 @@ function ledgerSince(db: Db, when?: string) {
   const emergent: any[] = [];
   const vocabulary: any[] = [];
   for (const c of now) {
+    if (!inFrontier(c.kind)) continue;
     const newlyReached = isReached(c) && (wasLocked(c.id) || past.states[c.id] === undefined);
     if (!newlyReached) continue;
     const proofs = provedBy.get(c.id) || [];
@@ -125,7 +137,7 @@ function ledgerSince(db: Db, when?: string) {
   }
 
   const lost = now
-    .filter(c => !isReached(c) && past.states[c.id] && past.states[c.id] !== 'locked')
+    .filter(c => inFrontier(c.kind) && !isReached(c) && past.states[c.id] && past.states[c.id] !== 'locked')
     .map(c => ({ id: c.id, name: c.name }));
 
   // Still reached, but no longer usable: a declared check started failing.
@@ -134,19 +146,26 @@ function ledgerSince(db: Db, when?: string) {
   const diminished = past.lifecycles
     ? now
         .filter(c => {
+          if (!inFrontier(c.kind)) return false;
           const then = past.lifecycles![c.id];
           return then && usable(then) && c.state !== 'locked' && !usable(c.lifecycle);
         })
         .map(c => ({ id: c.id, name: c.name, lifecycle: c.lifecycle, reason: 'verification failing' }))
     : [];
 
-  const pastReached = Object.values(past.states).filter(v => v !== 'locked').length;
+  // Both sides exclude the same kinds. A snapshot taken before credentials
+  // existed has none to exclude and `kinds` may be null altogether, so an old
+  // observation counts exactly as it always did — which is what keeps
+  // `frontier_then` and `frontier_now` the same measurement.
+  const pastReached = Object.entries(past.states)
+    .filter(([id, v]) => v !== 'locked' && inFrontier(past.kinds?.[id]))
+    .length;
   // Counted on the same basis as `frontier_then`, so the two numbers mean the
   // same thing. Vocabulary additions are described and not counted; the total
   // including them is reported separately rather than folded in silently.
   const vocabularyIds = new Set(vocabulary.map(v => v.id));
-  const reachedNow = now.filter(isReached);
-  const verifiedNow = now.filter(c => c.lifecycle === 'verified' || c.lifecycle === 'reliable').length;
+  const reachedNow = now.filter(c => inFrontier(c.kind) && isReached(c));
+  const verifiedNow = now.filter(c => inFrontier(c.kind) && (c.lifecycle === 'verified' || c.lifecycle === 'reliable')).length;
   return {
     since: past.taken_at,
     frontier_then: pastReached,

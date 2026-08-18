@@ -7,7 +7,7 @@ import { seedFromConfig } from "./discovery.ts";
 import {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, nearMissCombos, singlePointsOfFailure, exportGraph,
-  affordanceDomains, surfaceFor,
+  affordanceDomains, surfaceFor, credentialReport,
 } from "./inference.ts";
 import { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport, canExecute } from "./assurance.ts";
 import { ledgerHistory, ledgerSince } from "./ledger.ts";
@@ -56,8 +56,15 @@ function emit(data: any): void {
     if (typeof row !== "object" || row === null) { console.log(indent + String(row)); return; }
     const headKey = HEADLINE.find(k => row[k] !== undefined);
     if (headKey) console.log(`${indent}${C.bold}${row[headKey]}${C.reset}`);
+    // Arrays of scalars are values, not nesting. Skipping every object dropped
+    // them, which `scalar`'s array branch shows was never the intent — and it
+    // silently removed the answer from the commands whose answer is a list:
+    // `tt authority` printed its note and its per-row detail and not the four
+    // lists the note is about. Plain objects are still skipped; an array of
+    // objects is rendered as nesting by the loop below.
     for (const [k, v] of Object.entries(row)) {
-      if (k === headKey || skip(k, v) || typeof v === "object") continue;
+      if (k === headKey || skip(k, v)) continue;
+      if (typeof v === "object" && !Array.isArray(v)) continue;
       console.log(`${indent}  ${C.grey}${label(k)}:${C.reset} ${scalar(v)}`);
     }
     for (const [k, v] of Object.entries(row)) {
@@ -112,6 +119,7 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   audit [run|prop|human|days]   the trail — who approved what, what ran, did it hold
   federation export|import   the signed summary a portfolio layer reads
   impact <id>       what actually breaks if a capability goes away
+  credentials       what revoking each credential would end
   verify [cap] [--history]   run the declared check, or show past verification
   authority [cap] [scope <target>]   what may run unattended, what each action
                     may touch, and whether a scope covers a target
@@ -370,6 +378,9 @@ async function main() {
       break;
     case "apply":
       emit(applyProposal(db, arg));
+      break;
+    case "credentials":
+      emit(credentialReport(db));
       break;
     case "rollback":
       emit(rollbackProposal(db, arg));
