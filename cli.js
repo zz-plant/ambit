@@ -3,6 +3,7 @@
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
+import { existsSync } from "fs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // cli.js sits at the package root, next to src/ — resolving ".." walked out
@@ -72,6 +73,18 @@ if (!cmd) {
 }
 
 if (cmd === "web") {
+  // The visualizer needs the dev dependencies (vite, react), which an npm or
+  // Homebrew install of the CLI does not carry. Failing here with bun's
+  // "script not found" taught nothing; say what the situation is.
+  const hasBun = spawnSync("bun", ["--version"], { stdio: "ignore" }).status === 0;
+  const hasDevDeps = existsSync(resolve(ROOT, "node_modules", "vite"));
+  if (!hasBun || !hasDevDeps) {
+    console.log(`\n  The visual map runs from a git checkout (the CLI install doesn't carry the web app):\n`);
+    console.log(`    git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web\n`);
+    if (!hasBun) console.log(`  ${D}It also needs Bun — https://bun.sh${R}`);
+    console.log(`  ${D}Or try the hosted demo with example data: https://zz-plant.github.io/ambit/?demo=1${R}\n`);
+    process.exit(1);
+  }
   spawnSync("bun", ["run", "dev"], { cwd: ROOT, stdio: "inherit" });
   process.exit(0);
 }

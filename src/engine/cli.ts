@@ -220,6 +220,48 @@ function explain(wanted: string): void {
   if (!wanted) console.log(`${C.grey}ambit help <term> for one of these on its own.${C.reset}\n`);
 }
 
+/**
+ * Read the agent config and build the graph. One routine for `ambit seed` and
+ * for the first-run path below, so the two cannot drift on the fallback order:
+ * opencode.json if present, else a Claude Code install, else the curated
+ * capability model alone — announced as such rather than passed off as a
+ * discovered environment.
+ */
+function runSeed(db: any, mappingOverride?: string, quiet = false): void {
+  const say = quiet ? (_: string) => {} : console.log;
+  const cfg = CONFIG_DEFAULT;
+  // No opencode.json and nobody named a config or mapping explicitly —
+  // check for a Claude Code install before falling back to the curated
+  // model only. Claude Code's user base dwarfs OpenCode's, and reading
+  // ~/.claude.json for free is the difference between the first seed
+  // showing nothing of the user's and showing their actual stack.
+  let claudeCodeFallback = false;
+  if (!existsSync(cfg) && !process.env.OPENCODE_CONFIG && !mappingOverride) {
+    const fragment = readClaudeCode();
+    if (fragment) {
+      const { config, mapping } = claudeCodeSeedInput(fragment);
+      const tmp = join(tmpdir(), `ambit-claude-code-seed-${process.pid}.json`);
+      writeFileSync(tmp, JSON.stringify(config));
+      process.env.AMBIT_RUNTIME = "claude-code";
+      seedFromConfig(db, tmp, JSON.stringify(mapping));
+      claudeCodeFallback = true;
+    }
+  }
+  if (!claudeCodeFallback) seedFromConfig(db, undefined, mappingOverride);
+  const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();
+  say(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities`);
+  if (claudeCodeFallback) {
+    say(`${C.grey}  Seeded from Claude Code (~/.claude.json, ~/.claude) — no opencode.json found.${C.reset}`);
+  } else if (!existsSync(cfg)) {
+    // Say so rather than reporting a curated-model-only graph as if it had
+    // read the environment. Silence here reads as "your stack is empty".
+    say(`${C.yellow}!${C.reset} No agent config at ${C.grey}${cfg}${C.reset}`);
+    say(`${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`);
+    say(`${C.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${C.reset}`);
+    say(`${C.grey}  Another format: see "Other configurations" in the README (CONFIG_MAPPING).${C.reset}`);
+  }
+}
+
 async function main() {
   const db = getDb();
   migrate(db);
@@ -245,11 +287,17 @@ async function main() {
   if (cmd && !ledgerCommands.has(cmd) && cmd !== "seed" && cmd !== "where" && cmd !== "help") {
     const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
     if (!seeded?.n) {
-      console.log(`${C.yellow}No graph yet.${C.reset} Nothing has been discovered on this machine.`);
-      console.log(`  ${C.bold}ambit seed${C.reset}    read your agent config and build the graph`);
-      console.log(`  ${C.grey}ambit where${C.reset}   ${C.grey}where the graph is stored${C.reset}`);
-      db.close();
-      return;
+      // Seed rather than instruct. `npx ambit-cli` and a fresh Homebrew
+      // install both land here, and "go run another command first" is the
+      // wrong first impression for a tool whose pitch is "one command, your
+      // map". Seeding only reads config files and writes the local graph, so
+      // doing it unasked is safe; --json runs stay silent-but-seeded so
+      // scripts get their answer instead of a lecture.
+      if (!process.argv.includes("--json")) {
+        console.log(`${C.grey}First run — reading your agent config and building the graph…${C.reset}`);
+      }
+      runSeed(db, mappingOverride);
+      if (!process.argv.includes("--json")) console.log("");
     }
   }
   if (!cmd || cmd === "help") {
