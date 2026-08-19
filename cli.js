@@ -12,6 +12,16 @@ const ROOT = __dirname;
 
 const B = "\x1b[1m", R = "\x1b[0m", D = "\x1b[90m";
 
+// A git checkout runs the TypeScript sources directly; an npm or Homebrew
+// install runs the compiled copy in dist-cli, because Node refuses to
+// type-strip anything under node_modules. Source wins when both exist so a
+// contributor's edits are never shadowed by a stale build.
+const srcEngine = resolve(ROOT, "src", "engine", "engine.ts");
+const engineEntry = existsSync(srcEngine) ? srcEngine : resolve(ROOT, "dist-cli", "engine", "engine.js");
+const mcpEntry = existsSync(resolve(ROOT, "src", "mcp", "server.ts"))
+  ? resolve(ROOT, "src", "mcp", "server.ts")
+  : resolve(ROOT, "dist-cli", "mcp", "server.js");
+
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
 
@@ -49,12 +59,12 @@ if (cmd === "--help" || cmd === "help") {
     ambit where            Where the graph is stored
     ambit web              Open the visualizer
 
-  ${D}Installed via Homebrew or npm? ambit seed is how you build the graph —
-  bootstrap.sh is the equivalent for a git checkout, and does the same thing
-  plus installing dependencies. ambit web needs a checkout: the visualizer is
-  built with dev dependencies an installed copy does not carry.${R}
+  ${D}The graph builds itself on first run; ambit seed rebuilds it after your
+  config changes. ambit web needs a git checkout: the visualizer is built
+  with dev dependencies an installed copy does not carry.${R}
 
-  ${D}An MCP server exposes the same questions to an agent session.${R}
+  ${D}ambit mcp runs the MCP server, exposing the same questions to an agent
+  session: claude mcp add ambit -- npx -y ambit-cli mcp${R}
 `);
   process.exit(0);
 }
@@ -64,7 +74,7 @@ if (cmd === "--help" || cmd === "help") {
 // the help is still one flag away.
 if (!cmd) {
   const run = (c, args = []) =>
-    spawnSync("node", ["--experimental-sqlite", resolve(ROOT, "src", "engine", "engine.ts"), c, ...args],
+    spawnSync("node", ["--experimental-sqlite", engineEntry, c, ...args],
       { stdio: "inherit" });
   console.log(`\n${B}Where you are${R}`);
   run("status");
@@ -89,6 +99,12 @@ if (cmd === "web") {
   process.exit(0);
 }
 
-const enginePath = resolve(ROOT, "src", "engine", "engine.ts");
-const result = spawnSync("node", ["--experimental-sqlite", enginePath, cmd, ...args], { stdio: "inherit" });
+// The MCP server, runnable from any install: `claude mcp add ambit -- ambit mcp`.
+// Before this, registering it meant knowing where npm put the package.
+if (cmd === "mcp") {
+  const result = spawnSync("node", ["--experimental-sqlite", mcpEntry], { stdio: "inherit" });
+  process.exit(result.status || 0);
+}
+
+const result = spawnSync("node", ["--experimental-sqlite", engineEntry, cmd, ...args], { stdio: "inherit" });
 process.exit(result.status || 0);

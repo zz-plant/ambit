@@ -25,7 +25,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { authorityBlock } from './authority.ts';
+import { authorityBlock } from '../../src/shared/authority.ts';
 
 const HERMES_HOME = process.env.HERMES_HOME || join(process.env.HOME || '/', '.hermes');
 

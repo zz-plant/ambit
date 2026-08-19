@@ -31,36 +31,37 @@ Ambit reads your agent configuration and turns it into a map. The map answers th
 
 ## Get started
 
-To run it against your own setup, you need [Node 22](https://nodejs.org) or newer. That's it — no other dependencies:
+One command, no install — you need [Node 22.18](https://nodejs.org) or newer, nothing else:
+
+```bash
+npx ambit-cli
+```
+
+On first run it finds your agent configuration (OpenCode or Claude Code — it checks for both automatically), builds the map, and prints where you stand:
+
+```
+First run — reading your agent config and building the graph…
+✓ 168 capabilities
+
+  reached: 156
+  total: 168
+  domains:
+    ai-ml     22/26
+    backend   6/8
+    infra     26/28
+```
+
+Every other command works the same way: `npx ambit-cli goal <thing>`, `npx ambit-cli impact <id>`. To keep the command around as plain `ambit`, install it once with `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit`.
+
+The visual map runs from a git checkout (it also needs [Bun](https://bun.sh)):
 
 ```bash
 git clone https://github.com/zz-plant/ambit.git
 cd ambit
-./bootstrap.sh
-```
-
-Bootstrap finds your agent configuration (OpenCode or Claude Code — it checks for both automatically), builds the map, and prints a summary:
-
-```
-Installing...
-✓ 168 capabilities
-┌─ Toolchain ───────────────────────────────────────────┐
-│ 156/168 capabilities, 8 domains, 33 combos
-│ █████████░ ai-ml        22/26
-│ ████████░░ backend      6/8
-│ █████████░ infra        26/28
-└───────────────────────────────────────────────────────┘
-```
-
-To see the visual map in your browser (this part needs [Bun](https://bun.sh)):
-
-```bash
 ./bootstrap.sh web
 ```
 
-Prefer Homebrew? `brew install zz-plant/tap/ambit`, then `ambit seed`.
-
-Not sure yet? `./bootstrap.sh --dry-run` shows what it would find without changing anything.
+Not sure yet? `./bootstrap.sh --dry-run` shows what a checkout would find without changing anything.
 
 **Everything stays on your machine.** The map is a single SQLite file in your home directory. The local server only accepts connections from your own computer, and nothing is ever uploaded. Details in [Security](#security).
 
@@ -105,7 +106,7 @@ Any view is linkable — `?view=tree`, `?docs=open` — so you can send someone 
 Ambit ships an MCP server, so your agent can ask the same questions you can — *what infrastructure am I operating in, why is this task blocked, what's the missing piece we keep hitting?* Register it with Claude Code:
 
 ```bash
-claude mcp add ambit -- node --experimental-sqlite /path/to/ambit/src/mcp/server.ts
+claude mcp add ambit -- npx -y ambit-cli mcp
 ```
 
 Or in `opencode.json` (or any runtime that takes a stdio command):
@@ -113,9 +114,11 @@ Or in `opencode.json` (or any runtime that takes a stdio command):
 ```json
 { "mcp": { "ambit": {
     "type": "local",
-    "command": ["node", "--experimental-sqlite", "/path/to/ambit/src/mcp/server.ts"],
+    "command": ["npx", "-y", "ambit-cli", "mcp"],
     "enabled": true } } }
 ```
+
+With a global install or a git checkout, `ambit mcp` (or `node --experimental-sqlite /path/to/ambit/src/mcp/server.ts`) does the same.
 
 An agent can read the map, plan, and *propose* changes — but approving and applying a change always stays with you. The [deep dive](./docs/deep-dive.md#the-full-mcp-surface) lists every tool.
 

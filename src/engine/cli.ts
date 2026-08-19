@@ -293,11 +293,12 @@ async function main() {
       // map". Seeding only reads config files and writes the local graph, so
       // doing it unasked is safe; --json runs stay silent-but-seeded so
       // scripts get their answer instead of a lecture.
-      if (!process.argv.includes("--json")) {
+      const json = process.argv.includes("--json");
+      if (!json) {
         console.log(`${C.grey}First run — reading your agent config and building the graph…${C.reset}`);
       }
-      runSeed(db, mappingOverride);
-      if (!process.argv.includes("--json")) console.log("");
+      runSeed(db, mappingOverride, json);
+      if (!json) console.log("");
     }
   }
   if (!cmd || cmd === "help") {
