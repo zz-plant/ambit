@@ -20,3 +20,4 @@ dist/
 .wrangler/
 .playwright-mcp/
 
+dist-cli/

@@ -16,6 +16,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "start": "NODE_ENV=production bun run server",
     "server": "bun run server.ts",
+    "build:cli": "rm -rf dist-cli && tsc -p tsconfig.publish.json && cp src/engine/schema.sql src/engine/techtree.json dist-cli/engine/ && cp src/shared/concepts.json dist-cli/shared/",
+    "prepack": "npm run build:cli",
     "assets:check": "bun run scripts/check-assets.ts",
     "assets:generate": "bun run scripts/generate-scenes.ts"
   },
@@ -38,9 +40,7 @@
 },
 "files": [
   "cli.js",
-  "src/engine",
-  "src/mcp",
-  "src/shared",
+  "dist-cli",
   "plugins"
 ],
 "keywords": [

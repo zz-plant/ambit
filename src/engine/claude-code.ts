@@ -12,7 +12,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { authorityBlock } from "../../scripts/adapters/authority.ts";
+import { authorityBlock } from "../shared/authority.ts";
 
 const HOME = process.env.HOME || "/";
 
