@@ -62,7 +62,7 @@
       "term": "Verified",
       "short": "Proven to work, not just configured",
       "long": "Detection proves a name appears in a config file. Verification runs a declared read-only check and records the result, so a capability can be said to work rather than to exist. Reliability is the share of recorded runs that passed, which is why the history is kept: one success is a weaker claim than forty-seven of fifty. Checks execute, so they live in the repository and run only when asked — never on seed.",
-      "seen": "tt verify, tt evidence"
+      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one; a plain filled circle is configured but unproven"
     },
     {
       "key": "authority",

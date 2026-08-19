@@ -46,6 +46,28 @@ export function NodeDetailPanel() {
 
   const typeColor = TYPE_COLORS[item.type] || '#6a8aaa';
 
+  // The evidence strip: what this capability's check has demonstrated, if
+  // anything. Reached and verified are different claims, and the panel is
+  // where the difference gets its words.
+  const lifecycle = item.meta?.lifecycle as string | undefined;
+  const lastChecked = item.meta?.lastChecked as string | undefined;
+  const agoLabel = (ts?: string) => {
+    if (!ts) return undefined;
+    const ms = Date.now() - new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z').getTime();
+    if (!(ms >= 0)) return undefined;
+    const mins = Math.round(ms / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`;
+    return `${Math.round(mins / (60 * 24))}d ago`;
+  };
+  const evidence =
+    item.status !== 'built' || !lifecycle ? undefined :
+    lifecycle === 'reliable' ? { color: 'var(--ok)', text: `✓ Check passing consistently${lastChecked ? ` · last run ${agoLabel(lastChecked)}` : ''}` } :
+    lifecycle === 'verified' ? { color: 'var(--ok)', text: `✓ Check passed${lastChecked ? ` ${agoLabel(lastChecked)}` : ''}` } :
+    lifecycle === 'degraded' || lifecycle === 'broken' ? { color: 'var(--error)', text: `! Check failing${lastChecked ? ` · last run ${agoLabel(lastChecked)}` : ''}` } :
+    lifecycle === 'configured' ? { color: 'var(--text-muted)', text: 'Configured — never verified. Nothing has demonstrated this works.' } :
+    undefined;
+
   const connCount = connections.filter(c => c.from === item.id || c.to === item.id).length;
   const degrees = items.map(i => connections.filter(c => c.from === i.id || c.to === i.id).length);
   const sortedByDegree = [...items].sort((a, b) => {
@@ -94,6 +116,12 @@ export function NodeDetailPanel() {
         </div>
         <button className="sp-close" onClick={() => selectItem(null)}>✕</button>
       </div>
+
+      {evidence && (
+        <div style={{ padding: '6px 8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px', fontSize: '11px', color: evidence.color }}>
+          {evidence.text}
+        </div>
+      )}
 
       {item.type === 'mcp-server' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px' }}>
@@ -201,7 +229,7 @@ export function NodeDetailPanel() {
       {Object.keys(item.meta).length > 0 && (
         <div className="sp-attrs" style={{ marginTop: '8px' }}>
           <div className="sp-section-label">Details</div>
-          {Object.entries(item.meta).map(([k, v]) => (
+          {Object.entries(item.meta).filter(([k]) => k !== 'lifecycle' && k !== 'lastChecked').map(([k, v]) => (
             <div key={k} className="sp-attr-row">
               <span className="sp-attr-key">{metaKeyLabel(k)}</span>
               <span className="sp-attr-val" title={String(v)}>{String(v)}</span>

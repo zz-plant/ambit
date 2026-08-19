@@ -153,6 +153,65 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   where             where the graph is stored
   help [term]       this list, or one concept explained`;
 
+/** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
+function ago(ts: string | null | undefined): string | undefined {
+  if (!ts) return undefined;
+  const ms = Date.now() - new Date(ts.includes("T") ? ts : ts.replace(" ", "T") + "Z").getTime();
+  if (!(ms >= 0)) return undefined;
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`;
+  return `${Math.round(mins / (60 * 24))}d ago`;
+}
+
+/**
+ * What the graph can prove versus what it merely lists.
+ *
+ * Reached capabilities split by the worth of their evidence: proven (check
+ * passed), unproven (configured, never checked), failing (check now fails).
+ * The unproven-with-a-declared-check set is named, because it is the one a
+ * single command turns into evidence — and an inventory that cannot say
+ * "installed is not working" is the failure this project exists to prevent.
+ */
+function evidenceReport(db: any) {
+  // Only kind='capability' carries a derived lifecycle — providers and
+  // resources are the things supplying capabilities, not claims to verify.
+  const rows = db.prepare(
+    `SELECT lifecycle, COUNT(*) AS n FROM capabilities
+     WHERE kind = 'capability' AND state IN ('unlocked','active') GROUP BY lifecycle`
+  ).all();
+  const count = (...ls: string[]) =>
+    rows.filter((r: any) => ls.includes(r.lifecycle)).reduce((s: number, r: any) => s + r.n, 0);
+
+  let checkable: string[] = [];
+  try {
+    const tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8"));
+    const withCheck = (tree.nodes || []).filter((n: any) => n.verify?.command).map((n: any) => `combo:${n.id}`);
+    if (withCheck.length) {
+      const placeholders = withCheck.map(() => "?").join(",");
+      checkable = db.prepare(
+        `SELECT name FROM capabilities WHERE id IN (${placeholders})
+         AND state IN ('unlocked','active') AND lifecycle = 'configured' ORDER BY name`
+      ).all(...withCheck).map((r: any) => r.name);
+    }
+  } catch { /* no curated model, nothing checkable */ }
+
+  const last = db.prepare(
+    "SELECT MAX(timestamp) AS t FROM session_learning WHERE action IN ('verified','failed')"
+  ).get();
+
+  return {
+    proven: count("verified", "reliable"),
+    unproven: count("configured"),
+    failing: count("degraded", "broken"),
+    last_check: ago(last?.t) || "never",
+    provable_now: checkable.slice(0, 8),
+    note: checkable.length
+      ? `configured is not working — ambit verify would turn ${checkable.length} of the unproven into evidence`
+      : undefined,
+  };
+}
+
 // The report `status` composes. One surface for "how are we doing", so the
 // person does not have to learn six commands to answer one question.
 function statusReport(db: any) {
@@ -179,6 +238,9 @@ function statusReport(db: any) {
     verified: g.verified,
     failing: g.failing,
     actions: actions?.total ? { reached: actions.reached, total: actions.total } : undefined,
+    // An array of one, not an object: the generic renderer prints nested rows
+    // and skips nested objects, and this block must reach the reader.
+    evidence: [evidenceReport(db)],
     domains,
     degraded: degraded.length ? degraded : undefined,
     spofs: singlePointsOfFailure(db),
