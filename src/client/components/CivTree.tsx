@@ -192,7 +192,12 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     tabIndex={0}
                     role="button"
                     aria-pressed={selected}
-                    aria-label={`${item.name}, ${item.type}, ${item.status === 'built' ? 'reached' : 'not reached'}${item.description ? `. ${item.description}` : ''}`}
+                    aria-label={`${item.name}, ${item.type}, ${item.status === 'built' ? 'reached' : 'not reached'}${
+                      item.status !== 'built' ? '' :
+                      ['verified','reliable'].includes(item.meta?.lifecycle as string) ? ', check passing' :
+                      ['degraded','broken'].includes(item.meta?.lifecycle as string) ? ', check failing' :
+                      item.meta?.lifecycle === 'configured' ? ', not yet verified' : ''
+                    }${item.description ? `. ${item.description}` : ''}`}
                     onClick={() => onSelect(selected ? null : item.id)}
                     onKeyDown={e => {
                       if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -228,6 +233,23 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     <circle r={NODE_R} fill={reached ? color : '#f5e6c8'} stroke={next ? '#1f7a8c' : sc}
                       strokeWidth={next ? 2.5 : sw} opacity={0.9}/>
                     <text y={3} textAnchor="middle" fill={dimmed ? '#8b7355' : '#faebd7'} fontSize={15} fontWeight={700}>{sym}</text>
+
+                    {/* Evidence badge. A check mark means a declared check passed;
+                        an exclamation means it now fails. A reached node with
+                        neither is configured only — the map must not let
+                        "installed" read as "working". */}
+                    {reached && !dimmed && ['verified','reliable'].includes(item.meta?.lifecycle as string) && (
+                      <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                        <circle r={7} fill="#2e7d32" stroke="#faebd7" strokeWidth={1.5}/>
+                        <text y={3.5} textAnchor="middle" fill="#faebd7" fontSize={10} fontWeight={700}>✓</text>
+                      </g>
+                    )}
+                    {reached && !dimmed && ['degraded','broken'].includes(item.meta?.lifecycle as string) && (
+                      <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                        <circle r={7} fill="#c62828" stroke="#faebd7" strokeWidth={1.5}/>
+                        <text y={3.5} textAnchor="middle" fill="#faebd7" fontSize={10} fontWeight={700}>!</text>
+                      </g>
+                    )}
                     <text y={NODE_R + 18} textAnchor="middle" fill={dimmed ? '#6b5b3a' : '#4a3728'} fontSize={12} fontWeight={500}>{label}</text>
                   </g>
                 );
@@ -308,6 +330,8 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             {color:'#cd853f',sym:'◆',label:'Agent'},
             {color:'#6b8e23',sym:'◇',label:'Skill'},
             {color:'#b87333',sym:'●',label:'Combo'},
+            {color:'#2e7d32',sym:'✓',label:'Check passing'},
+            {color:'#c62828',sym:'!',label:'Check failing'},
             {stroke:'#8b6914',style:'solid',label:'Required'},
             {stroke:'#b8a060',style:'dashed',label:'Optional'},
           ].map((l,i)=>{

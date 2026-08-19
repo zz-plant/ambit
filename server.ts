@@ -622,7 +622,7 @@ const server = Bun.serve({
         // Actions a *person* supplies stay: there are few of them, and they are
         // the only thing connecting a human node to the rest of the graph.
         const caps = graph.query(
-          `SELECT id, name, domain, description, category, state, unlock_cost_setup
+          `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle
            FROM capabilities c WHERE c.kind != 'action' OR NOT EXISTS (
              SELECT 1 FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
              WHERE d.to_capability = c.id AND d.kind = 'provides' AND p.kind = 'capability'
@@ -642,6 +642,16 @@ const server = Bun.serve({
         } catch { /* tech tree optional */ }
         const eraById = new Map<string, number>(
           (tree.nodes || []).map((n: any) => [`combo:${n.id}`, n.era])
+        );
+
+        // When each capability's check last ran, and how it went — the map
+        // draws the difference between proven and merely configured, so it
+        // needs the evidence beside the structure.
+        const lastEvidence = new Map<string, { at: string; passed: boolean }>(
+          (graph.query(
+            `SELECT capability_id, action, MAX(timestamp) AS at FROM session_learning
+             WHERE action IN ('verified','failed') GROUP BY capability_id`
+          ).all() as any[]).map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
         );
 
         const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
@@ -672,6 +682,8 @@ const server = Bun.serve({
             era: eraById.get(c.id),
             eraName: eraById.has(c.id) ? tree.eras?.[String(eraById.get(c.id))] : undefined,
             next: isNext(c.id, c.state),
+            lifecycle: c.lifecycle,
+            lastChecked: lastEvidence.get(c.id)?.at,
           },
         }));
         const connections = deps.map(d => ({
