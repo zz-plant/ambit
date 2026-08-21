@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use Ambit in research or reference it in a standard, please cite it."
+title: "Ambit: a capability graph for agent infrastructure"
+abstract: >-
+  Ambit discovers the capabilities implicit in an agent stack's configuration and
+  models them as a graph of goals, capabilities, providers, resources, authority,
+  and evidence. It treats what a system can do and what it may do as separate
+  objects, records what a system became able to do over time, and makes human
+  approval a dependency a plan cannot route around. A capability is not something
+  configured; it is an action the system has evidence it can perform.
+version: 0.4.0
+date-released: 2026-08-13
+authors:
+  - given-names: Kanav
+    family-names: Jain
+    orcid: "https://orcid.org/0009-0009-5202-0920"
+repository-code: "https://github.com/zz-plant/ambit"
+url: "https://zz-plant.github.io/ambit/"
+license: MIT
+type: software
+keywords:
+  - capability graph
+  - agent infrastructure
+  - authority boundaries
+  - model context protocol
+  - dependency modeling
