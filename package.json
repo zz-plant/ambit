@@ -17,6 +17,7 @@
     "start": "NODE_ENV=production bun run server",
     "server": "bun run server.ts",
     "build:cli": "rm -rf dist-cli && tsc -p tsconfig.publish.json && cp src/engine/schema.sql src/engine/techtree.json dist-cli/engine/ && cp src/shared/concepts.json dist-cli/shared/",
+    "prepublishOnly": "npm run build:cli",
     "prepack": "npm run build:cli",
     "assets:check": "bun run scripts/check-assets.ts",
     "assets:generate": "bun run scripts/generate-scenes.ts"
@@ -36,28 +37,32 @@
   },
   "license": "MIT",
   "bin": {
-  "ambit": "./cli.js"
-},
-"files": [
-  "cli.js",
-  "dist-cli",
-  "plugins"
-],
-"keywords": [
-  "capability-graph",
-  "agent-infrastructure",
-  "mcp",
-  "mcp-server",
-  "local-llm",
-  "dependency-graph",
-  "planning",
-  "developer-tools"
-],
-"repository": {
-  "type": "git",
-  "url": "https://github.com/zz-plant/ambit.git"
-},
-"publishConfig": {
-  "access": "public"
-}
+    "ambit": "./cli.js"
+  },
+  "files": [
+    "cli.js",
+    "dist-cli",
+    "plugins"
+  ],
+  "keywords": [
+    "capability-graph",
+    "agent-infrastructure",
+    "mcp",
+    "mcp-server",
+    "local-llm",
+    "dependency-graph",
+    "planning",
+    "developer-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zz-plant/ambit.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/zz-plant/ambit#readme",
+  "bugs": {
+    "url": "https://github.com/zz-plant/ambit/issues"
+  }
 }
