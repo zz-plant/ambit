@@ -31,10 +31,10 @@ Ambit reads your agent configuration and turns it into a map. The map answers th
 
 ## Get started
 
-One command, no install — you need [Node 22.18](https://nodejs.org) or newer, nothing else:
+One command via [Homebrew](https://brew.sh):
 
 ```bash
-npx ambit-cli
+brew install zz-plant/tap/ambit && ambit
 ```
 
 On first run it finds your agent configuration (OpenCode or Claude Code — it checks for both automatically), builds the map, and prints where you stand:
@@ -51,7 +51,7 @@ First run — reading your agent config and building the graph…
     infra     26/28
 ```
 
-Every other command works the same way: `npx ambit-cli goal <thing>`, `npx ambit-cli impact <id>`. To keep the command around as plain `ambit`, install it once with `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit`.
+Every other command works the same way: `ambit goal <thing>`, `ambit impact <id>`.
 
 The visual map runs from a git checkout (it also needs [Bun](https://bun.sh)):
 
