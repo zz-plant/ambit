@@ -451,6 +451,66 @@ test('skills symlinked into a runtime directory are discovered', () => {
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'skill:deploying'").length).toBe(1);
 });
 
+test('seed combines OpenCode, Claude Code, Cursor, and Windsurf configs', () => {
+  const home = join(dir, 'home');
+  const openCodeConfig = join(home, '.config', 'opencode', 'opencode.json');
+  const claudeConfig = join(home, '.claude.json');
+  const cursorConfig = join(home, '.cursor', 'mcp.json');
+  const windsurfConfig = join(home, '.codeium', 'windsurf', 'mcp_config.json');
+  mkdirSync(join(home, '.config', 'opencode'), { recursive: true });
+  mkdirSync(join(home, '.cursor'), { recursive: true });
+  mkdirSync(join(home, '.codeium', 'windsurf'), { recursive: true });
+  writeFileSync(openCodeConfig, JSON.stringify({
+    mcp: { filesystem: { type: 'local', command: ['filesystem-mcp'] } },
+  }));
+  writeFileSync(claudeConfig, JSON.stringify({
+    mcpServers: { browser: { command: 'browser-mcp' } },
+  }));
+  writeFileSync(cursorConfig, JSON.stringify({
+    mcpServers: {
+      github: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+    },
+  }));
+  writeFileSync(windsurfConfig, JSON.stringify({
+    mcpServers: {
+      linear: { serverUrl: 'https://mcp.linear.app/sse' },
+    },
+  }));
+
+  const dbPath = join(dir, 'auto-discovery.db');
+  const env = { ...process.env } as Record<string, string>;
+  delete env.OPENCODE_CONFIG;
+  delete env.CONFIG_MAPPING;
+  delete env.AMBIT_RUNTIME;
+  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed', '--json'], {
+    env: { ...env, HOME: home, TOOLCHAIN_DB: dbPath },
+    stdio: 'ignore',
+  });
+
+  const db = new Database(dbPath);
+  const capabilities = rows(db, "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf')");
+  expect(capabilities.map(row => row.id).sort()).toEqual([
+    'mcp:browser',
+    'mcp:filesystem',
+    'mcp:github',
+    'mcp:linear',
+    'runtime:claude-code',
+    'runtime:cursor',
+    'runtime:opencode',
+    'runtime:windsurf',
+  ]);
+  const contributions = rows(db, `
+    SELECT from_capability f, to_capability t
+    FROM dependencies
+    WHERE from_capability IN ('runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf')
+  `);
+  expect(contributions).toContainEqual({ f: 'runtime:opencode', t: 'mcp:filesystem' });
+  expect(contributions).toContainEqual({ f: 'runtime:claude-code', t: 'mcp:browser' });
+  expect(contributions).toContainEqual({ f: 'runtime:cursor', t: 'mcp:github' });
+  expect(contributions).toContainEqual({ f: 'runtime:windsurf', t: 'mcp:linear' });
+  db.close();
+});
+
 // ── Verification, authority, planning ───────────────────────────────────────
 
 test('verification records evidence rather than trusting configuration', () => {

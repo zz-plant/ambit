@@ -64,7 +64,7 @@ if (cmd === "--help" || cmd === "help") {
   with dev dependencies an installed copy does not carry.${R}
 
   ${D}ambit mcp runs the MCP server, exposing the same questions to an agent
-  session: claude mcp add ambit -- npx -y ambit-cli mcp${R}
+  session: claude mcp add ambit -- ambit mcp${R}
 `);
   process.exit(0);
 }
