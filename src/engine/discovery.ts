@@ -45,7 +45,7 @@ function parseMapping(mappingStr?: string): Record<string, any> {
   };
 }
 
-function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
+function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record = true) {
   const cp = configPath || CONFIG_DEFAULT;
   // A missing config used to abort the seed entirely, which left the database
   // with no tables at all — every first run without OpenCode installed ended in
@@ -111,7 +111,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string) {
   // After the graph is complete and before the frontier is recorded, because
   // lifecycle is derived from both providers and evidence.
   deriveLifecycles(db);
-  recordFrontier(db);
+  if (record) recordFrontier(db);
 
   return count;
 }

@@ -26,7 +26,7 @@ CI also runs `./bootstrap.sh` against a machine with no agent config, because th
 
 **Capability model.** The seven eras and their dependencies are curated, and they encode opinions that deserve argument — whether a capability is real, what it genuinely requires, which era it belongs to. Open a capability-model issue rather than a PR if the change is a judgement call.
 
-**Runtime adapters.** `scripts/adapters/` maps a runtime's configuration onto the graph. OpenCode and Hermes exist. Every additional runtime makes the shared model more useful and the single-runtime assumption weaker, which is the direction the project is going.
+**Runtime adapters.** Runtime readers map agent configuration onto the graph. Ambit discovers OpenCode, Claude Code, Cursor, and Windsurf directly; `scripts/adapters/` contains deeper runtime-specific adapters such as Hermes telemetry. Every additional runtime makes the shared model more useful and the single-runtime assumption weaker, which is the direction the project is going.
 
 **Detection that is honest about itself.** A capability inferred from a filename is weaker evidence than one with a declared check that passes. Contributions that turn the first kind into the second are the most valuable ones here.
 

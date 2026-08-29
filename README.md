@@ -2,7 +2,7 @@
 
 # Ambit
 
-**The capability graph, attention ledger, and tech tree for AI agent environments.**
+**The meta-MCP capability graph for AI agent environments.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
@@ -15,6 +15,10 @@
 <img src="docs/assets/capability-graph-demo.gif" alt="The Ambit capability map updating live: unlocking nodes, calculating reachable frontiers, and handling approvals" width="920">
 <sub><strong>Live Frontier:</strong> Adding a provider unlocks compound capabilities across your stack, surfaces reachable next steps, and streams verification & approval receipts.</sub>
 
+<br><br>
+
+**[Open the zero-install demo →](https://zz-plant.github.io/ambit/?demo=1)**
+
 </div>
 
 ---
@@ -25,7 +29,7 @@ If you use AI agents, your setup is fragmented across dozens of pieces: LLM prov
 
 **What they all add up to — what your human + agent system can actually *do* — is invisible.**
 
-Most frameworks treat tools as a flat array of function definitions dumped into a prompt. Ambit models your entire agent environment as a **formal capability tech tree**, answering questions no single config or tool list can:
+Ambit is the **meta-MCP server** for that sprawl: the MCP server that maps, audits, and plans across your other MCP servers and agent infrastructure. It models the environment as a formal capability tech tree, answering questions no single config or tool list can:
 
 1. **What works right now?** What is reached, what is broken, and what is one dependency away?
 2. **What breaks downstream** if a model, tool, or credential expires?
@@ -44,7 +48,7 @@ Most frameworks treat tools as a flat array of function definitions dumped into 
 ```mermaid
 flowchart LR
     subgraph Discovery["1. Host Discovery"]
-        CFG["OpenCode / Claude Code Configs"]
+        CFG["OpenCode / Claude Code / Cursor / Windsurf"]
         SKILLS["Agent Skills (~/.agents/skills)"]
         INFRA["Infrastructure & Device Manifest"]
     end
@@ -186,7 +190,7 @@ When an autonomous agent running in Claude Code or OpenCode proposes an environm
 brew install zz-plant/tap/ambit && ambit
 ```
 
-On first run, Ambit automatically discovers your existing agent configurations (OpenCode, Claude Code, `~/.agents/skills`), initializes the local SQLite database, and reports your frontier:
+On first run, Ambit automatically discovers OpenCode, Claude Code, Cursor, Windsurf, and `~/.agents/skills`, initializes the local SQLite database, and reports your frontier. Cursor and Windsurf MCP servers are read from their standard config paths and remain attributed to the runtime that supplied them.
 
 ```console
 First run — reading your agent config and building the graph…
@@ -218,7 +222,7 @@ Register Ambit as an MCP server so your agent can inspect its own toolchain and 
 
 ### Claude Code
 ```bash
-claude mcp add ambit -- npx -y ambit-cli mcp
+claude mcp add ambit -- ambit mcp
 ```
 
 ### OpenCode (`~/.config/opencode/opencode.json`)
@@ -227,7 +231,7 @@ claude mcp add ambit -- npx -y ambit-cli mcp
   "mcp": {
     "ambit": {
       "type": "local",
-      "command": ["npx", "-y", "ambit-cli", "mcp"],
+      "command": ["ambit", "mcp"],
       "enabled": true
     }
   }
@@ -329,10 +333,10 @@ Because Ambit inspects developer toolchains and configuration files, security in
 * [The Affordance Frontier](./docs/affordance-frontier.md) — Theoretical foundation: capability as a property of human-machine systems.
 * [Roadmap](./ROADMAP.md) — Future development milestones.
 * [Security Guide](./SECURITY.md) & [Agent Invariants](./AGENTS.md) — Security policies and rules.
+* [Launch Kit](./docs/launch.md) — Listing copy, repository topics, Show HN draft, and the social-preview asset.
 
 ---
 
 ## License
 
 [MIT](./LICENSE) © Ambit Contributors
-

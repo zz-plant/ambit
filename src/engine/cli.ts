@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, statSync, writeFileSync } from "fs";
+import { readFileSync, existsSync, rmSync, statSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { resolveDbPath } from "../shared/db-path.ts";
@@ -6,6 +6,7 @@ import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
 import { getDb, migrate } from "./db.ts";
 import { seedFromConfig } from "./discovery.ts";
 import { readClaudeCode, claudeCodeSeedInput } from "./claude-code.ts";
+import { discoverMcpClients } from "./mcp-clients.ts";
 import {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, nearMissCombos, singlePointsOfFailure, exportGraph,
@@ -292,29 +293,52 @@ function explain(wanted: string): void {
 function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   const say = quiet ? (_: string) => {} : console.log;
   const cfg = CONFIG_DEFAULT;
-  // No opencode.json and nobody named a config or mapping explicitly —
-  // check for a Claude Code install before falling back to the curated
-  // model only. Claude Code's user base dwarfs OpenCode's, and reading
-  // ~/.claude.json for free is the difference between the first seed
-  // showing nothing of the user's and showing their actual stack.
-  let claudeCodeFallback = false;
-  if (!existsSync(cfg) && !process.env.OPENCODE_CONFIG && !mappingOverride) {
+  const explicit = Boolean(process.env.OPENCODE_CONFIG || mappingOverride);
+  const sources: Array<{ runtime: string; label: string; path: string; mapping?: string; temporary?: boolean }> = [];
+
+  if (existsSync(cfg)) {
+    sources.push({ runtime: process.env.AMBIT_RUNTIME || "opencode", label: "OpenCode", path: cfg, mapping: mappingOverride });
+  }
+  if (!explicit) {
     const fragment = readClaudeCode();
     if (fragment) {
       const { config, mapping } = claudeCodeSeedInput(fragment);
       const tmp = join(tmpdir(), `ambit-claude-code-seed-${process.pid}.json`);
       writeFileSync(tmp, JSON.stringify(config));
-      process.env.AMBIT_RUNTIME = "claude-code";
-      seedFromConfig(db, tmp, JSON.stringify(mapping));
-      claudeCodeFallback = true;
+      sources.push({ runtime: "claude-code", label: "Claude Code", path: tmp, mapping: JSON.stringify(mapping), temporary: true });
     }
   }
-  if (!claudeCodeFallback) seedFromConfig(db, undefined, mappingOverride);
+
+  if (!explicit) {
+    for (const client of discoverMcpClients()) {
+      const tmp = join(tmpdir(), `ambit-${client.runtime}-seed-${process.pid}.json`);
+      writeFileSync(tmp, JSON.stringify(client.config));
+      sources.push({ runtime: client.runtime, label: client.label, path: tmp, mapping: JSON.stringify(client.mapping), temporary: true });
+    }
+  }
+
+  const previousRuntime = process.env.AMBIT_RUNTIME;
+  if (sources.length === 0) {
+    seedFromConfig(db, undefined, mappingOverride);
+  } else {
+    sources.forEach((source, index) => {
+      process.env.AMBIT_RUNTIME = source.runtime;
+      try {
+        seedFromConfig(db, source.path, source.mapping, index === sources.length - 1);
+      } finally {
+        if (source.temporary) rmSync(source.path, { force: true });
+      }
+    });
+  }
+  if (previousRuntime === undefined) delete process.env.AMBIT_RUNTIME;
+  else process.env.AMBIT_RUNTIME = previousRuntime;
+
   const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();
   say(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities`);
-  if (claudeCodeFallback) {
-    say(`${C.grey}  Seeded from Claude Code (~/.claude.json, ~/.claude) — no opencode.json found.${C.reset}`);
-  } else if (!existsSync(cfg)) {
+  for (const source of sources) {
+    say(`${C.grey}  Seeded from ${source.label}.${C.reset}`);
+  }
+  if (sources.length === 0) {
     // Say so rather than reporting a curated-model-only graph as if it had
     // read the environment. Silence here reads as "your stack is empty".
     say(`${C.yellow}!${C.reset} No agent config at ${C.grey}${cfg}${C.reset}`);
@@ -349,7 +373,7 @@ async function main() {
   if (cmd && !ledgerCommands.has(cmd) && cmd !== "seed" && cmd !== "where" && cmd !== "help") {
     const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
     if (!seeded?.n) {
-      // Seed rather than instruct. `npx ambit-cli` and a fresh Homebrew
+      // Seed rather than instruct. A fresh Homebrew install
       // install both land here, and "go run another command first" is the
       // wrong first impression for a tool whose pitch is "one command, your
       // map". Seeding only reads config files and writes the local graph, so
@@ -519,37 +543,7 @@ async function main() {
       emit(recordFailure(db, arg, positional[1], positional[2]));
       break;
     case "seed": {
-      const cfg = CONFIG_DEFAULT;
-      // No opencode.json and nobody named a config or mapping explicitly —
-      // check for a Claude Code install before falling back to the curated
-      // model only. Claude Code's user base dwarfs OpenCode's, and reading
-      // ~/.claude.json for free is the difference between the first seed
-      // showing nothing of the user's and showing their actual stack.
-      let claudeCodeFallback = false;
-      if (!existsSync(cfg) && !process.env.OPENCODE_CONFIG && !mappingOverride) {
-        const fragment = readClaudeCode();
-        if (fragment) {
-          const { config, mapping } = claudeCodeSeedInput(fragment);
-          const tmp = join(tmpdir(), `ambit-claude-code-seed-${process.pid}.json`);
-          writeFileSync(tmp, JSON.stringify(config));
-          process.env.AMBIT_RUNTIME = "claude-code";
-          seedFromConfig(db, tmp, JSON.stringify(mapping));
-          claudeCodeFallback = true;
-        }
-      }
-      if (!claudeCodeFallback) seedFromConfig(db, undefined, mappingOverride);
-      const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();
-      console.log(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities`);
-      if (claudeCodeFallback) {
-        console.log(`${C.grey}  Seeded from Claude Code (~/.claude.json, ~/.claude) — no opencode.json found.${C.reset}`);
-      } else if (!existsSync(cfg)) {
-        // Say so rather than reporting a curated-model-only graph as if it had
-        // read the environment. Silence here reads as "your stack is empty".
-        console.log(`${C.yellow}!${C.reset} No agent config at ${C.grey}${cfg}${C.reset}`);
-        console.log(`${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`);
-        console.log(`${C.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${C.reset}`);
-        console.log(`${C.grey}  Another format: see "Other configurations" in the README (CONFIG_MAPPING).${C.reset}`);
-      }
+      runSeed(db, mappingOverride, process.argv.includes("--json"));
       break;
     }
     // Where the graph lives is not obvious once the CLI is installed rather
