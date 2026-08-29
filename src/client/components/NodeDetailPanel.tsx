@@ -123,6 +123,49 @@ export function NodeDetailPanel() {
         </div>
       )}
 
+      {/* Simulation Controls: Blast Radius & What-If Frontier Simulator */}
+      {(() => {
+        const simulationMode = useToolchainStore.getState().simulationMode;
+        const simulatedNodeId = useToolchainStore.getState().simulatedNodeId;
+        const startOutage = useToolchainStore.getState().startOutageSimulation;
+        const startAcquisition = useToolchainStore.getState().startAcquisitionSimulation;
+        const clearSim = useToolchainStore.getState().clearSimulation;
+        const isSimulated = simulatedNodeId === item.id;
+
+        return (
+          <div style={{ margin: '8px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {isSimulated ? (
+              <button
+                type="button"
+                className="sp-action-btn"
+                style={{ width: '100%', background: 'var(--accent, #e76f51)', color: '#fff', fontWeight: 600 }}
+                onClick={clearSim}
+              >
+                ✕ Exit Simulation
+              </button>
+            ) : item.status === 'built' ? (
+              <button
+                type="button"
+                className="sp-action-btn"
+                style={{ width: '100%', border: '1px solid var(--error, #e63946)', color: 'var(--error, #e63946)', fontSize: '11px' }}
+                onClick={() => startOutage(item.id)}
+              >
+                ⚡ Simulate Outage (Blast Radius)
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="sp-action-btn"
+                style={{ width: '100%', border: '1px solid var(--ok, #2a9d8f)', color: 'var(--ok, #2a9d8f)', fontSize: '11px' }}
+                onClick={() => startAcquisition(item.id)}
+              >
+                ✨ Simulate Unlocking (What-If)
+              </button>
+            )}
+          </div>
+        );
+      })()}
+
       {item.type === 'mcp-server' && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px' }}>
           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{item.status === 'built' ? 'Turned on' : 'Turned off'}</span>

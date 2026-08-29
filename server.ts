@@ -547,6 +547,51 @@ const server = Bun.serve({
       }
     }
 
+    // GET /api/proposals — list proposals for the approval UI
+    if (url.pathname === '/api/proposals' && req.method === 'GET') {
+      if (!existsSync(GRAPH_DB_PATH)) {
+        return Response.json({ proposals: [] }, { headers });
+      }
+      const graph = new Database(GRAPH_DB_PATH);
+      try {
+        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        let proposals: any[] = [];
+        try {
+          proposals = graph.query("SELECT * FROM proposals ORDER BY created_at DESC LIMIT 50").all() as any[];
+        } catch { /* table may be empty or uninitialized */ }
+        return Response.json({ proposals }, { headers });
+      } catch (e: any) {
+        return Response.json({ error: e?.message || 'failed to load proposals', proposals: [] }, { status: 500, headers });
+      } finally {
+        graph.close();
+      }
+    }
+
+    // GET /api/attention — attention interventions & friction for the heatmap lens
+    if (url.pathname === '/api/attention' && req.method === 'GET') {
+      if (!existsSync(GRAPH_DB_PATH)) {
+        return Response.json({ interventions: [] }, { headers });
+      }
+      const graph = new Database(GRAPH_DB_PATH);
+      try {
+        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        let interventions: any[] = [];
+        try {
+          interventions = graph.query(`
+            SELECT capability_id, COUNT(*) as count, MAX(timestamp) as last_seen
+            FROM session_learning
+            WHERE action IN ('intervene', 'confirm', 'failed', 'blocked', 'approved')
+            GROUP BY capability_id
+          `).all() as any[];
+        } catch { /* session_learning may be empty */ }
+        return Response.json({ interventions }, { headers });
+      } catch (e: any) {
+        return Response.json({ interventions: [] }, { headers });
+      } finally {
+        graph.close();
+      }
+    }
+
     // POST /api/proposals/:id/approve — the browser approval broker.
     //
     // Approves a proposal and mints the signed artifact the executor verifies.

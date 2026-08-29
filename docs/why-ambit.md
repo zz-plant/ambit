@@ -47,10 +47,18 @@ Then show the user the capability delta, compare ways to close it, help build th
 
 The result is a different kind of compounding:
 
+```mermaid
+flowchart LR
+    W["Real Work"] --> F["Observed Friction"]
+    F --> D["Structural Deficit Identified"]
+    D --> A["Targeted Capability Acquisition"]
+    A --> V["Automated Verification"]
+    V --> S["Larger Future Action Space"]
+    S -.->|"Compounds Future Productivity"| W
 ```
-work → friction → structural deficit → capability acquisition
-     → verification → larger future action space
-```
+
+> [!TIP]
+> This cycle shifts the dynamic from *repeated manual workarounds* to *durable infrastructure accumulation*. Every resolved deficit permanently expands the agent's autonomous frontier.
 
 ## Accounting, and then a ledger
 

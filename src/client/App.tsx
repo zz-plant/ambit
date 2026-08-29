@@ -4,6 +4,7 @@ import NodeDetailPanel from './components/NodeDetailPanel';
 
 import CapabilityListPanel from './components/CapabilityListPanel';
 import DocsModal from './components/DocsModal';
+import ApprovalModal from './components/ApprovalModal';
 import { useToolchainStore, backendAvailable, TREE_FILTERS } from './store/toolchainStore';
 import DemoDashboard from './components/DemoDashboard';
 import { demoGraphExport } from './utils/demoSnapshot';
@@ -195,11 +196,18 @@ export default function App() {
 
   const showUplinkModal = useToolchainStore(s => s.showUplinkModal);
   const setShowUplinkModal = useToolchainStore(s => s.setShowUplinkModal);
+  const showApprovalModal = useToolchainStore(s => s.showApprovalModal);
+  const setShowApprovalModal = useToolchainStore(s => s.setShowApprovalModal);
+  const proposals = useToolchainStore(s => s.proposals);
+  const loadProposals = useToolchainStore(s => s.loadProposals);
+  const loadAttentionData = useToolchainStore(s => s.loadAttentionData);
 
   const [showDocs, setShowDocs] = useState(() => new URLSearchParams(window.location.search).get('docs') === 'open');
   // ?demo=1 skips the LOAD DEMO click so a shared link opens already showing the graph.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('demo') === '1') seedDemo();
+    loadProposals();
+    loadAttentionData();
   }, []);
   // Shown once on first run, for real configs as well as the demo — it used to
   // fire only after LOAD DEMO, so the normal path taught nothing.
@@ -444,6 +452,22 @@ export default function App() {
       <div className="app-hud">
         <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle panel"> {leftOpen ? '◀' : '▶'} </button>
         <button className="app-hud-btn" onClick={() => { setShowDocs(true); dismissGuide(); }} style={{fontWeight:600,fontSize:12,letterSpacing:1}}>DOCS</button>
+        <button
+          className="app-hud-btn"
+          onClick={() => { setShowApprovalModal(true); loadProposals(); }}
+          style={{
+            fontWeight: 600,
+            fontSize: 11,
+            letterSpacing: 0.5,
+            padding: '0 8px',
+            background: proposals.some(p => p.status === 'draft') ? 'rgba(231, 111, 81, 0.2)' : undefined,
+            color: proposals.some(p => p.status === 'draft') ? '#e76f51' : undefined,
+            border: proposals.some(p => p.status === 'draft') ? '1px solid #e76f51' : undefined,
+          }}
+          title="Review and approve environment proposals from agents"
+        >
+          🛡️ PROPOSALS {proposals.filter(p => p.status === 'draft').length > 0 && `(${proposals.filter(p => p.status === 'draft').length})`}
+        </button>
         <button className="app-hud-btn" onClick={captureGraph} title="Save the current view as a PNG">📷 PNG</button>
         {demo && (
           <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
@@ -482,6 +506,8 @@ export default function App() {
       </div>
 
       <UplinkModal isOpen={showUplinkModal} onClose={() => setShowUplinkModal(false)} />
+
+      <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
 
       <DocsModal isOpen={showDocs} onClose={() => setShowDocs(false)} />
 

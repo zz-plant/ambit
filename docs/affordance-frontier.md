@@ -26,15 +26,15 @@ A(S) = A_digital ∪ A_cognitive ∪ A_physical ∪ A_social ∪ A_institutional
 
 These compose *across* boundaries, which is where the interesting cases live:
 
-```
-notice an opportunity      (cognitive)
-→ research it              (digital)
-→ obtain approval          (institutional)
-→ transfer funds           (economic)
-→ order hardware           (commercial)
-→ a robot installs it      (physical)
-→ new compute comes online (digital)
-→ future capacity rises    (cognitive)
+```mermaid
+flowchart LR
+    A["Notice Opportunity\n(Cognitive)"] --> B["Research Options\n(Digital)"]
+    B --> C["Obtain Approval\n(Institutional)"]
+    C --> D["Transfer Funds\n(Economic)"]
+    D --> E["Order Hardware\n(Commercial)"]
+    E --> F["Robot Installs Unit\n(Physical)"]
+    F --> G["Compute Online\n(Digital)"]
+    G --> H["Capacity Expands\n(Cognitive)"]
 ```
 
 That chain is not well described as "an AI using a tool." It is a self-extending sociotechnical system.
@@ -66,10 +66,16 @@ BCIs are harder, because they erode the boundary the model depends on.
 
 A person forms an intention; a decoder reads it; a model interprets it; a planner acts; an arm moves; feedback returns. Where is *pick up the cup*? Not in the unaided nervous system, the decoder, the model, the planner, or the arm. It exists in the closed loop.
 
-```
-intention → neural signal → decoder → interpretation
-   ↑                                        ↓
-sensory feedback ← environment ← actuator ← plan
+```mermaid
+flowchart LR
+    INT["1. Intention"] --> SIG["2. Neural Signal"]
+    SIG --> DEC["3. Decoder"]
+    DEC --> INTERP["4. Interpretation"]
+    INTERP --> PLAN["5. Planner"]
+    PLAN --> ACT["6. Actuator"]
+    ACT --> ENV["7. Environment"]
+    ENV --> FEED["8. Sensory Feedback"]
+    FEED -.->|"Closed Loop"| INT
 ```
 
 This forces a distinction Ambit should eventually make explicit:
