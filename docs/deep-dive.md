@@ -85,13 +85,23 @@ Ten capabilities declare a `contract.can` — the actions they confer — and ea
 
 Alongside `state`, each capability carries a **lifecycle** derived from its providers and its recorded evidence:
 
-```
-unknown → detected → configured → verified → reliable
-                                     ↓
-                                 degraded → broken
+```mermaid
+stateDiagram-v2
+    [*] --> unknown: Initial Scan
+    unknown --> detected: Config Matched
+    detected --> configured: Provider Ready
+    configured --> verified: Check Passes (verify command)
+    verified --> reliable: Repeated Success (>= 3 times)
+    
+    verified --> degraded: Check Fails
+    reliable --> degraded: Latency / Error Rate Spikes
+    degraded --> broken: Complete Check Failure
+    broken --> configured: Re-configured / Re-seeded
+    degraded --> verified: Re-verified Successfully
 ```
 
-The two are separate columns because reachable and working are different claims. A capability whose check has started failing reads as `broken` and stays in the frontier.
+> [!IMPORTANT]
+> `state` is structural (what is configured in files); `lifecycle` is empirical (what actually passes verification). A capability whose lifecycle is `degraded` or `broken` is strictly gated out of availability and cannot be used by planning or execution tools until re-verified.
 
 ## The full CLI surface
 
@@ -255,9 +265,38 @@ $ ambit rollback prop-msrsqzij
   removed: mcp.fetch          # git survives — the inverse reverses only this
 ```
 
-**Apply is the only thing that can spend an approval.** It refuses a proposal no person approved, any step without an inverse, and any step authority denies — every step is gated through `canExecute` (ALLOW / CONFIRM / DENY + governing grant + remaining budget), and the signed artifact must be present, unexpired, and matching the proposal as stored. **Apply only edits configuration, and cannot do otherwise.** A step carries a declarative patch or nothing; there is no field that holds a command. It backs up first, and if verification fails afterwards it rolls back automatically and says the change was reversed. A successful apply **re-seeds**, so the graph reflects the change immediately rather than on the next manual seed.
-
 Approval and apply stay off the MCP surface — an agent may draft, preview, and ask, but never approve or apply. Proposing more capability and granting more authority are different acts, and the artifact is what keeps them apart.
+
+## The Interactive Visual Canvas & Decision Lenses
+
+The Ambit frontend (`./bootstrap.sh web`) connects directly to the engine and `/api/events` to project graph theory and economics into an interactive operational surface:
+
+### 1. Multi-Hop Graph Simulation Engine
+The canvas provides real-time "what-if" modeling without touching host configuration:
+* **Outage & Blast Radius Simulation:** Traverses the full transitive downstream closure ($T \subseteq V$ where $v \in T$ if there exists a directed dependency path from root $R \to v$). Renders affected nodes in pulsing red and counts disabled downstream capabilities.
+* **Frontier Acquisition Simulation:** Evaluates all locked capabilities where the candidate node is a hard requisite. If all other hard requisites are satisfied, the node transitions into the simulated frontier in glowing emerald green.
+
+### 2. Four Operational Decision Lenses
+The visualizer includes a sticky lens switcher to project different dimensions of the environment:
+
+```mermaid
+flowchart TD
+    GRAPH["Unified SQLite Engine"] --> L1["1. Standard Tech Tree Lens\n(Chronological 7-Era Progression)"]
+    GRAPH --> L2["2. Attention Heatmap Lens\n(Intervention Frequency & Friction Cost)"]
+    GRAPH --> L3["3. Credential SPOF Lens\n(Shared Authentication & Blast Radius)"]
+    GRAPH --> L4["4. Physical Topology Lens\n(Host & Device Infrastructure Clusters)"]
+```
+
+* **Standard Tree Lens:** Groups capabilities by their chronological evolutionary era (Foundation $\to$ Model Access $\to$ Tool Use $\to$ Memory $\to$ Autonomy $\to$ Assurance $\to$ Sovereignty).
+* **Attention Heatmap Lens:** Reads `/api/attention` and colors nodes by developer cognitive friction. Nodes requiring frequent human confirmations glow amber/crimson with cost badges (`42× ($/mo)`).
+* **Credential SPOF Lens:** Highlights shared authentication tokens where revoking a single secret risks cascading failures across independent MCP servers.
+* **Physical Topology Lens:** Reorganizes capabilities by host machine (`Local Host`, `Physical Nodes`, `Cloud / Edge`) to diagnose network reachability and hardware-level failures.
+
+### 3. Web Approval Broker API Contracts
+The local server provides loopback endpoints for web-based governance:
+* `GET /api/proposals`: Retrieves active and historical change proposals.
+* `POST /api/proposals/:id/approve`: Mints an HMAC-signed approval token with configurable actor and TTL.
+* `GET /api/attention`: Aggregates human-in-the-loop interventions per capability from `session_learning`.
 
 ## The ledger
 
@@ -290,12 +329,20 @@ Without it, upgrading Ambit would read as a dozen capabilities acquired on a mac
 
 The graph half answers *what can this system do*. The loop that pays for it answers *where is the scarce resource going, and which durable fix is worth the next dollar or hour*:
 
+```mermaid
+flowchart TD
+    WORK["1. Real Work Happens\n(OpenCode / Claude Code Sessions)"] --> TELEM["2. Work Ledger Observes\n(Telemetry Adapter / Hook Bridge)"]
+    TELEM --> ATTN["3. Attention Accounting\n(Prices Human Interruptions @ $/hr)"]
+    ATTN --> OPP["4. Opportunities Engine\n(Ranks High-Payback Tool Investments)"]
+    OPP --> PROP["5. Structured Proposal Draft\n(Propose Capability + Cost Matrix)"]
+    PROP --> APP["6. Signed HMAC Approval\n(Human Approves with Expiry Grant)"]
+    APP --> APPLY["7. Apply & Verification Gate\n(Applies Patch + Runs Test Contracts)"]
+    APPLY --> ROI["8. Realized ROI Written Back\n(Validates Forecast vs Actual Savings)"]
+    ROI -.->|"Continuous Evidence Feedback"| ATTN
 ```
-real work happens → the ledger observes → attention prices the human burden
-→ opportunities ranks the fixes → propose carries the observed case
-→ approval mints a signed artifact → apply enforces and verifies
-→ roi measures before/after and writes the observation back
-```
+
+> [!NOTE]
+> The loop distinguishes **clerical & repetitive friction** (which is reducible and should be automated) from **judgment & creative oversight** (which are permanent human keepers).
 
 - `ambit attention` prices the human half of the ledger and, critically, **classifies agency**: clerical, exception, physical and authority-as-repeated-gate are reducible — *the human is the duct* — while judgment and knowledge are keepers, never proposed for removal however often they recur.
 - `ambit economics` is the declared model: attention value per hour, purchase and recurring costs, goal values. Dollars declare, cents store. An undeclared actor's attention defaults to $250/hr and is reported as such.
@@ -403,6 +450,201 @@ This lets technical capability accumulate without silently broadening delegated 
 Authority is recorded per action, and from two sources. The curated model says what an action is like in general; the runtime that would execute it says what it permits here — Hermes publishes `approvals.mode` and `approvals.cron_mode`, Claude Code publishes `permissions.defaultMode`, and both adapters pass them through. Where the two disagree the narrower wins, and `ambit authority` names which source narrowed it.
 
 Enforcement lands where it matters. `ambit can <cap> [--target X] [--spend N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. The one limit worth stating: enforcement is on Ambit's own apply path, not yet interposed between every runtime and every tool — the runtime adapters are the next boundary.
+
+## Exemplary Use Cases & Real-World Walkthroughs
+
+To understand how Ambit functions in day-to-day engineering workflows, here are five demonstrative, end-to-end scenarios:
+
+---
+
+### Scenario 1: Blast Radius & Shared Credential SPOF Analysis
+
+**Context:** A developer is preparing to rotate a legacy GitHub Personal Access Token (`github-user-token`) that was created 6 months ago.
+
+**The Problem Without Ambit:** The developer assumes the token is only used by a local git hook. In reality, two MCP servers (`mcp:github`, `mcp:linear-sync`) and an autonomous PR-review agent silently reuse that same credential. Revoking it immediately causes silent background failures across multiple projects.
+
+**With Ambit:**
+Before revoking the credential, the developer runs `ambit credentials` and `ambit impact`:
+
+```console
+$ ambit credentials
+
+  github/user-token (GitHub User Token)
+    used by: mcp:github · mcp:linear-sync · tool:git
+    redundancy: 0 (Single Point of Failure)
+    status: active
+
+$ ambit impact credential:github/user-token
+
+  Impact of credential:github/user-token:
+    direct dependents: 3 providers
+    capabilities lost: 8
+      - Version Control (Push / PR Creation)
+      - Issue Synchronization (Linear <-> GitHub)
+      - Codebase CI Inspection
+      - Subagent PR Review Automation
+    cascade risk: CRITICAL
+    safe alternative: Mint scoped granular PATs for mcp:github before revoking.
+```
+
+**The Outcome:** The developer identifies the blast radius *before* making the change, creates scoped tokens for each service, and prevents an outage across their agent toolchain.
+
+---
+
+### Scenario 2: Unlocking Emergent "Combos" (Zero-Cloud Offline Semantic Search)
+
+**Context:** A developer has a local Postgres database running and an Ollama instance with `llama3`. They want their AI agent to perform semantic search over a private 500,000-line codebase without sending proprietary code to third-party embedding APIs.
+
+**The Problem Without Ambit:** The developer struggles through manual configuration across multiple disparate tools, unsure which vector store extension, embedding model, and adapter are mutually compatible.
+
+**With Ambit:**
+The developer asks Ambit for reachable frontier capabilities:
+
+```console
+$ ambit graph combos
+
+  Near-Miss Combos (1-2 prerequisites away):
+    1. Offline Semantic Search (id: combo:offline-semantic-search)
+       missing: 1
+       missing_prereqs: pgvector extension (resource:postgres-pgvector)
+       already met: Local LLM (Ollama) · Local Embeddings (nomic-embed) · SQL Client
+       readiness: 75% met
+       action: Enable pgvector on existing Postgres instance (5m)
+
+$ ambit goal offline-semantic-search --simulate
+
+  Simulated Frontier Expansion:
+    frontier: 156 → 162 (+6 capabilities unlocked)
+    newly reachable:
+      - combo:offline-semantic-search
+      - capability:codebase-rag
+      - capability:private-symbol-retrieval
+      - capability:offline-refactor-agent
+    setup order:
+      1. Enable pgvector (`CREATE EXTENSION vector;`)
+      2. Configure mcp:postgres-vector endpoint
+    estimated setup time: 8 minutes
+```
+
+**The Outcome:** By making one 5-minute configuration change to an existing component, the developer unlocks 6 higher-order compound capabilities across their entire agent fleet.
+
+---
+
+### Scenario 3: In-Session Agent Self-Introspection via MCP
+
+**Context:** An autonomous agent running in **Claude Code** or **OpenCode** receives a broad instruction from a user: *"Deploy the latest commit of the billing service to the staging cluster and run the smoke tests."*
+
+**The Problem Without Ambit:** The agent blindly executes shell commands (`kubectl apply -f ...`), hits an unauthenticated cluster error, attempts to guess credentials, writes invalid config files, wastes 15,000 context tokens in retry loops, and leaves the repository in a broken state.
+
+**With Ambit (Agent Flow over MCP):**
+1. The agent calls `tt_authority` to check its execution permissions:
+   ```json
+   {
+     "name": "tt_authority",
+     "arguments": { "capability": "act:continuous-delivery/deploy_staging" }
+   }
+   ```
+2. Ambit returns the exact authority gate:
+   ```json
+   {
+     "action": "act:continuous-delivery/deploy_staging",
+     "authority": "confirm",
+     "status": "blocked",
+     "missing_prerequisites": ["credential:k8s-staging-kubeconfig"],
+     "can_execute": false,
+     "resolution": "Request human approval with signed proposal"
+   }
+   ```
+3. The agent calls `tt_propose` to generate a structured proposal:
+   ```json
+   {
+     "name": "tt_propose",
+     "arguments": { "capability": "deploy-staging" }
+   }
+   ```
+4. Instead of hallucinating, the agent stops cleanly and outputs a concise message to the user:
+   > *"I have drafted proposal `prop-deploy-staging-42` to deploy the billing service. Staging deployment requires confirmation and a valid kubeconfig credential. Please run `ambit approve prop-deploy-staging-42` to authorize this deployment."*
+
+---
+
+### Scenario 4: The Attention Ledger & ROI-Driven Tooling Investment
+
+**Context:** A solo developer or engineering team lead feels overwhelmed by constant interactive prompts from agents asking to run routine bash commands.
+
+**The Problem Without Ambit:** The developer does not know where their time is being lost or which specific permission boundaries are worth relaxing.
+
+**With Ambit:**
+Ambit’s background telemetry continuously tracks human-in-the-loop interventions:
+
+```console
+$ ambit attention 30
+
+  Attention Audit (Last 30 Days):
+    total human interventions: 84
+    hours spent in interruptions: 7.2 hours
+    estimated attention cost: $1,800 (at declared $250/hr rate)
+
+  Intervention Breakdown:
+    - 42× confirmation: `git status` / `git diff` (Clerical / Reducible)
+    - 28× confirmation: `npm test` / `pytest` (Clerical / Reducible)
+    - 14× confirmation: `git push origin main` (Judgment / Keep)
+
+$ ambit opportunities --by=roi
+
+  Top Recommended Capability Investments:
+    1. Read-Only Git & Test Execution Grant (id: grant:safe-dev-loop)
+       type: Authority Policy Adjustment
+       cost: $0 (0m setup)
+       attention saved: 5.8 hours/month (~$1,450/mo value)
+       payback period: Immediate (0 days)
+       confidence: High (Observed 70+ repetitive prompts)
+```
+
+**The Outcome:** The developer applies a bounded authority grant for read-only git and local testing, cutting interruptions by **83%** while keeping high-stakes actions (`git push origin main`) strictly gated behind manual confirmation.
+
+---
+
+### Scenario 5: Multi-Host & Edge Infrastructure Resilience
+
+**Context:** An engineer works across three machines: an Apple Silicon MacBook (laptop), a Linux workstation with an RTX 4090 (local GPU server), and a Raspberry Pi (edge automation runner).
+
+**The Problem Without Ambit:** The agent runs on the laptop and assumes all tools and compute run locally. When the engineer takes the laptop to a cafe (disconnecting from the local LAN), agent workflows that rely on the RTX 4090 fail unpredictably.
+
+**With Ambit:**
+The engineer defines their physical topology in `~/.config/opencode/infrastructure.json`:
+
+```json
+{
+  "devices": {
+    "workstation-rtx4090": { "domain": "physical", "ip": "192.168.1.150" },
+    "laptop-m3": { "domain": "physical", "ip": "127.0.0.1" },
+    "pi-edge": { "domain": "physical", "ip": "192.168.1.200" }
+  },
+  "services": {
+    "svc:deepseek-r1-32b": { "runs_on": "device:workstation-rtx4090", "fallback": "svc:openrouter" },
+    "svc:cron-scheduler": { "runs_on": "device:pi-edge" }
+  }
+}
+```
+
+When disconnected from the LAN, Ambit’s synthetic probe marks `device:workstation-rtx4090` as `degraded`:
+
+```console
+$ ambit status
+
+  Infrastructure Health:
+    [!] device:workstation-rtx4090  OFFLINE (Host unreachable)
+        degraded: svc:deepseek-r1-32b (Local Heavy Inference)
+        active fallback: svc:openrouter (Cloud Provider)
+    [✓] device:laptop-m3            ONLINE  (Local Runtime)
+    [!] device:pi-edge              OFFLINE (Scheduled Tasks Paused)
+
+  Available Frontier: 142 capabilities (14 running on cloud fallbacks)
+```
+
+**The Outcome:** The agent seamlessly falls back to cloud providers for heavy reasoning without crashing, and alerts the developer that scheduled edge tasks are paused until LAN reconnection.
+
+---
 
 ## Why an AI might ask you to install Ambit
 

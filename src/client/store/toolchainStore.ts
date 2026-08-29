@@ -60,6 +60,19 @@ export type {
   InfrastructureScan,
 };
 
+export type ActiveLens = 'default' | 'attention' | 'credentials' | 'topology';
+export type SimulationMode = 'none' | 'outage' | 'acquisition';
+
+export interface ProposalItem {
+  id: string;
+  created_at: string;
+  goal: string;
+  status: 'draft' | 'approved' | 'applied' | 'rejected';
+  steps: string;
+  approved_by?: string;
+  approved_at?: string;
+}
+
 interface StoreState {
   items: Item[];
   connections: Connection[];
@@ -70,7 +83,14 @@ interface StoreState {
   /** Backwards compatibility alias for showDetailPanel. */
   showStarPanel: boolean;
   showUplinkModal: boolean;
+  showApprovalModal: boolean;
   treeFilter: TreeFilter;
+  activeLens: ActiveLens;
+  simulationMode: SimulationMode;
+  simulatedNodeId: string | null;
+  simulatedCascadeIds: Set<string>;
+  proposals: ProposalItem[];
+  attentionInterventions: Record<string, number>;
   loading: boolean;
   error: string | null;
   infrastructureScan: InfrastructureScan | null;
@@ -80,6 +100,14 @@ interface StoreState {
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
   setShowUplinkModal: (show: boolean) => void;
+  setShowApprovalModal: (show: boolean) => void;
+  setActiveLens: (lens: ActiveLens) => void;
+  startOutageSimulation: (nodeId: string) => void;
+  startAcquisitionSimulation: (nodeId: string) => void;
+  clearSimulation: () => void;
+  loadProposals: () => Promise<void>;
+  approveProposal: (proposalId: string, actor?: string) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
+  loadAttentionData: () => Promise<void>;
   loadInfrastructureScan: () => Promise<InfrastructureScan | null>;
   updateItemOnServer: (id: string, type: string, updates: any) => Promise<boolean>;
   setItems: (items: Item[], connections: Connection[]) => void;
@@ -153,7 +181,19 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   showDetailPanel: false,
   showStarPanel: false,
   showUplinkModal: false,
+  showApprovalModal: false,
   treeFilter: readInitialTreeFilter(),
+  activeLens: 'default',
+  simulationMode: 'none',
+  simulatedNodeId: null,
+  simulatedCascadeIds: new Set<string>(),
+  proposals: [],
+  attentionInterventions: {
+    'tool:bash': 42,
+    'mcp:github': 28,
+    'skill:vitest': 14,
+    'mcp:cloudflare': 8,
+  },
   loading: false,
   error: null,
   infrastructureScan: null,
@@ -170,6 +210,167 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   setSearch: (q) => set({ searchQuery: q }),
   toggleDetailPanel: () => set(s => ({ showDetailPanel: !s.showDetailPanel, showStarPanel: !s.showDetailPanel })),
   toggleStarPanel: () => set(s => ({ showDetailPanel: !s.showStarPanel, showStarPanel: !s.showStarPanel })),
+  setShowApprovalModal: (show) => set({ showApprovalModal: show }),
+  setActiveLens: (lens) => set({ activeLens: lens }),
+
+  startOutageSimulation: (nodeId: string) => {
+    const { connections } = get();
+    const downstream = new Map<string, string[]>();
+    for (const c of connections) {
+      if (!downstream.has(c.from)) downstream.set(c.from, []);
+      downstream.get(c.from)!.push(c.to);
+    }
+    const cascade = new Set<string>();
+    const q = [nodeId];
+    while (q.length) {
+      const curr = q.shift()!;
+      for (const next of downstream.get(curr) || []) {
+        if (!cascade.has(next)) {
+          cascade.add(next);
+          q.push(next);
+        }
+      }
+    }
+    set({
+      simulationMode: 'outage',
+      simulatedNodeId: nodeId,
+      simulatedCascadeIds: cascade,
+    });
+  },
+
+  startAcquisitionSimulation: (nodeId: string) => {
+    const { items, connections } = get();
+    const hardReqs = new Map<string, string[]>();
+    for (const c of connections) {
+      if (c.type === 'hard-dep') {
+        if (!hardReqs.has(c.to)) hardReqs.set(c.to, []);
+        hardReqs.get(c.to)!.push(c.from);
+      }
+    }
+    const itemState = new Map(items.map(i => [i.id, i.status]));
+    itemState.set(nodeId, 'built'); // simulate acquired
+
+    const unlocked = new Set<string>();
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const [targetId, prereqs] of hardReqs.entries()) {
+        if (itemState.get(targetId) !== 'built' && !unlocked.has(targetId)) {
+          const allMet = prereqs.every(p => itemState.get(p) === 'built' || unlocked.has(p));
+          if (allMet) {
+            unlocked.add(targetId);
+            changed = true;
+          }
+        }
+      }
+    }
+    set({
+      simulationMode: 'acquisition',
+      simulatedNodeId: nodeId,
+      simulatedCascadeIds: unlocked,
+    });
+  },
+
+  clearSimulation: () => set({
+    simulationMode: 'none',
+    simulatedNodeId: null,
+    simulatedCascadeIds: new Set<string>(),
+  }),
+
+  loadProposals: async () => {
+    if (!(await backendAvailable())) {
+      // Load demo proposals
+      set({
+        proposals: [
+          {
+            id: 'prop-deploy-staging-42',
+            created_at: new Date(Date.now() - 3600000).toISOString(),
+            goal: 'Deploy Billing Service Hotfix to Staging Cluster',
+            status: 'draft',
+            steps: JSON.stringify([
+              { action: 'verify_kubeconfig', provider: 'tool:kubectl', status: 'pending' },
+              { action: 'apply_k8s_manifest', provider: 'tool:kubectl', status: 'pending' },
+              { action: 'run_smoke_tests', provider: 'skill:vitest', status: 'pending' },
+            ]),
+          },
+          {
+            id: 'prop-offline-semantic-search',
+            created_at: new Date(Date.now() - 86400000).toISOString(),
+            goal: 'Acquire pgvector extension on local Postgres for offline RAG',
+            status: 'approved',
+            steps: JSON.stringify([
+              { action: 'enable_extension', provider: 'tool:postgres', status: 'done' },
+            ]),
+            approved_by: 'human:kanav',
+            approved_at: new Date(Date.now() - 72000000).toISOString(),
+          }
+        ]
+      });
+      return;
+    }
+    try {
+      const res = await fetch('/api/proposals');
+      if (res.ok) {
+        const data = await res.json();
+        set({ proposals: data.proposals || [] });
+      }
+    } catch { /* ignore error */ }
+  },
+
+  approveProposal: async (proposalId: string, actor = 'human:kanav') => {
+    if (!(await backendAvailable())) {
+      // Demo mode approval simulation
+      set(state => ({
+        proposals: state.proposals.map(p => p.id === proposalId ? {
+          ...p,
+          status: 'approved',
+          approved_by: actor,
+          approved_at: new Date().toISOString(),
+        } : p)
+      }));
+      return {
+        ok: true,
+        artifact: {
+          proposal_id: proposalId,
+          actor,
+          timestamp: new Date().toISOString(),
+          signature: 'hmac-sha256-demo-sig-7f8a9b2c3d4e5f',
+          expires_at: new Date(Date.now() + 86400000).toISOString(),
+        }
+      };
+    }
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await get().loadProposals();
+        return { ok: true, artifact: data.artifact };
+      }
+      const err = await res.json();
+      return { ok: false, error: err?.error || 'Approval failed' };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Network error' };
+    }
+  },
+
+  loadAttentionData: async () => {
+    if (!(await backendAvailable())) return;
+    try {
+      const res = await fetch('/api/attention');
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<string, number> = {};
+        for (const row of data.interventions || []) {
+          map[row.capability_id] = row.count;
+        }
+        set({ attentionInterventions: map });
+      }
+    } catch { /* ignore */ }
+  },
   loadFromJSON: (jsonStr) => {
     try {
       const data = JSON.parse(jsonStr);

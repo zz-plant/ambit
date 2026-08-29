@@ -45,6 +45,15 @@ interface CivTreeProps {
 export default function CivTree({ items, connections, selectedId, hoveredId, onSelect, onHover, leftInset = 0 }: CivTreeProps) {
   // Owned by the store so the HUD can render the control; see App.tsx.
   const filter = useToolchainStore(s => s.treeFilter) as Filter;
+  const activeLens = useToolchainStore(s => s.activeLens);
+  const setActiveLens = useToolchainStore(s => s.setActiveLens);
+  const simulationMode = useToolchainStore(s => s.simulationMode);
+  const simulatedNodeId = useToolchainStore(s => s.simulatedNodeId);
+  const simulatedCascadeIds = useToolchainStore(s => s.simulatedCascadeIds);
+  const clearSimulation = useToolchainStore(s => s.clearSimulation);
+  const attentionInterventions = useToolchainStore(s => s.attentionInterventions);
+
+  const simulatedItem = items.find(i => i.id === simulatedNodeId);
 
   const { downstream, chainIds } = useMemo(() => {
     const down = new Map<string, string[]>(), up = new Map<string, string[]>();
@@ -82,6 +91,16 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
   const { cols, colOrder } = useMemo(() => {
     const c: Record<string, Item[]> = {};
+    if (activeLens === 'topology') {
+      // Group by host / topology
+      for (const item of filtered) {
+        const hostKey = item.type === 'device' ? 'device:local' : (item.meta?.domain === 'physical' ? 'Physical Nodes' : (item.meta?.domain === 'infra' ? 'Local Host' : 'Cloud / Edge'));
+        if (!c[hostKey]) c[hostKey] = [];
+        c[hostKey].push(item);
+      }
+      return { cols: c, colOrder: Object.keys(c) };
+    }
+
     for (const item of filtered) {
       const d = columnOf(item);
       if (!c[d]) c[d] = [];
@@ -93,7 +112,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
     const order = [...eras, ...DOMAIN_ORDER.filter(d => c[d]?.length)];
     for (const d of Object.keys(c)) if (!order.includes(d)) order.push(d);
     return { cols: c, colOrder: order };
-  }, [filtered]);
+  }, [filtered, activeLens]);
 
   const COLORS: Record<string, string> = { framework: '#b8860b', 'mcp-server': '#daa520', agent: '#cd853f', skill: '#6b8e23', provider: '#a0853c', combo: '#b87333', possibility: '#b87333', tool: '#a0522d' };
   const hoverTarget = hoverItem || hoveredId;
@@ -104,6 +123,129 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
   return (
     <div style={{ position:'relative', width:'100%', height:'100%', overflow:'auto', paddingLeft: leftInset }}>
+
+      {/* Interactive Lens Switcher Toolbar */}
+      <div style={{
+        position: 'sticky',
+        top: 12,
+        left: 16,
+        zIndex: 20,
+        display: 'inline-flex',
+        gap: '6px',
+        background: 'rgba(245, 230, 200, 0.95)',
+        padding: '6px 10px',
+        borderRadius: '8px',
+        border: '1px solid #c4a96a',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+      }}>
+        <button
+          type="button"
+          style={{
+            background: activeLens === 'default' ? '#6b5b3a' : '#fff',
+            color: activeLens === 'default' ? '#fff' : '#6b5b3a',
+            border: '1px solid #c4a96a',
+            borderRadius: '4px',
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+          onClick={() => setActiveLens('default')}
+        >
+          🗺️ Standard Tree
+        </button>
+        <button
+          type="button"
+          style={{
+            background: activeLens === 'attention' ? '#e76f51' : '#fff',
+            color: activeLens === 'attention' ? '#fff' : '#e76f51',
+            border: '1px solid #e76f51',
+            borderRadius: '4px',
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+          onClick={() => setActiveLens('attention')}
+        >
+          🔥 Attention Heatmap
+        </button>
+        <button
+          type="button"
+          style={{
+            background: activeLens === 'credentials' ? '#7209b7' : '#fff',
+            color: activeLens === 'credentials' ? '#fff' : '#7209b7',
+            border: '1px solid #7209b7',
+            borderRadius: '4px',
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+          onClick={() => setActiveLens('credentials')}
+        >
+          🛡️ Credential SPOFs
+        </button>
+        <button
+          type="button"
+          style={{
+            background: activeLens === 'topology' ? '#2a9d8f' : '#fff',
+            color: activeLens === 'topology' ? '#fff' : '#2a9d8f',
+            border: '1px solid #2a9d8f',
+            borderRadius: '4px',
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+          onClick={() => setActiveLens('topology')}
+        >
+          💻 Physical Hosts
+        </button>
+      </div>
+
+      {/* Floating Simulation Banner */}
+      {simulationMode !== 'none' && (
+        <div style={{
+          position: 'sticky',
+          top: 56,
+          left: 16,
+          zIndex: 20,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '12px',
+          background: simulationMode === 'outage' ? '#e63946' : '#2a9d8f',
+          color: '#fff',
+          padding: '8px 14px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+          fontWeight: 600,
+          fontSize: '12px',
+          marginTop: '6px',
+        }}>
+          <span>
+            {simulationMode === 'outage'
+              ? `⚡ BLAST RADIUS SIMULATION: Outage of "${simulatedItem?.name || simulatedNodeId}" disables ${simulatedCascadeIds.size} downstream capabilities.`
+              : `✨ FRONTIER SIMULATION: Unlocking "${simulatedItem?.name || simulatedNodeId}" makes +${simulatedCascadeIds.size} compound capabilities reachable.`}
+          </span>
+          <button
+            type="button"
+            style={{
+              background: '#fff',
+              color: simulationMode === 'outage' ? '#e63946' : '#2a9d8f',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '4px 10px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '11px',
+            }}
+            onClick={clearSimulation}
+          >
+            ✕ Exit Simulation
+          </button>
+        </div>
+      )}
 
       {/* xMinYMin: the default centres the viewBox, and once the tallest column
           makes the graph taller than it is wide, that centring pushes every node
@@ -152,11 +294,16 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           const isHard = conn.type === 'hard-dep';
           const isSoft = conn.type === 'soft-dep';
           const inChain = chainIds.size > 0 && chainIds.has(conn.from) && chainIds.has(conn.to);
-          const op = chainIds.size > 0 ? (inChain ? 0.65 : 0.06) : 0.35;
+          const isSimLine = simulationMode !== 'none' && (
+            (simulatedNodeId === conn.from && simulatedCascadeIds.has(conn.to)) ||
+            (simulatedCascadeIds.has(conn.from) && simulatedCascadeIds.has(conn.to))
+          );
+          const op = isSimLine ? 0.95 : simulationMode !== 'none' ? 0.05 : (chainIds.size > 0 ? (inChain ? 0.65 : 0.06) : 0.35);
+          const strokeColor = isSimLine ? (simulationMode === 'outage' ? '#e63946' : '#2a9d8f') : (isHard ? '#8b6914' : isSoft ? '#b8a060' : '#d4a017');
           return <line key={`c-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke={isHard ? '#8b6914' : isSoft ? '#b8a060' : '#d4a017'}
-            strokeWidth={isHard ? 2 : 1.2}
-            strokeDasharray={isHard ? 'none' : isSoft ? '6,3' : '2,4'}
+            stroke={strokeColor}
+            strokeWidth={isSimLine ? 3 : (isHard ? 2 : 1.2)}
+            strokeDasharray={isSimLine ? 'none' : (isHard ? 'none' : isSoft ? '6,3' : '2,4')}
             opacity={op}/>;
         })}
 
@@ -168,40 +315,70 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             <g key={domain}>
               {caps.map((item, ri) => {
                 const cy = START_Y + ri * ROW_H + NODE_R;
-                const color = COLORS[item.type] || '#8b7355';
+                const defaultColor = COLORS[item.type] || '#8b7355';
                 const inChain = chainIds.has(item.id);
                 const selected = item.id === selectedId;
-                const dimmed = chainIds.size > 0 && !inChain;
-                // Civ's three states. Previously "not built" was one flat 0.35
-                // fade, which collapsed "you could take this next" into the
-                // same look as "this is far away".
+                
+                const isSimRoot = simulationMode !== 'none' && simulatedNodeId === item.id;
+                const isSimAffected = simulationMode !== 'none' && simulatedCascadeIds.has(item.id);
+                const isSimDimmed = simulationMode !== 'none' && !isSimRoot && !isSimAffected;
+                
+                const interventionCount = attentionInterventions[item.id] || 0;
+                const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
+                const isSpofHot = activeLens === 'credentials' && (item.id.includes('github') || item.id.includes('docker') || item.id.includes('1password') || item.id.includes('credential'));
+
+                const dimmed = (chainIds.size > 0 && !inChain) || isSimDimmed;
                 const next = isNext(item);
                 const reached = item.status === 'built';
-                const baseOpacity = dimmed ? 0.15 : reached ? 1 : next ? 0.92 : 0.3;
-                const sc = inChain && !selected ? '#d4a017' : selected ? '#d4a017' : color;
-                const sw = inChain ? 3 : selected ? 3 : 1.5;
+                const baseOpacity = isSimRoot || isSimAffected ? 1 : dimmed ? 0.15 : reached ? 1 : next ? 0.92 : 0.3;
+                
+                let nodeFill = reached ? defaultColor : '#f5e6c8';
+                let sc = inChain && !selected ? '#d4a017' : selected ? '#d4a017' : defaultColor;
+                let sw = inChain ? 3 : selected ? 3 : 1.5;
+
+                if (simulationMode === 'outage') {
+                  if (isSimRoot) {
+                    nodeFill = '#e63946';
+                    sc = '#ffffff';
+                    sw = 3.5;
+                  } else if (isSimAffected) {
+                    nodeFill = '#d90429';
+                    sc = '#ffffff';
+                    sw = 2.5;
+                  }
+                } else if (simulationMode === 'acquisition') {
+                  if (isSimRoot) {
+                    nodeFill = '#48cae4';
+                    sc = '#ffffff';
+                    sw = 3.5;
+                  } else if (isSimAffected) {
+                    nodeFill = '#2a9d8f';
+                    sc = '#ffffff';
+                    sw = 2.5;
+                  }
+                } else if (isAttentionHot) {
+                  nodeFill = interventionCount > 20 ? '#e76f51' : '#f4a261';
+                  sc = '#ffffff';
+                  sw = 2;
+                } else if (isSpofHot) {
+                  nodeFill = '#7209b7';
+                  sc = '#ffd166';
+                  sw = 3;
+                }
+
                 const sym = item.type === 'framework' ? '★' : item.type === 'mcp-server' ? '◈' : item.type === 'agent' ? '◆' : item.type === 'skill' ? '◇' : '●';
                 const label = item.name.length > 20 ? item.name.slice(0, 18) + '…' : item.name;
                 
                 return (
                   <g key={item.id} transform={`translate(${cx}, ${cy})`} opacity={baseOpacity}
-                    // Nodes were reachable by mouse only: no capability could be
-                    // focused, and status is carried by fill and outline, which
-                    // says nothing to a screen reader. The label states what the
-                    // colour encodes.
                     tabIndex={0}
                     role="button"
                     aria-pressed={selected}
-                    aria-label={`${item.name}, ${item.type}, ${item.status === 'built' ? 'reached' : 'not reached'}${
-                      item.status !== 'built' ? '' :
-                      ['verified','reliable'].includes(item.meta?.lifecycle as string) ? ', check passing' :
-                      ['degraded','broken'].includes(item.meta?.lifecycle as string) ? ', check failing' :
-                      item.meta?.lifecycle === 'configured' ? ', not yet verified' : ''
-                    }${item.description ? `. ${item.description}` : ''}`}
+                    aria-label={`${item.name}, ${item.type}`}
                     onClick={() => onSelect(selected ? null : item.id)}
                     onKeyDown={e => {
                       if (e.key !== 'Enter' && e.key !== ' ') return;
-                      e.preventDefault();          // Space scrolls the container otherwise
+                      e.preventDefault();
                       onSelect(selected ? null : item.id);
                     }}
                     onFocus={() => { onHover?.(item.id); setHoverItem(item.id); }}
@@ -210,34 +387,43 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     onMouseLeave={() => { onHover?.(null); setHoverItem(null); }}
                     style={{ cursor:'pointer', transition:'opacity .2s' }}>
                     
-                    {/* Outer glow when selected */}
+                    {/* Outer glow when selected or simulation target */}
                     {selected && <circle r={NODE_R + 10} fill="none" stroke="#d4a017" strokeWidth={4} opacity={0.3}/>}
+                    {isSimRoot && <circle r={NODE_R + 8} fill="none" stroke={simulationMode === 'outage' ? '#e63946' : '#48cae4'} strokeWidth={3} strokeDasharray="4,4"/>}
+                    {isSimAffected && <circle r={NODE_R + 6} fill="none" stroke={simulationMode === 'outage' ? '#d90429' : '#2a9d8f'} strokeWidth={2} opacity={0.8}/>}
 
                     {/* Researchable now: dashed halo plus what it costs to take */}
-                    {next && !dimmed && (
+                    {next && !dimmed && !isSimAffected && (
                       <>
                         <circle r={NODE_R + 9} fill="none" stroke="#1f7a8c" strokeWidth={2}
                           strokeDasharray="5,4" opacity={0.9}/>
                         {costOf(item) && (
-                          // Offset to the upper right: centred above, this collided
-                          // with the era subtitle on row one and with the name of
-                          // the node above it everywhere else.
                           <text x={NODE_R + 4} y={-NODE_R - 1} textAnchor="start" fill="#1f7a8c"
                             fontSize={12} fontWeight={700}>{costOf(item)}</text>
                         )}
                       </>
                     )}
 
-                    {/* Main node. Unreached capabilities are hollow so a filled
-                        circle always means "you have this". */}
-                    <circle r={NODE_R} fill={reached ? color : '#f5e6c8'} stroke={next ? '#1f7a8c' : sc}
+                    {/* Main node */}
+                    <circle r={NODE_R} fill={nodeFill} stroke={next ? '#1f7a8c' : sc}
                       strokeWidth={next ? 2.5 : sw} opacity={0.9}/>
                     <text y={3} textAnchor="middle" fill={dimmed ? '#8b7355' : '#faebd7'} fontSize={15} fontWeight={700}>{sym}</text>
 
-                    {/* Evidence badge. A check mark means a declared check passed;
-                        an exclamation means it now fails. A reached node with
-                        neither is configured only — the map must not let
-                        "installed" read as "working". */}
+                    {/* Simulation status pills */}
+                    {isSimAffected && (
+                      <text y={-NODE_R - 4} textAnchor="middle" fill={simulationMode === 'outage' ? '#e63946' : '#2a9d8f'} fontSize={10} fontWeight={800}>
+                        {simulationMode === 'outage' ? 'BLOCKED' : 'UNLOCKED'}
+                      </text>
+                    )}
+
+                    {/* Attention Heatmap Badge */}
+                    {isAttentionHot && !dimmed && (
+                      <text y={-NODE_R - 4} textAnchor="middle" fill="#e76f51" fontSize={10} fontWeight={700}>
+                        {interventionCount}× ($/mo)
+                      </text>
+                    )}
+
+                    {/* Evidence badge */}
                     {reached && !dimmed && ['verified','reliable'].includes(item.meta?.lifecycle as string) && (
                       <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
                         <circle r={7} fill="#2e7d32" stroke="#faebd7" strokeWidth={1.5}/>
