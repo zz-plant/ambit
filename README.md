@@ -23,6 +23,16 @@
 
 ---
 
+```bash
+# Instant: visualize your agent setup (auto-detects OpenCode, Claude Code, Cursor, Windsurf)
+npx ambit-cli web
+
+# Or give your agent 47 meta-introspection tools in one line:
+claude mcp add ambit -- npx -y ambit-cli mcp
+```
+
+---
+
 ## Why Ambit?
 
 If you use AI agents, your setup is fragmented across dozens of pieces: LLM providers, MCP servers, local CLI tools, skill directories, API keys, and multiple machines. Each tool has its own isolated config file.
