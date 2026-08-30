@@ -35,3 +35,11 @@ jobs:
         env:
           OPENCODE_CONFIG: ${{ github.workspace }}/no-such-config.json
         run: ./bootstrap.sh
+
+      # Do not send readers to an install path that the registry cannot serve.
+      - name: Check adoption copy
+        run: |
+          if grep -nE 'npx( -y)? ambit-cli|npm install .*ambit-cli' README.md; then
+            echo "README advertises ambit-cli before its npm publication."
+            exit 1
+          fi

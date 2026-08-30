@@ -116,9 +116,32 @@ jobs:
               # The formula shipped without one, so brew warned that it could
               # not verify what it was installing. Add it next to the url.
               f = re.sub(r'(url "[^"]*"\n)', rf'\1  sha256 "{sha}"\n', f)
+          # Keep the documented command name while retaining tt for older users.
+          f = f.replace('bin.install_symlink libexec/"cli.js" => "tt"',
+                        'bin.install_symlink libexec/"cli.js" => "ambit"\n  bin.install_symlink libexec/"cli.js" => "tt"')
+          f = f.replace('system "#{bin}/tt", "--help"', 'system "#{bin}/ambit", "--help"')
           open(path, 'w').write(f)
           PY
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -am "ambit ${VERSION}"
           git push
+
+  npm:
+    needs: release
+    runs-on: ubuntu-latest
+    # Publishing is opt-in until the repository has an npm automation token.
+    # The GitHub release and Homebrew update remain useful without it.
+    if: ${{ github.repository_owner == 'zz-plant' && secrets.NPM_TOKEN != '' }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Publish ambit-cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
