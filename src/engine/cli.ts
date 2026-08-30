@@ -2,7 +2,7 @@ import { readFileSync, existsSync, rmSync, statSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { resolveDbPath } from "../shared/db-path.ts";
-import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
+import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from "./paths.ts";
 import { getDb, migrate } from "./db.ts";
 import { seedFromConfig } from "./discovery.ts";
 import { readClaudeCode, claudeCodeSeedInput } from "./claude-code.ts";
@@ -186,7 +186,7 @@ function evidenceReport(db: any) {
 
   let checkable: string[] = [];
   try {
-    const tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8"));
+    const tree = loadTechTree();
     const withCheck = (tree.nodes || []).filter((n: any) => n.verify?.command).map((n: any) => `combo:${n.id}`);
     if (withCheck.length) {
       const placeholders = withCheck.map(() => "?").join(",");

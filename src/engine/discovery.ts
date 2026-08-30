@@ -1,24 +1,12 @@
 import { readFileSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
-import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
+import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from "./paths.ts";
 import type { Db } from "./db.ts";
 import { kindOf, edgeKindOf } from "./ontology.ts";
 import { deriveLifecycles } from "./assurance.ts";
 import { recordFrontier } from "./ledger.ts";
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
-
-let cachedTechTree: any = null;
-function loadTechTreeModel(): any {
-  if (!cachedTechTree) {
-    try {
-      cachedTechTree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8"));
-    } catch {
-      cachedTechTree = { nodes: [] };
-    }
-  }
-  return cachedTechTree;
-}
 
 /**
  * Writers that stamp the ontological kind, so no seeder can omit it.
@@ -171,7 +159,7 @@ function seedAuthority(db: Db, config: any): number {
   db.prepare("DELETE FROM authority WHERE source IN ('techtree', ?)").run(source);
 
   // Declared on the curated model.
-  const tree = loadTechTreeModel();
+  const tree = loadTechTree();
   for (const node of tree.nodes || []) {
     const id = `combo:${node.id}`;
     if (!node.authority || !has(id)) continue;
@@ -334,7 +322,7 @@ function attributeToRuntime(db: Db, insert: any, contributed: string[]): number 
  * the existing unlock analyses select on.
  */
 function seedTechTree(db: Db, insert: any): number {
-  const tree = loadTechTreeModel();
+  const tree = loadTechTree();
   if (!tree?.nodes?.length) return 0;
 
   // What the environment actually turned up. Actions are excluded: they are
@@ -808,7 +796,7 @@ function seedCatalog(db: Db, config: any): number {
 
   // The curated model's alternatives: qualitative, so recurring shows as a
   // kind and no dollar figure is invented.
-  const tree = loadTechTreeModel();
+  const tree = loadTechTree();
   for (const n of tree.nodes || []) {
     for (const a of n.acquisition?.alternatives || []) {
       const recurring = a.recurring_cost || 'none';

@@ -45,13 +45,13 @@ function inverseOf(patch: any, currentConfig: any): any | null {
  * about the world; it changes what is permitted to change it.
  */
 function approveProposal(db: Db, proposalId?: string, who?: string) {
-  if (!proposalId) return { error: 'Usage: tt approve <proposal-id> <person>' };
+  if (!proposalId) return { error: 'Usage: ambit approve <proposal-id> <person>' };
   const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status === 'approved') return { error: `${proposalId} is already approved by ${row.approved_by}.` };
 
   const humanId = who ? (who.startsWith('human:') ? who : `human:${who}`) : null;
-  if (!humanId) return { error: 'Name the person approving: tt approve <proposal-id> <person>' };
+  if (!humanId) return { error: 'Name the person approving: ambit approve <proposal-id> <person>' };
   const person = db.prepare("SELECT id, name FROM capabilities WHERE id = ? AND category = 'human'").get(humanId);
   if (!person) {
     return { error: `${humanId} is not a person in the graph. Declare them in the actors block first — an approval has to come from someone accountable.` };
@@ -87,13 +87,13 @@ function listProposals(db: Db) {
   const rows = db
     .prepare("SELECT id, created_at, goal, status FROM proposals ORDER BY created_at DESC")
     .all();
-  return rows.length ? rows : { note: 'No proposals. Create one with tt propose <capability>.' };
+  return rows.length ? rows : { note: 'No proposals. Create one with ambit propose <capability>.' };
 }
 
 function showProposal(db: Db, id?: string) {
-  if (!id) return { error: 'Usage: tt proposal <id>' };
+  if (!id) return { error: 'Usage: ambit proposal <id>' };
   const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(id);
-  if (!row) return { error: `No proposal ${id}. See tt proposals.` };
+  if (!row) return { error: `No proposal ${id}. See ambit proposals.` };
   return {
     ...row,
     steps: JSON.parse(row.steps),
@@ -121,12 +121,12 @@ function showProposal(db: Db, id?: string) {
  * write rather than after, and a failed verification rolls back automatically.
  */
 function applyProposal(db: Db, proposalId?: string) {
-  if (!proposalId) return { error: 'Usage: tt apply <proposal-id>' };
+  if (!proposalId) return { error: 'Usage: ambit apply <proposal-id>' };
   const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status === 'applied') return { error: `${proposalId} is already applied.` };
   if (row.status !== 'approved') {
-    return { error: `${proposalId} is ${row.status}. A person has to approve it first: tt approve ${proposalId} <person>` };
+    return { error: `${proposalId} is ${row.status}. A person has to approve it first: ambit approve ${proposalId} <person>` };
   }
 
   // The approval broker's signed artifact is what makes an approval spendable.
@@ -231,7 +231,7 @@ function applyProposal(db: Db, proposalId?: string) {
  * backup would also discard anything edited since.
  */
 function rollbackProposal(db: Db, proposalId?: string) {
-  if (!proposalId) return { error: 'Usage: tt rollback <proposal-id>' };
+  if (!proposalId) return { error: 'Usage: ambit rollback <proposal-id>' };
   const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status !== 'applied') return { error: `${proposalId} is ${row.status}; nothing to reverse.` };

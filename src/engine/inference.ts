@@ -3,7 +3,7 @@ import { PROVISION_EDGES } from "./ontology.ts";
 import { usable } from "./assurance.ts";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { ENGINE_DIR } from "./paths.ts";
+import { ENGINE_DIR, loadTechTree } from "./paths.ts";
 
 // ─── Near-Miss Combos (1-2 prerequisites away) ───────────────────────────────
 
@@ -540,8 +540,7 @@ function affordanceDomains(db: Db) {
 
   // Economic: any acquisition alternative with a recurring cost implies a
   // budget and a counterparty. Read from the authored model.
-  let tree: any = { nodes: [] };
-  try { tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8")); } catch {}
+  const tree = loadTechTree();
   const economic = new Set<string>();
   for (const n of tree.nodes || []) {
     const recurring = (n.acquisition?.alternatives || []).some(
