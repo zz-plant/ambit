@@ -8,6 +8,18 @@ import { recordFrontier } from "./ledger.ts";
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
+let cachedTechTree: any = null;
+function loadTechTreeModel(): any {
+  if (!cachedTechTree) {
+    try {
+      cachedTechTree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8"));
+    } catch {
+      cachedTechTree = { nodes: [] };
+    }
+  }
+  return cachedTechTree;
+}
+
 /**
  * Writers that stamp the ontological kind, so no seeder can omit it.
  *
@@ -159,8 +171,7 @@ function seedAuthority(db: Db, config: any): number {
   db.prepare("DELETE FROM authority WHERE source IN ('techtree', ?)").run(source);
 
   // Declared on the curated model.
-  let tree: any = { nodes: [] };
-  try { tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8")); } catch { /* no model */ }
+  const tree = loadTechTreeModel();
   for (const node of tree.nodes || []) {
     const id = `combo:${node.id}`;
     if (!node.authority || !has(id)) continue;
@@ -323,12 +334,8 @@ function attributeToRuntime(db: Db, insert: any, contributed: string[]): number 
  * the existing unlock analyses select on.
  */
 function seedTechTree(db: Db, insert: any): number {
-  let tree: any;
-  try {
-    tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8"));
-  } catch {
-    return 0; // A missing or unreadable tree degrades to config-only seeding.
-  }
+  const tree = loadTechTreeModel();
+  if (!tree?.nodes?.length) return 0;
 
   // What the environment actually turned up. Actions are excluded: they are
   // created by this function from the tree's own contracts, so on a re-seed the
@@ -801,8 +808,7 @@ function seedCatalog(db: Db, config: any): number {
 
   // The curated model's alternatives: qualitative, so recurring shows as a
   // kind and no dollar figure is invented.
-  let tree: any = { nodes: [] };
-  try { tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8")); } catch {}
+  const tree = loadTechTreeModel();
   for (const n of tree.nodes || []) {
     for (const a of n.acquisition?.alternatives || []) {
       const recurring = a.recurring_cost || 'none';

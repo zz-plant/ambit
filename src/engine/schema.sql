@@ -71,7 +71,9 @@ CREATE TABLE IF NOT EXISTS session_learning (
 
 CREATE INDEX IF NOT EXISTS idx_capabilities_domain ON capabilities(domain);
 CREATE INDEX IF NOT EXISTS idx_capabilities_state ON capabilities(state);
+CREATE INDEX IF NOT EXISTS idx_dependencies_to ON dependencies(to_capability);
 CREATE INDEX IF NOT EXISTS idx_session_learning_cap ON session_learning(capability_id, action);
+CREATE INDEX IF NOT EXISTS idx_session_learning_action ON session_learning(action);
 
 -- Frontier ledger. `capabilities` holds the present state and is overwritten
 -- on every seed, so it cannot answer "what could this system do at time T".
@@ -368,3 +370,6 @@ CREATE TABLE IF NOT EXISTS catalog (
     source TEXT NOT NULL DEFAULT 'declared',
     UNIQUE(capability_id, provider, source)
 );
+
+CREATE INDEX IF NOT EXISTS idx_catalog_cap ON catalog(capability_id);
+CREATE INDEX IF NOT EXISTS idx_intervention_cap ON human_intervention(capability_id);

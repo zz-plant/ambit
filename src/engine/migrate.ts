@@ -94,8 +94,16 @@ function backfillKinds(db: Migratable) {
   }
 }
 
+let cachedSchemaSql: string | null = null;
+function getSchemaSql(): string {
+  if (!cachedSchemaSql) {
+    cachedSchemaSql = readFileSync(join(ENGINE_DIR, "schema.sql"), "utf8");
+  }
+  return cachedSchemaSql;
+}
+
 export function migrate(db: Migratable) {
-  db.exec(readFileSync(join(ENGINE_DIR, "schema.sql"), "utf8"));
+  db.exec(getSchemaSql());
   addMissingColumns(db);
   backfillKinds(db);
 }
