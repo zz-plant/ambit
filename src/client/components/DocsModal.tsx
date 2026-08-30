@@ -6,12 +6,25 @@ interface DocsModalProps {
   onClose: () => void;
 }
 
-type Tab = 'concepts' | 'reading' | 'doing';
+type Tab = 'concepts' | 'reading' | 'doing' | 'hotkeys';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'concepts', label: 'WHAT THINGS MEAN' },
   { id: 'reading', label: 'READING THE MAP' },
   { id: 'doing', label: 'WHAT TO DO' },
+  { id: 'hotkeys', label: 'KEYBOARD SHORTCUTS' },
+];
+
+const HOTKEYS = [
+  { key: '/', desc: 'Find / Search capabilities in Console drawer' },
+  { key: '\\', desc: 'Toggle Capabilities Console left drawer' },
+  { key: 'J / K', desc: 'Navigate up / down through capabilities on Tech Tree' },
+  { key: '1 - 4', desc: 'Switch graph lens (1: Standard, 2: Attention, 3: SPOFs, 4: Topology)' },
+  { key: '+ / -', desc: 'Zoom in / out on the capability canvas' },
+  { key: '0', desc: 'Reset zoom & pan to 100% (1:1)' },
+  { key: 'G', desc: 'Open Governance & Policy Proposals modal' },
+  { key: '?', desc: 'Open Documentation & Keyboard reference' },
+  { key: 'ESC', desc: 'Clear search, exit simulation, or close active modals' },
 ];
 
 const NODE_TYPES = [
@@ -147,6 +160,35 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
                 Run <code className="docs-cmd-inline">ambit help</code> for CLI definitions in
                 the terminal.
               </p>
+            </>
+          )}
+
+          {tab === 'hotkeys' && (
+            <>
+              <p className="docs-lede">
+                Operate Ambit entirely from your keyboard with demoscene-speed shortcuts.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                {HOTKEYS.map(h => (
+                  <div key={h.key} className="docs-action" style={{ alignItems: 'center' }}>
+                    <kbd style={{
+                      fontFamily: 'var(--font)',
+                      fontWeight: 800,
+                      color: 'var(--accent)',
+                      background: 'var(--bg-deep)',
+                      border: '1px solid var(--border-bright)',
+                      borderRadius: 'var(--radius-xs)',
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      minWidth: '60px',
+                      textAlign: 'center',
+                    }}>
+                      {h.key}
+                    </kbd>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{h.desc}</span>
+                  </div>
+                ))}
+              </div>
             </>
           )}
         </div>

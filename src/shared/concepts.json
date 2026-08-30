@@ -1,5 +1,5 @@
 {
-  "$comment": "The vocabulary this tool uses, defined once and read by both the visualizer (DocsModal) and the CLI (`tt explain`), so the two can never drift apart. Every term here appears somewhere in the UI or command output; if a term is added there, add it here.",
+  "$comment": "The vocabulary this tool uses, defined once and read by both the visualizer (DocsModal) and the CLI (`ambit help`), so the two can never drift apart. Every term here appears somewhere in the UI or command output; if a term is added there, add it here.",
   "concepts": [
     {
       "key": "capability",
@@ -19,7 +19,7 @@
       "key": "state",
       "term": "Reached, next, blocked",
       "short": "Where you are on a tech tree node",
-      "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next: prerequisites are met but nothing was detected — this is the useful frontier, and `tt near` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
+      "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next: prerequisites are met but nothing was detected — this is the useful frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
       "seen": "Solid nodes are reached; outlined nodes are not"
     },
     {
@@ -40,22 +40,22 @@
       "key": "decay",
       "term": "Decay",
       "short": "What you have stopped tending",
-      "long": "`tt decay` ranks capabilities by how long since their configuration last changed. It tracks configuration decisions, not how often you invoke something — a server you use daily but never reconfigure will look static, which is intentional. The question it answers is 'what have I stopped tending', not 'what do I use least'.",
-      "seen": "tt decay"
+      "long": "`ambit decay` ranks capabilities by how long since their configuration last changed. It tracks configuration decisions, not how often you invoke something — a server you use daily but never reconfigure will look static, which is intentional. The question it answers is 'what have I stopped tending', not 'what do I use least'.",
+      "seen": "ambit decay"
     },
     {
       "key": "bottleneck",
       "term": "Bottleneck",
       "short": "A capability many others depend on",
-      "long": "Ranked by how many capabilities would be affected if it disappeared. High-leverage to invest in, and risky to leave unmaintained. `tt impact <id>` shows exactly what falls over.",
-      "seen": "tt bottlenecks, tt impact"
+      "long": "Ranked by how many capabilities would be affected if it disappeared. High-leverage to invest in, and risky to leave unmaintained. `ambit impact <id>` shows exactly what falls over.",
+      "seen": "ambit status, ambit impact"
     },
     {
       "key": "combo",
       "term": "Combo",
       "short": "A capability several others unlock",
       "long": "The tech tree nodes are combos, and you can define your own in a `combos` block for things specific to your work. A combo is a judgement about what composes into something new, which is why the tool never invents one from your config.",
-      "seen": "tt combos, tt near, tt fork"
+      "seen": "ambit graph combos, ambit goal"
     },
     {
       "key": "evidence",
@@ -69,14 +69,14 @@
       "term": "Authority",
       "short": "Whether it may run, not whether it can",
       "long": "Being technically able to perform an action is not permission to perform it. Authority is tracked separately per capability — observe and execute, each autonomous, confirm, or forbidden — so a reached capability can still require approval. This is what lets a larger technical surface stay governable: the limits are explicit rather than implied.",
-      "seen": "tt authority"
+      "seen": "ambit authority"
     },
     {
       "key": "frontier",
       "term": "Frontier",
       "short": "What the system can do, as of a moment",
-      "long": "Every seed records the state of every capability, so the graph can answer what was reachable at a past date rather than only now. `tt since` compares two of those observations. Its useful column is the emergent one: capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
-      "seen": "tt ledger, tt since"
+      "long": "Every seed records the state of every capability, so the graph can answer what was reachable at a past date rather than only now. `ambit history since` compares two of those observations. Its useful column is the emergent one: capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
+      "seen": "ambit history, ambit history since"
     },
     {
       "key": "domain",

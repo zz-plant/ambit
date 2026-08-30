@@ -6,7 +6,9 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
-[![License](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![Bun](https://img.shields.io/badge/bun-%3E%3D1.1-fbf0df?style=flat-square&logo=bun&logoColor=black)](https://bun.sh)
+[![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
 [**Live Interactive Demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get Started](#get-started) · [5 Core Strengths](#where-ambit-succeeds) · [Terminal CLI](#ask-questions-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [Deep Dive](./docs/deep-dive.md)
 
@@ -340,6 +342,16 @@ Because Ambit inspects developer toolchains and configuration files, security in
 * [Roadmap](./ROADMAP.md) — Future development milestones.
 * [Security Guide](./SECURITY.md) & [Agent Invariants](./AGENTS.md) — Security policies and rules.
 * [Launch Kit](./docs/launch.md) — Listing copy, repository topics, Show HN draft, and the social-preview asset.
+
+---
+
+## Contributing
+
+Contributions are welcome! Whether it is adding new capability models, refining runtime adapters, improving UI visualizations, or reporting edge cases:
+
+- Review [CONTRIBUTING.md](./CONTRIBUTING.md) for development workflow and PR guidelines.
+- Review [SECURITY.md](./SECURITY.md) and [AGENTS.md](./AGENTS.md) for core security invariants.
+- Read our [Code of Conduct](./CODE_OF_CONDUCT.md) to understand community standards.
 
 ---
 

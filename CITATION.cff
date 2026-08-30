@@ -8,7 +8,7 @@ abstract: >-
   objects, records what a system became able to do over time, and makes human
   approval a dependency a plan cannot route around. A capability is not something
   configured; it is an action the system has evidence it can perform.
-version: 0.4.0
+version: 0.4.1
 date-released: 2026-08-13
 authors:
   - given-names: Kanav

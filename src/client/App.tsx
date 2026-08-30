@@ -9,6 +9,15 @@ import { useToolchainStore, backendAvailable, TREE_FILTERS } from './store/toolc
 import DemoDashboard from './components/DemoDashboard';
 import { demoGraphExport } from './utils/demoSnapshot';
 
+const MCP_PRESETS = [
+  { name: 'github', label: '🐙 GitHub', command: 'npx -y @modelcontextprotocol/server-github', env: 'GITHUB_PERSONAL_ACCESS_TOKEN=your_token_here' },
+  { name: 'postgres', label: '🐘 PostgreSQL', command: 'npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb', env: '' },
+  { name: 'cloudflare', label: '⚡ Cloudflare', command: 'npx -y @cloudflare/mcp-server-cloudflare', env: 'CLOUDFLARE_API_TOKEN=your_token_here' },
+  { name: 'playwright', label: '🎭 Playwright', command: 'npx -y @executeautomation/playwright-mcp-server', env: '' },
+  { name: 'filesystem', label: '📁 Filesystem', command: 'npx -y @modelcontextprotocol/server-filesystem /path/to/allowed/directory', env: '' },
+  { name: 'brave-search', label: '🦁 Brave Search', command: 'npx -y @modelcontextprotocol/server-brave-search', env: 'BRAVE_API_KEY=your_key_here' },
+] as const;
+
 function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const buildMcpSnippet = useToolchainStore(s => s.buildMcpSnippet);
   const loading = useToolchainStore(s => s.loading);
@@ -20,8 +29,17 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
   const [envStr, setEnvStr] = useState('');
   const [error, setError] = useState('');
   const [snippet, setSnippet] = useState<{ snippet: string; configPath: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleSelectPreset = (p: typeof MCP_PRESETS[number]) => {
+    setName(p.name);
+    setType('local');
+    setCommand(p.command);
+    setEnvStr(p.env);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,8 +93,8 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
   };
 
   return (
-    <div className="uplink-modal-overlay">
-      <div className="uplink-modal">
+    <div className="uplink-modal-overlay" onClick={onClose}>
+      <div className="uplink-modal" onClick={e => e.stopPropagation()}>
         <div className="sp-hdr">
           <span className="sp-sig" style={{ color: 'var(--accent)' }}>🔌</span>
           <div className="sp-title-group">
@@ -94,13 +112,43 @@ function UplinkModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
             </div>
             <pre style={{ fontSize: '10px', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '8px', overflow: 'auto', maxHeight: '220px', margin: 0 }}>{snippet.snippet}</pre>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="sp-action-btn" onClick={() => navigator.clipboard?.writeText(snippet.snippet)}>Copy</button>
+              <button
+                type="button"
+                className="sp-action-btn"
+                style={{ background: copied ? 'var(--ok)' : undefined, color: copied ? '#000' : undefined, fontWeight: 700 }}
+                onClick={() => {
+                  navigator.clipboard?.writeText(snippet.snippet);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copied ? '✓ Copied to Clipboard!' : '📋 Copy Snippet'}
+              </button>
               <button type="button" className="sp-action-btn" onClick={() => { setSnippet(null); setName(''); setUrl(''); setCommand(''); setEnvStr(''); onClose(); }}>Done</button>
             </div>
           </div>
         ) : (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
           {error && <div style={{ color: 'var(--error)', fontSize: '11px', border: '1px solid var(--error)', padding: '6px', background: 'rgba(255, 51, 68, 0.1)', borderRadius: 'var(--radius)' }}>{error}</div>}
+
+          {/* Quick-Start Presets */}
+          <div className="uplink-presets">
+            <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              ⚡ Popular Quick-Start Presets
+            </span>
+            <div className="uplink-preset-list">
+              {MCP_PRESETS.map(p => (
+                <button
+                  key={p.name}
+                  type="button"
+                  className={`uplink-preset-btn ${name === p.name ? 'uplink-preset-btn--selected' : ''}`}
+                  onClick={() => handleSelectPreset(p)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <label style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>Name (a short nickname for this server)</label>
@@ -264,7 +312,7 @@ export default function App() {
       canvas.height = h;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      ctx.fillStyle = '#f5e6c8';
+      ctx.fillStyle = '#030712';
       ctx.fillRect(0, 0, 1200, h);
       ctx.drawImage(img, 0, 0);
       canvas.toBlob(b => {
@@ -366,6 +414,45 @@ export default function App() {
       if (item) selectItem(item.id);
     }
   }, [focusId, items.length, selectItem]);
+
+  // Global hotkey manager: [/] to search, [\] to toggle console, [?] for docs, [g] for governance, [Esc] to clear/close
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        if (e.key === 'Escape') {
+          target.blur();
+        }
+        return;
+      }
+      if (e.key === '/') {
+        e.preventDefault();
+        setLeftOpen(true);
+        setTimeout(() => {
+          const input = document.getElementById('tp-search-input');
+          input?.focus();
+        }, 60);
+      } else if (e.key === '\\') {
+        e.preventDefault();
+        setLeftOpen(o => !o);
+      } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShowDocs(o => !o);
+      } else if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
+        const curr = useToolchainStore.getState().showApprovalModal;
+        setShowApprovalModal(!curr);
+        if (!curr) loadProposals();
+      } else if (e.key === 'Escape') {
+        setShowUplinkModal(false);
+        setShowApprovalModal(false);
+        setShowDocs(false);
+        setShowImport(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [loadProposals, setShowApprovalModal, setShowUplinkModal]);
 
   return (
     <div className="app">
@@ -575,6 +662,10 @@ export default function App() {
         </aside>
       )}
 
+      {leftOpen && isNarrow && (
+        <div className="app-drawer-backdrop" onClick={() => setLeftOpen(false)} aria-hidden="true" />
+      )}
+
       <aside className={`app-console ${leftOpen ? 'app-console--open' : ''}`}>
         <CapabilityListPanel />
       </aside>
@@ -605,7 +696,7 @@ export default function App() {
           ◈ AMBIT · {items.length} capabilities · {items.filter(i => i.status === 'built').length} reached
         </span>
         <span style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.5 }}>
-          KEYS: [J/K] NAVIGATE · [1-4] SWITCH LENS · [/] SEARCH · [ESC] CLEAR
+          KEYS: [J/K] NAVIGATE · [1-4] SWITCH LENS · [/] SEARCH · [ESC] CLEAR · [?] DOCS · [G] GOV
         </span>
         <span className="app-footer-info">
           <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>GITHUB ↗</a>
@@ -613,8 +704,35 @@ export default function App() {
       </footer>
 
       {toast && (
-        <div role="status" className="ambit-toast" onClick={() => setToast(null)}>
-          {toast}
+        <div role="status" className="ambit-toast">
+          <span>{toast}</span>
+          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', justifyContent: 'flex-end' }}>
+            {toast.includes('Approved:') && (
+              <button
+                type="button"
+                className="tp-btn-sm"
+                style={{ fontSize: '10px', padding: '2px 8px', color: 'var(--ok)', borderColor: 'var(--ok)' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowApprovalModal(true);
+                  setToast(null);
+                }}
+              >
+                View Governance
+              </button>
+            )}
+            <button
+              type="button"
+              className="tp-btn-sm"
+              style={{ fontSize: '10px', padding: '2px 8px' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setToast(null);
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 

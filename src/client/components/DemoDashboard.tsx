@@ -21,6 +21,15 @@ function Confidence({ level }: { level: DemoOpportunity['confidence'] }) {
 }
 
 function OpportunityCard({ o }: { o: DemoOpportunity }) {
+  const startAcquisition = useToolchainStore(s => s.startAcquisitionSimulation);
+  const selectItem = useToolchainStore(s => s.selectItem);
+  const items = useToolchainStore(s => s.items);
+
+  // Map opportunity to a node ID if present
+  const targetNodeId = o.id.includes('deploy') ? 'combo:deploy' : o.id.includes('e2e') ? 'combo:e2e' : 'skill:wrangler';
+
+  const paybackPct = Math.min(100, Math.max(10, Math.round((1 / (o.payback_months || 1)) * 100)));
+
   return (
     <div style={{
       background: 'var(--bg-glass)',
@@ -31,7 +40,7 @@ function OpportunityCard({ o }: { o: DemoOpportunity }) {
       padding: '14px 16px',
       display: 'flex',
       flexDirection: 'column',
-      gap: 8,
+      gap: 10,
       position: 'relative',
       overflow: 'hidden',
     }}>
@@ -46,12 +55,39 @@ function OpportunityCard({ o }: { o: DemoOpportunity }) {
       <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
         <span style={{ color: 'var(--ok)', fontWeight: 700 }}>{o.expected.human_hours_month_after}h</span> post-fix · saves <span style={{ color: 'var(--ok)', fontWeight: 700 }}>${o.expected.savings_dollars_month}/mo</span> · payback ≈ <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{o.payback_months}mo</span>
       </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-        {o.acquisition_options?.map(a => (
-          <span key={a.provider} style={{ fontSize: 10, border: '1px solid var(--border)', borderRadius: 'var(--radius-xs)', padding: '3px 8px', color: 'var(--text-muted)', background: 'var(--bg-deep)' }}>
-            {a.kind} · <strong style={{ color: 'var(--accent)' }}>{a.provider}</strong>{a.total_first_year_dollars != null ? ` · $${a.total_first_year_dollars}/yr` : ''} · {a.privacy}
-          </span>
-        ))}
+
+      {/* Visual Payback Velocity Meter */}
+      <div className="payback-meter">
+        <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Payback Velocity:</span>
+        <div className="payback-track">
+          <div className="payback-fill" style={{ width: `${paybackPct}%` }} />
+        </div>
+        <span style={{ fontSize: '10px', color: 'var(--ok)', fontWeight: 700 }}>{o.payback_months} mo</span>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {o.acquisition_options?.map(a => (
+            <span key={a.provider} style={{ fontSize: 10, border: '1px solid var(--border)', borderRadius: 'var(--radius-xs)', padding: '3px 8px', color: 'var(--text-muted)', background: 'var(--bg-deep)' }}>
+              {a.kind} · <strong style={{ color: 'var(--accent)' }}>{a.provider}</strong>{a.total_first_year_dollars != null ? ` · $${a.total_first_year_dollars}/yr` : ''} · {a.privacy}
+            </span>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="loop-sim-btn"
+          onClick={() => {
+            const found = items.find(i => i.id === targetNodeId);
+            if (found) {
+              selectItem(found.id);
+              startAcquisition(found.id);
+            }
+          }}
+          title="Simulate acquiring this capability on the Tech Tree"
+        >
+          ✨ Simulate Fix
+        </button>
       </div>
     </div>
   );
@@ -59,9 +95,12 @@ function OpportunityCard({ o }: { o: DemoOpportunity }) {
 
 export default function DemoDashboard() {
   const demo = useToolchainStore(s => s.demo);
+  const [confidenceFilter, setConfidenceFilter] = React.useState<'all' | 'high' | 'medium'>('all');
+
   if (!demo) return null;
 
   const { status, attention, opportunities, roi } = demo;
+  const filteredOpportunities = opportunities.filter(o => confidenceFilter === 'all' || o.confidence === confidenceFilter);
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'auto', background: 'var(--bg-deep)', padding: 24, boxSizing: 'border-box', fontFamily: 'var(--font)' }}>
@@ -120,9 +159,23 @@ export default function DemoDashboard() {
 
         {/* Ranked Opportunities */}
         <div>
-          <div style={LABEL}>what to build next — ranked by human attention saved</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div style={LABEL}>what to build next — ranked by human attention saved</div>
+            <div className="loop-filter-tabs">
+              {(['all', 'high', 'medium'] as const).map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`loop-filter-tab ${confidenceFilter === c ? 'loop-filter-tab--active' : ''}`}
+                  onClick={() => setConfidenceFilter(c)}
+                >
+                  {c.toUpperCase()} CONFIDENCE
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-            {opportunities.map(o => <OpportunityCard key={o.id} o={o} />)}
+            {filteredOpportunities.map(o => <OpportunityCard key={o.id} o={o} />)}
           </div>
         </div>
 

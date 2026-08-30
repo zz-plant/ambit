@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Advisories
+    url: https://github.com/zz-plant/ambit/security/advisories/new
+    about: Please report security vulnerabilities privately here.
+  - name: Interactive Demo
+    url: https://zz-plant.github.io/ambit/?demo=1
+    about: Try the zero-install web visualizer demo before filing an issue.

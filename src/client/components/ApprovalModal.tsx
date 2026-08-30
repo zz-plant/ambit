@@ -6,6 +6,8 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const approveProposal = useToolchainStore(s => s.approveProposal);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved'>('all');
+  const [query, setQuery] = useState('');
 
   if (!isOpen) return null;
 
@@ -21,9 +23,18 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
     setTimeout(() => setCopiedId(null), 2500);
   };
 
+  const filtered = proposals.filter(p => {
+    const matchesTab = statusTab === 'all' || p.status === statusTab;
+    const matchesQuery = !query.trim() || p.id.toLowerCase().includes(query.toLowerCase()) || p.goal.toLowerCase().includes(query.toLowerCase());
+    return matchesTab && matchesQuery;
+  });
+
+  const draftCount = proposals.filter(p => p.status === 'draft').length;
+  const approvedCount = proposals.filter(p => p.status === 'approved').length;
+
   return (
-    <div className="uplink-modal-overlay">
-      <div className="uplink-modal" style={{ maxWidth: '680px', width: '90%', border: '1px solid var(--border-bright)' }}>
+    <div className="uplink-modal-overlay" onClick={onClose}>
+      <div className="uplink-modal" style={{ maxWidth: '680px', width: '90%', border: '1px solid var(--border-bright)' }} onClick={e => e.stopPropagation()}>
         <div className="sp-hdr">
           <span className="sp-sig" style={{ color: 'var(--copper-3)' }}>📜</span>
           <div className="sp-title-group">
@@ -33,13 +44,53 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
           <button className="sp-close" onClick={onClose}>✕</button>
         </div>
 
-        {proposals.length === 0 ? (
-          <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font)' }}>
-            No pending policy proposals. Autonomous agents submit enactments here when requesting environment access.
+        {/* Status Tabs and Search Filter */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="gov-tabs">
+            <button
+              type="button"
+              className={`gov-tab ${statusTab === 'all' ? 'gov-tab--active' : ''}`}
+              onClick={() => setStatusTab('all')}
+            >
+              All ({proposals.length})
+            </button>
+            <button
+              type="button"
+              className={`gov-tab ${statusTab === 'draft' ? 'gov-tab--active' : ''}`}
+              onClick={() => setStatusTab('draft')}
+            >
+              Pending Review {draftCount > 0 && `(${draftCount})`}
+            </button>
+            <button
+              type="button"
+              className={`gov-tab ${statusTab === 'approved' ? 'gov-tab--active' : ''}`}
+              onClick={() => setStatusTab('approved')}
+            >
+              Ratified &amp; Signed ({approvedCount})
+            </button>
+          </div>
+
+          <div style={{ width: '180px' }}>
+            <input
+              type="text"
+              placeholder="Search proposals…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="tp-search"
+              style={{ fontSize: '11px', padding: '4px 8px' }}
+            />
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font)', fontSize: '12px' }}>
+            {proposals.length === 0
+              ? 'No pending policy proposals. Autonomous agents submit enactments here when requesting environment access.'
+              : 'No proposals match your active filter.'}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px', maxHeight: '460px', overflowY: 'auto' }}>
-            {proposals.map((p) => {
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px', maxHeight: '460px', overflowY: 'auto' }}>
+            {filtered.map((p) => {
               let parsedSteps: any[] = [];
               try { parsedSteps = JSON.parse(p.steps); } catch { /* ignore */ }
               const isApproved = p.status === 'approved';
@@ -118,7 +169,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         style={{ fontSize: '11px', padding: '4px 12px', borderColor: 'var(--ok)', color: 'var(--ok)' }}
                         onClick={() => copyApplyCmd(p.id)}
                       >
-                        {copiedId === p.id ? '✓ Copied' : `Copy: ambit apply ${p.id}`}
+                        {copiedId === p.id ? '✓ Copied to Clipboard!' : `Copy: ambit apply ${p.id}`}
                       </button>
                     </div>
                   ) : (
