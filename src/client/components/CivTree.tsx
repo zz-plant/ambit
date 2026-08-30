@@ -131,6 +131,25 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
   const hoverTarget = hoverItem || hoveredId;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (e.key === '1') { setActiveLens('default'); }
+      else if (e.key === '2') { setActiveLens('attention'); }
+      else if (e.key === '3') { setActiveLens('credentials'); }
+      else if (e.key === '4') { setActiveLens('topology'); }
+      else if (e.key === 'Escape') {
+        if (simulationMode !== 'none') clearSimulation();
+        else if (selectedId) onSelect(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setActiveLens, clearSimulation, simulationMode, selectedId, onSelect]);
+
   const contentHeight = Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 40;
   const contentWidth = START_X + colOrder.length * COL_W + 60;
 
@@ -164,8 +183,9 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             cursor: 'pointer',
           }}
           onClick={() => setActiveLens('default')}
+          title="Shortcut: Press 1"
         >
-          🗺️ Standard Tree
+          🗺️ Standard Tree <span style={{ opacity: 0.6, fontSize: '10px' }}>[1]</span>
         </button>
         <button
           type="button"
@@ -180,8 +200,9 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             cursor: 'pointer',
           }}
           onClick={() => setActiveLens('attention')}
+          title="Shortcut: Press 2"
         >
-          🔥 Attention Heatmap
+          🔥 Attention Heatmap <span style={{ opacity: 0.6, fontSize: '10px' }}>[2]</span>
         </button>
         <button
           type="button"
@@ -196,8 +217,9 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             cursor: 'pointer',
           }}
           onClick={() => setActiveLens('credentials')}
+          title="Shortcut: Press 3"
         >
-          🛡️ Credential SPOFs
+          🛡️ Credential SPOFs <span style={{ opacity: 0.6, fontSize: '10px' }}>[3]</span>
         </button>
         <button
           type="button"
@@ -212,8 +234,9 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             cursor: 'pointer',
           }}
           onClick={() => setActiveLens('topology')}
+          title="Shortcut: Press 4"
         >
-          💻 Physical Hosts
+          🌐 Topology Clusters <span style={{ opacity: 0.6, fontSize: '10px' }}>[4]</span>
         </button>
       </div>
 
@@ -395,8 +418,24 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     
                     {/* Outer glow when selected or simulation target */}
                     {selected && <circle r={NODE_R + 10} fill="none" stroke="#d4a017" strokeWidth={4} opacity={0.3}/>}
-                    {isSimRoot && <circle r={NODE_R + 8} fill="none" stroke={simulationMode === 'outage' ? '#e63946' : '#48cae4'} strokeWidth={3} strokeDasharray="4,4"/>}
-                    {isSimAffected && <circle r={NODE_R + 6} fill="none" stroke={simulationMode === 'outage' ? '#d90429' : '#2a9d8f'} strokeWidth={2} opacity={0.8}/>}
+                    {isSimRoot && (
+                      <circle
+                        r={NODE_R + 8}
+                        fill="none"
+                        stroke={simulationMode === 'outage' ? '#e63946' : '#48cae4'}
+                        strokeWidth={3}
+                        className={simulationMode === 'outage' ? 'sim-pulse-outage' : 'sim-pulse-unlock'}
+                      />
+                    )}
+                    {isSimAffected && (
+                      <circle
+                        r={NODE_R + 6}
+                        fill="none"
+                        stroke={simulationMode === 'outage' ? '#d90429' : '#2a9d8f'}
+                        strokeWidth={2}
+                        className={simulationMode === 'outage' ? 'sim-pulse-outage' : 'sim-pulse-unlock'}
+                      />
+                    )}
 
                     {/* Researchable now: dashed halo plus what it costs to take */}
                     {next && !dimmed && !isSimAffected && (
