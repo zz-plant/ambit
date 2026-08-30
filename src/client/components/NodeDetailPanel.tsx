@@ -27,6 +27,11 @@ export function NodeDetailPanel() {
   const toggleMcpEnabled = useToolchainStore(s => s.toggleMcpEnabled);
   const updateItemOnServer = useToolchainStore(s => s.updateItemOnServer);
   const loading = useToolchainStore(s => s.loading);
+  const simulationMode = useToolchainStore(s => s.simulationMode);
+  const simulatedNodeId = useToolchainStore(s => s.simulatedNodeId);
+  const startOutage = useToolchainStore(s => s.startOutageSimulation);
+  const startAcquisition = useToolchainStore(s => s.startAcquisitionSimulation);
+  const clearSim = useToolchainStore(s => s.clearSimulation);
 
   const item = items.find(i => i.id === selectedId);
 
@@ -125,11 +130,6 @@ export function NodeDetailPanel() {
 
       {/* Simulation Controls: Blast Radius & What-If Frontier Simulator */}
       {(() => {
-        const simulationMode = useToolchainStore.getState().simulationMode;
-        const simulatedNodeId = useToolchainStore.getState().simulatedNodeId;
-        const startOutage = useToolchainStore.getState().startOutageSimulation;
-        const startAcquisition = useToolchainStore.getState().startAcquisitionSimulation;
-        const clearSim = useToolchainStore.getState().clearSimulation;
         const isSimulated = simulatedNodeId === item.id;
 
         return (

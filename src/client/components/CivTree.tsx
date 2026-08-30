@@ -114,6 +114,19 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
     return { cols: c, colOrder: order };
   }, [filtered, activeLens]);
 
+  const nodePositionMap = useMemo(() => {
+    const map = new Map<string, { x: number; y: number; item: Item }>();
+    colOrder.forEach((domain, ci) => {
+      const caps = cols[domain] || [];
+      const cx = START_X + ci * COL_W + COL_W/2 - 40;
+      caps.forEach((it, ri) => {
+        const cy = START_Y + ri * ROW_H + NODE_R;
+        map.set(it.id, { x: cx, y: cy, item: it });
+      });
+    });
+    return map;
+  }, [cols, colOrder]);
+
   const COLORS: Record<string, string> = { framework: '#b8860b', 'mcp-server': '#daa520', agent: '#cd853f', skill: '#6b8e23', provider: '#a0853c', combo: '#b87333', possibility: '#b87333', tool: '#a0522d' };
   const hoverTarget = hoverItem || hoveredId;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
@@ -277,20 +290,13 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
         {/* Connection lines — rendered behind nodes */}
         {connections.map((conn, i) => {
-          const from = items.find(it => it.id === conn.from);
-          const to = items.find(it => it.id === conn.to);
-          if (!from || !to) return null;
-          const fd = columnOf(from);
-          const td = columnOf(to);
-          const fi = colOrder.indexOf(fd);
-          const ti = colOrder.indexOf(td);
-          const fa = (cols[fd] || []).findIndex((it: Item) => it.id === from.id);
-          const ta = (cols[td] || []).findIndex((it: Item) => it.id === to.id);
-          if (fi < 0 || ti < 0 || fa < 0 || ta < 0) return null;
-          const x1 = START_X + fi * COL_W + COL_W/2 - 40;
-          const y1 = START_Y + fa * ROW_H + NODE_R;
-          const x2 = START_X + ti * COL_W + COL_W/2 - 40;
-          const y2 = START_Y + ta * ROW_H + NODE_R;
+          const fromPos = nodePositionMap.get(conn.from);
+          const toPos = nodePositionMap.get(conn.to);
+          if (!fromPos || !toPos) return null;
+          const x1 = fromPos.x;
+          const y1 = fromPos.y;
+          const x2 = toPos.x;
+          const y2 = toPos.y;
           const isHard = conn.type === 'hard-dep';
           const isSoft = conn.type === 'soft-dep';
           const inChain = chainIds.size > 0 && chainIds.has(conn.from) && chainIds.has(conn.to);

@@ -16,6 +16,14 @@ const GRAPH_DB_PATH = resolveDbPath();
 const INFRA_MANIFEST_PATH = Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
 const API_PORT = 3001;
 
+let serverMigrated = false;
+function ensureMigrated(db: Database) {
+  if (!serverMigrated) {
+    migrate(db as unknown as Parameters<typeof migrate>[0]);
+    serverMigrated = true;
+  }
+}
+
 import type {
   InfrastructureNode,
   InfrastructureLink,
@@ -538,7 +546,7 @@ const server = Bun.serve({
       }
       const graph = new Database(GRAPH_DB_PATH, { create: true });
       try {
-        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        ensureMigrated(graph);
         const result = ingestTelemetry(graph, body);
         broadcast({ type: 'WorkEvent', ...body });
         return Response.json(result, { headers });
@@ -554,7 +562,7 @@ const server = Bun.serve({
       }
       const graph = new Database(GRAPH_DB_PATH);
       try {
-        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        ensureMigrated(graph);
         let proposals: any[] = [];
         try {
           proposals = graph.query("SELECT * FROM proposals ORDER BY created_at DESC LIMIT 50").all() as any[];
@@ -574,7 +582,7 @@ const server = Bun.serve({
       }
       const graph = new Database(GRAPH_DB_PATH);
       try {
-        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        ensureMigrated(graph);
         let interventions: any[] = [];
         try {
           interventions = graph.query(`
@@ -608,7 +616,7 @@ const server = Bun.serve({
 
       const graph = new Database(GRAPH_DB_PATH, { create: true });
       try {
-        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        ensureMigrated(graph);
         const person = graph.query("SELECT id FROM capabilities WHERE id = ? AND category = 'human'").get(actor) as any;
         if (!person) {
           return Response.json({ error: `${actor} is not a person in the graph. Approval has to come from someone accountable.` }, { status: 400, headers });
@@ -655,7 +663,7 @@ const server = Bun.serve({
         // columns that did not exist yet and returned 500 until some other
         // command happened to migrate it. This and the WAL sidecar are the only
         // writes on this path; everything below is a SELECT.
-        migrate(graph as unknown as Parameters<typeof migrate>[0]);
+        ensureMigrated(graph);
 
         // Actions conferred by a capability are excluded deliberately. A
         // capability confers several, so including them would multiply the node
