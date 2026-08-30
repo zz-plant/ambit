@@ -3,20 +3,20 @@ import { useToolchainStore } from '../store/toolchainStore';
 import { typeLabel, statusLabel, metaKeyLabel } from '../utils/labels';
 
 const TYPE_COLORS: Record<string, string> = {
-  framework: '#00d4ff',
-  'mcp-server': '#ff8c00',
-  agent: '#00ff88',
-  provider: '#ffd600',
+  framework: '#00f0ff',
+  'mcp-server': '#ffaa00',
+  agent: '#ff007f',
+  provider: '#38bdf8',
   model: '#4488ff',
   command: '#8899aa',
-  skill: '#ff44ff',
+  skill: '#00ff88',
   config: '#ccaa88',
-  possibility: '#ff5fb7',
-  device: '#00ffaa',
+  possibility: '#b537f2',
+  device: '#00ffcc',
   service: '#7c9cff',
-  api: '#ffcc66',
-  network: '#66e0ff',
-  workflow: '#d16bff',
+  api: '#ffd700',
+  network: '#00f0ff',
+  workflow: '#b537f2',
 };
 
 export function NodeDetailPanel() {
@@ -107,6 +107,10 @@ export function NodeDetailPanel() {
     setEditing(false);
   };
 
+  const downstreamEnables = connections.filter(c => c.from === item.id).map(c => items.find(i => i.id === c.to)).filter(Boolean);
+  const upstreamPrereqs = connections.filter(c => c.to === item.id).map(c => items.find(i => i.id === c.from)).filter(Boolean);
+  const isKeystone = downstreamEnables.length >= 3 || item.type === 'framework' || item.id === 'opencode-core';
+
   return (
     <div className="star-panel">
       <div className="sp-hdr">
@@ -121,6 +125,13 @@ export function NodeDetailPanel() {
         </div>
         <button className="sp-close" onClick={() => selectItem(null)}>✕</button>
       </div>
+
+      {isKeystone && (
+        <div style={{ padding: '6px 10px', border: '1px solid var(--copper-3)', background: 'rgba(255, 170, 0, 0.1)', borderRadius: 'var(--radius-xs)', marginTop: '4px', marginBottom: '8px', fontSize: '11px', color: 'var(--copper-3)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>👑</span>
+          <span><strong>KEYSTONE ANCHOR:</strong> High-leverage foundation enabling {downstreamEnables.length} downstream branches.</span>
+        </div>
+      )}
 
       {evidence && (
         <div style={{ padding: '6px 8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px', fontSize: '11px', color: evidence.color }}>

@@ -23,22 +23,22 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   return (
     <div className="uplink-modal-overlay">
-      <div className="uplink-modal" style={{ maxWidth: '640px', width: '90%' }}>
+      <div className="uplink-modal" style={{ maxWidth: '680px', width: '90%', border: '1px solid var(--border-bright)' }}>
         <div className="sp-hdr">
-          <span className="sp-sig" style={{ color: 'var(--ok, #2a9d8f)' }}>🛡️</span>
+          <span className="sp-sig" style={{ color: 'var(--copper-3)' }}>📜</span>
           <div className="sp-title-group">
-            <div className="sp-designation">Proposal Approval Broker</div>
-            <div className="sp-class">Review and sign environment configuration changes</div>
+            <div className="sp-designation">Governance &amp; Policy Enactments</div>
+            <div className="sp-class">Review, sign, and authorize environment modifications</div>
           </div>
           <button className="sp-close" onClick={onClose}>✕</button>
         </div>
 
         {proposals.length === 0 ? (
-          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No pending proposals. Autonomous agents will submit proposals here when hitting restricted actions.
+          <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font)' }}>
+            No pending policy proposals. Autonomous agents submit enactments here when requesting environment access.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', maxHeight: '420px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px', maxHeight: '460px', overflowY: 'auto' }}>
             {proposals.map((p) => {
               let parsedSteps: any[] = [];
               try { parsedSteps = JSON.parse(p.steps); } catch { /* ignore */ }
@@ -48,73 +48,89 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 <div
                   key={p.id}
                   style={{
-                    background: 'var(--bg-deep, #141923)',
-                    border: isApproved ? '1px solid var(--ok, #2a9d8f)' : '1px solid var(--border, #2a3447)',
-                    borderRadius: '8px',
-                    padding: '14px',
+                    background: 'var(--bg-surface)',
+                    border: isApproved ? '1px solid var(--ok)' : '1px solid var(--border-bright)',
+                    boxShadow: isApproved ? 'var(--ok-glow)' : '0 4px 16px rgba(0,0,0,0.4)',
+                    borderRadius: 'var(--radius)',
+                    padding: '16px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '8px',
+                    gap: '10px',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: 4,
+                    bottom: 0,
+                    background: isApproved ? 'var(--ok)' : 'linear-gradient(180deg, var(--copper-1), var(--copper-3))',
+                  }} />
+
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: '12px', color: 'var(--accent, #e76f51)' }}>
-                      {p.id}
+                    <span style={{ fontFamily: 'var(--font)', fontWeight: 700, fontSize: '12px', color: 'var(--accent)' }}>
+                      📜 POLICY ENACTMENT: {p.id}
                     </span>
                     <span
                       style={{
                         fontSize: '10px',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        fontWeight: 600,
-                        background: isApproved ? 'rgba(42, 157, 143, 0.2)' : 'rgba(231, 111, 81, 0.2)',
-                        color: isApproved ? 'var(--ok, #2a9d8f)' : 'var(--accent, #e76f51)',
+                        padding: '3px 10px',
+                        borderRadius: 'var(--radius-xs)',
+                        fontWeight: 800,
+                        letterSpacing: '0.8px',
+                        background: isApproved ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 170, 0, 0.15)',
+                        color: isApproved ? 'var(--ok)' : 'var(--copper-3)',
+                        border: `1px solid ${isApproved ? 'var(--ok)' : 'var(--copper-3)'}`,
                       }}
                     >
-                      {isApproved ? '✓ APPROVED' : 'PENDING APPROVAL'}
+                      {isApproved ? '✓ RATIFIED & SIGNED' : 'AWAITING OPERATOR RATIFICATION'}
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text, #fff)' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
                     {p.goal}
                   </div>
 
                   {parsedSteps.length > 0 && (
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Action Steps:</span>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--bg-deep)', padding: '10px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border)' }}>
+                      <span style={{ fontWeight: 700, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>
+                        Action Schedule ({parsedSteps.length} steps):
+                      </span>
                       {parsedSteps.map((step, idx) => (
-                        <div key={idx} style={{ paddingLeft: '8px', borderLeft: '2px solid var(--border)' }}>
-                          <code>{step.action || step.key || JSON.stringify(step)}</code>
-                          {step.provider && <span style={{ marginLeft: '6px', opacity: 0.7 }}>via {step.provider}</span>}
+                        <div key={idx} style={{ paddingLeft: '8px', borderLeft: '2px solid var(--accent-dim)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <code style={{ color: 'var(--accent)' }}>{step.action || step.key || JSON.stringify(step)}</code>
+                          {step.provider && <span style={{ fontSize: '10px', color: 'var(--copper-3)' }}>via {step.provider}</span>}
                         </div>
                       ))}
                     </div>
                   )}
 
                   {isApproved ? (
-                    <div style={{ marginTop: '6px', paddingTop: '8px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '10px', color: 'var(--ok)' }}>
-                        Signed by {p.approved_by || 'Kanav'} · Artifact HMAC verified
+                    <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--ok)', fontWeight: 600 }}>
+                        🛡️ Sealed by {p.approved_by || 'Operator'} · HMAC verified
                       </span>
                       <button
                         type="button"
-                        className="sp-action-btn"
-                        style={{ fontSize: '10px', padding: '4px 10px' }}
+                        className="tp-btn-sm"
+                        style={{ fontSize: '11px', padding: '4px 12px', borderColor: 'var(--ok)', color: 'var(--ok)' }}
                         onClick={() => copyApplyCmd(p.id)}
                       >
                         {copiedId === p.id ? '✓ Copied' : `Copy: ambit apply ${p.id}`}
                       </button>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
                       <button
                         type="button"
-                        className="sp-action-btn"
-                        style={{ background: 'var(--ok, #2a9d8f)', color: '#fff', fontWeight: 600 }}
+                        className="tp-btn"
+                        style={{ background: 'var(--ok)', color: 'var(--bg-deep)', borderColor: 'var(--ok)', fontWeight: 800, padding: '6px 16px' }}
                         disabled={approvingId === p.id}
                         onClick={() => handleApprove(p.id)}
                       >
-                        {approvingId === p.id ? 'Signing HMAC Token…' : 'Approve & Mint Receipt'}
+                        {approvingId === p.id ? 'Minting HMAC Token…' : '⚖️ Ratify & Sign Policy'}
                       </button>
                     </div>
                   )}
@@ -125,7 +141,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-          <button type="button" className="sp-action-btn" onClick={onClose}>Close</button>
+          <button type="button" className="tp-btn-sm" onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
