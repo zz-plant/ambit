@@ -25,17 +25,26 @@ function emptyGraphNotice(db) {
 function respond(id, r) { process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, result: r }) + "\n"); }
 function err(id, c, m) { process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, error: { code: c, message: m } }) + "\n"); }
 
-let migrated = false;
-function tt(cb) {
-  const db = getDb(DB_PATH);
-  if (!migrated) {
-    migrate(db);
-    migrated = true;
+let dbHandle: any = null;
+function getWarmDb() {
+  if (!dbHandle) {
+    dbHandle = getDb(DB_PATH);
+    migrate(dbHandle);
   }
-  const r = cb(db);
-  db.close();
-  return r;
+  return dbHandle;
 }
+
+function tt(cb) {
+  const db = getWarmDb();
+  return cb(db);
+}
+
+process.on("exit", () => {
+  if (dbHandle) {
+    try { dbHandle.close(); } catch {}
+    dbHandle = null;
+  }
+});
 
 const BASE_TOOLS = [
   { name: "stats", description: "Toolchain maturity overview", inputSchema: { type: "object", properties: {} } },
@@ -150,14 +159,9 @@ function handleLine(line) {
               case "tt_portfolio": res = tt(db => portfolio(db, args?.budget)); break;
               case "tt_roi_summary": res = tt(db => roiSummary(db)); break;
               case "tt_incidents": {
-                const adb = getDb(DB_PATH);
-                if (!migrated) {
-                  migrate(adb);
-                  migrated = true;
-                }
+                const adb = getWarmDb();
                 incidents(adb).then((r) => {
                   respond(id, { content: [{ type: "text", text: JSON.stringify(r, null, 2) }] });
-                  adb.close();
                 });
                 return;
               }

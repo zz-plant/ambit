@@ -1698,3 +1698,27 @@ textarea:focus-visible {
    width, overlapping its neighbour. Let labelled HUD buttons size to content. */
 .app-hud-btn { white-space: nowrap; }
 .app-hud > .app-hud-btn { width: auto; min-width: 26px; padding: 0 8px; }
+
+@keyframes pulseOutage {
+  0% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(230, 57, 70, 0.4)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(230, 57, 70, 0.9)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(230, 57, 70, 0.4)); }
+}
+
+@keyframes pulseUnlock {
+  0% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(42, 157, 143, 0.4)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(42, 157, 143, 0.9)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(42, 157, 143, 0.4)); }
+}
+
+.sim-pulse-outage {
+  animation: pulseOutage 1.6s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.sim-pulse-unlock {
+  animation: pulseUnlock 1.6s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
