@@ -16,8 +16,8 @@ Ordered by ambition. Each is defensible on its own; each depends on the one abov
 |---|---|---|
 | **1 · Inventory** | discover the capabilities implicit in configuration and infrastructure, model their dependencies, costs, and failure cascades | shipping |
 | **2 · Assurance** | distinguish *configured* from *demonstrated* — `installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate` | shipping |
-| **3 · Planning** | given a desired outcome, compute the capability delta and compare paths that close it | §5 |
-| **4 · Reflexive infrastructure** | agents use the model to improve the environment they themselves operate in | §6–11 |
+| **3 · Planning** | given a desired outcome, compute the capability delta and compare paths that close it | shipping (§5) |
+| **4 · Reflexive infrastructure** | agents use the model to improve the environment they themselves operate in | shipping (§6–11) |
 
 "Reflexive infrastructure" rather than "self-improving": the system can inspect the conditions of its own action and propose modifications to them, and a human approves every one.
 
@@ -367,33 +367,20 @@ Built: the surface is 31 tools where it was 17 analytical ones, adding `ambit_ve
 
 Unbuilt: everything that changes the world. No `apply_step`, `request_approval`, `simulate` or `rollback`. Ambit still only describes.
 
-## 11. The visualiser becomes a negotiating surface — state stream built
+## 11. The visualiser becomes a negotiating surface — built and shipping
 
 Ambit implements the state and run subset of [AG-UI](https://docs.ag-ui.com), the Agent-User Interaction protocol: `/api/events` streams `RunStarted`, a `StateSnapshot` on connect, and — when the graph changes underneath the view — a `StateDelta` of RFC 6902 patches plus a `TextMessageChunk` narrating the change. The client reloads when the graph changes. The immediate benefit is a view that does not go stale when a seed or an adapter rewrites the graph; the durable one is that the transport an agent would use to propose a change, and a human to approve it, already speaks a standard vocabulary rather than one invented here.
 
 `StateDelta` is the protocol's reason for existing: a patch is smaller than a snapshot, and a client that kept the connect snapshot can apply it. The delta is emitted for every change after the initial snapshot, so the transport is honest about what changed rather than resending the whole graph.
 
+The visual negotiating surface is shipping:
+1. **Interactive Simulation:** `[Simulate Outage (Blast Radius)]` and `[Simulate Unlocking (What-If)]` project multi-hop cascade blast radii in pulsing red and reachable compound unlocks in glowing emerald green directly on the canvas.
+2. **1-Click Proposal Approval Broker:** `ApprovalModal` displays drafted agent proposals, verifies step inverses, and mints signed HMAC receipts with copy-ready `ambit apply <id>` commands.
+3. **Four Dynamic Decision Lenses:** Tech Tree, Attention Heatmap, Credential SPOFs, and Physical Host Clusters.
+
 Not implemented: tool calls and reasoning events. Ambit does not execute agent steps — it models the environment those steps would run in — so fabricating a tool-call or reasoning stream would be noise in the protocol's own vocabulary. Calling Ambit "AG-UI compatible" would still overstate it; it implements the state and run subset deliberately.
 
 **A2UI was evaluated and rejected.** It is a generative UI specification: agents describe components and the front end renders them. Ambit's interface is a designed visual grammar — era columns, three states, dependency edges, a legend — and its legibility is the product. Letting an agent improvise components would replace a representation that was reasoned about with one that is generated per response. A2UI suits surfaces where the agent's output shape is unknown in advance; here it is known and deliberate.
-
-
-
-Today it explains the graph to you. It should become where you and an agent agree on changes to your shared capability:
-
-```
-Autonomous Backup Recovery              readiness 73%
-
-have     ✓ snapshots  ✓ NAS  ✓ scheduled agents  ✓ notifications
-missing  ○ restore verification environment
-
-why      lets the agent test backups instead of only creating them
-setup    ~42 min
-unlocks  unattended restore drills · disaster-recovery verification
-         · storage-migration testing
-
-[ Discuss ]  [ Simulate ]  [ Approve build ]
-```
 
 ---
 

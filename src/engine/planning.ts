@@ -311,6 +311,9 @@ function deficits(db: Db) {
     verdict: r.times >= 3 && r.state === 'locked' ? 'structural — build it'
       : r.times >= 3 && !usable(r.lifecycle) ? 'structural — configured but failing verification'
       : r.times >= 3 ? 'was structural; now reached' : 'incidental so far',
+    recommendation: r.times >= 3 && r.state === 'locked' ? `ambit propose ${r.id.replace('combo:', '')}`
+      : r.times >= 3 && !usable(r.lifecycle) ? `ambit verify ${r.id.replace('combo:', '')}`
+      : undefined,
   }));
 }
 
