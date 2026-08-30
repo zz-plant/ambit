@@ -201,6 +201,8 @@ export default function App() {
   const proposals = useToolchainStore(s => s.proposals);
   const loadProposals = useToolchainStore(s => s.loadProposals);
   const loadAttentionData = useToolchainStore(s => s.loadAttentionData);
+  const activeLens = useToolchainStore(s => s.activeLens);
+  const setActiveLens = useToolchainStore(s => s.setActiveLens);
 
   const [showDocs, setShowDocs] = useState(() => new URLSearchParams(window.location.search).get('docs') === 'open');
   // ?demo=1 skips the LOAD DEMO click so a shared link opens already showing the graph.
@@ -367,6 +369,93 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* ─── TOP COMMAND DECK (PRIMARY IA ANCHOR) ─── */}
+      <header className="app-deck">
+        <div className="app-deck-left">
+          <button
+            type="button"
+            className="app-deck-btn"
+            onClick={() => setLeftOpen(o => !o)}
+            title="Toggle capabilities console (Hotkey: \)"
+          >
+            {leftOpen ? '◀ CONSOLE' : '▶ CONSOLE'}
+          </button>
+          <div className="app-brand-group">
+            <span className="app-brand">◈ AMBIT</span>
+          </div>
+          <div className="app-status-pill">
+            <span style={{ color: 'var(--ok)' }}>●</span>
+            <span>{items.filter(i => i.status === 'built').length}/{items.length} REACHED</span>
+          </div>
+        </div>
+
+        <div className="app-deck-center">
+          <nav className="app-deck-nav" aria-label="Primary Navigation">
+            <button
+              type="button"
+              className={`app-deck-tab ${view === 'graph' && source === 'tree' ? 'app-deck-tab--active' : ''}`}
+              onClick={() => { setView('graph'); setSource('tree'); selectItem(null); loadTechTree(); }}
+              title="The capability tech tree — prerequisites, frontier, and compound paths"
+            >
+              🌐 TECH TREE
+            </button>
+            <button
+              type="button"
+              className={`app-deck-tab ${view === 'graph' && source === 'config' ? 'app-deck-tab--active' : ''}`}
+              onClick={() => { setView('graph'); setSource('config'); selectItem(null); loadConfigSource(); }}
+              title="My Setup — discovered local runtimes, tools, and agents"
+            >
+              ⚙️ MY SETUP
+            </button>
+            {demo && (
+              <button
+                type="button"
+                className={`app-deck-tab ${view === 'loop' ? 'app-deck-tab--active' : ''}`}
+                onClick={() => { setView('loop'); selectItem(null); }}
+                title="The Economic Loop — attention telemetry, ROI tracking, and ranked investments"
+              >
+                ⚡ THE LOOP
+              </button>
+            )}
+            <button
+              type="button"
+              className={`app-deck-btn ${proposals.some(p => p.status === 'draft') ? 'app-deck-btn--alert' : ''}`}
+              onClick={() => { setShowApprovalModal(true); loadProposals(); }}
+              title="Review and sign environment configuration proposals"
+            >
+              📜 GOVERNANCE {proposals.filter(p => p.status === 'draft').length > 0 && `(${proposals.filter(p => p.status === 'draft').length})`}
+            </button>
+          </nav>
+        </div>
+
+        <div className="app-deck-right">
+          {view === 'graph' && (
+            <div className="app-deck-nav">
+              {([
+                ['default', 'Standard', '1'],
+                ['attention', 'Attention', '2'],
+                ['credentials', 'SPOFs', '3'],
+                ['topology', 'Topology', '4'],
+              ] as const).map(([lensKey, label, hotkey]) => (
+                <button
+                  key={lensKey}
+                  type="button"
+                  className={`app-deck-tab ${activeLens === lensKey ? 'app-deck-tab--active' : ''}`}
+                  onClick={() => setActiveLens(lensKey)}
+                  title={`Shortcut: Press ${hotkey}`}
+                >
+                  {label} <span style={{ opacity: 0.6, fontSize: '10px' }}>[{hotkey}]</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <button type="button" className="app-deck-btn" onClick={() => setShowDocs(true)} title="Documentation & Concepts">📖 DOCS</button>
+          <button type="button" className="app-deck-btn" onClick={() => setShowUplinkModal(true)} title="Connect tool server">🔌 CONNECT</button>
+          <button type="button" className="app-deck-btn" onClick={() => setShowImport(true)} title="Import graph JSON">📋 IMPORT</button>
+          <button type="button" className="app-deck-btn" onClick={captureGraph} title="Export PNG snapshot">📷 PNG</button>
+        </div>
+      </header>
+
       <div className="app-scene">
         {loading && !items.length && (
           <div className="app-loading">
@@ -391,10 +480,6 @@ export default function App() {
         {showGuide && view === 'graph' && items.length > 0 && (
           <div
             className="app-guide"
-            // Centred on the scene, the side panels covered half of it. Inset by
-            // whichever panels are actually open so it centres on free space.
-            // On a narrow screen the panels are sheets, not rails, so insetting
-            // by their width would push this off the side entirely.
             style={isNarrow ? undefined : { left: leftOpen ? 340 : 0, right: showDetailPanel && selectedId ? 340 : 0 }}
           >
             <div className="app-guide-head">
@@ -417,7 +502,52 @@ export default function App() {
               <div className="app-welcome-title">AMBIT</div>
               <div className="app-welcome-tagline">What your system can do —<br/>what it costs, and what is one step away.</div>
               <div className="app-welcome-diagram">
-                <svg width="300" height="100" viewBox="0 0 300 100"><rect x={0} y={0} width={300} height={100} rx={6} fill="#e8d5a8" opacity={0.5}/><line x1={52} y1={50} x2={128} y2={30} stroke="#8b6914" strokeWidth={1.5}/><line x1={152} y1={50} x2={128} y2={30} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><line x1={52} y1={50} x2={128} y2={70} stroke="#8b6914" strokeWidth={1.5}/><line x1={252} y1={50} x2={128} y2={70} stroke="#b8a060" strokeWidth={1} strokeDasharray="5,3"/><circle cx={52} cy={50} r={16} fill="#b8860b"/><text x={52} y={55} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◈</text><circle cx={252} cy={50} r={16} fill="#cd853f"/><text x={252} y={55} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◆</text><circle cx={128} cy={30} r={14} fill="#b87333"/><text x={128} y={34} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>●</text><circle cx={128} cy={70} r={14} fill="#6b8e23"/><text x={128} y={74} textAnchor="middle" fill="#faebd7" fontSize={13} fontWeight={700}>◇</text><circle cx={128} cy={30} r={18} fill="none" stroke="#b8860b" strokeWidth={2} strokeDasharray="84 29" strokeLinecap="round" transform="rotate(-90 128 30)"/><circle cx={128} cy={70} r={18} fill="none" stroke="#b8860b" strokeWidth={1.5} strokeDasharray="40 73" strokeLinecap="round" transform="rotate(-90 128 70)"/></svg>
+                <svg width="340" height="110" viewBox="0 0 340 110">
+                  <defs>
+                    <linearGradient id="heroCopper" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#ff3300" />
+                      <stop offset="50%" stopColor="#ffaa00" />
+                      <stop offset="100%" stopColor="#ffd700" />
+                    </linearGradient>
+                    <linearGradient id="heroCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#00f0ff" />
+                      <stop offset="100%" stopColor="#00ff88" />
+                    </linearGradient>
+                    <filter id="heroGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="3" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                  </defs>
+                  <rect x={0} y={0} width={340} height={110} rx={8} fill="#050c18" stroke="#162840" strokeWidth={1}/>
+                  
+                  {/* Gridlines */}
+                  <line x1={20} y1={55} x2={320} y2={55} stroke="#0e1d30" strokeWidth={1} strokeDasharray="4,4"/>
+                  <line x1={170} y1={10} x2={170} y2={100} stroke="#0e1d30" strokeWidth={1} strokeDasharray="4,4"/>
+
+                  {/* Laser Lines */}
+                  <line x1={56} y1={55} x2={146} y2={35} stroke="url(#heroCyan)" strokeWidth={2} opacity={0.8} filter="url(#heroGlow)"/>
+                  <line x1={170} y1={55} x2={146} y2={35} stroke="#38557a" strokeWidth={1.2} strokeDasharray="4,3"/>
+                  <line x1={56} y1={55} x2={146} y2={75} stroke="url(#heroCopper)" strokeWidth={2} opacity={0.8} filter="url(#heroGlow)"/>
+                  <line x1={284} y1={55} x2={146} y2={75} stroke="#38557a" strokeWidth={1.2} strokeDasharray="4,3"/>
+                  
+                  {/* Nodes */}
+                  <circle cx={56} cy={55} r={18} fill="#00f0ff" opacity={0.9} filter="url(#heroGlow)"/>
+                  <circle cx={56} cy={55} r={18} fill="none" stroke="#ffffff" strokeWidth={1.5}/>
+                  <text x={56} y={60} textAnchor="middle" fill="#030712" fontSize={14} fontWeight={800}>◈</text>
+                  
+                  <circle cx={284} cy={55} r={18} fill="#ff007f" opacity={0.9} filter="url(#heroGlow)"/>
+                  <circle cx={284} cy={55} r={18} fill="none" stroke="#ffffff" strokeWidth={1.5}/>
+                  <text x={284} y={60} textAnchor="middle" fill="#030712" fontSize={14} fontWeight={800}>◆</text>
+                  
+                  <circle cx={146} cy={35} r={15} fill="#ffaa00" opacity={0.9}/>
+                  <text x={146} y={40} textAnchor="middle" fill="#030712" fontSize={13} fontWeight={800}>●</text>
+                  
+                  <circle cx={146} cy={75} r={15} fill="#00ff88" opacity={0.9}/>
+                  <text x={146} y={80} textAnchor="middle" fill="#030712" fontSize={13} fontWeight={800}>◇</text>
+                  
+                  <circle cx={146} cy={35} r={20} fill="none" stroke="#00f0ff" strokeWidth={2} strokeDasharray="6,4" opacity={0.8} />
+                  <circle cx={146} cy={75} r={20} fill="none" stroke="#ffaa00" strokeWidth={1.5} strokeDasharray="4,3" opacity={0.8} />
+                </svg>
               </div>
               <div className="app-welcome-actions">
                 <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>▶  LOAD DEMO</button>
@@ -449,62 +579,6 @@ export default function App() {
         <CapabilityListPanel />
       </aside>
 
-      <div className="app-hud">
-        <button className="app-hud-btn" onClick={() => setLeftOpen(o => !o)} title="Toggle panel"> {leftOpen ? '◀' : '▶'} </button>
-        <button className="app-hud-btn" onClick={() => { setShowDocs(true); dismissGuide(); }} style={{fontWeight:600,fontSize:12,letterSpacing:1}}>DOCS</button>
-        <button
-          className="app-hud-btn"
-          onClick={() => { setShowApprovalModal(true); loadProposals(); }}
-          style={{
-            fontWeight: 600,
-            fontSize: 11,
-            letterSpacing: 0.5,
-            padding: '0 8px',
-            background: proposals.some(p => p.status === 'draft') ? 'rgba(231, 111, 81, 0.2)' : undefined,
-            color: proposals.some(p => p.status === 'draft') ? '#e76f51' : undefined,
-            border: proposals.some(p => p.status === 'draft') ? '1px solid #e76f51' : undefined,
-          }}
-          title="Review and approve environment proposals from agents"
-        >
-          🛡️ PROPOSALS {proposals.filter(p => p.status === 'draft').length > 0 && `(${proposals.filter(p => p.status === 'draft').length})`}
-        </button>
-        <button className="app-hud-btn" onClick={captureGraph} title="Save the current view as a PNG">📷 PNG</button>
-        {demo && (
-          <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
-            {([['graph', 'GRAPH'], ['loop', 'THE LOOP']] as const).map(([id, label]) => (
-              <button key={id} className="app-hud-btn"
-                style={{ width:'auto', padding:'0 8px', border:'none', background: view === id ? 'var(--accent)' : 'transparent', color: view === id ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: view === id ? 700 : 'normal', fontSize:'9px', height:'22px' }}
-                onClick={() => setView(id)}
-                title={id === 'loop' ? 'The economic loop — where time goes, what to build next, what it paid back' : 'The capability graph'}>
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px', marginLeft: '8px' }}>
-          {([['config', 'MY SETUP'], ['tree', 'TECH TREE']] as const).map(([id, label]) => (
-            <button key={id} className="app-hud-btn"
-              style={{ width:'auto', padding:'0 8px', border:'none', background: source === id ? 'var(--accent)' : 'transparent', color: source === id ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: source === id ? 700 : 'normal', fontSize:'9px', height:'22px' }}
-              onClick={() => { setSource(id); selectItem(null); id === 'tree' ? loadTechTree() : loadConfigSource(); }}
-              title={id === 'tree' ? 'The capability tree — what you have reached and what is next' : 'Everything in your setup, drawn as a map of what connects to what'}>
-              {label}
-            </button>
-          ))}
-        </div>
-        {source === 'config' && (
-        <div style={{ display: 'flex', gap: '1px', border: '1px solid var(--border)', background: 'var(--bg-surface)', padding: '1px' }}>
-          {TREE_FILTERS.map(f => (
-            <button key={f} className="app-hud-btn"
-              style={{ width:'auto', padding:'0 8px', border:'none', background: treeFilter === f ? 'var(--accent)' : 'transparent', color: treeFilter === f ? 'var(--bg-deep)' : 'var(--text-muted)', fontWeight: treeFilter === f ? 700 : 'normal', fontSize:'12px', height:'22px' }}
-              onClick={() => setTreeFilter(f)}
-              title={f === 'compact' ? 'Show only essential domains (ai-ml, backend, infra, frontend, meta, quality)' : `Show only ${f}s and frameworks`}>
-              {f.toUpperCase()}
-            </button>
-          ))}
-        </div>
-        )}
-      </div>
-
       <UplinkModal isOpen={showUplinkModal} onClose={() => setShowUplinkModal(false)} />
 
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
@@ -512,24 +586,29 @@ export default function App() {
       <DocsModal isOpen={showDocs} onClose={() => setShowDocs(false)} />
 
       {showImport && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowImport(false)}>
-          <div style={{ background:'#faf3e0', borderRadius:8, maxWidth:500, width:'90%', padding:28, border:'1px solid #c4a96a' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ margin:'0 0 4px 0', fontSize:14, fontWeight:700, letterSpacing:1.5, color:'#6b5b3a' }}>IMPORT A GRAPH</h3>
-            <p style={{ margin:'0 0 12px 0', fontSize:12, color:'#8b7355' }}>Run <code style={{background:'#f0dbb8', padding:'1px 4px', borderRadius:3}}>ambit graph</code> locally and paste the output — or load a sample to see the shape.</p>
-            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from ambit graph here, or load a sample…" style={{ width:'100%', height:200, fontFamily:'monospace', fontSize:13, padding:10, border:'1px solid #c4a96a', borderRadius:4, background:'#f0dbb8', resize:'vertical', color:'#4a3728' }} />
-            <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'flex-end' }}>
-              <button onClick={() => setShowImport(false)} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #c4a96a', background:'transparent', color:'#8b7355', borderRadius:3, cursor:'pointer' }}>CANCEL</button>
-              <button onClick={() => setImportText(demoGraphExport())} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #c4a96a', background:'transparent', color:'#8b7355', borderRadius:3, cursor:'pointer' }}>LOAD SAMPLE</button>
-              <button onClick={() => { if (loadFromJSON(importText)) { setShowImport(false); setImportText(''); } }} style={{ padding:'6px 14px', fontSize:12, fontWeight:600, letterSpacing:1, border:'1px solid #b8860b', background:'#b8860b', color:'#faf3e0', borderRadius:3, cursor:'pointer' }}>LOAD GRAPH</button>
+        <div style={{ position:'fixed', inset:0, background:'rgba(2, 6, 14, 0.82)', backdropFilter: 'blur(8px)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }} onClick={() => setShowImport(false)}>
+          <div style={{ background:'var(--bg-surface)', borderRadius:'var(--radius-lg)', maxWidth:520, width:'90%', padding:26, border:'1px solid var(--border-bright)', boxShadow: '0 24px 64px rgba(0,0,0,0.85), var(--accent-glow)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin:'0 0 6px 0', fontSize:15, fontWeight:700, letterSpacing:1.5, color:'var(--accent)', textTransform: 'uppercase' }}>IMPORT A GRAPH</h3>
+            <p style={{ margin:'0 0 14px 0', fontSize:12, color:'var(--text-secondary)' }}>Run <code style={{background:'var(--bg-deep)', color:'var(--accent)', padding:'2px 6px', borderRadius:3, border:'1px solid var(--border)'}}>ambit graph</code> locally and paste the output — or load a sample to see the shape.</p>
+            <textarea value={importText} onChange={e => setImportText(e.target.value)} placeholder="Paste JSON from ambit graph here, or load a sample…" style={{ width:'100%', height:200, fontFamily:'var(--font)', fontSize:12, padding:10, border:'1px solid var(--border)', borderRadius:'var(--radius-xs)', background:'var(--bg-deep)', resize:'vertical', color:'var(--text-primary)', outline: 'none' }} />
+            <div style={{ display:'flex', gap:8, marginTop:14, justifyContent:'flex-end' }}>
+              <button onClick={() => setShowImport(false)} className="tp-btn-sm" style={{ padding: '6px 14px' }}>CANCEL</button>
+              <button onClick={() => setImportText(demoGraphExport())} className="tp-btn-sm" style={{ padding: '6px 14px', borderColor: 'var(--accent-dim)', color: 'var(--accent)' }}>LOAD SAMPLE</button>
+              <button onClick={() => { if (loadFromJSON(importText)) { setShowImport(false); setImportText(''); } }} className="tp-btn" style={{ padding: '6px 16px', background: 'var(--accent)', color: 'var(--bg-deep)', borderColor: 'var(--accent)' }}>LOAD GRAPH</button>
             </div>
           </div>
         </div>
       )}
 
       <footer className="app-footer">
-        <span className="app-footer-title">◈ AMBIT</span>
         <span className="app-footer-info">
-          {items.length} capabilities · {items.filter(i => i.status === 'built').length} built
+          ◈ AMBIT · {items.length} capabilities · {items.filter(i => i.status === 'built').length} reached
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 0.5 }}>
+          KEYS: [J/K] NAVIGATE · [1-4] SWITCH LENS · [/] SEARCH · [ESC] CLEAR
+        </span>
+        <span className="app-footer-info">
+          <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>GITHUB ↗</a>
         </span>
       </footer>
 
@@ -539,8 +618,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Selecting a node opens a panel elsewhere in the document, which is a
-          silent change to anyone not watching it happen. */}
       <div className="visually-hidden" role="status" aria-live="polite">
         {selectedId
           ? (() => {

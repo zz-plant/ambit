@@ -55,7 +55,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
   const simulatedItem = items.find(i => i.id === simulatedNodeId);
 
-  const { downstream, chainIds } = useMemo(() => {
+  const { downstream, upstream, chainIds } = useMemo(() => {
     const down = new Map<string, string[]>(), up = new Map<string, string[]>();
     for (const c of connections) {
       if (!down.has(c.from)) down.set(c.from, []);
@@ -74,7 +74,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         for (const n of (up.get(id) || [])) q.push(n);
       }
     }
-    return { downstream: down, chainIds: chain };
+    return { downstream: down, upstream: up, chainIds: chain };
   }, [connections, selectedId]);
 
   const filtered = useMemo(() => {
@@ -127,7 +127,17 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
     return map;
   }, [cols, colOrder]);
 
-  const COLORS: Record<string, string> = { framework: '#b8860b', 'mcp-server': '#daa520', agent: '#cd853f', skill: '#6b8e23', provider: '#a0853c', combo: '#b87333', possibility: '#b87333', tool: '#a0522d' };
+  const COLORS: Record<string, string> = {
+    framework: '#00f0ff',
+    'mcp-server': '#ffaa00',
+    agent: '#ff007f',
+    skill: '#00ff88',
+    provider: '#38bdf8',
+    combo: '#b537f2',
+    possibility: '#b537f2',
+    tool: '#e08a00',
+    device: '#00ffcc',
+  };
   const hoverTarget = hoverItem || hoveredId;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
@@ -141,6 +151,18 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
       else if (e.key === '2') { setActiveLens('attention'); }
       else if (e.key === '3') { setActiveLens('credentials'); }
       else if (e.key === '4') { setActiveLens('topology'); }
+      else if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const idx = items.findIndex(i => i.id === selectedId);
+        const nextIdx = idx < 0 ? 0 : (idx + 1) % items.length;
+        onSelect(items[nextIdx].id);
+      }
+      else if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const idx = items.findIndex(i => i.id === selectedId);
+        const prevIdx = idx <= 0 ? items.length - 1 : idx - 1;
+        onSelect(items[prevIdx].id);
+      }
       else if (e.key === 'Escape') {
         if (simulationMode !== 'none') clearSimulation();
         else if (selectedId) onSelect(null);
@@ -148,7 +170,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveLens, clearSimulation, simulationMode, selectedId, onSelect]);
+  }, [setActiveLens, clearSimulation, simulationMode, selectedId, onSelect, items]);
 
   const contentHeight = Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 40;
   const contentWidth = START_X + colOrder.length * COL_W + 60;
@@ -156,89 +178,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
   return (
     <div style={{ position:'relative', width:'100%', height:'100%', overflow:'auto', paddingLeft: leftInset }}>
 
-      {/* Interactive Lens Switcher Toolbar */}
-      <div style={{
-        position: 'sticky',
-        top: 12,
-        left: 16,
-        zIndex: 20,
-        display: 'inline-flex',
-        gap: '6px',
-        background: 'rgba(245, 230, 200, 0.95)',
-        padding: '6px 10px',
-        borderRadius: '8px',
-        border: '1px solid #c4a96a',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-      }}>
-        <button
-          type="button"
-          style={{
-            background: activeLens === 'default' ? '#6b5b3a' : '#fff',
-            color: activeLens === 'default' ? '#fff' : '#6b5b3a',
-            border: '1px solid #c4a96a',
-            borderRadius: '4px',
-            padding: '4px 10px',
-            fontSize: '11px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-          onClick={() => setActiveLens('default')}
-          title="Shortcut: Press 1"
-        >
-          🗺️ Standard Tree <span style={{ opacity: 0.6, fontSize: '10px' }}>[1]</span>
-        </button>
-        <button
-          type="button"
-          style={{
-            background: activeLens === 'attention' ? '#e76f51' : '#fff',
-            color: activeLens === 'attention' ? '#fff' : '#e76f51',
-            border: '1px solid #e76f51',
-            borderRadius: '4px',
-            padding: '4px 10px',
-            fontSize: '11px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-          onClick={() => setActiveLens('attention')}
-          title="Shortcut: Press 2"
-        >
-          🔥 Attention Heatmap <span style={{ opacity: 0.6, fontSize: '10px' }}>[2]</span>
-        </button>
-        <button
-          type="button"
-          style={{
-            background: activeLens === 'credentials' ? '#7209b7' : '#fff',
-            color: activeLens === 'credentials' ? '#fff' : '#7209b7',
-            border: '1px solid #7209b7',
-            borderRadius: '4px',
-            padding: '4px 10px',
-            fontSize: '11px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-          onClick={() => setActiveLens('credentials')}
-          title="Shortcut: Press 3"
-        >
-          🛡️ Credential SPOFs <span style={{ opacity: 0.6, fontSize: '10px' }}>[3]</span>
-        </button>
-        <button
-          type="button"
-          style={{
-            background: activeLens === 'topology' ? '#2a9d8f' : '#fff',
-            color: activeLens === 'topology' ? '#fff' : '#2a9d8f',
-            border: '1px solid #2a9d8f',
-            borderRadius: '4px',
-            padding: '4px 10px',
-            fontSize: '11px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-          onClick={() => setActiveLens('topology')}
-          title="Shortcut: Press 4"
-        >
-          🌐 Topology Clusters <span style={{ opacity: 0.6, fontSize: '10px' }}>[4]</span>
-        </button>
-      </div>
+
 
       {/* Floating Simulation Banner */}
       {simulationMode !== 'none' && (
@@ -250,13 +190,18 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           display: 'inline-flex',
           alignItems: 'center',
           gap: '12px',
-          background: simulationMode === 'outage' ? '#e63946' : '#2a9d8f',
-          color: '#fff',
-          padding: '8px 14px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
-          fontWeight: 600,
+          background: simulationMode === 'outage'
+            ? 'linear-gradient(90deg, #ff2a55, #880022)'
+            : 'linear-gradient(90deg, #00f0ff, #0088cc)',
+          color: '#ffffff',
+          padding: '8px 16px',
+          borderRadius: 'var(--radius)',
+          border: '1px solid ' + (simulationMode === 'outage' ? '#ff2a55' : '#00f0ff'),
+          boxShadow: simulationMode === 'outage' ? 'var(--error-glow)' : 'var(--accent-glow)',
+          fontWeight: 700,
+          fontFamily: 'var(--font)',
           fontSize: '12px',
+          letterSpacing: '0.5px',
           marginTop: '6px',
         }}>
           <span>
@@ -267,14 +212,17 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           <button
             type="button"
             style={{
-              background: '#fff',
-              color: simulationMode === 'outage' ? '#e63946' : '#2a9d8f',
+              background: '#ffffff',
+              color: simulationMode === 'outage' ? '#ff2a55' : '#0088cc',
               border: 'none',
-              borderRadius: '4px',
+              borderRadius: 'var(--radius-xs)',
               padding: '4px 10px',
               cursor: 'pointer',
-              fontWeight: 700,
+              fontWeight: 800,
+              fontFamily: 'var(--font)',
               fontSize: '11px',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
             }}
             onClick={clearSimulation}
           >
@@ -283,30 +231,43 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         </div>
       )}
 
-      {/* xMinYMin: the default centres the viewBox, and once the tallest column
-          makes the graph taller than it is wide, that centring pushes every node
-          below the fold — the canvas looks empty until you scroll past the gap. */}
-      {/* height came from the viewBox rather than from how wide the svg
-          actually rendered, so whenever width was the binding constraint —
-          any phone — the tree scaled down to a strip at the top and left the
-          rest of a full-height canvas empty. An aspect ratio ties the two
-          together at every width. */}
+      {/* Main SVG Vector Canvas */}
       <svg width="100%" height="auto" preserveAspectRatio="xMinYMin meet"
         viewBox={`0 0 ${contentWidth} ${contentHeight}`}
         className="civ-tree-svg"
-        style={{ background: '#f5e6c8', aspectRatio: `${contentWidth} / ${contentHeight}` }}>
+        style={{ background: 'var(--bg-deep)', aspectRatio: `${contentWidth} / ${contentHeight}` }}>
         
-        {/* Era column bands */}
+        <defs>
+          <linearGradient id="copperRaster" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#ff3300" />
+            <stop offset="50%" stopColor="#ffaa00" />
+            <stop offset="100%" stopColor="#ffd700" />
+          </linearGradient>
+          <linearGradient id="cyanLaser" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#00f0ff" />
+            <stop offset="100%" stopColor="#38bdf8" />
+          </linearGradient>
+          <filter id="laserGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        {/* Era column bands with raster headers */}
         {colOrder.map((d, i) => {
           const x = START_X + i * COL_W;
           return (
             <g key={`band-${d}`}>
               <rect x={x - 5} y={START_Y - 45} width={COL_W - 20} height={contentHeight - START_Y + 20}
-                fill={i % 2 === 0 ? '#f0dbb8' : '#f8ecd0'} rx={6} opacity={0.5}/>
-              <text x={x + COL_W/2 - 40} y={START_Y - 22} textAnchor="middle" fill="#6b5b3a" fontSize={13} fontWeight={700}
-                letterSpacing={2} style={{ textTransform: 'uppercase' }}>{columnLabel(d, cols[d] || [])}</text>
-              <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="#9b8b6a" fontSize={12}>{d.startsWith('era:') ? `ERA ${d.slice(4)}` : (d || '').toUpperCase()}</text>
-              <line x1={x + 10} y1={START_Y - 2} x2={x + COL_W - 50} y2={START_Y - 2} stroke="#c4a96a" strokeWidth={0.8}/>
+                fill={i % 2 === 0 ? 'rgba(7, 14, 28, 0.75)' : 'rgba(13, 26, 45, 0.75)'}
+                stroke="var(--border)" strokeWidth={1} rx={6} />
+              <rect x={x - 5} y={START_Y - 45} width={COL_W - 20} height={3}
+                fill={i % 2 === 0 ? 'url(#cyanLaser)' : 'url(#copperRaster)'} rx={1} />
+              <text x={x + COL_W/2 - 40} y={START_Y - 22} textAnchor="middle" fill="var(--text-primary)" fontSize={13} fontWeight={700}
+                letterSpacing={1.8} style={{ textTransform: 'uppercase', fontFamily: 'var(--font)' }}>{columnLabel(d, cols[d] || [])}</text>
+              <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="var(--accent)" fontSize={11} fontWeight={600}
+                letterSpacing={1} style={{ fontFamily: 'var(--font)' }}>{d.startsWith('era:') ? `ERA ${d.slice(4)}` : (d || '').toUpperCase()}</text>
+              <line x1={x + 10} y1={START_Y - 2} x2={x + COL_W - 50} y2={START_Y - 2} stroke="var(--border-bright)" strokeWidth={1}/>
             </g>
           );
         })}
@@ -327,12 +288,17 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             (simulatedNodeId === conn.from && simulatedCascadeIds.has(conn.to)) ||
             (simulatedCascadeIds.has(conn.from) && simulatedCascadeIds.has(conn.to))
           );
-          const op = isSimLine ? 0.95 : simulationMode !== 'none' ? 0.05 : (chainIds.size > 0 ? (inChain ? 0.65 : 0.06) : 0.35);
-          const strokeColor = isSimLine ? (simulationMode === 'outage' ? '#e63946' : '#2a9d8f') : (isHard ? '#8b6914' : isSoft ? '#b8a060' : '#d4a017');
+          const op = isSimLine ? 1 : simulationMode !== 'none' ? 0.08 : (chainIds.size > 0 ? (inChain ? 0.95 : 0.08) : 0.45);
+          const strokeColor = isSimLine
+            ? (simulationMode === 'outage' ? '#ff2a55' : '#00f0ff')
+            : (inChain ? 'var(--accent)' : isHard ? 'var(--accent-dim)' : isSoft ? '#38557a' : 'var(--copper-2)');
+          const isLaserFlow = isSimLine || inChain;
           return <line key={`c-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
             stroke={strokeColor}
-            strokeWidth={isSimLine ? 3 : (isHard ? 2 : 1.2)}
-            strokeDasharray={isSimLine ? 'none' : (isHard ? 'none' : isSoft ? '6,3' : '2,4')}
+            strokeWidth={isSimLine ? 3.5 : (inChain ? 2.5 : isHard ? 2 : 1.2)}
+            strokeDasharray={isLaserFlow ? '8,6' : (isHard ? 'none' : isSoft ? '6,3' : '3,4')}
+            className={isLaserFlow ? 'civ-laser-flow' : undefined}
+            filter={inChain || isSimLine ? 'url(#laserGlow)' : undefined}
             opacity={op}/>;
         })}
 
@@ -344,7 +310,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             <g key={domain}>
               {caps.map((item, ri) => {
                 const cy = START_Y + ri * ROW_H + NODE_R;
-                const defaultColor = COLORS[item.type] || '#8b7355';
+                const defaultColor = COLORS[item.type] || '#537699';
                 const inChain = chainIds.has(item.id);
                 const selected = item.id === selectedId;
                 
@@ -359,15 +325,26 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 const dimmed = (chainIds.size > 0 && !inChain) || isSimDimmed;
                 const next = isNext(item);
                 const reached = item.status === 'built';
-                const baseOpacity = isSimRoot || isSimAffected ? 1 : dimmed ? 0.15 : reached ? 1 : next ? 0.92 : 0.3;
+                const baseOpacity = isSimRoot || isSimAffected ? 1 : dimmed ? 0.2 : reached ? 1 : next ? 0.95 : 0.4;
                 
-                let nodeFill = reached ? defaultColor : '#f5e6c8';
-                let sc = inChain && !selected ? '#d4a017' : selected ? '#d4a017' : defaultColor;
-                let sw = inChain ? 3 : selected ? 3 : 1.5;
+                // Keystone / Wonder Framing
+                const downList = downstream.get(item.id) || [];
+                const isKeystone = downList.length >= 3 || item.id === 'opencode-core' || item.type === 'framework';
+
+                // Prerequisite readiness & Eureka boosts
+                const upList = upstream.get(item.id) || [];
+                const builtPrereqs = upList.filter(id => items.find(i => i.id === id)?.status === 'built').length;
+                const totalPrereqs = upList.length;
+                const readinessPct = totalPrereqs > 0 ? (builtPrereqs / totalPrereqs) : 1;
+                const hasEureka = next && builtPrereqs > 0 && totalPrereqs > 1;
+
+                let nodeFill = reached ? defaultColor : '#081324';
+                let sc = inChain && !selected ? 'var(--accent)' : selected ? '#ffffff' : (reached ? defaultColor : 'var(--border-bright)');
+                let sw = inChain ? 3 : selected ? 3.5 : (reached ? 2 : 1.5);
 
                 if (simulationMode === 'outage') {
                   if (isSimRoot) {
-                    nodeFill = '#e63946';
+                    nodeFill = '#ff2a55';
                     sc = '#ffffff';
                     sw = 3.5;
                   } else if (isSimAffected) {
@@ -377,26 +354,28 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                   }
                 } else if (simulationMode === 'acquisition') {
                   if (isSimRoot) {
-                    nodeFill = '#48cae4';
+                    nodeFill = '#00f0ff';
                     sc = '#ffffff';
                     sw = 3.5;
                   } else if (isSimAffected) {
-                    nodeFill = '#2a9d8f';
+                    nodeFill = '#00ff88';
                     sc = '#ffffff';
                     sw = 2.5;
                   }
                 } else if (isAttentionHot) {
-                  nodeFill = interventionCount > 20 ? '#e76f51' : '#f4a261';
+                  nodeFill = interventionCount > 20 ? 'var(--copper-1)' : 'var(--copper-2)';
                   sc = '#ffffff';
-                  sw = 2;
+                  sw = 2.5;
                 } else if (isSpofHot) {
-                  nodeFill = '#7209b7';
-                  sc = '#ffd166';
+                  nodeFill = 'var(--plasma)';
+                  sc = 'var(--copper-4)';
                   sw = 3;
                 }
 
                 const sym = item.type === 'framework' ? '★' : item.type === 'mcp-server' ? '◈' : item.type === 'agent' ? '◆' : item.type === 'skill' ? '◇' : '●';
                 const label = item.name.length > 20 ? item.name.slice(0, 18) + '…' : item.name;
+                const dialRadius = NODE_R + 8;
+                const dialCircumference = 2 * Math.PI * dialRadius;
                 
                 return (
                   <g key={item.id} transform={`translate(${cx}, ${cy})`} opacity={baseOpacity}
@@ -416,13 +395,24 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     onMouseLeave={() => { onHover?.(null); setHoverItem(null); }}
                     style={{ cursor:'pointer', transition:'opacity .2s' }}>
                     
+                    {/* Keystone / World Wonder Faceted Pedestal Frame */}
+                    {isKeystone && !dimmed && (
+                      <g>
+                        <rect x={-NODE_R - 5} y={-NODE_R - 5} width={(NODE_R + 5) * 2} height={(NODE_R + 5) * 2} rx={6}
+                          fill="none" stroke="var(--copper-3)" strokeWidth={1.5} opacity={0.65} transform="rotate(45)" />
+                        {reached && (
+                          <circle r={NODE_R + 5} fill="none" stroke="var(--copper-2)" strokeWidth={1} strokeDasharray="3,3" opacity={0.5} />
+                        )}
+                      </g>
+                    )}
+
                     {/* Outer glow when selected or simulation target */}
-                    {selected && <circle r={NODE_R + 10} fill="none" stroke="#d4a017" strokeWidth={4} opacity={0.3}/>}
+                    {selected && <circle r={NODE_R + 10} fill="none" stroke="var(--accent)" strokeWidth={3} opacity={0.6} filter="url(#laserGlow)"/>}
                     {isSimRoot && (
                       <circle
                         r={NODE_R + 8}
                         fill="none"
-                        stroke={simulationMode === 'outage' ? '#e63946' : '#48cae4'}
+                        stroke={simulationMode === 'outage' ? '#ff2a55' : '#00f0ff'}
                         strokeWidth={3}
                         className={simulationMode === 'outage' ? 'sim-pulse-outage' : 'sim-pulse-unlock'}
                       />
@@ -431,39 +421,58 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                       <circle
                         r={NODE_R + 6}
                         fill="none"
-                        stroke={simulationMode === 'outage' ? '#d90429' : '#2a9d8f'}
-                        strokeWidth={2}
+                        stroke={simulationMode === 'outage' ? '#d90429' : '#00ff88'}
+                        strokeWidth={2.5}
                         className={simulationMode === 'outage' ? 'sim-pulse-outage' : 'sim-pulse-unlock'}
                       />
                     )}
 
-                    {/* Researchable now: dashed halo plus what it costs to take */}
+                    {/* Frontier Researchable: Segmented Radial Readiness Beaker Dial */}
                     {next && !dimmed && !isSimAffected && (
                       <>
-                        <circle r={NODE_R + 9} fill="none" stroke="#1f7a8c" strokeWidth={2}
-                          strokeDasharray="5,4" opacity={0.9}/>
+                        {/* Dial background track */}
+                        <circle r={dialRadius} fill="none" stroke="rgba(0, 240, 255, 0.18)" strokeWidth={3} />
+                        {/* Dial active progress arc */}
+                        <circle
+                          r={dialRadius}
+                          fill="none"
+                          stroke={readinessPct >= 1 ? 'var(--ok)' : 'var(--accent)'}
+                          strokeWidth={3}
+                          strokeDasharray={`${dialCircumference * readinessPct} ${dialCircumference}`}
+                          strokeDashoffset={0}
+                          transform="rotate(-90)"
+                          strokeLinecap="round"
+                          filter="url(#laserGlow)"
+                        />
                         {costOf(item) && (
-                          <text x={NODE_R + 4} y={-NODE_R - 1} textAnchor="start" fill="#1f7a8c"
-                            fontSize={12} fontWeight={700}>{costOf(item)}</text>
+                          <text x={NODE_R + 6} y={-NODE_R} textAnchor="start" fill="var(--copper-3)"
+                            fontSize={11} fontWeight={700} fontFamily="var(--font)">{costOf(item)}</text>
+                        )}
+                        {/* Eureka Boost Badge */}
+                        {hasEureka && (
+                          <g transform={`translate(0, ${-NODE_R - 14})`}>
+                            <rect x={-26} y={-8} width={52} height={14} rx={3} fill="rgba(255, 170, 0, 0.2)" stroke="var(--copper-3)" strokeWidth={1} />
+                            <text y={3} textAnchor="middle" fill="var(--copper-3)" fontSize={9} fontWeight={800} fontFamily="var(--font)">⚡ BOOST</text>
+                          </g>
                         )}
                       </>
                     )}
 
-                    {/* Main node */}
-                    <circle r={NODE_R} fill={nodeFill} stroke={next ? '#1f7a8c' : sc}
-                      strokeWidth={next ? 2.5 : sw} opacity={0.9}/>
-                    <text y={3} textAnchor="middle" fill={dimmed ? '#8b7355' : '#faebd7'} fontSize={15} fontWeight={700}>{sym}</text>
+                    {/* Main node disc */}
+                    <circle r={NODE_R} fill={nodeFill} stroke={next ? 'var(--accent)' : sc}
+                      strokeWidth={next ? 2.5 : sw} opacity={0.95}/>
+                    <text y={4} textAnchor="middle" fill={reached ? '#030712' : (dimmed ? '#436080' : '#ffffff')} fontSize={15} fontWeight={800}>{sym}</text>
 
                     {/* Simulation status pills */}
                     {isSimAffected && (
-                      <text y={-NODE_R - 4} textAnchor="middle" fill={simulationMode === 'outage' ? '#e63946' : '#2a9d8f'} fontSize={10} fontWeight={800}>
+                      <text y={-NODE_R - 5} textAnchor="middle" fill={simulationMode === 'outage' ? '#ff2a55' : '#00ff88'} fontSize={10} fontWeight={800} fontFamily="var(--font)">
                         {simulationMode === 'outage' ? 'BLOCKED' : 'UNLOCKED'}
                       </text>
                     )}
 
                     {/* Attention Heatmap Badge */}
                     {isAttentionHot && !dimmed && (
-                      <text y={-NODE_R - 4} textAnchor="middle" fill="#e76f51" fontSize={10} fontWeight={700}>
+                      <text y={-NODE_R - 5} textAnchor="middle" fill="var(--copper-2)" fontSize={10} fontWeight={700} fontFamily="var(--font)">
                         {interventionCount}× ($/mo)
                       </text>
                     )}
@@ -471,17 +480,17 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     {/* Evidence badge */}
                     {reached && !dimmed && ['verified','reliable'].includes(item.meta?.lifecycle as string) && (
                       <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
-                        <circle r={7} fill="#2e7d32" stroke="#faebd7" strokeWidth={1.5}/>
-                        <text y={3.5} textAnchor="middle" fill="#faebd7" fontSize={10} fontWeight={700}>✓</text>
+                        <circle r={7} fill="#00ff88" stroke="var(--bg-deep)" strokeWidth={1.5}/>
+                        <text y={3.5} textAnchor="middle" fill="#030712" fontSize={10} fontWeight={800}>✓</text>
                       </g>
                     )}
                     {reached && !dimmed && ['degraded','broken'].includes(item.meta?.lifecycle as string) && (
                       <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
-                        <circle r={7} fill="#c62828" stroke="#faebd7" strokeWidth={1.5}/>
-                        <text y={3.5} textAnchor="middle" fill="#faebd7" fontSize={10} fontWeight={700}>!</text>
+                        <circle r={7} fill="#ff2a55" stroke="var(--bg-deep)" strokeWidth={1.5}/>
+                        <text y={3.5} textAnchor="middle" fill="#ffffff" fontSize={10} fontWeight={800}>!</text>
                       </g>
                     )}
-                    <text y={NODE_R + 18} textAnchor="middle" fill={dimmed ? '#6b5b3a' : '#4a3728'} fontSize={12} fontWeight={500}>{label}</text>
+                    <text y={NODE_R + 18} textAnchor="middle" fill={dimmed ? '#436080' : 'var(--text-primary)'} fontSize={12} fontWeight={600} fontFamily="var(--font)">{label}</text>
                   </g>
                 );
               })}
@@ -490,10 +499,6 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         })}
 
         {/* Hover tooltip */}
-        {/* Hover detail. This used to require hoverDownstream.length > 0, so a
-            capability you have not reached — whose description carries the whole
-            point, "configured, but Vector Store is not in place yet" — showed
-            nothing at all on hover. */}
         {hoverTarget && (() => {
           const ni = items.find(i => i.id === hoverTarget);
           if (!ni) return null;
@@ -501,8 +506,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           const ai = (cols[columnOf(ni)] || []).findIndex((i: Item) => i.id === hoverTarget);
           if (di < 0 || ai < 0) return null;
 
-          // SVG text does not wrap, so break the description by hand.
-          const wrap = (text: string, perLine = 30, max = 4) => {
+          const wrap = (text: string, perLine = 28, max = 4) => {
             const out: string[] = [];
             let line = '';
             for (const word of text.split(' ')) {
@@ -517,36 +521,45 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           const unreached = ni.status !== 'built';
           const lines = unreached && ni.description ? wrap(ni.description) : [];
           const enables = hoverDownstream.slice(0, 4);
-          const W = 190;
-          const headH = 20;
-          const descH = lines.length * 14;
-          const enablesH = enables.length ? 18 + enables.length * 15 : 0;
-          const boxH = headH + descH + enablesH + 10;
+          const downCount = (downstream.get(ni.id) || []).length;
+          const isKey = downCount >= 3 || ni.id === 'opencode-core' || ni.type === 'framework';
+          
+          const W = 220;
+          const headH = 22;
+          const keyH = isKey ? 18 : 0;
+          const descH = lines.length * 15;
+          const enablesH = enables.length ? 20 + enables.length * 15 : 0;
+          const boxH = headH + keyH + descH + enablesH + 12;
 
           const tx = START_X + di * COL_W + COL_W / 2 - 40 + NODE_R + 10;
           const ty = START_Y + ai * ROW_H + NODE_R - 10;
 
           return (
             <g transform={`translate(${tx}, ${ty})`} pointerEvents="none">
-              <rect x={0} y={0} width={W} height={boxH} rx={5} fill="#faf3e0" stroke="#b8860b" strokeWidth={1}/>
-              <text x={10} y={15} fill="#6b5b3a" fontSize={12} fontWeight={700}>
+              <rect x={0} y={0} width={W} height={boxH} rx={6} fill="var(--bg-glass)" stroke="var(--accent)" strokeWidth={1.5} filter="url(#laserGlow)"/>
+              <text x={12} y={16} fill="var(--accent)" fontSize={12} fontWeight={700} fontFamily="var(--font)">
                 {unreached ? 'NOT REACHED YET' : ni.name}
               </text>
+              {isKey && (
+                <text x={12} y={headH + 12} fill="var(--copper-3)" fontSize={10} fontWeight={800} fontFamily="var(--font)">
+                  ★ KEYSTONE ANCHOR ({downCount} ENABLES)
+                </text>
+              )}
               {lines.map((line, i) => (
-                <text key={i} x={10} y={headH + 12 + i * 14} fill="#4a3728" fontSize={12}>{line}</text>
+                <text key={i} x={12} y={headH + keyH + 12 + i * 15} fill="var(--text-secondary)" fontSize={11} fontFamily="var(--font)">{line}</text>
               ))}
               {enables.length > 0 && (
-                <text x={10} y={headH + descH + 14} fill="#6b5b3a" fontSize={12} fontWeight={700}>ENABLES</text>
+                <text x={12} y={headH + keyH + descH + 15} fill="var(--copper-3)" fontSize={11} fontWeight={700} fontFamily="var(--font)">ENABLES</text>
               )}
               {enables.map((did, i) => {
                 const dep = items.find(it => it.id === did);
                 const label = dep ? (dep.name.length > 22 ? dep.name.slice(0, 20) + '…' : dep.name) : did;
                 return (
-                  <text key={did} x={12} y={headH + descH + 29 + i * 15} fill="#4a3728" fontSize={12}>{label}</text>
+                  <text key={did} x={14} y={headH + keyH + descH + 30 + i * 15} fill="var(--text-primary)" fontSize={11} fontFamily="var(--font)">{label}</text>
                 );
               })}
               {hoverDownstream.length > 4 && (
-                <text x={12} y={boxH - 6} fill="#8b7355" fontSize={12}>+{hoverDownstream.length - 4} more</text>
+                <text x={14} y={boxH - 6} fill="var(--text-muted)" fontSize={10} fontFamily="var(--font)">+{hoverDownstream.length - 4} more</text>
               )}
             </g>
           );
@@ -554,30 +567,31 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
         {/* Inline legend */}
         <g transform={`translate(${START_X}, ${contentHeight - 40})`}>
-          <line x1={0} y1={-4} x2={colOrder.length * COL_W - 60} y2={-4} stroke="#c4a96a" strokeWidth={0.5}/>
+          <line x1={0} y1={-4} x2={colOrder.length * COL_W - 60} y2={-4} stroke="var(--border-bright)" strokeWidth={1}/>
           {[
-            {color:'#b8860b',sym:'★',label:'Framework'},
-            {color:'#daa520',sym:'◈',label:'Server'},
-            {color:'#cd853f',sym:'◆',label:'Agent'},
-            {color:'#6b8e23',sym:'◇',label:'Skill'},
-            {color:'#b87333',sym:'●',label:'Combo'},
-            {color:'#2e7d32',sym:'✓',label:'Check passing'},
-            {color:'#c62828',sym:'!',label:'Check failing'},
-            {stroke:'#8b6914',style:'solid',label:'Required'},
-            {stroke:'#b8a060',style:'dashed',label:'Optional'},
+            {color:'var(--accent)',sym:'★',label:'Framework'},
+            {color:'var(--copper-3)',sym:'◈',label:'Server'},
+            {color:'#ff007f',sym:'◆',label:'Agent'},
+            {color:'var(--ok)',sym:'◇',label:'Skill'},
+            {color:'var(--plasma)',sym:'●',label:'Combo'},
+            {color:'var(--copper-3)',sym:'👑',label:'Keystone'},
+            {color:'var(--ok)',sym:'✓',label:'Passing'},
+            {color:'var(--error)',sym:'!',label:'Failing'},
+            {stroke:'var(--accent)',style:'solid',label:'Required'},
+            {stroke:'var(--text-muted)',style:'dashed',label:'Optional'},
           ].map((l,i)=>{
-            const lx = 30 + i * 140;
+            const lx = 10 + i * 120;
             return (
               <g key={i} transform={`translate(${lx}, 12)`}>
                 {l.color ? (
                   <>
-                    <circle r={8} fill={l.color} opacity={0.85}/>
-                    <text y={3} textAnchor="middle" fill="#faebd7" fontSize={12} fontWeight={700}>{l.sym}</text>
+                    <circle r={8} fill={l.color} opacity={0.9}/>
+                    <text y={3.5} textAnchor="middle" fill="#030712" fontSize={11} fontWeight={800}>{l.sym}</text>
                   </>
                 ) : (
-                  <line x1={-12} y1={0} x2={12} y2={0} stroke={l.stroke} strokeWidth={1.5} strokeDasharray={l.style === 'dashed' ? '5,3' : 'none'}/>
+                  <line x1={-12} y1={0} x2={12} y2={0} stroke={l.stroke} strokeWidth={1.8} strokeDasharray={l.style === 'dashed' ? '5,3' : 'none'}/>
                 )}
-                <text x={16} y={3} fill="#6b5b3a" fontSize={12}>{l.label}</text>
+                <text x={14} y={3.5} fill="var(--text-secondary)" fontSize={10} fontWeight={600} fontFamily="var(--font)">{l.label}</text>
               </g>
             );
           })}

@@ -22,6 +22,7 @@ export function CapabilityListPanel() {
     <div className="toolchain-panel">
       <div className="tp-tabs">
         <span className="tp-tab tp-tab--active">Capabilities ({items.length})</span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600 }}>NAV: [J / K]</span>
       </div>
 
       <div style={{ padding: '6px', borderBottom: '1px solid var(--border)' }}>
@@ -32,7 +33,7 @@ export function CapabilityListPanel() {
 
       <div className="tp-toolbar">
         <input className="tp-search"
-          placeholder="Search capabilities…"
+          placeholder="Search capabilities… [ / ]"
           value={searchQuery}
           onChange={e => setSearch(e.target.value)}
         />
@@ -46,20 +47,33 @@ export function CapabilityListPanel() {
       </div>
 
       <div className="tp-list">
-        {filtered.map(item => (
-          <div key={item.id}
-            className={`tp-item ${selectedId === item.id ? 'tp-item--sel' : ''}`}
-            onClick={() => selectItem(item.id)}
-          >
-            <div className="tp-item-hdr">
-              <span className="tp-item-name">{item.name}</span>
-              <span className={`tp-badge tp-badge--${item.status}`}>{statusLabel(item.status)}</span>
+        {filtered.map(item => {
+          const isBuilt = item.status === 'built';
+          const lifecycle = item.meta?.lifecycle as string | undefined;
+          const isFailing = lifecycle === 'degraded' || lifecycle === 'broken';
+
+          return (
+            <div key={item.id}
+              className={`tp-item ${selectedId === item.id ? 'tp-item--sel' : ''}`}
+              onClick={() => selectItem(item.id)}
+            >
+              <div className="tp-item-hdr">
+                <span className="tp-item-name">{item.name}</span>
+                <span className={`tp-badge tp-badge--${item.status}`}>{statusLabel(item.status)}</span>
+              </div>
+              <div className="tp-item-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{typeLabel(item.type)}</span>
+                {/* Segmented LED VU Meter */}
+                <div className="vu-meter" title={`Integrity: ${isFailing ? 'Failing' : isBuilt ? 'Verified' : 'Unreached'}`}>
+                  <div className={`vu-bar ${isBuilt ? (isFailing ? 'vu-bar--error' : 'vu-bar--ok') : ''}`} />
+                  <div className={`vu-bar ${isBuilt ? (isFailing ? 'vu-bar--error' : 'vu-bar--ok') : ''}`} />
+                  <div className={`vu-bar ${isBuilt && !isFailing ? 'vu-bar--ok' : ''}`} />
+                  <div className={`vu-bar ${isBuilt && lifecycle === 'reliable' ? 'vu-bar--ok' : ''}`} />
+                </div>
+              </div>
             </div>
-            <div className="tp-item-meta">
-              {typeLabel(item.type)}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {filtered.length === 0 && (
           <div className="tp-empty">Nothing matches that search</div>
         )}

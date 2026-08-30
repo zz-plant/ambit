@@ -15,12 +15,12 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const NODE_TYPES = [
-  { color: '#b8860b', sym: '★', label: 'Framework', desc: 'The agent runtime itself' },
-  { color: '#daa520', sym: '▣', label: 'MCP server', desc: 'A tool the agent can call' },
-  { color: '#cd853f', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
-  { color: '#6b8e23', sym: '✦', label: 'Skill', desc: 'A procedure loaded on demand' },
-  { color: '#a0853c', sym: '⬢', label: 'Provider / model', desc: 'Where inference happens' },
-  { color: '#b87333', sym: '⬡', label: 'Tech tree node', desc: 'A capability you reach by having others' },
+  { color: 'var(--accent)', sym: '★', label: 'Framework', desc: 'The agent runtime itself' },
+  { color: 'var(--copper-3)', sym: '◈', label: 'MCP server', desc: 'A tool the agent can call' },
+  { color: '#ff007f', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
+  { color: 'var(--ok)', sym: '◇', label: 'Skill', desc: 'A procedure loaded on demand' },
+  { color: '#38bdf8', sym: '⬢', label: 'Provider / model', desc: 'Where inference happens' },
+  { color: 'var(--plasma)', sym: '●', label: 'Tech tree node', desc: 'A capability you reach by having others' },
 ];
 
 const ACTIONS = [
