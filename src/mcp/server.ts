@@ -17,7 +17,7 @@ function emptyGraphNotice(db) {
   return {
     graph: "not seeded",
     meaning: "This is not an environment without capabilities — Ambit has not been run here yet. Do not report the user's stack as empty.",
-    fix: "Run `tt seed` in a shell, or ./bootstrap.sh from a checkout, then ask again.",
+    fix: "Run `ambit seed` in a shell, or ./bootstrap.sh from a checkout, then ask again.",
     database: DB_PATH,
   };
 }

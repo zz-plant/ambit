@@ -88,6 +88,13 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
   }, [items, filter]);
 
   const [hoverItem, setHoverItem] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [spotlightGroup, setSpotlightGroup] = useState<string | null>(null);
+
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const { cols, colOrder } = useMemo(() => {
     const c: Record<string, Item[]> = {};
@@ -151,6 +158,19 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
       else if (e.key === '2') { setActiveLens('attention'); }
       else if (e.key === '3') { setActiveLens('credentials'); }
       else if (e.key === '4') { setActiveLens('topology'); }
+      else if (e.key === '0') {
+        e.preventDefault();
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }
+      else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        setZoom(z => Math.min(2.5, +(z + 0.15).toFixed(2)));
+      }
+      else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
+      }
       else if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
         e.preventDefault();
         const idx = items.findIndex(i => i.id === selectedId);
@@ -164,19 +184,122 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         onSelect(items[prevIdx].id);
       }
       else if (e.key === 'Escape') {
-        if (simulationMode !== 'none') clearSimulation();
+        if (spotlightGroup) setSpotlightGroup(null);
+        else if (simulationMode !== 'none') clearSimulation();
         else if (selectedId) onSelect(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveLens, clearSimulation, simulationMode, selectedId, onSelect, items]);
+  }, [setActiveLens, clearSimulation, simulationMode, selectedId, onSelect, items, spotlightGroup]);
 
-  const contentHeight = Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 40;
+  // Center node in view when selected
+  React.useEffect(() => {
+    if (selectedId && nodePositionMap.has(selectedId)) {
+      const pos = nodePositionMap.get(selectedId)!;
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const targetScrollLeft = pos.x * zoom - container.clientWidth / 2;
+        const targetScrollTop = pos.y * zoom - container.clientHeight / 2;
+        container.scrollTo({
+          left: Math.max(0, targetScrollLeft),
+          top: Math.max(0, targetScrollTop),
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [selectedId, zoom, nodePositionMap]);
+
+  const contentHeight = Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 60;
   const contentWidth = START_X + colOrder.length * COL_W + 60;
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[role="button"]') || (e.target as HTMLElement).closest('button')) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom(z => Math.max(0.4, Math.min(2.5, +(z + delta).toFixed(2))));
+    }
+  };
+
   return (
-    <div style={{ position:'relative', width:'100%', height:'100%', overflow:'auto', paddingLeft: leftInset }}>
+    <div
+      ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onWheel={handleWheel}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        overflow: 'auto',
+        paddingLeft: leftInset,
+        cursor: isDragging ? 'grabbing' : 'default',
+        userSelect: isDragging ? 'none' : 'auto',
+      }}
+    >
+      {/* Floating Canvas Zoom & Pan HUD Controls */}
+      <div className="civ-zoom-hud" aria-label="Canvas Zoom Controls">
+        <button
+          type="button"
+          className="civ-zoom-btn"
+          onClick={() => setZoom(z => Math.min(2.5, +(z + 0.2).toFixed(2)))}
+          title="Zoom In (Hotkey: +)"
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <span className="civ-zoom-badge">{Math.round(zoom * 100)}%</span>
+        <button
+          type="button"
+          className="civ-zoom-btn"
+          onClick={() => setZoom(z => Math.max(0.4, +(z - 0.2).toFixed(2)))}
+          title="Zoom Out (Hotkey: -)"
+          aria-label="Zoom out"
+        >
+          −
+        </button>
+        <div className="civ-zoom-divider" />
+        <button
+          type="button"
+          className="civ-zoom-btn"
+          onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+          title="Reset to 100% (Hotkey: 0)"
+          aria-label="Reset zoom to 100%"
+        >
+          1:1
+        </button>
+        <button
+          type="button"
+          className="civ-zoom-btn"
+          onClick={() => {
+            if (containerRef.current) {
+              const rect = containerRef.current.getBoundingClientRect();
+              const fitRatio = Math.min(rect.width / contentWidth, rect.height / contentHeight);
+              setZoom(Math.max(0.4, Math.min(1.5, +(fitRatio * 0.95).toFixed(2))));
+              setPan({ x: 0, y: 0 });
+            }
+          }}
+          title="Fit Graph to View"
+          aria-label="Fit graph to view"
+        >
+          ⊡
+        </button>
+      </div>
 
 
 
@@ -232,10 +355,18 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
       )}
 
       {/* Main SVG Vector Canvas */}
-      <svg width="100%" height="auto" preserveAspectRatio="xMinYMin meet"
+      <svg
         viewBox={`0 0 ${contentWidth} ${contentHeight}`}
         className="civ-tree-svg"
-        style={{ background: 'var(--bg-deep)', aspectRatio: `${contentWidth} / ${contentHeight}` }}>
+        style={{
+          background: 'var(--bg-deep)',
+          width: `${contentWidth * zoom}px`,
+          height: `${contentHeight * zoom}px`,
+          minWidth: `${contentWidth * zoom}px`,
+          transform: `translate(${pan.x}px, ${pan.y}px)`,
+          transition: isDragging ? 'none' : 'transform 0.08s ease-out, width 0.12s ease-out, height 0.12s ease-out',
+        }}
+      >
         
         <defs>
           <linearGradient id="copperRaster" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -322,21 +453,33 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
                 const isSpofHot = activeLens === 'credentials' && (item.id.includes('github') || item.id.includes('docker') || item.id.includes('1password') || item.id.includes('credential'));
 
-                const dimmed = (chainIds.size > 0 && !inChain) || isSimDimmed;
-                const next = isNext(item);
-                const reached = item.status === 'built';
-                const baseOpacity = isSimRoot || isSimAffected ? 1 : dimmed ? 0.2 : reached ? 1 : next ? 0.95 : 0.4;
-                
                 // Keystone / Wonder Framing
                 const downList = downstream.get(item.id) || [];
                 const isKeystone = downList.length >= 3 || item.id === 'opencode-core' || item.type === 'framework';
 
                 // Prerequisite readiness & Eureka boosts
+                const next = isNext(item);
+                const reached = item.status === 'built';
                 const upList = upstream.get(item.id) || [];
                 const builtPrereqs = upList.filter(id => items.find(i => i.id === id)?.status === 'built').length;
                 const totalPrereqs = upList.length;
                 const readinessPct = totalPrereqs > 0 ? (builtPrereqs / totalPrereqs) : 1;
                 const hasEureka = next && builtPrereqs > 0 && totalPrereqs > 1;
+
+                const isSpotlit = !spotlightGroup || (
+                  spotlightGroup === 'Framework' ? item.type === 'framework' :
+                  spotlightGroup === 'Server' ? item.type === 'mcp-server' :
+                  spotlightGroup === 'Agent' ? item.type === 'agent' :
+                  spotlightGroup === 'Skill' ? item.type === 'skill' :
+                  spotlightGroup === 'Combo' ? item.type === 'possibility' :
+                  spotlightGroup === 'Keystone' ? isKeystone :
+                  spotlightGroup === 'Passing' ? ['verified', 'reliable'].includes(item.meta?.lifecycle as string) :
+                  spotlightGroup === 'Failing' ? ['degraded', 'broken'].includes(item.meta?.lifecycle as string) :
+                  true
+                );
+
+                const dimmed = (chainIds.size > 0 && !inChain) || isSimDimmed || !isSpotlit;
+                const baseOpacity = isSimRoot || isSimAffected ? 1 : !isSpotlit ? 0.15 : dimmed ? 0.2 : reached ? 1 : next ? 0.95 : 0.4;
 
                 let nodeFill = reached ? defaultColor : '#081324';
                 let sc = inChain && !selected ? 'var(--accent)' : selected ? '#ffffff' : (reached ? defaultColor : 'var(--border-bright)');
@@ -565,7 +708,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           );
         })()}
 
-        {/* Inline legend */}
+        {/* Interactive Legend with Spotlight Toggles */}
         <g transform={`translate(${START_X}, ${contentHeight - 40})`}>
           <line x1={0} y1={-4} x2={colOrder.length * COL_W - 60} y2={-4} stroke="var(--border-bright)" strokeWidth={1}/>
           {[
@@ -581,17 +724,36 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             {stroke:'var(--text-muted)',style:'dashed',label:'Optional'},
           ].map((l,i)=>{
             const lx = 10 + i * 120;
+            const isLegendActive = spotlightGroup === l.label;
             return (
-              <g key={i} transform={`translate(${lx}, 12)`}>
+              <g
+                key={i}
+                transform={`translate(${lx}, 12)`}
+                style={{ cursor: l.color ? 'pointer' : 'default', opacity: spotlightGroup && !isLegendActive ? 0.45 : 1 }}
+                onClick={() => {
+                  if (l.color) {
+                    setSpotlightGroup(curr => curr === l.label ? null : l.label);
+                  }
+                }}
+              >
                 {l.color ? (
                   <>
-                    <circle r={8} fill={l.color} opacity={0.9}/>
+                    <circle r={8} fill={l.color} opacity={0.9} stroke={isLegendActive ? '#ffffff' : 'none'} strokeWidth={isLegendActive ? 2 : 0} />
                     <text y={3.5} textAnchor="middle" fill="#030712" fontSize={11} fontWeight={800}>{l.sym}</text>
                   </>
                 ) : (
                   <line x1={-12} y1={0} x2={12} y2={0} stroke={l.stroke} strokeWidth={1.8} strokeDasharray={l.style === 'dashed' ? '5,3' : 'none'}/>
                 )}
-                <text x={14} y={3.5} fill="var(--text-secondary)" fontSize={10} fontWeight={600} fontFamily="var(--font)">{l.label}</text>
+                <text
+                  x={14}
+                  y={3.5}
+                  fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
+                  fontSize={10}
+                  fontWeight={isLegendActive ? 800 : 600}
+                  fontFamily="var(--font)"
+                >
+                  {l.label}
+                </text>
               </g>
             );
           })}

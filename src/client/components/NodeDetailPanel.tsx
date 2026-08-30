@@ -38,6 +38,7 @@ export function NodeDetailPanel() {
   const [desc, setDesc] = React.useState('');
   const [model, setModel] = React.useState('');
   const [editing, setEditing] = React.useState(false);
+  const [copiedCmd, setCopiedCmd] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (item) {
@@ -107,8 +108,8 @@ export function NodeDetailPanel() {
     setEditing(false);
   };
 
-  const downstreamEnables = connections.filter(c => c.from === item.id).map(c => items.find(i => i.id === c.to)).filter(Boolean);
-  const upstreamPrereqs = connections.filter(c => c.to === item.id).map(c => items.find(i => i.id === c.from)).filter(Boolean);
+  const downstreamEnables = connections.filter(c => c.from === item.id).map(c => items.find(i => i.id === c.to)).filter((i): i is NonNullable<typeof i> => Boolean(i));
+  const upstreamPrereqs = connections.filter(c => c.to === item.id).map(c => items.find(i => i.id === c.from)).filter((i): i is NonNullable<typeof i> => Boolean(i));
   const isKeystone = downstreamEnables.length >= 3 || item.type === 'framework' || item.id === 'opencode-core';
 
   return (
@@ -256,6 +257,84 @@ export function NodeDetailPanel() {
                 <span>{a.label}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* CLI Quick-Action Commands with 1-Click Copy */}
+      <div className="sp-cli-actions">
+        <div className="sp-section-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>CLI ACTIONS</span>
+          {copiedCmd && <span style={{ color: 'var(--ok)', textTransform: 'none' }}>✓ Copied {copiedCmd}!</span>}
+        </div>
+        <div className="sp-cli-row">
+          <code className="sp-cli-cmd">ambit impact {item.id}</code>
+          <button
+            type="button"
+            className="sp-cli-copy-btn"
+            onClick={() => {
+              navigator.clipboard?.writeText(`ambit impact ${item.id}`);
+              setCopiedCmd('impact');
+              setTimeout(() => setCopiedCmd(null), 2000);
+            }}
+          >
+            Copy
+          </button>
+        </div>
+        <div className="sp-cli-row">
+          <code className="sp-cli-cmd">ambit verify {item.id}</code>
+          <button
+            type="button"
+            className="sp-cli-copy-btn"
+            onClick={() => {
+              navigator.clipboard?.writeText(`ambit verify ${item.id}`);
+              setCopiedCmd('verify');
+              setTimeout(() => setCopiedCmd(null), 2000);
+            }}
+          >
+            Copy
+          </button>
+        </div>
+      </div>
+
+      {/* Visual Dependency Chain Breadcrumbs */}
+      {(upstreamPrereqs.length > 0 || downstreamEnables.length > 0) && (
+        <div className="sp-breadcrumbs">
+          <div className="sp-section-label">DEPENDENCY FLOW</div>
+          <div className="sp-breadcrumb-trail">
+            {upstreamPrereqs.length > 0 ? (
+              upstreamPrereqs.map(p => (
+                <span
+                  key={p.id}
+                  className="sp-breadcrumb-node"
+                  onClick={() => selectItem(p.id)}
+                  title={`Prerequisite: ${p.name}`}
+                >
+                  ◀ {p.name}
+                </span>
+              ))
+            ) : (
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Root (No prereqs)</span>
+            )}
+            <span style={{ color: 'var(--accent)', fontWeight: 700 }}>➔</span>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 800, background: 'var(--accent-soft)', padding: '2px 6px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--accent)' }}>
+              {item.name}
+            </span>
+            <span style={{ color: 'var(--accent)', fontWeight: 700 }}>➔</span>
+            {downstreamEnables.length > 0 ? (
+              downstreamEnables.map(d => (
+                <span
+                  key={d.id}
+                  className="sp-breadcrumb-node"
+                  onClick={() => selectItem(d.id)}
+                  title={`Enables: ${d.name}`}
+                >
+                  {d.name} ▶
+                </span>
+              ))
+            ) : (
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Leaf</span>
+            )}
           </div>
         </div>
       )}

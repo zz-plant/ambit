@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useToolchainStore } from '../store/toolchainStore';
 import { typeLabel, statusLabel } from '../utils/labels';
+
+const FILTER_TYPES = [
+  { key: 'all', label: 'All' },
+  { key: 'framework', label: 'Frameworks' },
+  { key: 'mcp-server', label: 'Servers' },
+  { key: 'agent', label: 'Agents' },
+  { key: 'skill', label: 'Skills' },
+  { key: 'possibility', label: 'Combos' },
+] as const;
 
 export function CapabilityListPanel() {
   const items = useToolchainStore(s => s.items);
@@ -9,11 +18,16 @@ export function CapabilityListPanel() {
   const selectItem = useToolchainStore(s => s.selectItem);
   const selectedId = useToolchainStore(s => s.selectedItem);
   const setShowUplinkModal = useToolchainStore(s => s.setShowUplinkModal);
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
-  const filtered = items.filter(i =>
-    i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    i.type.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = items.filter(i => {
+    const matchesSearch =
+      i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      i.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (i.description && i.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesType = typeFilter === 'all' || i.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
 
   const countByType: Record<string, number> = {};
   items.forEach(i => { countByType[i.type] = (countByType[i.type] || 0) + 1; });
@@ -22,7 +36,7 @@ export function CapabilityListPanel() {
     <div className="toolchain-panel">
       <div className="tp-tabs">
         <span className="tp-tab tp-tab--active">Capabilities ({items.length})</span>
-        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600 }}>NAV: [J / K]</span>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600 }}>NAV: [J / K] · [/] FIND</span>
       </div>
 
       <div style={{ padding: '6px', borderBottom: '1px solid var(--border)' }}>
@@ -32,18 +46,48 @@ export function CapabilityListPanel() {
       </div>
 
       <div className="tp-toolbar">
-        <input className="tp-search"
-          placeholder="Search capabilities… [ / ]"
-          value={searchQuery}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <div className="tp-search-wrap">
+          <input
+            id="tp-search-input"
+            className="tp-search"
+            placeholder="Search capabilities… [ / ]"
+            value={searchQuery}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="tp-search-clear"
+              onClick={() => setSearch('')}
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Summary */}
-      <div className="tp-summary">
-        {Object.entries(countByType).map(([t, c]) => (
-          <span key={t} className="tp-tag">{typeLabel(t)} ×{c}</span>
+      {/* Type Filter Chips */}
+      <div className="tp-filter-chips">
+        {FILTER_TYPES.map(f => (
+          <button
+            key={f.key}
+            type="button"
+            className={`tp-filter-chip ${typeFilter === f.key ? 'tp-filter-chip--active' : ''}`}
+            onClick={() => setTypeFilter(f.key)}
+          >
+            {f.label}
+          </button>
         ))}
+      </div>
+
+      {/* Match count and active filters summary */}
+      <div className="tp-match-count">
+        <span>Showing {filtered.length} of {items.length}</span>
+        {searchQuery && (
+          <span style={{ color: 'var(--accent)' }}>filtered</span>
+        )}
       </div>
 
       <div className="tp-list">
@@ -75,7 +119,19 @@ export function CapabilityListPanel() {
           );
         })}
         {filtered.length === 0 && (
-          <div className="tp-empty">Nothing matches that search</div>
+          <div className="tp-empty">
+            <div>Nothing matches that search</div>
+            {searchQuery && (
+              <button
+                type="button"
+                className="tp-btn-sm"
+                style={{ marginTop: '8px' }}
+                onClick={() => { setSearch(''); setTypeFilter('all'); }}
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -84,3 +140,4 @@ export function CapabilityListPanel() {
 
 export { CapabilityListPanel as ToolchainPanel };
 export default CapabilityListPanel;
+

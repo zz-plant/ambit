@@ -10,7 +10,7 @@ cd ambit
 ./bootstrap.sh
 ```
 
-Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both. A checkout keeps its graph in the checkout (`toolchain-viz.db`), so your working graph is never the one an installed copy uses — `tt where` prints the path either way.
+Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both. A checkout keeps its graph in the checkout (`toolchain-viz.db`), so your working graph is never the one an installed copy uses — `ambit where` prints the path either way.
 
 ## Checks
 
