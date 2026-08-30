@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { ENGINE_DIR, CONFIG_DEFAULT } from "./paths.ts";
+import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from "./paths.ts";
 import type { Db } from "./db.ts";
 import { providersOf } from "./inference.ts";
 import { inverseOf } from "./governance.ts";
@@ -62,14 +62,14 @@ function conflictForChosen(step: any, chosen: any, db: Db): string[] | undefined
  * thing that needs it, so the list can be worked top to bottom.
  */
 function planFor(db: Db, goal?: string) {
-  if (!goal) return { error: "Usage: tt plan <capability-id>" };
+  if (!goal) return { error: "Usage: ambit goal <capability-id>" };
   // A bare name is a tech-tree node; anything already carrying a prefix is
   // taken as written, so an action — act:version-control/merge_to_default —
   // can be planned for directly rather than only the capability conferring it.
   const id = goal.includes(':') ? goal : `combo:${goal}`;
 
   const target = db.prepare("SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?").get(id);
-  if (!target) return { error: `No capability ${id}. Try tt combos for the list.` };
+  if (!target) return { error: `No capability ${id}. Try ambit graph combos for the list.` };
   // Same shape as the planned case. Returning a different one here meant
   // callers had to special-case it, and a guard reading `steps === 0` silently
   // never fired because the field was absent rather than zero.
@@ -79,7 +79,7 @@ function planFor(db: Db, goal?: string) {
     return {
       goal: target.name, reachable: false, degraded: true, steps: 0, missing: [], order: [],
       lifecycle: target.lifecycle,
-      note: 'configured, but verification is failing — re-verify with tt verify before relying on it',
+      note: 'configured, but verification is failing — re-verify with ambit verify before relying on it',
     };
   }
   if (target.state !== 'locked') {
@@ -153,8 +153,7 @@ function planFor(db: Db, goal?: string) {
   // How each step could be closed. Alternatives rather than one blessed
   // answer, because the trade-off is rarely setup time alone: a hosted option
   // is faster and adds a bill and a data boundary.
-  let tree: any = { nodes: [] };
-  try { tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8")); } catch {}
+  const tree = loadTechTree();
   const recipeFor = new Map<string, any>(
     (tree.nodes || []).filter((n: any) => n.acquisition).map((n: any) => [`combo:${n.id}`, n.acquisition])
   );
@@ -232,10 +231,10 @@ function blockedAction(classifier?: string): string {
  * which is exactly what the CLI did before classification existed.
  */
 function recordFailure(db: Db, capId?: string, classifier?: string, note?: string) {
-  if (!capId) return { error: 'Usage: tt failed <capability> [reasoning|knowledge|tool|permission|infrastructure|reliability] ["what you were trying to do"]' };
+  if (!capId) return { error: 'Usage: ambit record <capability> [reasoning|knowledge|tool|permission|infrastructure|reliability] ["what you were trying to do"]' };
   const id = capId.startsWith('combo:') || capId.includes(':') ? capId : `combo:${capId}`;
   if (!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id)) {
-    return { error: `No capability ${id}. Use an id from tt combos, so deficits aggregate against something real.` };
+    return { error: `No capability ${id}. Use an id from ambit graph combos, so deficits aggregate against something real.` };
   }
   // The second positional may be a classification or — for a call that predates
   // classification — the note itself. Only a known class is taken as one.
@@ -256,7 +255,7 @@ function recordFailure(db: Db, capId?: string, classifier?: string, note?: strin
     times_blocked: count?.n ?? 1,
     times_as_this_class: clsCount?.n ?? undefined,
     note: (count?.n ?? 1) >= 3
-      ? 'This has blocked work repeatedly. It is a structural deficit, not a one-off — see tt plan ' + id.replace('combo:', '')
+      ? 'This has blocked work repeatedly. It is a structural deficit, not a one-off — see ambit goal ' + id.replace('combo:', '')
       : undefined,
   };
 }
@@ -280,7 +279,7 @@ function deficits(db: Db) {
     )
     .all();
   if (rows.length === 0) {
-    return { note: 'Nothing recorded. Use tt failed <capability> when a task is blocked by a missing one.' };
+    return { note: 'Nothing recorded. Use ambit record <capability> when a task is blocked by a missing one.' };
   }
 
   const byClass = db
@@ -417,7 +416,7 @@ function simulateFrontier(db: Db, assume: string[]) {
  * future apply from touching this proposal at all.
  */
 function propose(db: Db, goal?: string, optionIndex?: number) {
-  if (!goal) return { error: 'Usage: tt propose <capability> [option-number]' };
+  if (!goal) return { error: 'Usage: ambit propose <capability> [option-number]' };
   let target: string = goal;
 
   // An opportunity id proposes its capability, carrying the observed case.

@@ -24,12 +24,14 @@ const NODE_TYPES = [
 ];
 
 const ACTIONS = [
-  { cmd: 'tt near', answers: 'What is one step away from where I am?' },
-  { cmd: 'tt insight', answers: 'What should I do next, ranked?' },
-  { cmd: 'tt bottlenecks', answers: 'What would hurt most to lose?' },
-  { cmd: 'tt impact <id>', answers: 'If this went away, what breaks?' },
-  { cmd: 'tt decay', answers: 'What have I stopped tending?' },
-  { cmd: 'tt prune <id>', answers: 'Remove it, with a backup first' },
+  { cmd: 'ambit status', answers: 'How is the environment doing? (frontier, verified, failing, spofs)' },
+  { cmd: 'ambit verify', answers: 'Run executable checks to prove capabilities are working' },
+  { cmd: 'ambit authority', answers: 'What may run unattended vs what requires confirmation?' },
+  { cmd: 'ambit goal "<intent>"', answers: 'Route a natural language goal to concrete capability plans' },
+  { cmd: 'ambit opportunities', answers: 'Ranked high-ROI capability upgrades based on observed friction' },
+  { cmd: 'ambit impact <id>', answers: 'What breaks downstream if a tool or credential disappears?' },
+  { cmd: 'ambit propose <cap>', answers: 'Draft a safe, reviewable capability acquisition' },
+  { cmd: 'ambit approve / apply', answers: 'Human-gated execution with signed approval receipts' },
 ];
 
 export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
@@ -138,11 +140,11 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
               ))}
               <h3 className="docs-h3">Start here</h3>
               <p className="docs-p">
-                If you only run one, run <code className="docs-cmd-inline">tt near</code>. It answers
-                "what is one step away", which is the question the rest of the tool exists to support.
+                If you only run one, run <code className="docs-cmd-inline">ambit status</code>. It answers
+                how the system is doing, what is reached, what is broken, and what is one step away.
               </p>
               <p className="docs-p docs-muted">
-                Run <code className="docs-cmd-inline">tt explain</code> for these same definitions in
+                Run <code className="docs-cmd-inline">ambit help</code> for CLI definitions in
                 the terminal.
               </p>
             </>

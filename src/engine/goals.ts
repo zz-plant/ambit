@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
-import { ENGINE_DIR } from "./paths.ts";
+import { ENGINE_DIR, loadTechTree } from "./paths.ts";
 import type { Db } from "./db.ts";
 import { planFor, simulateFrontier } from "./planning.ts";
 import { usable } from "./assurance.ts";
@@ -8,7 +8,7 @@ import { usable } from "./assurance.ts";
 /**
  * Routes a free-form goal into the graph, and compares the paths that close it.
  *
- * This is §5 of the roadmap. `tt plan` needs a capability the model already
+ * This is §5 of the roadmap. `ambit goal` needs a capability the model already
  * knows; a person says "maintain the homelab unattended". The gap between those
  * is a vocabulary problem, and it is solved the same way detection is: authored
  * `goal` phrases on the curated tree, matched against the sentence the way
@@ -55,12 +55,7 @@ interface GoalCandidate {
  * `detect` patterns are — one is the config-side index, this is the intent-side.
  */
 function goalVocabulary(): GoalCandidate[] {
-  let tree: any;
-  try {
-    tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8"));
-  } catch {
-    return [];
-  }
+  const tree = loadTechTree();
   return (tree.nodes || [])
     .filter((n: any) => n.goal?.length)
     .map((n: any) => ({
@@ -101,7 +96,7 @@ function matchGoal(sentence: string): GoalCandidate[] {
  * Routes a goal to the capabilities that plausibly cover it, with the delta
  * for each.
  *
- *   tt goal "maintain the homelab unattended"
+ *   ambit goal "maintain the homelab unattended"
  *
  * Returns every capability whose authored phrases appear in the sentence,
  * ranked by coverage, each with what reaching it requires. If the goal is
@@ -109,7 +104,7 @@ function matchGoal(sentence: string): GoalCandidate[] {
  * capability, the answer collapses to the single plan.
  */
 function goalFor(db: Db, sentence?: string) {
-  if (!sentence) return { error: 'Usage: tt goal "<a thing you want to be able to do>"' };
+  if (!sentence) return { error: 'Usage: ambit goal "<a thing you want to be able to do>"' };
 
   // A goal that is already a capability is the degenerate case: plan it. But
   // only when it is one — a bare word like "unattended" is not an id, and
@@ -130,7 +125,7 @@ function goalFor(db: Db, sentence?: string) {
   if (matches.length === 0) {
     return {
       goal: sentence,
-      note: 'No capability in the model has words that cover this. Try tt combos, or tt actions, and use one of those names.',
+      note: 'No capability in the model has words that cover this. Try ambit graph combos, or ambit authority, and use one of those names.',
       candidates: [],
     };
   }
@@ -177,7 +172,7 @@ function goalFor(db: Db, sentence?: string) {
  * reversed; one that needs an installer or a running service cannot.
  */
 function pathsFor(db: Db, goal?: string) {
-  if (!goal) return { error: 'Usage: tt paths <capability>' };
+  if (!goal) return { error: 'Usage: ambit goal <capability> --paths' };
   const plan = planFor(db, goal) as any;
   if (plan.error) return plan;
   if (plan.degraded) return { goal: plan.goal, degraded: true, lifecycle: plan.lifecycle, note: plan.note };

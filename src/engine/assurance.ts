@@ -1,7 +1,7 @@
 import { spawnSync } from "child_process";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { ENGINE_DIR } from "./paths.ts";
+import { ENGINE_DIR, loadTechTree } from "./paths.ts";
 import type { Db } from "./db.ts";
 
 // ─── Verification ─────────────────────────────────────────────────────────────
@@ -289,13 +289,11 @@ function authorityReport(db: Db) {
 }
 
 function runVerification(db: Db, which?: string) {
-  let tree: any;
-  try {
-    tree = JSON.parse(readFileSync(join(ENGINE_DIR, "techtree.json"), "utf8"));
-  } catch {
+  const tree = loadTechTree();
+  if (!tree?.nodes?.length) {
     return { error: "No capability model to verify against." };
   }
-  // tt verify act:<capability>/<action> — an action's own check.
+  // ambit verify act:<capability>/<action> — an action's own check.
   if (which && which.startsWith('act:')) {
     const [capId, actionName] = which.replace(/^act:/, '').split('/');
     const node = (tree.nodes || []).find((n: any) => n.id === capId);
@@ -474,7 +472,7 @@ function scopeCovers(scope: string, target: string): boolean {
  * reads like coverage until someone checks.
  */
 function scopeReport(db: Db, target?: string) {
-  if (!target) return { error: 'Usage: tt scope <target> — e.g. repo:owner/name, device:nuc, svc:ollama' };
+  if (!target) return { error: 'Usage: ambit authority scope <target> — e.g. repo:owner/name, device:nuc, svc:ollama' };
   const grants = db
     .prepare(
       `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note,
