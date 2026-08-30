@@ -23,13 +23,7 @@
 
 ---
 
-```bash
-# Instant: visualize your agent setup (auto-detects OpenCode, Claude Code, Cursor, Windsurf)
-npx ambit-cli web
-
-# Or give your agent 47 meta-introspection tools in one line:
-claude mcp add ambit -- npx -y ambit-cli mcp
-```
+Try the [zero-install demo](https://zz-plant.github.io/ambit/?demo=1) first. It uses example data; a local checkout is required to inspect your own machine.
 
 ---
 
@@ -194,10 +188,12 @@ When an autonomous agent running in Claude Code or OpenCode proposes an environm
 
 ## Get Started
 
-### Option A: Install via Homebrew (CLI & Engine)
+### Option A: Run from a checkout (CLI, engine, and visualizer)
 
 ```bash
-brew install zz-plant/tap/ambit && ambit
+git clone https://github.com/zz-plant/ambit.git
+cd ambit
+./bootstrap.sh
 ```
 
 On first run, Ambit automatically discovers OpenCode, Claude Code, Cursor, Windsurf, and `~/.agents/skills`, initializes the local SQLite database, and reports your frontier. Cursor and Windsurf MCP servers are read from their standard config paths and remain attributed to the runtime that supplied them.
@@ -214,7 +210,7 @@ First run — reading your agent config and building the graph…
     infra     26/28
 ```
 
-### Option B: Run the Visual Web Tree (Bun / Git)
+### Option B: Run only the visual tree
 
 ```bash
 git clone https://github.com/zz-plant/ambit.git
@@ -228,11 +224,11 @@ cd ambit
 
 ## Connect It to Your Agent
 
-Register Ambit as an MCP server so your agent can inspect its own toolchain and plan around missing capabilities.
+Register Ambit as an MCP server so your agent can inspect its own toolchain and plan around missing capabilities. The npm package is not published yet, so use the checkout path below.
 
 ### Claude Code
 ```bash
-claude mcp add ambit -- ambit mcp
+claude mcp add ambit -- /absolute/path/to/ambit/cli.js mcp
 ```
 
 ### OpenCode (`~/.config/opencode/opencode.json`)

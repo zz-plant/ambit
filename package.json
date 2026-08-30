@@ -1,6 +1,6 @@
 {
   "name": "ambit-cli",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": false,
   "description": "The meta-MCP capability graph for AI agent environments",
   "type": "module",

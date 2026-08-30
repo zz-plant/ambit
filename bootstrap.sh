@@ -21,13 +21,17 @@ command -v node >/dev/null 2>&1 || { echo "Node 22+ is required for the engine a
 if [ "$(node -e 'console.log(process.versions.node.split(".")[0])')" -lt 22 ]; then
   echo "Node 22+ is required (found $(node -v)); the engine uses node:sqlite."; exit 1
 fi
-if ! command -v bun >/dev/null 2>&1; then
-  echo "Bun is required to install dependencies and run the visualizer — https://bun.sh"; exit 1
+# The CLI and engine run on Node alone. Bun and the frontend dependencies are
+# only needed for the optional visualizer, so a Node-only checkout can still
+# build its graph on a machine without Bun installed.
+if [ "$MODE" = "web" ]; then
+  if ! command -v bun >/dev/null 2>&1; then
+    echo "Bun is required for the visualizer — https://bun.sh"; exit 1
+  fi
+  # -q is an npm flag; bun rejects it and set -e aborted the whole bootstrap,
+  # so a clean clone never installed anything.
+  if [ ! -d node_modules ]; then echo "Installing..."; bun install --silent; fi
 fi
-
-# -q is an npm flag; bun rejects it and set -e aborted the whole bootstrap,
-# so a clean clone never installed anything.
-if [ ! -d node_modules ]; then echo "Installing..."; bun install --silent; fi
 
 # Seed unconditionally. Guarding this on the config existing meant a machine
 # without OpenCode got an empty database file and a SQLite error from the

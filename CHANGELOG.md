@@ -8,10 +8,15 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 ## Unreleased
 
+## [0.4.1](https://github.com/zz-plant/ambit/releases/tag/v0.4.1) — 2026-08-30
+
+- Adoption and distribution hardening: current install instructions, Node-only CLI bootstrap, npm release automation, and the `ambit` Homebrew command alias.
+
 - The npm package is prepared for publication with a compiled engine (`dist-cli/`, built on `prepack`) and no runtime dependencies. It is not advertised as an install path until `ambit-cli` is actually published. A bare `ambit` from Homebrew or a checkout seeds an empty graph before reporting instead of telling you to run a second command. `--json` runs on a cold graph stay pure JSON.
 - `ambit mcp` runs the MCP server from an installed copy — `claude mcp add ambit -- ambit mcp` registers the verified Homebrew command without knowing where Homebrew placed the package.
 - `ambit web` outside a checkout explains that the visualizer needs one (and where the hosted demo is) instead of failing with bun's script-not-found.
 - First-run discovery now combines OpenCode, Claude Code, Cursor (`~/.cursor/mcp.json`), and Windsurf (`~/.codeium/windsurf/mcp_config.json`). Shared MCP servers stay one capability with a contribution edge from each runtime.
+- The README no longer advertises the unpublished npm package; the release workflow will publish it automatically once `NPM_TOKEN` is configured.
 
 - Redundancy now accounts for what fails together. Providers presenting the same credential do not fail independently, so a capability with three of them was reported as robust — and, since having several providers is what kept it out of the single-point-of-failure report, excluded by the very fact that made it fragile. A `credentials` block declares which providers share one, `ambit impact` calls what survives `nominal` rather than `redundant`, and `ambit credentials` answers what a revocation would end. Only a credential every provider presents counts; partial sharing leaves something standing and is not reported as fragile. No secret is read or stored — there is no field one could arrive in.
 - Commands whose answer is a list printed the note about the list and not the list. `ambit authority` showed its per-row detail and omitted the four lists summarising it, on the surface the tool considers primary.
