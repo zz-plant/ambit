@@ -3,20 +3,20 @@ import { useToolchainStore } from '../store/toolchainStore';
 import { typeLabel, statusLabel, metaKeyLabel } from '../utils/labels';
 
 const TYPE_COLORS: Record<string, string> = {
-  framework: '#00f0ff',
-  'mcp-server': '#ffaa00',
-  agent: '#ff007f',
-  provider: '#38bdf8',
-  model: '#4488ff',
-  command: '#8899aa',
-  skill: '#00ff88',
-  config: '#ccaa88',
-  possibility: '#b537f2',
-  device: '#00ffcc',
-  service: '#7c9cff',
-  api: '#ffd700',
-  network: '#00f0ff',
-  workflow: '#b537f2',
+  framework: '#6366f1',
+  'mcp-server': '#f59e0b',
+  agent: '#ec4899',
+  provider: '#0284c7',
+  model: '#3b82f6',
+  command: '#64748b',
+  skill: '#10b981',
+  config: '#d97706',
+  possibility: '#8b5cf6',
+  device: '#14b8a6',
+  service: '#6366f1',
+  api: '#f59e0b',
+  network: '#0ea5e9',
+  workflow: '#8b5cf6',
 };
 
 export function NodeDetailPanel() {
@@ -34,11 +34,8 @@ export function NodeDetailPanel() {
 
   if (!item) return null;
 
-  const typeColor = TYPE_COLORS[item.type] || '#6a8aaa';
+  const typeColor = TYPE_COLORS[item.type] || '#64748b';
 
-  // The evidence strip: what this capability's check has demonstrated, if
-  // anything. Reached and verified are different claims, and the panel is
-  // where the difference gets its words.
   const lifecycle = item.meta?.lifecycle as string | undefined;
   const lastChecked = item.meta?.lastChecked as string | undefined;
   const agoLabel = (ts?: string) => {
@@ -77,7 +74,7 @@ export function NodeDetailPanel() {
     <div className="star-panel">
       <div className="sp-hdr">
         <span className="sp-sig" style={{ color: typeColor }}>
-          {item.type === 'framework' ? '◈' : item.type === 'mcp-server' ? '◉' : item.type === 'agent' ? '◆' : item.type === 'provider' ? '⬡' : item.type === 'model' ? '◇' : item.type === 'skill' ? '⚡' : item.type === 'config' ? '☰' : item.type === 'possibility' ? '✦' : item.type === 'device' ? '▣' : item.type === 'service' ? '◌' : item.type === 'api' ? '◇' : item.type === 'network' ? '◎' : item.type === 'workflow' ? '✦' : '▣'}
+          {item.type === 'framework' ? '★' : item.type === 'mcp-server' ? '◈' : item.type === 'agent' ? '◆' : item.type === 'skill' ? '◇' : '●'}
         </span>
         <div className="sp-title-group">
           <div className="sp-designation">{item.name}</div>
@@ -89,14 +86,14 @@ export function NodeDetailPanel() {
       </div>
 
       {isKeystone && (
-        <div style={{ padding: '6px 10px', border: '1px solid var(--copper-3)', background: 'rgba(255, 170, 0, 0.1)', borderRadius: 'var(--radius-xs)', marginTop: '4px', marginBottom: '8px', fontSize: '11px', color: 'var(--copper-3)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>👑</span>
-          <span><strong>KEYSTONE ANCHOR:</strong> High-leverage foundation enabling {downstreamEnables.length} downstream branches.</span>
+        <div style={{ padding: '8px 12px', border: '1px solid rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.08)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px', fontSize: '11.5px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>★</span>
+          <span><strong>Keystone Component:</strong> High-leverage foundation enabling {downstreamEnables.length} downstream branches.</span>
         </div>
       )}
 
       {evidence && (
-        <div style={{ padding: '6px 8px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px', fontSize: '11px', color: evidence.color }}>
+        <div style={{ padding: '8px 10px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)', marginTop: '4px', marginBottom: '8px', fontSize: '11.5px', color: evidence.color }}>
           {evidence.text}
         </div>
       )}
@@ -111,7 +108,7 @@ export function NodeDetailPanel() {
               <button
                 type="button"
                 className="sp-action-btn"
-                style={{ width: '100%', background: 'var(--accent, #e76f51)', color: '#fff', fontWeight: 600 }}
+                style={{ width: '100%', background: 'var(--accent)', color: '#fff', fontWeight: 600 }}
                 onClick={clearSim}
               >
                 ✕ Exit Simulation
@@ -120,19 +117,19 @@ export function NodeDetailPanel() {
               <button
                 type="button"
                 className="sp-action-btn"
-                style={{ width: '100%', border: '1px solid var(--error, #e63946)', color: 'var(--error, #e63946)', fontSize: '11px' }}
+                style={{ width: '100%', border: '1px solid var(--error)', color: 'var(--error)', fontSize: '11.5px' }}
                 onClick={() => startOutage(item.id)}
               >
-                ⚡ Simulate Outage (Blast Radius)
+                Simulate Outage (Blast Radius)
               </button>
             ) : (
               <button
                 type="button"
                 className="sp-action-btn"
-                style={{ width: '100%', border: '1px solid var(--ok, #2a9d8f)', color: 'var(--ok, #2a9d8f)', fontSize: '11px' }}
+                style={{ width: '100%', border: '1px solid var(--ok)', color: 'var(--ok)', fontSize: '11.5px' }}
                 onClick={() => startAcquisition(item.id)}
               >
-                ✨ Simulate Unlocking (What-If)
+                Simulate Acquisition (Unlock)
               </button>
             )}
           </div>
@@ -145,7 +142,7 @@ export function NodeDetailPanel() {
 
       {advisories.length > 0 && (
         <div className="sp-adv" style={{ marginTop: '8px' }}>
-          <div className="sp-section-label">Worth knowing</div>
+          <div className="sp-section-label">Notes</div>
           <div className="sp-adv-list">
             {advisories.map((a, i) => (
               <div key={i} className="sp-adv-item">
@@ -160,7 +157,7 @@ export function NodeDetailPanel() {
       {/* CLI Quick-Action Commands with 1-Click Copy */}
       <div className="sp-cli-actions">
         <div className="sp-section-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>CLI ACTIONS</span>
+          <span>Commands</span>
           {copiedCmd && <span style={{ color: 'var(--ok)', textTransform: 'none' }}>✓ Copied {copiedCmd}!</span>}
         </div>
         <div className="sp-cli-row">

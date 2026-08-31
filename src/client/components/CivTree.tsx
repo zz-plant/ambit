@@ -341,7 +341,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
               borderRadius: 'var(--radius-xs)',
               padding: '4px 10px',
               cursor: 'pointer',
-              fontWeight: 800,
+      fontWeight: 800,
               fontFamily: 'var(--font)',
               fontSize: '11px',
               letterSpacing: '0.5px',
@@ -359,7 +359,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         viewBox={`0 0 ${contentWidth} ${contentHeight}`}
         className="civ-tree-svg"
         style={{
-          background: 'var(--bg-deep)',
+          background: 'var(--bg-canvas)',
           width: `${contentWidth * zoom}px`,
           height: `${contentHeight * zoom}px`,
           minWidth: `${contentWidth * zoom}px`,
@@ -368,36 +368,26 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
       >
         
         <defs>
-          <linearGradient id="copperRaster" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#ff3300" />
-            <stop offset="50%" stopColor="#ffaa00" />
-            <stop offset="100%" stopColor="#ffd700" />
+          <linearGradient id="columnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.03)" />
+            <stop offset="100%" stopColor="rgba(255, 255, 255, 0.005)" />
           </linearGradient>
-          <linearGradient id="cyanLaser" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#00f0ff" />
-            <stop offset="100%" stopColor="#38bdf8" />
-          </linearGradient>
-          <filter id="laserGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
         </defs>
 
-        {/* Era column bands with raster headers */}
+        {/* Era column bands with clean headers */}
         {colOrder.map((d, i) => {
           const x = START_X + i * COL_W;
           return (
             <g key={`band-${d}`}>
-              <rect x={x - 5} y={START_Y - 45} width={COL_W - 20} height={contentHeight - START_Y + 20}
-                fill={i % 2 === 0 ? 'rgba(7, 14, 28, 0.75)' : 'rgba(13, 26, 45, 0.75)'}
-                stroke="var(--border)" strokeWidth={1} rx={6} />
-              <rect x={x - 5} y={START_Y - 45} width={COL_W - 20} height={3}
-                fill={i % 2 === 0 ? 'url(#cyanLaser)' : 'url(#copperRaster)'} rx={1} />
-              <text x={x + COL_W/2 - 40} y={START_Y - 22} textAnchor="middle" fill="var(--text-primary)" fontSize={13} fontWeight={700}
-                letterSpacing={1.8} style={{ textTransform: 'uppercase', fontFamily: 'var(--font)' }}>{columnLabel(d, cols[d] || [])}</text>
-              <text x={x + COL_W/2 - 40} y={START_Y - 8} textAnchor="middle" fill="var(--accent)" fontSize={11} fontWeight={600}
-                letterSpacing={1} style={{ fontFamily: 'var(--font)' }}>{d.startsWith('era:') ? `ERA ${d.slice(4)}` : (d || '').toUpperCase()}</text>
-              <line x1={x + 10} y1={START_Y - 2} x2={x + COL_W - 50} y2={START_Y - 2} stroke="var(--border-bright)" strokeWidth={1}/>
+              <rect x={x - 8} y={START_Y - 45} width={COL_W - 16} height={contentHeight - START_Y + 20}
+                fill="url(#columnGrad)"
+                stroke="var(--border)" strokeWidth={1} rx={10} />
+              <rect x={x - 8} y={START_Y - 45} width={COL_W - 16} height={32}
+                fill="rgba(255, 255, 255, 0.02)" rx={10} />
+              <text x={x + COL_W/2 - 16} y={START_Y - 24} textAnchor="middle" fill="var(--text-primary)" fontSize={12} fontWeight={600}
+                letterSpacing={0.5} style={{ fontFamily: 'var(--font-sans)' }}>{columnLabel(d, cols[d] || [])}</text>
+              <text x={x + COL_W/2 - 16} y={START_Y - 10} textAnchor="middle" fill="var(--text-muted)" fontSize={10} fontWeight={500}
+                letterSpacing={0.5} style={{ fontFamily: 'var(--font-sans)' }}>{d.startsWith('era:') ? `Era ${d.slice(4)}` : (d || '').toLowerCase()}</text>
             </g>
           );
         })}
@@ -418,29 +408,28 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
             (simulatedNodeId === conn.from && simulatedCascadeIds.has(conn.to)) ||
             (simulatedCascadeIds.has(conn.from) && simulatedCascadeIds.has(conn.to))
           );
-          const op = isSimLine ? 1 : simulationMode !== 'none' ? 0.08 : (chainIds.size > 0 ? (inChain ? 0.95 : 0.08) : 0.45);
+          const op = isSimLine ? 1 : simulationMode !== 'none' ? 0.08 : (chainIds.size > 0 ? (inChain ? 0.95 : 0.08) : 0.35);
           const strokeColor = isSimLine
-            ? (simulationMode === 'outage' ? '#ff2a55' : '#00f0ff')
-            : (inChain ? 'var(--accent)' : isHard ? 'var(--accent-dim)' : isSoft ? '#38557a' : 'var(--copper-2)');
-          const isLaserFlow = isSimLine || inChain;
+            ? (simulationMode === 'outage' ? '#f43f5e' : '#10b981')
+            : (inChain ? 'var(--accent)' : isHard ? 'rgba(99, 102, 241, 0.6)' : isSoft ? 'rgba(148, 163, 184, 0.4)' : '#f59e0b');
+          
           return <line key={`c-${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
             stroke={strokeColor}
-            strokeWidth={isSimLine ? 3.5 : (inChain ? 2.5 : isHard ? 2 : 1.2)}
-            strokeDasharray={isLaserFlow ? '8,6' : (isHard ? 'none' : isSoft ? '6,3' : '3,4')}
-            className={isLaserFlow ? 'civ-laser-flow' : undefined}
-            filter={inChain || isSimLine ? 'url(#laserGlow)' : undefined}
+            strokeWidth={isSimLine ? 2.5 : (inChain ? 2 : isHard ? 1.5 : 1)}
+            strokeDasharray={isHard ? 'none' : isSoft ? '4,4' : '3,3'}
+            strokeLinecap="round"
             opacity={op}/>;
         })}
 
         {/* Nodes */}
         {colOrder.map((domain, ci) => {
           const caps = cols[domain] || [];
-          const cx = START_X + ci * COL_W + COL_W/2 - 40;
+          const cx = START_X + ci * COL_W + COL_W/2 - 16;
           return (
             <g key={domain}>
               {caps.map((item, ri) => {
                 const cy = START_Y + ri * ROW_H + NODE_R;
-                const defaultColor = COLORS[item.type] || '#537699';
+                const defaultColor = COLORS[item.type] || '#64748b';
                 const inChain = chainIds.has(item.id);
                 const selected = item.id === selectedId;
                 
@@ -452,11 +441,9 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
                 const isSpofHot = activeLens === 'credentials' && (item.id.includes('github') || item.id.includes('docker') || item.id.includes('1password') || item.id.includes('credential'));
 
-                // Keystone / Wonder Framing
                 const downList = downstream.get(item.id) || [];
                 const isKeystone = downList.length >= 3 || item.id === 'opencode-core' || item.type === 'framework';
 
-                // Prerequisite readiness & Eureka boosts
                 const next = isNext(item);
                 const reached = item.status === 'built';
                 const upList = upstream.get(item.id) || [];
@@ -480,43 +467,25 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                 const dimmed = (chainIds.size > 0 && !inChain) || isSimDimmed || !isSpotlit;
                 const baseOpacity = isSimRoot || isSimAffected ? 1 : !isSpotlit ? 0.15 : dimmed ? 0.2 : reached ? 1 : next ? 0.95 : 0.4;
 
-                let nodeFill = reached ? defaultColor : '#081324';
-                let sc = inChain && !selected ? 'var(--accent)' : selected ? '#ffffff' : (reached ? defaultColor : 'var(--border-bright)');
-                let sw = inChain ? 3 : selected ? 3.5 : (reached ? 2 : 1.5);
+                let nodeFill = reached ? defaultColor : '#1e293b';
+                let sc = inChain && !selected ? 'var(--accent)' : selected ? '#ffffff' : (reached ? defaultColor : 'var(--border-subtle)');
+                let sw = inChain ? 2.5 : selected ? 2.5 : (reached ? 1.5 : 1);
 
                 if (simulationMode === 'outage') {
-                  if (isSimRoot) {
-                    nodeFill = '#ff2a55';
-                    sc = '#ffffff';
-                    sw = 3.5;
-                  } else if (isSimAffected) {
-                    nodeFill = '#d90429';
-                    sc = '#ffffff';
-                    sw = 2.5;
-                  }
+                  if (isSimRoot) { nodeFill = '#f43f5e'; sc = '#ffffff'; sw = 2.5; } 
+                  else if (isSimAffected) { nodeFill = '#e11d48'; sc = '#ffffff'; sw = 2; }
                 } else if (simulationMode === 'acquisition') {
-                  if (isSimRoot) {
-                    nodeFill = '#00f0ff';
-                    sc = '#ffffff';
-                    sw = 3.5;
-                  } else if (isSimAffected) {
-                    nodeFill = '#00ff88';
-                    sc = '#ffffff';
-                    sw = 2.5;
-                  }
+                  if (isSimRoot) { nodeFill = '#6366f1'; sc = '#ffffff'; sw = 2.5; } 
+                  else if (isSimAffected) { nodeFill = '#10b981'; sc = '#ffffff'; sw = 2; }
                 } else if (isAttentionHot) {
-                  nodeFill = interventionCount > 20 ? 'var(--copper-1)' : 'var(--copper-2)';
-                  sc = '#ffffff';
-                  sw = 2.5;
+                  nodeFill = interventionCount > 20 ? '#ef4444' : '#f59e0b'; sc = '#ffffff'; sw = 2;
                 } else if (isSpofHot) {
-                  nodeFill = 'var(--plasma)';
-                  sc = 'var(--copper-4)';
-                  sw = 3;
+                  nodeFill = '#8b5cf6'; sc = '#f59e0b'; sw = 2;
                 }
 
                 const sym = item.type === 'framework' ? '★' : item.type === 'mcp-server' ? '◈' : item.type === 'agent' ? '◆' : item.type === 'skill' ? '◇' : '●';
                 const label = item.name.length > 20 ? item.name.slice(0, 18) + '…' : item.name;
-                const dialRadius = NODE_R + 8;
+                const dialRadius = NODE_R + 6;
                 const dialCircumference = 2 * Math.PI * dialRadius;
                 
                 return (
@@ -535,104 +504,58 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
                     onBlur={() => { onHover?.(null); setHoverItem(null); }}
                     onMouseEnter={() => { onHover?.(item.id); setHoverItem(item.id); }}
                     onMouseLeave={() => { onHover?.(null); setHoverItem(null); }}
-                    style={{ cursor:'pointer', transition:'opacity .2s' }}>
+                    style={{ cursor:'pointer', transition:'opacity .15s' }}>
                     
-                    {/* Keystone / World Wonder Faceted Pedestal Frame */}
                     {isKeystone && !dimmed && (
-                      <g>
-                        <rect x={-NODE_R - 5} y={-NODE_R - 5} width={(NODE_R + 5) * 2} height={(NODE_R + 5) * 2} rx={6}
-                          fill="none" stroke="var(--copper-3)" strokeWidth={1.5} opacity={0.65} transform="rotate(45)" />
-                        {reached && (
-                          <circle r={NODE_R + 5} fill="none" stroke="var(--copper-2)" strokeWidth={1} strokeDasharray="3,3" opacity={0.5} />
-                        )}
-                      </g>
+                      <rect x={-NODE_R - 4} y={-NODE_R - 4} width={(NODE_R + 4) * 2} height={(NODE_R + 4) * 2} rx={8}
+                        fill="none" stroke="rgba(245, 158, 11, 0.4)" strokeWidth={1.5} strokeDasharray="4,3" />
                     )}
 
-                    {/* Outer glow when selected or simulation target */}
-                    {selected && <circle r={NODE_R + 10} fill="none" stroke="var(--accent)" strokeWidth={3} opacity={0.6} filter="url(#laserGlow)"/>}
-                    {isSimRoot && (
-                      <circle
-                        r={NODE_R + 8}
-                        fill="none"
-                        stroke={simulationMode === 'outage' ? '#ff2a55' : '#00f0ff'}
-                        strokeWidth={3}
-                        className={simulationMode === 'outage' ? 'sim-pulse-outage' : 'sim-pulse-unlock'}
-                      />
-                    )}
-                    {isSimAffected && (
-                      <circle
-                        r={NODE_R + 6}
-                        fill="none"
-                        stroke={simulationMode === 'outage' ? '#d90429' : '#00ff88'}
-                        strokeWidth={2.5}
-                        className={simulationMode === 'outage' ? 'sim-pulse-outage' : 'sim-pulse-unlock'}
-                      />
-                    )}
+                    {selected && <circle r={NODE_R + 7} fill="none" stroke="var(--accent)" strokeWidth={2} opacity={0.8}/>}
 
-                    {/* Frontier Researchable: Segmented Radial Readiness Beaker Dial */}
                     {next && !dimmed && !isSimAffected && (
                       <>
-                        {/* Dial background track */}
-                        <circle r={dialRadius} fill="none" stroke="rgba(0, 240, 255, 0.18)" strokeWidth={3} />
-                        {/* Dial active progress arc */}
+                        <circle r={dialRadius} fill="none" stroke="rgba(255, 255, 255, 0.1)" strokeWidth={2.5} />
                         <circle
                           r={dialRadius}
                           fill="none"
                           stroke={readinessPct >= 1 ? 'var(--ok)' : 'var(--accent)'}
-                          strokeWidth={3}
+                          strokeWidth={2.5}
                           strokeDasharray={`${dialCircumference * readinessPct} ${dialCircumference}`}
                           strokeDashoffset={0}
                           transform="rotate(-90)"
                           strokeLinecap="round"
-                          filter="url(#laserGlow)"
                         />
                         {costOf(item) && (
-                          <text x={NODE_R + 6} y={-NODE_R} textAnchor="start" fill="var(--copper-3)"
-                            fontSize={11} fontWeight={700} fontFamily="var(--font)">{costOf(item)}</text>
+                          <text x={NODE_R + 6} y={-NODE_R + 4} textAnchor="start" fill="var(--text-muted)"
+                            fontSize={10} fontWeight={600} fontFamily="var(--font-sans)">{costOf(item)}</text>
                         )}
-                        {/* Eureka Boost Badge */}
                         {hasEureka && (
-                          <g transform={`translate(0, ${-NODE_R - 14})`}>
-                            <rect x={-26} y={-8} width={52} height={14} rx={3} fill="rgba(255, 170, 0, 0.2)" stroke="var(--copper-3)" strokeWidth={1} />
-                            <text y={3} textAnchor="middle" fill="var(--copper-3)" fontSize={9} fontWeight={800} fontFamily="var(--font)">⚡ BOOST</text>
+                          <g transform={`translate(0, ${-NODE_R - 12})`}>
+                            <rect x={-20} y={-7} width={40} height={14} rx={4} fill="rgba(245, 158, 11, 0.15)" stroke="var(--warn)" strokeWidth={1} />
+                            <text y={3} textAnchor="middle" fill="var(--warn)" fontSize={8.5} fontWeight={700} fontFamily="var(--font-sans)">Boost</text>
                           </g>
                         )}
                       </>
                     )}
 
-                    {/* Main node disc */}
                     <circle r={NODE_R} fill={nodeFill} stroke={next ? 'var(--accent)' : sc}
-                      strokeWidth={next ? 2.5 : sw} opacity={0.95}/>
-                    <text y={4} textAnchor="middle" fill={reached ? '#030712' : (dimmed ? '#436080' : '#ffffff')} fontSize={15} fontWeight={800}>{sym}</text>
+                      strokeWidth={next ? 2 : sw} opacity={0.95}/>
+                    <text y={4} textAnchor="middle" fill={reached ? '#ffffff' : (dimmed ? 'var(--text-muted)' : '#ffffff')} fontSize={14} fontWeight={700}>{sym}</text>
 
-                    {/* Simulation status pills */}
-                    {isSimAffected && (
-                      <text y={-NODE_R - 5} textAnchor="middle" fill={simulationMode === 'outage' ? '#ff2a55' : '#00ff88'} fontSize={10} fontWeight={800} fontFamily="var(--font)">
-                        {simulationMode === 'outage' ? 'BLOCKED' : 'UNLOCKED'}
-                      </text>
-                    )}
-
-                    {/* Attention Heatmap Badge */}
-                    {isAttentionHot && !dimmed && (
-                      <text y={-NODE_R - 5} textAnchor="middle" fill="var(--copper-2)" fontSize={10} fontWeight={700} fontFamily="var(--font)">
-                        {interventionCount}× ($/mo)
-                      </text>
-                    )}
-
-                    {/* Evidence badge */}
                     {reached && !dimmed && ['verified','reliable'].includes(item.meta?.lifecycle as string) && (
                       <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
-                        <circle r={7} fill="#00ff88" stroke="var(--bg-deep)" strokeWidth={1.5}/>
-                        <text y={3.5} textAnchor="middle" fill="#030712" fontSize={10} fontWeight={800}>✓</text>
+                        <circle r={6} fill="#10b981" stroke="var(--bg-canvas)" strokeWidth={1.5}/>
+                        <text y={3} textAnchor="middle" fill="#ffffff" fontSize={9} fontWeight={800}>✓</text>
                       </g>
                     )}
                     {reached && !dimmed && ['degraded','broken'].includes(item.meta?.lifecycle as string) && (
                       <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
-                        <circle r={7} fill="#ff2a55" stroke="var(--bg-deep)" strokeWidth={1.5}/>
-                        <text y={3.5} textAnchor="middle" fill="#ffffff" fontSize={10} fontWeight={800}>!</text>
+                        <circle r={6} fill="#f43f5e" stroke="var(--bg-canvas)" strokeWidth={1.5}/>
+                        <text y={3} textAnchor="middle" fill="#ffffff" fontSize={9} fontWeight={800}>!</text>
                       </g>
                     )}
-                    <text y={NODE_R + 18} textAnchor="middle" fill={dimmed ? '#436080' : 'var(--text-primary)'} fontSize={12} fontWeight={600} fontFamily="var(--font)">{label}</text>
+                    <text y={NODE_R + 16} textAnchor="middle" fill={dimmed ? 'var(--text-muted)' : 'var(--text-primary)'} fontSize={11.5} fontWeight={500} fontFamily="var(--font-sans)">{label}</text>
                   </g>
                 );
               })}
@@ -673,86 +596,71 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           const enablesH = enables.length ? 20 + enables.length * 15 : 0;
           const boxH = headH + keyH + descH + enablesH + 12;
 
-          const tx = START_X + di * COL_W + COL_W / 2 - 40 + NODE_R + 10;
+          const tx = START_X + di * COL_W + COL_W / 2 - 16 + NODE_R + 10;
           const ty = START_Y + ai * ROW_H + NODE_R - 10;
 
           return (
             <g transform={`translate(${tx}, ${ty})`} pointerEvents="none">
-              <rect x={0} y={0} width={W} height={boxH} rx={6} fill="var(--bg-glass)" stroke="var(--accent)" strokeWidth={1.5} filter="url(#laserGlow)"/>
-              <text x={12} y={16} fill="var(--accent)" fontSize={12} fontWeight={700} fontFamily="var(--font)">
-                {unreached ? 'NOT REACHED YET' : ni.name}
+              <rect x={0} y={0} width={W} height={boxH} rx={8} fill="var(--bg-surface)" stroke="var(--border)" strokeWidth={1}/>
+              <text x={12} y={16} fill="var(--text-primary)" fontSize={12} fontWeight={600} fontFamily="var(--font-sans)">
+                {unreached ? 'Not reached yet' : ni.name}
               </text>
               {isKey && (
-                <text x={12} y={headH + 12} fill="var(--copper-3)" fontSize={10} fontWeight={800} fontFamily="var(--font)">
-                  ★ KEYSTONE ANCHOR ({downCount} ENABLES)
+                <text x={12} y={headH + 12} fill="var(--warn)" fontSize={10} fontWeight={600} fontFamily="var(--font-sans)">
+                  ★ Keystone ({downCount} enables)
                 </text>
               )}
               {lines.map((line, i) => (
-                <text key={i} x={12} y={headH + keyH + 12 + i * 15} fill="var(--text-secondary)" fontSize={11} fontFamily="var(--font)">{line}</text>
+                <text key={i} x={12} y={headH + keyH + 12 + i * 15} fill="var(--text-secondary)" fontSize={11} fontFamily="var(--font-sans)">{line}</text>
               ))}
               {enables.length > 0 && (
-                <text x={12} y={headH + keyH + descH + 15} fill="var(--copper-3)" fontSize={11} fontWeight={700} fontFamily="var(--font)">ENABLES</text>
+                <text x={12} y={headH + keyH + descH + 15} fill="var(--text-muted)" fontSize={10.5} fontWeight={600} fontFamily="var(--font-sans)">Enables</text>
               )}
               {enables.map((did, i) => {
                 const dep = items.find(it => it.id === did);
                 const label = dep ? (dep.name.length > 22 ? dep.name.slice(0, 20) + '…' : dep.name) : did;
                 return (
-                  <text key={did} x={14} y={headH + keyH + descH + 30 + i * 15} fill="var(--text-primary)" fontSize={11} fontFamily="var(--font)">{label}</text>
+                  <text key={did} x={14} y={headH + keyH + descH + 30 + i * 15} fill="var(--text-primary)" fontSize={11} fontFamily="var(--font-sans)">{label}</text>
                 );
               })}
               {hoverDownstream.length > 4 && (
-                <text x={14} y={boxH - 6} fill="var(--text-muted)" fontSize={10} fontFamily="var(--font)">+{hoverDownstream.length - 4} more</text>
+                <text x={14} y={boxH - 6} fill="var(--text-muted)" fontSize={10} fontFamily="var(--font-sans)">+{hoverDownstream.length - 4} more</text>
               )}
             </g>
           );
         })()}
 
-        {/* Interactive Legend with Spotlight Toggles */}
-        <g transform={`translate(${START_X}, ${contentHeight - 40})`}>
-          <line x1={0} y1={-4} x2={colOrder.length * COL_W - 60} y2={-4} stroke="var(--border-bright)" strokeWidth={1}/>
+        {/* Legend */}
+        <g transform={`translate(${START_X}, ${contentHeight - 35})`}>
+          <line x1={0} y1={-8} x2={colOrder.length * COL_W - 40} y2={-8} stroke="var(--border)" strokeWidth={1}/>
           {[
             {color:'var(--accent)',sym:'★',label:'Framework'},
-            {color:'var(--copper-3)',sym:'◈',label:'Server'},
-            {color:'#ff007f',sym:'◆',label:'Agent'},
-            {color:'var(--ok)',sym:'◇',label:'Skill'},
-            {color:'var(--plasma)',sym:'●',label:'Combo'},
-            {color:'var(--copper-3)',sym:'👑',label:'Keystone'},
-            {color:'var(--ok)',sym:'✓',label:'Passing'},
-            {color:'var(--error)',sym:'!',label:'Failing'},
+            {color:'#f59e0b',sym:'◈',label:'Server'},
+            {color:'#ec4899',sym:'◆',label:'Agent'},
+            {color:'#10b981',sym:'◇',label:'Skill'},
+            {color:'#8b5cf6',sym:'●',label:'Combo'},
+            {color:'#f59e0b',sym:'👑',label:'Keystone'},
+            {color:'#10b981',sym:'✓',label:'Passing'},
+            {color:'#f43f5e',sym:'!',label:'Failing'},
             {stroke:'var(--accent)',style:'solid',label:'Required'},
             {stroke:'var(--text-muted)',style:'dashed',label:'Optional'},
           ].map((l,i)=>{
-            const lx = 10 + i * 120;
+            const lx = 10 + i * 115;
             const isLegendActive = spotlightGroup === l.label;
             return (
-              <g
-                key={i}
-                transform={`translate(${lx}, 12)`}
+              <g key={i} transform={`translate(${lx}, 8)`}
                 style={{ cursor: l.color ? 'pointer' : 'default', opacity: spotlightGroup && !isLegendActive ? 0.45 : 1 }}
-                onClick={() => {
-                  if (l.color) {
-                    setSpotlightGroup(curr => curr === l.label ? null : l.label);
-                  }
-                }}
-              >
+                onClick={() => { if (l.color) setSpotlightGroup(curr => curr === l.label ? null : l.label); }}>
                 {l.color ? (
                   <>
-                    <circle r={8} fill={l.color} opacity={0.9} stroke={isLegendActive ? '#ffffff' : 'none'} strokeWidth={isLegendActive ? 2 : 0} />
-                    <text y={3.5} textAnchor="middle" fill="#030712" fontSize={11} fontWeight={800}>{l.sym}</text>
+                    <circle r={7} fill={l.color} opacity={0.9} stroke={isLegendActive ? '#ffffff' : 'none'} strokeWidth={isLegendActive ? 2 : 0} />
+                    <text y={3} textAnchor="middle" fill="#ffffff" fontSize={9.5} fontWeight={700}>{l.sym}</text>
                   </>
                 ) : (
-                  <line x1={-12} y1={0} x2={12} y2={0} stroke={l.stroke} strokeWidth={1.8} strokeDasharray={l.style === 'dashed' ? '5,3' : 'none'}/>
+                  <line x1={-10} y1={0} x2={10} y2={0} stroke={l.stroke} strokeWidth={1.5} strokeDasharray={l.style === 'dashed' ? '4,3' : 'none'}/>
                 )}
-                <text
-                  x={14}
-                  y={3.5}
-                  fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
-                  fontSize={10}
-                  fontWeight={isLegendActive ? 800 : 600}
-                  fontFamily="var(--font)"
-                >
-                  {l.label}
-                </text>
+                <text x={12} y={3.5} fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
+                  fontSize={10.5} fontWeight={isLegendActive ? 600 : 400} fontFamily="var(--font-sans)">{l.label}</text>
               </g>
             );
           })}

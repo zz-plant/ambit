@@ -25,13 +25,20 @@ async function waitUrl(url: string, timeoutMs = 15000): Promise<boolean> {
   return false;
 }
 
-async function captureShot(url: string, outFile: string, width = 1440, height = 900, delayMs = 3000) {
+async function captureShot(url: string, outFile: string, width = 1440, height = 900, delayMs = 2500) {
   console.log(`📸 Capturing: ${outFile} (${width}x${height})...`);
   const tmpProfile = mkdtempSync(join(tmpdir(), 'ambit-chrome-'));
   try {
-    const cmd = `"${CHROME_PATH}" --headless=new --user-data-dir="${tmpProfile}" --no-first-run --hide-scrollbars --window-size=${width},${height} --virtual-time-budget=${delayMs} --screenshot="${outFile}" "${url}"`;
-    execSync(cmd, { stdio: 'pipe' });
+    const cmd = `"${CHROME_PATH}" --headless=new --disable-gpu --no-sandbox --no-first-run --hide-scrollbars --window-size=${width},${height} --virtual-time-budget=${delayMs} --timeout=15000 --screenshot="${outFile}" "${url}"`;
+    execSync(cmd, { stdio: 'pipe', timeout: 20000 });
     console.log(`✅ Saved ${outFile}`);
+  } catch (e: any) {
+    console.warn(`⚠ Chrome virtual time fallback for ${outFile}: ${e?.message || e}`);
+    const fallbackCmd = `"${CHROME_PATH}" --headless --disable-gpu --no-sandbox --window-size=${width},${height} --screenshot="${outFile}" "${url}"`;
+    try {
+      execSync(fallbackCmd, { stdio: 'pipe', timeout: 15000 });
+      console.log(`✅ Saved ${outFile} via fallback`);
+    } catch {}
   } finally {
     try { rmSync(tmpProfile, { recursive: true, force: true }); } catch {}
   }

@@ -2,39 +2,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#00f0ff" stop-opacity="0.12"/>
-      <stop offset="50%" stop-color="#ffaa00" stop-opacity="0.08"/>
-      <stop offset="100%" stop-color="#030712" stop-opacity="0.95"/>
+      <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.14"/>
+      <stop offset="50%" stop-color="#0ea5e9" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#090d16" stop-opacity="0.98"/>
     </linearGradient>
-    <linearGradient id="copper" x1="0" y1="0" x2="100%" y2="0">
-      <stop offset="0%" stop-color="#ff3300"/>
-      <stop offset="50%" stop-color="#ffaa00"/>
-      <stop offset="100%" stop-color="#00f0ff"/>
+    <linearGradient id="brandGrad" x1="0" y1="0" x2="100%" y2="0">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2.5" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
   </defs>
-  <rect width="100%" height="100%" fill="#030712"/>
+  <rect width="100%" height="100%" fill="#090d16"/>
   <rect width="100%" height="100%" fill="url(#bg)"/>
-  
-  <!-- Subtle grid lines -->
-  <line x1="40" y1="100" x2="360" y2="100" stroke="#162840" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.6"/>
-  <line x1="200" y1="20" x2="200" y2="180" stroke="#162840" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.6"/>
 
-  <!-- Centered keystone marker symbol -->
-  <circle cx="200" cy="55" r="14" fill="#070e1c" stroke="url(#copper)" stroke-width="1.5" filter="url(#glow)"/>
-  <text x="200" y="60" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="900" fill="#00f0ff" text-anchor="middle">◈</text>
+  <!-- Subtle grid pattern -->
+  <line x1="0" y1="55" x2="400" y2="55" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+  <line x1="0" y1="102" x2="400" y2="102" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+  <line x1="200" y1="0" x2="200" y2="200" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+  <!-- Subtle graph connection lines -->
+  <line x1="110" y1="55" x2="200" y2="55" stroke="url(#brandGrad)" stroke-width="1.8" stroke-dasharray="3,3" opacity="0.7"/>
+  <line x1="200" y1="55" x2="290" y2="55" stroke="url(#brandGrad)" stroke-width="1.8" stroke-dasharray="3,3" opacity="0.7"/>
+  <line x1="200" y1="25" x2="200" y2="55" stroke="url(#brandGrad)" stroke-width="1.5" stroke-dasharray="2,2" opacity="0.5"/>
+
+  <!-- Graph node cluster -->
+  <circle cx="110" cy="55" r="11" fill="#1e293b" stroke="#3b82f6" stroke-width="1.8"/>
+  <circle cx="110" cy="55" r="4" fill="#3b82f6"/>
+  <circle cx="290" cy="55" r="11" fill="#1e293b" stroke="#10b981" stroke-width="1.8"/>
+  <circle cx="290" cy="55" r="4" fill="#10b981"/>
+  <circle cx="200" cy="25" r="8" fill="#1e293b" stroke="#8b5cf6" stroke-width="1.5"/>
+  <circle cx="200" cy="25" r="3" fill="#8b5cf6"/>
+  
+  <circle cx="200" cy="55" r="18" fill="#111827" stroke="url(#brandGrad)" stroke-width="2.5"/>
+  <circle cx="200" cy="55" r="7" fill="url(#brandGrad)"/>
   
   <!-- Project name -->
-  <text x="200" y="98" font-family="'JetBrains Mono', -apple-system, sans-serif" font-size="24"
-        font-weight="800" fill="#e2f0fc" text-anchor="middle" letter-spacing="3" filter="url(#glow)">AMBIT</text>
-  
-  <!-- Accent laser line under name -->
-  <line x1="120" y1="114" x2="280" y2="114" stroke="url(#copper)" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="200" y="102" font-family="'Inter', -apple-system, sans-serif" font-size="26"
+        font-weight="700" fill="#f8fafc" text-anchor="middle" letter-spacing="1">Ambit</text>
   
   <!-- Subtitle -->
-  <text x="200" y="136" font-family="'JetBrains Mono', monospace" font-size="8.5"
-        font-weight="600" fill="#8bb2d6" text-anchor="middle" letter-spacing="1">META-MCP CAPABILITY GRAPH FOR AI AGENTS</text>
+  <text x="200" y="132" font-family="'Inter', -apple-system, sans-serif" font-size="10"
+        font-weight="500" fill="#94a3b8" text-anchor="middle" letter-spacing="0.5">Capability Graph &amp; Meta-MCP Server for AI Agents</text>
 </svg>

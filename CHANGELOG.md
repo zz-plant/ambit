@@ -8,6 +8,15 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 ## Unreleased
 
+- **Autonomous Control Plane & Safety Interception**: Active runtime interceptor (`src/control_plane/proxy.ts`, `src/control_plane/cli.ts`) that enforces capability DAG prerequisites, lifecycle checks (`degraded`/`broken`), and authority policies before tool execution.
+- **`AMBIT_BLOCKED_UNAUTHORIZED` & State Invariance**: Rogue or out-of-order agent tool executions (such as unapproved production rollouts) are blocked at the control plane boundary with exit code `2`, guaranteeing `pre_state == post_state`.
+- **Human-in-the-Loop HMAC Remediation**: Blocked executions generate structured remediation proposals and cryptographic HMAC challenges (`ambit approve <proposal-id> <person>`), minting signed artifacts verified prior to state mutation.
+- **OpenTelemetry Trace Instrumentation**: Spans and structured event records capture DAG evaluations, missing authorization nodes, HMAC challenges, and verification receipts.
+- **Verified Incident Trace & Demonstration Suite**:
+  - Published Incident Report: `docs/incidents/INCIDENT_TRACE_001.md`
+  - Automated TDD Suite: `tests/control_plane/test_intervention_trace.py` (`test:control-plane`)
+  - 90-Second Reproducible Demonstration: `scripts/demo_incident_trace.py` (`demo:incident`) and `docs/incidents/demo_intervention_trace.cast`.
+
 ## [0.4.1](https://github.com/zz-plant/ambit/releases/tag/v0.4.1) — 2026-08-30
 
 - Adoption and distribution hardening: current install instructions, Node-only CLI bootstrap, npm release automation, and the `ambit` Homebrew command alias.

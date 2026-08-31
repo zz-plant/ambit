@@ -45,5 +45,10 @@ export {
   applyProposal, rollbackProposal,
 } from "./governance.ts";
 export { proposalHash, mintApproval, verifyApproval } from "./approval.ts";
+export {
+  executeThroughControlPlane, setupControlPlaneGraph, createInitialMockEnvironment,
+  readMockEnvironment, writeMockEnvironment,
+  type AgentExecutionRequest, type ControlPlaneResult, type MockEnvironmentState, type OpenTelemetrySpan,
+} from "../control_plane/proxy.ts";
 
 if (import.meta.main) main();
