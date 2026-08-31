@@ -17,7 +17,6 @@ export function CapabilityListPanel() {
   const setSearch = useToolchainStore(s => s.setSearch);
   const selectItem = useToolchainStore(s => s.selectItem);
   const selectedId = useToolchainStore(s => s.selectedItem);
-  const setShowUplinkModal = useToolchainStore(s => s.setShowUplinkModal);
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const filtered = items.filter(i => {
@@ -29,20 +28,10 @@ export function CapabilityListPanel() {
     return matchesSearch && matchesType;
   });
 
-  const countByType: Record<string, number> = {};
-  items.forEach(i => { countByType[i.type] = (countByType[i.type] || 0) + 1; });
-
   return (
     <div className="toolchain-panel">
       <div className="tp-tabs">
         <span className="tp-tab tp-tab--active">Capabilities ({items.length})</span>
-        <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600 }}>NAV: [J / K] · [/] FIND</span>
-      </div>
-
-      <div style={{ padding: '6px', borderBottom: '1px solid var(--border)' }}>
-        <button className="tp-btn" style={{ width: '100%', fontSize: '10px', padding: '6px' }} onClick={() => setShowUplinkModal(true)}>
-          🔌 Connect a tool server
-        </button>
       </div>
 
       <div className="tp-toolbar">
@@ -82,20 +71,14 @@ export function CapabilityListPanel() {
         ))}
       </div>
 
-      {/* Match count and active filters summary */}
-      <div className="tp-match-count">
-        <span>Showing {filtered.length} of {items.length}</span>
-        {searchQuery && (
-          <span style={{ color: 'var(--accent)' }}>filtered</span>
-        )}
-      </div>
+      {(searchQuery || typeFilter !== 'all') && (
+        <div className="tp-match-count">
+          <span>Showing {filtered.length} of {items.length}</span>
+        </div>
+      )}
 
       <div className="tp-list">
         {filtered.map(item => {
-          const isBuilt = item.status === 'built';
-          const lifecycle = item.meta?.lifecycle as string | undefined;
-          const isFailing = lifecycle === 'degraded' || lifecycle === 'broken';
-
           return (
             <div key={item.id}
               className={`tp-item ${selectedId === item.id ? 'tp-item--sel' : ''}`}
@@ -105,16 +88,7 @@ export function CapabilityListPanel() {
                 <span className="tp-item-name">{item.name}</span>
                 <span className={`tp-badge tp-badge--${item.status}`}>{statusLabel(item.status)}</span>
               </div>
-              <div className="tp-item-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{typeLabel(item.type)}</span>
-                {/* Segmented LED VU Meter */}
-                <div className="vu-meter" title={`Integrity: ${isFailing ? 'Failing' : isBuilt ? 'Verified' : 'Unreached'}`}>
-                  <div className={`vu-bar ${isBuilt ? (isFailing ? 'vu-bar--error' : 'vu-bar--ok') : ''}`} />
-                  <div className={`vu-bar ${isBuilt ? (isFailing ? 'vu-bar--error' : 'vu-bar--ok') : ''}`} />
-                  <div className={`vu-bar ${isBuilt && !isFailing ? 'vu-bar--ok' : ''}`} />
-                  <div className={`vu-bar ${isBuilt && lifecycle === 'reliable' ? 'vu-bar--ok' : ''}`} />
-                </div>
-              </div>
+              <div className="tp-item-meta">{typeLabel(item.type)}</div>
             </div>
           );
         })}
@@ -140,4 +114,3 @@ export function CapabilityListPanel() {
 
 export { CapabilityListPanel as ToolchainPanel };
 export default CapabilityListPanel;
-

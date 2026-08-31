@@ -1,0 +1,99 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Whether" [ref=e7] [cursor=pointer]:
+            - /url: /
+          - generic [ref=e8]: Page
+        - generic [ref=e9]:
+          - search "Search Whether guidance" [ref=e10]:
+            - searchbox "Search Whether guidance" [ref=e12]
+            - button "Search this question" [ref=e13]: Search
+          - button "Search" [ref=e14]
+          - button "History & export" [ref=e18]
+          - button "Switch to light mode" [ref=e23]
+          - button "Settings" [ref=e30]
+      - navigation "Primary" [ref=e35]:
+        - link "Weekly Brief" [ref=e36] [cursor=pointer]:
+          - /url: /
+        - link "API" [ref=e39] [cursor=pointer]:
+          - /url: /api-docs
+  - main [ref=e41]:
+    - generic [ref=e44]:
+      - paragraph [ref=e45]: Page not found
+      - heading "That page moved." [level=1] [ref=e46]
+      - paragraph [ref=e47]: That older link no longer works, but the weekly brief, evidence, and planning pages are still here.
+      - generic [ref=e48]:
+        - link "Weekly Brief" [ref=e49] [cursor=pointer]:
+          - /url: /
+        - link "Evidence" [ref=e50] [cursor=pointer]:
+          - /url: /signals
+        - link "Planning" [ref=e51] [cursor=pointer]:
+          - /url: /operate
+        - link "Decision Tools" [ref=e52] [cursor=pointer]:
+          - /url: /answer
+        - link "Trust" [ref=e53] [cursor=pointer]:
+          - /url: /trust
+  - contentinfo [ref=e54]:
+    - generic [ref=e55]:
+      - navigation "Product" [ref=e56]:
+        - link "Brief" [ref=e57] [cursor=pointer]:
+          - /url: /
+        - link "Plan" [ref=e58] [cursor=pointer]:
+          - /url: /operate
+        - link "Evidence" [ref=e59] [cursor=pointer]:
+          - /url: /signals
+        - link "Resolve" [ref=e60] [cursor=pointer]:
+          - /url: /answer
+        - link "Trust" [ref=e61] [cursor=pointer]:
+          - /url: /trust
+        - link "History" [ref=e62] [cursor=pointer]:
+          - /url: /history
+        - link "Compare" [ref=e63] [cursor=pointer]:
+          - /url: /history/compare
+      - navigation "Tools and reference" [ref=e64]:
+        - link "Framework" [ref=e65] [cursor=pointer]:
+          - /url: /threshold
+        - link "Template" [ref=e66] [cursor=pointer]:
+          - /url: /template
+        - link "Search" [ref=e67] [cursor=pointer]:
+          - /url: /search
+        - link "Share" [ref=e68] [cursor=pointer]:
+          - /url: /share
+        - link "Embed" [ref=e69] [cursor=pointer]:
+          - /url: /embed
+        - link "API" [ref=e70] [cursor=pointer]:
+          - /url: /api-docs
+        - link "About" [ref=e71] [cursor=pointer]:
+          - /url: /about
+        - link "RSS" [ref=e72] [cursor=pointer]:
+          - /url: /feed.xml
+      - navigation "Legal and credits" [ref=e73]:
+        - link "Acceptable Use" [ref=e74] [cursor=pointer]:
+          - /url: /acceptable-use-policy
+        - link "Terms" [ref=e75] [cursor=pointer]:
+          - /url: /terms-of-service
+        - generic [ref=e76]: ·
+        - link "GitHub" [ref=e77] [cursor=pointer]:
+          - /url: https://github.com/zz-plant/whether
+        - generic [ref=e78]: ·
+        - generic [ref=e79]:
+          - text: Built by
+          - link "Kanav Jain" [ref=e80] [cursor=pointer]:
+            - /url: https://kanav.net
+        - generic [ref=e81]: ·
+        - link "Next Consensus" [ref=e82] [cursor=pointer]:
+          - /url: https://nextconsensus.com
+        - generic [ref=e83]: ·
+        - generic [ref=e84]: © 2026 Whether
+  - paragraph [ref=e85]:
+    - generic [ref=e86]:
+      - generic [ref=e87]: J
+      - generic [ref=e88]: K
+      - generic [ref=e89]: Navigate sections
+    - button "? Shortcuts" [ref=e90]:
+      - generic [ref=e91]: "?"
+      - generic [ref=e92]: Shortcuts
