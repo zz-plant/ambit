@@ -115,7 +115,7 @@ html, body, #root {
 .app-scene {
   position: absolute;
   top: 48px;
-  bottom: 28px;
+  bottom: 0;
   left: 0;
   right: 0;
 }
@@ -267,7 +267,7 @@ html, body, #root {
   position: absolute;
   top: 48px;
   left: 0;
-  bottom: 28px;
+  bottom: 0;
   width: 348px;
   z-index: 30;
   background: var(--bg-glass);
@@ -296,7 +296,7 @@ html, body, #root {
 /* A transient notice from the AG-UI negotiation surface */
 .ambit-toast {
   position: fixed;
-  bottom: 44px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 90;
@@ -350,40 +350,6 @@ html, body, #root {
 .keystone-frame-spin {
   transform-origin: center;
   animation: keystoneSpin 20s linear infinite;
-}
-
-/* Segmented LED VU Meter */
-.vu-meter {
-  display: inline-flex;
-  gap: 2px;
-  align-items: center;
-  padding: 2px 4px;
-  background: var(--bg-deep);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-}
-
-.vu-bar {
-  width: 3px;
-  height: 10px;
-  background: var(--border);
-  border-radius: 1px;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.vu-bar--ok {
-  background: var(--ok);
-  box-shadow: 0 0 4px var(--ok);
-}
-
-.vu-bar--warn {
-  background: var(--warn);
-  box-shadow: 0 0 4px var(--warn);
-}
-
-.vu-bar--error {
-  background: var(--error);
-  box-shadow: 0 0 4px var(--error);
 }
 
 /* Keyboard focus */
@@ -524,25 +490,6 @@ textarea:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: var(--accent-glow);
-}
-
-/* ─── APP CONSOLE (LEFT RAIL) ─── */
-.app-console {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 36px;
-  width: 348px;
-  z-index: 20;
-  background: var(--bg-glass);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-right: 1px solid var(--border);
-  box-shadow: 6px 0 24px rgba(0, 0, 0, 0.6);
-  display: flex;
-  flex-direction: column;
-  transform: translateX(-100%);
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .app-console--open {
@@ -717,51 +664,6 @@ textarea:focus-visible {
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   line-height: 1.45;
-}
-
-/* Telemetry grid & VU meters */
-.sp-telemetry {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-
-.sp-tel-box {
-  background: rgba(7, 14, 28, 0.7);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 8px 6px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.sp-tel-box::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-dim), transparent);
-}
-
-.sp-tel-val {
-  display: block;
-  font-size: var(--fs-lg);
-  font-weight: 700;
-  color: var(--accent);
-  font-variant-numeric: tabular-nums;
-  text-shadow: var(--accent-glow);
-}
-
-.sp-tel-lbl {
-  display: block;
-  font-size: var(--fs-micro);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  margin-top: 3px;
 }
 
 /* System bars */
@@ -1566,39 +1468,6 @@ textarea:focus-visible {
   box-shadow: 0 0 8px currentColor;
 }
 
-/* ─── FOOTER HUD ─── */
-.app-footer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border);
-  gap: 16px;
-  z-index: 20;
-}
-
-.app-footer-title {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow: var(--accent-glow);
-}
-
-.app-footer-info {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-}
-
 /* Scrollbars */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -2020,12 +1889,12 @@ textarea:focus-visible {
     top: auto;
     left: 0;
     right: 0;
-    bottom: 36px;
+    bottom: 0;
     width: auto;
     max-height: 55vh;
     border-right: none;
     border-top: 1px solid var(--border);
-    transform: translateY(calc(100% + 36px));
+    transform: translateY(100%);
   }
   .app-console--open {
     transform: translateY(0);
@@ -2034,7 +1903,7 @@ textarea:focus-visible {
     left: 8px;
     right: 8px;
     top: auto;
-    bottom: 36px;
+    bottom: 0;
   }
   .star-panel {
     width: auto;
@@ -2206,53 +2075,6 @@ textarea:focus-visible {
   box-shadow: var(--accent-glow);
 }
 
-/* ─── UPLINK MCP PRESET TEMPLATES ─── */
-.uplink-presets {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--bg-deep);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-}
-
-.uplink-preset-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.uplink-preset-btn {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-xs);
-  color: var(--text-secondary);
-  font-family: var(--font);
-  font-size: 10px;
-  font-weight: 600;
-  padding: 3px 8px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  transition: all 0.15s ease;
-}
-
-.uplink-preset-btn:hover {
-  background: var(--bg-elevated);
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: var(--accent-glow);
-}
-
-.uplink-preset-btn--selected {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 700;
-}
-
 /* ─── CLI ACTION BUTTONS & FEEDBACK ─── */
 .sp-cli-actions {
   display: flex;
@@ -2303,41 +2125,6 @@ textarea:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: var(--accent-glow);
-}
-
-/* ─── DEPENDENCY BREADCRUMBS ─── */
-.sp-breadcrumbs {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: rgba(7, 14, 28, 0.7);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 10px;
-}
-
-.sp-breadcrumb-trail {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 11px;
-}
-
-.sp-breadcrumb-node {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-bright);
-  border-radius: var(--radius-xs);
-  padding: 2px 6px;
-  color: var(--text-primary);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.sp-breadcrumb-node:hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 /* ─── ECONOMIC LOOP INTERACTIVE METERS ─── */
@@ -2458,6 +2245,5 @@ textarea:focus-visible {
   -webkit-backdrop-filter: blur(4px);
   z-index: 15;
 }
-
 
 

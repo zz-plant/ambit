@@ -1,0 +1,361 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - button "▶ CONSOLE" [ref=f2e6] [cursor=pointer]
+      - generic [ref=f2e7]: ◈ AMBIT
+      - generic [ref=f2e9]:
+        - generic [ref=f2e10]: ●
+        - generic [ref=f2e11]: 21/25 REACHED
+    - navigation "Primary Navigation" [ref=f2e13]:
+      - button "🌐 TECH TREE" [ref=f2e14] [cursor=pointer]
+      - button "⚙️ MY SETUP" [ref=f2e15] [cursor=pointer]
+      - button "⚡ THE LOOP" [ref=f2e16] [cursor=pointer]
+      - button "📜 GOVERNANCE" [ref=f2e17] [cursor=pointer]
+    - generic [ref=f2e18]:
+      - generic [ref=f2e19]:
+        - button "Standard [1]" [ref=f2e20] [cursor=pointer]:
+          - text: Standard
+          - generic [ref=f2e21]: "[1]"
+        - button "Attention [2]" [ref=f2e22] [cursor=pointer]:
+          - text: Attention
+          - generic [ref=f2e23]: "[2]"
+        - button "SPOFs [3]" [ref=f2e24] [cursor=pointer]:
+          - text: SPOFs
+          - generic [ref=f2e25]: "[3]"
+      - button "📖 DOCS" [ref=f2e26] [cursor=pointer]
+  - generic [ref=f2e28]:
+    - generic "Canvas Zoom Controls" [ref=f2e29]:
+      - button "Zoom in" [ref=f2e30] [cursor=pointer]: +
+      - generic [ref=f2e31]: 100%
+      - button "Zoom out" [ref=f2e32] [cursor=pointer]: −
+      - button "Reset zoom to 100%" [ref=f2e34] [cursor=pointer]: 1:1
+      - button "Fit graph to view" [ref=f2e35] [cursor=pointer]: ⊡
+    - img [ref=f2e36]:
+      - generic [ref=f2e37]:
+        - generic [ref=f2e40]: Foundation
+        - generic [ref=f2e41]: INFRA
+      - generic [ref=f2e42]:
+        - generic [ref=f2e45]: Pipeline
+        - generic [ref=f2e46]: DEVOPS
+      - generic [ref=f2e47]:
+        - generic [ref=f2e50]: Services
+        - generic [ref=f2e51]: BACKEND
+      - generic [ref=f2e52]:
+        - generic [ref=f2e55]: Interface
+        - generic [ref=f2e56]: FRONTEND
+      - generic [ref=f2e57]:
+        - generic [ref=f2e60]: Intelligence
+        - generic [ref=f2e61]: AI-ML
+      - generic [ref=f2e62]:
+        - generic [ref=f2e65]: Guard
+        - generic [ref=f2e66]: QUALITY
+      - generic [ref=f2e67]:
+        - generic [ref=f2e70]: Orchestration
+        - generic [ref=f2e71]: META
+      - generic [ref=f2e72]:
+        - generic [ref=f2e75]: Fortress
+        - generic [ref=f2e76]: SECURITY
+      - generic [ref=f2e81]:
+        - button "Tailscale, mcp-server" [ref=f2e82] [cursor=pointer]:
+          - generic [ref=f2e84]: ◈
+          - generic [ref=f2e85]: Tailscale
+        - button "Shell, framework" [ref=f2e86] [cursor=pointer]:
+          - generic [ref=f2e91]: ★
+          - generic [ref=f2e92]: Shell
+      - generic [ref=f2e93]:
+        - button "GitHub, mcp-server" [ref=f2e94] [cursor=pointer]:
+          - generic [ref=f2e96]: ◈
+          - generic [ref=f2e97]: GitHub
+        - button "Homebrew, mcp-server" [ref=f2e98] [cursor=pointer]:
+          - generic [ref=f2e100]: ◈
+          - generic [ref=f2e101]: Homebrew
+        - button "Steward, agent" [ref=f2e102] [cursor=pointer]:
+          - generic [ref=f2e104]: ◆
+          - generic [ref=f2e105]: Steward
+        - button "Deploy Pipeline, possibility" [ref=f2e106] [cursor=pointer]:
+          - generic [ref=f2e108]: ●
+          - generic [ref=f2e109]: Deploy Pipeline
+      - generic [ref=f2e110]:
+        - button "Cloudflare, mcp-server" [ref=f2e111] [cursor=pointer]:
+          - generic [ref=f2e113]: ◈
+          - generic [ref=f2e114]: Cloudflare
+        - button "Cloudflare, skill" [ref=f2e115] [cursor=pointer]:
+          - generic [ref=f2e117]: ◇
+          - generic [ref=f2e118]: Cloudflare
+        - button "Wrangler, skill" [ref=f2e119] [cursor=pointer]:
+          - generic [ref=f2e121]: ◇
+          - generic [ref=f2e122]: Wrangler
+        - button "Durable Objects, skill" [ref=f2e123] [cursor=pointer]:
+          - generic [ref=f2e125]: ◇
+          - generic [ref=f2e126]: Durable Objects
+      - button "Frontend, skill" [ref=f2e128] [cursor=pointer]:
+        - generic [ref=f2e130]: ◇
+        - generic [ref=f2e131]: Frontend
+      - generic [ref=f2e132]:
+        - button "Agents SDK, skill" [ref=f2e133] [cursor=pointer]:
+          - generic [ref=f2e135]: ◇
+          - generic [ref=f2e136]: Agents SDK
+        - button "LLM, skill" [ref=f2e137] [cursor=pointer]:
+          - generic [ref=f2e139]: ◇
+          - generic [ref=f2e140]: LLM
+        - button "GGUF, skill" [ref=f2e141] [cursor=pointer]:
+          - generic [ref=f2e143]: ◇
+          - generic [ref=f2e144]: GGUF
+        - button "Local Inference, possibility" [ref=f2e145] [cursor=pointer]:
+          - generic [ref=f2e147]: ●
+          - generic [ref=f2e148]: Local Inference
+      - generic [ref=f2e149]:
+        - button "Playwright, mcp-server" [ref=f2e150] [cursor=pointer]:
+          - generic [ref=f2e152]: ◈
+          - generic [ref=f2e153]: Playwright
+        - button "Browser, skill" [ref=f2e154] [cursor=pointer]:
+          - generic [ref=f2e156]: ◇
+          - generic [ref=f2e157]: Browser
+        - button "Vitest, skill" [ref=f2e158] [cursor=pointer]:
+          - generic [ref=f2e160]: ◇
+          - generic [ref=f2e161]: Vitest
+        - button "E2E on Edge, possibility" [ref=f2e162] [cursor=pointer]:
+          - generic [ref=f2e164]: ●
+          - generic [ref=f2e165]: E2E on Edge
+        - button "LSP, framework" [ref=f2e166] [cursor=pointer]:
+          - generic [ref=f2e171]: ★
+          - generic [ref=f2e172]: LSP
+      - generic [ref=f2e173]:
+        - button "OpenCode, framework" [ref=f2e174] [cursor=pointer]:
+          - generic [ref=f2e179]: ★
+          - generic [ref=f2e180]: OpenCode
+        - button "Oracle, agent" [ref=f2e181] [cursor=pointer]:
+          - generic [ref=f2e183]: ◆
+          - generic [ref=f2e184]: Oracle
+        - button "Deep Agent, agent" [ref=f2e185] [cursor=pointer]:
+          - generic [ref=f2e187]: ◆
+          - generic [ref=f2e188]: Deep Agent
+        - button "Editor, framework" [ref=f2e189] [cursor=pointer]:
+          - generic [ref=f2e194]: ★
+          - generic [ref=f2e195]: Editor
+      - button "1Password, mcp-server" [ref=f2e197] [cursor=pointer]:
+        - generic [ref=f2e199]: ◈
+        - generic [ref=f2e200]: 1Password
+      - generic [ref=f2e201]:
+        - generic [ref=f2e202] [cursor=pointer]:
+          - generic [ref=f2e204]: ★
+          - generic [ref=f2e205]: Framework
+        - generic [ref=f2e206] [cursor=pointer]:
+          - generic [ref=f2e208]: ◈
+          - generic [ref=f2e209]: Server
+        - generic [ref=f2e210] [cursor=pointer]:
+          - generic [ref=f2e212]: ◆
+          - generic [ref=f2e213]: Agent
+        - generic [ref=f2e214] [cursor=pointer]:
+          - generic [ref=f2e216]: ◇
+          - generic [ref=f2e217]: Skill
+        - generic [ref=f2e218] [cursor=pointer]:
+          - generic [ref=f2e220]: ●
+          - generic [ref=f2e221]: Combo
+        - generic [ref=f2e222] [cursor=pointer]:
+          - generic [ref=f2e224]: 👑
+          - generic [ref=f2e225]: Keystone
+        - generic [ref=f2e226] [cursor=pointer]:
+          - generic [ref=f2e228]: ✓
+          - generic [ref=f2e229]: Passing
+        - generic [ref=f2e230] [cursor=pointer]:
+          - generic [ref=f2e232]: "!"
+          - generic [ref=f2e233]: Failing
+        - generic [ref=f2e234]: Required
+        - generic [ref=f2e236]: Optional
+  - complementary [ref=f2e238]:
+    - generic [ref=f2e239]:
+      - generic [ref=f2e240]:
+        - generic [ref=f2e241] [cursor=pointer]: Capabilities (25)
+        - generic [ref=f2e242]: "NAV: [J / K] · [/] FIND"
+      - textbox "Search capabilities… [ / ]" [ref=f2e245]
+      - generic [ref=f2e246]:
+        - button "All" [ref=f2e247] [cursor=pointer]
+        - button "Frameworks" [ref=f2e248] [cursor=pointer]
+        - button "Servers" [ref=f2e249] [cursor=pointer]
+        - button "Agents" [ref=f2e250] [cursor=pointer]
+        - button "Skills" [ref=f2e251] [cursor=pointer]
+        - button "Combos" [ref=f2e252] [cursor=pointer]
+      - generic [ref=f2e253]: Showing 25 of 25
+      - generic [ref=f2e255]:
+        - generic [ref=f2e256] [cursor=pointer]:
+          - generic [ref=f2e257]:
+            - generic [ref=f2e258]: OpenCode
+            - generic [ref=f2e259]: Reached
+          - generic [ref=f2e260]:
+            - generic [ref=f2e261]: Framework
+            - 'generic "Integrity: Verified" [ref=f2e262]'
+        - generic [ref=f2e267] [cursor=pointer]:
+          - generic [ref=f2e268]:
+            - generic [ref=f2e269]: Playwright
+            - generic [ref=f2e270]: Reached
+          - generic [ref=f2e271]:
+            - generic [ref=f2e272]: Tool server
+            - 'generic "Integrity: Verified" [ref=f2e273]'
+        - generic [ref=f2e278] [cursor=pointer]:
+          - generic [ref=f2e279]:
+            - generic [ref=f2e280]: Cloudflare
+            - generic [ref=f2e281]: Reached
+          - generic [ref=f2e282]:
+            - generic [ref=f2e283]: Tool server
+            - 'generic "Integrity: Verified" [ref=f2e284]'
+        - generic [ref=f2e289] [cursor=pointer]:
+          - generic [ref=f2e290]:
+            - generic [ref=f2e291]: Tailscale
+            - generic [ref=f2e292]: Reached
+          - generic [ref=f2e293]:
+            - generic [ref=f2e294]: Tool server
+            - 'generic "Integrity: Verified" [ref=f2e295]'
+        - generic [ref=f2e300] [cursor=pointer]:
+          - generic [ref=f2e301]:
+            - generic [ref=f2e302]: GitHub
+            - generic [ref=f2e303]: Reached
+          - generic [ref=f2e304]:
+            - generic [ref=f2e305]: Tool server
+            - 'generic "Integrity: Verified" [ref=f2e306]'
+        - generic [ref=f2e311] [cursor=pointer]:
+          - generic [ref=f2e312]:
+            - generic [ref=f2e313]: 1Password
+            - generic [ref=f2e314]: Reached
+          - generic [ref=f2e315]:
+            - generic [ref=f2e316]: Tool server
+            - 'generic "Integrity: Verified" [ref=f2e317]'
+        - generic [ref=f2e322] [cursor=pointer]:
+          - generic [ref=f2e323]:
+            - generic [ref=f2e324]: Homebrew
+            - generic [ref=f2e325]: Reached
+          - generic [ref=f2e326]:
+            - generic [ref=f2e327]: Tool server
+            - 'generic "Integrity: Verified" [ref=f2e328]'
+        - generic [ref=f2e333] [cursor=pointer]:
+          - generic [ref=f2e334]:
+            - generic [ref=f2e335]: Oracle
+            - generic [ref=f2e336]: Reached
+          - generic [ref=f2e337]:
+            - generic [ref=f2e338]: Agent
+            - 'generic "Integrity: Verified" [ref=f2e339]'
+        - generic [ref=f2e344] [cursor=pointer]:
+          - generic [ref=f2e345]:
+            - generic [ref=f2e346]: Deep Agent
+            - generic [ref=f2e347]: Reached
+          - generic [ref=f2e348]:
+            - generic [ref=f2e349]: Agent
+            - 'generic "Integrity: Verified" [ref=f2e350]'
+        - generic [ref=f2e355] [cursor=pointer]:
+          - generic [ref=f2e356]:
+            - generic [ref=f2e357]: Steward
+            - generic [ref=f2e358]: Reached
+          - generic [ref=f2e359]:
+            - generic [ref=f2e360]: Agent
+            - 'generic "Integrity: Verified" [ref=f2e361]'
+        - generic [ref=f2e366] [cursor=pointer]:
+          - generic [ref=f2e367]:
+            - generic [ref=f2e368]: Frontend
+            - generic [ref=f2e369]: Reached
+          - generic [ref=f2e370]:
+            - generic [ref=f2e371]: Skill
+            - 'generic "Integrity: Verified" [ref=f2e372]'
+        - generic [ref=f2e377] [cursor=pointer]:
+          - generic [ref=f2e378]:
+            - generic [ref=f2e379]: Cloudflare
+            - generic [ref=f2e380]: Reached
+          - generic [ref=f2e381]:
+            - generic [ref=f2e382]: Skill
+            - 'generic "Integrity: Verified" [ref=f2e383]'
+        - generic [ref=f2e388] [cursor=pointer]:
+          - generic [ref=f2e389]:
+            - generic [ref=f2e390]: Wrangler
+            - generic [ref=f2e391]: Reached
+          - generic [ref=f2e392]:
+            - generic [ref=f2e393]: Skill
+            - 'generic "Integrity: Verified" [ref=f2e394]'
+        - generic [ref=f2e399] [cursor=pointer]:
+          - generic [ref=f2e400]:
+            - generic [ref=f2e401]: Browser
+            - generic [ref=f2e402]: Reached
+          - generic [ref=f2e403]:
+            - generic [ref=f2e404]: Skill
+            - 'generic "Integrity: Verified" [ref=f2e405]'
+        - generic [ref=f2e410] [cursor=pointer]:
+          - generic [ref=f2e411]:
+            - generic [ref=f2e412]: Vitest
+            - generic [ref=f2e413]: Reached
+          - generic [ref=f2e414]:
+            - generic [ref=f2e415]: Skill
+            - 'generic "Integrity: Verified" [ref=f2e416]'
+        - generic [ref=f2e421] [cursor=pointer]:
+          - generic [ref=f2e422]:
+            - generic [ref=f2e423]: Durable Objects
+            - generic [ref=f2e424]: Not yet reached
+          - generic [ref=f2e425]:
+            - generic [ref=f2e426]: Skill
+            - 'generic "Integrity: Unreached" [ref=f2e427]'
+        - generic [ref=f2e432] [cursor=pointer]:
+          - generic [ref=f2e433]:
+            - generic [ref=f2e434]: Agents SDK
+            - generic [ref=f2e435]: Not yet reached
+          - generic [ref=f2e436]:
+            - generic [ref=f2e437]: Skill
+            - 'generic "Integrity: Unreached" [ref=f2e438]'
+        - generic [ref=f2e443] [cursor=pointer]:
+          - generic [ref=f2e444]:
+            - generic [ref=f2e445]: LLM
+            - generic [ref=f2e446]: Reached
+          - generic [ref=f2e447]:
+            - generic [ref=f2e448]: Skill
+            - 'generic "Integrity: Verified" [ref=f2e449]'
+        - generic [ref=f2e454] [cursor=pointer]:
+          - generic [ref=f2e455]:
+            - generic [ref=f2e456]: GGUF
+            - generic [ref=f2e457]: Reached
+          - generic [ref=f2e458]:
+            - generic [ref=f2e459]: Skill
+            - 'generic "Integrity: Verified" [ref=f2e460]'
+        - generic [ref=f2e465] [cursor=pointer]:
+          - generic [ref=f2e466]:
+            - generic [ref=f2e467]: E2E on Edge
+            - generic [ref=f2e468]: Not yet reached
+          - generic [ref=f2e469]:
+            - generic [ref=f2e470]: Possibility
+            - 'generic "Integrity: Unreached" [ref=f2e471]'
+        - generic [ref=f2e476] [cursor=pointer]:
+          - generic [ref=f2e477]:
+            - generic [ref=f2e478]: Deploy Pipeline
+            - generic [ref=f2e479]: Not yet reached
+          - generic [ref=f2e480]:
+            - generic [ref=f2e481]: Possibility
+            - 'generic "Integrity: Unreached" [ref=f2e482]'
+        - generic [ref=f2e487] [cursor=pointer]:
+          - generic [ref=f2e488]:
+            - generic [ref=f2e489]: Local Inference
+            - generic [ref=f2e490]: Reached
+          - generic [ref=f2e491]:
+            - generic [ref=f2e492]: Possibility
+            - 'generic "Integrity: Verified" [ref=f2e493]'
+        - generic [ref=f2e498] [cursor=pointer]:
+          - generic [ref=f2e499]:
+            - generic [ref=f2e500]: Shell
+            - generic [ref=f2e501]: Reached
+          - generic [ref=f2e502]:
+            - generic [ref=f2e503]: Framework
+            - 'generic "Integrity: Verified" [ref=f2e504]'
+        - generic [ref=f2e509] [cursor=pointer]:
+          - generic [ref=f2e510]:
+            - generic [ref=f2e511]: Editor
+            - generic [ref=f2e512]: Reached
+          - generic [ref=f2e513]:
+            - generic [ref=f2e514]: Framework
+            - 'generic "Integrity: Verified" [ref=f2e515]'
+        - generic [ref=f2e520] [cursor=pointer]:
+          - generic [ref=f2e521]:
+            - generic [ref=f2e522]: LSP
+            - generic [ref=f2e523]: Reached
+          - generic [ref=f2e524]:
+            - generic [ref=f2e525]: Framework
+            - 'generic "Integrity: Verified" [ref=f2e526]'
+  - contentinfo [ref=f2e531]:
+    - generic [ref=f2e532]: ◈ AMBIT · 25 capabilities · 21 reached
+    - generic [ref=f2e533]: "KEYS: [J/K] NAVIGATE · [1-3] SWITCH LENS · [/] SEARCH · [ESC] CLEAR · [?] DOCS · [G] GOV"
+    - link "GITHUB ↗" [ref=f2e535] [cursor=pointer]:
+      - /url: https://github.com/zz-plant/ambit
+  - status [ref=f2e536]

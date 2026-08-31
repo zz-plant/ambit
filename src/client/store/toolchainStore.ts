@@ -60,7 +60,7 @@ export type {
   InfrastructureScan,
 };
 
-export type ActiveLens = 'default' | 'attention' | 'credentials' | 'topology';
+export type ActiveLens = 'default' | 'attention' | 'credentials';
 export type SimulationMode = 'none' | 'outage' | 'acquisition';
 
 export interface ProposalItem {
@@ -82,7 +82,6 @@ interface StoreState {
   showDetailPanel: boolean;
   /** Backwards compatibility alias for showDetailPanel. */
   showStarPanel: boolean;
-  showUplinkModal: boolean;
   showApprovalModal: boolean;
   treeFilter: TreeFilter;
   activeLens: ActiveLens;
@@ -93,13 +92,11 @@ interface StoreState {
   attentionInterventions: Record<string, number>;
   loading: boolean;
   error: string | null;
-  infrastructureScan: InfrastructureScan | null;
   /** The loop snapshot the static demo renders (null off-demo). */
   demo: DemoSnapshot | null;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
-  setShowUplinkModal: (show: boolean) => void;
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
   startOutageSimulation: (nodeId: string) => void;
@@ -108,8 +105,6 @@ interface StoreState {
   loadProposals: () => Promise<void>;
   approveProposal: (proposalId: string, actor?: string) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
   loadAttentionData: () => Promise<void>;
-  loadInfrastructureScan: () => Promise<InfrastructureScan | null>;
-  updateItemOnServer: (id: string, type: string, updates: any) => Promise<boolean>;
   setItems: (items: Item[], connections: Connection[]) => void;
   selectItem: (id: string | null) => void;
   hoverItem: (id: string | null) => void;
@@ -126,50 +121,9 @@ interface StoreState {
 
   loadConfig: () => Promise<void>;
   toggleMcpEnabled: (name: string, enabled: boolean) => Promise<boolean>;
-  buildMcpSnippet: (name: string, mcpConfig: any) => Promise<{ snippet: string; configPath: string } | null>;
   loadTechTree: () => Promise<boolean>;
 
   reset: () => void;
-}
-
-function statusToItemStatus(status: InfrastructureNode['status']): Item['status'] {
-  if (status === 'online') return 'built';
-  if (status === 'offline') return 'deprecated';
-  return 'specified';
-}
-
-function infrastructureToGraph(scan: InfrastructureScan): { items: Item[]; connections: Connection[] } {
-  const items: Item[] = scan.nodes.map((node) => ({
-    id: node.id,
-    name: node.name,
-    type: node.kind,
-    status: statusToItemStatus(node.status),
-    description: node.description,
-    position: { x: 0, y: 0, z: 0 },
-    group: 'Infrastructure',
-    meta: {
-      ...(node.meta || {}),
-      // Without a domain these all collapsed into the 'meta' column. The
-      // vocabulary was entirely software, which left no honest home for a
-      // resource that acts on the world: an arm, a sensor, a vehicle, a
-      // decoder. Those are `physical`; the rest keep their software domain.
-      domain:
-        (node.meta as any)?.domain ||
-        (node.kind === 'device' ? 'physical' : node.kind === 'network' ? 'infra' : 'backend'),
-      health: node.status,
-      source: 'infrastructure-scan',
-      generatedAt: scan.generatedAt,
-    },
-  }));
-
-  return {
-    items,
-    connections: scan.links.map((link) => ({
-      from: link.from,
-      to: link.to,
-      type: link.type,
-    })),
-  };
 }
 
 export const useToolchainStore = create<StoreState>((set, get) => ({
@@ -180,7 +134,6 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   searchQuery: '',
   showDetailPanel: false,
   showStarPanel: false,
-  showUplinkModal: false,
   showApprovalModal: false,
   treeFilter: readInitialTreeFilter(),
   activeLens: 'default',
@@ -196,7 +149,6 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   },
   loading: false,
   error: null,
-  infrastructureScan: null,
   demo: null,
 
   setItems: (items, connections) => set({ items, connections }),
@@ -433,33 +385,6 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     // covers the graph the visitor came to look at.
     if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
   },
-  setShowUplinkModal: (show) => set({ showUplinkModal: show }),
-
-  updateItemOnServer: async (id, type, updates) => {
-    try {
-      const name = id.replace(/^(agent|command):/, '');
-      let payload = {};
-      if (type === 'agent') {
-        payload = { updateAgent: { name, updates } };
-      } else if (type === 'command') {
-        payload = { updateCommand: { name, updates } };
-      } else {
-        return false;
-      }
-      const res = await fetch('/api/config/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        await get().loadConfig();
-        return true;
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return false;
-  },
 
   setTreeFilter: (treeFilter) => {
     set({ treeFilter });
@@ -508,27 +433,10 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       }
       const { config } = await res.json();
       const base = importConfig(config);
-      const infraScan = await get().loadInfrastructureScan();
-      const infra = infraScan ? infrastructureToGraph(infraScan) : { items: [], connections: [] };
-      const itemIds = new Set([...base.items, ...infra.items].map(i => i.id));
-      const connections = [...base.connections, ...infra.connections].filter(c => itemIds.has(c.from) && itemIds.has(c.to));
-      set({ items: [...base.items, ...infra.items], connections, loading: false });
+      set({ items: base.items, connections: base.connections, loading: false });
       if (!isNarrowViewport()) get().selectItem("mcp:cloudflare");
     } catch (e) {
       set({ error: 'Could not load: ' + (e as Error).message, loading: false });
-    }
-  },
-
-  loadInfrastructureScan: async () => {
-    if (!(await backendAvailable())) return null;
-    try {
-      const res = await fetch('/api/infrastructure/scan');
-      if (!res.ok) return null;
-      const scan = await res.json();
-      set({ infrastructureScan: scan });
-      return scan;
-    } catch {
-      return null;
     }
   },
 
@@ -577,26 +485,9 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     }
   },
 
-  // Returns a snippet to paste rather than writing the config. An MCP entry
-  // carries a command OpenCode executes, so it must not be reachable through an
-  // HTTP request — see the security note in AGENTS.md.
-  buildMcpSnippet: async (name: string, mcpConfig: any) => {
-    try {
-      const res = await fetch('/api/config/mcp-snippet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, config: mcpConfig })
-      });
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.error(e);
-    }
-    return null;
-  },
-
   reset: () => set({
     items: [], connections: [], selectedItem: null, hoveredItem: null,
-    searchQuery: '', showDetailPanel: false, showStarPanel: false, loading: false, error: null, infrastructureScan: null, demo: null,
+    searchQuery: '', showDetailPanel: false, showStarPanel: false, loading: false, error: null, demo: null,
   }),
 }));
 

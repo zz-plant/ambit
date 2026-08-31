@@ -3,22 +3,60 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ambit — where your system is wasting scarce resources, and which capability investment pays off</title>
-    <meta name="description" content="Ambit watches how you operate, finds where scarce human agency is being spent, and tells you which durable capability investment is most worth making next — then carries it out safely and measures whether it paid off. Live demo here; Node 22, no dependencies." />
-    <meta property="og:title" content="Ambit — the capability investment worth making next" />
-    <meta property="og:description" content="Observes real work, prices the human burden, ranks the durable fixes by payback, governs the change with signed approvals and enforcement, and measures whether the prediction held. Live demo — no install." />
+    <title>Ambit — AI Agent Capability Graph &amp; Meta-MCP Server</title>
+    <meta name="description" content="Map your AI agent environment as a capability tech tree. Audit blast radius, prevent single points of failure, detect near-miss combo unlocks, and govern changes with signed receipts." />
+    <meta name="keywords" content="mcp, model context protocol, ai agents, claude code, opencode, cursor, windsurf, capability graph, tech tree, blast radius, single point of failure" />
+    <meta name="author" content="Ambit Contributors" />
+    <link rel="canonical" href="https://zz-plant.github.io/ambit/" />
+
+    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://zz-plant.github.io/ambit/" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:creator" content="@zz_plant" />
+    <meta property="og:title" content="Ambit — AI Agent Capability Graph &amp; Meta-MCP Server" />
+    <meta property="og:description" content="Map your AI agent environment into a capability tech tree. Audit blast radius, detect near-miss combo unlocks, and govern changes with signed receipts. Zero install demo." />
     <meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="720" />
+    <meta property="og:site_name" content="Ambit" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@zz_plant" />
+    <meta name="twitter:title" content="Ambit — AI Agent Capability Graph &amp; Meta-MCP Server" />
+    <meta name="twitter:description" content="Map your AI agent environment into a capability tech tree. Audit blast radius, detect near-miss combo unlocks, and govern changes with signed receipts. Zero install demo." />
+    <meta name="twitter:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
+
     <meta name="theme-color" content="#030712" />
     <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Ambit",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Cross-platform (macOS, Linux, Windows)",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "description": "Meta-MCP capability graph and tech-tree visualizer for AI agent environments. Discovers runtimes, audits blast radius, and governs local config proposals.",
+      "url": "https://zz-plant.github.io/ambit/",
+      "softwareVersion": "latest",
+      "license": "https://github.com/zz-plant/ambit/blob/main/LICENSE"
+    }
+    </script>
   </head>
   <body>
+    <noscript>
+      <div style="padding: 24px; font-family: monospace; background: #030712; color: #00f0ff;">
+        <h1>Ambit — Capability Graph &amp; Meta-MCP Server</h1>
+        <p>JavaScript is required to run the interactive tech-tree visualizer. Visit the <a href="https://github.com/zz-plant/ambit" style="color: #38bdf8;">Ambit GitHub repository</a> for the CLI and engine documentation.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/main.tsx"></script>
   </body>

@@ -89,25 +89,14 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
   const [hoverItem, setHoverItem] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStartRef = React.useRef<{ scrollLeft: number; scrollTop: number; mouseX: number; mouseY: number } | null>(null);
   const [spotlightGroup, setSpotlightGroup] = useState<string | null>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const { cols, colOrder } = useMemo(() => {
     const c: Record<string, Item[]> = {};
-    if (activeLens === 'topology') {
-      // Group by host / topology
-      for (const item of filtered) {
-        const hostKey = item.type === 'device' ? 'device:local' : (item.meta?.domain === 'physical' ? 'Physical Nodes' : (item.meta?.domain === 'infra' ? 'Local Host' : 'Cloud / Edge'));
-        if (!c[hostKey]) c[hostKey] = [];
-        c[hostKey].push(item);
-      }
-      return { cols: c, colOrder: Object.keys(c) };
-    }
-
     for (const item of filtered) {
       const d = columnOf(item);
       if (!c[d]) c[d] = [];
@@ -119,7 +108,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
     const order = [...eras, ...DOMAIN_ORDER.filter(d => c[d]?.length)];
     for (const d of Object.keys(c)) if (!order.includes(d)) order.push(d);
     return { cols: c, colOrder: order };
-  }, [filtered, activeLens]);
+  }, [filtered]);
 
   const nodePositionMap = useMemo(() => {
     const map = new Map<string, { x: number; y: number; item: Item }>();
@@ -157,11 +146,9 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
       if (e.key === '1') { setActiveLens('default'); }
       else if (e.key === '2') { setActiveLens('attention'); }
       else if (e.key === '3') { setActiveLens('credentials'); }
-      else if (e.key === '4') { setActiveLens('topology'); }
       else if (e.key === '0') {
         e.preventDefault();
         setZoom(1);
-        setPan({ x: 0, y: 0 });
       }
       else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
@@ -215,16 +202,28 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[role="button"]') || (e.target as HTMLElement).closest('button')) return;
+    if (!containerRef.current) return;
     setIsDragging(true);
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    dragStartRef.current = {
+      scrollLeft: containerRef.current.scrollLeft,
+      scrollTop: containerRef.current.scrollTop,
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+    };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+    if (!isDragging || !dragStartRef.current || !containerRef.current) return;
+    const dx = e.clientX - dragStartRef.current.mouseX;
+    const dy = e.clientY - dragStartRef.current.mouseY;
+    containerRef.current.scrollLeft = dragStartRef.current.scrollLeft - dx;
+    containerRef.current.scrollTop = dragStartRef.current.scrollTop - dy;
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    dragStartRef.current = null;
+  };
 
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -277,7 +276,12 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
         <button
           type="button"
           className="civ-zoom-btn"
-          onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+          onClick={() => {
+            setZoom(1);
+            if (containerRef.current) {
+              containerRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+            }
+          }}
           title="Reset to 100% (Hotkey: 0)"
           aria-label="Reset zoom to 100%"
         >
@@ -291,7 +295,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
               const rect = containerRef.current.getBoundingClientRect();
               const fitRatio = Math.min(rect.width / contentWidth, rect.height / contentHeight);
               setZoom(Math.max(0.4, Math.min(1.5, +(fitRatio * 0.95).toFixed(2))));
-              setPan({ x: 0, y: 0 });
+              containerRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
             }
           }}
           title="Fit Graph to View"
@@ -319,15 +323,11 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           color: '#ffffff',
           padding: '8px 16px',
           borderRadius: 'var(--radius)',
-          border: '1px solid ' + (simulationMode === 'outage' ? '#ff2a55' : '#00f0ff'),
-          boxShadow: simulationMode === 'outage' ? 'var(--error-glow)' : 'var(--accent-glow)',
-          fontWeight: 700,
-          fontFamily: 'var(--font)',
-          fontSize: '12px',
-          letterSpacing: '0.5px',
-          marginTop: '6px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          backdropFilter: 'blur(8px)',
         }}>
-          <span>
+          <span style={{ fontWeight: 700, fontSize: '12px', letterSpacing: '0.4px', fontFamily: 'var(--font)' }}>
             {simulationMode === 'outage'
               ? `⚡ BLAST RADIUS SIMULATION: Outage of "${simulatedItem?.name || simulatedNodeId}" disables ${simulatedCascadeIds.size} downstream capabilities.`
               : `✨ FRONTIER SIMULATION: Unlocking "${simulatedItem?.name || simulatedNodeId}" makes +${simulatedCascadeIds.size} compound capabilities reachable.`}
@@ -363,8 +363,7 @@ export default function CivTree({ items, connections, selectedId, hoveredId, onS
           width: `${contentWidth * zoom}px`,
           height: `${contentHeight * zoom}px`,
           minWidth: `${contentWidth * zoom}px`,
-          transform: `translate(${pan.x}px, ${pan.y}px)`,
-          transition: isDragging ? 'none' : 'transform 0.08s ease-out, width 0.12s ease-out, height 0.12s ease-out',
+          transition: isDragging ? 'none' : 'width 0.12s ease-out, height 0.12s ease-out',
         }}
       >
         
