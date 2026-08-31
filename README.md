@@ -140,12 +140,30 @@ Quantifies friction and human-in-the-loop interventions in real dollars and time
 
 ### 5. Zero-Trust Local Governance & Signed Approvals
 Host-level agent tools represent high-risk attack surfaces. Ambit enforces strict defense-in-depth:
+* **Active Control Plane Interception:** Real-time proxy intercepts out-of-order or high-risk tool calls (e.g. destructive production deployments), blocks rogue agent executions (`AMBIT_BLOCKED_UNAUTHORIZED`), and guarantees **state invariance** (`pre_state == post_state`).
+* **Cryptographic HMAC Remediation:** Enforces human-in-the-loop remediation challenges (`ambit approve <proposal-id> <person>`), minting signed HMAC artifacts verified before any state transition.
 * **Strict Loopback Isolation:** Binds strictly to `127.0.0.1` and blocks non-local `Origin` headers before routing.
 * **No Remote Code Execution:** The web/API layer cannot create arbitrary MCP command entries over HTTP.
-* **Cryptographic Approvals:** Generates signed approval receipts (`mintApproval` / `verifyApproval`) before applying configuration proposals.
 
 > [!CAUTION]
 > Ambit purposefully rejects requests to add new MCP executable entries over HTTP. Modifying agent execution capabilities must always go through signed local receipts or manual configuration.
+
+---
+
+### 🛡️ Verified Incident Trace: Autonomous Agent Interception & Remediation
+
+Read the full incident walkthrough and forensic log in [**`docs/incidents/INCIDENT_TRACE_001.md`**](./docs/incidents/INCIDENT_TRACE_001.md).
+
+```bash
+# 1. Run the automated Pytest intervention trace suite
+bun run test:control-plane
+
+# 2. Run the 90-second terminal incident demonstration
+bun run demo:incident
+
+# 3. Replay the verified terminal recording
+asciinema play docs/incidents/demo_intervention_trace.cast
+```
 
 ---
 

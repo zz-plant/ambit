@@ -100,8 +100,8 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   key={p.id}
                   style={{
                     background: 'var(--bg-surface)',
-                    border: isApproved ? '1px solid var(--ok)' : '1px solid var(--border-bright)',
-                    boxShadow: isApproved ? 'var(--ok-glow)' : '0 4px 16px rgba(0,0,0,0.4)',
+                    border: isApproved ? '1px solid var(--ok)' : '1px solid var(--border)',
+                    boxShadow: isApproved ? '0 4px 20px rgba(16, 185, 129, 0.12)' : '0 2px 8px rgba(0,0,0,0.15)',
                     borderRadius: 'var(--radius)',
                     padding: '16px',
                     display: 'flex',
@@ -117,7 +117,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     left: 0,
                     width: 4,
                     bottom: 0,
-                    background: isApproved ? 'var(--ok)' : 'linear-gradient(180deg, var(--copper-1), var(--copper-3))',
+                    background: isApproved ? 'var(--ok)' : 'var(--accent)',
                   }} />
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

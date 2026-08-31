@@ -34,10 +34,14 @@ src/engine/approval.ts     The approval broker — signed artifacts the executor
 src/engine/roi.ts          Realized ROI — before/after windows, written back
 src/engine/federation.ts   Signed summaries a portfolio layer reads; receipts, no merging
 src/engine/cli.ts          Argument handling and human-readable output
+src/control_plane/proxy.ts Autonomous control plane interceptor, DAG gate & OpenTelemetry trace logger
+src/control_plane/cli.ts   Control plane CLI execution wrapper
 src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority,
                            session_learning, frontier_snapshots, proposals, schema_meta,
                            work ledger, economics, goals, budgets, federation_imports)
 src/mcp/server.ts          MCP server exposing 47 tt_* tools to OpenCode sessions
+tests/control_plane/       Pytest intervention trace test suite (TDD acceptance tests)
+docs/incidents/            Forensic incident traces & asciinema terminal recordings
 src/client/                React frontend
   components/
     CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend

@@ -9,31 +9,31 @@ interface DocsModalProps {
 type Tab = 'concepts' | 'reading' | 'doing' | 'hotkeys';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'concepts', label: 'WHAT THINGS MEAN' },
-  { id: 'reading', label: 'READING THE MAP' },
-  { id: 'doing', label: 'WHAT TO DO' },
-  { id: 'hotkeys', label: 'KEYBOARD SHORTCUTS' },
+  { id: 'concepts', label: 'Concepts' },
+  { id: 'reading', label: 'Reading the Map' },
+  { id: 'doing', label: 'Common Actions' },
+  { id: 'hotkeys', label: 'Shortcuts' },
 ];
 
 const HOTKEYS = [
-  { key: '/', desc: 'Find / Search capabilities in Console drawer' },
-  { key: '\\', desc: 'Toggle Capabilities Console left drawer' },
-  { key: 'J / K', desc: 'Navigate up / down through capabilities on Tech Tree' },
+  { key: '/', desc: 'Search capabilities in the sidebar' },
+  { key: '\\', desc: 'Toggle capabilities sidebar' },
+  { key: 'J / K', desc: 'Navigate up / down through capabilities' },
   { key: '1 - 3', desc: 'Switch graph lens (1: Standard, 2: Attention, 3: SPOFs)' },
-  { key: '+ / -', desc: 'Zoom in / out on the capability canvas' },
-  { key: '0', desc: 'Reset zoom to 100% (1:1)' },
-  { key: 'G', desc: 'Open Governance & Policy Proposals modal' },
-  { key: '?', desc: 'Open Documentation & Keyboard reference' },
-  { key: 'ESC', desc: 'Clear search, exit simulation, or close active modals' },
+  { key: '+ / -', desc: 'Zoom in / out on the canvas' },
+  { key: '0', desc: 'Reset zoom to 100%' },
+  { key: 'G', desc: 'Open Proposals & Governance modal' },
+  { key: '?', desc: 'Open Documentation & Concept guide' },
+  { key: 'ESC', desc: 'Clear selection or close active modal' },
 ];
 
 const NODE_TYPES = [
   { color: 'var(--accent)', sym: '★', label: 'Framework', desc: 'The agent runtime itself' },
-  { color: 'var(--copper-3)', sym: '◈', label: 'MCP server', desc: 'A tool the agent can call' },
-  { color: '#ff007f', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
-  { color: 'var(--ok)', sym: '◇', label: 'Skill', desc: 'A procedure loaded on demand' },
-  { color: '#38bdf8', sym: '⬢', label: 'Provider / model', desc: 'Where inference happens' },
-  { color: 'var(--plasma)', sym: '●', label: 'Tech tree node', desc: 'A capability you reach by having others' },
+  { color: '#f59e0b', sym: '◈', label: 'MCP server', desc: 'A tool the agent can call' },
+  { color: '#ec4899', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
+  { color: '#10b981', sym: '◇', label: 'Skill', desc: 'A procedure loaded on demand' },
+  { color: '#0284c7', sym: '⬢', label: 'Provider / model', desc: 'Where inference happens' },
+  { color: '#8b5cf6', sym: '●', label: 'Tech tree node', desc: 'A capability you reach by having others' },
 ];
 
 const ACTIONS = [

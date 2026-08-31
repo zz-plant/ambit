@@ -207,23 +207,24 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* ─── TOP COMMAND DECK (PRIMARY IA ANCHOR) ─── */}
+      {/* ─── TOP NAVIGATION BAR ─── */}
       <header className="app-deck">
         <div className="app-deck-left">
           <button
             type="button"
             className="app-deck-btn"
             onClick={() => setLeftOpen(o => !o)}
-            title="Toggle capabilities console (Hotkey: \)"
+            title="Toggle capabilities sidebar (Hotkey: \)"
           >
-            {leftOpen ? '◀ CONSOLE' : '▶ CONSOLE'}
+            <span style={{ fontSize: '12px' }}>{leftOpen ? '◧' : '◫'}</span>
+            <span>{leftOpen ? 'Sidebar' : 'Sidebar'}</span>
           </button>
           <div className="app-brand-group">
-            <span className="app-brand">◈ AMBIT</span>
+            <span className="app-brand">Ambit</span>
           </div>
           <div className="app-status-pill">
-            <span style={{ color: 'var(--ok)' }}>●</span>
-            <span>{items.filter(i => i.status === 'built').length}/{items.length} REACHED</span>
+            <span className="app-status-dot" />
+            <span>{items.filter(i => i.status === 'built').length} / {items.length} active</span>
           </div>
         </div>
 
@@ -235,7 +236,7 @@ export default function App() {
               onClick={() => { setView('graph'); setSource('tree'); selectItem(null); loadTechTree(); }}
               title="The capability tech tree — prerequisites, frontier, and compound paths"
             >
-              🌐 TECH TREE
+              Tech Tree
             </button>
             <button
               type="button"
@@ -243,7 +244,7 @@ export default function App() {
               onClick={() => { setView('graph'); setSource('config'); selectItem(null); loadConfigSource(); }}
               title="My Setup — discovered local runtimes, tools, and agents"
             >
-              ⚙️ MY SETUP
+              My Setup
             </button>
             {demo && (
               <button
@@ -252,7 +253,7 @@ export default function App() {
                 onClick={() => { setView('loop'); selectItem(null); }}
                 title="The Economic Loop — attention telemetry, ROI tracking, and ranked investments"
               >
-                ⚡ THE LOOP
+                Economic Loop
               </button>
             )}
             <button
@@ -261,7 +262,7 @@ export default function App() {
               onClick={() => { setShowApprovalModal(true); loadProposals(); }}
               title="Review and sign environment configuration proposals"
             >
-              📜 GOVERNANCE {proposals.filter(p => p.status === 'draft').length > 0 && `(${proposals.filter(p => p.status === 'draft').length})`}
+              Proposals {proposals.filter(p => p.status === 'draft').length > 0 && `(${proposals.filter(p => p.status === 'draft').length})`}
             </button>
           </nav>
         </div>
@@ -281,12 +282,12 @@ export default function App() {
                   onClick={() => setActiveLens(lensKey)}
                   title={`Shortcut: Press ${hotkey}`}
                 >
-                  {label} <span style={{ opacity: 0.6, fontSize: '10px' }}>[{hotkey}]</span>
+                  {label} <span style={{ opacity: 0.5, fontSize: '10px', marginLeft: '4px' }}>[{hotkey}]</span>
                 </button>
               ))}
             </div>
           )}
-          <button type="button" className="app-deck-btn" onClick={() => setShowDocs(true)} title="Documentation & Concepts (Hotkey: ?)">📖 DOCS</button>
+          <button type="button" className="app-deck-btn" onClick={() => setShowDocs(true)} title="Documentation & Concepts (Hotkey: ?)">Docs</button>
         </div>
       </header>
 
@@ -317,77 +318,59 @@ export default function App() {
             style={isNarrow ? undefined : { left: leftOpen ? 340 : 0, right: showDetailPanel && selectedId ? 340 : 0 }}
           >
             <div className="app-guide-head">
-              <strong>Start here</strong>
+              <strong>Getting Started</strong>
               <button className="app-guide-close" onClick={dismissGuide} aria-label="Dismiss">✕</button>
             </div>
             <ol className="app-guide-steps">
-              <li><strong>Click any circle</strong> to see what depends on it.</li>
-              <li><strong>Outlined circles</strong> are capabilities you have not reached — their description says what is missing.</li>
-              <li><strong>TECH TREE</strong> shows where you are on the capability tree; <strong>MY SETUP</strong> shows everything in your setup and how it connects.</li>
+              <li><strong>Click any node</strong> to inspect dependencies, verified evidence, and blast radius.</li>
+              <li><strong>Outlined nodes</strong> are reachable next steps on your frontier — their description explains what is needed.</li>
+              <li><strong>Tech Tree</strong> visualizes evolutionary prerequisites; <strong>My Setup</strong> inspects discovered local tools and agents.</li>
             </ol>
             <button className="app-guide-more" onClick={() => { setShowDocs(true); dismissGuide(); }}>
-              What do these terms mean? →
+              Read the concept guide →
             </button>
           </div>
         )}
         {!items.length && !loading && (
           <div className="app-welcome">
             <div className="app-welcome-hero">
-              <div className="app-welcome-title">AMBIT</div>
-              <div className="app-welcome-tagline">What your system can do —<br/>what it costs, and what is one step away.</div>
+              <div className="app-welcome-title">Ambit</div>
+              <div className="app-welcome-tagline">Map your agent environment as a capability tech tree.<br/>Audit blast radius, discover emergent combos, and govern changes safely.</div>
               <div className="app-welcome-diagram">
                 <svg width="340" height="110" viewBox="0 0 340 110">
                   <defs>
-                    <linearGradient id="heroCopper" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#ff3300" />
-                      <stop offset="50%" stopColor="#ffaa00" />
-                      <stop offset="100%" stopColor="#ffd700" />
+                    <linearGradient id="heroGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#4f46e5" />
+                      <stop offset="100%" stopColor="#0ea5e9" />
                     </linearGradient>
-                    <linearGradient id="heroCyan" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#00f0ff" />
-                      <stop offset="100%" stopColor="#00ff88" />
-                    </linearGradient>
-                    <filter id="heroGlow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="3" result="blur" />
-                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
                   </defs>
-                  <rect x={0} y={0} width={340} height={110} rx={8} fill="#050c18" stroke="#162840" strokeWidth={1}/>
+                  <rect x={0} y={0} width={340} height={110} rx={12} fill="#111827" stroke="rgba(255,255,255,0.08)" strokeWidth={1}/>
                   
-                  {/* Gridlines */}
-                  <line x1={20} y1={55} x2={320} y2={55} stroke="#0e1d30" strokeWidth={1} strokeDasharray="4,4"/>
-                  <line x1={170} y1={10} x2={170} y2={100} stroke="#0e1d30" strokeWidth={1} strokeDasharray="4,4"/>
-
-                  {/* Laser Lines */}
-                  <line x1={56} y1={55} x2={146} y2={35} stroke="url(#heroCyan)" strokeWidth={2} opacity={0.8} filter="url(#heroGlow)"/>
-                  <line x1={170} y1={55} x2={146} y2={35} stroke="#38557a" strokeWidth={1.2} strokeDasharray="4,3"/>
-                  <line x1={56} y1={55} x2={146} y2={75} stroke="url(#heroCopper)" strokeWidth={2} opacity={0.8} filter="url(#heroGlow)"/>
-                  <line x1={284} y1={55} x2={146} y2={75} stroke="#38557a" strokeWidth={1.2} strokeDasharray="4,3"/>
+                  {/* Subtle connection paths */}
+                  <line x1={60} y1={55} x2={150} y2={35} stroke="#3b82f6" strokeWidth={1.5} opacity={0.6}/>
+                  <line x1={150} y1={35} x2={260} y2={55} stroke="#6366f1" strokeWidth={1.5} opacity={0.6}/>
+                  <line x1={60} y1={55} x2={150} y2={75} stroke="#10b981" strokeWidth={1.5} opacity={0.6}/>
+                  <line x1={150} y1={75} x2={260} y2={55} stroke="#10b981" strokeWidth={1.5} opacity={0.6}/>
                   
                   {/* Nodes */}
-                  <circle cx={56} cy={55} r={18} fill="#00f0ff" opacity={0.9} filter="url(#heroGlow)"/>
-                  <circle cx={56} cy={55} r={18} fill="none" stroke="#ffffff" strokeWidth={1.5}/>
-                  <text x={56} y={60} textAnchor="middle" fill="#030712" fontSize={14} fontWeight={800}>◈</text>
+                  <circle cx={60} cy={55} r={16} fill="#1e293b" stroke="#3b82f6" strokeWidth={2}/>
+                  <text x={60} y={59} textAnchor="middle" fill="#93c5fd" fontSize={11} fontWeight={600}>LLM</text>
                   
-                  <circle cx={284} cy={55} r={18} fill="#ff007f" opacity={0.9} filter="url(#heroGlow)"/>
-                  <circle cx={284} cy={55} r={18} fill="none" stroke="#ffffff" strokeWidth={1.5}/>
-                  <text x={284} y={60} textAnchor="middle" fill="#030712" fontSize={14} fontWeight={800}>◆</text>
+                  <circle cx={150} cy={35} r={14} fill="#1e293b" stroke="#6366f1" strokeWidth={2}/>
+                  <text x={150} y={39} textAnchor="middle" fill="#c7d2fe" fontSize={10} fontWeight={600}>MCP</text>
                   
-                  <circle cx={146} cy={35} r={15} fill="#ffaa00" opacity={0.9}/>
-                  <text x={146} y={40} textAnchor="middle" fill="#030712" fontSize={13} fontWeight={800}>●</text>
+                  <circle cx={150} cy={75} r={14} fill="#1e293b" stroke="#10b981" strokeWidth={2}/>
+                  <text x={150} y={79} textAnchor="middle" fill="#a7f3d0" fontSize={10} fontWeight={600}>Tool</text>
                   
-                  <circle cx={146} cy={75} r={15} fill="#00ff88" opacity={0.9}/>
-                  <text x={146} y={80} textAnchor="middle" fill="#030712" fontSize={13} fontWeight={800}>◇</text>
-                  
-                  <circle cx={146} cy={35} r={20} fill="none" stroke="#00f0ff" strokeWidth={2} strokeDasharray="6,4" opacity={0.8} />
-                  <circle cx={146} cy={75} r={20} fill="none" stroke="#ffaa00" strokeWidth={1.5} strokeDasharray="4,3" opacity={0.8} />
+                  <circle cx={260} cy={55} r={18} fill="#1e293b" stroke="#0ea5e9" strokeWidth={2}/>
+                  <text x={260} y={59} textAnchor="middle" fill="#7dd3fc" fontSize={11} fontWeight={700}>Goal</text>
                 </svg>
               </div>
               <div className="app-welcome-actions">
-                <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>▶  LOAD DEMO</button>
-                <button className="app-welcome-btn" onClick={() => { seedDemo(); setView('loop'); }}>◈  SEE THE LOOP</button>
-                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowDocs(true)}>📖  READ DOCS</button>
-                <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">⭐  GITHUB</a>
+                <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>Explore Interactive Demo</button>
+                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => { seedDemo(); setView('loop'); }}>View Economic Loop</button>
+                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowDocs(true)}>Documentation</button>
+                <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">GitHub</a>
               </div>
               <div className="app-welcome-code"><code>node src/engine/engine.ts seed &amp;&amp; node src/engine/engine.ts status</code></div>
               <div className="app-welcome-modes"><span><em>LOAD DEMO</em> — a sample capability graph to click around</span><span><em>SEE THE LOOP</em> — where time goes, what to build next, what it paid back</span><span>The real thing: Node 22, no dependencies — one command</span></div>
