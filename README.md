@@ -339,7 +339,7 @@ Host-level agent tooling is a real attack surface, so execution goes through an 
 A worked example — an autonomous deploy agent blocked mid-flight, then remediated — is written up in [`docs/incidents/INCIDENT_TRACE_001.md`](./docs/incidents/INCIDENT_TRACE_001.md).
 
 ```bash
-npm test                                                  # 205 tests, 18 files
+npm test                                                  # 234 tests, 24 files
 npm run demo:incident                                     # the 90-second terminal walkthrough
 asciinema play docs/incidents/demo_intervention_trace.cast # replay the recording
 ```
