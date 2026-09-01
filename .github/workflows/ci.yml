@@ -22,6 +22,8 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      # Covers the engine, the client, and the control plane — whose HMAC
+      # approval path used to be tested only by a pytest file no job ran.
       - name: Test
         run: npm test
 
