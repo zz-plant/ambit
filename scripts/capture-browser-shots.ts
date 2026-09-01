@@ -25,7 +25,13 @@ async function waitUrl(url: string, timeoutMs = 15000): Promise<boolean> {
   return false;
 }
 
-async function captureShot(url: string, outFile: string, width = 1440, height = 900, delayMs = 2500) {
+async function captureShot(
+  url: string,
+  outFile: string,
+  width = 1440,
+  height = 900,
+  delayMs = 2500
+) {
   console.log(`📸 Capturing: ${outFile} (${width}x${height})...`);
   const tmpProfile = mkdtempSync(join(tmpdir(), 'ambit-chrome-'));
   try {
@@ -40,7 +46,9 @@ async function captureShot(url: string, outFile: string, width = 1440, height = 
       console.log(`✅ Saved ${outFile} via fallback`);
     } catch {}
   } finally {
-    try { rmSync(tmpProfile, { recursive: true, force: true }); } catch {}
+    try {
+      rmSync(tmpProfile, { recursive: true, force: true });
+    } catch {}
   }
 }
 
@@ -49,9 +57,13 @@ async function main() {
   execSync('bun run build', { stdio: 'inherit' });
 
   console.log(`🚀 Starting preview server on port ${PORT}...`);
-  const server = spawn('bun', ['run', 'vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
-    stdio: 'pipe',
-  });
+  const server = spawn(
+    'bun',
+    ['run', 'vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'],
+    {
+      stdio: 'pipe',
+    }
+  );
 
   try {
     const ready = await waitUrl(BASE_URL);
@@ -97,9 +109,15 @@ async function main() {
     );
 
     // Copy to social-preview.png and public/social-preview.png
-    copyFileSync(join(ASSETS_DIR, 'ambit-social-preview.png'), join(ASSETS_DIR, 'social-preview.png'));
+    copyFileSync(
+      join(ASSETS_DIR, 'ambit-social-preview.png'),
+      join(ASSETS_DIR, 'social-preview.png')
+    );
     if (existsSync(join(process.cwd(), 'public'))) {
-      copyFileSync(join(ASSETS_DIR, 'ambit-social-preview.png'), join(process.cwd(), 'public', 'social-preview.png'));
+      copyFileSync(
+        join(ASSETS_DIR, 'ambit-social-preview.png'),
+        join(process.cwd(), 'public', 'social-preview.png')
+      );
     }
 
     console.log('🎉 All screenshots generated successfully!');

@@ -1,6 +1,14 @@
 import { test, expect, beforeEach, afterEach } from 'bun:test';
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, readFileSync, existsSync, rmSync, mkdtempSync, mkdirSync, symlinkSync } from 'node:fs';
+import {
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  rmSync,
+  mkdtempSync,
+  mkdirSync,
+  symlinkSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 // The engine runs under Node (node:sqlite); these assertions run under Bun,
@@ -9,7 +17,17 @@ import { Database } from 'bun:sqlite';
 // The visualizer API runs under Bun and migrates the graph itself, so the
 // migration has to work through this driver as well as the engine's.
 import { migrate } from './migrate.ts';
-import { beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome, workReport, usageReport } from './telemetry.ts';
+import {
+  beginRun,
+  endRun,
+  addEvent,
+  recordUse,
+  recordIntervention,
+  recordResource,
+  recordOutcome,
+  workReport,
+  usageReport,
+} from './telemetry.ts';
 
 const ENGINE = join(import.meta.dir, 'engine.ts');
 let dir: string;
@@ -24,7 +42,12 @@ function seed(config: unknown, opts: { name?: string } = {}): Database {
   // the stock config keys and no skill dirs so each case is hermetic.
   const mapping = JSON.stringify({
     config_keys: {
-      mcp: { type: 'mcp', domain_field: 'type', domain_map: { remote: 'backend', local: 'infra' }, desc_template: '{type} server' },
+      mcp: {
+        type: 'mcp',
+        domain_field: 'type',
+        domain_map: { remote: 'backend', local: 'infra' },
+        desc_template: '{type} server',
+      },
       agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
       provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
       command: { type: 'tool', domain: 'devops', desc_field: 'description' },
@@ -32,7 +55,12 @@ function seed(config: unknown, opts: { name?: string } = {}): Database {
     skill_dirs: [],
   });
   execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: { ...process.env, OPENCODE_CONFIG: configPath, TOOLCHAIN_DB: dbPath, CONFIG_MAPPING: mapping },
+    env: {
+      ...process.env,
+      OPENCODE_CONFIG: configPath,
+      TOOLCHAIN_DB: dbPath,
+      CONFIG_MAPPING: mapping,
+    },
     stdio: 'ignore',
   });
   return new Database(dbPath);
@@ -40,8 +68,12 @@ function seed(config: unknown, opts: { name?: string } = {}): Database {
 
 const rows = (db: Database, sql: string) => db.prepare(sql).all() as any[];
 
-beforeEach(() => { dir = mkdtempSync(join(tmpdir(), 'capgraph-')); });
-afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'capgraph-'));
+});
+afterEach(() => {
+  rmSync(dir, { recursive: true, force: true });
+});
 
 test('seeding produces edges, not just nodes', () => {
   const db = seed({
@@ -74,11 +106,14 @@ test('every dependency endpoint resolves to a real capability', () => {
     agent: { a: { model: 'ghost/missing' }, b: { model: 'acme/fast-1' } },
   });
   // Both columns are foreign keys; a dangling id would break every join.
-  const dangling = rows(db, `
+  const dangling = rows(
+    db,
+    `
     SELECT d.from_capability f, d.to_capability t FROM dependencies d
     LEFT JOIN capabilities cf ON cf.id = d.from_capability
     LEFT JOIN capabilities ct ON ct.id = d.to_capability
-    WHERE cf.id IS NULL OR ct.id IS NULL`);
+    WHERE cf.id IS NULL OR ct.id IS NULL`
+  );
   expect(dangling).toEqual([]);
 });
 
@@ -99,7 +134,10 @@ test('combos are seeded from an explicit block, with hard and soft prerequisites
   expect(combo?.category).toBe('combo');
   expect(combo?.state).toBe('locked');
 
-  const deps = rows(db, "SELECT from_capability f, is_hard_requisite h FROM dependencies WHERE to_capability = 'combo:shipping'");
+  const deps = rows(
+    db,
+    "SELECT from_capability f, is_hard_requisite h FROM dependencies WHERE to_capability = 'combo:shipping'"
+  );
   expect(deps.find(d => d.f === 'provider:acme')?.h).toBe(1);
   expect(deps.find(d => d.f === 'model:acme/fast-1')?.h).toBe(0);
 });
@@ -133,10 +171,10 @@ test('the curated tech tree places a minimal setup at the bottom of the tree', (
   expect(nodes.length).toBeGreaterThan(20);
 
   const state = (id: string) => nodes.find(n => n.id === `combo:${id}`)?.state;
-  expect(state('shell-execution')).toBe('unlocked');   // seeded as a base tool
-  expect(state('hosted-inference')).toBe('unlocked');  // a provider exists
-  expect(state('local-runtime')).toBe('locked');       // nothing local configured
-  expect(state('offline-capable')).toBe('locked');     // far up the tree
+  expect(state('shell-execution')).toBe('unlocked'); // seeded as a base tool
+  expect(state('hosted-inference')).toBe('unlocked'); // a provider exists
+  expect(state('local-runtime')).toBe('locked'); // nothing local configured
+  expect(state('offline-capable')).toBe('locked'); // far up the tree
 });
 
 test('a local-first setup unlocks the local branch', () => {
@@ -145,22 +183,32 @@ test('a local-first setup unlocks the local branch', () => {
     mcp: { playwright: {} },
   });
   const state = (id: string) =>
-    (rows(db, "SELECT id, state FROM capabilities WHERE category = 'combo'")
-      .find(n => n.id === `combo:${id}`) || {}).state;
+    rows(db, "SELECT id, state FROM capabilities WHERE category = 'combo'").find(
+      n => n.id === `combo:${id}`
+    )?.state;
 
-  expect(state('local-runtime')).toBe('unlocked');      // ollama detected
+  expect(state('local-runtime')).toBe('unlocked'); // ollama detected
   expect(state('local-tool-calling')).toBe('unlocked'); // qwen is tool-capable
   expect(state('browser-automation')).toBe('unlocked'); // playwright
 });
 
 test('a node is never unlocked while its prerequisites are not', () => {
   // The tree must not contradict itself — this guards the era-ordered pass.
-  const db = seed({ provider: { acme: {} }, agent: { x: { description: 'offline air-gap work' } } });
+  const db = seed({
+    provider: { acme: {} },
+    agent: { x: { description: 'offline air-gap work' } },
+  });
   const byId = new Map(
-    rows(db, "SELECT id, state FROM capabilities WHERE category = 'combo'").map(n => [n.id, n.state])
+    rows(db, "SELECT id, state FROM capabilities WHERE category = 'combo'").map(n => [
+      n.id,
+      n.state,
+    ])
   );
-  const reqs = rows(db, `SELECT from_capability f, to_capability t FROM dependencies
-                         WHERE description = 'Tech tree prerequisite'`);
+  const reqs = rows(
+    db,
+    `SELECT from_capability f, to_capability t FROM dependencies
+                         WHERE description = 'Tech tree prerequisite'`
+  );
   for (const { f, t } of reqs) {
     if (byId.get(t) === 'unlocked') expect(byId.get(f)).toBe('unlocked');
   }
@@ -174,7 +222,6 @@ test('detection does not match short tokens inside unrelated words', () => {
   expect(cd[0]?.state).toBe('locked');
 });
 
-
 // ── Ontology ────────────────────────────────────────────────────────────────
 
 test('every node carries the kind of thing it is', () => {
@@ -184,7 +231,7 @@ test('every node carries the kind of thing it is', () => {
     actors: { kanav: { name: 'Kanav', provides: ['physical-access'] } },
   });
   const kind = (id: string) =>
-    (rows(db, `SELECT kind FROM capabilities WHERE id = '${id}'`)[0] || {}).kind;
+    rows(db, `SELECT kind FROM capabilities WHERE id = '${id}'`)[0]?.kind;
 
   expect(kind('combo:version-control')).toBe('capability');
   expect(kind('mcp:git')).toBe('provider');
@@ -195,8 +242,11 @@ test('every node carries the kind of thing it is', () => {
   expect(kind('act:physical-access')).toBe('action');
 
   // Nothing is left at the column default by accident.
-  const unknown = rows(db, `SELECT id FROM capabilities WHERE kind NOT IN
-    ('capability','action','provider','resource','actor','runtime')`);
+  const unknown = rows(
+    db,
+    `SELECT id FROM capabilities WHERE kind NOT IN
+    ('capability','action','provider','resource','actor','runtime')`
+  );
   expect(unknown).toEqual([]);
 });
 
@@ -250,9 +300,13 @@ test('a reader that is not the CLI can migrate the graph itself', () => {
   migrate(db as unknown as Parameters<typeof migrate>[0]);
 
   expect(rows(db, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe('provider');
-  expect(rows(db, `SELECT kind FROM dependencies
-    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`)[0].kind)
-    .toBe('provides');
+  expect(
+    rows(
+      db,
+      `SELECT kind FROM dependencies
+    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`
+    )[0].kind
+  ).toBe('provides');
   expect(rows(db, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n).toBe(before);
   db.close();
 });
@@ -274,9 +328,16 @@ test('a graph seeded before kinds existed gets them without losing its history',
 
   const reopened = new Database(join(dir, 'graph.db'));
   expect(rows(reopened, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n).toBe(before);
-  expect(rows(reopened, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe('provider');
-  expect(rows(reopened, `SELECT kind FROM dependencies
-    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`)[0].kind).toBe('provides');
+  expect(rows(reopened, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe(
+    'provider'
+  );
+  expect(
+    rows(
+      reopened,
+      `SELECT kind FROM dependencies
+    WHERE from_capability = 'mcp:git' AND to_capability = 'combo:version-control'`
+    )[0].kind
+  ).toBe('provides');
 });
 
 // ── Ledger ──────────────────────────────────────────────────────────────────
@@ -324,11 +385,15 @@ test('re-seeding updates derived state', () => {
   // The tech-tree insert is OR IGNORE, so without an explicit update every node
   // stayed frozen at whatever the first seed computed and the tree never moved.
   const first = seed(LOCAL_ONLY);
-  const before = (first.prepare("SELECT state FROM capabilities WHERE id = 'combo:embeddings'").get() as any).state;
+  const before = (
+    first.prepare("SELECT state FROM capabilities WHERE id = 'combo:embeddings'").get() as any
+  ).state;
   first.close();
 
   const second = seed(PLUS_EMBEDDINGS);
-  const after = (second.prepare("SELECT state FROM capabilities WHERE id = 'combo:embeddings'").get() as any).state;
+  const after = (
+    second.prepare("SELECT state FROM capabilities WHERE id = 'combo:embeddings'").get() as any
+  ).state;
   expect(before).toBe('locked');
   expect(after).toBe('unlocked');
 });
@@ -359,13 +424,18 @@ test('an expanding vocabulary is not an expanding frontier', () => {
   // Stand in for the observation an older Ambit wrote: one taken before action
   // nodes were modelled at all. Everything that confers them was already there,
   // so nothing about this machine changed between the two observations.
-  const snapshot = rows(db, 'SELECT id, states FROM frontier_snapshots ORDER BY id DESC LIMIT 1')[0];
+  const snapshot = rows(
+    db,
+    'SELECT id, states FROM frontier_snapshots ORDER BY id DESC LIMIT 1'
+  )[0];
   const states = JSON.parse(snapshot.states);
   const withoutActions = Object.fromEntries(
     Object.entries(states).filter(([id]) => !id.startsWith('act:'))
   );
-  db.prepare('UPDATE frontier_snapshots SET states = ?, kinds = NULL WHERE id = ?')
-    .run(JSON.stringify(withoutActions), snapshot.id);
+  db.prepare('UPDATE frontier_snapshots SET states = ?, kinds = NULL WHERE id = ?').run(
+    JSON.stringify(withoutActions),
+    snapshot.id
+  );
   db.close();
 
   const since = cli('history', 'since');
@@ -404,8 +474,11 @@ test('capabilities are attributed to the runtime that contributed them', () => {
   const runtimes = rows(db, "SELECT id FROM capabilities WHERE category = 'runtime'");
   expect(runtimes.map(r => r.id)).toContain('runtime:opencode');
 
-  const edges = rows(db, `SELECT to_capability t FROM dependencies
-                          WHERE from_capability = 'runtime:opencode'`);
+  const edges = rows(
+    db,
+    `SELECT to_capability t FROM dependencies
+                          WHERE from_capability = 'runtime:opencode'`
+  );
   expect(edges.map(e => e.t)).toContain('mcp:git');
 });
 
@@ -416,16 +489,23 @@ test('two runtimes providing the same capability share one node', () => {
   const dbPath = join(dir, 'graph.db');
   writeFileSync(join(dir, 'second.json'), JSON.stringify({ mcp: { git: {}, fetch: {} } }));
   execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: { ...process.env, OPENCODE_CONFIG: join(dir, 'second.json'), TOOLCHAIN_DB: dbPath,
-           AMBIT_RUNTIME: 'hermes',
-           CONFIG_MAPPING: JSON.stringify({ config_keys: { mcp: { type: 'mcp' } }, skill_dirs: [] }) },
+    env: {
+      ...process.env,
+      OPENCODE_CONFIG: join(dir, 'second.json'),
+      TOOLCHAIN_DB: dbPath,
+      AMBIT_RUNTIME: 'hermes',
+      CONFIG_MAPPING: JSON.stringify({ config_keys: { mcp: { type: 'mcp' } }, skill_dirs: [] }),
+    },
     stdio: 'ignore',
   });
   const db = new Database(dbPath);
 
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'mcp:git'").length).toBe(1);
-  const providers = rows(db, `SELECT from_capability f FROM dependencies
-                              WHERE to_capability = 'mcp:git' AND description = 'Contributed by runtime'`);
+  const providers = rows(
+    db,
+    `SELECT from_capability f FROM dependencies
+                              WHERE to_capability = 'mcp:git' AND description = 'Contributed by runtime'`
+  );
   expect(providers.map(p => p.f).sort()).toEqual(['runtime:hermes', 'runtime:opencode']);
 });
 
@@ -443,8 +523,12 @@ test('skills symlinked into a runtime directory are discovered', () => {
   const dbPath = join(dir, 'symlink.db');
   writeFileSync(configPath, JSON.stringify({}));
   execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: { ...process.env, OPENCODE_CONFIG: configPath, TOOLCHAIN_DB: dbPath,
-           CONFIG_MAPPING: JSON.stringify({ config_keys: {}, skill_dirs: [runtime] }) },
+    env: {
+      ...process.env,
+      OPENCODE_CONFIG: configPath,
+      TOOLCHAIN_DB: dbPath,
+      CONFIG_MAPPING: JSON.stringify({ config_keys: {}, skill_dirs: [runtime] }),
+    },
     stdio: 'ignore',
   });
   const db = new Database(dbPath);
@@ -466,41 +550,62 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   mkdirSync(join(home, '.gemini'), { recursive: true });
   mkdirSync(join(home, '.config', 'Claude'), { recursive: true });
   mkdirSync(join(home, '.codex'), { recursive: true });
-  writeFileSync(openCodeConfig, JSON.stringify({
-    mcp: { filesystem: { type: 'local', command: ['filesystem-mcp'] } },
-  }));
-  writeFileSync(claudeConfig, JSON.stringify({
-    mcpServers: { browser: { command: 'browser-mcp' } },
-  }));
-  writeFileSync(cursorConfig, JSON.stringify({
-    mcpServers: {
-      github: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
-    },
-  }));
-  writeFileSync(windsurfConfig, JSON.stringify({
-    mcpServers: {
-      linear: { serverUrl: 'https://mcp.linear.app/sse' },
-    },
-  }));
+  writeFileSync(
+    openCodeConfig,
+    JSON.stringify({
+      mcp: { filesystem: { type: 'local', command: ['filesystem-mcp'] } },
+    })
+  );
+  writeFileSync(
+    claudeConfig,
+    JSON.stringify({
+      mcpServers: { browser: { command: 'browser-mcp' } },
+    })
+  );
+  writeFileSync(
+    cursorConfig,
+    JSON.stringify({
+      mcpServers: {
+        github: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+      },
+    })
+  );
+  writeFileSync(
+    windsurfConfig,
+    JSON.stringify({
+      mcpServers: {
+        linear: { serverUrl: 'https://mcp.linear.app/sse' },
+      },
+    })
+  );
   // Gemini CLI keeps mcpServers inside its general settings file.
-  writeFileSync(geminiConfig, JSON.stringify({
-    theme: 'dark',
-    mcpServers: { maps: { command: 'maps-mcp' } },
-  }));
-  writeFileSync(desktopConfig, JSON.stringify({
-    mcpServers: { sqlite: { command: 'uvx', args: ['mcp-server-sqlite'] } },
-  }));
+  writeFileSync(
+    geminiConfig,
+    JSON.stringify({
+      theme: 'dark',
+      mcpServers: { maps: { command: 'maps-mcp' } },
+    })
+  );
+  writeFileSync(
+    desktopConfig,
+    JSON.stringify({
+      mcpServers: { sqlite: { command: 'uvx', args: ['mcp-server-sqlite'] } },
+    })
+  );
   // Codex is the one TOML config; the reader handles tables, strings, arrays.
-  writeFileSync(codexConfig, [
-    'model = "o4"',
-    '',
-    '[mcp_servers.docs]',
-    'command = "npx"',
-    'args = ["-y", "docs-mcp"]',
-    '',
-    '[other_section]',
-    'ignored = true',
-  ].join('\n'));
+  writeFileSync(
+    codexConfig,
+    [
+      'model = "o4"',
+      '',
+      '[mcp_servers.docs]',
+      'command = "npx"',
+      'args = ["-y", "docs-mcp"]',
+      '',
+      '[other_section]',
+      'ignored = true',
+    ].join('\n')
+  );
 
   const dbPath = join(dir, 'auto-discovery.db');
   const env = { ...process.env } as Record<string, string>;
@@ -513,7 +618,10 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   });
 
   const db = new Database(dbPath);
-  const capabilities = rows(db, "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex')");
+  const capabilities = rows(
+    db,
+    "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex')"
+  );
   expect(capabilities.map(row => row.id).sort()).toEqual([
     'mcp:browser',
     'mcp:docs',
@@ -530,11 +638,14 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
     'runtime:opencode',
     'runtime:windsurf',
   ]);
-  const contributions = rows(db, `
+  const contributions = rows(
+    db,
+    `
     SELECT from_capability f, to_capability t
     FROM dependencies
     WHERE from_capability LIKE 'runtime:%'
-  `);
+  `
+  );
   expect(contributions).toContainEqual({ f: 'runtime:opencode', t: 'mcp:filesystem' });
   expect(contributions).toContainEqual({ f: 'runtime:claude-code', t: 'mcp:browser' });
   expect(contributions).toContainEqual({ f: 'runtime:cursor', t: 'mcp:github' });
@@ -602,8 +713,9 @@ test('a runtime that tightens its permissions is not still reported as loose', (
   const after = new Database(join(dir, 'graph.db'));
   expect(rows(after, "SELECT mode FROM authority WHERE source LIKE 'runtime:%'")).toEqual([]);
   // The curated model's grants survive; only the source that re-ran is replaced.
-  expect(rows(after, "SELECT COUNT(*) n FROM authority WHERE source = 'techtree'")[0].n)
-    .toBeGreaterThan(0);
+  expect(
+    rows(after, "SELECT COUNT(*) n FROM authority WHERE source = 'techtree'")[0].n
+  ).toBeGreaterThan(0);
 });
 
 test('a runtime narrows what the model says an action is like in general', () => {
@@ -619,7 +731,9 @@ test('a runtime narrows what the model says an action is like in general', () =>
   }).close();
 
   const a = cli('authority');
-  const entry = a.detail.find((d: any) => d.id === 'combo:local-runtime' && d.action === 'execute' && !d.scope);
+  const entry = a.detail.find(
+    (d: any) => d.id === 'combo:local-runtime' && d.action === 'execute' && !d.scope
+  );
   expect(entry.mode).toBe('confirm');
   expect(entry.sources).toContain('runtime:opencode');
   expect(a.forbidden.some((f: string) => f.endsWith('· scheduled'))).toBe(true);
@@ -633,7 +747,7 @@ test('the narrower of two disagreeing sources wins', () => {
 
   const a = cli('authority');
   const entry = a.detail.find((d: any) => d.id === 'combo:file-editing' && d.action === 'execute');
-  expect(entry.mode).toBe('forbidden');           // not the model's 'autonomous'
+  expect(entry.mode).toBe('forbidden'); // not the model's 'autonomous'
   expect(entry.sources).toContain('techtree');
   expect(entry.narrowed_by).toBe('runtime:opencode');
 });
@@ -652,8 +766,9 @@ test('a capability confers actions, and authority is per action', () => {
 
 test('an action is forbidden even when the capability conferring it is reached', () => {
   const db = seed({ mcp: { postgres: { type: 'local' } } });
-  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'combo:data-access'")[0].state)
-    .not.toBe('locked');
+  expect(
+    rows(db, "SELECT state FROM capabilities WHERE id = 'combo:data-access'")[0].state
+  ).not.toBe('locked');
   db.close();
 
   const a = cli('authority', 'data-access');
@@ -688,7 +803,9 @@ test('scope is checked, not just recorded', () => {
 
   // The grant scoped to repo:owner/name covers that repo...
   const covered = cli('authority', 'scope', 'repo:owner/name');
-  const vc = covered.grants.find((g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name');
+  const vc = covered.grants.find(
+    (g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name'
+  );
   expect(vc.covers).toBe(true);
 
   // ...and the grant scoped elsewhere does not cover a different target.
@@ -699,7 +816,9 @@ test('scope is checked, not just recorded', () => {
 
   // Scope is a prefix claim: a branch under the repo is covered by it.
   const branch = cli('authority', 'scope', 'repo:owner/name/feature');
-  const vcBranch = branch.grants.find((g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name');
+  const vcBranch = branch.grants.find(
+    (g: any) => g.name === 'Version Control' && g.scope === 'repo:owner/name'
+  );
   expect(vcBranch.covers).toBe(true);
 });
 
@@ -727,13 +846,17 @@ test('the tree does not detect itself on a re-seed', () => {
   seed(config).close();
   const db = seed(config);
 
-  const selfProved = rows(db, `
+  const selfProved = rows(
+    db,
+    `
     SELECT d.from_capability f, d.to_capability t FROM dependencies d
     JOIN capabilities c ON c.id = d.from_capability
-    WHERE c.kind = 'action' AND d.to_capability LIKE 'combo:%'`);
+    WHERE c.kind = 'action' AND d.to_capability LIKE 'combo:%'`
+  );
   expect(selfProved).toEqual([]);
-  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'combo:web-research'")[0].state)
-    .toBe('locked');
+  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'combo:web-research'")[0].state).toBe(
+    'locked'
+  );
 });
 
 test('an action a person supplies is still a single point of failure', () => {
@@ -785,11 +908,14 @@ test('a failing check breaks the capability rather than being reported alongside
   // to this one — retrieval declares no check, so it records nothing.
   cli('verify', 'retrieval');
   const after = new Database(join(dir, 'graph.db'));
-  expect(rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
-    .toBe('broken');
+  expect(
+    rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0]
+      .lifecycle
+  ).toBe('broken');
   // And the frontier still has it: reachable and broken are different columns.
-  expect(rows(after, "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'")[0].state)
-    .not.toBe('locked');
+  expect(
+    rows(after, "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'")[0].state
+  ).not.toBe('locked');
 });
 
 // ── The lifecycle gates availability ─────────────────────────────────────────
@@ -797,8 +923,9 @@ test('a failing check breaks the capability rather than being reported alongside
 /** Record a verification outcome the way tt verify would, without running it. */
 function recordVerification(id: string, outcome: 'verified' | 'failed') {
   const db = new Database(join(dir, 'graph.db'));
-  db.prepare("INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, 'recorded by test')")
-    .run(id, outcome, outcome === 'verified' ? 1 : 0);
+  db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, 'recorded by test')"
+  ).run(id, outcome, outcome === 'verified' ? 1 : 0);
   db.close();
 }
 
@@ -811,8 +938,9 @@ test('a broken capability stops reading as available', () => {
   seed(LOCAL_ONLY).close(); // same config; the gate reads the recorded evidence
 
   const db = new Database(join(dir, 'graph.db'));
-  expect(rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
-    .toBe('broken');
+  expect(
+    rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle
+  ).toBe('broken');
   db.close();
 
   // A plan refuses to treat it as an acquisition.
@@ -842,8 +970,9 @@ test('a re-passing verification releases the gate', () => {
   // One pass after a failure is a weaker claim than a clean record: the
   // lifecycle moves broken → degraded, and the gate stays closed.
   const db = new Database(join(dir, 'graph.db'));
-  expect(rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
-    .toBe('degraded');
+  expect(
+    rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle
+  ).toBe('degraded');
   db.close();
   expect(cli('goal', 'shell-execution').reachable).toBe(false);
 
@@ -852,8 +981,10 @@ test('a re-passing verification releases the gate', () => {
   seed(LOCAL_ONLY).close();
 
   const after = new Database(join(dir, 'graph.db'));
-  expect(rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle)
-    .toBe('reliable');
+  expect(
+    rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0]
+      .lifecycle
+  ).toBe('reliable');
   after.close();
   const p = cli('goal', 'shell-execution');
   expect(p.reachable).toBe(true);
@@ -897,7 +1028,9 @@ test('since reports a capability that stopped working', () => {
   // stopped being usable, and the ledger has to say so.
   expect(since.frontier_now).toBe(since.frontier_then);
   expect(since.diminished.map((d: any) => d.id)).toContain('combo:shell-execution');
-  expect(since.diminished.find((d: any) => d.id === 'combo:shell-execution').reason).toContain('verification');
+  expect(since.diminished.find((d: any) => d.id === 'combo:shell-execution').reason).toContain(
+    'verification'
+  );
   expect(since.verified_now).toBe(0);
 });
 
@@ -964,19 +1097,27 @@ test('people are nodes, and what they supply becomes a capability', () => {
   const person = rows(db, "SELECT id, category, state FROM capabilities WHERE id = 'human:kanav'");
   expect(person[0]?.category).toBe('human');
 
-  const supplied = rows(db, "SELECT id FROM capabilities WHERE category = 'human-action'").map(r => r.id);
+  const supplied = rows(db, "SELECT id FROM capabilities WHERE category = 'human-action'").map(
+    r => r.id
+  );
   expect(supplied).toContain('act:physical-access');
 
-  const edges = rows(db, `SELECT to_capability t FROM dependencies
-                          WHERE from_capability = 'human:kanav' AND description = 'Supplied by a person'`);
+  const edges = rows(
+    db,
+    `SELECT to_capability t FROM dependencies
+                          WHERE from_capability = 'human:kanav' AND description = 'Supplied by a person'`
+  );
   expect(edges.map(e => e.t)).toContain('act:physical-access');
 });
 
 test('approval is a dependency, not a policy note', () => {
   const db = seed(WITH_PEOPLE);
-  const gated = rows(db, `SELECT from_capability f FROM dependencies
+  const gated = rows(
+    db,
+    `SELECT from_capability f FROM dependencies
                           WHERE to_capability = 'combo:continuous-delivery'
-                          AND description = 'Requires approval from a person'`);
+                          AND description = 'Requires approval from a person'`
+  );
   expect(gated.map(g => g.f)).toContain('human:kanav');
 });
 
@@ -992,9 +1133,12 @@ test('authorizing a capability that does not exist leaves no dangling edge', () 
     provider: { acme: {} },
     actors: { sam: { name: 'Sam', authorizes: ['combo:nonexistent'] } },
   });
-  const dangling = rows(db, `SELECT d.to_capability t FROM dependencies d
+  const dangling = rows(
+    db,
+    `SELECT d.to_capability t FROM dependencies d
                              LEFT JOIN capabilities c ON c.id = d.to_capability
-                             WHERE c.id IS NULL`);
+                             WHERE c.id IS NULL`
+  );
   expect(dangling).toEqual([]);
 });
 
@@ -1027,7 +1171,9 @@ const WITH_PREFS = {
 
 test('a person can declare how they prefer things done', () => {
   const db = seed(WITH_PREFS);
-  const prefs = rows(db, `SELECT preference FROM preferences WHERE actor_id = 'human:kanav'`).map(r => r.preference);
+  const prefs = rows(db, `SELECT preference FROM preferences WHERE actor_id = 'human:kanav'`).map(
+    r => r.preference
+  );
   expect(prefs.sort()).toEqual(['local-when-practical', 'minimize-recurring-cost']);
 
   db.close();
@@ -1036,7 +1182,7 @@ test('a person can declare how they prefer things done', () => {
   expect(report.preferences).toContain('local-when-practical');
 });
 
-test('a plan names where a step fights a person\'s stated preferences', () => {
+test("a plan names where a step fights a person's stated preferences", () => {
   // Continuous Delivery needs Kanav's approval, and its default acquisition
   // alternative is hosted and recurring. A plan that asks the person without
   // noting the conflict reads as if the choice is theirs when the default is
@@ -1051,18 +1197,38 @@ test('a plan names where a step fights a person\'s stated preferences', () => {
 
 test('infrastructure manifest devices seed as capability-bearing resources', () => {
   const dirPath = dir;
-  writeFileSync(join(dirPath, 'infra.json'), JSON.stringify({
-    devices: [{ id: 'nuc', name: 'NUC', description: 'homelab host' }],
-    services: [{ key: 'ollama', label: 'Ollama', host: 'nuc' }],
-  }));
+  writeFileSync(
+    join(dirPath, 'infra.json'),
+    JSON.stringify({
+      devices: [{ id: 'nuc', name: 'NUC', description: 'homelab host' }],
+      services: [{ key: 'ollama', label: 'Ollama', host: 'nuc' }],
+    })
+  );
   // Re-seed the same graph with the manifest on the INFRA_MANIFEST path.
   const dbPath = join(dirPath, 'graph.db');
   const configPath = join(dirPath, 'config.json');
   writeFileSync(configPath, JSON.stringify(WITH_PREFS));
   execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: { ...process.env, OPENCODE_CONFIG: configPath, TOOLCHAIN_DB: dbPath,
-           INFRA_MANIFEST: join(dirPath, 'infra.json'),
-           CONFIG_MAPPING: JSON.stringify({ config_keys: { mcp: { type: 'mcp', domain_field: 'type', domain_map: { remote: 'backend', local: 'infra' }, desc_template: '{type} server' }, agent: { type: 'agent', domain: 'meta', desc_field: 'description' }, provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' }, command: { type: 'tool', domain: 'devops', desc_field: 'description' } }, skill_dirs: [] }) },
+    env: {
+      ...process.env,
+      OPENCODE_CONFIG: configPath,
+      TOOLCHAIN_DB: dbPath,
+      INFRA_MANIFEST: join(dirPath, 'infra.json'),
+      CONFIG_MAPPING: JSON.stringify({
+        config_keys: {
+          mcp: {
+            type: 'mcp',
+            domain_field: 'type',
+            domain_map: { remote: 'backend', local: 'infra' },
+            desc_template: '{type} server',
+          },
+          agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
+          provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
+          command: { type: 'tool', domain: 'devops', desc_field: 'description' },
+        },
+        skill_dirs: [],
+      }),
+    },
     stdio: 'ignore',
   });
   const db = new Database(dbPath);
@@ -1070,7 +1236,10 @@ test('infrastructure manifest devices seed as capability-bearing resources', () 
   expect(device[0]?.kind).toBe('resource');
 
   // The device runs the service, so losing it takes the service down.
-  const runs = rows(db, `SELECT from_capability f FROM dependencies WHERE to_capability = 'svc:ollama' AND kind = 'runs_on'`);
+  const runs = rows(
+    db,
+    `SELECT from_capability f FROM dependencies WHERE to_capability = 'svc:ollama' AND kind = 'runs_on'`
+  );
   expect(runs.map(r => r.f)).toContain('device:nuc');
 });
 
@@ -1100,7 +1269,11 @@ test('institutional and economic domains are derived from structure, not pasted 
 test('tt surface emits the vocabulary a runtime would own', () => {
   seed(WITH_PREFS).close();
   const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'graph', 'surface'], {
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json') },
+    env: {
+      ...process.env,
+      TOOLCHAIN_DB: join(dir, 'graph.db'),
+      OPENCODE_CONFIG: join(dir, 'config.json'),
+    },
     encoding: 'utf8',
   });
   const surface = JSON.parse(out);
@@ -1124,8 +1297,9 @@ test('tt surface emits the vocabulary a runtime would own', () => {
 /** Record a human act the way the engine would. */
 function recordHumanAct(session: string, capId: string, action: string) {
   const db = new Database(join(dir, 'graph.db'));
-  db.prepare("INSERT INTO session_learning (session_id, capability_id, action, outcome_score) VALUES (?, ?, ?, 1)")
-    .run(session, capId, action);
+  db.prepare(
+    'INSERT INTO session_learning (session_id, capability_id, action, outcome_score) VALUES (?, ?, ?, 1)'
+  ).run(session, capId, action);
   db.close();
 }
 
@@ -1226,15 +1400,18 @@ test('a deficit against an unknown capability is refused, not silently kept', ()
 // ── Substitutability ────────────────────────────────────────────────────────
 
 const TWO_PROVIDERS = {
-  mcp: { git: {}, github: {} },          // both provide Version Control
+  mcp: { git: {}, github: {} }, // both provide Version Control
   provider: { ollama: { models: { 'qwen3-coder': {} } } },
 };
 
 test('losing one of several providers is not a critical loss', () => {
   const db = seed(TWO_PROVIDERS);
-  const providers = rows(db, `SELECT from_capability f FROM dependencies
+  const providers = rows(
+    db,
+    `SELECT from_capability f FROM dependencies
                               WHERE to_capability = 'combo:version-control'
-                              AND description = 'Provides this capability'`);
+                              AND description = 'Provides this capability'`
+  );
   expect(providers.length).toBeGreaterThan(1);
   db.close();
 
@@ -1351,7 +1528,11 @@ test('a command whose answer is a list prints the list', () => {
   // the lists. `scalar` had an array branch nothing could reach, which is what
   // showed the guard above it was catching more than it meant to.
   const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'authority'], {
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json') },
+    env: {
+      ...process.env,
+      TOOLCHAIN_DB: join(dir, 'graph.db'),
+      OPENCODE_CONFIG: join(dir, 'config.json'),
+    },
     encoding: 'utf8',
   });
   expect(out).toContain('autonomous:');
@@ -1421,8 +1602,12 @@ test('a proposal with an uninvertible step is not applicable, and says why', () 
 
 test('share writes an allow-listed snapshot and nothing else', () => {
   seed({
-    mcp: { 'wiki-search': { type: 'local', command: ['npx', '-y', 'secret-wiki-mcp', '--token=abc123'] } },
-    provider: { ollama: { options: { baseURL: 'http://127.0.0.1:11434/v1' }, models: { 'qwen3-coder': {} } } },
+    mcp: {
+      'wiki-search': { type: 'local', command: ['npx', '-y', 'secret-wiki-mcp', '--token=abc123'] },
+    },
+    provider: {
+      ollama: { options: { baseURL: 'http://127.0.0.1:11434/v1' }, models: { 'qwen3-coder': {} } },
+    },
     actors: { casey: { name: 'Casey', provides: ['physical-access'] } },
   }).close();
   const out = join(dir, 'map.html');
@@ -1635,8 +1820,11 @@ test('every act is recorded against the person who authorised it', () => {
   cli('apply', p.proposal);
 
   const db = new Database(join(dir, 'graph.db'));
-  const acts = rows(db, `SELECT action, capability_id FROM session_learning
-                         WHERE session_id IN ('approval','apply') ORDER BY id`);
+  const acts = rows(
+    db,
+    `SELECT action, capability_id FROM session_learning
+                         WHERE session_id IN ('approval','apply') ORDER BY id`
+  );
   expect(acts.map(a => a.action)).toEqual(['approved', 'applied']);
   expect(acts.every(a => a.capability_id === 'human:kanav')).toBe(true);
 });
@@ -1703,15 +1891,30 @@ test('a run records events, interventions, usage and an outcome', () => {
 
   const b = beginRun(db, { goal: 'recover production service', runType: 'incident' });
   addEvent(db, b.run, { kind: 'detected', actor: 'monitoring', detail: 'service down' });
-  addEvent(db, b.run, { kind: 'diagnosed', actor: 'agent', capabilityId: 'combo:observability', action: 'diagnose' });
+  addEvent(db, b.run, {
+    kind: 'diagnosed',
+    actor: 'agent',
+    capabilityId: 'combo:observability',
+    action: 'diagnose',
+  });
   recordUse(db, b.run, 'combo:observability', { durationSeconds: 120 });
   recordIntervention(db, b.run, 'human:kanav', {
-    kind: 'authority', capabilityId: 'combo:shell-execution', action: 'restart',
-    startedAt: new Date(Date.now() - 90 * 1000).toISOString(), endedAt: new Date().toISOString(),
+    kind: 'authority',
+    capabilityId: 'combo:shell-execution',
+    action: 'restart',
+    startedAt: new Date(Date.now() - 90 * 1000).toISOString(),
+    endedAt: new Date().toISOString(),
     waitingSeconds: 60,
   });
-  recordResource(db, b.run, 'provider:acme', 'api', { quantity: 42, unit: 'tokens', costCents: 12 });
-  recordOutcome(db, b.run, 'service restored', { objectiveMetric: 240, objectiveName: 'mttr_seconds' });
+  recordResource(db, b.run, 'provider:acme', 'api', {
+    quantity: 42,
+    unit: 'tokens',
+    costCents: 12,
+  });
+  recordOutcome(db, b.run, 'service restored', {
+    objectiveMetric: 240,
+    objectiveName: 'mttr_seconds',
+  });
   endRun(db, b.run, 'success', 5000);
 
   const work = workReport(db, 5);
@@ -1739,7 +1942,7 @@ test('a run records events, interventions, usage and an outcome', () => {
 test('a run without an end is open and reports no outcome', () => {
   seed(LOCAL_ONLY).close();
   const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
-  const b = beginRun(db, { goal: 'long task', runType: 'task' });
+  const _b = beginRun(db, { goal: 'long task', runType: 'task' });
   const work = workReport(db, 5);
   expect(work[0].goal).toBe('long task');
   expect(work[0].outcome).toBeUndefined();
@@ -1756,7 +1959,10 @@ test('a run records no capability state — the ledger observes, it does not rea
   (db as any).close();
 
   const reopened = new Database(join(dir, 'graph.db'));
-  const state = rows(reopened, "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'")[0].state;
+  const state = rows(
+    reopened,
+    "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'"
+  )[0].state;
   expect(state).toBe('unlocked'); // seed made it reachable; the run changed nothing
   reopened.close();
 });
@@ -1765,18 +1971,43 @@ test('a run records no capability state — the ledger observes, it does not rea
 
 test('attention classifies agency: judgment is kept, clerical is reducible', () => {
   seed(LOCAL_ONLY).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
 
   // Judgment, twice — the human's reason for being there. Never reducible.
   const r1 = beginRun(db, { goal: 'architect the migration' });
-  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 600 });
-  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 300 });
+  recordIntervention(db, r1.run, 'human:kanav', {
+    kind: 'judgment',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 600,
+  });
+  recordIntervention(db, r1.run, 'human:kanav', {
+    kind: 'judgment',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 300,
+  });
 
   // Clerical, three times across two runs — the human is the duct.
   const r2 = beginRun(db, { goal: 'move data between systems' });
-  recordIntervention(db, r1.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 120, waitingSeconds: 900 });
-  recordIntervention(db, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 90, waitingSeconds: 300 });
-  recordIntervention(db, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 60, waitingSeconds: 600 });
+  recordIntervention(db, r1.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:data-access',
+    activeSeconds: 120,
+    waitingSeconds: 900,
+  });
+  recordIntervention(db, r2.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:data-access',
+    activeSeconds: 90,
+    waitingSeconds: 300,
+  });
+  recordIntervention(db, r2.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:data-access',
+    activeSeconds: 60,
+    waitingSeconds: 600,
+  });
   (db as any).close();
 
   const d = cli('attention');
@@ -1795,10 +2026,22 @@ test('attention classifies agency: judgment is kept, clerical is reducible', () 
 
 test('attention reports aggregate active and waiting time', () => {
   seed(LOCAL_ONLY).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r = beginRun(db, { goal: 'restart service' });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:shell-execution', activeSeconds: 30, waitingSeconds: 120 });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:shell-execution', activeSeconds: 20, waitingSeconds: 60 });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'authority',
+    capabilityId: 'combo:shell-execution',
+    activeSeconds: 30,
+    waitingSeconds: 120,
+  });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'authority',
+    capabilityId: 'combo:shell-execution',
+    activeSeconds: 20,
+    waitingSeconds: 60,
+  });
   (db as any).close();
 
   const d = cli('attention');
@@ -1828,14 +2071,23 @@ const WITH_ECONOMICS = {
 test('economics and goals seed from the config, stored as cents', () => {
   seed(WITH_ECONOMICS).close();
   const db = new Database(join(dir, 'graph.db'));
-  const attention = rows(db, `SELECT value_cents, period FROM economics WHERE entity_id = 'human:kanav' AND metric = 'attention_value_per_hour'`);
+  const attention = rows(
+    db,
+    `SELECT value_cents, period FROM economics WHERE entity_id = 'human:kanav' AND metric = 'attention_value_per_hour'`
+  );
   expect(attention[0].value_cents).toBe(25000);
   expect(attention[0].period).toBe('per_hour');
 
-  const recurring = rows(db, `SELECT value_cents FROM economics WHERE entity_id = 'mcp:git' AND metric = 'recurring_cost_per_month'`);
+  const recurring = rows(
+    db,
+    `SELECT value_cents FROM economics WHERE entity_id = 'mcp:git' AND metric = 'recurring_cost_per_month'`
+  );
   expect(recurring[0].value_cents).toBe(3000);
 
-  const goal = rows(db, `SELECT occurrence_rate_per_month, success_value_cents, failure_cost_cents FROM goals WHERE id = 'recover-production'`);
+  const goal = rows(
+    db,
+    `SELECT occurrence_rate_per_month, success_value_cents, failure_cost_cents FROM goals WHERE id = 'recover-production'`
+  );
   expect(goal[0].occurrence_rate_per_month).toBe(2);
   expect(goal[0].success_value_cents).toBe(4000);
   expect(goal[0].failure_cost_cents).toBe(50000);
@@ -1860,7 +2112,9 @@ test('economics reports declared values in dollars and names their source', () =
 
 test('opportunities price observed middleware burden and never judge judgement', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
 
   // Five clerical interventions, 30 minutes of active time each, on one
   // capability, across three runs — the classic "the human is the duct" case.
@@ -1868,20 +2122,32 @@ test('opportunities price observed middleware burden and never judge judgement',
   const r2 = beginRun(db, { goal: 'move data between systems', goalId: 'combo:data-access' });
   const r3 = beginRun(db, { goal: 'move data between systems', goalId: 'combo:data-access' });
   for (const r of [r1, r2, r2, r3, r3]) {
-    recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+    recordIntervention(db, r.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:data-access',
+      activeSeconds: 1800,
+    });
   }
   // Judgment, twice — must never appear as an opportunity.
-  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 3600 });
-  recordIntervention(db, r1.run, 'human:kanav', { kind: 'judgment', capabilityId: 'combo:web-research', activeSeconds: 3600 });
+  recordIntervention(db, r1.run, 'human:kanav', {
+    kind: 'judgment',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 3600,
+  });
+  recordIntervention(db, r1.run, 'human:kanav', {
+    kind: 'judgment',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 3600,
+  });
   (db as any).close();
 
   const o = cli('opportunities');
   const da = o.opportunities.find((x: any) => x.kind === 'clerical');
   expect(da).toBeDefined();
   expect(da.burden.interventions_month).toBe(5);
-  expect(da.burden.human_hours_month).toBe(2.5);   // 5 × 30 min
+  expect(da.burden.human_hours_month).toBe(2.5); // 5 × 30 min
   expect(da.burden.attention_dollars_month).toBe(625); // 2.5h × $250/hr
-  expect(da.confidence).toBe('high');               // observed ≥ 5 times
+  expect(da.confidence).toBe('high'); // observed ≥ 5 times
   expect(da.expected.human_hours_month_after).toBe(0.3); // 10% of 2.5h remains
   expect(da.payback_months).toBeGreaterThan(0);
   expect(da.note).toMatch(/middleware/);
@@ -1893,10 +2159,20 @@ test('opportunities price observed middleware burden and never judge judgement',
 
 test('opportunities rank by objective and expose one case', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r = beginRun(db, { goal: 'approve the deploy' });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:continuous-delivery', activeSeconds: 60 });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:continuous-delivery', activeSeconds: 60 });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'authority',
+    capabilityId: 'combo:continuous-delivery',
+    activeSeconds: 60,
+  });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'authority',
+    capabilityId: 'combo:continuous-delivery',
+    activeSeconds: 60,
+  });
   (db as any).close();
 
   const byRoi = cli('opportunities', '--by=roi');
@@ -1913,13 +2189,27 @@ test('opportunities rank by objective and expose one case', () => {
 
 test('a proposal carries the observed case when burden exists, and none when it does not', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r = beginRun(db, { goal: 'search the web for me' });
   // Three clerical interventions on a capability that is still locked: the
   // human is doing the work the missing capability should do.
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1200 });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1200 });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1200 });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 1200,
+  });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 1200,
+  });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 1200,
+  });
   (db as any).close();
 
   const withCase = cli('propose', 'web-research');
@@ -1936,10 +2226,20 @@ test('a proposal carries the observed case when burden exists, and none when it 
 
 test('an opportunity id proposes its capability with the observed case', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r = beginRun(db, { goal: 'move data' });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:data-access',
+    activeSeconds: 1800,
+  });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:data-access',
+    activeSeconds: 1800,
+  });
   (db as any).close();
 
   const p = cli('propose', 'opp-1');
@@ -1975,8 +2275,12 @@ test('an artifact refuses to spend on a proposal that changed after approval', (
 
   // Tamper: rewrite the steps after the approval was minted.
   const db = new Database(join(dir, 'graph.db'));
-  db.prepare("UPDATE proposals SET steps = ? WHERE id = ?")
-    .run(JSON.stringify([{ id: 'combo:something-else', inverse: {}, config_patch: { mcp: { evil: {} } } }]), p.proposal);
+  db.prepare('UPDATE proposals SET steps = ? WHERE id = ?').run(
+    JSON.stringify([
+      { id: 'combo:something-else', inverse: {}, config_patch: { mcp: { evil: {} } } },
+    ]),
+    p.proposal
+  );
   db.close();
 
   const refused = cli('apply', p.proposal);
@@ -1991,7 +2295,9 @@ test('an expired approval is refused until re-approved', () => {
   cli('approve', p.proposal, 'kanav');
 
   const db = new Database(join(dir, 'graph.db'));
-  db.prepare("UPDATE proposals SET expires_at = '2000-01-01 00:00:00' WHERE id = ?").run(p.proposal);
+  db.prepare("UPDATE proposals SET expires_at = '2000-01-01 00:00:00' WHERE id = ?").run(
+    p.proposal
+  );
   db.close();
 
   const refused = cli('apply', p.proposal);
@@ -2021,10 +2327,12 @@ test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
   // scoped grants are the whole story: restart svc:ollama autonomous,
   // svc:postgres confirm, device:nuc not covered at all.
   const db = new Database(join(dir, 'graph.db'));
-  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, ?, ?, '', ?, 'test')")
-    .run('combo:offline-capable', 'execute', 'autonomous', 'svc:ollama');
-  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, ?, ?, '', ?, 'test')")
-    .run('combo:offline-capable', 'execute', 'confirm', 'svc:postgres');
+  db.prepare(
+    "INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, ?, ?, '', ?, 'test')"
+  ).run('combo:offline-capable', 'execute', 'autonomous', 'svc:ollama');
+  db.prepare(
+    "INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, ?, ?, '', ?, 'test')"
+  ).run('combo:offline-capable', 'execute', 'confirm', 'svc:postgres');
   db.close();
 
   const allow = cli('can', 'offline-capable', '--target=svc:ollama');
@@ -2045,9 +2353,12 @@ test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
 test('a budget refuses a spend that would exceed it', () => {
   seed(LOCAL_ONLY).close();
   const db = new Database(join(dir, 'graph.db'));
-  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'autonomous', '', '', 'test')")
-    .run('combo:offline-capable');
-  db.prepare("INSERT INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES (?, 'execute', '', 10000, 'month', 4000)").run('combo:offline-capable');
+  db.prepare(
+    "INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'autonomous', '', '', 'test')"
+  ).run('combo:offline-capable');
+  db.prepare(
+    "INSERT INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES (?, 'execute', '', 10000, 'month', 4000)"
+  ).run('combo:offline-capable');
   db.close();
 
   const ok = cli('can', 'offline-capable', '--spend=5000');
@@ -2066,8 +2377,9 @@ test('apply refuses a step authority denies, even with an approval', () => {
 
   // Forbid exactly what the proposal would acquire.
   const db = new Database(join(dir, 'graph.db'));
-  db.prepare("INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'forbidden', '', '', 'test')")
-    .run('combo:web-research');
+  db.prepare(
+    "INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'forbidden', '', '', 'test')"
+  ).run('combo:web-research');
   db.close();
 
   const refused = cli('apply', p.proposal);
@@ -2079,14 +2391,21 @@ test('apply refuses a step authority denies, even with an approval', () => {
 
 test('roi measures before and after an apply, and writes the observation back', () => {
   seed(APPLIABLE).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
 
   // Three hours of clerical intervention on the target in the 60 days before
   // the apply — the burden the proposal predicted removing.
   const past = new Date(Date.now() - 30 * 864e5).toISOString();
   const r1 = beginRun(db, { goal: 'search the web', goalId: 'combo:web-research' });
   for (let i = 0; i < 3; i++) {
-    recordIntervention(db, r1.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 3600, startedAt: past });
+    recordIntervention(db, r1.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:web-research',
+      activeSeconds: 3600,
+      startedAt: past,
+    });
   }
   (db as any).close();
 
@@ -2095,9 +2414,15 @@ test('roi measures before and after an apply, and writes the observation back', 
   cli('apply', p.proposal);
 
   // After the apply: one short intervention remains.
-  const db2 = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db2 = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r2 = beginRun(db2, { goal: 'search the web', goalId: 'combo:web-research' });
-  recordIntervention(db2, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 360 });
+  recordIntervention(db2, r2.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:web-research',
+    activeSeconds: 360,
+  });
   (db2 as any).close();
 
   const roi = cli('roi', p.proposal);
@@ -2113,8 +2438,12 @@ test('roi measures before and after an apply, and writes the observation back', 
 
   // The observation is written back, so the next prediction can learn.
   const reopened = new Database(join(dir, 'graph.db'));
-  const stored = (reopened.prepare("SELECT observed_roi FROM proposals WHERE id = ?").get(p.proposal) as any).observed_roi;
-  expect(JSON.parse(stored).projected_hours_saved_per_year).toBe(roi.observed.projected_hours_saved_per_year);
+  const stored = (
+    reopened.prepare('SELECT observed_roi FROM proposals WHERE id = ?').get(p.proposal) as any
+  ).observed_roi;
+  expect(JSON.parse(stored).projected_hours_saved_per_year).toBe(
+    roi.observed.projected_hours_saved_per_year
+  );
   reopened.close();
 });
 
@@ -2129,15 +2458,28 @@ test('roi on an unapplied proposal says so', () => {
 
 test('a federation export carries aggregates and never credentials', () => {
   seed(WITH_PREFS).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r = beginRun(db, { goal: 'move data' });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'clerical',
+    capabilityId: 'combo:data-access',
+    activeSeconds: 1800,
+  });
   (db as any).close();
 
-  const summary = JSON.parse(execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), AMBIT_APPROVAL_KEY: 'test-approval-key' },
-    encoding: 'utf8',
-  }));
+  const summary = JSON.parse(
+    execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
+      env: {
+        ...process.env,
+        TOOLCHAIN_DB: join(dir, 'graph.db'),
+        OPENCODE_CONFIG: join(dir, 'config.json'),
+        AMBIT_APPROVAL_KEY: 'test-approval-key',
+      },
+      encoding: 'utf8',
+    })
+  );
   expect(summary.schema_version).toBe(1);
   expect(summary.capabilities.length).toBeGreaterThan(0);
   expect(summary.capabilities.some((c: any) => c.reached)).toBe(true);
@@ -2145,20 +2487,29 @@ test('a federation export carries aggregates and never credentials', () => {
   // Aggregates only: no config paths, no commands, no notes, no session text.
   // (The word "configured" legitimately appears as a lifecycle state.)
   const text = JSON.stringify(summary);
-  expect(text).not.toMatch(/opencode\.json|\"command\"|\"notes\"|session_learning|api[_-]?key|token/i);
+  expect(text).not.toMatch(/opencode\.json|"command"|"notes"|session_learning|api[_-]?key|token/i);
   // Signed when a key is present.
   expect(summary.signed).toBe(true);
 });
 
 test('a federation import stores a receipt and merges nothing', () => {
   seed(WITH_PREFS).close();
-  const before = (new Database(join(dir, 'graph.db')).prepare("SELECT COUNT(*) n FROM capabilities").get() as any).n;
+  const before = (
+    new Database(join(dir, 'graph.db')).prepare('SELECT COUNT(*) n FROM capabilities').get() as any
+  ).n;
 
   // Export to a file, then import that file back into the same graph.
-  const summary = JSON.parse(execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), AMBIT_APPROVAL_KEY: 'test-approval-key' },
-    encoding: 'utf8',
-  }));
+  const summary = JSON.parse(
+    execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
+      env: {
+        ...process.env,
+        TOOLCHAIN_DB: join(dir, 'graph.db'),
+        OPENCODE_CONFIG: join(dir, 'config.json'),
+        AMBIT_APPROVAL_KEY: 'test-approval-key',
+      },
+      encoding: 'utf8',
+    })
+  );
   const path = join(dir, 'summary.json');
   writeFileSync(path, JSON.stringify(summary));
 
@@ -2167,10 +2518,10 @@ test('a federation import stores a receipt and merges nothing', () => {
   expect(receipt.note).toContain('receipt');
 
   const db = new Database(join(dir, 'graph.db'));
-  const rowsIn = db.prepare("SELECT COUNT(*) n FROM federation_imports").get() as any;
+  const rowsIn = db.prepare('SELECT COUNT(*) n FROM federation_imports').get() as any;
   expect(rowsIn.n).toBe(1);
   // Nothing leaked into the graph: capability count unchanged.
-  expect((db.prepare("SELECT COUNT(*) n FROM capabilities").get() as any).n).toBe(before);
+  expect((db.prepare('SELECT COUNT(*) n FROM capabilities').get() as any).n).toBe(before);
   db.close();
 });
 
@@ -2182,8 +2533,22 @@ test('the catalog compares acquisition options by first-year cost', () => {
     actors: { kanav: { name: 'Kanav' } },
     catalog: {
       'combo:data-access': [
-        { provider: 'saas-x', kind: 'subscribe', setup_seconds: 1800, recurring_dollars_per_month: 490, privacy: 'hosted', rollback: 'revoke the credential' },
-        { provider: 'internal-api', kind: 'build', setup_seconds: 36000, cost_one_time_dollars: 4500, privacy: 'local', rollback: 'revert the merge' },
+        {
+          provider: 'saas-x',
+          kind: 'subscribe',
+          setup_seconds: 1800,
+          recurring_dollars_per_month: 490,
+          privacy: 'hosted',
+          rollback: 'revoke the credential',
+        },
+        {
+          provider: 'internal-api',
+          kind: 'build',
+          setup_seconds: 36000,
+          cost_one_time_dollars: 4500,
+          privacy: 'local',
+          rollback: 'revert the merge',
+        },
       ],
     },
   }).close();
@@ -2212,12 +2577,24 @@ test('the curated model contributes catalog rows for alternatives it names', () 
 
 test('--budget allocates the best combination within it', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   // Two clerical burdens: a small one and a large one, both priced.
   const r = beginRun(db, { goal: 'move data' });
-  for (let i = 0; i < 6; i++) recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  for (let i = 0; i < 6; i++)
+    recordIntervention(db, r.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:data-access',
+      activeSeconds: 1800,
+    });
   const r2 = beginRun(db, { goal: 'search the web' });
-  for (let i = 0; i < 3; i++) recordIntervention(db, r2.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1800 });
+  for (let i = 0; i < 3; i++)
+    recordIntervention(db, r2.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:web-research',
+      activeSeconds: 1800,
+    });
   (db as any).close();
 
   const withBudget = cli('opportunities', '--budget=5000');
@@ -2239,11 +2616,23 @@ test('--budget allocates the best combination within it', () => {
 
 test('audit assembles the trail for a run, a proposal, and a person', () => {
   seed(APPLIABLE).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r = beginRun(db, { goal: 'restart the service', runType: 'incident', source: 'scan' });
-  addEvent(db, r.run, { kind: 'detected', actor: 'monitoring', capabilityId: 'svc:ollama', detail: 'down' });
+  addEvent(db, r.run, {
+    kind: 'detected',
+    actor: 'monitoring',
+    capabilityId: 'svc:ollama',
+    detail: 'down',
+  });
   addEvent(db, r.run, { kind: 'diagnosed', actor: 'agent', capabilityId: 'combo:observability' });
-  recordIntervention(db, r.run, 'human:kanav', { kind: 'authority', capabilityId: 'combo:shell-execution', activeSeconds: 30, waitingSeconds: 90 });
+  recordIntervention(db, r.run, 'human:kanav', {
+    kind: 'authority',
+    capabilityId: 'combo:shell-execution',
+    activeSeconds: 30,
+    waitingSeconds: 90,
+  });
   endRun(db, r.run, 'success');
   (db as any).close();
 
@@ -2271,12 +2660,21 @@ test('audit assembles the trail for a run, a proposal, and a person', () => {
 
 test('incidents open a run for an offline service and resolve with MTTR', () => {
   seed(LOCAL_ONLY).close();
-  writeFileSync(join(dir, 'infra.json'), JSON.stringify({
-    services: [{ key: 'ollama', label: 'Ollama', url: 'http://127.0.0.1:1/health' }],
-  }));
+  writeFileSync(
+    join(dir, 'infra.json'),
+    JSON.stringify({
+      services: [{ key: 'ollama', label: 'Ollama', url: 'http://127.0.0.1:1/health' }],
+    })
+  );
 
   const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'incidents', '--json'], {
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), INFRA_MANIFEST: join(dir, 'infra.json'), AMBIT_APPROVAL_KEY: 'test-approval-key' },
+    env: {
+      ...process.env,
+      TOOLCHAIN_DB: join(dir, 'graph.db'),
+      OPENCODE_CONFIG: join(dir, 'config.json'),
+      INFRA_MANIFEST: join(dir, 'infra.json'),
+      AMBIT_APPROVAL_KEY: 'test-approval-key',
+    },
     encoding: 'utf8',
   });
   const report = JSON.parse(out);
@@ -2301,21 +2699,38 @@ test('portfolio reads shared burden and capex across imported environments', () 
   // Two environments, both burdened on the same capability.
   for (const env of ['acme-ltd', 'globex']) {
     const e = env;
-    const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+    const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+      typeof recordIntervention
+    >[0];
     const r = beginRun(db, { goal: 'move data between systems' });
-    recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+    recordIntervention(db, r.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:data-access',
+      activeSeconds: 1800,
+    });
     (db as any).close();
-    const summary = JSON.parse(execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
-      env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db'), OPENCODE_CONFIG: join(dir, 'config.json'), AMBIT_ENV: e, AMBIT_APPROVAL_KEY: 'test-approval-key' },
-      encoding: 'utf8',
-    }));
+    const summary = JSON.parse(
+      execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
+        env: {
+          ...process.env,
+          TOOLCHAIN_DB: join(dir, 'graph.db'),
+          OPENCODE_CONFIG: join(dir, 'config.json'),
+          AMBIT_ENV: e,
+          AMBIT_APPROVAL_KEY: 'test-approval-key',
+        },
+        encoding: 'utf8',
+      })
+    );
     const receipt = cli('federation', 'import', writeAndReturn(join(dir, `${env}.json`), summary));
     expect(receipt.capabilities).toBeGreaterThan(0);
   }
 
   const pf = cli('portfolio');
   expect(pf.environments).toBe(2);
-  expect(pf.environments_list.map((x: any) => x.environment).sort()).toEqual(['acme-ltd', 'globex']);
+  expect(pf.environments_list.map((x: any) => x.environment).sort()).toEqual([
+    'acme-ltd',
+    'globex',
+  ]);
   const shared = pf.shared_burden.find((s: any) => s.capability_id === 'combo:data-access');
   expect(shared).toBeDefined();
   expect(shared.environments).toBe(2);
@@ -2332,10 +2747,18 @@ function writeAndReturn(path: string, data: unknown): string {
 test('roi with no argument is the cumulative headline', () => {
   seed(APPLIABLE).close();
   // Record burden first so the proposal carries a prediction to check.
-  const db0 = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db0 = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r0 = beginRun(db0, { goal: 'search the web', goalId: 'combo:web-research' });
   const past = new Date(Date.now() - 30 * 864e5).toISOString();
-  for (let i = 0; i < 4; i++) recordIntervention(db0, r0.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:web-research', activeSeconds: 1800, startedAt: past });
+  for (let i = 0; i < 4; i++)
+    recordIntervention(db0, r0.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:web-research',
+      activeSeconds: 1800,
+      startedAt: past,
+    });
   (db0 as any).close();
   const p = cli('propose', 'web-research');
   cli('approve', p.proposal, 'kanav');
@@ -2356,13 +2779,27 @@ test('an opportunity carries its acquisition options', () => {
     actors: { kanav: { name: 'Kanav' } },
     catalog: {
       'combo:data-access': [
-        { provider: 'saas-x', kind: 'subscribe', setup_seconds: 1800, recurring_dollars_per_month: 490, privacy: 'hosted', rollback: 'revoke the credential' },
+        {
+          provider: 'saas-x',
+          kind: 'subscribe',
+          setup_seconds: 1800,
+          recurring_dollars_per_month: 490,
+          privacy: 'hosted',
+          rollback: 'revoke the credential',
+        },
       ],
     },
   }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
+    typeof recordIntervention
+  >[0];
   const r = beginRun(db, { goal: 'move data' });
-  for (let i = 0; i < 5; i++) recordIntervention(db, r.run, 'human:kanav', { kind: 'clerical', capabilityId: 'combo:data-access', activeSeconds: 1800 });
+  for (let i = 0; i < 5; i++)
+    recordIntervention(db, r.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:data-access',
+      activeSeconds: 1800,
+    });
   (db as any).close();
 
   const o = cli('opportunities');

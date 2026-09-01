@@ -1,5 +1,5 @@
-import type { Migratable } from "./migrate.ts";
-import { attentionValueCentsPerHour } from "./economics.ts";
+import type { Migratable } from './migrate.ts';
+import { attentionValueCentsPerHour } from './economics.ts';
 
 /**
  * Realized ROI: what an applied proposal actually changed, measured from the
@@ -37,16 +37,31 @@ interface WindowStats {
   failures: number;
 }
 
-function windowStats(db: Migratable, capabilityId: string, start: string, end: string, rate: number, endInclusive = false, startExclusive = false): WindowStats {
+function windowStats(
+  db: Migratable,
+  capabilityId: string,
+  start: string,
+  end: string,
+  rate: number,
+  endInclusive = false,
+  startExclusive = false
+): WindowStats {
   const startOp = startExclusive ? '>' : '>=';
   const endOp = endInclusive ? '<=' : '<';
-  const row = db.prepare(
-    `SELECT COUNT(*) n, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) n, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
      FROM human_intervention WHERE capability_id = ? AND started_at ${startOp} ? AND started_at ${endOp} ?`
-  ).get(capabilityId, start, end) as any;
-  const failures = (db.prepare(
-    `SELECT COUNT(*) n FROM session_learning WHERE capability_id = ? AND action = 'failed' AND timestamp ${startOp} ? AND timestamp ${endOp} ?`
-  ).get(capabilityId, start, end) as any)?.n || 0;
+    )
+    .get(capabilityId, start, end) as any;
+  const failures =
+    (
+      db
+        .prepare(
+          `SELECT COUNT(*) n FROM session_learning WHERE capability_id = ? AND action = 'failed' AND timestamp ${startOp} ? AND timestamp ${endOp} ?`
+        )
+        .get(capabilityId, start, end) as any
+    )?.n || 0;
   const hours = ((row?.active || 0) + (row?.waiting || 0)) / 3600;
   return {
     interventions: row?.n || 0,
@@ -65,7 +80,7 @@ function windowStats(db: Migratable, capabilityId: string, start: string, end: s
  */
 function roiFor(db: Migratable, proposalId?: string) {
   if (!proposalId) return { error: 'Usage: ambit roi <proposal-id>' };
-  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status !== 'applied' || !row.applied_at) {
     return { error: `${proposalId} is ${row.status}; ROI needs an apply to measure against.` };
@@ -74,7 +89,7 @@ function roiFor(db: Migratable, proposalId?: string) {
   const steps = JSON.parse(row.steps);
   const capId = steps[steps.length - 1]?.id || row.goal_id || null;
   const capName = capId
-    ? (db.prepare("SELECT name FROM capabilities WHERE id = ?").get(capId) as any)?.name || capId
+    ? (db.prepare('SELECT name FROM capabilities WHERE id = ?').get(capId) as any)?.name || capId
     : row.goal;
 
   const actor = row.approved_by || 'human:kanav';
@@ -88,14 +103,22 @@ function roiFor(db: Migratable, proposalId?: string) {
   const appliedDate = parseDatetime(applied);
   const beforeStart = sqliteDatetime(new Date(appliedDate.getTime() - WINDOW_DAYS * 864e5));
   const before = capId ? windowStats(db, capId, beforeStart, applied, rate, true) : null;
-  const after = capId ? windowStats(db, capId, applied, sqliteDatetime(new Date()), rate, true, true) : null;
+  const after = capId
+    ? windowStats(db, capId, applied, sqliteDatetime(new Date()), rate, true, true)
+    : null;
 
-  const prediction = row.economic_case ? (() => {
-    try { return JSON.parse(row.economic_case); } catch { return null; }
-  })() : null;
+  const prediction = row.economic_case
+    ? (() => {
+        try {
+          return JSON.parse(row.economic_case);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
 
   // Observed, annualized from the after window's monthly rate.
-  const observedReduction = (before && after) ? before.human_hours - after.human_hours : 0;
+  const observedReduction = before && after ? before.human_hours - after.human_hours : 0;
   const projectedHoursSavedYear = Math.round(observedReduction * 12 * 10) / 10;
   const projectedDollarsYear = Math.round(observedReduction * rate * 12) / 100;
 
@@ -109,12 +132,16 @@ function roiFor(db: Migratable, proposalId?: string) {
   const predictedHours = prediction?.predicted?.human_hours_saved_per_year;
   let verdict: string;
   if (!predictedHours) verdict = 'no forecast to compare — the proposal carried no economic case';
-  else if (!after || after.interventions === 0 && observedReduction === 0) verdict = 'too early to say — no after-window activity yet';
+  else if (!after || (after.interventions === 0 && observedReduction === 0))
+    verdict = 'too early to say — no after-window activity yet';
   else {
     const ratio = projectedHoursSavedYear / predictedHours;
-    verdict = ratio >= 1.3 ? 'outperforming forecast'
-      : ratio >= 0.7 ? 'performing near forecast'
-      : 'below forecast';
+    verdict =
+      ratio >= 1.3
+        ? 'outperforming forecast'
+        : ratio >= 0.7
+          ? 'performing near forecast'
+          : 'below forecast';
   }
 
   const observed = {
@@ -129,8 +156,10 @@ function roiFor(db: Migratable, proposalId?: string) {
   };
 
   // Write the observation back so the next prediction has evidence.
-  db.prepare("UPDATE proposals SET observed_roi = ? WHERE id = ?")
-    .run(JSON.stringify(observed), proposalId);
+  db.prepare('UPDATE proposals SET observed_roi = ? WHERE id = ?').run(
+    JSON.stringify(observed),
+    proposalId
+  );
 
   return {
     proposal: proposalId,
@@ -154,16 +183,37 @@ function roiFor(db: Migratable, proposalId?: string) {
  * are checked against.
  */
 function roiSummary(db: Migratable) {
-  const applied = db.prepare(
-    "SELECT id, goal, applied_at, economic_case, observed_roi FROM proposals WHERE status = 'applied' ORDER BY applied_at"
-  ).all() as any[];
+  const applied = db
+    .prepare(
+      "SELECT id, goal, applied_at, economic_case, observed_roi FROM proposals WHERE status = 'applied' ORDER BY applied_at"
+    )
+    .all() as any[];
 
   const measured: any[] = [];
   let pending = 0;
   for (const p of applied) {
-    const obs = p.observed_roi ? (() => { try { return JSON.parse(p.observed_roi); } catch { return null; } })() : null;
-    if (!obs) { pending++; continue; }
-    const prediction = p.economic_case ? (() => { try { return JSON.parse(p.economic_case); } catch { return null; } })() : null;
+    const obs = p.observed_roi
+      ? (() => {
+          try {
+            return JSON.parse(p.observed_roi);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+    if (!obs) {
+      pending++;
+      continue;
+    }
+    const prediction = p.economic_case
+      ? (() => {
+          try {
+            return JSON.parse(p.economic_case);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
     measured.push({
       id: p.id,
       goal: p.goal,
@@ -180,11 +230,13 @@ function roiSummary(db: Migratable) {
 
   // Prediction accuracy: the ratio of observed to predicted, per proposal,
   // with a verdict that is a range. Averages across measured proposals only.
-  const withPrediction = measured.filter((m) => m.predicted_hours_per_year != null && m.predicted_hours_per_year > 0);
-  const ratios = withPrediction.map((m) => m.observed_hours_per_year / m.predicted_hours_per_year);
-  const near = ratios.filter((r) => r >= 0.7 && r <= 1.3).length;
+  const withPrediction = measured.filter(
+    m => m.predicted_hours_per_year != null && m.predicted_hours_per_year > 0
+  );
+  const ratios = withPrediction.map(m => m.observed_hours_per_year / m.predicted_hours_per_year);
+  const near = ratios.filter(r => r >= 0.7 && r <= 1.3).length;
   const accuracy = ratios.length
-    ? Math.round(ratios.reduce((s, r) => s + Math.min(r, 2), 0) / ratios.length * 100) / 100
+    ? Math.round((ratios.reduce((s, r) => s + Math.min(r, 2), 0) / ratios.length) * 100) / 100
     : null;
 
   return {
@@ -193,18 +245,20 @@ function roiSummary(db: Migratable) {
     pending_measurements: pending,
     observed_hours_saved_per_year: Math.round(hours * 10) / 10,
     observed_dollars_saved_per_year: Math.round(dollars),
-    prediction: accuracy != null
-      ? {
-          average_ratio: accuracy,
-          near_forecast: near,
-          of: ratios.length,
-          note: 'ratio = observed ÷ predicted; 1.0 means the forecast held, 0.7–1.3 is near forecast.',
-        }
-      : undefined,
+    prediction:
+      accuracy != null
+        ? {
+            average_ratio: accuracy,
+            near_forecast: near,
+            of: ratios.length,
+            note: 'ratio = observed ÷ predicted; 1.0 means the forecast held, 0.7–1.3 is near forecast.',
+          }
+        : undefined,
     per_proposal: measured,
-    note: applied.length === 0
-      ? 'Nothing applied yet — roi has nothing to measure until a proposal is approved and applied. Try `ambit opportunities` for what to propose first.'
-      : 'observed figures come from before/after windows in the work ledger — measured, not estimated.',
+    note:
+      applied.length === 0
+        ? 'Nothing applied yet — roi has nothing to measure until a proposal is approved and applied. Try `ambit opportunities` for what to propose first.'
+        : 'observed figures come from before/after windows in the work ledger — measured, not estimated.',
   };
 }
 

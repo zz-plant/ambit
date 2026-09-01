@@ -13,12 +13,21 @@ export interface DemoOpportunity {
   title: string;
   capability: string;
   kind: string;
-  burden: { interventions_month: number; human_hours_month: number; attention_dollars_month: number };
+  burden: {
+    interventions_month: number;
+    human_hours_month: number;
+    attention_dollars_month: number;
+  };
   proposal: { action: string; setup_hours: number };
   expected: { human_hours_month_after: number; savings_dollars_month: number };
   payback_months: number;
   confidence: 'high' | 'medium' | 'low';
-  acquisition_options?: { provider: string; kind: string; total_first_year_dollars?: number; privacy: string }[];
+  acquisition_options?: {
+    provider: string;
+    kind: string;
+    total_first_year_dollars?: number;
+    privacy: string;
+  }[];
 }
 
 export interface DemoSnapshot {
@@ -34,7 +43,13 @@ export interface DemoSnapshot {
   };
   attention: {
     interventions: number;
-    reducible: { kind: string; capability: string; times: number; hours: number; suggested_fix: string }[];
+    reducible: {
+      kind: string;
+      capability: string;
+      times: number;
+      hours: number;
+      suggested_fix: string;
+    }[];
     keepers: { kind: string; capability: string; times: number }[];
   };
   opportunities: DemoOpportunity[];
@@ -57,9 +72,27 @@ export function demoSnapshot(): DemoSnapshot {
     attention: {
       interventions: 84,
       reducible: [
-        { kind: 'clerical', capability: 'Manual data transfer', times: 39, hours: 3.2, suggested_fix: 'the transfer is mechanical — automate it end to end' },
-        { kind: 'authority', capability: 'Deploy to production', times: 31, hours: 0.7, suggested_fix: 'grant bounded authority rather than approving each time' },
-        { kind: 'exception', capability: 'Payment anomaly', times: 7, hours: 1.9, suggested_fix: 'the case recurs — encode the handling as a capability' },
+        {
+          kind: 'clerical',
+          capability: 'Manual data transfer',
+          times: 39,
+          hours: 3.2,
+          suggested_fix: 'the transfer is mechanical — automate it end to end',
+        },
+        {
+          kind: 'authority',
+          capability: 'Deploy to production',
+          times: 31,
+          hours: 0.7,
+          suggested_fix: 'grant bounded authority rather than approving each time',
+        },
+        {
+          kind: 'exception',
+          capability: 'Payment anomaly',
+          times: 7,
+          hours: 1.9,
+          suggested_fix: 'the case recurs — encode the handling as a capability',
+        },
       ],
       keepers: [{ kind: 'judgment', capability: 'Architecture review', times: 12 }],
     },
@@ -75,8 +108,18 @@ export function demoSnapshot(): DemoSnapshot {
         payback_months: 0.6,
         confidence: 'high',
         acquisition_options: [
-          { provider: 'SaaS provider', kind: 'subscribe', total_first_year_dollars: 5880, privacy: 'hosted' },
-          { provider: 'API integration', kind: 'build', total_first_year_dollars: 4560, privacy: 'local' },
+          {
+            provider: 'SaaS provider',
+            kind: 'subscribe',
+            total_first_year_dollars: 5880,
+            privacy: 'hosted',
+          },
+          {
+            provider: 'API integration',
+            kind: 'build',
+            total_first_year_dollars: 4560,
+            privacy: 'local',
+          },
         ],
       },
       {
@@ -102,43 +145,171 @@ export function demoSnapshot(): DemoSnapshot {
         confidence: 'medium',
       },
     ],
-    roi: { hours_per_year: 41, dollars_per_year: 9600, accuracy: 1.1, verdict: 'performing near forecast' },
+    roi: {
+      hours_per_year: 41,
+      dollars_per_year: 9600,
+      accuracy: 1.1,
+      verdict: 'performing near forecast',
+    },
   };
 }
 
 /** The sample graph JSON a static visitor can PASTE — mirrors `ambit graph`. */
 export function demoGraphExport(): string {
-  return JSON.stringify({
-    items: [
-      { id: 'opencode-core', name: 'OpenCode', type: 'framework', status: 'built', description: 'Main framework', meta: { domain: 'meta' } },
-      { id: 'mcp:playwright', name: 'Playwright', type: 'mcp-server', status: 'built', description: 'Browser automation', meta: { domain: 'quality' } },
-      { id: 'mcp:cloudflare', name: 'Cloudflare', type: 'mcp-server', status: 'built', description: 'Edge compute', meta: { domain: 'backend' } },
-      { id: 'mcp:github', name: 'GitHub', type: 'mcp-server', status: 'built', description: 'CI + repos', meta: { domain: 'devops' } },
-      { id: 'mcp:tailscale', name: 'Tailscale', type: 'mcp-server', status: 'built', description: 'Mesh VPN', meta: { domain: 'infra' } },
-      { id: 'mcp:brew', name: 'Homebrew', type: 'mcp-server', status: 'built', description: 'Packages', meta: { domain: 'devops' } },
-      { id: 'mcp:1password', name: '1Password', type: 'mcp-server', status: 'built', description: 'Secrets', meta: { domain: 'security' } },
-      { id: 'agent:oracle', name: 'Oracle', type: 'agent', status: 'built', description: 'Debugging', meta: { domain: 'meta' } },
-      { id: 'agent:steward', name: 'Steward', type: 'agent', status: 'built', description: 'Repos', meta: { domain: 'devops' } },
-      { id: 'skill:cloudflare', name: 'Cloudflare', type: 'skill', status: 'built', description: 'Workers', meta: { domain: 'backend' } },
-      { id: 'skill:wrangler', name: 'Wrangler', type: 'skill', status: 'built', description: 'CLI', meta: { domain: 'backend' } },
-      { id: 'skill:vitest', name: 'Vitest', type: 'skill', status: 'built', description: 'Unit tests', meta: { domain: 'quality' } },
-      { id: 'skill:durable-objects', name: 'Durable Objects', type: 'skill', status: 'specified', description: 'Stateful', meta: { domain: 'backend' } },
-      { id: 'combo:e2e', name: 'E2E on Edge', type: 'possibility', status: 'specified', description: 'Deploy + verify at the edge', meta: { domain: 'quality' } },
-      { id: 'combo:deploy', name: 'Deploy Pipeline', type: 'possibility', status: 'specified', description: 'Push → build → verify', meta: { domain: 'devops' } },
-      { id: 'combo:local-ai', name: 'Local Inference', type: 'possibility', status: 'built', description: 'Quantized models on your own hardware', meta: { domain: 'ai-ml' } },
-      { id: 'tool:bash', name: 'Shell', type: 'framework', status: 'built', description: 'Commands', meta: { domain: 'infra' } },
-    ],
-    connections: [
-      { from: 'opencode-core', to: 'mcp:playwright', type: 'connects' },
-      { from: 'opencode-core', to: 'mcp:cloudflare', type: 'connects' },
-      { from: 'opencode-core', to: 'mcp:github', type: 'connects' },
-      { from: 'opencode-core', to: 'agent:oracle', type: 'subagent' },
-      { from: 'skill:cloudflare', to: 'combo:e2e', type: 'hard-dep' },
-      { from: 'skill:vitest', to: 'combo:e2e', type: 'hard-dep' },
-      { from: 'skill:cloudflare', to: 'combo:deploy', type: 'hard-dep' },
-      { from: 'skill:wrangler', to: 'combo:deploy', type: 'hard-dep' },
-      { from: 'mcp:cloudflare', to: 'combo:e2e', type: 'soft-dep' },
-      { from: 'mcp:playwright', to: 'combo:e2e', type: 'soft-dep' },
-    ],
-  }, null, 2);
+  return JSON.stringify(
+    {
+      items: [
+        {
+          id: 'opencode-core',
+          name: 'OpenCode',
+          type: 'framework',
+          status: 'built',
+          description: 'Main framework',
+          meta: { domain: 'meta' },
+        },
+        {
+          id: 'mcp:playwright',
+          name: 'Playwright',
+          type: 'mcp-server',
+          status: 'built',
+          description: 'Browser automation',
+          meta: { domain: 'quality' },
+        },
+        {
+          id: 'mcp:cloudflare',
+          name: 'Cloudflare',
+          type: 'mcp-server',
+          status: 'built',
+          description: 'Edge compute',
+          meta: { domain: 'backend' },
+        },
+        {
+          id: 'mcp:github',
+          name: 'GitHub',
+          type: 'mcp-server',
+          status: 'built',
+          description: 'CI + repos',
+          meta: { domain: 'devops' },
+        },
+        {
+          id: 'mcp:tailscale',
+          name: 'Tailscale',
+          type: 'mcp-server',
+          status: 'built',
+          description: 'Mesh VPN',
+          meta: { domain: 'infra' },
+        },
+        {
+          id: 'mcp:brew',
+          name: 'Homebrew',
+          type: 'mcp-server',
+          status: 'built',
+          description: 'Packages',
+          meta: { domain: 'devops' },
+        },
+        {
+          id: 'mcp:1password',
+          name: '1Password',
+          type: 'mcp-server',
+          status: 'built',
+          description: 'Secrets',
+          meta: { domain: 'security' },
+        },
+        {
+          id: 'agent:oracle',
+          name: 'Oracle',
+          type: 'agent',
+          status: 'built',
+          description: 'Debugging',
+          meta: { domain: 'meta' },
+        },
+        {
+          id: 'agent:steward',
+          name: 'Steward',
+          type: 'agent',
+          status: 'built',
+          description: 'Repos',
+          meta: { domain: 'devops' },
+        },
+        {
+          id: 'skill:cloudflare',
+          name: 'Cloudflare',
+          type: 'skill',
+          status: 'built',
+          description: 'Workers',
+          meta: { domain: 'backend' },
+        },
+        {
+          id: 'skill:wrangler',
+          name: 'Wrangler',
+          type: 'skill',
+          status: 'built',
+          description: 'CLI',
+          meta: { domain: 'backend' },
+        },
+        {
+          id: 'skill:vitest',
+          name: 'Vitest',
+          type: 'skill',
+          status: 'built',
+          description: 'Unit tests',
+          meta: { domain: 'quality' },
+        },
+        {
+          id: 'skill:durable-objects',
+          name: 'Durable Objects',
+          type: 'skill',
+          status: 'specified',
+          description: 'Stateful',
+          meta: { domain: 'backend' },
+        },
+        {
+          id: 'combo:e2e',
+          name: 'E2E on Edge',
+          type: 'possibility',
+          status: 'specified',
+          description: 'Deploy + verify at the edge',
+          meta: { domain: 'quality' },
+        },
+        {
+          id: 'combo:deploy',
+          name: 'Deploy Pipeline',
+          type: 'possibility',
+          status: 'specified',
+          description: 'Push → build → verify',
+          meta: { domain: 'devops' },
+        },
+        {
+          id: 'combo:local-ai',
+          name: 'Local Inference',
+          type: 'possibility',
+          status: 'built',
+          description: 'Quantized models on your own hardware',
+          meta: { domain: 'ai-ml' },
+        },
+        {
+          id: 'tool:bash',
+          name: 'Shell',
+          type: 'framework',
+          status: 'built',
+          description: 'Commands',
+          meta: { domain: 'infra' },
+        },
+      ],
+      connections: [
+        { from: 'opencode-core', to: 'mcp:playwright', type: 'connects' },
+        { from: 'opencode-core', to: 'mcp:cloudflare', type: 'connects' },
+        { from: 'opencode-core', to: 'mcp:github', type: 'connects' },
+        { from: 'opencode-core', to: 'agent:oracle', type: 'subagent' },
+        { from: 'skill:cloudflare', to: 'combo:e2e', type: 'hard-dep' },
+        { from: 'skill:vitest', to: 'combo:e2e', type: 'hard-dep' },
+        { from: 'skill:cloudflare', to: 'combo:deploy', type: 'hard-dep' },
+        { from: 'skill:wrangler', to: 'combo:deploy', type: 'hard-dep' },
+        { from: 'mcp:cloudflare', to: 'combo:e2e', type: 'soft-dep' },
+        { from: 'mcp:playwright', to: 'combo:e2e', type: 'soft-dep' },
+      ],
+    },
+    null,
+    2
+  );
 }

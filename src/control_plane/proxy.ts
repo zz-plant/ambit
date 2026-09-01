@@ -1,19 +1,17 @@
-import { createHmac, randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
-import { getDb, type Db } from "../engine/db.ts";
-import { migrate } from "../engine/migrate.ts";
-import { canExecute, runVerification, evidenceFor } from "../engine/assurance.ts";
-import { beginRun, endRun, addEvent, recordIntervention, recordUse } from "../engine/telemetry.ts";
-import { propose } from "../engine/planning.ts";
-import { approveProposal, applyProposal, rollbackProposal, inverseOf, listProposals } from "../engine/governance.ts";
-import { mintApproval, verifyApproval, proposalHash } from "../engine/approval.ts";
-import { auditFor } from "../engine/audit.ts";
+import { createHmac, randomBytes } from 'node:crypto';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import type { Db } from '../engine/db.ts';
+import { migrate } from '../engine/migrate.ts';
+import { canExecute } from '../engine/assurance.ts';
+import { beginRun, endRun, addEvent, recordIntervention, recordUse } from '../engine/telemetry.ts';
+import { verifyApproval } from '../engine/approval.ts';
+import { auditFor } from '../engine/audit.ts';
 
 export interface MockEnvironmentState {
   environment: string;
   db_schema_version: string;
-  staging_health: "passing" | "failing" | "unverified";
+  staging_health: 'passing' | 'failing' | 'unverified';
   api_keys_rotated: boolean;
   production_version: string;
   active_containers: string[];
@@ -48,7 +46,7 @@ export interface OpenTelemetrySpan {
     attributes: Record<string, any>;
   }>;
   status: {
-    code: "OK" | "ERROR";
+    code: 'OK' | 'ERROR';
     description?: string;
   };
 }
@@ -71,40 +69,40 @@ export interface ControlPlaneResult {
 /**
  * Compute sha256 checksum of environment state to prove state invariance.
  */
-export function computeStateHash(state: Omit<MockEnvironmentState, "immutable_hash">): string {
+export function computeStateHash(state: Omit<MockEnvironmentState, 'immutable_hash'>): string {
   const serialized = JSON.stringify(state, Object.keys(state).sort());
-  return createHmac("sha256", "ambit-state-checksum").update(serialized).digest("hex");
+  return createHmac('sha256', 'ambit-state-checksum').update(serialized).digest('hex');
 }
 
 export function createInitialMockEnvironment(envDir: string): MockEnvironmentState {
   mkdirSync(envDir, { recursive: true });
-  const raw: Omit<MockEnvironmentState, "immutable_hash"> = {
-    environment: "production",
-    db_schema_version: "v2.1.0-migrated",
-    staging_health: "failing", // Unverified / failing staging check
+  const raw: Omit<MockEnvironmentState, 'immutable_hash'> = {
+    environment: 'production',
+    db_schema_version: 'v2.1.0-migrated',
+    staging_health: 'failing', // Unverified / failing staging check
     api_keys_rotated: false,
-    production_version: "v1.4.2",
-    active_containers: ["web-prod-1", "web-prod-2"],
-    last_deployed_at: "2026-08-25 12:00:00",
-    last_deployed_by: "human:ops-lead",
+    production_version: 'v1.4.2',
+    active_containers: ['web-prod-1', 'web-prod-2'],
+    last_deployed_at: '2026-08-25 12:00:00',
+    last_deployed_by: 'human:ops-lead',
   };
   const hash = computeStateHash(raw);
   const state: MockEnvironmentState = { ...raw, immutable_hash: hash };
-  writeFileSync(join(envDir, "environment_state.json"), JSON.stringify(state, null, 2) + "\n");
+  writeFileSync(join(envDir, 'environment_state.json'), JSON.stringify(state, null, 2) + '\n');
   return state;
 }
 
 export function readMockEnvironment(envDir: string): MockEnvironmentState {
-  const p = join(envDir, "environment_state.json");
+  const p = join(envDir, 'environment_state.json');
   if (!existsSync(p)) return createInitialMockEnvironment(envDir);
-  return JSON.parse(readFileSync(p, "utf8"));
+  return JSON.parse(readFileSync(p, 'utf8'));
 }
 
 export function writeMockEnvironment(envDir: string, state: MockEnvironmentState): void {
   const { immutable_hash, ...rest } = state;
   const hash = computeStateHash(rest);
   const updated: MockEnvironmentState = { ...rest, immutable_hash: hash };
-  writeFileSync(join(envDir, "environment_state.json"), JSON.stringify(updated, null, 2) + "\n");
+  writeFileSync(join(envDir, 'environment_state.json'), JSON.stringify(updated, null, 2) + '\n');
 }
 
 /**
@@ -163,8 +161,8 @@ export function executeThroughControlPlane(
   envDir: string,
   request: AgentExecutionRequest
 ): ControlPlaneResult {
-  const traceId = randomBytes(16).toString("hex");
-  const spanId = randomBytes(8).toString("hex");
+  const traceId = randomBytes(16).toString('hex');
+  const spanId = randomBytes(8).toString('hex');
   const startTime = new Date().toISOString();
 
   const preState = readMockEnvironment(envDir);
@@ -174,50 +172,62 @@ export function executeThroughControlPlane(
   beginRun(db, {
     id: runId,
     goal: request.intent,
-    runType: "task",
-    source: "mcp_proxy",
+    runType: 'task',
+    source: 'mcp_proxy',
   });
 
-  const spanEvents: Array<{ name: string; timestamp: string; attributes: Record<string, any> }> = [];
+  const spanEvents: Array<{ name: string; timestamp: string; attributes: Record<string, any> }> =
+    [];
 
   spanEvents.push({
-    name: "tool_invocation_received",
+    name: 'tool_invocation_received',
     timestamp: new Date().toISOString(),
     attributes: {
       agent_id: request.agent_id,
       tool: request.tool,
       capability_id: request.capability_id,
       intent: request.intent,
-      target: request.target || "env:production",
+      target: request.target || 'env:production',
     },
   });
 
   addEvent(db, runId, {
-    kind: "discovery",
+    kind: 'discovery',
     actor: request.agent_id,
     capabilityId: request.capability_id,
-    action: request.action || "execute",
+    action: request.action || 'execute',
     detail: `Agent attempting tool invocation ${request.tool} for ${request.capability_id}`,
   });
 
   // 1. DAG & Prerequisites Check
-  const capabilityId = request.capability_id.startsWith("combo:") ? request.capability_id : `combo:${request.capability_id}`;
-  const action = request.action || "execute";
-  const target = request.target || "env:production";
+  const capabilityId = request.capability_id.startsWith('combo:')
+    ? request.capability_id
+    : `combo:${request.capability_id}`;
+  const action = request.action || 'execute';
+  const target = request.target || 'env:production';
 
   // Check dependencies
-  const deps = db.prepare(`
+  const deps = db
+    .prepare(`
     SELECT d.from_capability, c.name, c.lifecycle, c.state
     FROM dependencies d
     JOIN capabilities c ON c.id = d.from_capability
     WHERE d.to_capability = ? AND d.is_hard_requisite = 1
-  `).all(capabilityId) as Array<{ from_capability: string; name: string; lifecycle: string; state: string }>;
+  `)
+    .all(capabilityId) as Array<{
+    from_capability: string;
+    name: string;
+    lifecycle: string;
+    state: string;
+  }>;
 
-  const unverifiedDeps = deps.filter(d => d.lifecycle === "degraded" || d.lifecycle === "broken" || d.lifecycle === "unknown");
+  const unverifiedDeps = deps.filter(
+    d => d.lifecycle === 'degraded' || d.lifecycle === 'broken' || d.lifecycle === 'unknown'
+  );
   const capabilityPath = deps.map(d => d.from_capability).concat([capabilityId]);
 
   spanEvents.push({
-    name: "dag_evaluation",
+    name: 'dag_evaluation',
     timestamp: new Date().toISOString(),
     attributes: {
       capability_path: JSON.stringify(capabilityPath),
@@ -238,49 +248,49 @@ export function executeThroughControlPlane(
   let missingAuthorizationNode: string | null = null;
 
   if (unverifiedDeps.length > 0) {
-    blockedReason = `Unmet hard prerequisite in DAG: [${unverifiedDeps.map(d => `${d.name} (${d.lifecycle})`).join(", ")}]`;
+    blockedReason = `Unmet hard prerequisite in DAG: [${unverifiedDeps.map(d => `${d.name} (${d.lifecycle})`).join(', ')}]`;
     missingAuthorizationNode = unverifiedDeps[0].from_capability;
-  } else if (decision.decision === "DENY") {
+  } else if (decision.decision === 'DENY') {
     blockedReason = `Authority denied: ${decision.reason}`;
     missingAuthorizationNode = capabilityId;
-  } else if (decision.decision === "CONFIRM") {
+  } else if (decision.decision === 'CONFIRM') {
     // Mode is confirm: check if valid HMAC approval token is supplied
     if (!request.hmac_approval_token) {
-      blockedReason = `Action requires explicit human authorization with HMAC signature (Governing grant: ${decision.governing_grant?.source || "pci-dss-sec-4"})`;
-      missingAuthorizationNode = "human:security-lead";
+      blockedReason = `Action requires explicit human authorization with HMAC signature (Governing grant: ${decision.governing_grant?.source || 'pci-dss-sec-4'})`;
+      missingAuthorizationNode = 'human:security-lead';
     } else {
       // Verify token
       const proposalId = request.hmac_approval_token;
-      const verifyRes = verifyApproval(db, proposalId, "human:security-lead");
+      const verifyRes = verifyApproval(db, proposalId, 'human:security-lead');
       if (!verifyRes.ok) {
         blockedReason = `Invalid HMAC approval artifact: ${verifyRes.reason}`;
-        missingAuthorizationNode = "human:security-lead";
+        missingAuthorizationNode = 'human:security-lead';
       }
     }
   }
 
   // Handle Blocked Execution
   if (blockedReason) {
-    const challengeHash = createHmac("sha256", "ambit-challenge")
+    const challengeHash = createHmac('sha256', 'ambit-challenge')
       .update(`${runId}|${capabilityId}|${target}|${Date.now()}`)
-      .digest("hex")
+      .digest('hex')
       .slice(0, 24);
 
     // Draft a formal remediation proposal in the graph
     const proposalId = `prop-remediate-${Date.now()}`;
     const remediationSteps = [
       {
-        id: "combo:staging-healthcheck",
-        name: "Staging Health Check Verification",
-        chosen: "automated-health-and-smoke-test-verification",
+        id: 'combo:staging-healthcheck',
+        name: 'Staging Health Check Verification',
+        chosen: 'automated-health-and-smoke-test-verification',
         setup_seconds: 10,
         requires_person: false,
         inverse: { remove: [] },
       },
       {
         id: capabilityId,
-        name: "Authorized Production Release Deployment",
-        chosen: "blue-green-canary-rollout-v2.0.0",
+        name: 'Authorized Production Release Deployment',
+        chosen: 'blue-green-canary-rollout-v2.0.0',
         setup_seconds: 60,
         requires_person: true,
         inverse: { remove: [] },
@@ -290,9 +300,9 @@ export function executeThroughControlPlane(
     const simulation = {
       frontier_before: 4,
       frontier_after: 5,
-      acquired: [{ id: capabilityId, name: "Deploy To Production" }],
-      unblocked: [{ id: "act:deploy-to-production/deploy", name: "Live traffic rollout" }],
-      note: "Remediation satisfies staging verification prerequisite and unlocks human HMAC-gated deployment.",
+      acquired: [{ id: capabilityId, name: 'Deploy To Production' }],
+      unblocked: [{ id: 'act:deploy-to-production/deploy', name: 'Live traffic rollout' }],
+      note: 'Remediation satisfies staging verification prerequisite and unlocks human HMAC-gated deployment.',
     };
 
     db.prepare(`
@@ -300,14 +310,14 @@ export function executeThroughControlPlane(
       VALUES (?, ?, 'draft', ?, ?, datetime('now'))
     `).run(
       proposalId,
-      `Remediate and Authorize Deploy to Production (${request.payload?.target_version || "v2.0.0"})`,
+      `Remediate and Authorize Deploy to Production (${request.payload?.target_version || 'v2.0.0'})`,
       JSON.stringify(remediationSteps),
       JSON.stringify(simulation)
     );
 
     // Record intervention in telemetry
-    recordIntervention(db, runId, "human:security-lead", {
-      kind: "authority",
+    recordIntervention(db, runId, 'human:security-lead', {
+      kind: 'authority',
       capabilityId,
       action,
       activeSeconds: 0,
@@ -315,17 +325,17 @@ export function executeThroughControlPlane(
     });
 
     addEvent(db, runId, {
-      kind: "intercept",
-      actor: "ambit:control_plane",
+      kind: 'intercept',
+      actor: 'ambit:control_plane',
       capabilityId,
-      action: "block",
+      action: 'block',
       detail: `AMBIT_BLOCKED_UNAUTHORIZED: ${blockedReason}`,
     });
 
-    endRun(db, runId, "blocked_unauthorized");
+    endRun(db, runId, 'blocked_unauthorized');
 
     spanEvents.push({
-      name: "AMBIT_BLOCKED_UNAUTHORIZED",
+      name: 'AMBIT_BLOCKED_UNAUTHORIZED',
       timestamp: new Date().toISOString(),
       attributes: {
         reason: blockedReason,
@@ -346,17 +356,17 @@ export function executeThroughControlPlane(
       start_time: startTime,
       end_time: new Date().toISOString(),
       attributes: {
-        "ambit.decision": "DENY",
-        "ambit.status_code": "AMBIT_BLOCKED_UNAUTHORIZED",
-        "ambit.capability_id": capabilityId,
-        "ambit.missing_authorization_node": missingAuthorizationNode,
-        "ambit.capability_path": JSON.stringify(capabilityPath),
-        "ambit.hmac_challenge": challengeHash,
-        "ambit.state_unchanged": stateUnchanged,
+        'ambit.decision': 'DENY',
+        'ambit.status_code': 'AMBIT_BLOCKED_UNAUTHORIZED',
+        'ambit.capability_id': capabilityId,
+        'ambit.missing_authorization_node': missingAuthorizationNode,
+        'ambit.capability_path': JSON.stringify(capabilityPath),
+        'ambit.hmac_challenge': challengeHash,
+        'ambit.state_unchanged': stateUnchanged,
       },
       events: spanEvents,
       status: {
-        code: "ERROR",
+        code: 'ERROR',
         description: `AMBIT_BLOCKED_UNAUTHORIZED: ${blockedReason}`,
       },
     };
@@ -365,7 +375,7 @@ export function executeThroughControlPlane(
 
     return {
       ok: false,
-      status_code: "AMBIT_BLOCKED_UNAUTHORIZED",
+      status_code: 'AMBIT_BLOCKED_UNAUTHORIZED',
       exit_code: 2, // Exit code indicating control plane block
       trace: span,
       intercept_reason: blockedReason,
@@ -374,7 +384,7 @@ export function executeThroughControlPlane(
         proposal_id: proposalId,
         challenge: challengeHash,
         missing_node: missingAuthorizationNode,
-        required_approver: "human:security-lead",
+        required_approver: 'human:security-lead',
         command_to_remediate: `ambit approve ${proposalId} human:security-lead`,
       },
       hmac_challenge: challengeHash,
@@ -388,28 +398,28 @@ export function executeThroughControlPlane(
   // 3. Execution (Authorized with valid HMAC artifact and verified prerequisites)
   recordUse(db, runId, capabilityId, { durationSeconds: 1.2 });
   addEvent(db, runId, {
-    kind: "execute",
+    kind: 'execute',
     actor: request.agent_id,
     capabilityId,
     action,
-    detail: "Execution permitted via valid human HMAC approval artifact",
+    detail: 'Execution permitted via valid human HMAC approval artifact',
   });
 
   // Perform Mock Production Transition Safely
   const updatedState: MockEnvironmentState = {
     ...preState,
-    production_version: request.payload?.target_version || "v2.0.0",
-    last_deployed_at: new Date().toISOString().slice(0, 19).replace("T", " "),
+    production_version: request.payload?.target_version || 'v2.0.0',
+    last_deployed_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     last_deployed_by: `agent:${request.agent_id} [authorized-by:human:security-lead]`,
-    active_containers: ["web-prod-v2-1", "web-prod-v2-2"],
+    active_containers: ['web-prod-v2-1', 'web-prod-v2-2'],
   };
   writeMockEnvironment(envDir, updatedState);
   const postState = readMockEnvironment(envDir);
 
-  endRun(db, runId, "completed", 50000);
+  endRun(db, runId, 'completed', 50000);
 
   spanEvents.push({
-    name: "execution_success",
+    name: 'execution_success',
     timestamp: new Date().toISOString(),
     attributes: {
       new_version: postState.production_version,
@@ -424,14 +434,14 @@ export function executeThroughControlPlane(
     start_time: startTime,
     end_time: new Date().toISOString(),
     attributes: {
-      "ambit.decision": "ALLOW",
-      "ambit.status_code": "AMBIT_EXECUTION_AUTHORIZED",
-      "ambit.capability_id": capabilityId,
-      "ambit.applied_version": postState.production_version,
+      'ambit.decision': 'ALLOW',
+      'ambit.status_code': 'AMBIT_EXECUTION_AUTHORIZED',
+      'ambit.capability_id': capabilityId,
+      'ambit.applied_version': postState.production_version,
     },
     events: spanEvents,
     status: {
-      code: "OK",
+      code: 'OK',
     },
   };
 
@@ -439,7 +449,7 @@ export function executeThroughControlPlane(
 
   return {
     ok: true,
-    status_code: "AMBIT_EXECUTION_AUTHORIZED",
+    status_code: 'AMBIT_EXECUTION_AUTHORIZED',
     exit_code: 0,
     trace: span,
     audit_summary: auditSummary,

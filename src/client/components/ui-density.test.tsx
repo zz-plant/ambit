@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from 'bun:test';
-import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Item } from '../utils/configImporter';
 import { useToolchainStore } from '../store/toolchainStore';
@@ -54,11 +53,11 @@ beforeAll(() => {
 beforeEach(() => {
   const serverState = useToolchainStore.getInitialState();
   serverState.items.splice(0, serverState.items.length, capability, dependency);
-  serverState.connections.splice(
-    0,
-    serverState.connections.length,
-    { from: capability.id, to: dependency.id, type: 'hard-dep' },
-  );
+  serverState.connections.splice(0, serverState.connections.length, {
+    from: capability.id,
+    to: dependency.id,
+    type: 'hard-dep',
+  });
   serverState.selectedItem = capability.id;
   serverState.showDetailPanel = true;
   serverState.searchQuery = '';

@@ -25,9 +25,15 @@
  * credential  what a provider authenticates with. Never the secret itself — the
  *             id of one, and which providers present it.
  */
-import { KINDS, EDGE_KINDS, NON_FRONTIER_KINDS, type Kind, type EdgeKind, type NodeKind } from '../shared/types.ts';
+import {
+  KINDS,
+  EDGE_KINDS,
+  NON_FRONTIER_KINDS,
+  type Kind,
+  type EdgeKind,
+  type NodeKind,
+} from '../shared/types.ts';
 export { KINDS, EDGE_KINDS, NON_FRONTIER_KINDS, type Kind, type EdgeKind, type NodeKind };
-
 
 /** Prefixes carry no meaning of their own now; this is the one place that reads them. */
 const PREFIX_KIND: Record<string, Kind> = {
@@ -96,7 +102,10 @@ const DESCRIPTION_KIND: Record<string, EdgeKind> = {
  * how much the edge matters, not what it means, and a provides edge and a
  * prerequisite edge are both hard.
  */
-export function edgeKindOf(description: string | null | undefined, isHard: number | boolean): EdgeKind {
+export function edgeKindOf(
+  description: string | null | undefined,
+  isHard: number | boolean
+): EdgeKind {
   return (description && DESCRIPTION_KIND[description]) || (isHard ? 'requires' : 'optional');
 }
 

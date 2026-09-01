@@ -1,37 +1,67 @@
-import { readFileSync, existsSync, rmSync, statSync, writeFileSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
-import { resolveDbPath } from "../shared/db-path.ts";
-import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from "./paths.ts";
-import { getDb, migrate } from "./db.ts";
-import { seedFromConfig } from "./discovery.ts";
-import { readClaudeCode, claudeCodeSeedInput } from "./claude-code.ts";
-import { discoverMcpClients } from "./mcp-clients.ts";
-import { shareSnapshot } from "./share.ts";
+import { readFileSync, existsSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { resolveDbPath } from '../shared/db-path.ts';
+import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from './paths.ts';
+import { getDb, migrate } from './db.ts';
+import { seedFromConfig } from './discovery.ts';
+import { readClaudeCode, claudeCodeSeedInput } from './claude-code.ts';
+import { discoverMcpClients } from './mcp-clients.ts';
+import { shareSnapshot } from './share.ts';
 import {
-  computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
-  analyzeImpact, nearMissCombos, singlePointsOfFailure, exportGraph,
-  affordanceDomains, surfaceFor, credentialReport,
-} from "./inference.ts";
-import { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport, canExecute } from "./assurance.ts";
-import { ledgerHistory, ledgerSince } from "./ledger.ts";
-import { recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
-import { goalFor, pathsFor } from "./goals.ts";
-import { humanDigest, notify, notifyPending } from "./attention.ts";
-import { workReport, usageReport } from "./telemetry.ts";
-import { economicsReport } from "./economics.ts";
-import { opportunitiesFor, opportunityFor } from "./opportunities.ts";
-import { roiFor, roiSummary } from "./roi.ts";
-import { exportSummary, importSummary } from "./federation.ts";
-import { portfolio } from "./portfolio.ts";
-import { incidents, resolveIncident } from "./incident.ts";
-import { catalogReport } from "./catalog.ts";
-import { auditFor } from "./audit.ts";
+  discoverCombos,
+  findBottlenecks,
+  analyzeImpact,
+  singlePointsOfFailure,
+  exportGraph,
+  affordanceDomains,
+  surfaceFor,
+  credentialReport,
+} from './inference.ts';
 import {
-  approveProposal, listProposals, showProposal, applyProposal, rollbackProposal,
-} from "./governance.ts";
+  runVerification,
+  evidenceFor,
+  authorityReport,
+  actionsReport,
+  scopeReport,
+  canExecute,
+} from './assurance.ts';
+import { ledgerHistory, ledgerSince } from './ledger.ts';
+import {
+  recordFailure,
+  deficits,
+  simulateFrontier,
+  propose,
+  preferencesReport,
+} from './planning.ts';
+import { goalFor, pathsFor } from './goals.ts';
+import { humanDigest, notify, notifyPending } from './attention.ts';
+import { workReport, usageReport } from './telemetry.ts';
+import { economicsReport } from './economics.ts';
+import { opportunitiesFor, opportunityFor } from './opportunities.ts';
+import { roiFor, roiSummary } from './roi.ts';
+import { exportSummary, importSummary } from './federation.ts';
+import { portfolio } from './portfolio.ts';
+import { incidents, resolveIncident } from './incident.ts';
+import { catalogReport } from './catalog.ts';
+import { auditFor } from './audit.ts';
+import {
+  approveProposal,
+  listProposals,
+  showProposal,
+  applyProposal,
+  rollbackProposal,
+} from './governance.ts';
 
-const C = { reset: "\x1b[0m", green: "\x1b[32m", yellow: "\x1b[33m", grey: "\x1b[90m", blue: "\x1b[36m", red: "\x1b[31m", bold: "\x1b[1m" };
+const C = {
+  reset: '\x1b[0m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  grey: '\x1b[90m',
+  blue: '\x1b[36m',
+  red: '\x1b[31m',
+  bold: '\x1b[1m',
+};
 
 /**
  * Prints a result for a person to read, or raw JSON with --json.
@@ -42,22 +72,27 @@ const C = { reset: "\x1b[0m", green: "\x1b[32m", yellow: "\x1b[33m", grey: "\x1b
  * rather than per-command so no command can drift back to raw output.
  */
 function emit(data: any): void {
-  if (process.argv.includes("--json")) {
+  if (process.argv.includes('--json')) {
     console.log(JSON.stringify(data, null, 2));
     return;
   }
 
-  const HEADLINE = ["name", "title", "capability_id", "domain", "id", "type"];
-  const label = (k: string) => k.replace(/_/g, " ");
+  const HEADLINE = ['name', 'title', 'capability_id', 'domain', 'id', 'type'];
+  const label = (k: string) => k.replace(/_/g, ' ');
   const scalar = (v: any) =>
-    Array.isArray(v) ? v.filter(x => typeof x !== "object").join(", ") : String(v);
-  const skip = (k: string, v: any) =>
-    v === null || v === undefined || v === "" ||
+    Array.isArray(v) ? v.filter(x => typeof x !== 'object').join(', ') : String(v);
+  const skip = (_k: string, v: any) =>
+    v === null ||
+    v === undefined ||
+    v === '' ||
     (Array.isArray(v) && v.length === 0) ||
-    (Array.isArray(v) && v.some(x => typeof x === "object"));
+    (Array.isArray(v) && v.some(x => typeof x === 'object'));
 
-  const renderOne = (row: any, indent = "  ") => {
-    if (typeof row !== "object" || row === null) { console.log(indent + String(row)); return; }
+  const renderOne = (row: any, indent = '  ') => {
+    if (typeof row !== 'object' || row === null) {
+      console.log(indent + String(row));
+      return;
+    }
     const headKey = HEADLINE.find(k => row[k] !== undefined);
     if (headKey) console.log(`${indent}${C.bold}${row[headKey]}${C.reset}`);
     // Arrays of scalars are values, not nesting. Skipping every object dropped
@@ -68,13 +103,13 @@ function emit(data: any): void {
     // objects is rendered as nesting by the loop below.
     for (const [k, v] of Object.entries(row)) {
       if (k === headKey || skip(k, v)) continue;
-      if (typeof v === "object" && !Array.isArray(v)) continue;
+      if (typeof v === 'object' && !Array.isArray(v)) continue;
       console.log(`${indent}  ${C.grey}${label(k)}:${C.reset} ${scalar(v)}`);
     }
     for (const [k, v] of Object.entries(row)) {
-      if (Array.isArray(v) && v.some(x => typeof x === "object")) {
+      if (Array.isArray(v) && v.some(x => typeof x === 'object')) {
         console.log(`${indent}  ${C.grey}${label(k)}:${C.reset}`);
-        for (const child of v.slice(0, 5)) renderOne(child, indent + "    ");
+        for (const child of v.slice(0, 5)) renderOne(child, indent + '    ');
       }
     }
   };
@@ -84,15 +119,20 @@ function emit(data: any): void {
       console.log(`${C.grey}Nothing to report.${C.reset}`);
       return;
     }
-    console.log("");
-    for (const row of data) { renderOne(row); console.log(""); }
-    console.log(`${C.grey}${data.length} result${data.length === 1 ? "" : "s"} · --json for machine output${C.reset}`);
+    console.log('');
+    for (const row of data) {
+      renderOne(row);
+      console.log('');
+    }
+    console.log(
+      `${C.grey}${data.length} result${data.length === 1 ? '' : 's'} · --json for machine output${C.reset}`
+    );
     return;
   }
 
-  console.log("");
+  console.log('');
   renderOne(data);
-  console.log("");
+  console.log('');
 }
 
 // ─── CLI ──────────────────────────────────────────────────────────────────────
@@ -160,7 +200,7 @@ const HELP = `ambit - what your system can do, what it costs, what to change
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
 function ago(ts: string | null | undefined): string | undefined {
   if (!ts) return undefined;
-  const ms = Date.now() - new Date(ts.includes("T") ? ts : ts.replace(" ", "T") + "Z").getTime();
+  const ms = Date.now() - new Date(ts.includes('T') ? ts : ts.replace(' ', 'T') + 'Z').getTime();
   if (!(ms >= 0)) return undefined;
   const mins = Math.round(ms / 60000);
   if (mins < 60) return `${mins}m ago`;
@@ -180,35 +220,46 @@ function ago(ts: string | null | undefined): string | undefined {
 function evidenceReport(db: any) {
   // Only kind='capability' carries a derived lifecycle — providers and
   // resources are the things supplying capabilities, not claims to verify.
-  const rows = db.prepare(
-    `SELECT lifecycle, COUNT(*) AS n FROM capabilities
+  const rows = db
+    .prepare(
+      `SELECT lifecycle, COUNT(*) AS n FROM capabilities
      WHERE kind = 'capability' AND state IN ('unlocked','active') GROUP BY lifecycle`
-  ).all();
+    )
+    .all();
   const count = (...ls: string[]) =>
     rows.filter((r: any) => ls.includes(r.lifecycle)).reduce((s: number, r: any) => s + r.n, 0);
 
   let checkable: string[] = [];
   try {
     const tree = loadTechTree();
-    const withCheck = (tree.nodes || []).filter((n: any) => n.verify?.command).map((n: any) => `combo:${n.id}`);
+    const withCheck = (tree.nodes || [])
+      .filter((n: any) => n.verify?.command)
+      .map((n: any) => `combo:${n.id}`);
     if (withCheck.length) {
-      const placeholders = withCheck.map(() => "?").join(",");
-      checkable = db.prepare(
-        `SELECT name FROM capabilities WHERE id IN (${placeholders})
+      const placeholders = withCheck.map(() => '?').join(',');
+      checkable = db
+        .prepare(
+          `SELECT name FROM capabilities WHERE id IN (${placeholders})
          AND state IN ('unlocked','active') AND lifecycle = 'configured' ORDER BY name`
-      ).all(...withCheck).map((r: any) => r.name);
+        )
+        .all(...withCheck)
+        .map((r: any) => r.name);
     }
-  } catch { /* no curated model, nothing checkable */ }
+  } catch {
+    /* no curated model, nothing checkable */
+  }
 
-  const last = db.prepare(
-    "SELECT MAX(timestamp) AS t FROM session_learning WHERE action IN ('verified','failed')"
-  ).get();
+  const last = db
+    .prepare(
+      "SELECT MAX(timestamp) AS t FROM session_learning WHERE action IN ('verified','failed')"
+    )
+    .get();
 
   return {
-    proven: count("verified", "reliable"),
-    unproven: count("configured"),
-    failing: count("degraded", "broken"),
-    last_check: ago(last?.t) || "never",
+    proven: count('verified', 'reliable'),
+    unproven: count('configured'),
+    failing: count('degraded', 'broken'),
+    last_check: ago(last?.t) || 'never',
     provable_now: checkable.slice(0, 8),
     note: checkable.length
       ? `configured is not working — ambit verify would turn ${checkable.length} of the unproven into evidence`
@@ -219,17 +270,31 @@ function evidenceReport(db: any) {
 // The report `status` composes. One surface for "how are we doing", so the
 // person does not have to learn six commands to answer one question.
 function statusReport(db: any) {
-  const g = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'").get();
-  const domains = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain").all();
-  const actions = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind = 'action'").get();
+  const g = db
+    .prepare(
+      "SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'"
+    )
+    .get();
+  const domains = db
+    .prepare(
+      "SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain"
+    )
+    .all();
+  const actions = db
+    .prepare(
+      "SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind = 'action'"
+    )
+    .get();
 
   // Degraded means configured but not working — the decision-relevant reading
   // of "decay". A lifecycle-failing capability is a repair, not an acquisition.
-  const degraded = db.prepare(
-    `SELECT id, name, domain FROM capabilities
+  const degraded = db
+    .prepare(
+      `SELECT id, name, domain FROM capabilities
      WHERE state IN ('unlocked','active') AND lifecycle IN ('degraded','broken')
      ORDER BY id`
-  ).all();
+    )
+    .all();
 
   const proposals = listProposals(db);
   const pending = Array.isArray(proposals)
@@ -257,31 +322,36 @@ function statusReport(db: any) {
 
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
-  const { concepts } = JSON.parse(readFileSync(join(ENGINE_DIR, "..", "shared", "concepts.json"), "utf8"));
+  const { concepts } = JSON.parse(
+    readFileSync(join(ENGINE_DIR, '..', 'shared', 'concepts.json'), 'utf8')
+  );
   const picked = wanted
     ? concepts.filter((c: any) => c.key.includes(wanted) || c.term.toLowerCase().includes(wanted))
     : concepts;
   if (picked.length === 0) {
     console.log(`${C.yellow}No concept matching "${wanted}".${C.reset}`);
-    console.log(`Try: ${concepts.map((c: any) => c.key).join(", ")}`);
+    console.log(`Try: ${concepts.map((c: any) => c.key).join(', ')}`);
     return;
   }
-  const wrap = (text: string, width = 76, indent = "  ") => {
+  const wrap = (text: string, width = 76, indent = '  ') => {
     const out: string[] = [];
-    let line = "";
-    for (const word of text.split(" ")) {
-      if ((line + word).length > width) { out.push(indent + line.trim()); line = ""; }
-      line += word + " ";
+    let line = '';
+    for (const word of text.split(' ')) {
+      if ((line + word).length > width) {
+        out.push(indent + line.trim());
+        line = '';
+      }
+      line += word + ' ';
     }
     if (line.trim()) out.push(indent + line.trim());
-    return out.join("\n");
+    return out.join('\n');
   };
-  console.log("");
+  console.log('');
   for (const c of picked) {
     console.log(`${C.bold}${c.term}${C.reset} ${C.grey}— ${c.short}${C.reset}`);
     console.log(wrap(c.long));
     console.log(`  ${C.grey}Where you see it: ${c.seen}${C.reset}`);
-    console.log("");
+    console.log('');
   }
   if (!wanted) console.log(`${C.grey}ambit help <term> for one of these on its own.${C.reset}\n`);
 }
@@ -297,10 +367,21 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   const say = quiet ? (_: string) => {} : console.log;
   const cfg = CONFIG_DEFAULT;
   const explicit = Boolean(process.env.OPENCODE_CONFIG || mappingOverride);
-  const sources: Array<{ runtime: string; label: string; path: string; mapping?: string; temporary?: boolean }> = [];
+  const sources: Array<{
+    runtime: string;
+    label: string;
+    path: string;
+    mapping?: string;
+    temporary?: boolean;
+  }> = [];
 
   if (existsSync(cfg)) {
-    sources.push({ runtime: process.env.AMBIT_RUNTIME || "opencode", label: "OpenCode", path: cfg, mapping: mappingOverride });
+    sources.push({
+      runtime: process.env.AMBIT_RUNTIME || 'opencode',
+      label: 'OpenCode',
+      path: cfg,
+      mapping: mappingOverride,
+    });
   }
   if (!explicit) {
     const fragment = readClaudeCode();
@@ -308,7 +389,13 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
       const { config, mapping } = claudeCodeSeedInput(fragment);
       const tmp = join(tmpdir(), `ambit-claude-code-seed-${process.pid}.json`);
       writeFileSync(tmp, JSON.stringify(config));
-      sources.push({ runtime: "claude-code", label: "Claude Code", path: tmp, mapping: JSON.stringify(mapping), temporary: true });
+      sources.push({
+        runtime: 'claude-code',
+        label: 'Claude Code',
+        path: tmp,
+        mapping: JSON.stringify(mapping),
+        temporary: true,
+      });
     }
   }
 
@@ -316,7 +403,13 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
     for (const client of discoverMcpClients()) {
       const tmp = join(tmpdir(), `ambit-${client.runtime}-seed-${process.pid}.json`);
       writeFileSync(tmp, JSON.stringify(client.config));
-      sources.push({ runtime: client.runtime, label: client.label, path: tmp, mapping: JSON.stringify(client.mapping), temporary: true });
+      sources.push({
+        runtime: client.runtime,
+        label: client.label,
+        path: tmp,
+        mapping: JSON.stringify(client.mapping),
+        temporary: true,
+      });
     }
   }
 
@@ -336,7 +429,7 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   if (previousRuntime === undefined) delete process.env.AMBIT_RUNTIME;
   else process.env.AMBIT_RUNTIME = previousRuntime;
 
-  const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities").get();
+  const c = db.prepare('SELECT COUNT(*) as cnt FROM capabilities').get();
   say(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities`);
   for (const source of sources) {
     say(`${C.grey}  Seeded from ${source.label}.${C.reset}`);
@@ -345,9 +438,13 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
     // Say so rather than reporting a curated-model-only graph as if it had
     // read the environment. Silence here reads as "your stack is empty".
     say(`${C.yellow}!${C.reset} No agent config at ${C.grey}${cfg}${C.reset}`);
-    say(`${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`);
+    say(
+      `${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`
+    );
     say(`${C.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${C.reset}`);
-    say(`${C.grey}  Another format: see "Other configurations" in the README (CONFIG_MAPPING).${C.reset}`);
+    say(
+      `${C.grey}  Another format: see "Other configurations" in the README (CONFIG_MAPPING).${C.reset}`
+    );
   }
 }
 
@@ -358,9 +455,9 @@ async function main() {
   // Flags are not arguments. Taking argv[3] blindly meant `tt verify --json`
   // looked for a capability named "--json", which every flag-taking command
   // silently inherited.
-  const positional = process.argv.slice(3).filter(a => !a.startsWith("--"));
+  const positional = process.argv.slice(3).filter(a => !a.startsWith('--'));
   const arg = positional[0];
-  const flags = new Set(process.argv.slice(3).filter(a => a.startsWith("--")));
+  const flags = new Set(process.argv.slice(3).filter(a => a.startsWith('--')));
   const mappingOverride = process.env.CONFIG_MAPPING;
 
   // An unseeded graph answered every question with "Nothing to report", which
@@ -373,8 +470,8 @@ async function main() {
   // capability has been discovered — so they are exempt, and report their own
   // emptiness rather than "no graph".
   const ledgerCommands = new Set(['work', 'usage', 'portfolio', 'incidents', 'incident']);
-  if (cmd && !ledgerCommands.has(cmd) && cmd !== "seed" && cmd !== "where" && cmd !== "help") {
-    const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get();
+  if (cmd && !ledgerCommands.has(cmd) && cmd !== 'seed' && cmd !== 'where' && cmd !== 'help') {
+    const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get();
     if (!seeded?.n) {
       // Seed rather than instruct. A fresh Homebrew install
       // install both land here, and "go run another command first" is the
@@ -382,62 +479,72 @@ async function main() {
       // map". Seeding only reads config files and writes the local graph, so
       // doing it unasked is safe; --json runs stay silent-but-seeded so
       // scripts get their answer instead of a lecture.
-      const json = process.argv.includes("--json");
+      const json = process.argv.includes('--json');
       if (!json) {
-        console.log(`${C.grey}First run — reading your agent config and building the graph…${C.reset}`);
+        console.log(
+          `${C.grey}First run — reading your agent config and building the graph…${C.reset}`
+        );
       }
       runSeed(db, mappingOverride, json);
-      if (!json) console.log("");
+      if (!json) console.log('');
     }
   }
-  if (!cmd || cmd === "help") {
-    if (cmd === "help" && arg && arg !== "--all") { explain(arg.toLowerCase()); db.close(); return; }
-    console.log(flags.has("--all") ? HELP : HELP_SHORT);
+  if (!cmd || cmd === 'help') {
+    if (cmd === 'help' && arg && arg !== '--all') {
+      explain(arg.toLowerCase());
+      db.close();
+      return;
+    }
+    console.log(flags.has('--all') ? HELP : HELP_SHORT);
     db.close();
     return;
   }
   switch (cmd) {
-    case "status":
+    case 'status':
       emit(statusReport(db));
       break;
-    case "graph": {
+    case 'graph': {
       // The graph is one thing with several views; none of them is a headline.
-      if (arg === "surface") console.log(JSON.stringify(surfaceFor(db), null, 2));
-      else if (arg === "combos") emit(discoverCombos(db));
-      else if (arg === "affordances") emit(affordanceDomains(db));
+      if (arg === 'surface') console.log(JSON.stringify(surfaceFor(db), null, 2));
+      else if (arg === 'combos') emit(discoverCombos(db));
+      else if (arg === 'affordances') emit(affordanceDomains(db));
       else console.log(JSON.stringify(exportGraph(db)));
       break;
     }
-    case "goal": {
+    case 'goal': {
       // One entry for the gap-to-capability question, with the folds as flags:
       // paths, simulation and preferences are views of the same decision.
-      if (flags.has("--prefs")) emit(preferencesReport(db, arg));
-      else if (flags.has("--paths")) emit(arg ? pathsFor(db, arg) : { error: 'Usage: ambit goal <capability> --paths' });
-      else if (flags.has("--simulate")) emit(arg ? simulateFrontier(db, [arg]) : { error: 'Usage: ambit goal <capability> --simulate' });
+      if (flags.has('--prefs')) emit(preferencesReport(db, arg));
+      else if (flags.has('--paths'))
+        emit(arg ? pathsFor(db, arg) : { error: 'Usage: ambit goal <capability> --paths' });
+      else if (flags.has('--simulate'))
+        emit(
+          arg ? simulateFrontier(db, [arg]) : { error: 'Usage: ambit goal <capability> --simulate' }
+        );
       else emit(goalFor(db, arg));
       break;
     }
-    case "attention":
-    case "digest":
+    case 'attention':
+    case 'digest':
       emit(humanDigest(db, arg));
       break;
-    case "notify":
+    case 'notify':
       // async: the push is an HTTP POST and must complete before close.
       emit(await notify(db, arg));
       break;
-    case "notify-approvals":
+    case 'notify-approvals':
       emit(await notifyPending(db, arg));
       break;
-    case "work":
-      emit(workReport(db, parseInt(arg) || 20));
+    case 'work':
+      emit(workReport(db, parseInt(arg, 10) || 20));
       break;
-    case "usage":
-      emit(usageReport(db, parseInt(arg) || 30));
+    case 'usage':
+      emit(usageReport(db, parseInt(arg, 10) || 30));
       break;
-    case "economics":
+    case 'economics':
       emit(economicsReport(db));
       break;
-    case "opportunities": {
+    case 'opportunities': {
       const byFlag = [...flags].find(f => f.startsWith('--by='));
       const by = (byFlag ? byFlag.slice(5) : undefined) as any;
       const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
@@ -445,113 +552,119 @@ async function main() {
       emit(opportunitiesFor(db, by, Number.isFinite(budget as any) ? budget : undefined));
       break;
     }
-    case "opportunity":
+    case 'opportunity':
       emit(opportunityFor(db, arg));
       break;
-    case "roi":
+    case 'roi':
       // No proposal id means the cumulative headline: what every applied
       // proposal saved, and whether the predictions held.
       emit(arg ? roiFor(db, arg) : roiSummary(db));
       break;
-    case "incidents":
+    case 'incidents':
       // async: probing the manifest is a set of HTTP checks.
       emit(await incidents(db));
       break;
-    case "incident": {
-      if (arg === "resolve") emit(resolveIncident(db, positional[1], positional[2]));
+    case 'incident': {
+      if (arg === 'resolve') emit(resolveIncident(db, positional[1], positional[2]));
       else emit({ error: 'Usage: ambit incident resolve <svc:key> <outcome>' });
       break;
     }
-    case "portfolio": {
+    case 'portfolio': {
       const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
       const budget = budgetFlag ? Number(budgetFlag.slice(9)) : undefined;
       emit(portfolio(db, Number.isFinite(budget as any) ? budget : undefined));
       break;
     }
-    case "catalog":
+    case 'catalog':
       emit(catalogReport(db, arg));
       break;
-    case "audit":
+    case 'audit':
       emit(auditFor(db, arg));
       break;
-    case "federation": {
+    case 'federation': {
       const verb = arg;
-      if (verb === "export") {
+      if (verb === 'export') {
         const summary = exportSummary(db);
         console.log(JSON.stringify(summary, null, 2));
         break;
       }
-      if (verb === "import") {
+      if (verb === 'import') {
         emit(importSummary(db, positional[1]));
         break;
       }
       emit({ error: 'Usage: ambit federation export [path] | ambit federation import <path>' });
       break;
     }
-    case "impact":
+    case 'impact':
       emit(analyzeImpact(db, arg));
       break;
-    case "verify":
-      if (flags.has("--history")) {
-        emit(arg ? evidenceFor(db, arg.includes(':') ? arg : `combo:${arg}`) : { error: "Usage: ambit verify <id> --history" });
+    case 'verify':
+      if (flags.has('--history')) {
+        emit(
+          arg
+            ? evidenceFor(db, arg.includes(':') ? arg : `combo:${arg}`)
+            : { error: 'Usage: ambit verify <id> --history' }
+        );
       } else {
         emit(runVerification(db, arg));
       }
       break;
-    case "authority": {
+    case 'authority': {
       // Grants, then per-capability actions, then scope coverage — one verb.
-      if (arg === "scope") emit(scopeReport(db, positional[1]));
+      if (arg === 'scope') emit(scopeReport(db, positional[1]));
       else if (arg) emit(actionsReport(db, arg));
       else emit(authorityReport(db));
       break;
     }
-    case "can": {
+    case 'can': {
       const target = [...flags].find(f => f.startsWith('--target='))?.slice(9);
       const spend = [...flags].find(f => f.startsWith('--spend='))?.slice(8);
       const actor = [...flags].find(f => f.startsWith('--actor='))?.slice(8);
-      emit(canExecute(db, {
-        actor,
-        capability: arg,
-        target,
-        spendCents: spend ? Number(spend) : undefined,
-      }));
+      emit(
+        canExecute(db, {
+          actor,
+          capability: arg,
+          target,
+          spendCents: spend ? Number(spend) : undefined,
+        })
+      );
       break;
     }
-    case "history":
-      if (arg === "since") emit(ledgerSince(db, positional[1]));
+    case 'history':
+      if (arg === 'since') emit(ledgerSince(db, positional[1]));
       else emit(ledgerHistory(db));
       break;
-    case "propose":
+    case 'propose':
       emit(propose(db, arg, Number(positional[1]) || undefined));
       break;
-    case "proposals":
+    case 'proposals':
       emit(listProposals(db));
       break;
-    case "proposal":
+    case 'proposal':
       emit(showProposal(db, arg));
       break;
-    case "approve":
+    case 'approve':
       emit(approveProposal(db, arg, positional[1]));
       break;
-    case "apply":
+    case 'apply':
       emit(applyProposal(db, arg));
       break;
-    case "credentials":
+    case 'credentials':
       emit(credentialReport(db));
       break;
-    case "rollback":
+    case 'rollback':
       emit(rollbackProposal(db, arg));
       break;
-    case "record":
+    case 'record':
       emit(recordFailure(db, arg, positional[1], positional[2]));
       break;
-    case "seed": {
-      runSeed(db, mappingOverride, process.argv.includes("--json"));
+    case 'seed': {
+      runSeed(db, mappingOverride, process.argv.includes('--json'));
       break;
     }
     // Where the graph lives is not obvious once the CLI is installed rather
     // than cloned, and every other component resolves the same path.
-    case "share": {
+    case 'share': {
       // Written locally, never posted: the file is the product, and where it
       // goes next is the person's decision made outside this tool.
       const out = [...flags].find(f => f.startsWith('--out='))?.slice(6) || 'ambit-map.html';
@@ -569,21 +682,22 @@ async function main() {
       });
       break;
     }
-    case "where": {
+    case 'where': {
       const path = resolveDbPath();
       // Not whether the file exists — opening it creates it, so that is always
       // true by the time this runs. Whether it holds a graph is the question.
-      const seeded = db.prepare("SELECT COUNT(*) AS n FROM capabilities").get()?.n ?? 0;
+      const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get()?.n ?? 0;
       emit({
         graph: path,
         capabilities: seeded,
-        seeded: seeded > 0 ? true : "no — run ambit seed",
+        seeded: seeded > 0 ? true : 'no — run ambit seed',
         bytes: existsSync(path) ? statSync(path).size : 0,
-        override: "AMBIT_DB (or TOOLCHAIN_DB)",
+        override: 'AMBIT_DB (or TOOLCHAIN_DB)',
       });
       break;
     }
-    default: console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
+    default:
+      console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
   }
   db.close();
 }

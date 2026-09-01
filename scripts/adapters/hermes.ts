@@ -141,7 +141,12 @@ const authority = authorityBlock({
 
 writeFileSync(
   configPath,
-  JSON.stringify({ mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider, authority })
+  JSON.stringify({
+    mcp: fragment.mcp,
+    agent: fragment.agent,
+    provider: fragment.provider,
+    authority,
+  })
 );
 
 const mapping = {
@@ -160,13 +165,22 @@ const mapping = {
 
 const engine = join(import.meta.dir, '..', '..', 'src', 'engine', 'engine.ts');
 const result = spawnSync('node', ['--experimental-sqlite', engine, 'seed'], {
-  env: { ...process.env, OPENCODE_CONFIG: configPath, CONFIG_MAPPING: JSON.stringify(mapping), AMBIT_RUNTIME: 'hermes' },
+  env: {
+    ...process.env,
+    OPENCODE_CONFIG: configPath,
+    CONFIG_MAPPING: JSON.stringify(mapping),
+    AMBIT_RUNTIME: 'hermes',
+  },
   stdio: 'inherit',
 });
 
 const o = fragment.observed as any;
-console.log(`\nHermes contributed: ${Object.keys(fragment.mcp).length} MCP servers · ${o.skillCount} skills · ${o.surfaces.length} surfaces`);
-console.log(`Authority as Hermes states it: approvals=${o.approvalMode}, cron=${o.cronApprovalMode}`);
+console.log(
+  `\nHermes contributed: ${Object.keys(fragment.mcp).length} MCP servers · ${o.skillCount} skills · ${o.surfaces.length} surfaces`
+);
+console.log(
+  `Authority as Hermes states it: approvals=${o.approvalMode}, cron=${o.cronApprovalMode}`
+);
 if (o.scheduledJobs === 0) {
   console.log('No scheduled jobs, so nothing here is persistent beyond a session.');
 }

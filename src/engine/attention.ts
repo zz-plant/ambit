@@ -1,4 +1,4 @@
-import type { Migratable } from "./migrate.ts";
+import type { Migratable } from './migrate.ts';
 
 /**
  * Where the human is in the graph — and how much of the work still runs
@@ -44,7 +44,15 @@ const HUMAN_ACTIONS: Record<string, string> = {
 /** Human agency worth keeping. Never reducible, however often it recurs. */
 const KEEPER_KINDS = new Set(['judgment', 'knowledge']);
 /** Middleware kinds: the human is the duct, and recurring use is a fixable gap. */
-const MIDDLEWARE_KINDS = new Set(['clerical', 'exception', 'physical', 'authority', 'approval', 'application', 'permission block']);
+const MIDDLEWARE_KINDS = new Set([
+  'clerical',
+  'exception',
+  'physical',
+  'authority',
+  'approval',
+  'application',
+  'permission block',
+]);
 
 const FIX_FOR: Record<string, string> = {
   approval: 'grant bounded authority for %s rather than approving each time',
@@ -98,7 +106,10 @@ function humanDigest(db: Migratable, days?: number | string) {
   }
 
   const nameOf = new Map(
-    db.prepare("SELECT id, name FROM capabilities").all().map((c: any) => [c.id, c.name])
+    db
+      .prepare('SELECT id, name FROM capabilities')
+      .all()
+      .map((c: any) => [c.id, c.name])
   );
 
   // Count per (capability, kind), summing the ledger's time columns.
@@ -134,17 +145,20 @@ function humanDigest(db: Migratable, days?: number | string) {
 
   const all = [...counts.values()].sort((a, b) => b.times - a.times);
   for (const c of all) {
-    if (c.capability_id && runsFor.has(c.capability_id)) c.runs_affected = runsFor.get(c.capability_id)!.size;
+    if (c.capability_id && runsFor.has(c.capability_id))
+      c.runs_affected = runsFor.get(c.capability_id)!.size;
   }
 
   // Reducible: a middleware kind that recurred — the same human act demanded
   // repeatedly. Judgment and knowledge are keepers no matter the count.
-  const reducible = all.filter(
-    i => i.times >= 2 && MIDDLEWARE_KINDS.has(i.kind) && !KEEPER_KINDS.has(i.kind)
-  ).map(i => ({
-    ...i,
-    suggested_fix: FIX_FOR[i.kind] ? FIX_FOR[i.kind].replace('%s', i.capability) : 'automate the recurring act',
-  }));
+  const reducible = all
+    .filter(i => i.times >= 2 && MIDDLEWARE_KINDS.has(i.kind) && !KEEPER_KINDS.has(i.kind))
+    .map(i => ({
+      ...i,
+      suggested_fix: FIX_FOR[i.kind]
+        ? FIX_FOR[i.kind].replace('%s', i.capability)
+        : 'automate the recurring act',
+    }));
 
   const keepers = all.filter(i => KEEPER_KINDS.has(i.kind));
 
@@ -182,9 +196,13 @@ function humanDigest(db: Migratable, days?: number | string) {
  */
 function digestMessage(db: Migratable, days?: number | string): string {
   const d = humanDigest(db, days) as any;
-  if (d.interventions === 0) return `Ambit: no human interventions in the last ${d.window_days} days.`;
+  if (d.interventions === 0)
+    return `Ambit: no human interventions in the last ${d.window_days} days.`;
 
-  const lines = [`Ambit · human interventions, last ${d.window_days} days`, `Total: ${d.interventions}`];
+  const lines = [
+    `Ambit · human interventions, last ${d.window_days} days`,
+    `Total: ${d.interventions}`,
+  ];
   for (const i of d.top || []) {
     lines.push(`  ${i.times}× ${i.kind}: ${i.capability}`);
   }
@@ -208,7 +226,11 @@ function digestMessage(db: Migratable, days?: number | string): string {
  *   NTFY_SERVER=... ambit notify  push to a self-hosted ntfy
  */
 async function notify(db: Migratable, topic?: string, days?: number | string): Promise<any> {
-  if (!topic) return { error: 'Usage: ambit notify <topic> — the ntfy topic to push to. Nothing is sent without one.' };
+  if (!topic)
+    return {
+      error:
+        'Usage: ambit notify <topic> — the ntfy topic to push to. Nothing is sent without one.',
+    };
   const server = process.env.NTFY_SERVER || 'https://ntfy.sh';
   const message = digestMessage(db, days);
   try {
@@ -218,7 +240,11 @@ async function notify(db: Migratable, topic?: string, days?: number | string): P
       headers: { 'Content-Type': 'text/plain', Title: 'Ambit · human interventions' },
     });
     if (!res.ok) return { error: `ntfy refused: ${res.status} ${res.statusText}` };
-    return { pushed: topic, bytes: message.length, note: 'Sent. Only the digest text above left the machine.' };
+    return {
+      pushed: topic,
+      bytes: message.length,
+      note: 'Sent. Only the digest text above left the machine.',
+    };
   } catch (e: any) {
     return { error: `Could not reach ${server}: ${e?.message || e}` };
   }
@@ -226,9 +252,11 @@ async function notify(db: Migratable, topic?: string, days?: number | string): P
 
 /** Approved proposals still awaiting apply — the "jobs waiting on you" set. */
 function pendingApprovals(db: Migratable) {
-  const rows = db.prepare(
-    "SELECT id, goal, approved_at FROM proposals WHERE status = 'approved' ORDER BY approved_at ASC"
-  ).all() as any[];
+  const rows = db
+    .prepare(
+      "SELECT id, goal, approved_at FROM proposals WHERE status = 'approved' ORDER BY approved_at ASC"
+    )
+    .all() as any[];
   return rows;
 }
 
@@ -236,7 +264,9 @@ function pendingApprovals(db: Migratable) {
 function pendingMessage(db: Migratable): string {
   const pending = pendingApprovals(db);
   if (pending.length === 0) return 'Ambit: no approved proposals waiting on you.';
-  const lines = [`Ambit · ${pending.length} approved proposal${pending.length === 1 ? '' : 's'} await apply`];
+  const lines = [
+    `Ambit · ${pending.length} approved proposal${pending.length === 1 ? '' : 's'} await apply`,
+  ];
   for (const p of pending.slice(0, 5)) {
     lines.push(`  ${p.id}: ${p.goal}${p.approved_at ? ` (approved ${p.approved_at})` : ''}`);
   }
@@ -252,7 +282,8 @@ function pendingMessage(db: Migratable): string {
  *   NTFY_SERVER=... overrides ntfy.sh for self-hosted instances.
  */
 async function notifyPending(db: Migratable, topic?: string): Promise<any> {
-  if (!topic) return { error: 'Usage: ambit notify-approvals <topic> — nothing is sent without a topic.' };
+  if (!topic)
+    return { error: 'Usage: ambit notify-approvals <topic> — nothing is sent without a topic.' };
   const server = process.env.NTFY_SERVER || 'https://ntfy.sh';
   const message = pendingMessage(db);
   try {
@@ -262,7 +293,11 @@ async function notifyPending(db: Migratable, topic?: string): Promise<any> {
       headers: { 'Content-Type': 'text/plain', Title: 'Ambit · approvals awaiting apply' },
     });
     if (!res.ok) return { error: `ntfy refused: ${res.status} ${res.statusText}` };
-    return { pushed: topic, bytes: message.length, note: 'Sent. Only the message text above left the machine.' };
+    return {
+      pushed: topic,
+      bytes: message.length,
+      note: 'Sent. Only the message text above left the machine.',
+    };
   } catch (e: any) {
     return { error: `Could not reach ${server}: ${e?.message || e}` };
   }

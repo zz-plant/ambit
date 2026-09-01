@@ -5,39 +5,39 @@
  * Usage: bun run scripts/generate-scenes.ts [--dry-run]
  */
 
-import { writeFileSync, mkdirSync, statSync, copyFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
-import { execSync } from "node:child_process";
+import { writeFileSync, mkdirSync, statSync, copyFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 
-const ASSETS_DIR = join(process.cwd(), "docs", "assets");
-const PROJECT = "ambit";
+const ASSETS_DIR = join(process.cwd(), 'docs', 'assets');
+const PROJECT = 'ambit';
 
 type SceneSpec = {
   width: number;
   height: number;
   minBytes: number;
-  type: "banner" | "header" | "square" | "card" | "badge" | "favicon" | "blur" | "email";
+  type: 'banner' | 'header' | 'square' | 'card' | 'badge' | 'favicon' | 'blur' | 'email';
 };
 
 const SCENES: Record<string, SceneSpec> = {
-  badge:    { width: 240,  height: 96,   minBytes: 2_000,  type: "badge" },
-  blur:     { width: 50,   height: 28,   minBytes: 300,    type: "blur" },
-  card:     { width: 400,  height: 300,  minBytes: 8_000,  type: "card" },
-  circle:   { width: 540,  height: 540,  minBytes: 8_000,  type: "square" },
-  dark:     { width: 960,  height: 540,  minBytes: 10_000, type: "banner" },
-  demo:     { width: 720,  height: 405,  minBytes: 12_000, type: "banner" },
-  email:    { width: 600,  height: 200,  minBytes: 5_000,  type: "email" },
-  favicon:  { width: 64,   height: 64,   minBytes: 600,    type: "favicon" },
-  github:   { width: 1280, height: 640,  minBytes: 15_000, type: "banner" },
-  header:   { width: 1920, height: 400,  minBytes: 12_000, type: "header" },
-  mastodon: { width: 1200, height: 600,  minBytes: 15_000, type: "banner" },
-  og:       { width: 1200, height: 675,  minBytes: 15_000, type: "banner" },
-  square:   { width: 1080, height: 1080, minBytes: 15_000, type: "square" },
-  touch:    { width: 360,  height: 360,  minBytes: 8_000,  type: "square" },
-  unfurl:   { width: 1200, height: 628,  minBytes: 15_000, type: "banner" },
+  badge: { width: 240, height: 96, minBytes: 2_000, type: 'badge' },
+  blur: { width: 50, height: 28, minBytes: 300, type: 'blur' },
+  card: { width: 400, height: 300, minBytes: 8_000, type: 'card' },
+  circle: { width: 540, height: 540, minBytes: 8_000, type: 'square' },
+  dark: { width: 960, height: 540, minBytes: 10_000, type: 'banner' },
+  demo: { width: 720, height: 405, minBytes: 12_000, type: 'banner' },
+  email: { width: 600, height: 200, minBytes: 5_000, type: 'email' },
+  favicon: { width: 64, height: 64, minBytes: 600, type: 'favicon' },
+  github: { width: 1280, height: 640, minBytes: 15_000, type: 'banner' },
+  header: { width: 1920, height: 400, minBytes: 12_000, type: 'header' },
+  mastodon: { width: 1200, height: 600, minBytes: 15_000, type: 'banner' },
+  og: { width: 1200, height: 675, minBytes: 15_000, type: 'banner' },
+  square: { width: 1080, height: 1080, minBytes: 15_000, type: 'square' },
+  touch: { width: 360, height: 360, minBytes: 8_000, type: 'square' },
+  unfurl: { width: 1200, height: 628, minBytes: 15_000, type: 'banner' },
 };
 
-function renderSvgForScene(scene: string, spec: SceneSpec): string {
+function renderSvgForScene(_scene: string, spec: SceneSpec): string {
   const { width: w, height: h, type } = spec;
 
   // Shared gradients and filters
@@ -84,7 +84,7 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
     </defs>
   `;
 
-  if (type === "favicon") {
+  if (type === 'favicon') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 64 64">
       ${defs}
       <rect width="64" height="64" rx="14" fill="#090d16" />
@@ -106,7 +106,7 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
     </svg>`;
   }
 
-  if (type === "blur") {
+  if (type === 'blur') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 50 28">
       ${defs}
       <rect width="50" height="28" fill="#090d16" />
@@ -116,7 +116,7 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
     </svg>`;
   }
 
-  if (type === "badge") {
+  if (type === 'badge') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 240 96">
       ${defs}
       <rect width="240" height="96" rx="10" fill="#090d16" />
@@ -131,7 +131,7 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
     </svg>`;
   }
 
-  if (type === "email") {
+  if (type === 'email') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 600 200">
       ${defs}
       <rect width="600" height="200" rx="12" fill="#090d16" />
@@ -151,7 +151,7 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
     </svg>`;
   }
 
-  if (type === "header") {
+  if (type === 'header') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 1920 400">
       ${defs}
       <rect width="1920" height="400" fill="#090d16" />
@@ -202,7 +202,7 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
     </svg>`;
   }
 
-  if (type === "square") {
+  if (type === 'square') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 1000 1000">
       ${defs}
       <rect width="1000" height="1000" fill="#090d16" />
@@ -236,7 +236,7 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
     </svg>`;
   }
 
-  if (type === "card") {
+  if (type === 'card') {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 400 300">
       ${defs}
       <rect width="400" height="300" rx="16" fill="#090d16" />
@@ -344,10 +344,12 @@ function renderSvgForScene(scene: string, spec: SceneSpec): string {
 }
 
 function main() {
-  const dryRun = process.argv.includes("--dry-run");
+  const dryRun = process.argv.includes('--dry-run');
   mkdirSync(ASSETS_DIR, { recursive: true });
 
-  let ok = 0, warn = 0, err = 0;
+  let ok = 0,
+    warn = 0,
+    err = 0;
 
   for (const [scene, spec] of Object.entries(SCENES)) {
     const outPath = join(ASSETS_DIR, `${PROJECT}-${scene}.png`);
@@ -365,7 +367,7 @@ function main() {
 
       // 2. Render via rsvg-convert
       execSync(`rsvg-convert -w ${spec.width} -h ${spec.height} -o "${outPath}" "${tempSvgPath}"`, {
-        stdio: "pipe",
+        stdio: 'pipe',
         timeout: 15000,
       });
 
@@ -381,7 +383,9 @@ function main() {
       console.error(`  ❌ ${scene}: ${e.stderr || e.message}`);
       err++;
     } finally {
-      try { execSync(`rm -f "${tempSvgPath}"`); } catch {}
+      try {
+        execSync(`rm -f "${tempSvgPath}"`);
+      } catch {}
     }
   }
 
@@ -389,16 +393,19 @@ function main() {
   const mainPreview = join(ASSETS_DIR, `${PROJECT}-github.png`);
   if (existsSync(mainPreview)) {
     copyFileSync(mainPreview, join(ASSETS_DIR, `${PROJECT}-social-preview.png`));
-    copyFileSync(mainPreview, join(ASSETS_DIR, "social-preview.png"));
-    if (existsSync(join(process.cwd(), "src", "client", "public"))) {
-      copyFileSync(mainPreview, join(process.cwd(), "src", "client", "public", "social-preview.png"));
+    copyFileSync(mainPreview, join(ASSETS_DIR, 'social-preview.png'));
+    if (existsSync(join(process.cwd(), 'src', 'client', 'public'))) {
+      copyFileSync(
+        mainPreview,
+        join(process.cwd(), 'src', 'client', 'public', 'social-preview.png')
+      );
     }
-    if (existsSync(join(process.cwd(), "dist"))) {
-      copyFileSync(mainPreview, join(process.cwd(), "dist", "social-preview.png"));
+    if (existsSync(join(process.cwd(), 'dist'))) {
+      copyFileSync(mainPreview, join(process.cwd(), 'dist', 'social-preview.png'));
     }
   }
 
-  console.log(`\n${dryRun ? "DRY RUN " : ""}✅ ${ok}  ⚠️ ${warn}  ❌ ${err}`);
+  console.log(`\n${dryRun ? 'DRY RUN ' : ''}✅ ${ok}  ⚠️ ${warn}  ❌ ${err}`);
   if (err > 0) process.exit(1);
 }
 

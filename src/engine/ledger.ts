@@ -1,6 +1,6 @@
-import type { Db } from "./db.ts";
-import { usable, FAILING_LIFECYCLES } from "./assurance.ts";
-import { NON_FRONTIER_KINDS } from "./ontology.ts";
+import type { Db } from './db.ts';
+import { usable } from './assurance.ts';
+import { NON_FRONTIER_KINDS } from './ontology.ts';
 
 // ─── Ledger ───────────────────────────────────────────────────────────────────
 
@@ -30,24 +30,34 @@ const inFrontier = (kind: string | undefined) => !NON_FRONTIER_KINDS.includes(ki
  * without moving the first, and that is exactly a change worth observing.
  */
 function recordFrontier(db: Db): 'recorded' | 'unchanged' {
-  const rows = db.prepare("SELECT id, state, kind, lifecycle FROM capabilities ORDER BY id").all();
+  const rows = db.prepare('SELECT id, state, kind, lifecycle FROM capabilities ORDER BY id').all();
   const states: Record<string, string> = {};
   const kinds: Record<string, string> = {};
   const lifecycles: Record<string, string> = {};
-  for (const r of rows) { states[r.id] = r.state; kinds[r.id] = r.kind; lifecycles[r.id] = r.lifecycle || 'unknown'; }
+  for (const r of rows) {
+    states[r.id] = r.state;
+    kinds[r.id] = r.kind;
+    lifecycles[r.id] = r.lifecycle || 'unknown';
+  }
   const serialised = JSON.stringify(states);
   const lifecycleSerialised = JSON.stringify(lifecycles);
 
   const last = db
-    .prepare("SELECT states, lifecycles FROM frontier_snapshots ORDER BY taken_at DESC, id DESC LIMIT 1")
+    .prepare(
+      'SELECT states, lifecycles FROM frontier_snapshots ORDER BY taken_at DESC, id DESC LIMIT 1'
+    )
     .get();
-  if (last && last.states === serialised && last.lifecycles === lifecycleSerialised) return 'unchanged';
+  if (last && last.states === serialised && last.lifecycles === lifecycleSerialised)
+    return 'unchanged';
 
   const counted = rows.filter(r => inFrontier(r.kind));
   const reached = counted.filter(r => r.state !== 'locked').length;
-  const demonstrated = counted.filter(r => r.lifecycle === 'verified' || r.lifecycle === 'reliable').length;
-  db.prepare("INSERT INTO frontier_snapshots (reached, total, verified, states, kinds, lifecycles) VALUES (?, ?, ?, ?, ?, ?)")
-    .run(reached, rows.length, demonstrated, serialised, JSON.stringify(kinds), lifecycleSerialised);
+  const demonstrated = counted.filter(
+    r => r.lifecycle === 'verified' || r.lifecycle === 'reliable'
+  ).length;
+  db.prepare(
+    'INSERT INTO frontier_snapshots (reached, total, verified, states, kinds, lifecycles) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(reached, rows.length, demonstrated, serialised, JSON.stringify(kinds), lifecycleSerialised);
   return 'recorded';
 }
 
@@ -55,11 +65,29 @@ function recordFrontier(db: Db): 'recorded' | 'unchanged' {
 function frontierAt(
   db: Db,
   when?: string
-): { taken_at: string; states: Record<string, string>; kinds: Record<string, string> | null; lifecycles: Record<string, string> | null; verified: number } | null {
+): {
+  taken_at: string;
+  states: Record<string, string>;
+  kinds: Record<string, string> | null;
+  lifecycles: Record<string, string> | null;
+  verified: number;
+} | null {
   const row = when
-    ? db.prepare("SELECT taken_at, states, kinds, lifecycles, verified FROM frontier_snapshots WHERE taken_at <= ? ORDER BY taken_at DESC LIMIT 1").get(when)
-      || db.prepare("SELECT taken_at, states, kinds, lifecycles, verified FROM frontier_snapshots ORDER BY taken_at ASC LIMIT 1").get()
-    : db.prepare("SELECT taken_at, states, kinds, lifecycles, verified FROM frontier_snapshots ORDER BY taken_at ASC LIMIT 1").get();
+    ? db
+        .prepare(
+          'SELECT taken_at, states, kinds, lifecycles, verified FROM frontier_snapshots WHERE taken_at <= ? ORDER BY taken_at DESC LIMIT 1'
+        )
+        .get(when) ||
+      db
+        .prepare(
+          'SELECT taken_at, states, kinds, lifecycles, verified FROM frontier_snapshots ORDER BY taken_at ASC LIMIT 1'
+        )
+        .get()
+    : db
+        .prepare(
+          'SELECT taken_at, states, kinds, lifecycles, verified FROM frontier_snapshots ORDER BY taken_at ASC LIMIT 1'
+        )
+        .get();
   if (!row) return null;
   return {
     taken_at: row.taken_at,
@@ -81,9 +109,11 @@ function frontierAt(
  */
 function ledgerSince(db: Db, when?: string) {
   const past = frontierAt(db, when);
-  if (!past) return { error: "No frontier recorded yet. Run seed at least twice." };
+  if (!past) return { error: 'No frontier recorded yet. Run seed at least twice.' };
 
-  const now = db.prepare("SELECT id, name, state, kind, category, lifecycle FROM capabilities ORDER BY id").all();
+  const now = db
+    .prepare('SELECT id, name, state, kind, category, lifecycle FROM capabilities ORDER BY id')
+    .all();
   const nameOf = new Map(now.map(c => [c.id, c.name]));
   const wasLocked = (id: string) => past.states[id] === 'locked';
   const isReached = (c: any) => c.state !== 'locked';
@@ -137,7 +167,10 @@ function ledgerSince(db: Db, when?: string) {
   }
 
   const lost = now
-    .filter(c => inFrontier(c.kind) && !isReached(c) && past.states[c.id] && past.states[c.id] !== 'locked')
+    .filter(
+      c =>
+        inFrontier(c.kind) && !isReached(c) && past.states[c.id] && past.states[c.id] !== 'locked'
+    )
     .map(c => ({ id: c.id, name: c.name }));
 
   // Still reached, but no longer usable: a declared check started failing.
@@ -150,22 +183,29 @@ function ledgerSince(db: Db, when?: string) {
           const then = past.lifecycles![c.id];
           return then && usable(then) && c.state !== 'locked' && !usable(c.lifecycle);
         })
-        .map(c => ({ id: c.id, name: c.name, lifecycle: c.lifecycle, reason: 'verification failing' }))
+        .map(c => ({
+          id: c.id,
+          name: c.name,
+          lifecycle: c.lifecycle,
+          reason: 'verification failing',
+        }))
     : [];
 
   // Both sides exclude the same kinds. A snapshot taken before credentials
   // existed has none to exclude and `kinds` may be null altogether, so an old
   // observation counts exactly as it always did — which is what keeps
   // `frontier_then` and `frontier_now` the same measurement.
-  const pastReached = Object.entries(past.states)
-    .filter(([id, v]) => v !== 'locked' && inFrontier(past.kinds?.[id]))
-    .length;
+  const pastReached = Object.entries(past.states).filter(
+    ([id, v]) => v !== 'locked' && inFrontier(past.kinds?.[id])
+  ).length;
   // Counted on the same basis as `frontier_then`, so the two numbers mean the
   // same thing. Vocabulary additions are described and not counted; the total
   // including them is reported separately rather than folded in silently.
   const vocabularyIds = new Set(vocabulary.map(v => v.id));
   const reachedNow = now.filter(c => inFrontier(c.kind) && isReached(c));
-  const verifiedNow = now.filter(c => inFrontier(c.kind) && (c.lifecycle === 'verified' || c.lifecycle === 'reliable')).length;
+  const verifiedNow = now.filter(
+    c => inFrontier(c.kind) && (c.lifecycle === 'verified' || c.lifecycle === 'reliable')
+  ).length;
   return {
     since: past.taken_at,
     frontier_then: pastReached,
@@ -182,10 +222,10 @@ function ledgerSince(db: Db, when?: string) {
     diminished: diminished.length ? diminished : undefined,
     nodes_now: reachedNow.length,
     note: emergent.length
-      ? "emergent: became reachable although nothing providing them was added — composition, not acquisition"
+      ? 'emergent: became reachable although nothing providing them was added — composition, not acquisition'
       : undefined,
     vocabulary_note: vocabulary.length
-      ? "vocabulary: Ambit started modelling these; the system did not change. Excluded from frontier_now so it stays comparable with frontier_then."
+      ? 'vocabulary: Ambit started modelling these; the system did not change. Excluded from frontier_now so it stays comparable with frontier_then.'
       : undefined,
   };
 }
@@ -193,7 +233,9 @@ function ledgerSince(db: Db, when?: string) {
 /** Every recorded observation, oldest first. */
 function ledgerHistory(db: Db) {
   return db
-    .prepare("SELECT taken_at, reached, total, verified FROM frontier_snapshots ORDER BY taken_at ASC, id ASC")
+    .prepare(
+      'SELECT taken_at, reached, total, verified FROM frontier_snapshots ORDER BY taken_at ASC, id ASC'
+    )
     .all()
     .map((r: any) => ({
       taken_at: r.taken_at,

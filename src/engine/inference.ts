@@ -1,15 +1,19 @@
-import type { Db } from "./db.ts";
-import { PROVISION_EDGES } from "./ontology.ts";
-import { usable } from "./assurance.ts";
-import { readFileSync } from "fs";
-import { join } from "path";
-import { ENGINE_DIR, loadTechTree } from "./paths.ts";
+import type { Db } from './db.ts';
+import { PROVISION_EDGES } from './ontology.ts';
+import { usable } from './assurance.ts';
+import { loadTechTree } from './paths.ts';
 
 // ─── Near-Miss Combos (1-2 prerequisites away) ───────────────────────────────
 
 function nearMissCombos(db) {
-  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
-  const caps = db.prepare("SELECT id, name, maturity_score, state, lifecycle FROM capabilities").all();
+  const deps = db
+    .prepare(
+      "SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'"
+    )
+    .all();
+  const caps = db
+    .prepare('SELECT id, name, maturity_score, state, lifecycle FROM capabilities')
+    .all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const groups = new Map();
   for (const d of deps) {
@@ -21,27 +25,46 @@ function nearMissCombos(db) {
     const combo = capMap.get(comboId);
     if (!combo || combo.state === 'unlocked' || combo.state === 'active') continue;
     const hard = prereqs.filter(p => p.is_hard_requisite);
-    const metHard = hard.filter(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle); });
-    const missingHard = hard.filter(p => { const c = capMap.get(p.from_capability); return !c || !((c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle)); });
+    const metHard = hard.filter(p => {
+      const c = capMap.get(p.from_capability);
+      return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle);
+    });
+    const missingHard = hard.filter(p => {
+      const c = capMap.get(p.from_capability);
+      return !c || !((c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle));
+    });
     // A missing prerequisite that is broken rather than absent: the capability
     // is configured, but its check fails. That is a re-verify, not an add.
-    const degradedHard = missingHard.filter(p => capMap.get(p.from_capability)?.state !== 'locked' && !usable(capMap.get(p.from_capability)?.lifecycle));
+    const degradedHard = missingHard.filter(
+      p =>
+        capMap.get(p.from_capability)?.state !== 'locked' &&
+        !usable(capMap.get(p.from_capability)?.lifecycle)
+    );
     if (missingHard.length === 0) continue;
     if (missingHard.length > 2) continue;
-    const avgMetMaturity = metHard.length > 0 ? metHard.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / metHard.length : 0;
+    const avgMetMaturity =
+      metHard.length > 0
+        ? metHard.reduce((s, p) => {
+            const c = capMap.get(p.from_capability);
+            return s + (c ? c.maturity_score : 0);
+          }, 0) / metHard.length
+        : 0;
     if (avgMetMaturity < 0.6) continue;
     results.push({
       name: combo.name,
       id: comboId,
       missing: missingHard.length,
       missing_names: missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability),
-      degraded: degradedHard.length ? degradedHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability) : undefined,
+      degraded: degradedHard.length
+        ? degradedHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability)
+        : undefined,
       met_count: metHard.length,
       total_required: hard.length,
       met_maturity: Math.round(avgMetMaturity * 100),
-      investment: degradedHard.length === missingHard.length
-        ? `Re-verify ${degradedHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`
-        : `Add ${missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`,
+      investment:
+        degradedHard.length === missingHard.length
+          ? `Re-verify ${degradedHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`
+          : `Add ${missingHard.map(p => capMap.get(p.from_capability)?.name || p.from_capability).join(', ')}`,
       note: degradedHard.length
         ? 'the missing prerequisite is configured but failing verification — re-verify, do not re-add'
         : undefined,
@@ -51,14 +74,26 @@ function nearMissCombos(db) {
 }
 
 function computeDecay(db) {
-  const caps = db.prepare("SELECT id, name, domain, maturity_score, updated_at FROM capabilities WHERE state IN ('unlocked','active')").all();
+  const caps = db
+    .prepare(
+      "SELECT id, name, domain, maturity_score, updated_at FROM capabilities WHERE state IN ('unlocked','active')"
+    )
+    .all();
   const results = [];
   for (const cap of caps) {
     if (!cap.updated_at) continue;
-    const daysSince = (Date.now() - new Date(cap.updated_at + 'Z').getTime()) / (1000 * 60 * 60 * 24);
+    const daysSince =
+      (Date.now() - new Date(cap.updated_at + 'Z').getTime()) / (1000 * 60 * 60 * 24);
     const decayAmount = Math.min(0.3, daysSince * 0.01);
     const newMaturity = Math.max(0.1, cap.maturity_score - decayAmount);
-    results.push({ capability_id: cap.id, name: cap.name, domain: cap.domain, decayed: newMaturity < cap.maturity_score - 0.05, days_since_config_change: Math.round(daysSince), new_maturity: Math.round(newMaturity * 100) / 100 });
+    results.push({
+      capability_id: cap.id,
+      name: cap.name,
+      domain: cap.domain,
+      decayed: newMaturity < cap.maturity_score - 0.05,
+      days_since_config_change: Math.round(daysSince),
+      new_maturity: Math.round(newMaturity * 100) / 100,
+    });
   }
   results.sort((a, b) => b.days_since_config_change - a.days_since_config_change);
   return results;
@@ -67,8 +102,14 @@ function computeDecay(db) {
 // ─── Combo Discovery ──────────────────────────────────────────────────────────
 
 function discoverCombos(db) {
-  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'").all();
-  const caps = db.prepare("SELECT id, name, maturity_score, state, lifecycle FROM capabilities").all();
+  const deps = db
+    .prepare(
+      "SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'"
+    )
+    .all();
+  const caps = db
+    .prepare('SELECT id, name, maturity_score, state, lifecycle FROM capabilities')
+    .all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const results = [];
   const groups = new Map();
@@ -80,10 +121,26 @@ function discoverCombos(db) {
     const combo = capMap.get(comboId);
     if (!combo || combo.state === 'unlocked' || combo.state === 'active') continue;
     const hard = prereqs.filter(p => p.is_hard_requisite);
-    if (!hard.every(p => { const c = capMap.get(p.from_capability); return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle); })) continue;
-    const avg = prereqs.reduce((s, p) => { const c = capMap.get(p.from_capability); return s + (c ? c.maturity_score : 0); }, 0) / prereqs.length;
+    if (
+      !hard.every(p => {
+        const c = capMap.get(p.from_capability);
+        return c && (c.state === 'unlocked' || c.state === 'active') && usable(c.lifecycle);
+      })
+    )
+      continue;
+    const avg =
+      prereqs.reduce((s, p) => {
+        const c = capMap.get(p.from_capability);
+        return s + (c ? c.maturity_score : 0);
+      }, 0) / prereqs.length;
     if (avg < 0.4) continue;
-    results.push({ name: combo.name, requirements: prereqs.map(p => capMap.get(p.from_capability)?.name || p.from_capability), unlocks: comboId, confidence: Math.min(1, avg + 0.2), reason: `All prereqs at ${Math.round(avg * 100)}% avg maturity` });
+    results.push({
+      name: combo.name,
+      requirements: prereqs.map(p => capMap.get(p.from_capability)?.name || p.from_capability),
+      unlocks: comboId,
+      confidence: Math.min(1, avg + 0.2),
+      reason: `All prereqs at ${Math.round(avg * 100)}% avg maturity`,
+    });
   }
   results.sort((a, b) => b.confidence - a.confidence);
   return results;
@@ -92,20 +149,42 @@ function discoverCombos(db) {
 // ─── Session Diff ─────────────────────────────────────────────────────────────
 
 function sessionDiff(db) {
-  const caps = db.prepare("SELECT id, name, domain, maturity_score, state FROM capabilities WHERE state IN ('unlocked','active')").all();
-  const recent = db.prepare("SELECT capability_id, action, outcome_score FROM session_learning ORDER BY timestamp DESC LIMIT 50").all();
+  const caps = db
+    .prepare(
+      "SELECT id, name, domain, maturity_score, state FROM capabilities WHERE state IN ('unlocked','active')"
+    )
+    .all();
+  const recent = db
+    .prepare(
+      'SELECT capability_id, action, outcome_score FROM session_learning ORDER BY timestamp DESC LIMIT 50'
+    )
+    .all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const domains = new Map();
   for (const c of caps) {
     if (!domains.has(c.domain)) domains.set(c.domain, { total: 0, unlocked: 0, changed_caps: [] });
-    const d = domains.get(c.domain); d.total++; if (c.state === 'unlocked' || c.state === 'active') d.unlocked++;
+    const d = domains.get(c.domain);
+    d.total++;
+    if (c.state === 'unlocked' || c.state === 'active') d.unlocked++;
   }
   const seen = new Set();
   for (const e of recent) {
-    if (seen.has(e.capability_id)) continue; seen.add(e.capability_id);
-    const cap = capMap.get(e.capability_id); if (!cap) continue;
-    const domain = domains.get(cap.domain); if (!domain) continue;
-    domain.changed_caps.push({ name: cap.name, change: e.outcome_score && e.outcome_score > 0.7 ? 'improved' : e.action === 'regretted' ? 'regretted' : 'practiced', detail: `${Math.round(cap.maturity_score * 100)}% maturity` });
+    if (seen.has(e.capability_id)) continue;
+    seen.add(e.capability_id);
+    const cap = capMap.get(e.capability_id);
+    if (!cap) continue;
+    const domain = domains.get(cap.domain);
+    if (!domain) continue;
+    domain.changed_caps.push({
+      name: cap.name,
+      change:
+        e.outcome_score && e.outcome_score > 0.7
+          ? 'improved'
+          : e.action === 'regretted'
+            ? 'regretted'
+            : 'practiced',
+      detail: `${Math.round(cap.maturity_score * 100)}% maturity`,
+    });
   }
   return Array.from(domains.entries()).map(([d, v]) => ({ domain: d, ...v }));
 }
@@ -113,13 +192,46 @@ function sessionDiff(db) {
 // ─── Domain Health ────────────────────────────────────────────────────────────
 
 function domainHealth(db) {
-  const caps = db.prepare("SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as active, AVG(maturity_score) as avg_maturity FROM capabilities GROUP BY domain").all();
+  const caps = db
+    .prepare(
+      "SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as active, AVG(maturity_score) as avg_maturity FROM capabilities GROUP BY domain"
+    )
+    .all();
   const results = [];
   for (const cap of caps) {
-    const regret = (db.prepare("SELECT COUNT(*) as cnt FROM session_learning sl JOIN capabilities c ON c.id = sl.capability_id WHERE c.domain = ? AND sl.action = 'regretted' GROUP BY c.domain").get(cap.domain) || {}).cnt || 0;
-    const decayRisk = cap.active > 0 ? (db.prepare("SELECT AVG(CASE WHEN sl.timestamp < datetime('now', '-30 days') OR sl.timestamp IS NULL THEN 1 ELSE 0 END) as risk FROM capabilities c LEFT JOIN session_learning sl ON sl.capability_id = c.id AND sl.action = 'used' WHERE c.domain = ? AND c.state IN ('unlocked','active')").get(cap.domain) || {}).risk || 0 : 0;
-    const health = Math.max(0, Math.min(1, (cap.avg_maturity || 0) * 0.4 + (cap.active / Math.max(cap.total, 1)) * 0.3 + (1 - Math.min(regret / Math.max(cap.active, 1), 1)) * 0.2 + (1 - (decayRisk || 0)) * 0.1));
-    results.push({ domain: cap.domain, health: Math.round(health * 100) / 100, total: cap.total, active: cap.active, avg_maturity: Math.round((cap.avg_maturity || 0) * 100) / 100, decay_risk: Math.round((decayRisk || 0) * 100) / 100, regret_count: regret });
+    const regret =
+      db
+        .prepare(
+          "SELECT COUNT(*) as cnt FROM session_learning sl JOIN capabilities c ON c.id = sl.capability_id WHERE c.domain = ? AND sl.action = 'regretted' GROUP BY c.domain"
+        )
+        .get(cap.domain)?.cnt || 0;
+    const decayRisk =
+      cap.active > 0
+        ? db
+            .prepare(
+              "SELECT AVG(CASE WHEN sl.timestamp < datetime('now', '-30 days') OR sl.timestamp IS NULL THEN 1 ELSE 0 END) as risk FROM capabilities c LEFT JOIN session_learning sl ON sl.capability_id = c.id AND sl.action = 'used' WHERE c.domain = ? AND c.state IN ('unlocked','active')"
+            )
+            .get(cap.domain)?.risk || 0
+        : 0;
+    const health = Math.max(
+      0,
+      Math.min(
+        1,
+        (cap.avg_maturity || 0) * 0.4 +
+          (cap.active / Math.max(cap.total, 1)) * 0.3 +
+          (1 - Math.min(regret / Math.max(cap.active, 1), 1)) * 0.2 +
+          (1 - (decayRisk || 0)) * 0.1
+      )
+    );
+    results.push({
+      domain: cap.domain,
+      health: Math.round(health * 100) / 100,
+      total: cap.total,
+      active: cap.active,
+      avg_maturity: Math.round((cap.avg_maturity || 0) * 100) / 100,
+      decay_risk: Math.round((decayRisk || 0) * 100) / 100,
+      regret_count: regret,
+    });
   }
   results.sort((a, b) => b.health - a.health);
   return results;
@@ -128,19 +240,27 @@ function domainHealth(db) {
 // ─── Bottlenecks ──────────────────────────────────────────────────────────────
 
 function findBottlenecks(db) {
-  const caps = db.prepare("SELECT id, name, domain, lifecycle FROM capabilities WHERE state IN ('unlocked','active')").all()
+  const caps = db
+    .prepare(
+      "SELECT id, name, domain, lifecycle FROM capabilities WHERE state IN ('unlocked','active')"
+    )
+    .all()
     .filter((c: any) => usable(c.lifecycle));
   // Edges onto an action are excluded. An action is conferred by exactly one
   // capability, so counting them would make leverage a function of how many
   // verbs a contract happens to name — write three more into version-control
   // and it climbs the ranking without anything changing about the system.
-  const deps = db.prepare(
-    `SELECT d.from_capability, d.to_capability FROM dependencies d
+  const deps = db
+    .prepare(
+      `SELECT d.from_capability, d.to_capability FROM dependencies d
      JOIN capabilities t ON t.id = d.to_capability
      WHERE t.kind != 'action'`
-  ).all();
+    )
+    .all();
   const downstream = new Map();
-  const comboIds = new Set(deps.filter(d => d.to_capability.startsWith('combo:')).map(d => d.to_capability));
+  const comboIds = new Set(
+    deps.filter(d => d.to_capability.startsWith('combo:')).map(d => d.to_capability)
+  );
   for (const d of deps) {
     if (!downstream.has(d.from_capability)) downstream.set(d.from_capability, new Set());
     downstream.get(d.from_capability).add(d.to_capability);
@@ -149,8 +269,17 @@ function findBottlenecks(db) {
   for (const cap of caps) {
     const ds = downstream.get(cap.id);
     if (!ds || ds.size === 0) continue;
-    let comboUnlocks = 0; ds.forEach(to => { if (comboIds.has(to)) comboUnlocks++; });
-    results.push({ capability_id: cap.id, name: cap.name, domain: cap.domain, unlocks_count: ds.size, is_bottleneck: comboUnlocks >= 2 });
+    let comboUnlocks = 0;
+    ds.forEach(to => {
+      if (comboIds.has(to)) comboUnlocks++;
+    });
+    results.push({
+      capability_id: cap.id,
+      name: cap.name,
+      domain: cap.domain,
+      unlocks_count: ds.size,
+      is_bottleneck: comboUnlocks >= 2,
+    });
   }
   results.sort((a, b) => b.unlocks_count - a.unlocks_count);
   return results;
@@ -194,7 +323,9 @@ function providersOf(db: Db): Map<string, string[]> {
  */
 function credentialsOf(db: Db): Map<string, string[]> {
   const map = new Map<string, string[]>();
-  for (const r of db.prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE kind = 'uses'").all()) {
+  for (const r of db
+    .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE kind = 'uses'")
+    .all()) {
     if (!map.has(r.f)) map.set(r.f, []);
     if (!map.get(r.f)!.includes(r.t)) map.get(r.f)!.push(r.t);
   }
@@ -230,11 +361,15 @@ function sharedCredentials(providers: string[], credsOf: Map<string, string[]>):
  * is a reduction in redundancy, which matters but is not the same claim.
  */
 function analyzeImpact(db: Db, capId: string) {
-  const cap = db.prepare("SELECT id, name, maturity_score FROM capabilities WHERE id = ?").get(capId);
+  const cap = db
+    .prepare('SELECT id, name, maturity_score FROM capabilities WHERE id = ?')
+    .get(capId);
   if (!cap) return { capability: capId, decayed: [], combos_at_risk: [] };
 
-  const deps = db.prepare("SELECT from_capability, to_capability, is_hard_requisite FROM dependencies").all();
-  const allCaps = db.prepare("SELECT id, name, maturity_score, state FROM capabilities").all();
+  const deps = db
+    .prepare('SELECT from_capability, to_capability, is_hard_requisite FROM dependencies')
+    .all();
+  const allCaps = db.prepare('SELECT id, name, maturity_score, state FROM capabilities').all();
   const capMap = new Map<string, Record<string, any>>(allCaps.map(c => [c.id, c]));
   const providers = providersOf(db);
   const credsOf = credentialsOf(db);
@@ -271,7 +406,10 @@ function analyzeImpact(db: Db, capId: string) {
 
   // Keyed by capability, not by edge. Iterating edges reported the same combo
   // once per prerequisite — "Version Control" four times for one risk.
-  const risk = new Map<string, { name: string; severity: string; also_provided_by?: number; but_all_share?: string }>();
+  const risk = new Map<
+    string,
+    { name: string; severity: string; also_provided_by?: number; but_all_share?: string }
+  >();
   for (const d of deps) {
     if (!d.to_capability.startsWith('combo:')) continue;
     if (d.from_capability !== capId) continue;
@@ -285,7 +423,14 @@ function analyzeImpact(db: Db, capId: string) {
       // credential. Saying redundant there is the overstatement this whole
       // change exists to remove — the survivors are not independent, so the
       // count that makes them look safe is the reason they are not.
-      severity: d.is_hard_requisite && sole ? 'critical' : shared ? 'nominal' : others.length ? 'redundant' : 'warning',
+      severity:
+        d.is_hard_requisite && sole
+          ? 'critical'
+          : shared
+            ? 'nominal'
+            : others.length
+              ? 'redundant'
+              : 'warning',
       also_provided_by: others.length || undefined,
       but_all_share: shared,
     });
@@ -303,7 +448,10 @@ function analyzeImpact(db: Db, capId: string) {
 function singlePointsOfFailure(db: Db) {
   const providers = providersOf(db);
   const names = new Map(
-    db.prepare("SELECT id, name, state, kind, lifecycle FROM capabilities").all().map((c: any) => [c.id, c])
+    db
+      .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
+      .all()
+      .map((c: any) => [c.id, c])
   );
   const credsOf = credentialsOf(db);
   const out: any[] = [];
@@ -361,13 +509,24 @@ function singlePointsOfFailure(db: Db) {
  * capability survives on another provider.
  */
 function credentialReport(db: Db) {
-  const creds = db.prepare("SELECT id, name, description FROM capabilities WHERE kind = 'credential' ORDER BY name").all();
+  const creds = db
+    .prepare(
+      "SELECT id, name, description FROM capabilities WHERE kind = 'credential' ORDER BY name"
+    )
+    .all();
   if (creds.length === 0) {
-    return { note: "No credentials declared. Add a `credentials` block naming which providers share one." };
+    return {
+      note: 'No credentials declared. Add a `credentials` block naming which providers share one.',
+    };
   }
   const providers = providersOf(db);
   const credsOf = credentialsOf(db);
-  const nodes = new Map(db.prepare("SELECT id, name, state, kind, lifecycle FROM capabilities").all().map((c: any) => [c.id, c]));
+  const nodes = new Map(
+    db
+      .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
+      .all()
+      .map((c: any) => [c.id, c])
+  );
   const nameOf = (id: string) => (nodes.get(id) as any)?.name || id;
 
   return creds.map((cred: any) => {
@@ -400,17 +559,25 @@ function credentialReport(db: Db) {
 }
 
 function exportGraph(db) {
-  const caps = db.prepare("SELECT * FROM capabilities").all();
-  const deps = db.prepare("SELECT * FROM dependencies").all();
-  const items = caps.map(function(c) {
+  const caps = db.prepare('SELECT * FROM capabilities').all();
+  const deps = db.prepare('SELECT * FROM dependencies').all();
+  const items = caps.map(c => {
     var type = c.category;
     if (type === 'mcp') type = 'mcp-server';
     if (type === 'combo') type = 'possibility';
     var status = c.state;
     if (status === 'active' || status === 'unlocked') status = 'built';
-    return { id: c.id, name: c.name, type: type, status: status, description: c.description, position: { x: 0, y: 0, z: 0 }, meta: { domain: c.domain, maturity: c.maturity_score } };
+    return {
+      id: c.id,
+      name: c.name,
+      type: type,
+      status: status,
+      description: c.description,
+      position: { x: 0, y: 0, z: 0 },
+      meta: { domain: c.domain, maturity: c.maturity_score },
+    };
   });
-  var conns = deps.map(function(d) {
+  var conns = deps.map(d => {
     var t = d.is_hard_requisite ? 'hard-dep' : 'soft-dep';
     return { from: d.from_capability, to: d.to_capability, type: t };
   });
@@ -434,15 +601,19 @@ function exportGraph(db) {
  * change of installation. State (reached/locked) is deliberately excluded.
  */
 function surfaceFor(db: Db) {
-  const capabilities = db.prepare(
-    "SELECT id, name, domain, kind, description FROM capabilities ORDER BY id"
-  ).all();
-  const edges = db.prepare(
-    "SELECT from_capability, to_capability, kind FROM dependencies ORDER BY from_capability, to_capability"
-  ).all();
-  const authority = db.prepare(
-    "SELECT capability_id, action, mode, holder, scope, source FROM authority ORDER BY capability_id, action, scope"
-  ).all();
+  const capabilities = db
+    .prepare('SELECT id, name, domain, kind, description FROM capabilities ORDER BY id')
+    .all();
+  const edges = db
+    .prepare(
+      'SELECT from_capability, to_capability, kind FROM dependencies ORDER BY from_capability, to_capability'
+    )
+    .all();
+  const authority = db
+    .prepare(
+      'SELECT capability_id, action, mode, holder, scope, source FROM authority ORDER BY capability_id, action, scope'
+    )
+    .all();
 
   return {
     runtime: process.env.AMBIT_RUNTIME || 'opencode',
@@ -491,13 +662,15 @@ function surfaceFor(db: Db) {
  * physical). The primary structural domain is reported; the overlaps are named.
  */
 function affordanceDomains(db: Db) {
-  const caps = db.prepare(
-    "SELECT id, name, domain, state FROM capabilities WHERE kind = 'capability'"
-  ).all();
-  const edges = db.prepare(
-    `SELECT d.from_capability f, d.to_capability t, d.kind k, c.kind ck
+  const caps = db
+    .prepare("SELECT id, name, domain, state FROM capabilities WHERE kind = 'capability'")
+    .all();
+  const edges = db
+    .prepare(
+      `SELECT d.from_capability f, d.to_capability t, d.kind k, c.kind ck
      FROM dependencies d JOIN capabilities c ON c.id = d.from_capability`
-  ).all();
+    )
+    .all();
 
   // Structural signals, collected once:
   //   authorizes   → institutional (an authority holder must exist)
@@ -578,9 +751,19 @@ function affordanceDomains(db: Db) {
 }
 
 export {
-  nearMissCombos, computeDecay,
-  discoverCombos, sessionDiff, domainHealth, findBottlenecks,
-  providersOf, analyzeImpact, singlePointsOfFailure,
-  exportGraph, affordanceDomains, surfaceFor,
-  credentialsOf, sharedCredentials, credentialReport,
+  nearMissCombos,
+  computeDecay,
+  discoverCombos,
+  sessionDiff,
+  domainHealth,
+  findBottlenecks,
+  providersOf,
+  analyzeImpact,
+  singlePointsOfFailure,
+  exportGraph,
+  affordanceDomains,
+  surfaceFor,
+  credentialsOf,
+  sharedCredentials,
+  credentialReport,
 };

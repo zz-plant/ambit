@@ -1,7 +1,7 @@
-import { createHmac } from "crypto";
-import { readFileSync } from "fs";
-import type { Migratable } from "./migrate.ts";
-import { opportunitiesFor } from "./opportunities.ts";
+import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import type { Migratable } from './migrate.ts';
+import { opportunitiesFor } from './opportunities.ts';
 
 /**
  * Federation: what one environment's Ambit is willing to say about itself to
@@ -37,10 +37,14 @@ function signSummary(summary: unknown): string | undefined {
  * Everything is a count or a declared number — nothing a credential lives in.
  */
 function exportSummary(db: Migratable) {
-  const capabilities = (db.prepare(
-    `SELECT id, name, kind, domain, state, lifecycle FROM capabilities
+  const capabilities = (
+    db
+      .prepare(
+        `SELECT id, name, kind, domain, state, lifecycle FROM capabilities
      WHERE kind != 'action' ORDER BY id`
-  ).all() as any[]).map((c) => ({
+      )
+      .all() as any[]
+  ).map(c => ({
     id: c.id,
     name: c.name,
     kind: c.kind,
@@ -51,38 +55,54 @@ function exportSummary(db: Migratable) {
 
   // Human burden, summed per capability over the same 30-day window the
   // opportunity engine reads.
-  const burden = (db.prepare(
-    `SELECT capability_id, COUNT(*) times, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
+  const burden = (
+    db
+      .prepare(
+        `SELECT capability_id, COUNT(*) times, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
      FROM human_intervention WHERE started_at >= datetime('now', '-30 days') AND capability_id IS NOT NULL
      GROUP BY capability_id ORDER BY times DESC`
-  ).all() as any[]).map((r) => ({
+      )
+      .all() as any[]
+  ).map(r => ({
     capability_id: r.capability_id,
     interventions_month: r.times,
-    human_hours_month: Math.round((r.active + r.waiting) / 3600 * 10) / 10,
+    human_hours_month: Math.round(((r.active + r.waiting) / 3600) * 10) / 10,
   }));
 
   // Person-specific single points of failure: a reached capability only a
   // human supplies. The portfolio's "worst person-SPOF" question needs this
   // on every environment's summary, and it is a count, not a person's data.
-  const person_spofs = (db.prepare(
-    `SELECT c.id FROM capabilities c
+  const person_spofs = (
+    db
+      .prepare(
+        `SELECT c.id FROM capabilities c
      WHERE c.kind = 'capability' AND c.state != 'locked'
        AND (SELECT COUNT(*) FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
             WHERE d.to_capability = c.id AND d.kind IN ('provides','contributes')) = 1
        AND (SELECT p.kind FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
             WHERE d.to_capability = c.id AND d.kind IN ('provides','contributes') LIMIT 1) = 'actor'`
-  ).all() as any[]).map((r) => r.id);
+      )
+      .all() as any[]
+  ).map(r => r.id);
 
-  const operatingCost = (db.prepare(
-    `SELECT resource_id, SUM(cost_cents) cost_cents FROM resource_consumption
+  const operatingCost = (
+    db
+      .prepare(
+        `SELECT resource_id, SUM(cost_cents) cost_cents FROM resource_consumption
      WHERE recorded_at >= datetime('now', '-30 days') GROUP BY resource_id ORDER BY cost_cents DESC`
-  ).all() as any[]).map((r) => ({ resource_id: r.resource_id, cost_cents: r.cost_cents }));
+      )
+      .all() as any[]
+  ).map(r => ({ resource_id: r.resource_id, cost_cents: r.cost_cents }));
 
   const opportunities = (opportunitiesFor(db, 'attention') as any).opportunities || [];
 
-  const proposals = (db.prepare(
-    "SELECT id, goal, status, economic_case, observed_roi FROM proposals ORDER BY created_at DESC"
-  ).all() as any[]).map((p) => ({
+  const proposals = (
+    db
+      .prepare(
+        'SELECT id, goal, status, economic_case, observed_roi FROM proposals ORDER BY created_at DESC'
+      )
+      .all() as any[]
+  ).map(p => ({
     id: p.id,
     goal: p.goal,
     status: p.status,
@@ -97,11 +117,16 @@ function exportSummary(db: Migratable) {
     capabilities,
     burden,
     person_spofs,
-    operating_cost_dollars_month: Math.round(operatingCost.reduce((s, r) => s + r.cost_cents, 0)) / 100,
-    deficits: (db.prepare(
-      `SELECT capability_id, COUNT(*) times FROM session_learning
+    operating_cost_dollars_month:
+      Math.round(operatingCost.reduce((s, r) => s + r.cost_cents, 0)) / 100,
+    deficits: (
+      db
+        .prepare(
+          `SELECT capability_id, COUNT(*) times FROM session_learning
        WHERE (action = 'blocked' OR action LIKE 'blocked:%') GROUP BY capability_id ORDER BY times DESC`
-    ).all() as any[]).map((d) => ({ capability_id: d.capability_id, times: d.times })),
+        )
+        .all() as any[]
+    ).map(d => ({ capability_id: d.capability_id, times: d.times })),
     opportunities: opportunities.slice(0, 10).map((o: any) => ({
       capability_id: o.capability_id,
       kind: o.kind,
@@ -134,22 +159,33 @@ function importSummary(db: Migratable, path?: string) {
     return { error: `Cannot read ${path}: ${e?.message || e}` };
   }
   if (parsed.schema_version !== SCHEMA_VERSION) {
-    return { error: `schema_version ${parsed.schema_version} not supported (want ${SCHEMA_VERSION})` };
+    return {
+      error: `schema_version ${parsed.schema_version} not supported (want ${SCHEMA_VERSION})`,
+    };
   }
   if (!Array.isArray(parsed.capabilities)) {
-    return { error: `${path} is not a federation summary. Run ambit federation export on the source environment.` };
+    return {
+      error: `${path} is not a federation summary. Run ambit federation export on the source environment.`,
+    };
   }
 
   db.prepare(
-    "INSERT OR IGNORE INTO federation_imports (environment, schema_version, signed, summary) VALUES (?, ?, ?, ?)"
-  ).run(parsed.environment || 'unknown', parsed.schema_version, parsed.signed ? 1 : 0, JSON.stringify(parsed));
+    'INSERT OR IGNORE INTO federation_imports (environment, schema_version, signed, summary) VALUES (?, ?, ?, ?)'
+  ).run(
+    parsed.environment || 'unknown',
+    parsed.schema_version,
+    parsed.signed ? 1 : 0,
+    JSON.stringify(parsed)
+  );
 
   return {
     environment: parsed.environment,
     capabilities: parsed.capabilities.length,
     reached: parsed.capabilities.filter((c: any) => c.reached).length,
     burden: parsed.burden?.length || 0,
-    signed: parsed.signed ? 'verified-or-not — key is the importer\'s choice' : 'unsigned — signature absent',
+    signed: parsed.signed
+      ? "verified-or-not — key is the importer's choice"
+      : 'unsigned — signature absent',
     note: 'stored as a receipt; nothing was merged into this graph',
   };
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useToolchainStore } from '../store/toolchainStore';
 
 export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -25,7 +25,10 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   const filtered = proposals.filter(p => {
     const matchesTab = statusTab === 'all' || p.status === statusTab;
-    const matchesQuery = !query.trim() || p.id.toLowerCase().includes(query.toLowerCase()) || p.goal.toLowerCase().includes(query.toLowerCase());
+    const matchesQuery =
+      !query.trim() ||
+      p.id.toLowerCase().includes(query.toLowerCase()) ||
+      p.goal.toLowerCase().includes(query.toLowerCase());
     return matchesTab && matchesQuery;
   });
 
@@ -34,18 +37,35 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   return (
     <div className="uplink-modal-overlay" onClick={onClose}>
-      <div className="uplink-modal" style={{ maxWidth: '680px', width: '90%', border: '1px solid var(--border-bright)' }} onClick={e => e.stopPropagation()}>
+      <div
+        className="uplink-modal"
+        style={{ maxWidth: '680px', width: '90%', border: '1px solid var(--border-bright)' }}
+        onClick={e => e.stopPropagation()}
+      >
         <div className="sp-hdr">
-          <span className="sp-sig" style={{ color: 'var(--copper-3)' }}>📜</span>
+          <span className="sp-sig" style={{ color: 'var(--copper-3)' }}>
+            📜
+          </span>
           <div className="sp-title-group">
             <div className="sp-designation">Governance &amp; Policy Enactments</div>
             <div className="sp-class">Review, sign, and authorize environment modifications</div>
           </div>
-          <button className="sp-close" onClick={onClose}>✕</button>
+          <button className="sp-close" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         {/* Status Tabs and Search Filter */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '12px',
+            flexWrap: 'wrap',
+            gap: '8px',
+          }}
+        >
           <div className="gov-tabs">
             <button
               type="button"
@@ -83,16 +103,37 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         </div>
 
         {filtered.length === 0 ? (
-          <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font)', fontSize: '12px' }}>
+          <div
+            style={{
+              padding: '32px 0',
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font)',
+              fontSize: '12px',
+            }}
+          >
             {proposals.length === 0
               ? 'No pending policy proposals. Autonomous agents submit enactments here when requesting environment access.'
               : 'No proposals match your active filter.'}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px', maxHeight: '460px', overflowY: 'auto' }}>
-            {filtered.map((p) => {
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              marginTop: '12px',
+              maxHeight: '460px',
+              overflowY: 'auto',
+            }}
+          >
+            {filtered.map(p => {
               let parsedSteps: any[] = [];
-              try { parsedSteps = JSON.parse(p.steps); } catch { /* ignore */ }
+              try {
+                parsedSteps = JSON.parse(p.steps);
+              } catch {
+                /* ignore */
+              }
               const isApproved = p.status === 'approved';
 
               return (
@@ -101,7 +142,9 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   style={{
                     background: 'var(--bg-surface)',
                     border: isApproved ? '1px solid var(--ok)' : '1px solid var(--border)',
-                    boxShadow: isApproved ? '0 4px 20px rgba(16, 185, 129, 0.12)' : '0 2px 8px rgba(0,0,0,0.15)',
+                    boxShadow: isApproved
+                      ? '0 4px 20px rgba(16, 185, 129, 0.12)'
+                      : '0 2px 8px rgba(0,0,0,0.15)',
                     borderRadius: 'var(--radius)',
                     padding: '16px',
                     display: 'flex',
@@ -111,17 +154,32 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     overflow: 'hidden',
                   }}
                 >
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: 4,
-                    bottom: 0,
-                    background: isApproved ? 'var(--ok)' : 'var(--accent)',
-                  }} />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: 4,
+                      bottom: 0,
+                      background: isApproved ? 'var(--ok)' : 'var(--accent)',
+                    }}
+                  />
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'var(--font)', fontWeight: 700, fontSize: '12px', color: 'var(--accent)' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'var(--font)',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        color: 'var(--accent)',
+                      }}
+                    >
                       📜 POLICY ENACTMENT: {p.id}
                     </span>
                     <span
@@ -131,7 +189,9 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         borderRadius: 'var(--radius-xs)',
                         fontWeight: 800,
                         letterSpacing: '0.8px',
-                        background: isApproved ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 170, 0, 0.15)',
+                        background: isApproved
+                          ? 'rgba(0, 255, 136, 0.15)'
+                          : 'rgba(255, 170, 0, 0.15)',
                         color: isApproved ? 'var(--ok)' : 'var(--copper-3)',
                         border: `1px solid ${isApproved ? 'var(--ok)' : 'var(--copper-3)'}`,
                       }}
@@ -140,33 +200,89 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      lineHeight: 1.4,
+                    }}
+                  >
                     {p.goal}
                   </div>
 
                   {parsedSteps.length > 0 && (
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--bg-deep)', padding: '10px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border)' }}>
-                      <span style={{ fontWeight: 700, fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-muted)' }}>
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        background: 'var(--bg-deep)',
+                        padding: '10px',
+                        borderRadius: 'var(--radius-xs)',
+                        border: '1px solid var(--border)',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '10px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
                         Action Schedule ({parsedSteps.length} steps):
                       </span>
                       {parsedSteps.map((step, idx) => (
-                        <div key={idx} style={{ paddingLeft: '8px', borderLeft: '2px solid var(--accent-dim)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <code style={{ color: 'var(--accent)' }}>{step.action || step.key || JSON.stringify(step)}</code>
-                          {step.provider && <span style={{ fontSize: '10px', color: 'var(--copper-3)' }}>via {step.provider}</span>}
+                        <div
+                          key={idx}
+                          style={{
+                            paddingLeft: '8px',
+                            borderLeft: '2px solid var(--accent-dim)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <code style={{ color: 'var(--accent)' }}>
+                            {step.action || step.key || JSON.stringify(step)}
+                          </code>
+                          {step.provider && (
+                            <span style={{ fontSize: '10px', color: 'var(--copper-3)' }}>
+                              via {step.provider}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
                   )}
 
                   {isApproved ? (
-                    <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        marginTop: '4px',
+                        paddingTop: '10px',
+                        borderTop: '1px solid var(--border)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
                       <span style={{ fontSize: '11px', color: 'var(--ok)', fontWeight: 600 }}>
                         🛡️ Sealed by {p.approved_by || 'Operator'} · HMAC verified
                       </span>
                       <button
                         type="button"
                         className="tp-btn-sm"
-                        style={{ fontSize: '11px', padding: '4px 12px', borderColor: 'var(--ok)', color: 'var(--ok)' }}
+                        style={{
+                          fontSize: '11px',
+                          padding: '4px 12px',
+                          borderColor: 'var(--ok)',
+                          color: 'var(--ok)',
+                        }}
                         onClick={() => copyApplyCmd(p.id)}
                       >
                         {copiedId === p.id ? '✓ Copied to Clipboard!' : `Copy: ambit apply ${p.id}`}
@@ -177,7 +293,13 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                       <button
                         type="button"
                         className="tp-btn"
-                        style={{ background: 'var(--ok)', color: 'var(--bg-deep)', borderColor: 'var(--ok)', fontWeight: 800, padding: '6px 16px' }}
+                        style={{
+                          background: 'var(--ok)',
+                          color: 'var(--bg-deep)',
+                          borderColor: 'var(--ok)',
+                          fontWeight: 800,
+                          padding: '6px 16px',
+                        }}
                         disabled={approvingId === p.id}
                         onClick={() => handleApprove(p.id)}
                       >
@@ -192,7 +314,9 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-          <button type="button" className="tp-btn-sm" onClick={onClose}>Close</button>
+          <button type="button" className="tp-btn-sm" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

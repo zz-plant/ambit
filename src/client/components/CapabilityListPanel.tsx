@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useToolchainStore } from '../store/toolchainStore';
 import { typeLabel, statusLabel } from '../utils/labels';
 
@@ -23,7 +23,7 @@ export function CapabilityListPanel() {
     const matchesSearch =
       i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       i.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (i.description && i.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      i.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === 'all' || i.type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -73,20 +73,25 @@ export function CapabilityListPanel() {
 
       {(searchQuery || typeFilter !== 'all') && (
         <div className="tp-match-count">
-          <span>Showing {filtered.length} of {items.length}</span>
+          <span>
+            Showing {filtered.length} of {items.length}
+          </span>
         </div>
       )}
 
       <div className="tp-list">
         {filtered.map(item => {
           return (
-            <div key={item.id}
+            <div
+              key={item.id}
               className={`tp-item ${selectedId === item.id ? 'tp-item--sel' : ''}`}
               onClick={() => selectItem(item.id)}
             >
               <div className="tp-item-hdr">
                 <span className="tp-item-name">{item.name}</span>
-                <span className={`tp-badge tp-badge--${item.status}`}>{statusLabel(item.status)}</span>
+                <span className={`tp-badge tp-badge--${item.status}`}>
+                  {statusLabel(item.status)}
+                </span>
               </div>
               <div className="tp-item-meta">{typeLabel(item.type)}</div>
             </div>
@@ -100,7 +105,10 @@ export function CapabilityListPanel() {
                 type="button"
                 className="tp-btn-sm"
                 style={{ marginTop: '8px' }}
-                onClick={() => { setSearch(''); setTypeFilter('all'); }}
+                onClick={() => {
+                  setSearch('');
+                  setTypeFilter('all');
+                }}
               >
                 Reset Filters
               </button>

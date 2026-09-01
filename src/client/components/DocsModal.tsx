@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import concepts from '../../shared/concepts.json';
 
 interface DocsModalProps {
@@ -33,16 +33,33 @@ const NODE_TYPES = [
   { color: '#ec4899', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
   { color: '#10b981', sym: '◇', label: 'Skill', desc: 'A procedure loaded on demand' },
   { color: '#0284c7', sym: '⬢', label: 'Provider / model', desc: 'Where inference happens' },
-  { color: '#8b5cf6', sym: '●', label: 'Tech tree node', desc: 'A capability you reach by having others' },
+  {
+    color: '#8b5cf6',
+    sym: '●',
+    label: 'Tech tree node',
+    desc: 'A capability you reach by having others',
+  },
 ];
 
 const ACTIONS = [
-  { cmd: 'ambit status', answers: 'How is the environment doing? (frontier, verified, failing, spofs)' },
+  {
+    cmd: 'ambit status',
+    answers: 'How is the environment doing? (frontier, verified, failing, spofs)',
+  },
   { cmd: 'ambit verify', answers: 'Run executable checks to prove capabilities are working' },
   { cmd: 'ambit authority', answers: 'What may run unattended vs what requires confirmation?' },
-  { cmd: 'ambit goal "<intent>"', answers: 'Route a natural language goal to concrete capability plans' },
-  { cmd: 'ambit opportunities', answers: 'Ranked high-ROI capability upgrades based on observed friction' },
-  { cmd: 'ambit impact <id>', answers: 'What breaks downstream if a tool or credential disappears?' },
+  {
+    cmd: 'ambit goal "<intent>"',
+    answers: 'Route a natural language goal to concrete capability plans',
+  },
+  {
+    cmd: 'ambit opportunities',
+    answers: 'Ranked high-ROI capability upgrades based on observed friction',
+  },
+  {
+    cmd: 'ambit impact <id>',
+    answers: 'What breaks downstream if a tool or credential disappears?',
+  },
   { cmd: 'ambit propose <cap>', answers: 'Draft a safe, reviewable capability acquisition' },
   { cmd: 'ambit approve / apply', answers: 'Human-gated execution with signed approval receipts' },
 ];
@@ -59,7 +76,9 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
             <h2 className="docs-title">How to read this</h2>
             <p className="docs-subtitle">Your setup, placed on a tree of agent capabilities</p>
           </div>
-          <button className="docs-close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="docs-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
         </div>
 
         <div className="docs-tabs" role="tablist">
@@ -103,8 +122,12 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
               <h3 className="docs-h3">The circles</h3>
               {NODE_TYPES.map(n => (
                 <div key={n.label} className="docs-row">
-                  <span className="docs-swatch" style={{ background: n.color }}>{n.sym}</span>
-                  <span><strong>{n.label}</strong> — {n.desc}</span>
+                  <span className="docs-swatch" style={{ background: n.color }}>
+                    {n.sym}
+                  </span>
+                  <span>
+                    <strong>{n.label}</strong> — {n.desc}
+                  </span>
                 </div>
               ))}
 
@@ -117,24 +140,29 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
               <h3 className="docs-h3">The lines</h3>
               <div className="docs-row">
                 <span className="docs-line-solid" />
-                <span><strong>Hard prerequisite</strong> — required; without it the dependent capability cannot work</span>
+                <span>
+                  <strong>Hard prerequisite</strong> — required; without it the dependent capability
+                  cannot work
+                </span>
               </div>
               <div className="docs-row">
                 <span className="docs-line-dashed" />
-                <span><strong>Soft prerequisite</strong> — helps, but does not gate</span>
+                <span>
+                  <strong>Soft prerequisite</strong> — helps, but does not gate
+                </span>
               </div>
 
               <h3 className="docs-h3">The states</h3>
               <p className="docs-p">
-                Filled circles are reached capabilities. Outlined circles are not yet reached;
-                the halo marks what you could take next, with its setup cost beside it.
+                Filled circles are reached capabilities. Outlined circles are not yet reached; the
+                halo marks what you could take next, with its setup cost beside it.
               </p>
 
               <h3 className="docs-h3">Two sources</h3>
               <p className="docs-p">
                 <strong>CONFIG</strong> shows your <code>opencode.json</code> as a graph.{' '}
-                <strong>TECH TREE</strong> shows the curated capability tree with your position on it.
-                Same renderer, different question.
+                <strong>TECH TREE</strong> shows the curated capability tree with your position on
+                it. Same renderer, different question.
               </p>
             </>
           )}
@@ -142,8 +170,8 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
           {tab === 'doing' && (
             <>
               <p className="docs-lede">
-                Click any circle to see what depends on it. Everything below is also available in the
-                terminal, where the output is easier to keep.
+                Click any circle to see what depends on it. Everything below is also available in
+                the terminal, where the output is easier to keep.
               </p>
               {ACTIONS.map(a => (
                 <div key={a.cmd} className="docs-action">
@@ -153,12 +181,13 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
               ))}
               <h3 className="docs-h3">Start here</h3>
               <p className="docs-p">
-                If you only run one, run <code className="docs-cmd-inline">ambit status</code>. It answers
-                how the system is doing, what is reached, what is broken, and what is one step away.
+                If you only run one, run <code className="docs-cmd-inline">ambit status</code>. It
+                answers how the system is doing, what is reached, what is broken, and what is one
+                step away.
               </p>
               <p className="docs-p docs-muted">
-                Run <code className="docs-cmd-inline">ambit help</code> for CLI definitions in
-                the terminal.
+                Run <code className="docs-cmd-inline">ambit help</code> for CLI definitions in the
+                terminal.
               </p>
             </>
           )}
@@ -168,24 +197,30 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
               <p className="docs-lede">
                 Operate Ambit entirely from your keyboard with demoscene-speed shortcuts.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}
+              >
                 {HOTKEYS.map(h => (
                   <div key={h.key} className="docs-action" style={{ alignItems: 'center' }}>
-                    <kbd style={{
-                      fontFamily: 'var(--font)',
-                      fontWeight: 800,
-                      color: 'var(--accent)',
-                      background: 'var(--bg-deep)',
-                      border: '1px solid var(--border-bright)',
-                      borderRadius: 'var(--radius-xs)',
-                      padding: '3px 8px',
-                      fontSize: '11px',
-                      minWidth: '60px',
-                      textAlign: 'center',
-                    }}>
+                    <kbd
+                      style={{
+                        fontFamily: 'var(--font)',
+                        fontWeight: 800,
+                        color: 'var(--accent)',
+                        background: 'var(--bg-deep)',
+                        border: '1px solid var(--border-bright)',
+                        borderRadius: 'var(--radius-xs)',
+                        padding: '3px 8px',
+                        fontSize: '11px',
+                        minWidth: '60px',
+                        textAlign: 'center',
+                      }}
+                    >
                       {h.key}
                     </kbd>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{h.desc}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      {h.desc}
+                    </span>
                   </div>
                 ))}
               </div>

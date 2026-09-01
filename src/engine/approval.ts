@@ -1,7 +1,7 @@
-import { createHmac, randomBytes } from "crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
-import type { Migratable } from "./migrate.ts";
+import { createHmac, randomBytes } from 'node:crypto';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import type { Migratable } from './migrate.ts';
 
 /**
  * The approval broker: mints a signed artifact that binds an approval to an
@@ -40,7 +40,7 @@ function sign(payload: string): string {
 }
 
 /** A stable hash of everything that makes a proposal what it is. */
-function proposalHash(db: Migratable, row: any): string {
+function proposalHash(_db: Migratable, row: any): string {
   const body = [row.id, row.goal, row.steps, row.simulated, row.economic_case || ''].join('|');
   return createHmac('sha256', 'ambit-proposal').update(body).digest('hex').slice(0, 16);
 }
@@ -61,13 +61,17 @@ export interface MintApprovalInput {
  * all of it against the row it is about to apply.
  */
 function mintApproval(db: Migratable, proposalId: string, input: MintApprovalInput) {
-  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
-  if (row.status !== 'approved') return { error: `${proposalId} is ${row.status}; an approval artifact is minted on approval.` };
+  if (row.status !== 'approved')
+    return { error: `${proposalId} is ${row.status}; an approval artifact is minted on approval.` };
 
   const steps = JSON.parse(row.steps);
   const scopeExclude = input.scopeExclude || (steps as any[]).map((s: any) => s.id).filter(Boolean);
-  const expiresAt = new Date(Date.now() + (input.ttlHours ?? 24) * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+  const expiresAt = new Date(Date.now() + (input.ttlHours ?? 24) * 3600 * 1000)
+    .toISOString()
+    .slice(0, 19)
+    .replace('T', ' ');
   const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
   const artifact = {
@@ -82,9 +86,13 @@ function mintApproval(db: Migratable, proposalId: string, input: MintApprovalInp
   const signed = { ...artifact, sig: sign(payload) };
 
   db.prepare(
-    "UPDATE proposals SET budget_cents = ?, scope_exclude = ?, expires_at = ?, approval_artifact = ? WHERE id = ?"
+    'UPDATE proposals SET budget_cents = ?, scope_exclude = ?, expires_at = ?, approval_artifact = ? WHERE id = ?'
   ).run(
-    artifact.budget_cents, JSON.stringify(scopeExclude), expiresAt, JSON.stringify(signed), proposalId
+    artifact.budget_cents,
+    JSON.stringify(scopeExclude),
+    expiresAt,
+    JSON.stringify(signed),
+    proposalId
   );
   return { proposal: proposalId, artifact: signed };
 }
@@ -103,17 +111,22 @@ export interface VerifyResult {
  * approval at all.
  */
 function verifyApproval(db: Migratable, proposalId: string, applyActor?: string): VerifyResult {
-  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { ok: false, reason: `no proposal ${proposalId}` };
   if (!row.approval_artifact) return { ok: false, reason: 'no approval artifact minted' };
 
   let artifact: any;
-  try { artifact = JSON.parse(row.approval_artifact); } catch {
+  try {
+    artifact = JSON.parse(row.approval_artifact);
+  } catch {
     return { ok: false, reason: 'approval artifact is corrupt' };
   }
   const { sig, ...rest } = artifact;
   if (sign(JSON.stringify(rest)) !== sig) {
-    return { ok: false, reason: 'approval artifact signature does not verify — the proposal changed after approval' };
+    return {
+      ok: false,
+      reason: 'approval artifact signature does not verify — the proposal changed after approval',
+    };
   }
   if (rest.proposal_hash !== proposalHash(db, row)) {
     return { ok: false, reason: 'the proposal no longer hashes to what was approved' };

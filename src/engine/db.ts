@@ -1,6 +1,6 @@
-import { DatabaseSync } from "node:sqlite";
-import { resolveDbPath } from "../shared/db-path.ts";
-import { migrate } from "./migrate.ts";
+import { DatabaseSync } from 'node:sqlite';
+import { resolveDbPath } from '../shared/db-path.ts';
+import { migrate } from './migrate.ts';
 
 /**
  * node:sqlite is experimental and types every row as `unknown`, which would
@@ -21,8 +21,8 @@ interface Db {
 function getDb(dbPath?: string): Db {
   const path = dbPath || resolveDbPath();
   const db = new DatabaseSync(path);
-  db.exec("PRAGMA journal_mode = WAL");
-  db.exec("PRAGMA foreign_keys = ON");
+  db.exec('PRAGMA journal_mode = WAL');
+  db.exec('PRAGMA foreign_keys = ON');
   return db as unknown as Db;
 }
 
