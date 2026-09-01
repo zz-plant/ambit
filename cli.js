@@ -5,6 +5,17 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
+/**
+ * How the engine is launched.
+ *
+ * `--experimental-sqlite` is what Node 22 needs to expose node:sqlite; on 24 it
+ * is accepted and unnecessary. The second flag suppresses the notice Node
+ * prints because of the first — without it, every single `ambit` command an
+ * installed user runs begins with a warning about a flag they did not pass,
+ * about a module they did not choose, which reads as something being wrong.
+ */
+const NODE_FLAGS = ['--experimental-sqlite', '--disable-warning=ExperimentalWarning'];
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // cli.js sits at the package root, next to src/ — resolving ".." walked out
 // of the package entirely and every command failed to find the engine.
@@ -78,7 +89,7 @@ if (cmd === '--help' || cmd === 'help') {
 // the help is still one flag away.
 if (!cmd) {
   const run = (c, args = []) =>
-    spawnSync('node', ['--experimental-sqlite', engineEntry, c, ...args], { stdio: 'inherit' });
+    spawnSync('node', [...NODE_FLAGS, engineEntry, c, ...args], { stdio: 'inherit' });
   console.log(`\n${B}Where you are${R}`);
   run('status');
   console.log(
@@ -113,11 +124,11 @@ if (cmd === 'web') {
 // The MCP server, runnable from any install: `claude mcp add ambit -- ambit mcp`.
 // Before this, registering it meant knowing where npm put the package.
 if (cmd === 'mcp') {
-  const result = spawnSync('node', ['--experimental-sqlite', mcpEntry], { stdio: 'inherit' });
+  const result = spawnSync('node', [...NODE_FLAGS, mcpEntry], { stdio: 'inherit' });
   process.exit(result.status || 0);
 }
 
-const result = spawnSync('node', ['--experimental-sqlite', engineEntry, cmd, ...args], {
+const result = spawnSync('node', [...NODE_FLAGS, engineEntry, cmd, ...args], {
   stdio: 'inherit',
 });
 process.exit(result.status || 0);
