@@ -14,7 +14,7 @@ jobs:
       # One runtime. The engine, the CLI, the API server and the test runner all
       # open the graph through node:sqlite; there is no second driver to keep in
       # step, and nothing in the repo needs Bun.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
