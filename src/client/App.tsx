@@ -18,6 +18,7 @@ export default function App() {
   const error = useToolchainStore(s => s.error);
   const loadConfig = useToolchainStore(s => s.loadConfig);
   const seedDemo = useToolchainStore(s => s.seedDemo);
+  const seedDemoTree = useToolchainStore(s => s.seedDemoTree);
   const hoveredId = useToolchainStore(s => s.hoveredItem);
   const hoverItem = useToolchainStore(s => s.hoverItem);
 
@@ -74,9 +75,16 @@ export default function App() {
   // sharing a specific angle, and for capturing documentation screenshots
   // reproducibly.
   const params = new URLSearchParams(window.location.search);
-  const [source, setSource] = useState<'config' | 'tree'>(
-    params.get('view') === 'tree' ? 'tree' : 'config'
-  );
+  const [source, setSource] = useState<'config' | 'tree'>(() => {
+    const view = params.get('view');
+    if (view === 'tree') return 'tree';
+    if (view === 'config') return 'config';
+    // ?demo=1 is the link the README leads with and the one the hero image is
+    // a picture of — the tech tree, seven eras. It used to land on My Setup, a
+    // flat list of twenty-five config entries, so the front door showed
+    // something other than what brought people to it.
+    return params.get('demo') === '1' ? 'tree' : 'config';
+  });
   // ?view=tree, ?docs=open, ?focus=<id> and ?treeFilter=<domain> make a
   // particular state linkable and shareable; the filter itself is owned by the
   // store (see readInitialTreeFilter), which persists it across sessions.
@@ -174,8 +182,14 @@ export default function App() {
   useEffect(() => {
     if (params.get('guide') === 'off') dismissGuide();
     // ?demo=1 already seeded the graph above; loadConfig()'s no-backend path
-    // would otherwise clobber that seeded data back to an empty graph.
-    if (params.get('demo') === '1') return;
+    // would otherwise clobber that seeded data back to an empty graph. The
+    // tree is a different dataset from the config view, so it is asked for
+    // explicitly rather than fetched — the demo must look the same with an
+    // engine behind it as without one.
+    if (params.get('demo') === '1') {
+      if (source === 'tree') seedDemoTree();
+      return;
+    }
     if (source === 'tree') loadTechTree();
     else loadConfig();
     // Intentionally once on mount; the toggles drive later changes.

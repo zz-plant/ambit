@@ -117,6 +117,7 @@ interface StoreState {
   demo: DemoSnapshot | null;
 
   seedDemo: () => void;
+  seedDemoTree: () => void;
   loadFromJSON: (json: string) => boolean;
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
@@ -370,6 +371,32 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     } catch {
       return false;
     }
+  },
+
+  /**
+   * The capability tree that ships in the bundle.
+   *
+   * Used by the published demo, which has no engine behind it, and by
+   * `?demo=1` locally so the two show the same thing. Kept separate from
+   * `seedDemo` because that one seeds the *config* view — a flat list of
+   * twenty-five entries — and the tree is what the README's hero image is a
+   * picture of.
+   */
+  seedDemoTree: () => {
+    const snapshot = demoTechTree as unknown as {
+      items: Omit<Item, 'position'>[];
+      connections: Connection[];
+    };
+    set({
+      items: snapshot.items.map((i, idx) => ({
+        ...i,
+        position: { x: 100 + (idx % 6) * 80, y: 50 + Math.floor(idx / 6) * 70, z: 0 },
+      })),
+      connections: snapshot.connections,
+      loading: false,
+      error: null,
+      demo: demoSnapshot(),
+    });
   },
 
   seedDemo: () => {
@@ -695,20 +722,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     // has to say so or show something; silence is the one option that reads as
     // a broken build.
     if (!(await backendAvailable())) {
-      const snapshot = demoTechTree as unknown as {
-        items: Omit<Item, 'position'>[];
-        connections: Connection[];
-      };
-      set({
-        items: snapshot.items.map((i, idx) => ({
-          ...i,
-          position: { x: 100 + (idx % 6) * 80, y: 50 + Math.floor(idx / 6) * 70, z: 0 },
-        })),
-        connections: snapshot.connections,
-        loading: false,
-        error: null,
-        demo: demoSnapshot(),
-      });
+      get().seedDemoTree();
       return true;
     }
     set({ loading: true, error: null, demo: null });
