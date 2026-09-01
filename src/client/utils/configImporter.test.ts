@@ -1,4 +1,4 @@
-import { test, expect } from 'bun:test';
+import { test, expect } from 'vitest';
 import { importConfig } from './configImporter';
 
 // Every item needs meta.domain — without it CivTree drops the item into the

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Item } from '../utils/configImporter';
 import { useToolchainStore } from '../store/toolchainStore';

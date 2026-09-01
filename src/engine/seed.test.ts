@@ -1,4 +1,4 @@
-import { test, expect, beforeEach, afterEach } from 'bun:test';
+import { test, expect, beforeEach, afterEach } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import {
   writeFileSync,
@@ -11,11 +11,11 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-// The engine runs under Node (node:sqlite); these assertions run under Bun,
-// which ships its own driver. Same file, different reader.
-import { Database } from 'bun:sqlite';
-// The visualizer API runs under Bun and migrates the graph itself, so the
-// migration has to work through this driver as well as the engine's.
+// The same driver and the same handle the engine itself uses. There used to be
+// a second driver here (bun:sqlite) because the runner could not load
+// node:sqlite; reading the graph through a different library than the one that
+// wrote it is exactly the drift these tests exist to catch.
+import { getDb, type Db } from './db.ts';
 import { migrate } from './migrate.ts';
 import {
   beginRun,
@@ -29,11 +29,11 @@ import {
   usageReport,
 } from './telemetry.ts';
 
-const ENGINE = join(import.meta.dir, 'engine.ts');
+const ENGINE = join(import.meta.dirname, 'engine.ts');
 let dir: string;
 
 /** Seed a throwaway database from an inline config and return a handle. */
-function seed(config: unknown, opts: { name?: string } = {}): Database {
+function seed(config: unknown, opts: { name?: string } = {}): Db {
   const configPath = join(dir, (opts.name || 'config') + '.json');
   const dbPath = join(dir, 'graph.db');
   writeFileSync(configPath, JSON.stringify(config));
@@ -63,10 +63,10 @@ function seed(config: unknown, opts: { name?: string } = {}): Database {
     },
     stdio: 'ignore',
   });
-  return new Database(dbPath);
+  return getDb(dbPath);
 }
 
-const rows = (db: Database, sql: string) => db.prepare(sql).all() as any[];
+const rows = (db: Db, sql: string) => db.prepare(sql).all() as any[];
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'capgraph-'));
@@ -326,7 +326,7 @@ test('a graph seeded before kinds existed gets them without losing its history',
   const where = cli('where');
   expect(where.seeded).toBe(true);
 
-  const reopened = new Database(join(dir, 'graph.db'));
+  const reopened = getDb(join(dir, 'graph.db'));
   expect(rows(reopened, 'SELECT COUNT(*) n FROM frontier_snapshots')[0].n).toBe(before);
   expect(rows(reopened, "SELECT kind FROM capabilities WHERE id = 'mcp:git'")[0].kind).toBe(
     'provider'
@@ -498,7 +498,7 @@ test('two runtimes providing the same capability share one node', () => {
     },
     stdio: 'ignore',
   });
-  const db = new Database(dbPath);
+  const db = getDb(dbPath);
 
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'mcp:git'").length).toBe(1);
   const providers = rows(
@@ -531,7 +531,7 @@ test('skills symlinked into a runtime directory are discovered', () => {
     },
     stdio: 'ignore',
   });
-  const db = new Database(dbPath);
+  const db = getDb(dbPath);
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'skill:deploying'").length).toBe(1);
 });
 
@@ -617,7 +617,7 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
     stdio: 'ignore',
   });
 
-  const db = new Database(dbPath);
+  const db = getDb(dbPath);
   const capabilities = rows(
     db,
     "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex')"
@@ -703,14 +703,14 @@ test('a runtime that tightens its permissions is not still reported as loose', (
   // permissive one, which is what this code is meant to rule out by
   // construction: never describe a system as freer to act than the runtime in
   // front of it permits.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   const grants = rows(db, "SELECT mode, note FROM authority WHERE source LIKE 'runtime:%'");
   expect(grants).toEqual([{ mode: 'forbidden', note: 'second' }]);
 
   // And a grant the runtime has stopped making disappears rather than lingering.
   db.close();
   seed({ mcp: { git: { type: 'local' } } }).close();
-  const after = new Database(join(dir, 'graph.db'));
+  const after = getDb(join(dir, 'graph.db'));
   expect(rows(after, "SELECT mode FROM authority WHERE source LIKE 'runtime:%'")).toEqual([]);
   // The curated model's grants survive; only the source that re-ran is replaced.
   expect(
@@ -874,7 +874,7 @@ test('an action a person supplies is still a single point of failure', () => {
 test('lifecycle separates configured from verified from reliable', () => {
   seed(LOCAL_ONLY).close();
   const lifecycle = (id: string) => {
-    const db = new Database(join(dir, 'graph.db'));
+    const db = getDb(join(dir, 'graph.db'));
     const row = rows(db, `SELECT lifecycle FROM capabilities WHERE id = 'combo:${id}'`)[0];
     db.close();
     return row?.lifecycle;
@@ -899,7 +899,7 @@ test('a failing check breaks the capability rather than being reported alongside
   cli('verify', 'shell-execution');
 
   // Stand in for a check that has started failing.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare(`INSERT INTO session_learning (session_id, capability_id, action, outcome_score)
               VALUES ('verify', 'combo:shell-execution', 'failed', 0)`).run();
   db.close();
@@ -907,7 +907,7 @@ test('a failing check breaks the capability rather than being reported alongside
   // Verifying something else recomputes every lifecycle without adding a run
   // to this one — retrieval declares no check, so it records nothing.
   cli('verify', 'retrieval');
-  const after = new Database(join(dir, 'graph.db'));
+  const after = getDb(join(dir, 'graph.db'));
   expect(
     rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0]
       .lifecycle
@@ -922,7 +922,7 @@ test('a failing check breaks the capability rather than being reported alongside
 
 /** Record a verification outcome the way tt verify would, without running it. */
 function recordVerification(id: string, outcome: 'verified' | 'failed') {
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, 'recorded by test')"
   ).run(id, outcome, outcome === 'verified' ? 1 : 0);
@@ -937,7 +937,7 @@ test('a broken capability stops reading as available', () => {
   recordVerification('combo:shell-execution', 'failed');
   seed(LOCAL_ONLY).close(); // same config; the gate reads the recorded evidence
 
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   expect(
     rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle
   ).toBe('broken');
@@ -969,7 +969,7 @@ test('a re-passing verification releases the gate', () => {
 
   // One pass after a failure is a weaker claim than a clean record: the
   // lifecycle moves broken → degraded, and the gate stays closed.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   expect(
     rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle
   ).toBe('degraded');
@@ -980,7 +980,7 @@ test('a re-passing verification releases the gate', () => {
   for (let i = 0; i < 4; i++) recordVerification('combo:shell-execution', 'verified');
   seed(LOCAL_ONLY).close();
 
-  const after = new Database(join(dir, 'graph.db'));
+  const after = getDb(join(dir, 'graph.db'));
   expect(
     rows(after, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0]
       .lifecycle
@@ -1231,7 +1231,7 @@ test('infrastructure manifest devices seed as capability-bearing resources', () 
     },
     stdio: 'ignore',
   });
-  const db = new Database(dbPath);
+  const db = getDb(dbPath);
   const device = rows(db, "SELECT id, kind FROM capabilities WHERE id = 'device:nuc'");
   expect(device[0]?.kind).toBe('resource');
 
@@ -1296,7 +1296,7 @@ test('tt surface emits the vocabulary a runtime would own', () => {
 
 /** Record a human act the way the engine would. */
 function recordHumanAct(session: string, capId: string, action: string) {
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare(
     'INSERT INTO session_learning (session_id, capability_id, action, outcome_score) VALUES (?, ?, ?, 1)'
   ).run(session, capId, action);
@@ -1779,14 +1779,14 @@ test('an apply re-seeds, so the graph reflects the change immediately', () => {
   cli('approve', p.proposal, 'kanav');
 
   // Before the apply, the graph has not seen the fetch MCP server.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'mcp:fetch'")).toEqual([]);
   db.close();
 
   cli('apply', p.proposal);
 
   // After the apply, no manual re-seed needed: the graph knows it now.
-  const after = new Database(join(dir, 'graph.db'));
+  const after = getDb(join(dir, 'graph.db'));
   expect(rows(after, "SELECT id FROM capabilities WHERE id = 'mcp:fetch'").length).toBe(1);
 });
 
@@ -1819,7 +1819,7 @@ test('every act is recorded against the person who authorised it', () => {
   cli('approve', p.proposal, 'kanav');
   cli('apply', p.proposal);
 
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   const acts = rows(
     db,
     `SELECT action, capability_id FROM session_learning
@@ -1884,10 +1884,9 @@ test('paths does not claim an already-reached capability needs closing', () => {
 
 test('a run records events, interventions, usage and an outcome', () => {
   seed(LOCAL_ONLY).close();
-  // The recorder is driver-agnostic (migrate.ts's surface); bun:sqlite's
-  // `all()` returns (Record | undefined)[] where the interface says Record[],
-  // so the handle is cast the same way the migration tests cast theirs.
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+  // The recorder takes migrate.ts's driver-agnostic surface, which is a
+  // narrower type than the engine's own handle.
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
 
   const b = beginRun(db, { goal: 'recover production service', runType: 'incident' });
   addEvent(db, b.run, { kind: 'detected', actor: 'monitoring', detail: 'service down' });
@@ -1941,7 +1940,7 @@ test('a run records events, interventions, usage and an outcome', () => {
 
 test('a run without an end is open and reports no outcome', () => {
   seed(LOCAL_ONLY).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
   const _b = beginRun(db, { goal: 'long task', runType: 'task' });
   const work = workReport(db, 5);
   expect(work[0].goal).toBe('long task');
@@ -1952,13 +1951,13 @@ test('a run without an end is open and reports no outcome', () => {
 
 test('a run records no capability state — the ledger observes, it does not reach', () => {
   seed(LOCAL_ONLY).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
   const b = beginRun(db, { goal: 'observe only' });
   recordUse(db, b.run, 'combo:shell-execution', { durationSeconds: 5 });
   endRun(db, b.run, 'success');
   (db as any).close();
 
-  const reopened = new Database(join(dir, 'graph.db'));
+  const reopened = getDb(join(dir, 'graph.db'));
   const state = rows(
     reopened,
     "SELECT state FROM capabilities WHERE id = 'combo:shell-execution'"
@@ -1971,9 +1970,7 @@ test('a run records no capability state — the ledger observes, it does not rea
 
 test('attention classifies agency: judgment is kept, clerical is reducible', () => {
   seed(LOCAL_ONLY).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
 
   // Judgment, twice — the human's reason for being there. Never reducible.
   const r1 = beginRun(db, { goal: 'architect the migration' });
@@ -2026,9 +2023,7 @@ test('attention classifies agency: judgment is kept, clerical is reducible', () 
 
 test('attention reports aggregate active and waiting time', () => {
   seed(LOCAL_ONLY).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r = beginRun(db, { goal: 'restart service' });
   recordIntervention(db, r.run, 'human:kanav', {
     kind: 'authority',
@@ -2070,7 +2065,7 @@ const WITH_ECONOMICS = {
 
 test('economics and goals seed from the config, stored as cents', () => {
   seed(WITH_ECONOMICS).close();
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   const attention = rows(
     db,
     `SELECT value_cents, period FROM economics WHERE entity_id = 'human:kanav' AND metric = 'attention_value_per_hour'`
@@ -2112,9 +2107,7 @@ test('economics reports declared values in dollars and names their source', () =
 
 test('opportunities price observed middleware burden and never judge judgement', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
 
   // Five clerical interventions, 30 minutes of active time each, on one
   // capability, across three runs — the classic "the human is the duct" case.
@@ -2159,9 +2152,7 @@ test('opportunities price observed middleware burden and never judge judgement',
 
 test('opportunities rank by objective and expose one case', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r = beginRun(db, { goal: 'approve the deploy' });
   recordIntervention(db, r.run, 'human:kanav', {
     kind: 'authority',
@@ -2189,9 +2180,7 @@ test('opportunities rank by objective and expose one case', () => {
 
 test('a proposal carries the observed case when burden exists, and none when it does not', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r = beginRun(db, { goal: 'search the web for me' });
   // Three clerical interventions on a capability that is still locked: the
   // human is doing the work the missing capability should do.
@@ -2226,9 +2215,7 @@ test('a proposal carries the observed case when burden exists, and none when it 
 
 test('an opportunity id proposes its capability with the observed case', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r = beginRun(db, { goal: 'move data' });
   recordIntervention(db, r.run, 'human:kanav', {
     kind: 'clerical',
@@ -2274,7 +2261,7 @@ test('an artifact refuses to spend on a proposal that changed after approval', (
   cli('approve', p.proposal, 'kanav');
 
   // Tamper: rewrite the steps after the approval was minted.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare('UPDATE proposals SET steps = ? WHERE id = ?').run(
     JSON.stringify([
       { id: 'combo:something-else', inverse: {}, config_patch: { mcp: { evil: {} } } },
@@ -2294,7 +2281,7 @@ test('an expired approval is refused until re-approved', () => {
   const p = cli('propose', 'web-research');
   cli('approve', p.proposal, 'kanav');
 
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare("UPDATE proposals SET expires_at = '2000-01-01 00:00:00' WHERE id = ?").run(
     p.proposal
   );
@@ -2313,7 +2300,7 @@ test('notify-approvals lists approved proposals awaiting apply', () => {
   expect(r.error).toContain('Usage'); // opt-in: nothing is sent without a topic
 
   // The pending set is readable through the engine directly.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   const rows = db.prepare("SELECT id FROM proposals WHERE status = 'approved'").all() as any[];
   expect(rows.map((r: any) => r.id)).toContain(p.proposal);
   db.close();
@@ -2326,7 +2313,7 @@ test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
   // The plan's example, on a capability the model leaves ungranted so the
   // scoped grants are the whole story: restart svc:ollama autonomous,
   // svc:postgres confirm, device:nuc not covered at all.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare(
     "INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, ?, ?, '', ?, 'test')"
   ).run('combo:offline-capable', 'execute', 'autonomous', 'svc:ollama');
@@ -2352,7 +2339,7 @@ test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
 
 test('a budget refuses a spend that would exceed it', () => {
   seed(LOCAL_ONLY).close();
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare(
     "INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'autonomous', '', '', 'test')"
   ).run('combo:offline-capable');
@@ -2376,7 +2363,7 @@ test('apply refuses a step authority denies, even with an approval', () => {
   cli('approve', p.proposal, 'kanav');
 
   // Forbid exactly what the proposal would acquire.
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   db.prepare(
     "INSERT INTO authority (capability_id, action, mode, holder, scope, source) VALUES (?, 'execute', 'forbidden', '', '', 'test')"
   ).run('combo:web-research');
@@ -2391,9 +2378,7 @@ test('apply refuses a step authority denies, even with an approval', () => {
 
 test('roi measures before and after an apply, and writes the observation back', () => {
   seed(APPLIABLE).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
 
   // Three hours of clerical intervention on the target in the 60 days before
   // the apply — the burden the proposal predicted removing.
@@ -2414,9 +2399,7 @@ test('roi measures before and after an apply, and writes the observation back', 
   cli('apply', p.proposal);
 
   // After the apply: one short intervention remains.
-  const db2 = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db2 = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r2 = beginRun(db2, { goal: 'search the web', goalId: 'combo:web-research' });
   recordIntervention(db2, r2.run, 'human:kanav', {
     kind: 'clerical',
@@ -2437,7 +2420,7 @@ test('roi measures before and after an apply, and writes the observation back', 
   expect(typeof roi.observed.verdict).toBe('string');
 
   // The observation is written back, so the next prediction can learn.
-  const reopened = new Database(join(dir, 'graph.db'));
+  const reopened = getDb(join(dir, 'graph.db'));
   const stored = (
     reopened.prepare('SELECT observed_roi FROM proposals WHERE id = ?').get(p.proposal) as any
   ).observed_roi;
@@ -2458,9 +2441,7 @@ test('roi on an unapplied proposal says so', () => {
 
 test('a federation export carries aggregates and never credentials', () => {
   seed(WITH_PREFS).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r = beginRun(db, { goal: 'move data' });
   recordIntervention(db, r.run, 'human:kanav', {
     kind: 'clerical',
@@ -2495,7 +2476,7 @@ test('a federation export carries aggregates and never credentials', () => {
 test('a federation import stores a receipt and merges nothing', () => {
   seed(WITH_PREFS).close();
   const before = (
-    new Database(join(dir, 'graph.db')).prepare('SELECT COUNT(*) n FROM capabilities').get() as any
+    getDb(join(dir, 'graph.db')).prepare('SELECT COUNT(*) n FROM capabilities').get() as any
   ).n;
 
   // Export to a file, then import that file back into the same graph.
@@ -2517,7 +2498,7 @@ test('a federation import stores a receipt and merges nothing', () => {
   expect(receipt.capabilities).toBeGreaterThan(0);
   expect(receipt.note).toContain('receipt');
 
-  const db = new Database(join(dir, 'graph.db'));
+  const db = getDb(join(dir, 'graph.db'));
   const rowsIn = db.prepare('SELECT COUNT(*) n FROM federation_imports').get() as any;
   expect(rowsIn.n).toBe(1);
   // Nothing leaked into the graph: capability count unchanged.
@@ -2577,9 +2558,7 @@ test('the curated model contributes catalog rows for alternatives it names', () 
 
 test('--budget allocates the best combination within it', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   // Two clerical burdens: a small one and a large one, both priced.
   const r = beginRun(db, { goal: 'move data' });
   for (let i = 0; i < 6; i++)
@@ -2616,9 +2595,7 @@ test('--budget allocates the best combination within it', () => {
 
 test('audit assembles the trail for a run, a proposal, and a person', () => {
   seed(APPLIABLE).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r = beginRun(db, { goal: 'restart the service', runType: 'incident', source: 'scan' });
   addEvent(db, r.run, {
     kind: 'detected',
@@ -2699,9 +2676,7 @@ test('portfolio reads shared burden and capex across imported environments', () 
   // Two environments, both burdened on the same capability.
   for (const env of ['acme-ltd', 'globex']) {
     const e = env;
-    const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-      typeof recordIntervention
-    >[0];
+    const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
     const r = beginRun(db, { goal: 'move data between systems' });
     recordIntervention(db, r.run, 'human:kanav', {
       kind: 'clerical',
@@ -2747,9 +2722,7 @@ function writeAndReturn(path: string, data: unknown): string {
 test('roi with no argument is the cumulative headline', () => {
   seed(APPLIABLE).close();
   // Record burden first so the proposal carries a prediction to check.
-  const db0 = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db0 = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r0 = beginRun(db0, { goal: 'search the web', goalId: 'combo:web-research' });
   const past = new Date(Date.now() - 30 * 864e5).toISOString();
   for (let i = 0; i < 4; i++)
@@ -2790,9 +2763,7 @@ test('an opportunity carries its acquisition options', () => {
       ],
     },
   }).close();
-  const db = new Database(join(dir, 'graph.db')) as unknown as Parameters<
-    typeof recordIntervention
-  >[0];
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
   const r = beginRun(db, { goal: 'move data' });
   for (let i = 0; i < 5; i++)
     recordIntervention(db, r.run, 'human:kanav', {
