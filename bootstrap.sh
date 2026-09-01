@@ -39,17 +39,24 @@ node --experimental-sqlite "$ROOT/src/engine/engine.ts" seed
 # than seed had just written, and always reporting an empty graph.
 DB="$(node --experimental-sqlite "$ROOT/src/engine/engine.ts" where --json | sed -n 's/.*"graph": *"\([^"]*\)".*/\1/p')"
 DB="${DB:-$ROOT/toolchain-viz.db}"
-node --experimental-sqlite -e "
-const {DatabaseSync}=require('node:sqlite');
-const db=new DatabaseSync('$DB');
-const g=db.prepare(\"SELECT COUNT(*) as t, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as u FROM capabilities\").get();
-const d=db.prepare(\"SELECT domain, COUNT(*) as t, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as u FROM capabilities GROUP BY domain ORDER BY domain\").all();
-const c=db.prepare(\"SELECT COUNT(*) as c FROM capabilities WHERE category='combo'\").get()||{c:0};
-console.log('┌─ Toolchain ───────────────────────────────────────────┐');
-console.log('│ '+(g.u||0)+'/'+g.t+' capabilities, '+d.length+' domains'+(c.c>0?', '+c.c+' combos':''));
-for(const s of d){const p=s.t>0?Math.round((s.u/s.t)*100):0;console.log('│ '+'█'.repeat(Math.round(p/10))+'░'.repeat(10-Math.round(p/10))+' '+s.domain.padEnd(12)+' '+s.u+'/'+s.t);}
-console.log('└───────────────────────────────────────────────────────┘');
-db.close();"
+# Render the engine's own status report rather than keeping a second copy of
+# its queries here. The copy that used to live in this file counted every row
+# in the capabilities table — the 28 `action` rows and the providers included —
+# so it announced "28/69 capabilities" seconds before `ambit status` said
+# "15/41" about the same graph. A reader has no way to tell which is real. The
+# rule for what counts as a capability lives in one place now; this only draws.
+node --experimental-sqlite "$ROOT/src/engine/engine.ts" status --json 2>/dev/null | node -e "
+let raw='';
+process.stdin.on('data', c => raw += c).on('end', () => {
+  let s; try { s = JSON.parse(raw); } catch { return; }
+  if (typeof s.total !== 'number') return;
+  const bar = (r, t) => { const n = t > 0 ? Math.round((r / t) * 10) : 0; return '█'.repeat(n) + '░'.repeat(10 - n); };
+  console.log('┌─ Your environment ────────────────────────────────────┐');
+  console.log('│ ' + s.reached + '/' + s.total + ' capabilities reached · ' + (s.domains || []).length + ' domains');
+  for (const d of s.domains || []) console.log('│ ' + bar(d.reached, d.total) + ' ' + String(d.domain).padEnd(12) + ' ' + d.reached + '/' + d.total);
+  if (s.actions) console.log('│ ' + ' '.repeat(10) + ' ' + 'actions'.padEnd(12) + ' ' + s.actions.reached + '/' + s.actions.total);
+  console.log('└───────────────────────────────────────────────────────┘');
+});" || true
 
 # The CLI is \`ambit\`. Older installs knew it as \`tt\`; link the current name,
 # and keep \`tt\` as an alias when nothing already occupies it.
@@ -74,8 +81,16 @@ if [ "$MODE" = "web" ]; then
   echo "Starting visualizer at http://localhost:3000"
   npm run dev
 else
-  echo "ambit status        — health, degraded, spofs, deficits, pending approvals"
-  echo "ambit attention     — where the human's time actually goes"
-  echo "ambit opportunities — what is worth building next, priced and ranked"
-  echo "./bootstrap.sh web  — start visualizer"
+  # Only commands that answer on a graph built one second ago. `attention` and
+  # `opportunities` read the work ledger, which is empty until runs have been
+  # recorded — recommending them here sent every new user straight into two
+  # "nothing recorded yet" notes as their first experience of the tool.
+  echo "ambit status         — health, single points of failure, what is unverified"
+  echo "ambit goal <name>    — what it would take to reach a capability"
+  echo "ambit impact <id>    — what stops working if this goes away"
+  echo "./bootstrap.sh web   — open the visualiser"
+  echo ""
+  echo "ambit attention and ambit opportunities price the human cost of running"
+  echo "this. They read a work ledger that starts empty, so they become useful"
+  echo "after runs have been recorded — not on first run."
 fi

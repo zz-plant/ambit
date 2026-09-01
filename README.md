@@ -114,27 +114,79 @@ To see what the installer would do without running it: `./bootstrap.sh --dry-run
 
 Everything above answers on a graph Ambit builds by itself. A second group — `attention`, `work`, `usage`, `opportunities`, `roi`, `audit` — prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need rather than returning a number, and they become useful after a few weeks of recorded runs, not on install.
 
-### Goal pathing
+The three blocks below are captured from a run against a fixture graph by `npm run docs:examples`, and CI fails if they drift from what the commands actually print.
 
+### Where the environment stands
+
+<!-- example: ambit status -->
+```console
+$ ambit status
+
+    summary: 37/56 capabilities reached · 26 with a single provider
+    reached: 37
+    total: 56
+    verified: 0
+    failing: 0
+    evidence:
+        proven: 0
+        unproven: 14
+        failing: 0
+        last check: never
+        provable now: Automated Tests, Browser Automation, Code Intelligence, File Editing, Local Runtime, Shell Execution, Version Control, Web Research
+        note: configured is not working — ambit verify would turn 8 of the unproven into evidence
+    domains:
+      ai-ml
+    …
+```
+<!-- /example -->
+
+### What it would take to reach something
+
+<!-- example: ambit goal local-embeddings -->
 ```console
 $ ambit goal local-embeddings
 
-  Local Embeddings
-    missing: 1
-    steps: 2 · estimated setup: 25m
-    order: Embeddings Provider → Local Embeddings
+    goal: Local Embeddings
+    exact: true
+    reachable: true
+    steps: 2
+    estimated setup: 25m
+    order:
+      Embeddings
+        id: combo:embeddings
+        setup seconds: 600
+        options:
+          nomic-embed via local runtime
+            setup seconds: 600
+            recurring cost: none
+            privacy: local
+    …
 ```
+<!-- /example -->
 
-### Single point of failure
+### What breaks if this goes away
 
+<!-- example: ambit impact combo:local-runtime -->
 ```console
-$ ambit impact tool:docker
+$ ambit impact combo:local-runtime
 
-  Impact of tool:docker:
-    direct dependents: 4
-    downstream cascade: 12 capabilities blocked
-    critical path: Container Sandbox → Isolated Evaluation → Self-Testing
+    capability: Local Runtime
+    decayed:
+      Local Tool Calling
+        becomes unavailable: false
+      Model Routing
+        becomes unavailable: false
+      Local Embeddings
+        becomes unavailable: false
+      Self-Hosted Stack
+        becomes unavailable: false
+    combos at risk:
+      Local Tool Calling
+        severity: warning
+      Model Routing
+    …
 ```
+<!-- /example -->
 
 `ambit share` builds its HTML from an allow-list — name, kind, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as "a person", and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.
 
@@ -199,7 +251,7 @@ sequenceDiagram
 <details>
 <summary><b>The full 48-tool MCP surface</b></summary>
 
-Each tool is registered twice: `ambit_*` is canonical, and `tt_*` remains as a legacy alias. Forty-eight distinct tools, ninety-six names in `tools/list`.
+Forty-eight tools. Each is also registered under a legacy `tt_` prefix, which doubles what `tools/list` returns and costs roughly 3,800 tokens of every agent's context for nothing — the aliases exist for configs written before the rename and are the next thing to remove.
 
 | Group | Tools | Purpose |
 | :--- | :--- | :--- |

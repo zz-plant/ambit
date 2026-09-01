@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Item, Connection } from '../utils/configImporter';
 import { importConfig } from '../utils/configImporter';
 import { demoSnapshot, type DemoSnapshot } from '../utils/demoSnapshot';
+import demoTechTree from '../utils/demoTechTree.json';
 import {
   isApiError,
   type ApiResult,
@@ -686,14 +687,29 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   // capabilities — instead of the config-derived view. Locked nodes arrive as
   // 'specified', which the renderers already draw as not-yet-built.
   loadTechTree: async () => {
-    // A static site has no engine to serve a tree — show the welcome screen.
+    // No engine to serve a tree: render the snapshot that ships with the
+    // bundle. This is the published demo's path, and it used to `return false`
+    // and change nothing at all — so on the page the README sends every
+    // visitor to first, clicking the tab named after the product did nothing,
+    // with no message and no failed request to notice. A view that cannot load
+    // has to say so or show something; silence is the one option that reads as
+    // a broken build.
     if (!(await backendAvailable())) {
-      // Same guard as loadConfig: on the published demo this runs when the
-      // Tech Tree tab is clicked, and without it the seeded graph is wiped
-      // back to an empty welcome screen with no way back but a reload.
-      if (get().demo) return false;
-      set({ items: [], connections: [], loading: false, error: null, demo: null });
-      return false;
+      const snapshot = demoTechTree as unknown as {
+        items: Omit<Item, 'position'>[];
+        connections: Connection[];
+      };
+      set({
+        items: snapshot.items.map((i, idx) => ({
+          ...i,
+          position: { x: 100 + (idx % 6) * 80, y: 50 + Math.floor(idx / 6) * 70, z: 0 },
+        })),
+        connections: snapshot.connections,
+        loading: false,
+        error: null,
+        demo: demoSnapshot(),
+      });
+      return true;
     }
     set({ loading: true, error: null, demo: null });
     try {

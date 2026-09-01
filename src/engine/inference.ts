@@ -138,7 +138,9 @@ function discoverCombos(db: Db) {
       name: combo.name,
       requirements: prereqs.map(p => capMap.get(p.from_capability)?.name || p.from_capability),
       unlocks: comboId,
-      confidence: Math.min(1, avg + 0.2),
+      // Rounded at the boundary: this is printed, and 0.8999999999999999 in a
+      // report reads as a bug in the analysis rather than in the float.
+      confidence: Math.round(Math.min(1, avg + 0.2) * 100) / 100,
       reason: `All prereqs at ${Math.round(avg * 100)}% avg maturity`,
     });
   }
@@ -364,7 +366,23 @@ function analyzeImpact(db: Db, capId: string) {
   const cap = db
     .prepare('SELECT id, name, maturity_score FROM capabilities WHERE id = ?')
     .get(capId);
-  if (!cap) return { capability: capId, decayed: [], combos_at_risk: [] };
+  if (!cap) {
+    // An unknown id used to come back as a well-formed empty report — the same
+    // shape a real capability with no dependents produces. A typo therefore
+    // read as "nothing depends on this", which is the most dangerous possible
+    // wrong answer from a blast-radius command.
+    const needle = capId.includes(':') ? capId.slice(capId.indexOf(':') + 1) : capId;
+    const near = db
+      .prepare(
+        `SELECT id FROM capabilities
+         WHERE kind != 'action' AND (id LIKE ? OR lower(name) LIKE ?)
+         ORDER BY length(id) LIMIT 5`
+      )
+      .all(`%${needle}%`, `%${needle.toLowerCase()}%`) as { id: string }[];
+    return near.length
+      ? { error: `No capability "${capId}" in this graph.`, did_you_mean: near.map(r => r.id) }
+      : { error: `No capability "${capId}" in this graph.`, hint: 'ambit graph lists every id.' };
+  }
 
   const deps = db
     .prepare('SELECT from_capability, to_capability, is_hard_requisite FROM dependencies')
@@ -398,7 +416,10 @@ function analyzeImpact(db: Db, capId: string) {
       const others = remaining(d.to_capability);
       return {
         name: t?.name || d.to_capability,
-        becomes_unavailable: d.is_hard_requisite && isSoleProvider(d.to_capability),
+        // `is_hard_requisite` comes back from SQLite as 0 or 1, and `&&`
+        // returns the operand rather than a boolean — so this field printed
+        // `false` on some rows and `0` on others in the same report.
+        becomes_unavailable: Boolean(d.is_hard_requisite) && isSoleProvider(d.to_capability),
         also_provided_by: others.length ? others.length : undefined,
         but_all_share: nominal(others),
       };

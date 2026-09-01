@@ -118,9 +118,17 @@ function matchGoal(sentence: string): GoalCandidate[] {
   const scored = vocab.map(c => ({
     ...c,
     hits: c.phrases.filter(p => {
+      if (sentence.toLowerCase().includes(p)) return true;
       const words = tokensOf(p);
       if (words.length === 0) return false;
-      return sentence.toLowerCase().includes(p) || words.every(w => tokens.has(w));
+      // A phrase of several words that survives stopword removal as a single
+      // common word must not match on that word alone. "without me" reduces to
+      // ["without"], so every sentence containing "without" scored a hit for
+      // Scheduled Work — including "search my code without sending it to a
+      // cloud", where the word is part of a negation about privacy and the
+      // recommendation came back as an automation capability.
+      if (p.trim().split(/\s+/).length > 1 && words.length < 2) return false;
+      return words.every(w => tokens.has(w));
     }).length,
   }));
   return scored.filter(c => c.hits > 0).sort((a, b) => b.hits - a.hits);
@@ -182,13 +190,18 @@ function goalFor(db: Db, sentence?: string) {
     };
   });
 
+  // One incidental word out of a whole sentence is a signal worth listing and
+  // not one worth acting on. Naming a `recommended` regardless is what turned a
+  // single stopword collision into a confident wrong answer, so the field is
+  // now earned: either a phrase appeared verbatim, or two of them matched.
+  const strong = matches[0].hits >= 2 || candidates[0].matched_phrases.length > 0;
   return {
     goal: sentence,
-    // The top match is the recommendation; the rest are the near misses a
-    // ranked list exists to show.
-    recommended: candidates[0].id,
+    ...(strong ? { recommended: candidates[0].id } : {}),
     candidates,
-    note: "ranked by how much of the goal the model's own vocabulary covers — a shortlist, not an interpretation",
+    note: strong
+      ? "ranked by how much of the goal the model's own vocabulary covers — a shortlist, not an interpretation"
+      : 'weak match: the sentence shares only an incidental word with these. Listed, not recommended — try ambit graph combos and name a capability directly.',
   };
 }
 
