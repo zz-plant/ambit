@@ -106,7 +106,9 @@ The same argument extends past software — robots add physical actuation, and b
 
 ---
 
-**What actually exists today** is narrower than the argument above, deliberately so: capability discovery, dependency mapping, maturity and decay analysis, failure-cascade analysis, near-miss discovery, and an MCP-readable model of the environment. Verified capability, explicit authority, and goal-to-capability planning are [the roadmap](./roadmap.md), not the product.
+**What actually exists today** is narrower than the argument above, deliberately so: capability discovery, dependency mapping, decay and failure-cascade analysis, near-miss discovery, verification that gates (a capability whose declared check fails is excluded from every plan), authority as its own table with per-action grants, goal-to-capability planning, a work ledger that prices human attention, and an MCP-readable model of all of it.
+
+What is still [the roadmap](./roadmap.md), not the product: Ambit describes authority but enforces nothing outside the control plane's own gate, and an action has no object — `commit` is a verb the model cannot yet attach to a particular repository, so *read repo A* and *write repo B* remain one node.
 
 The [README](../README.md) describes only what runs.
 

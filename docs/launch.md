@@ -22,7 +22,7 @@ The parts I use most:
 - Near-miss detection for capabilities that are one or two prerequisites away.
 - An attention ledger for permission prompts and other human interventions.
 - Reviewable config proposals with signed approval receipts. Agents may propose changes over MCP, but approval and apply stay outside the MCP surface.
-- Automatic discovery for OpenCode, Claude Code, Cursor, and Windsurf.
+- Automatic discovery for OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, and Codex CLI. A server two clients both list stays one capability with two sources.
 
 Zero-install demo: https://zz-plant.github.io/ambit/?demo=1
 

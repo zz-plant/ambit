@@ -105,22 +105,28 @@ stateDiagram-v2
 
 ## The full CLI surface
 
-Run `ambit` with no arguments and it shows the surface. The whole CLI is a handful of verbs; everything else is a view inside them:
+Run `ambit` with no arguments and it shows the surface. Thirty-five commands group under five nouns, and the grouping is presentation only — every verb also works flat, so `ambit impact x` and `ambit graph impact x` are the same command:
 
 ```
-Operate    status · graph [surface|combos|affordances] · history [since <when>]
-Decide     goal <cap-or-sentence> [--paths|--simulate|--prefs] · attention [days]
-           notify <topic> · notify-approvals <topic> · work [limit] · usage [days]
-           economics · opportunities [--by=…] [--budget=N] · opportunity <id>
-           roi [proposal-id] · catalog <cap> · audit [run|prop|human|days]
-           incidents · incident resolve <svc> <outcome> · portfolio [--budget=N]
-           impact <id> · verify [cap] [--history]
-           authority [cap] [scope <target>] · can <cap> [--target X] [--spend N]
-           · propose <cap> [n] · proposals · proposal <id>
-Govern     approve <id> <who> · apply <id> · rollback <id>
-Record     record <cap> [class] [note] · federation export|import
-           · seed · where · help [term]
+           seed · status · help [term]
+graph      impact <id> · catalog <cap> · where
+           share [--redact] [--out=path]
+           graph [surface|combos|affordances]
+plan       goal <cap-or-sentence> [--paths|--simulate|--prefs]
+           opportunities [--by=…] [--budget=N] · opportunity <id>
+           propose <cap> [option] · roi [proposal-id] · portfolio [--budget=N]
+check      verify [cap] [--history] · authority [cap] [scope <target>]
+           can <cap> [--target X] [--spend N] · credentials
+           incidents · incident resolve <svc> <outcome>
+govern     proposals · proposal <id> · approve <id> <person>
+           apply <id> · rollback <id> · history [since <when>]
+           audit [run|prop|human|days]
+report     work [limit] · usage [days] · economics · attention [days]
+           digest [days] · notify <topic> · notify-approvals <topic>
+           record <cap> [class] [note] · federation export|import
 ```
+
+Two more sit outside the groups because they start a process rather than answer a question: `ambit web` opens the visualiser (it needs a checkout — an installed copy carries no dev dependencies) and `ambit mcp` runs the MCP server.
 
 | | asks |
 |---|---|
@@ -217,7 +223,7 @@ $ echo '{"run":{"goal":"recover production service","runType":"incident"}}' \
     | node --experimental-strip-types scripts/adapters/telemetry.ts
 ```
 
-`scripts/adapters/telemetry.ts` is the ingestion client (stdin → one JSON object per line → `POST /api/telemetry`). A plugin bridge ships at `plugins/tech-tree-telemetry.js`: copy it to `~/.config/opencode/plugins/` and every tool execution in an OpenCode session lands in the ledger as a work event, and every permission prompt as an `authority` intervention. The endpoint is loopback-only and origin-allowlisted like every other route, and a telemetry payload is structured data — never a command.
+`scripts/adapters/telemetry.ts` is the ingestion client (stdin → one JSON object per line → `POST /api/telemetry`). A plugin bridge ships at `plugins/ambit-telemetry.js`: copy it to `~/.config/opencode/plugins/` and every tool execution in an OpenCode session lands in the ledger as a work event, and every permission prompt as an `authority` intervention. The endpoint is loopback-only and origin-allowlisted like every other route, and a telemetry payload is structured data — never a command.
 
 `ambit work` reads the ledger back: each run with its elapsed time, events, capabilities exercised, interventions, resources, and outcome. `ambit usage <days>` aggregates where effort went per capability — the raw material the opportunity engine ranks.
 
@@ -276,21 +282,21 @@ The canvas provides real-time "what-if" modeling without touching host configura
 * **Outage & Blast Radius Simulation:** Traverses the full transitive downstream closure ($T \subseteq V$ where $v \in T$ if there exists a directed dependency path from root $R \to v$). Renders affected nodes in pulsing red and counts disabled downstream capabilities.
 * **Frontier Acquisition Simulation:** Evaluates all locked capabilities where the candidate node is a hard requisite. If all other hard requisites are satisfied, the node transitions into the simulated frontier in glowing emerald green.
 
-### 2. Four Operational Decision Lenses
-The visualizer includes a sticky lens switcher to project different dimensions of the environment:
+### 2. Three Operational Decision Lenses
+The visualizer includes a sticky lens switcher to project different dimensions of the environment. Press <kbd>1</kbd>–<kbd>3</kbd> to switch.
 
 ```mermaid
 flowchart TD
     GRAPH["Unified SQLite Engine"] --> L1["1. Standard Tech Tree Lens\n(Chronological 7-Era Progression)"]
     GRAPH --> L2["2. Attention Heatmap Lens\n(Intervention Frequency & Friction Cost)"]
     GRAPH --> L3["3. Credential SPOF Lens\n(Shared Authentication & Blast Radius)"]
-    GRAPH --> L4["4. Physical Topology Lens\n(Host & Device Infrastructure Clusters)"]
 ```
 
 * **Standard Tree Lens:** Groups capabilities by their chronological evolutionary era (Foundation $\to$ Model Access $\to$ Tool Use $\to$ Memory $\to$ Autonomy $\to$ Assurance $\to$ Sovereignty).
 * **Attention Heatmap Lens:** Reads `/api/attention` and colors nodes by developer cognitive friction. Nodes requiring frequent human confirmations glow amber/crimson with cost badges (`42× ($/mo)`).
 * **Credential SPOF Lens:** Highlights shared authentication tokens where revoking a single secret risks cascading failures across independent MCP servers.
-* **Physical Topology Lens:** Reorganizes capabilities by host machine (`Local Host`, `Physical Nodes`, `Cloud / Edge`) to diagnose network reachability and hardware-level failures.
+
+A fourth lens grouped capabilities by host machine. It was sunset with the 3D views: `GET /api/infrastructure/scan` still probes the manifest, and `ambit incidents` is where that reading now surfaces.
 
 ### 3. Web Approval Broker API Contracts
 The local server provides loopback endpoints for web-based governance:

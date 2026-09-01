@@ -217,14 +217,22 @@ Upon re-execution with the valid cryptographic token `prop-remediate-17881882728
 
 All findings in this report are verified by automated tests and reproducible via the CLI:
 
-### Automated Pytest Suite
+### Automated Suite
+
+The three cases below began as a pytest file that no CI job ran. They are now in
+`src/control_plane/proxy.test.ts`, driven in-process against the proxy so a
+failure names the function that broke, and five more cover what they did not —
+a token naming no proposal, an approval for an unrelated proposal, a proposal
+edited after approval, an expired approval, and a prerequisite that regressed
+after approval was granted.
+
 ```bash
-pytest tests/control_plane/test_intervention_trace.py -v
+npx vitest run src/control_plane/proxy.test.ts
 ```
 **Results:**
-- `test_agent_unauthorized_deploy_intercepted`: PASSED
-- `test_remediation_workflow_and_safe_state_transition`: PASSED
-- `test_tampered_hmac_approval_rejected_and_state_protected`: PASSED
+- `an unauthorized deploy is intercepted and the environment is untouched`: PASSED
+- `the full remediation loop ends in an authorized, audited deploy`: PASSED
+- `a block leaves the environment byte-identical, hash included`: PASSED
 
 ### 90-Second Reproducible Demonstration
 ```bash

@@ -68,19 +68,19 @@ Netdata MCP    SSH / shell
      homelab node
 ```
 
-Once providers are separate, `ambit fork` stops comparing capabilities and starts comparing **ways of obtaining the same capability** — which is the comparison that actually matters when deciding what to build.
+Once providers are separate, the comparison stops being between capabilities and becomes one between **ways of obtaining the same capability** — the comparison that actually matters when deciding what to build, and what `ambit goal --paths` and `ambit catalog` do today.
 
 Built. Every node declares what kind of thing it is — `capability`, `action`, `provider`, `resource`, `actor`, `runtime` — and every edge declares what the relation means: `provides`, `contributes`, `requires`, `optional`, `authorizes`, `runs_on`. Authority and evidence are tables of their own. That is the six object types, with `goal` still absent because §5's free-form goals are.
 
-The narrow half came first: the `provides` edges existed and no analysis consulted them, so every provider was treated as though it were the only one. `ambit impact` now asks whether anything else supplies a capability before calling its loss critical — removing one of three git providers reports `redundant · also provided by 2` where it previously reported `critical` four times over, once per edge. `ambit spof` lists capabilities with exactly one provider, which is fragility, as against `ambit bottlenecks`, which ranks leverage.
+The narrow half came first: the `provides` edges existed and no analysis consulted them, so every provider was treated as though it were the only one. `ambit impact` now asks whether anything else supplies a capability before calling its loss critical — removing one of three git providers reports `redundant · also provided by 2` where it previously reported `critical` four times over, once per edge. `ambit status` lists capabilities with exactly one provider, which is fragility; `ambit_bottlenecks` over MCP ranks leverage, which is the opposite reading.
 
 Typing the edges was also a correctness fix rather than tidiness. `providersOf` matched three English sentences, so an adapter phrasing one differently dropped a provider out of both analyses with nothing failing: a capability with two providers still reported as a single point of failure.
 
 Action-level capabilities are built. A tech-tree node may declare `contract.can`, and each entry becomes an `act:<node>/<action>` node conferred by the capability and carrying its own authority — so the model can now say *may read the repository, may not merge to its default branch*, which is the distinction the coarse node could not make. Ten nodes declare a contract; the rest behave exactly as before.
 
-The id rework was avoided rather than done, deliberately. Every id appears in the ledger's stored snapshots, so re-iding would invalidate the history of the one component whose value is that its history is continuous. Kind is a column instead, existing databases migrate by `ALTER TABLE` and a one-time backfill, and `ambit spof`, `ambit impact`, `ambit plan` and `ambit since` return byte-identical output against a graph seeded by the previous version. The cost is that an id no longer tells you what it is, and callers must read the column.
+The id rework was avoided rather than done, deliberately. Every id appears in the ledger's stored snapshots, so re-iding would invalidate the history of the one component whose value is that its history is continuous. Kind is a column instead, existing databases migrate by `ALTER TABLE` and a one-time backfill, and `ambit status`, `ambit impact`, `ambit goal` and `ambit history` return byte-identical output against a graph seeded by the previous version. The cost is that an id no longer tells you what it is, and callers must read the column.
 
-Scope is now checked rather than merely recorded. `ambit scope <target>` — `repo:owner/name`, `device:nuc`, `svc:ollama` — lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope is a prefix claim: `repo:owner/name` covers the repo and its branches, a grant scoped elsewhere is named as excluded rather than silently treated as covering. What remains: nothing *mediates* on the scope — the check is a report, not a gate, which is the same line every enforcement half of this roadmap sits behind.
+Scope is now checked rather than merely recorded. `ambit authority scope <target>` — `repo:owner/name`, `device:nuc`, `svc:ollama` — lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope is a prefix claim: `repo:owner/name` covers the repo and its branches, a grant scoped elsewhere is named as excluded rather than silently treated as covering. What remains: nothing *mediates* on the scope — the check is a report, not a gate, which is the same line every enforcement half of this roadmap sits behind.
 
 Also built: `credential`, and the correction it exists for. Redundancy was counted by provider, so three things supplying one capability read as threefold redundancy — and if all three present the same token, one revocation takes them down together. Ambit called such a capability robust and, because having several providers is what kept it out of the single-point-of-failure report, excluded it by the very fact that made it fragile. A `uses` edge records what a provider authenticates with; `ambit status` lists such a capability among its spofs, `ambit impact` calls the survivors `nominal` rather than `redundant`, and `ambit credentials` answers what a revocation would end. The intersection, not the union: providers holding `{A}`, `{A,B}` and `{B}` survive losing either, and reporting that as fragile would be the same error inverted.
 
@@ -106,9 +106,9 @@ Hardware stops being "some computers" and becomes addressable capacity: 24GB of 
 
 The payoff is that a plan can include the human as a step. Instead of "I can't do that", the answer becomes: *eight of these ten steps are mine; you need to authorise the device and press the reset button; then I finish and verify the rest.*
 
-Built: an `actors` block seeds people as nodes. `provides` becomes a capability only that person supplies; `authorizes` becomes a hard prerequisite edge, so `ambit plan continuous-delivery` reports `requires_person: Kanav` rather than presenting the path as autonomous. Approval is a dependency, not a policy note.
+Built: an `actors` block seeds people as nodes. `provides` becomes a capability only that person supplies; `authorizes` becomes a hard prerequisite edge, so `ambit goal continuous-delivery` reports `requires_person: Kanav` rather than presenting the path as autonomous. Approval is a dependency, not a policy note.
 
-Preferences are built. A person may declare how they like things done — `prefers: [local-when-practical, minimize-recurring-cost]` — stored as data and matched by `ambit plan` against the alternatives a step's acquisition actually offers. Where the plan's default choice fights a stated preference, the plan names it and points at the alternative that matches: asking Kanav to approve a hosted, recurring CI default when they prefer local and one-off reads as if there is no choice, and the plan refuses to read that way. `ambit preferences [who]` lists the declarations.
+Preferences are built. A person may declare how they like things done — `prefers: [local-when-practical, minimize-recurring-cost]` — stored as data and matched by `ambit goal` against the alternatives a step's acquisition actually offers. Where the plan's default choice fights a stated preference, the plan names it and points at the alternative that matches: asking Kanav to approve a hosted, recurring CI default when they prefer local and one-off reads as if there is no choice, and the plan refuses to read that way. `ambit goal --prefs [who]` lists the declarations.
 
 Machines are now capability-bearing in the engine, not only in the visualiser. `INFRA_MANIFEST` devices seed as `resource` nodes with `runs_on` edges to the services hosted on them, so `ambit impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph can count.
 
@@ -143,9 +143,9 @@ rollback:
 
 At that point the tech tree behaves less like a diagram and more like a package manager for agency.
 
-Built: seven capabilities carry `acquisition.alternatives`, and `ambit plan` attaches them to each step. Alternatives rather than one blessed answer, because the trade-off is rarely setup time — the hosted embedding API is three minutes against ten and costs money and a data boundary, and the plan says so.
+Built: seven capabilities carry `acquisition.alternatives`, and `ambit goal` attaches them to each step. Alternatives rather than one blessed answer, because the trade-off is rarely setup time — the hosted embedding API is three minutes against ten and costs money and a data boundary, and the plan says so.
 
-The contract is built. `contract.can` lists the actions a capability confers, ten nodes declare one, and each action is a node with its own authority — `ambit actions version-control` reports that reading the repository and committing may happen unattended and that pushing a branch and merging to the default branch may not.
+The contract is built. `contract.can` lists the actions a capability confers, ten nodes declare one, and each action is a node with its own authority — `ambit authority version-control` reports that reading the repository and committing may happen unattended and that pushing a branch and merging to the default branch may not.
 
 Built: executable verification per contract action. A contract entry may be a name or `{ id, verify }`, and `ambit verify act:<capability>/<action>` runs the action's own check against the action node — reading a repository is a weaker claim than having read a particular repository, and the two now carry separate evidence. `ambit verify` with no argument runs every declared node check and every action check; `ambit verify <capability>` still answers "no check declared" rather than erroring.
 
@@ -171,7 +171,7 @@ Local Tool Calling
   reliable:  47/50 fixture tasks passed
 ```
 
-Built: nodes may declare a read-only `verify` command; `ambit verify` runs it and records the outcome in `session_learning`, which had carried the right columns since the first schema and had no writer. `ambit evidence <id>` returns the history, and reliability is reported as passes over runs — one success is a weaker claim than forty-seven of fifty. Eight nodes declare a check today.
+Built: nodes may declare a read-only `verify` command; `ambit verify` runs it and records the outcome in `session_learning`, which had carried the right columns since the first schema and had no writer. `ambit verify <id> --history` returns the history, and reliability is reported as passes over runs — one success is a weaker claim than forty-seven of fifty. Eight nodes declare a check today.
 
 Checks execute, so they live in this repository, are read-only by construction, and run only when asked. Nothing verifies on seed.
 
@@ -200,10 +200,10 @@ plan("maintain homelab unattended")
                                                    regret-if-abandoned high
 ```
 
-Built for the narrow case: `ambit plan <capability>` walks hard prerequisites depth-first and returns them in the order they must be closed, with an estimate.
+Built for the narrow case: `ambit goal <capability>` walks hard prerequisites depth-first and returns them in the order they must be closed, with an estimate.
 
 ```console
-$ ambit plan offline-capable
+$ ambit goal offline-capable
   goal: Offline Capable · steps: 2 · estimated setup: 25m
   1. Embeddings        10m
   2. Local Embeddings  15m
@@ -219,10 +219,10 @@ $ ambit goal "maintain the homelab unattended"
   Self-Hosted Stack    homelab            → steps 2 · 2.5h
 ```
 
-`ambit paths <capability>` compares the alternative ways to close the gap, deriving risk from what the alternatives themselves carry — hosted moves data off the machine, recurring adds a bill, a step without a config patch cannot be undone by §10 — and folding identical paths together so the list is of choices, not accidents:
+`ambit goal <capability> --paths` compares the alternative ways to close the gap, deriving risk from what the alternatives themselves carry — hosted moves data off the machine, recurring adds a bill, a step without a config patch cannot be undone by §10 — and folding identical paths together so the list is of choices, not accidents:
 
 ```console
-$ ambit paths web-research
+$ ambit goal web-research --paths
   5m   risk low   local   none   reversible
 ```
 
@@ -238,9 +238,9 @@ task failure → capability deficit → does it recur?
                                       yes → propose a permanent upgrade
 ```
 
-Built. `ambit failed <capability>` records that work was blocked by something missing; `ambit deficits` reports which deficits recur. One is bad luck, three is a structural deficit and the verdict says so. Both are exposed over MCP as `tt_blocked` and `tt_deficits`, since an agent hitting the same wall is exactly who should record it.
+Built. `ambit record <capability>` records that work was blocked by something missing, and `ambit status` reports which deficits recur. One is bad luck, three is a structural deficit and the verdict says so. Both are exposed over MCP as `ambit_blocked` and `ambit_deficits`, since an agent hitting the same wall is exactly who should record it.
 
-Classification is built. `ambit failed <capability> <class> ["what you were trying to do"]` records why work was blocked — reasoning, knowledge, tool, permission, infrastructure, or reliability — and `ambit deficits` reports the causes beside the count, so a capability blocked four times as a missing tool and once as a missing permission reads as one structural deficit and one incident rather than five of a kind. `tt_blocked` accepts the same classification over MCP.
+Classification is built. `ambit record <capability> <class> ["what you were trying to do"]` records why work was blocked — reasoning, knowledge, tool, permission, infrastructure, or reliability — and `ambit status` reports the causes beside the count, so a capability blocked four times as a missing tool and once as a missing permission reads as one structural deficit and one incident rather than five of a kind. `ambit_blocked` accepts the same classification over MCP.
 
 Unbuilt: the classification is declared, not inferred — a person or agent says why work was blocked, and nothing yet reads the failure's own text to classify it. And the loop from "this cause recurs" to "propose the permanent upgrade" (§5/§10) is still a human step.
 
@@ -250,12 +250,12 @@ The tree already tells you to write a SKILL.md for anything you explain more tha
 
 ## 7. The ledger — shipped
 
-Built. `frontier_snapshots` records every capability's state on each seed, written only when the state differs from the previous observation, so the table logs changes rather than runs. `ambit ledger` lists the observations; `ambit since [when]` compares two.
+Built. `frontier_snapshots` records every capability's state on each seed, written only when the state differs from the previous observation, so the table logs changes rather than runs. `ambit history` lists the observations, and `ambit history since [when]` compares two.
 
 The entry that justified the table works:
 
 ```console
-$ ambit since
+$ ambit history since
   frontier then: 13
   frontier now:  19
   gained:    Embeddings · Local Embeddings · nomic-embed-text
@@ -266,17 +266,17 @@ $ ambit since
 
 Classification compares against the ids recorded in the snapshot rather than timestamps. `created_at > taken_at` looked equivalent and was not: `datetime('now')` resolves to the second, so two seeds inside the same second classified every addition as pre-existing.
 
-`ambit since` also distinguishes a fourth thing: **vocabulary**. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system rather than the system having changed — the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so `frontier_now` stays on the same basis as `frontier_then`. Without it, upgrading would have reported twenty-eight capabilities gained on a machine where nothing happened, which is exactly what this table exists not to do.
+`ambit history` also distinguishes a fourth thing: **vocabulary**. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system rather than the system having changed — the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so `frontier_now` stays on the same basis as `frontier_then`. Without it, upgrading would have reported twenty-eight capabilities gained on a machine where nothing happened, which is exactly what this table exists not to do.
 
-What remains from the original sketch: nothing writes evidence of *use*, so the ledger still cannot answer which capabilities are actually exercised. It does now record demonstrated reliability beside reach: each snapshot carries a `verified` count and an id→lifecycle map, so `ambit since` reports a capability that stopped working as `diminished` (with `reason: verification failing`) while `frontier_now` stays flat — the check started failing, nothing was removed. The *use* half is the part still waiting on §4's executable verification.
+What remains from the original sketch: nothing writes evidence of *use*, so the ledger still cannot answer which capabilities are actually exercised. It does now record demonstrated reliability beside reach: each snapshot carries a `verified` count and an id→lifecycle map, so `ambit history` reports a capability that stopped working as `diminished` (with `reason: verification failing`) while `frontier_now` stays flat — the check started failing, nothing was removed. The *use* half is the part still waiting on §4's executable verification.
 
 ## 7b. Affordance domains
 
 The domain vocabulary was entirely software, so anything acting on the world collapsed into `meta`. `physical` now exists and infrastructure devices land there — a robot arm and a neural decoder seed and render alongside MCP servers.
 
-`cognitive`, `institutional` and `economic` are built as **derived** domains, not keywords. `ambit affordances` (and `ambit_affordances` over MCP) reads each capability's domain off its structure: *institutional* when an actor authorises it (an authority holder must exist for it to be acquirable), *economic* when its acquisition carries a recurring cost (a budget and a counterparty are implied), *cognitive* when a person supplies it (human cognition is necessary to produce the action), *physical* when a provider runs on a device. A capability can satisfy several — Continuous Delivery is institutional *and* economic, and both are named.
+`cognitive`, `institutional` and `economic` are built as **derived** domains, not keywords. `ambit graph affordances` (and `ambit_affordances` over MCP) reads each capability's domain off its structure: *institutional* when an actor authorises it (an authority holder must exist for it to be acquirable), *economic* when its acquisition carries a recurring cost (a budget and a counterparty are implied), *cognitive* when a person supplies it (human cognition is necessary to produce the action), *physical* when a provider runs on a device. A capability can satisfy several — Continuous Delivery is institutional *and* economic, and both are named.
 
-Related and built: the distinction between human-gated, human-composed, and machine-composed-human capability. The first is approval, which §9 covers. The second has somewhere to live — an action a person supplies is an `action` node like any other, so `ambit spof` reports *only Kanav can do this* in the same breath as *only one MCP server supplies this*. The third is now named: a capability supplied by both a person and a machine reads as `machine-composed-human`, the theory's BCI case given a structural home.
+Related and built: the distinction between human-gated, human-composed, and machine-composed-human capability. The first is approval, which §9 covers. The second has somewhere to live — an action a person supplies is an `action` node like any other, so `ambit status` reports *only Kanav can do this* in the same breath as *only one MCP server supplies this*. The third is now named: a capability supplied by both a person and a machine reads as `machine-composed-human`, the theory's BCI case given a structural home.
 
 Unbuilt: the visualiser does not render the new domains as columns — the era grammar is deliberately designed, and adding three columns to make the point would be design work, not model work. And the theory's *environment* term — an affordance holding in one workspace and not another — still has no representation.
 
@@ -288,7 +288,7 @@ What building it surfaced, and what remains:
 
 - Hermes exposes **authority as data** — `approvals.mode`, `approvals.cron_mode` — so §9 has a real source of truth to read rather than a schema to invent.
 - Detection was tuned to one runtime's naming. Hermes names a model `Jan-v1-4B-Q4_K_M` where OpenCode names the runtime `ollama`; quantisation suffixes are now a local-weights signal.
-- No runtime publishes a machine-readable capability surface. Reading another tool's private files works and is not the right contract. The durable version is an export the runtime owns — and the export now exists: `ambit surface` emits the graph's whole vocabulary (nodes by kind, edges by meaning, authority grants) in a schema-versioned manifest, and `scripts/adapters/surface.ts` consumes one, so a runtime that publishes a surface is read directly and file-parsing is only the fallback. The round-trip works, which is how the contract gets exercised before any other runtime adopts it.
+- No runtime publishes a machine-readable capability surface. Reading another tool's private files works and is not the right contract. The durable version is an export the runtime owns — and the export now exists: `ambit graph surface` emits the graph's whole vocabulary (nodes by kind, edges by meaning, authority grants) in a schema-versioned manifest, and `scripts/adapters/surface.ts` consumes one, so a runtime that publishes a surface is read directly and file-parsing is only the fallback. The round-trip works, which is how the contract gets exercised before any other runtime adopts it.
 - Both adapters read authority and could only print it. They now hand it to the engine in the same fragment they hand over their MCP servers, so what a runtime permits reaches the graph and can narrow what the model says an action is like in general.
 
 
@@ -346,7 +346,7 @@ cg_opportunities  cg_compound
 
 `cg_simulate_acquisition` matters as much as `cg_plan`: showing the graph as it *would* be, before anything changes, is what makes approval meaningful rather than ceremonial.
 
-Built, the two safe stages. `ambit simulate <capability>` computes the frontier as it would be, against a copy of the state; its useful output is not the acquisition but what comes with it — a capability already provided and held back only by the prerequisite the change satisfies. On this machine, acquiring a vector store moves the frontier by two, because Retrieval is already supplied by an agent and waiting.
+Built, the two safe stages. `ambit goal <capability> --simulate` computes the frontier as it would be, against a copy of the state; its useful output is not the acquisition but what comes with it — a capability already provided and held back only by the prerequisite the change satisfies. On this machine, acquiring a vector store moves the frontier by two, because Retrieval is already supplied by an agent and waiting.
 
 `ambit propose <capability> [n]` drafts a reviewable acquisition: ordered steps, the alternative chosen and its cost and privacy consequences, the simulated result, stored in a `proposals` table. Choosing the hosted alternatives for Retrieval takes it from 25 minutes to 13, at a per-token bill and a data boundary — the trade-off stated rather than implied.
 
@@ -475,6 +475,6 @@ The through-line in what remains is enforcement and objects. Ambit can now say w
 
 That last distinction is the next architectural move, and it is not another object type: the object types are largely in place. What none of them expresses is that an action has no object. Every entry on the list the graph will eventually need — read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only — is a verb bound to a noun, and Ambit has only the verbs. Once actions carry objects, authority and evidence can refer to them per object, and the era tree stops being the ontology and becomes what it should be: a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist.
 
-And it still cannot say what the work it observes costs — the economic half above is the next program.
+The economic half above is built through its first turn — the work ledger prices attention, the opportunity engine ranks the durable fixes, and realized ROI writes the verdict back. What it has not yet had is a long enough run of real observations to be worth trusting: those reports start empty and become useful after weeks of recorded work, not on install.
 
 The gap between this document and the README is deliberate. The README describes only what runs.

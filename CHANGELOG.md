@@ -2,20 +2,20 @@
 
 Written per release, on [the releases page](https://github.com/zz-plant/ambit/releases) — each one explains what changed and why, which is more use than a list of commits. This file is the index.
 
-## [0.4.0](https://github.com/zz-plant/ambit/releases/tag/v0.4.0) — 2026-08-13
-
-**Capability Graph became Ambit.** The old name described the data structure; the new one describes the subject — what you, your agents and your machines can jointly do. Mostly a repair release: the previous version documented a tool that did not run, so the claims it already made had to become true before anything could be built on them.
-
 ## Unreleased
 
+- **The CLI groups thirty-five commands under five nouns** — `graph`, `plan`, `check`, `govern`, `report`. Grouping is presentation, not a rename: every flat verb still dispatches, so `ambit impact x` and `ambit graph impact x` are the same command and nothing anyone has scripted stops working. `ambit help` covers a first session and `ambit help --all` is the full surface.
+- **The MCP server advertises each tool once.** Every tool was listed twice, as `ambit_*` and as the legacy `tt_*`, so `tools/list` returned 96 entries for 48 tools and spent about 3,600 tokens of every agent's context on duplicates. A `tt_` name written before the rename still dispatches; it is no longer advertised. Results now carry MCP `structuredContent` alongside the text block, so an agent reads a field rather than parsing a string.
 - **Autonomous Control Plane & Safety Interception**: Active runtime interceptor (`src/control_plane/proxy.ts`, `src/control_plane/cli.ts`) that enforces capability DAG prerequisites, lifecycle checks (`degraded`/`broken`), and authority policies before tool execution.
 - **`AMBIT_BLOCKED_UNAUTHORIZED` & State Invariance**: Rogue or out-of-order agent tool executions (such as unapproved production rollouts) are blocked at the control plane boundary with exit code `2`, guaranteeing `pre_state == post_state`.
 - **Human-in-the-Loop HMAC Remediation**: Blocked executions generate structured remediation proposals and cryptographic HMAC challenges (`ambit approve <proposal-id> <person>`), minting signed artifacts verified prior to state mutation.
+- **An approval is only spendable on what it authorised.** `verifyApproval` checked that an artifact was intact, unexpired and signed by the recorded approver, and nothing else — so any approved proposal was a bearer token for any gated action, and an approval to install a linter would authorise a production deploy. `approvalCovers` closes it: an approval is valid only for a capability that appears in the steps of the proposal that was approved.
 - **OpenTelemetry Trace Instrumentation**: Spans and structured event records capture DAG evaluations, missing authorization nodes, HMAC challenges, and verification receipts.
 - **Verified Incident Trace & Demonstration Suite**:
   - Published Incident Report: `docs/incidents/INCIDENT_TRACE_001.md`
-  - Automated TDD Suite: `tests/control_plane/test_intervention_trace.py` (`test:control-plane`)
+  - Automated suite: `src/control_plane/proxy.test.ts` — eight cases in the suite CI actually runs, replacing four pytest cases that no job had ever executed.
   - 90-Second Reproducible Demonstration: `scripts/demo_incident_trace.py` (`demo:incident`) and `docs/incidents/demo_intervention_trace.cast`.
+- CI measures coverage with a floor under it, and runs on Node 24 as well as 22.
 
 ## [0.4.1](https://github.com/zz-plant/ambit/releases/tag/v0.4.1) — 2026-08-30
 
@@ -44,3 +44,7 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 - An unseeded graph now says so instead of answering every question with "Nothing to report". Over MCP it returns an explicit notice, so an agent cannot mistake *not set up* for *an environment with no capabilities*.
 - The MCP server introduces itself as `ambit` at the package version, rather than `tech-tree` at `1.0.0`.
 - CI runs typecheck, tests, build, and a bootstrap against a machine with no agent config. The demo deploys from CI.
+
+## [0.4.0](https://github.com/zz-plant/ambit/releases/tag/v0.4.0) — 2026-08-13
+
+**Capability Graph became Ambit.** The old name described the data structure; the new one describes the subject — what you, your agents and your machines can jointly do. Mostly a repair release: the previous version documented a tool that did not run, so the claims it already made had to become true before anything could be built on them.

@@ -8,7 +8,7 @@
  * publishes session boundaries; this is the first, coarse turn of the loop.
  *
  * Install: copy to ~/.config/opencode/plugins/ and restart opencode. The
- * visualizer API must be running (bun run server).
+ * visualizer API must be running (npm run server).
  *
  * Everything is wrapped: a dead server, a changed payload, or an unknown
  * event must never take a session down.
