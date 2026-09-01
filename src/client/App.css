@@ -336,10 +336,15 @@ code, pre, .code, .sp-cli-cmd {
 
 .tp-filter-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   padding: 0 14px 8px;
-  overflow-x: auto;
 }
+
+/* These are six filter pills in a 29px row. Scrolling them horizontally put a
+   full-width scrollbar track across the sidebar, which read as a divider in
+   the wrong place and hid whichever filters were off-screen — the one thing a
+   filter row must not do. They wrap instead. */
 
 .tp-filter-chip {
   padding: 3px 8px;
@@ -1308,4 +1313,69 @@ code, pre, .code, .sp-cli-cmd {
   .app-deck-center {
     display: none;
   }
+
+  /* Hiding the centre tabs was not enough: what remained still ran past the
+     right edge with overflow visible, so on a 375px screen the Docs button sat
+     at x=537 and two of the three lenses were off-screen. Nothing was clipped
+     in a way a person could scroll to — the controls were simply gone. The row
+     scrolls now, and the status pill, the one element here that is purely
+     informational, gives up its width rather than competing for it. */
+  .app-deck {
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .app-deck-left,
+  .app-deck-right {
+    flex: 0 0 auto;
+  }
+
+  .app-status-pill {
+    display: none;
+  }
+}
+
+
+/* ── Scrollbars ────────────────────────────────────────────────────────────
+   Nothing styled these, so every scrolling panel drew the platform default:
+   on this palette a bright grey slab against #090d16, heavy enough to read as
+   chrome rather than as an affordance. The containers that scroll do need to —
+   the capability list is 2,600px tall and the tree is wider than any window —
+   so the bars stay, quietly.
+
+   Firefox takes the two standard properties; WebKit and Blink need the
+   pseudo-elements, and ignore the standard ones. Both are required. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-bright) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-bright);
+  border-radius: var(--radius-full);
+  /* Inset via a transparent border so the thumb reads as floating in the
+     gutter rather than filling it. */
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+  background-clip: content-box;
+}
+
+/* A corner with no styling renders as an opaque platform-coloured square where
+   two scrollbars meet — most visible on the canvas, which scrolls both ways. */
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
