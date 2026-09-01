@@ -2,7 +2,7 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, no-empty */
 /**
  * generate-scenes.ts — renders modern, high-production-value scene assets for Ambit.
- * Usage: bun run scripts/generate-scenes.ts [--dry-run]
+ * Usage: node --experimental-strip-types scripts/generate-scenes.ts [--dry-run]
  */
 
 import { writeFileSync, mkdirSync, statSync, copyFileSync, existsSync } from 'node:fs';

@@ -11,16 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Both runtimes, for the same reason bootstrap.sh checks for both:
-      # the engine and CLI run on node:sqlite, the server and tests on Bun.
+      # One runtime. The engine, the CLI, the API server and the test runner all
+      # open the graph through node:sqlite; there is no second driver to keep in
+      # step, and nothing in the repo needs Bun.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+          cache: npm
 
-      - run: bun install --frozen-lockfile
+      - run: npm ci
 
       # Covers the engine, the client, and the control plane — whose HMAC
       # approval path used to be tested only by a pytest file no job ran.
@@ -29,7 +28,7 @@ jobs:
 
       # `build` typechecks first, so this covers both.
       - name: Typecheck and build
-        run: bun run build
+        run: npm run build
 
       # The path a new user takes. It must survive a machine with no agent
       # config, which is how it used to fail — with a raw SQLite error.

@@ -14,7 +14,7 @@
  *   {"resource": {...}} / {"outcome": {...}}
  *
  *   echo '{"run":{"goal":"recover production service","source":"adapter"}}' \
- *     | bun run scripts/adapters/telemetry.ts
+ *     | node --experimental-strip-types scripts/adapters/telemetry.ts
  *
  * Nothing here invents data: what is not given is not recorded, and a verb it
  * does not recognise is reported rather than dropped silently.

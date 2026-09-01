@@ -7,7 +7,7 @@ import { kindOf, edgeKindOf } from './ontology.ts';
  * Bringing a database up to the current schema, with no opinion about which
  * driver opened it.
  *
- * Deliberately free of any `node:sqlite` or `bun:sqlite` import. The engine and
+ * Deliberately free of any driver import. The engine and
  * MCP server run under Node and the visualizer API under Bun, and the visualizer
  * opens the graph itself — so if migration could only be reached through the
  * Node handle, an existing installation that started the server before running

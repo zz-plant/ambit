@@ -18,14 +18,15 @@
  * consume that instead: reading another tool's private files is a stopgap, not
  * the intended contract.
  *
- *   bun run scripts/adapters/hermes.ts            # print the graph fragment
- *   bun run scripts/adapters/hermes.ts --seed     # seed it into Ambit
+ *   node --experimental-strip-types scripts/adapters/hermes.ts            # print the graph fragment
+ *   node --experimental-strip-types scripts/adapters/hermes.ts --seed     # seed it into Ambit
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { authorityBlock } from '../../src/shared/authority.ts';
+import { parse as parseYaml } from 'yaml';
 
 const HERMES_HOME = process.env.HERMES_HOME || join(process.env.HOME || '/', '.hermes');
 
@@ -43,7 +44,7 @@ function readHermes(): Fragment | null {
   const configPath = join(HERMES_HOME, 'config.yaml');
   if (!existsSync(configPath)) return null;
 
-  const cfg: any = Bun.YAML.parse(readFileSync(configPath, 'utf8')) || {};
+  const cfg: any = parseYaml(readFileSync(configPath, 'utf8')) || {};
   const fragment: Fragment = {
     runtime: 'hermes',
     mcp: {},
@@ -163,7 +164,7 @@ const mapping = {
   skill_dirs: fragment.skills.paths,
 };
 
-const engine = join(import.meta.dir, '..', '..', 'src', 'engine', 'engine.ts');
+const engine = join(import.meta.dirname, '..', '..', 'src', 'engine', 'engine.ts');
 const result = spawnSync('node', ['--experimental-sqlite', engine, 'seed'], {
   env: {
     ...process.env,

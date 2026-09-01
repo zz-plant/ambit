@@ -29,17 +29,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
 
-      - run: bun install --frozen-lockfile
+      - run: npm ci
 
       # A release that fails its own checks should not exist.
       - name: Verify
         run: |
-          bun test
-          bun run build
+          npm test
+          npm run build
 
       - name: Tag and checksum
         id: meta
