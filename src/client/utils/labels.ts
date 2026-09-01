@@ -17,6 +17,10 @@ const TYPE_LABELS: Record<string, string> = {
   api: 'API',
   network: 'Network',
   workflow: 'Workflow',
+  tool: 'Tool',
+  runtime: 'Runtime',
+  meta: 'Meta',
+  action: 'Action',
 };
 
 const STATUS_LABELS: Record<string, string> = {
