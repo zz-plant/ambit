@@ -37,6 +37,7 @@ import {
 import {
   CONFIG_PATH,
   INFRA_MANIFEST_PATH,
+  mayEditConfig,
   AGENT_FIELDS,
   COMMAND_FIELDS,
   readConfig,
@@ -424,6 +425,19 @@ const server = createServer(async (req, res) => {
   }
   if (req.method === 'OPTIONS') {
     res.writeHead(204, headers).end();
+    return;
+  }
+
+  // The origin allow-list only constrains browsers. Reading or rewriting the
+  // agent config from anything else needs the token — see src/server/config.ts.
+  if (!mayEditConfig(url.pathname, origin, req.headers['x-ambit-token'] as string | undefined)) {
+    res.writeHead(401, { ...headers, 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(
+      JSON.stringify({
+        error:
+          'This route needs the local API token. Send it as X-Ambit-Token; it is in ~/.config/opencode/ambit-api.token.',
+      })
+    );
     return;
   }
 
