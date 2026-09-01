@@ -179,6 +179,7 @@ export default function App() {
     };
   }, [source, loadTechTree, loadConfig]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount only — see below.
   useEffect(() => {
     if (params.get('guide') === 'off') dismissGuide();
     // ?demo=1 already seeded the graph above; loadConfig()'s no-backend path
@@ -199,7 +200,6 @@ export default function App() {
     // effect re-runs, loads the graph, sets state, and re-renders — an
     // unbounded loop of GET /api/tech-tree that pins the tab. A linter's
     // exhaustive-deps fix cannot see that.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: mount only.
   }, []);
 
   useEffect(() => {
@@ -209,7 +209,6 @@ export default function App() {
     }
     // `items.find` is a method reference off a new array each render; it is
     // not a dependency, it is a re-render trigger.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: see above.
   }, [focusId, items.length, selectItem]);
 
   // Global hotkey manager: [/] to search, [\] to toggle console, [?] for docs, [g] for governance, [Esc] to clear/close

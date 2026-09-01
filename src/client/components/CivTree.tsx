@@ -288,10 +288,10 @@ export default function CivTree({
   return (
     <div
       ref={containerRef}
-      // biome-ignore lint/a11y/noStaticElementInteractions: dragging to pan is a
-      // pointer affordance layered over the canvas. Every node inside carries
-      // role="button", tabIndex and a key handler, so the content it contains
-      // is reachable and operable without a pointer.
+      // Dragging to pan is a pointer affordance layered over the canvas. The
+      // a11y warning on this element is expected and left visible: every node
+      // inside carries role="button", tabIndex and a key handler, so the
+      // content is reachable and operable without a pointer.
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

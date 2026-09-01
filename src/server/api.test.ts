@@ -131,8 +131,8 @@ test('the config editor changes only what it is allowed to', async () => {
     body: JSON.stringify({
       disableMcp: ['git'],
       updateAgent: { name: 'nonexistent', updates: { description: 'x' } },
-      // biome-ignore lint/suspicious/noExplicitAny: deliberately hostile input.
-      ...({ enableMcp: ['__proto__'] } as any),
+      // Deliberately hostile input.
+      ...({ enableMcp: ['__proto__'] } as Record<string, unknown>),
     }),
   });
   expect(r.status).toBe(200);

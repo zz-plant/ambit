@@ -10,7 +10,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ENGINE_DIR, loadTechTree } from '../paths.ts';
-import type { Db } from '../db.ts';
 import { findBottlenecks, singlePointsOfFailure } from '../inference.ts';
 import { ledgerHistory } from '../ledger.ts';
 import { deficits } from '../planning.ts';
