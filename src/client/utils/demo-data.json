@@ -144,57 +144,6 @@
         "group": "Agents"
       },
       {
-        "id": "cmd:bench",
-        "name": "bench",
-        "type": "command",
-        "status": "built",
-        "description": "Run the benchmark suite",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "meta": {
-          "domain": "frontend",
-          "maturity": 0.6
-        },
-        "group": "Commands"
-      },
-      {
-        "id": "cmd:deploy",
-        "name": "deploy",
-        "type": "command",
-        "status": "built",
-        "description": "Ship to staging",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "meta": {
-          "domain": "devops",
-          "maturity": 0.6
-        },
-        "group": "Commands"
-      },
-      {
-        "id": "cmd:migrate",
-        "name": "migrate",
-        "type": "command",
-        "status": "built",
-        "description": "Run database migrations",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "meta": {
-          "domain": "backend",
-          "maturity": 0.6
-        },
-        "group": "Commands"
-      },
-      {
         "id": "mcp:1password",
         "name": "1password",
         "type": "mcp-server",
@@ -461,23 +410,6 @@
         "group": "Local"
       },
       {
-        "id": "opencode-core",
-        "name": "OpenCode Core",
-        "type": "framework",
-        "status": "built",
-        "description": "Main agent framework",
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "meta": {
-          "version": "latest",
-          "domain": "meta",
-          "maturity": 1
-        }
-      },
-      {
         "id": "provider:anthropic",
         "name": "Anthropic",
         "type": "provider",
@@ -512,118 +444,186 @@
           "maturity": 0.85
         },
         "group": "Providers"
+      },
+      {
+        "id": "runtime:opencode",
+        "name": "OpenCode Core",
+        "type": "runtime",
+        "status": "built",
+        "description": "Main agent framework",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "version": "latest",
+          "domain": "meta",
+          "maturity": 1
+        }
+      },
+      {
+        "id": "tool:bench",
+        "name": "bench",
+        "type": "tool",
+        "status": "built",
+        "description": "Run the benchmark suite",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "frontend",
+          "maturity": 0.6
+        },
+        "group": "Commands"
+      },
+      {
+        "id": "tool:deploy",
+        "name": "deploy",
+        "type": "tool",
+        "status": "built",
+        "description": "Ship to staging",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "maturity": 0.6
+        },
+        "group": "Commands"
+      },
+      {
+        "id": "tool:migrate",
+        "name": "migrate",
+        "type": "tool",
+        "status": "built",
+        "description": "Run database migrations",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "maturity": 0.6
+        },
+        "group": "Commands"
       }
     ],
     "connections": [
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "agent:researcher",
         "type": "subagent"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "agent:reviewer",
         "type": "subagent"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "agent:steward",
         "type": "subagent"
       },
       {
-        "from": "opencode-core",
-        "to": "cmd:bench",
-        "type": "command"
-      },
-      {
-        "from": "opencode-core",
-        "to": "cmd:deploy",
-        "type": "command"
-      },
-      {
-        "from": "opencode-core",
-        "to": "cmd:migrate",
-        "type": "command"
-      },
-      {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:1password",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:docker",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:fetch",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:filesystem",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:git",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:github",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:grafana",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:kubernetes",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:memory",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:playwright",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:postgres",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:sentry",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:slack",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "mcp:sqlite",
         "type": "connects"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "provider:anthropic",
         "type": "uses-provider"
       },
       {
-        "from": "opencode-core",
+        "from": "runtime:opencode",
         "to": "provider:ollama",
         "type": "uses-provider"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "tool:bench",
+        "type": "command"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "tool:deploy",
+        "type": "command"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "tool:migrate",
+        "type": "command"
       }
     ]
   },

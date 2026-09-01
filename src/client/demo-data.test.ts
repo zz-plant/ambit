@@ -22,14 +22,13 @@ test('both views are populated', () => {
   expect(tree.items.length).toBeGreaterThan(40);
 });
 
-test('the setup view is mostly present in the tree — it is the same machine', () => {
+test('every setup item exists in the tree — it is one machine, seen twice', () => {
   const treeIds = new Set(tree.items.map(i => i.id));
-  const shared = config.items.filter(i => treeIds.has(i.id));
-  // Was 5 of 25. The remainder are the commands and the framework, which the
-  // two sides key differently (`cmd:deploy` against `tool:deploy`) — a real
-  // vocabulary gap between the client's importer and the engine's ontology,
-  // and a separate thing to fix.
-  expect(shared.length / config.items.length).toBeGreaterThan(0.7);
+  const missing = config.items.filter(i => !treeIds.has(i.id)).map(i => i.id);
+  // Was 5 of 25 shared, because the two sides keyed the same things
+  // differently: `cmd:deploy` against `tool:deploy`, `opencode-core` against
+  // `runtime:opencode`. Nothing may fall out of this again silently.
+  expect(missing).toEqual([]);
 });
 
 test('the tree spans every era, so the demo shows the whole shape', () => {

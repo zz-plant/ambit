@@ -98,6 +98,14 @@ export const NODE_TYPES = [
   'api',
   'network',
   'workflow',
+  // Categories the engine actually stores. Their absence was not theoretical:
+  // the tree served `tool`, `runtime` and `meta` to a client whose own type
+  // did not admit them, so they reached the renderer as values it had no case
+  // for. api.test.ts holds this list against what the engine can emit.
+  'tool',
+  'runtime',
+  'meta',
+  'action',
 ] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 

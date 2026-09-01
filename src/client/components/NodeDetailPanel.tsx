@@ -1,9 +1,11 @@
 import React from 'react';
 import { useToolchainStore } from '../store/toolchainStore';
-import { typeLabel, statusLabel, metaKeyLabel } from '../utils/labels';
+import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 
 const TYPE_COLORS: Record<string, string> = {
   framework: '#6366f1',
+  runtime: '#6366f1',
+  tool: '#64748b',
   'mcp-server': '#f59e0b',
   agent: '#ec4899',
   provider: '#0284c7',
@@ -83,15 +85,14 @@ export function NodeDetailPanel() {
   if (item.status === 'deprecated')
     advisories.push({ icon: '!', label: 'Deprecated — scheduled for removal' });
   if (item.status === 'specified') advisories.push({ icon: '~', label: 'Not reached yet' });
-  if (neighbors.length === 0 && item.id !== 'opencode-core')
+  if (neighbors.length === 0 && !isRuntimeNode(item))
     advisories.push({ icon: 'x', label: 'Nothing depends on this' });
 
   const downstreamEnables = connections
     .filter(c => c.from === item.id)
     .map(c => items.find(i => i.id === c.to))
     .filter((i): i is NonNullable<typeof i> => Boolean(i));
-  const isKeystone =
-    downstreamEnables.length >= 3 || item.type === 'framework' || item.id === 'opencode-core';
+  const isKeystone = downstreamEnables.length >= 3 || isRuntimeNode(item);
 
   return (
     <div className="star-panel">

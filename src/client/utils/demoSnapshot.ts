@@ -171,7 +171,7 @@ export function demoGraphExport(): string {
     {
       items: [
         {
-          id: 'opencode-core',
+          id: 'runtime:opencode',
           name: 'OpenCode',
           type: 'framework',
           status: 'built',
@@ -308,10 +308,10 @@ export function demoGraphExport(): string {
         },
       ],
       connections: [
-        { from: 'opencode-core', to: 'mcp:playwright', type: 'connects' },
-        { from: 'opencode-core', to: 'mcp:cloudflare', type: 'connects' },
-        { from: 'opencode-core', to: 'mcp:github', type: 'connects' },
-        { from: 'opencode-core', to: 'agent:oracle', type: 'subagent' },
+        { from: 'runtime:opencode', to: 'mcp:playwright', type: 'connects' },
+        { from: 'runtime:opencode', to: 'mcp:cloudflare', type: 'connects' },
+        { from: 'runtime:opencode', to: 'mcp:github', type: 'connects' },
+        { from: 'runtime:opencode', to: 'agent:oracle', type: 'subagent' },
         { from: 'skill:cloudflare', to: 'combo:e2e', type: 'hard-dep' },
         { from: 'skill:vitest', to: 'combo:e2e', type: 'hard-dep' },
         { from: 'skill:cloudflare', to: 'combo:deploy', type: 'hard-dep' },

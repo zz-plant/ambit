@@ -86,15 +86,29 @@ function inferDomain(name: string, type: string, hint = ''): string {
   return TYPE_DOMAINS[type] || 'meta';
 }
 
+/**
+ * The engine's id for the runtime this config belongs to.
+ *
+ * `discovery.ts` seeds `runtime:${AMBIT_RUNTIME || 'opencode'}`, and this view
+ * has to agree with it or the two halves of the product disagree about what
+ * they are describing.
+ */
+const RUNTIME_ID = 'runtime:opencode';
+
 export function importConfig(config: OpenCodeConfig): { items: Item[]; connections: Connection[] } {
   const items: Item[] = [];
   const connections: Connection[] = [];
 
-  // Core framework — enriched with structural config as metadata
+  // The runtime, enriched with structural config as metadata.
+  //
+  // Keyed `runtime:opencode` because that is what the engine calls it. This
+  // view and the tech tree are meant to be two views of one environment, and
+  // they described the same runtime as `opencode-core` and `runtime:opencode`
+  // — so selecting it in one and switching tabs lost it.
   items.push({
-    id: 'opencode-core',
+    id: RUNTIME_ID,
     name: 'OpenCode Core',
-    type: 'framework',
+    type: 'runtime',
     status: 'built',
     description: 'Main agent framework',
     position: { x: 0, y: 0, z: 0 },
@@ -132,7 +146,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       group: m.type === 'remote' ? 'Cloudflare' : 'Local',
     });
     if (m.enabled !== false) {
-      connections.push({ from: 'opencode-core', to: `mcp:${name}`, type: 'connects' });
+      connections.push({ from: RUNTIME_ID, to: `mcp:${name}`, type: 'connects' });
     }
   }
 
@@ -155,7 +169,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       },
       group: 'Agents',
     });
-    connections.push({ from: 'opencode-core', to: `agent:${name}`, type: 'subagent' });
+    connections.push({ from: RUNTIME_ID, to: `agent:${name}`, type: 'subagent' });
   }
 
   // ── Providers + Models ──
@@ -171,7 +185,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       meta: { key: name, domain: 'ai-ml', maturity: 0.85 },
       group: 'Providers',
     });
-    connections.push({ from: 'opencode-core', to: `provider:${name}`, type: 'uses-provider' });
+    connections.push({ from: RUNTIME_ID, to: `provider:${name}`, type: 'uses-provider' });
 
     const models = p.models || {};
     for (const [mname, model] of Object.entries(models)) {
@@ -197,16 +211,18 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
   const commands = config.command || {};
   for (const [name, c] of Object.entries(commands)) {
     items.push({
-      id: `cmd:${name}`,
+      // `tool:` and not `cmd:`, for the same reason as the runtime above: the
+      // engine's stock mapping seeds a config `command` as a `tool`.
+      id: `tool:${name}`,
       name,
-      type: 'command',
+      type: 'tool',
       status: 'built',
       description: c.description || '',
       position: { x: 0, y: 0, z: 0 },
       meta: { domain: inferDomain(name, 'command', c.description || ''), maturity: 0.6 },
       group: 'Commands',
     });
-    connections.push({ from: 'opencode-core', to: `cmd:${name}`, type: 'command' });
+    connections.push({ from: RUNTIME_ID, to: `tool:${name}`, type: 'command' });
   }
 
   // ── Skills (from config paths) ──
@@ -223,7 +239,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       meta: { path, domain: inferDomain(skillName, 'skill', path), maturity: 0.7 },
       group: 'Skills',
     });
-    connections.push({ from: 'opencode-core', to: `skill:${skillName}`, type: 'skill' });
+    connections.push({ from: RUNTIME_ID, to: `skill:${skillName}`, type: 'skill' });
   }
 
   // ── Structural config items ──
@@ -270,7 +286,7 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       meta: { ...si.meta, domain: 'meta', maturity: 0.5 },
       group: 'Config',
     });
-    connections.push({ from: 'opencode-core', to: si.id, type: 'config' });
+    connections.push({ from: RUNTIME_ID, to: si.id, type: 'config' });
   }
 
   return { items, connections };

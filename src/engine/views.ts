@@ -97,7 +97,7 @@ export function techTreeView(db: Db): TechTreeResponse {
   const items: TreeItem[] = caps.map(c => ({
     id: c.id,
     name: c.name,
-    type: c.category === 'combo' ? 'possibility' : c.category === 'mcp' ? 'mcp-server' : c.category,
+    type: nodeType(c.category),
     // Locked tech-tree nodes render as the 'specified' (wireframe) state, which
     // is how the visualiser already draws something not yet built.
     status: c.state === 'locked' ? 'specified' : 'built',

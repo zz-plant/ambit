@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useToolchainStore } from '../store/toolchainStore';
+import { isRuntimeNode } from '../utils/labels';
 
 const TYPE_FILTERS = ['all', 'server', 'agent', 'skill', 'combo'] as const;
 type Filter = (typeof TYPE_FILTERS)[number];
@@ -169,6 +170,7 @@ export default function CivTree({
 
   const COLORS: Record<string, string> = {
     framework: '#00f0ff',
+    runtime: '#00f0ff',
     'mcp-server': '#ffaa00',
     agent: '#ff007f',
     skill: '#00ff88',
@@ -566,8 +568,7 @@ export default function CivTree({
                     item.id.includes('credential'));
 
                 const downList = downstream.get(item.id) || [];
-                const isKeystone =
-                  downList.length >= 3 || item.id === 'opencode-core' || item.type === 'framework';
+                const isKeystone = downList.length >= 3 || isRuntimeNode(item);
 
                 const next = isNext(item);
                 const reached = item.status === 'built';
@@ -887,7 +888,7 @@ export default function CivTree({
             const lines = unreached && ni.description ? wrap(ni.description) : [];
             const enables = hoverDownstream.slice(0, 4);
             const downCount = (downstream.get(ni.id) || []).length;
-            const isKey = downCount >= 3 || ni.id === 'opencode-core' || ni.type === 'framework';
+            const isKey = downCount >= 3 || isRuntimeNode(ni);
 
             const W = 220;
             const headH = 22;
