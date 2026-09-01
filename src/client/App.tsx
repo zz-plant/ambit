@@ -179,15 +179,24 @@ export default function App() {
     if (source === 'tree') loadTechTree();
     else loadConfig();
     // Intentionally once on mount; the toggles drive later changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadTechTree, loadConfig, source, params.get, dismissGuide]);
+    //
+    // `params` is a fresh URLSearchParams on every render, so listing
+    // `params.get` here is listing a new function identity every render: the
+    // effect re-runs, loads the graph, sets state, and re-renders — an
+    // unbounded loop of GET /api/tech-tree that pins the tab. A linter's
+    // exhaustive-deps fix cannot see that.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: mount only.
+  }, []);
 
   useEffect(() => {
     if (focusId && items.length > 0) {
       const item = items.find(i => i.id === focusId);
       if (item) selectItem(item.id);
     }
-  }, [focusId, items.length, selectItem, items.find]);
+    // `items.find` is a method reference off a new array each render; it is
+    // not a dependency, it is a re-render trigger.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: see above.
+  }, [focusId, items.length, selectItem]);
 
   // Global hotkey manager: [/] to search, [\] to toggle console, [?] for docs, [g] for governance, [Esc] to clear/close
   useEffect(() => {
