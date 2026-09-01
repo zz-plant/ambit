@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ASSETS_DIR = join(import.meta.dirname ?? __dirname, '..', 'docs', 'assets');
+const ROOT = join(import.meta.dirname ?? __dirname, '..');
+const ASSETS_DIR = join(ROOT, 'docs', 'assets');
 
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
@@ -53,6 +55,76 @@ function readPngInfo(filePath: string): PngInfo {
     bitDepth: buf.readUInt8(24),
     byteLength: buf.length,
   };
+}
+
+// ── Staleness ────────────────────────────────────────────────────────────────
+//
+// The specs above check that the branding PNGs are the right shape. They say
+// nothing about whether a picture of the product still shows the product, and
+// for two UI generations nothing did: the README's hero GIF was a light theme
+// with a toolbar that no longer existed, and the only reason anyone noticed was
+// that a person looked at it.
+//
+// A picture of the UI is stale when the UI changed after it was taken. That is
+// checkable, so it is checked.
+
+/**
+ * Pictures of the running client that the README embeds, mapped to the command
+ * that regenerates each one.
+ *
+ * Only assets with a producer are listed. A check that fails without being able
+ * to say how to fix it teaches a contributor to ignore it, and `src/client`
+ * changes for reasons that do not alter a single pixel — a formatting pass, a
+ * type annotation — so a bare "this file is older than that directory" gate
+ * would cry wolf within a week of being added. When a screenshot gains a
+ * recorder, it belongs here.
+ */
+const UI_ASSETS: Record<string, string> = {
+  'capability-graph-demo.gif': 'npm run assets:hero',
+};
+
+/** Commit epoch of the last change to `path`, or null outside a git checkout. */
+function lastCommit(path: string): number | null {
+  try {
+    const out = execFileSync('git', ['log', '-1', '--format=%ct', '--', path], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return out ? Number(out) * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function checkStaleness(errors: string[]): void {
+  const uiChanged = lastCommit('src/client');
+  if (uiChanged === null) {
+    console.log('\n  ⚠  not a git checkout — skipping the staleness check\n');
+    return;
+  }
+
+  const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+  console.log('\n🕒 Staleness — UI images against the last change to src/client\n');
+
+  for (const [name, command] of Object.entries(UI_ASSETS)) {
+    const rel = `docs/assets/${name}`;
+    if (!readme.includes(rel)) continue; // not on the page a reader sees
+    const taken = lastCommit(rel);
+    if (taken === null) {
+      errors.push(`${name}: referenced by README but not committed`);
+      continue;
+    }
+    const days = Math.round((uiChanged - taken) / 86_400_000);
+    if (taken < uiChanged) {
+      errors.push(
+        `${name}: last regenerated ${days} day(s) before the most recent src/client ` +
+          `change, so it may show a UI that no longer exists. Run \`${command}\`.`
+      );
+    } else {
+      console.log(`  ✅ ${name}  newer than the last UI change`);
+    }
+  }
 }
 
 function main() {
@@ -141,6 +213,8 @@ function main() {
   } catch {
     errors.push('source.svg: missing — design source file required');
   }
+
+  checkStaleness(errors);
 
   const expectedTypes = Object.keys(SPECS);
   const missing = expectedTypes.filter(t => !found.has(t));
