@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   test: {
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.ts'],
     // The engine opens the graph through node:sqlite, which Node 22 keeps
     // behind a flag. Setting it here is what lets a test import an engine
     // module and call it, instead of spawning `node` and parsing stdout.

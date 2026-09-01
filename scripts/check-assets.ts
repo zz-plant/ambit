@@ -65,23 +65,58 @@ function readPngInfo(filePath: string): PngInfo {
 // with a toolbar that no longer existed, and the only reason anyone noticed was
 // that a person looked at it.
 //
-// A picture of the UI is stale when the UI changed after it was taken. That is
-// checkable, so it is checked.
+// The obvious check — "is the image older than the last commit to src/client" —
+// is the one this file shipped with, and it was wrong. It fired on every commit
+// to the client, including a scrollbar fix that changed no pixel of the frame,
+// and the only way to clear it was to re-record a 425KB binary. That turns a
+// staleness check into a machine for pushing half a megabyte into git history
+// per UI commit; the hero GIF has already been rewritten seven times for 4.6MB
+// of blobs. A gate whose remedy is worse than the problem gets disabled, and it
+// should be.
+//
+// CI cannot answer the real question — whether the picture still looks like the
+// product — because answering it means rendering the product, which needs
+// Chrome and ffmpeg. So this measures rot rather than correctness: how many
+// commits to the client the image is behind. One is noise. Twenty is a
+// different screen. The threshold is where the two stop being confusable.
 
 /**
  * Pictures of the running client that the README embeds, mapped to the command
  * that regenerates each one.
  *
- * Only assets with a producer are listed. A check that fails without being able
- * to say how to fix it teaches a contributor to ignore it, and `src/client`
- * changes for reasons that do not alter a single pixel — a formatting pass, a
- * type annotation — so a bare "this file is older than that directory" gate
- * would cry wolf within a week of being added. When a screenshot gains a
- * recorder, it belongs here.
+ * Only assets with a producer are listed: a check that fails without being able
+ * to say how to fix it teaches a contributor to ignore it. When a screenshot
+ * gains a recorder, it belongs here.
  */
 const UI_ASSETS: Record<string, string> = {
   'capability-graph-demo.gif': 'npm run assets:hero',
 };
+
+/**
+ * How far behind an image may fall before it is treated as wrong rather than
+ * merely old.
+ *
+ * Not a measure of anything exact — it is the point at which "the client has
+ * moved on since this was taken" stops being a guess. The failure this exists
+ * to catch was fourteen commits and two UI generations behind; a lint pass and
+ * a CSS fix are one or two.
+ */
+const STALE_AFTER_COMMITS = 12;
+
+export type Staleness = 'current' | 'drifting' | 'stale';
+
+/**
+ * What a number of unaccounted-for client commits means for an image.
+ *
+ * Separated from the reporting so the rule can be tested without a git history
+ * to arrange: this file had no tests, and the version of it that shipped
+ * yesterday failed CI on its first real commit.
+ */
+export function stalenessOf(behind: number, strict = false): Staleness {
+  if (behind <= 0) return 'current';
+  if (strict || behind >= STALE_AFTER_COMMITS) return 'stale';
+  return 'drifting';
+}
 
 /** Commit epoch of the last change to `path`, or null outside a git checkout. */
 function lastCommit(path: string): number | null {
@@ -97,32 +132,66 @@ function lastCommit(path: string): number | null {
   }
 }
 
-function checkStaleness(errors: string[]): void {
-  const uiChanged = lastCommit('src/client');
-  if (uiChanged === null) {
+/** Commits touching `path` since `sinceIso`, newest first. */
+function commitsSince(path: string, sinceEpoch: number): string[] {
+  try {
+    return execFileSync(
+      'git',
+      ['log', '--format=%h %s', `--since=@${Math.floor(sinceEpoch / 1000)}`, '--', path],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    )
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Reports how far each README image has fallen behind the client.
+ *
+ * `strict` (the --strict flag) fails on any drift at all. That is the right
+ * setting for a release, where re-recording once is proportionate; it is the
+ * wrong setting for every push, which is what this file used to do.
+ */
+function checkStaleness(errors: string[], warnings: string[], strict: boolean): void {
+  if (lastCommit('src/client') === null) {
     console.log('\n  ⚠  not a git checkout — skipping the staleness check\n');
     return;
   }
 
   const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
-  console.log('\n🕒 Staleness — UI images against the last change to src/client\n');
+  console.log('\n🕒 Staleness — README images against commits to src/client\n');
 
   for (const [name, command] of Object.entries(UI_ASSETS)) {
     const rel = `docs/assets/${name}`;
     if (!readme.includes(rel)) continue; // not on the page a reader sees
+
     const taken = lastCommit(rel);
     if (taken === null) {
       errors.push(`${name}: referenced by README but not committed`);
       continue;
     }
-    const days = Math.round((uiChanged - taken) / 86_400_000);
-    if (taken < uiChanged) {
-      errors.push(
-        `${name}: last regenerated ${days} day(s) before the most recent src/client ` +
-          `change, so it may show a UI that no longer exists. Run \`${command}\`.`
-      );
+
+    const behind = commitsSince('src/client', taken);
+    if (behind.length === 0) {
+      console.log(`  ✅ ${name}  current with the client`);
+      continue;
+    }
+
+    const summary =
+      `${name}: ${behind.length} commit(s) to src/client since it was recorded` +
+      ` — ${behind
+        .slice(0, 3)
+        .map(c => c.split(' ')[0])
+        .join(', ')}` +
+      (behind.length > 3 ? `, +${behind.length - 3} more` : '');
+
+    if (stalenessOf(behind.length, strict) === 'stale') {
+      errors.push(`${summary}. Run \`${command}\`.`);
     } else {
-      console.log(`  ✅ ${name}  newer than the last UI change`);
+      warnings.push(`${summary}. Re-record with \`${command}\` if any of them changed the view.`);
+      console.log(`  ⚠  ${summary}`);
     }
   }
 }
@@ -214,7 +283,8 @@ function main() {
     errors.push('source.svg: missing — design source file required');
   }
 
-  checkStaleness(errors);
+  const warnings: string[] = [];
+  checkStaleness(errors, warnings, process.argv.includes('--strict'));
 
   const expectedTypes = Object.keys(SPECS);
   const missing = expectedTypes.filter(t => !found.has(t));
@@ -226,10 +296,13 @@ function main() {
     `\n${errors.length === 0 ? '✅ All assets valid' : '❌ FAILURES:'}  (${files.length} PNGs, 1 SVG checked)\n`
   );
 
+  for (const warn of warnings) console.warn(`  ⚠  ${warn}`);
+
   if (errors.length > 0) {
     for (const err of errors) console.error(`  ❌ ${err}`);
     process.exit(1);
   }
 }
 
-main();
+// Only when run as a script; the exports above are imported by its test.
+if (process.argv[1]?.endsWith('check-assets.ts')) main();
