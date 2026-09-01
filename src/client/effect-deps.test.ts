@@ -25,9 +25,31 @@ const CLIENT = join(import.meta.dirname, '.');
 
 /** Properties that are functions rather than values, on the types used here. */
 const CALLABLE = [
-  'get', 'set', 'has', 'find', 'findIndex', 'map', 'filter', 'some', 'every',
-  'includes', 'indexOf', 'slice', 'reduce', 'forEach', 'join', 'sort', 'concat',
-  'keys', 'values', 'entries', 'push', 'pop', 'at', 'flatMap', 'split',
+  'get',
+  'set',
+  'has',
+  'find',
+  'findIndex',
+  'map',
+  'filter',
+  'some',
+  'every',
+  'includes',
+  'indexOf',
+  'slice',
+  'reduce',
+  'forEach',
+  'join',
+  'sort',
+  'concat',
+  'keys',
+  'values',
+  'entries',
+  'push',
+  'pop',
+  'at',
+  'flatMap',
+  'split',
 ];
 
 function sourceFiles(dir: string): string[] {

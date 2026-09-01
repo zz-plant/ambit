@@ -33,6 +33,11 @@ jobs:
       - name: Typecheck and build
         run: npm run build
 
+      # The README's pictures are the first thing a reader sees, and a picture
+      # of a UI that no longer exists is worse than no picture.
+      - name: Check assets
+        run: npm run assets:check
+
       # The path a new user takes. It must survive a machine with no agent
       # config, which is how it used to fail — with a raw SQLite error.
       - name: Bootstrap on a clean machine
