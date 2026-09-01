@@ -197,6 +197,24 @@ export function simulatedAdapter(envDir: string): EnvironmentAdapter<SimulatedEn
 }
 
 /**
+ * True when the approved proposal actually contains the capability about to
+ * run. The signature on an approval artifact proves who approved *a* proposal;
+ * it says nothing about which capability the bearer is now invoking, so the
+ * executor has to tie the two together itself.
+ */
+export function approvalCovers(db: Db, proposalId: string, capabilityId: string): boolean {
+  const row = db.prepare('SELECT steps FROM proposals WHERE id = ?').get(proposalId);
+  if (!row?.steps) return false;
+  let steps: Array<{ id?: string }>;
+  try {
+    steps = JSON.parse(row.steps);
+  } catch {
+    return false;
+  }
+  return Array.isArray(steps) && steps.some(s => s?.id === capabilityId);
+}
+
+/**
  * Execute an agent tool invocation through Ambit's Control Plane Proxy.
  */
 export function executeThroughControlPlane(
@@ -306,6 +324,13 @@ export function executeThroughControlPlane(
       const verifyRes = verifyApproval(db, proposalId, 'human:security-lead');
       if (!verifyRes.ok) {
         blockedReason = `Invalid HMAC approval artifact: ${verifyRes.reason}`;
+        missingAuthorizationNode = 'human:security-lead';
+      } else if (!approvalCovers(db, proposalId, capabilityId)) {
+        // A signed artifact says "this proposal was approved", not "this
+        // action may run". Without this check any approved proposal — one to
+        // install a linter — was a bearer token for a production deploy,
+        // because verifyApproval only ever looked at the artifact's integrity.
+        blockedReason = `Approval ${proposalId} does not cover ${capabilityId}; it authorises a different proposal`;
         missingAuthorizationNode = 'human:security-lead';
       }
     }
