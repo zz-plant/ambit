@@ -125,7 +125,7 @@ export function NodeDetailPanel() {
             </span>
           </div>
         </div>
-        <button className="sp-close" onClick={() => selectItem(null)}>
+        <button type="button" className="sp-close" onClick={() => selectItem(null)}>
           ✕
         </button>
       </div>

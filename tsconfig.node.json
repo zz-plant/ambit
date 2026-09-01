@@ -1,16 +1,16 @@
 {
-  // Server-side code: engine, MCP server, Express server, build scripts.
-  // node:sqlite is experimental and returns untyped `{}` rows, so full strict
-  // mode is not achievable here without hand-writing row types for every query.
-  // Kept separate from the client config so client code stays strict.
+  // Server-side code: the engine, the MCP server, the control plane, the API
+  // server and the build scripts. Strict, like the client — the exemption used
+  // to be justified by node:sqlite returning untyped rows, but db.ts narrows
+  // the handle once at the boundary (rows as `Record<string, any>`), so the
+  // rest of this code has no reason to opt out of the checker.
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["ESNext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node", "bun"],
-    "strict": false,
-    "noImplicitAny": false,
+    "types": ["node"],
+    "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
@@ -18,5 +18,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/engine", "src/mcp", "server.ts", "scripts"]
+  "include": ["src/engine", "src/mcp", "src/server", "src/control_plane", "src/shared", "server.ts", "scripts"]
 }

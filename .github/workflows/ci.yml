@@ -26,6 +26,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Lint and format
+        run: npm run lint
+
       # `build` typechecks first, so this covers both.
       - name: Typecheck and build
         run: npm run build

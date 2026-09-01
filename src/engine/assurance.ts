@@ -415,7 +415,7 @@ function runVerification(db: Db, which?: string) {
         : [verifyCapability(db, n.id, n)];
   });
 
-  const withReliability = results.map(r => {
+  const withReliability = results.map((r: Record<string, any>) => {
     const history = evidenceFor(db, r.id);
     const runs = history.length;
     const passes = history.filter((h: any) => h.action === 'verified').length;
@@ -444,8 +444,8 @@ function runVerification(db: Db, which?: string) {
 
   return {
     checked: withReliability.length,
-    verified: withReliability.filter(r => r.status === 'verified').length,
-    failed: withReliability.filter(r => r.status === 'failed').length,
+    verified: withReliability.filter((r: Record<string, any>) => r.status === 'verified').length,
+    failed: withReliability.filter((r: Record<string, any>) => r.status === 'failed').length,
     results: withReliability,
     now_unavailable: nowUnavailable.length
       ? nowUnavailable.map((r: any) => ({ id: r.id, name: r.name, lifecycle: r.lifecycle }))

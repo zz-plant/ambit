@@ -385,7 +385,7 @@ function opportunitiesFor(
 
   // The capital allocator: the combination within the budget, not just the
   // single best item. Empty budget means "rank, do not allocate".
-  let allocation;
+  let allocation: ReturnType<typeof allocate> | undefined;
   if (budgetDollars != null && budgetDollars > 0) {
     allocation = allocate(priced, budgetDollars * 100, rate);
   }
