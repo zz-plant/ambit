@@ -1419,6 +1419,37 @@ test('a proposal with an uninvertible step is not applicable, and says why', () 
   expect(p.steps.some((s: any) => s.inverse === null)).toBe(true);
 });
 
+test('share writes an allow-listed snapshot and nothing else', () => {
+  seed({
+    mcp: { 'wiki-search': { type: 'local', command: ['npx', '-y', 'secret-wiki-mcp', '--token=abc123'] } },
+    provider: { ollama: { options: { baseURL: 'http://127.0.0.1:11434/v1' }, models: { 'qwen3-coder': {} } } },
+    actors: { casey: { name: 'Casey', provides: ['physical-access'] } },
+  }).close();
+  const out = join(dir, 'map.html');
+  const r = cli('share', `--out=${out}`);
+  expect(r.wrote).toBe(out);
+  const html = readFileSync(out, 'utf8');
+  // The whitelist is the guarantee: names may appear, the things around them may not.
+  expect(html).toContain('wiki-search');
+  expect(html).not.toContain('secret-wiki-mcp');
+  expect(html).not.toContain('abc123');
+  expect(html).not.toContain('127.0.0.1');
+  // A person is in the graph; their name stays out of the file.
+  expect(html).not.toContain('Casey');
+  expect(html).toContain('a person');
+});
+
+test('share --redact keeps the shape and drops the names', () => {
+  seed({ mcp: { 'wiki-search': { type: 'local', command: ['wiki-mcp'] } } }).close();
+  const out = join(dir, 'redacted.html');
+  const r = cli('share', `--out=${out}`, '--redact');
+  expect(r.redacted_names).toBeGreaterThan(0);
+  const html = readFileSync(out, 'utf8');
+  expect(html).not.toContain('wiki-search');
+  // Curated capability names stay — they describe the model, not the person.
+  expect(html).toContain('Shell Execution');
+});
+
 test('proposals persist and are retrievable', () => {
   seed(LOCAL_ONLY).close();
   const created = cli('propose', 'retrieval');
