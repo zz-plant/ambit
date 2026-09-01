@@ -1374,13 +1374,15 @@ test('a proposal records the chosen alternative and its trade-off', () => {
   expect(embeddings.privacy).toBe('local');
 });
 
-test('a proposal cannot execute, and says why', () => {
+test('a proposal with an uninvertible step is not applicable, and says why', () => {
   seed(LOCAL_ONLY).close();
   const p = cli('propose', 'retrieval');
-  expect(p.executable).toBe(false);
-  // The inverse is the gate: no step runs without one, so an unpopulated
-  // inverse is what makes a future apply refuse this proposal.
-  for (const step of p.steps) expect(step.inverse).toBeNull();
+  // The inverse is the gate: no step runs without one. Retrieval needs a
+  // vector store, which no declarative patch supplies, so the proposal as a
+  // whole stays a document even though the embeddings step alone could apply.
+  expect(p.applicable).toBe(false);
+  expect(p.note).toContain('cannot be applied');
+  expect(p.steps.some((s: any) => s.inverse === null)).toBe(true);
 });
 
 test('proposals persist and are retrievable', () => {
@@ -1443,12 +1445,13 @@ test('a declarative acquisition gets an inverse; others are refused one', () => 
   expect(withInstaller.steps.some((s: any) => s.inverse === null)).toBe(true);
 });
 
-test('applicable and executable are different claims', () => {
+test('a proposal whose every step is a reversible patch is applicable', () => {
   seed({ mcp: { git: {} }, provider: { ollama: { models: { 'qwen3-coder': {} } } } }).close();
   const p = cli('propose', 'web-research');
-  // Safe to apply if apply existed; apply does not exist.
   expect(p.applicable).toBe(true);
-  expect(p.executable).toBe(false);
+  // And the note tells the reader the actual path: approve, then apply.
+  expect(p.note).toContain('ambit apply');
+  for (const step of p.steps) expect(step.inverse).not.toBeNull();
 });
 
 test('approval must name someone accountable in the graph', () => {

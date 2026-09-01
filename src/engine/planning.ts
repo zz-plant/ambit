@@ -491,11 +491,14 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
     steps,
     simulated,
     economic_case: economic ?? undefined,
-    // Two different claims. `applicable` is about this proposal being safe to
-    // apply; `executable` is about apply existing at all, which it does not.
+    // `applicable` means every step is a declarative config patch with a
+    // computed inverse — the only shape `ambit apply` will run. A step
+    // needing an installer or a running service has no inverse, and a
+    // proposal containing one stays a document.
     applicable: steps.every((s: any) => s.inverse),
-    executable: false,
-    note: 'Draft only. Applying is not implemented; a step without an inverse could not run even if it were.',
+    note: steps.every((s: any) => s.inverse)
+      ? 'Every step is a reversible config change. A person approves it (ambit approve), then ambit apply edits the config, re-seeds, and rolls back on a failed check.'
+      : 'Draft only. A step without a computed inverse cannot be applied — it describes work a person does.',
   };
 }
 
