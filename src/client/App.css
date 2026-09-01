@@ -608,6 +608,73 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
 }
 
+/* Two blocks of the detail panel referenced classes that were never defined, so
+   their spans rendered inline with nothing between them: "Domain" + "ai-ml"
+   read as "Domainai-ml", and a neighbour's name ran into its edge type as
+   "ollamahard-dep". Both are in the README's hero image. */
+.sp-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.sp-link:hover .sp-link-name {
+  color: var(--text-primary);
+}
+
+.sp-link-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sp-link-name {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-link-type {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.sp-attr-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+.sp-attr-key {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sp-attr-val {
+  color: var(--text-secondary);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ─── CANVAS HUD & CONTROLS ─── */
 .civ-tree-container {
   position: absolute;
