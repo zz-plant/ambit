@@ -19,6 +19,8 @@ import {
   type TypeFilter,
   visibleItems,
 } from './civ/layout.ts';
+import { SimulationBanner } from './civ/SimulationBanner.tsx';
+import { ZoomHud } from './civ/ZoomHud.tsx';
 
 interface CivTreeProps {
   /** Pixels of the scene covered by the docked panel, so column one is visible. */
@@ -213,117 +215,21 @@ export default function CivTree({
         userSelect: isDragging ? 'none' : 'auto',
       }}
     >
-      {/* Floating Canvas Zoom & Pan HUD Controls */}
-      <div className="civ-zoom-hud" role="toolbar" aria-label="Canvas zoom and pan controls">
-        <button
-          type="button"
-          className="civ-zoom-btn"
-          onClick={() => setZoom(z => Math.min(2.5, +(z + 0.2).toFixed(2)))}
-          title="Zoom In (Hotkey: +)"
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <span className="civ-zoom-badge">{Math.round(zoom * 100)}%</span>
-        <button
-          type="button"
-          className="civ-zoom-btn"
-          onClick={() => setZoom(z => Math.max(0.4, +(z - 0.2).toFixed(2)))}
-          title="Zoom Out (Hotkey: -)"
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-        <div className="civ-zoom-divider" />
-        <button
-          type="button"
-          className="civ-zoom-btn"
-          onClick={() => {
-            setZoom(1);
-            if (containerRef.current) {
-              containerRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
-            }
-          }}
-          title="Reset to 100% (Hotkey: 0)"
-          aria-label="Reset zoom to 100%"
-        >
-          1:1
-        </button>
-        <button
-          type="button"
-          className="civ-zoom-btn"
-          onClick={() => {
-            if (containerRef.current) {
-              const rect = containerRef.current.getBoundingClientRect();
-              const fitRatio = Math.min(rect.width / contentWidth, rect.height / contentHeight);
-              setZoom(Math.max(0.4, Math.min(1.5, +(fitRatio * 0.95).toFixed(2))));
-              containerRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
-            }
-          }}
-          title="Fit Graph to View"
-          aria-label="Fit graph to view"
-        >
-          ⊡
-        </button>
-      </div>
+      <ZoomHud
+        zoom={zoom}
+        setZoom={setZoom}
+        containerRef={containerRef}
+        contentWidth={contentWidth}
+        contentHeight={contentHeight}
+      />
 
-      {/* Floating Simulation Banner */}
-      {simulationMode !== 'none' && (
-        <div
-          style={{
-            position: 'sticky',
-            top: 56,
-            left: 16,
-            zIndex: 20,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '12px',
-            background:
-              simulationMode === 'outage'
-                ? 'linear-gradient(90deg, #ff2a55, #880022)'
-                : 'linear-gradient(90deg, #00f0ff, #0088cc)',
-            color: '#ffffff',
-            padding: '8px 16px',
-            borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
-            border: '1px solid rgba(255,255,255,0.2)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: '12px',
-              letterSpacing: '0.4px',
-              fontFamily: 'var(--font)',
-            }}
-          >
-            {simulationMode === 'outage'
-              ? `⚡ BLAST RADIUS SIMULATION: Outage of "${simulatedItem?.name || simulatedNodeId}" disables ${simulatedCascadeIds.size} downstream capabilities.`
-              : `✨ FRONTIER SIMULATION: Unlocking "${simulatedItem?.name || simulatedNodeId}" makes +${simulatedCascadeIds.size} compound capabilities reachable.`}
-          </span>
-          <button
-            type="button"
-            style={{
-              background: '#ffffff',
-              color: simulationMode === 'outage' ? '#ff2a55' : '#0088cc',
-              border: 'none',
-              borderRadius: 'var(--radius-xs)',
-              padding: '4px 10px',
-              cursor: 'pointer',
-              fontWeight: 800,
-              fontFamily: 'var(--font)',
-              fontSize: '11px',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-            }}
-            onClick={clearSimulation}
-          >
-            ✕ Exit Simulation
-          </button>
-        </div>
-      )}
-
+      <SimulationBanner
+        simulationMode={simulationMode}
+        simulatedNodeId={simulatedNodeId}
+        simulatedItem={simulatedItem}
+        simulatedCascadeIds={simulatedCascadeIds}
+        clearSimulation={clearSimulation}
+      />
       {/* Main SVG Vector Canvas */}
       <svg
         viewBox={`0 0 ${contentWidth} ${contentHeight}`}
