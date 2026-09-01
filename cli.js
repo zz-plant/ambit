@@ -40,48 +40,36 @@ const mcpEntry = existsSync(resolve(ROOT, 'src', 'mcp', 'server.ts'))
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
 
+/**
+ * Help is the engine's to print, not this wrapper's.
+ *
+ * This file used to carry its own hand-written command list. It drifted: the
+ * engine grew `share`, `credentials`, `opportunities`, `roi`, `audit`, `work`
+ * and `usage`, the list here did not, and `ambit help` claimed to be the full
+ * surface while hiding seven working commands. Worse, intercepting `help`
+ * swallowed its arguments, so `help --all` and `help <term>` — both of which
+ * the engine implements — could never run.
+ *
+ * The engine derives its list from the same groups the dispatcher routes on,
+ * so it cannot fall behind. `web` and `mcp` are the exception: they are
+ * implemented here, never reach the engine, and so cannot appear in a list the
+ * engine builds. They are appended after it.
+ */
 if (cmd === '--help' || cmd === 'help') {
+  const helpArgs = cmd === 'help' ? args : [];
+  const engineHelp = spawnSync(
+    'node',
+    [...NODE_FLAGS, engineEntry, 'help', ...helpArgs],
+    { stdio: 'inherit' },
+  );
   console.log(`
-  Ambit — what you, your agents and your machines can jointly do,
-  and where the scarce resource is being spent.
-
-  ${B}Operate${R}
-    ambit status           Health · degraded · spofs · deficits · pending approvals
-    ambit graph            The graph as JSON (graph surface | combos | affordances)
-    ambit history [since]  How the frontier moved
-
-  ${B}Decide${R}
-    ambit goal <cap-or-sentence> [--paths|--simulate|--prefs]
-                           Route a goal, plan the delta, compare paths, simulate
-    ambit attention [days] How much work still runs through the human
-    ambit notify <topic>   Push the attention digest to ntfy — opt-in only
-    ambit impact <id>      If this went away, what breaks?
-    ambit verify [id] [--history]   Run the declared check, or past verification
-    ambit authority [cap] [scope <target>]   What may run, on what, unattended
-    ambit propose <id> [n] Draft a reviewable acquisition, using alternative n
-    ambit proposals        Drafts so far ·  ambit proposal <id>  One in full
-
-  ${B}Govern${R}
-    ambit approve <id> <who>  Record that a person approved a draft
-    ambit apply <id>       Apply an approved draft to your config
-    ambit rollback <id>    Reverse an applied draft
-
-  ${B}Record${R}
-    ambit record <id> [class] [note]   Record that a missing capability blocked work
-
-  ${B}Setup${R}
-    ambit seed             Read your agent config and build the graph
-    ambit where            Where the graph is stored
-    ambit web              Open the visualizer
-
-  ${D}The graph builds itself on first run; ambit seed rebuilds it after your
-  config changes. ambit web needs a git checkout: the visualizer is built
-  with dev dependencies an installed copy does not carry.${R}
-
-  ${D}ambit mcp runs the MCP server, exposing the same questions to an agent
-  session: claude mcp add ambit -- ambit mcp${R}
+  ${D}ambit web              Open the visualizer. Needs a git checkout: it is
+                         built with dev dependencies an installed copy does
+                         not carry.
+  ambit mcp              Run the MCP server, exposing the same questions to an
+                         agent session: claude mcp add ambit -- ambit mcp${R}
 `);
-  process.exit(0);
+  process.exit(engineHelp.status ?? 0);
 }
 
 // Bare `ambit` used to print help — a list of things to read before doing

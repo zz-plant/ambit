@@ -110,7 +110,7 @@ To see what the installer would do without running it: `./bootstrap.sh --dry-run
 | `ambit history [since]` | How the frontier moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
-`ambit help` lists the full surface, grouped by what you are trying to do.
+`ambit help` covers a first session; `ambit help --all` is the full surface, grouped by what you are trying to do, and `ambit help <term>` explains one concept.
 
 Everything above answers on a graph Ambit builds by itself. A second group — `attention`, `work`, `usage`, `opportunities`, `roi`, `audit` — prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need rather than returning a number, and they become useful after a few weeks of recorded runs, not on install.
 
