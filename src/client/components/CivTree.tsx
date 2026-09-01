@@ -2,59 +2,23 @@ import React, { useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useToolchainStore } from '../store/toolchainStore';
 import { isRuntimeNode } from '../utils/labels';
-
-const TYPE_FILTERS = ['all', 'server', 'agent', 'skill', 'combo'] as const;
-type Filter = (typeof TYPE_FILTERS)[number];
-
-const DOMAIN_ORDER = [
-  'physical',
-  'infra',
-  'devops',
-  'backend',
-  'frontend',
-  'ai-ml',
-  'quality',
-  'meta',
-  'security',
-];
-const ERA_LABELS: Record<string, string> = {
-  physical: 'Physical',
-  infra: 'Foundation',
-  devops: 'Pipeline',
-  backend: 'Services',
-  frontend: 'Interface',
-  'ai-ml': 'Intelligence',
-  quality: 'Guard',
-  meta: 'Orchestration',
-  security: 'Fortress',
-};
-/** meta is an untyped bag; these narrow the two fields the tree reads. */
-const domainOf = (item: Item): string => (item.meta?.domain as string) || 'meta';
-/** Tech-tree items carry an era; config items fall back to their domain. */
-const eraOf = (item: Item): number | undefined =>
-  typeof item.meta?.era === 'number' ? (item.meta.era as number) : undefined;
-const columnOf = (item: Item): string => {
-  const era = eraOf(item);
-  return era ? `era:${era}` : domainOf(item);
-};
-const columnLabel = (key: string, items: Item[]): string => {
-  if (!key.startsWith('era:')) return ERA_LABELS[key] || key;
-  const named = items.find(i => i.meta?.eraName);
-  return (named?.meta?.eraName as string) || `Era ${key.slice(4)}`;
-};
-/** Prerequisites met, nothing detected — the frontier you can take next. */
-const isNext = (item: Item): boolean => item.meta?.next === true;
-const costOf = (item: Item): string => {
-  const s = Number(item.meta?.setupSeconds) || 0;
-  if (!s) return '';
-  return s >= 3600 ? `${Math.round(s / 3600)}h` : `${Math.round(s / 60)}m`;
-};
-
-const NODE_R = 28,
-  COL_W = 170,
-  ROW_H = 105,
-  START_X = 90,
-  START_Y = 70;
+import {
+  buildAdjacency,
+  buildColumns,
+  COL_W,
+  columnLabel,
+  columnOf,
+  costOf,
+  isNext,
+  layoutNodes,
+  NODE_R,
+  ROW_H,
+  sceneSize,
+  START_X,
+  START_Y,
+  type TypeFilter,
+  visibleItems,
+} from './civ/layout.ts';
 
 interface CivTreeProps {
   /** Pixels of the scene covered by the docked panel, so column one is visible. */
@@ -77,7 +41,7 @@ export default function CivTree({
   leftInset = 0,
 }: CivTreeProps) {
   // Owned by the store so the HUD can render the control; see App.tsx.
-  const filter = useToolchainStore(s => s.treeFilter) as Filter;
+  const filter = useToolchainStore(s => s.treeFilter) as TypeFilter;
   const activeLens = useToolchainStore(s => s.activeLens);
   const setActiveLens = useToolchainStore(s => s.setActiveLens);
   const simulationMode = useToolchainStore(s => s.simulationMode);
@@ -88,43 +52,12 @@ export default function CivTree({
 
   const simulatedItem = items.find(i => i.id === simulatedNodeId);
 
-  const { downstream, upstream, chainIds } = useMemo(() => {
-    const down = new Map<string, string[]>(),
-      up = new Map<string, string[]>();
-    for (const c of connections) {
-      if (!down.has(c.from)) down.set(c.from, []);
-      down.get(c.from)!.push(c.to);
-      if (!up.has(c.to)) up.set(c.to, []);
-      up.get(c.to)!.push(c.from);
-    }
-    const chain = new Set<string>();
-    if (selectedId) {
-      const q = [selectedId];
-      while (q.length) {
-        const id = q.shift();
-        if (!id || chain.has(id)) continue;
-        chain.add(id);
-        for (const n of down.get(id) || []) q.push(n);
-        for (const n of up.get(id) || []) q.push(n);
-      }
-    }
-    return { downstream: down, upstream: up, chainIds: chain };
-  }, [connections, selectedId]);
+  const { downstream, upstream, chainIds } = useMemo(
+    () => buildAdjacency(connections, selectedId),
+    [connections, selectedId]
+  );
 
-  const filtered = useMemo(() => {
-    // If any item carries an era we are looking at the tech tree; show that
-    // alone, so the columns mean one thing and prerequisites read left to right.
-    const eraItems = items.filter(i => eraOf(i) !== undefined);
-    if (eraItems.length > 0) return eraItems;
-    if (filter === 'all') return items;
-    const tm: Record<string, string> = {
-      server: 'mcp-server',
-      agent: 'agent',
-      skill: 'skill',
-      combo: 'possibility',
-    };
-    return items.filter(i => i.type === tm[filter] || i.type === 'framework');
-  }, [items, filter]);
+  const filtered = useMemo(() => visibleItems(items, filter), [items, filter]);
 
   const [hoverItem, setHoverItem] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -139,34 +72,9 @@ export default function CivTree({
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const { cols, colOrder } = useMemo(() => {
-    const c: Record<string, Item[]> = {};
-    for (const item of filtered) {
-      const d = columnOf(item);
-      if (!c[d]) c[d] = [];
-      c[d].push(item);
-    }
-    // Eras run in numeric order so the tree reads left to right, oldest first.
-    const eras = Object.keys(c)
-      .filter(k => k.startsWith('era:'))
-      .sort((a, b) => Number(a.slice(4)) - Number(b.slice(4)));
-    const order = [...eras, ...DOMAIN_ORDER.filter(d => c[d]?.length)];
-    for (const d of Object.keys(c)) if (!order.includes(d)) order.push(d);
-    return { cols: c, colOrder: order };
-  }, [filtered]);
+  const { cols, colOrder } = useMemo(() => buildColumns(filtered), [filtered]);
 
-  const nodePositionMap = useMemo(() => {
-    const map = new Map<string, { x: number; y: number; item: Item }>();
-    colOrder.forEach((domain, ci) => {
-      const caps = cols[domain] || [];
-      const cx = START_X + ci * COL_W + COL_W / 2 - 40;
-      caps.forEach((it, ri) => {
-        const cy = START_Y + ri * ROW_H + NODE_R;
-        map.set(it.id, { x: cx, y: cy, item: it });
-      });
-    });
-    return map;
-  }, [cols, colOrder]);
+  const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
 
   const COLORS: Record<string, string> = {
     framework: '#00f0ff',
@@ -244,9 +152,7 @@ export default function CivTree({
     }
   }, [selectedId, zoom, nodePositionMap]);
 
-  const contentHeight =
-    Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 60;
-  const contentWidth = START_X + colOrder.length * COL_W + 60;
+  const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (
