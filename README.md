@@ -266,6 +266,13 @@ claude mcp add ambit -- /absolute/path/to/ambit/cli.js mcp
 
 *An agent can inspect the map, query missing steps, and **propose** configuration changes — but applying changes always requires your explicit approval.*
 
+Here is the whole loop, recorded from a live run (`bun run scripts/demo-agent-loop.ts` re-records it — every frame is real engine output, not a mockup):
+
+<div align="center">
+<img src="docs/assets/agent-loop-demo.gif" alt="An agent hits a missing capability, asks Ambit why over MCP, and drafts a proposal; a person approves and applies it; the frontier moves and Local Embeddings unlocks through composition" width="920">
+<br><sub>Agent: hits a block, records the deficit, asks <code>goal</code>, drafts a proposal · Human: <code>approve</code>, <code>apply</code> · One config patch, four capabilities.</sub>
+</div>
+
 ---
 
 ## Ask Questions from the Terminal
