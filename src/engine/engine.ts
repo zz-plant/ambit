@@ -94,12 +94,12 @@ export { proposalHash, mintApproval, verifyApproval } from './approval.ts';
 export {
   executeThroughControlPlane,
   setupControlPlaneGraph,
-  createInitialMockEnvironment,
-  readMockEnvironment,
-  writeMockEnvironment,
+  createInitialSimulatedEnvironment,
+  readSimulatedEnvironment,
+  writeSimulatedEnvironment,
   type AgentExecutionRequest,
   type ControlPlaneResult,
-  type MockEnvironmentState,
+  type SimulatedEnvironment,
   type OpenTelemetrySpan,
 } from '../control_plane/proxy.ts';
 

@@ -3,7 +3,7 @@ import { getDb } from '../engine/db.ts';
 import { approveProposal } from '../engine/governance.ts';
 import { auditFor } from '../engine/audit.ts';
 import {
-  createInitialMockEnvironment,
+  createInitialSimulatedEnvironment,
   setupControlPlaneGraph,
   executeThroughControlPlane,
   type AgentExecutionRequest,
@@ -30,7 +30,7 @@ Commands:
     const dbPath = args[2] || './graph.db';
     const db = getDb(dbPath);
     setupControlPlaneGraph(db);
-    const envState = createInitialMockEnvironment(envDir);
+    const envState = createInitialSimulatedEnvironment(envDir);
     db.close();
     console.log(JSON.stringify({ status: 'initialized', env: envState, db: dbPath }, null, 2));
     process.exit(0);

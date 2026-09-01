@@ -8,7 +8,33 @@ import { beginRun, endRun, addEvent, recordIntervention, recordUse } from '../en
 import { verifyApproval } from '../engine/approval.ts';
 import { auditFor } from '../engine/audit.ts';
 
-export interface MockEnvironmentState {
+/**
+ * The seam between the control plane and a real system.
+ *
+ * Everything below the gate — reading state, applying a change, hashing what
+ * came back — goes through this interface. The only implementation in the
+ * repository is the simulated one further down, which keeps its state in a
+ * JSON file: it is a fixture for the demo and the tests, not a deployment
+ * integration, and calling it `Mock…` inside a file the README described as a
+ * closed agent loop was the wrong way round. What is real is the *decision* —
+ * the DAG check, the authority evaluation, the approval artifact and the audit
+ * trail all run against the actual graph. What is simulated is the thing being
+ * deployed to.
+ *
+ * A real adapter (Kubernetes, Terraform, a deploy API) implements these three
+ * methods and nothing else changes: the gate never learns what it is gating.
+ */
+export interface EnvironmentAdapter<S = unknown> {
+  /** Current state, including a hash that changes if anything else does. */
+  read(): S;
+  /** Apply an authorized change and return the state that resulted. */
+  apply(change: Record<string, any>): S;
+  /** The hash a caller compares before and after to prove nothing moved. */
+  hashOf(state: S): string;
+}
+
+/** The state the simulated environment keeps, for the demo and the tests. */
+export interface SimulatedEnvironment {
   environment: string;
   db_schema_version: string;
   staging_health: 'passing' | 'failing' | 'unverified';
@@ -62,21 +88,21 @@ export interface ControlPlaneResult {
   hmac_challenge?: string;
   audit_summary?: any;
   state_unchanged: boolean;
-  pre_state: MockEnvironmentState;
-  post_state: MockEnvironmentState;
+  pre_state: SimulatedEnvironment;
+  post_state: SimulatedEnvironment;
 }
 
 /**
  * Compute sha256 checksum of environment state to prove state invariance.
  */
-export function computeStateHash(state: Omit<MockEnvironmentState, 'immutable_hash'>): string {
+export function computeStateHash(state: Omit<SimulatedEnvironment, 'immutable_hash'>): string {
   const serialized = JSON.stringify(state, Object.keys(state).sort());
   return createHmac('sha256', 'ambit-state-checksum').update(serialized).digest('hex');
 }
 
-export function createInitialMockEnvironment(envDir: string): MockEnvironmentState {
+export function createInitialSimulatedEnvironment(envDir: string): SimulatedEnvironment {
   mkdirSync(envDir, { recursive: true });
-  const raw: Omit<MockEnvironmentState, 'immutable_hash'> = {
+  const raw: Omit<SimulatedEnvironment, 'immutable_hash'> = {
     environment: 'production',
     db_schema_version: 'v2.1.0-migrated',
     staging_health: 'failing', // Unverified / failing staging check
@@ -87,21 +113,21 @@ export function createInitialMockEnvironment(envDir: string): MockEnvironmentSta
     last_deployed_by: 'human:ops-lead',
   };
   const hash = computeStateHash(raw);
-  const state: MockEnvironmentState = { ...raw, immutable_hash: hash };
+  const state: SimulatedEnvironment = { ...raw, immutable_hash: hash };
   writeFileSync(join(envDir, 'environment_state.json'), JSON.stringify(state, null, 2) + '\n');
   return state;
 }
 
-export function readMockEnvironment(envDir: string): MockEnvironmentState {
+export function readSimulatedEnvironment(envDir: string): SimulatedEnvironment {
   const p = join(envDir, 'environment_state.json');
-  if (!existsSync(p)) return createInitialMockEnvironment(envDir);
+  if (!existsSync(p)) return createInitialSimulatedEnvironment(envDir);
   return JSON.parse(readFileSync(p, 'utf8'));
 }
 
-export function writeMockEnvironment(envDir: string, state: MockEnvironmentState): void {
+export function writeSimulatedEnvironment(envDir: string, state: SimulatedEnvironment): void {
   const { immutable_hash, ...rest } = state;
   const hash = computeStateHash(rest);
-  const updated: MockEnvironmentState = { ...rest, immutable_hash: hash };
+  const updated: SimulatedEnvironment = { ...rest, immutable_hash: hash };
   writeFileSync(join(envDir, 'environment_state.json'), JSON.stringify(updated, null, 2) + '\n');
 }
 
@@ -154,6 +180,23 @@ export function setupControlPlaneGraph(db: Db): void {
 }
 
 /**
+ * The simulated environment as an EnvironmentAdapter. It is the only
+ * implementation in the repository; a real one would replace this and nothing
+ * above the seam would change.
+ */
+export function simulatedAdapter(envDir: string): EnvironmentAdapter<SimulatedEnvironment> {
+  return {
+    read: () => readSimulatedEnvironment(envDir),
+    apply(change) {
+      const next = { ...readSimulatedEnvironment(envDir), ...change } as SimulatedEnvironment;
+      writeSimulatedEnvironment(envDir, next);
+      return readSimulatedEnvironment(envDir);
+    },
+    hashOf: state => state.immutable_hash,
+  };
+}
+
+/**
  * Execute an agent tool invocation through Ambit's Control Plane Proxy.
  */
 export function executeThroughControlPlane(
@@ -165,7 +208,7 @@ export function executeThroughControlPlane(
   const spanId = randomBytes(8).toString('hex');
   const startTime = new Date().toISOString();
 
-  const preState = readMockEnvironment(envDir);
+  const preState = readSimulatedEnvironment(envDir);
   const preHash = preState.immutable_hash;
 
   const runId = request.run_id || `run-incident-${Date.now()}`;
@@ -259,7 +302,6 @@ export function executeThroughControlPlane(
       blockedReason = `Action requires explicit human authorization with HMAC signature (Governing grant: ${decision.governing_grant?.source || 'pci-dss-sec-4'})`;
       missingAuthorizationNode = 'human:security-lead';
     } else {
-      // Verify token
       const proposalId = request.hmac_approval_token;
       const verifyRes = verifyApproval(db, proposalId, 'human:security-lead');
       if (!verifyRes.ok) {
@@ -346,7 +388,7 @@ export function executeThroughControlPlane(
       },
     });
 
-    const postState = readMockEnvironment(envDir);
+    const postState = readSimulatedEnvironment(envDir);
     const stateUnchanged = postState.immutable_hash === preHash;
 
     const span: OpenTelemetrySpan = {
@@ -406,15 +448,15 @@ export function executeThroughControlPlane(
   });
 
   // Perform Mock Production Transition Safely
-  const updatedState: MockEnvironmentState = {
+  const updatedState: SimulatedEnvironment = {
     ...preState,
     production_version: request.payload?.target_version || 'v2.0.0',
     last_deployed_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     last_deployed_by: `agent:${request.agent_id} [authorized-by:human:security-lead]`,
     active_containers: ['web-prod-v2-1', 'web-prod-v2-2'],
   };
-  writeMockEnvironment(envDir, updatedState);
-  const postState = readMockEnvironment(envDir);
+  writeSimulatedEnvironment(envDir, updatedState);
+  const postState = readSimulatedEnvironment(envDir);
 
   endRun(db, runId, 'completed', 50000);
 
