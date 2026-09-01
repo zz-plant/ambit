@@ -2,7 +2,7 @@
 
 Ambit — the combined action space of the user, their agents, and their machines. See [the roadmap](./docs/roadmap.md) for where the data model is heading; treat it as direction, not as description of what exists.
 
-Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP server, passive tracking plugin, consultant agent, and teachable skill.
+Capability graph engine, ERAS-era SVG visualiser, MCP server, control plane interceptor, and passive tracking plugins for OpenCode.
 
 ## Tech Stack
 
@@ -10,8 +10,8 @@ Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP serv
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `node:http` in `server.ts` — visualiser API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
-- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 48 tools
-- **Plugin**: Hooks OpenCode config events from `~/.config/opencode/plugins/`
+- **MCP Server**: JSON-RPC over stdio in `src/mcp/`, 48 `ambit_*` tools
+- **Plugins**: `plugins/ambit-telemetry.js` (tool executions and permission prompts → the work ledger) and `plugins/tech-tree-tracker.js` (configuration changes), both copied to `~/.config/opencode/plugins/`
 
 ## Core Structure
 
@@ -19,38 +19,68 @@ Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP serv
 src/engine/engine.ts       Entry point and public surface; re-exports the modules below
 src/engine/paths.ts        Where the authored data lives, and which config to read
 src/engine/db.ts           The handle, the schema, additive column migrations, backfills
+src/engine/migrate.ts      Bringing a database up to the current schema — ADDED_COLUMNS lives here
 src/engine/ontology.ts     Node kinds and edge kinds — what a thing is, what a relation means
-src/engine/discovery.ts    Reading configs, runtimes, people, the curated tree, contracts
-src/engine/inference.ts    What follows from the graph — providers, impact, bottlenecks
-src/engine/assurance.ts    Verification, evidence, lifecycle, authority, actions, canExecute
+src/engine/discovery.ts    Orchestrates the seed: which passes run, in what order
+src/engine/seed/           What each pass actually writes
+  writers.ts               Kind-stamping writers, and the config mapping
+  structure.ts             Runtimes, models, dependencies, combos, infrastructure
+  declared.ts              Actors, authority, catalog, credentials, economics
+  techtree.ts              The curated tree
+src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex config readers
+src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts
+src/engine/inference.ts    The seam over graph/ — four questions about one structure
+src/engine/graph/          frontier.ts (near misses, decay) · health.ts (domains, bottlenecks)
+                           fragility.ts (providers, credentials, blast radius, spofs)
+                           surface.ts (full export, runtime vocabulary, affordance domains)
+src/engine/assurance.ts    The seam over assure/ — does it work, and may it be used
+src/engine/assure/         lifecycle.ts (what the evidence puts it in, and `usable`)
+                           verify.ts (running a declared check) · decide.ts (canExecute)
+                           reports.ts (the authority model as a person reads it)
 src/engine/planning.ts     The gap to a capability, and simulating closing it
+src/engine/goals.ts        Routing a free-form goal into the graph, and comparing its paths
 src/engine/governance.ts   Approval, apply, rollback — everything that can change the world
+src/engine/approval.ts     The approval broker — signed artifacts the executor verifies
 src/engine/ledger.ts       Frontier snapshots and how the frontier moved
 src/engine/telemetry.ts    The work ledger: runs, events, interventions, consumption
 src/engine/attention.ts    Human-agency accounting — what is reducible, what is keeper
 src/engine/economics.ts    Declared costs and goal values (dollars declare, cents store)
 src/engine/opportunities.ts The opportunity engine — ranked structural changes worth making
-src/engine/approval.ts     The approval broker — signed artifacts the executor verifies
+src/engine/catalog.ts      The acquisition catalog — the supply side for a ranked opportunity
 src/engine/roi.ts          Realized ROI — before/after windows, written back
+src/engine/audit.ts        The trail: who approved what, what ran, and whether it held
+src/engine/incident.ts     The incident loop — a work run per offline declared service
 src/engine/federation.ts   Signed summaries a portfolio layer reads; receipts, no merging
-src/engine/cli.ts          Argument handling and human-readable output
-src/control_plane/proxy.ts Autonomous control plane interceptor, DAG gate & OpenTelemetry trace logger
-src/control_plane/cli.ts   Control plane CLI execution wrapper
+src/engine/portfolio.ts    What the imported environments look like taken together
+src/engine/views.ts        The projections the visualiser reads — the server writes no SQL
+src/engine/share.ts        The allow-listed, self-contained HTML snapshot of the map
+src/engine/cli.ts          Command dispatch; the five groups resolve to flat verbs
+src/engine/cli/            groups.ts (the five nouns) · help.ts · output.ts · reports.ts · seed.ts
+src/engine/testing/        The shared test harness: a throwaway graph, driven in-process
 src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority,
                            session_learning, frontier_snapshots, proposals, schema_meta,
                            work ledger, economics, goals, budgets, federation_imports)
-src/mcp/server.ts          MCP server exposing 47 tt_* tools to OpenCode sessions
-tests/control_plane/       Pytest intervention trace test suite (TDD acceptance tests)
+src/control_plane/proxy.ts Autonomous control plane interceptor, DAG gate & OpenTelemetry trace logger
+src/control_plane/cli.ts   Control plane CLI execution wrapper
+src/mcp/tools.ts           What a tool is — the catalogue, as pure data. No engine imports
+src/mcp/server.ts          What a tool does — a warm handle and the dispatch switch
+src/mcp/protocol.ts        JSON-RPC over stdio: how a result or an error leaves the process
 docs/incidents/            Forensic incident traces & asciinema terminal recordings
 src/client/                React frontend
   components/
     CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend
-    StarPanel.tsx          Node detail panel
-    ToolchainPanel.tsx     Flat list of all capabilities
+    civ/layout.ts          ERAS column positioning — pure, and tested apart from the renderer
+    civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree
+    civ/SimulationBanner.tsx  The outage / unlock simulation banner
+    NodeDetailPanel.tsx    Node detail panel
+    CapabilityListPanel.tsx   Flat list of all capabilities
+    ApprovalModal.tsx      The proposal diff, and the one-click approval receipt
     DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
-  store/toolchainStore.ts  All state, actions, demo data
+    DemoDashboard.tsx      The hosted demo's landing view
+  store/ambitStore.ts      All state, actions, demo data (toolchainStore.ts re-exports it)
   utils/
-    civLayout.ts           ERAS column positioning engine
+    configImporter.ts      inferDomain, and mapping an imported config onto the graph
+    demoSnapshot.ts        The fixture the hosted demo renders
 ```
 
 ## Layout
