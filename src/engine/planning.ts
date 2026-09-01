@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { CONFIG_DEFAULT, loadTechTree } from './paths.ts';
+import { configDefault, loadTechTree } from './paths.ts';
 import type { Db } from './db.ts';
 import { providersOf } from './inference.ts';
 import { inverseOf } from './governance.ts';
@@ -521,7 +521,7 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
 
   let currentConfig: any = {};
   try {
-    currentConfig = JSON.parse(readFileSync(CONFIG_DEFAULT, 'utf8'));
+    currentConfig = JSON.parse(readFileSync(configDefault(), 'utf8'));
   } catch {
     /* no config is fine */
   }

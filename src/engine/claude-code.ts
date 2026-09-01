@@ -14,7 +14,16 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { authorityBlock } from '../shared/authority.ts';
 
-const HOME = process.env.HOME || '/';
+/**
+ * Read per call, not once at import.
+ *
+ * A module-level `const HOME = process.env.HOME` is correct for a CLI that
+ * starts, reads the environment and exits — and wrong for every other caller.
+ * Frozen at import, it made this module discover the developer's own Claude
+ * Code install no matter what HOME the caller set, which is the same bug
+ * `paths.ts` had.
+ */
+const home = () => process.env.HOME || '/';
 
 export interface ClaudeCodeFragment {
   runtime: string;
@@ -65,8 +74,8 @@ function skillDirs(claudeHome: string): string[] {
  * install can just call `readClaudeCode()`.
  */
 export function readClaudeCode(
-  claudeHome = process.env.CLAUDE_HOME || join(HOME, '.claude'),
-  claudeJson = process.env.CLAUDE_CONFIG || join(HOME, '.claude.json')
+  claudeHome = process.env.CLAUDE_HOME || join(home(), '.claude'),
+  claudeJson = process.env.CLAUDE_CONFIG || join(home(), '.claude.json')
 ): ClaudeCodeFragment | null {
   if (!existsSync(claudeJson) && !existsSync(claudeHome)) return null;
 

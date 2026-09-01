@@ -1,6 +1,6 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONFIG_DEFAULT, loadTechTree } from './paths.ts';
+import { configDefault, loadTechTree } from './paths.ts';
 import type { Db } from './db.ts';
 import { kindOf, edgeKindOf } from './ontology.ts';
 import { deriveLifecycles } from './assurance.ts';
@@ -65,7 +65,7 @@ function parseMapping(mappingStr?: string): Record<string, any> {
 }
 
 function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record = true) {
-  const cp = configPath || CONFIG_DEFAULT;
+  const cp = configPath || configDefault();
   // A missing config used to abort the seed entirely, which left the database
   // with no tables at all — every first run without OpenCode installed ended in
   // a raw SQLite error from the next query. The curated capability model does

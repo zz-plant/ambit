@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { CONFIG_DEFAULT } from './paths.ts';
+import { configDefault } from './paths.ts';
 import { getDb, type Db } from './db.ts';
 import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
@@ -173,7 +173,7 @@ function applyProposal(db: Db, proposalId?: string) {
     }
   }
 
-  const configPath = CONFIG_DEFAULT;
+  const configPath = configDefault();
   let config: any = {};
   try {
     config = JSON.parse(readFileSync(configPath, 'utf8'));
@@ -259,7 +259,7 @@ function rollbackProposal(db: Db, proposalId?: string) {
     return { error: `${proposalId} is ${row.status}; nothing to reverse.` };
 
   const steps = JSON.parse(row.steps);
-  const configPath = CONFIG_DEFAULT;
+  const configPath = configDefault();
   let config: any = {};
   try {
     config = JSON.parse(readFileSync(configPath, 'utf8'));

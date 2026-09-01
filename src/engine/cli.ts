@@ -2,8 +2,8 @@ import { readFileSync, existsSync, rmSync, statSync, writeFileSync } from 'node:
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { resolveDbPath } from '../shared/db-path.ts';
-import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from './paths.ts';
-import { getDb, migrate } from './db.ts';
+import { ENGINE_DIR, configDefault, loadTechTree } from './paths.ts';
+import { getDb, migrate, type Db } from './db.ts';
 import { seedFromConfig } from './discovery.ts';
 import { readClaudeCode, claudeCodeSeedInput } from './claude-code.ts';
 import { discoverMcpClients } from './mcp-clients.ts';
@@ -64,6 +64,27 @@ const C = {
 };
 
 /**
+ * Where a command's result goes when something other than a terminal is
+ * asking. `runCommand` is the whole switch below, and a test that wants the
+ * data rather than the rendering swaps this in rather than spawning a process
+ * and parsing stdout. Null means print, which is every real invocation.
+ */
+let sink: ((data: unknown) => void) | null = null;
+
+/**
+ * A result that is JSON on the terminal as well — the machine-readable views
+ * (`graph surface`, `graph export`, `federation export`) are consumed by other
+ * programs, so they do not go through the human formatter even without --json.
+ */
+function emitRaw(data: unknown, pretty = true): void {
+  if (sink) {
+    sink(data);
+    return;
+  }
+  console.log(pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data));
+}
+
+/**
  * Prints a result for a person to read, or raw JSON with --json.
  *
  * Every command used to dump JSON.stringify unconditionally, which meant the
@@ -72,6 +93,10 @@ const C = {
  * rather than per-command so no command can drift back to raw output.
  */
 function emit(data: any): void {
+  if (sink) {
+    sink(data);
+    return;
+  }
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(data, null, 2));
     return;
@@ -397,7 +422,7 @@ function explain(wanted: string): void {
  */
 function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   const say = quiet ? (_: string) => {} : console.log;
-  const cfg = CONFIG_DEFAULT;
+  const cfg = configDefault();
   const explicit = Boolean(process.env.OPENCODE_CONFIG || mappingOverride);
   const sources: Array<{
     runtime: string;
@@ -530,68 +555,33 @@ function resolveCommand(cmd: string | undefined, argv: string[]): { cmd?: string
   return { cmd: sub, argv: [...argv.slice(0, i), ...argv.slice(i + 1)] };
 }
 
-async function main() {
-  const db = getDb();
-  migrate(db);
-  const resolved = resolveCommand(process.argv[2], process.argv.slice(3));
-  const cmd = resolved.cmd;
-  // Flags are not arguments. Taking argv[3] blindly meant `tt verify --json`
-  // looked for a capability named "--json", which every flag-taking command
-  // silently inherited.
-  const positional = resolved.argv.filter(a => !a.startsWith('--'));
+/**
+ * Runs one resolved command against an open graph and reports through `emit`.
+ *
+ * Split out of `main` so it can be called directly. Everything the switch
+ * needs is a parameter — the database, the verb, its positional arguments and
+ * its flags — which is what lets a test ask the engine a question in-process
+ * instead of spawning `node`, printing JSON and parsing it back. `main` still
+ * owns argv, the first-run seed and the database's lifetime.
+ */
+async function runCommand(
+  db: Db,
+  cmd: string,
+  positional: string[],
+  flags: Set<string>,
+  mappingOverride?: string
+): Promise<void> {
   const arg = positional[0];
-  const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
-  const mappingOverride = process.env.CONFIG_MAPPING;
-
-  // An unseeded graph answered every question with "Nothing to report", which
-  // is what a healthy graph with no findings says too. A Homebrew install
-  // never runs bootstrap.sh, so that was the entire first-run experience:
-  // a tool that appears to work and reports an empty world.
-  //
-  // `work` and `usage` read the work ledger, `portfolio` reads federation
-  // imports, `incidents` probes a manifest — all can work before any
-  // capability has been discovered — so they are exempt, and report their own
-  // emptiness rather than "no graph".
-  const ledgerCommands = new Set(['work', 'usage', 'portfolio', 'incidents', 'incident']);
-  if (cmd && !ledgerCommands.has(cmd) && cmd !== 'seed' && cmd !== 'where' && cmd !== 'help') {
-    const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get();
-    if (!seeded?.n) {
-      // Seed rather than instruct. A fresh Homebrew install
-      // install both land here, and "go run another command first" is the
-      // wrong first impression for a tool whose pitch is "one command, your
-      // map". Seeding only reads config files and writes the local graph, so
-      // doing it unasked is safe; --json runs stay silent-but-seeded so
-      // scripts get their answer instead of a lecture.
-      const json = process.argv.includes('--json');
-      if (!json) {
-        console.log(
-          `${C.grey}First run — reading your agent config and building the graph…${C.reset}`
-        );
-      }
-      runSeed(db, mappingOverride, json);
-      if (!json) console.log('');
-    }
-  }
-  if (!cmd || cmd === 'help') {
-    if (cmd === 'help' && arg && arg !== '--all') {
-      explain(arg.toLowerCase());
-      db.close();
-      return;
-    }
-    console.log(flags.has('--all') ? HELP : HELP_SHORT);
-    db.close();
-    return;
-  }
   switch (cmd) {
     case 'status':
       emit(statusReport(db));
       break;
     case 'graph': {
       // The graph is one thing with several views; none of them is a headline.
-      if (arg === 'surface') console.log(JSON.stringify(surfaceFor(db), null, 2));
+      if (arg === 'surface') emitRaw(surfaceFor(db));
       else if (arg === 'combos') emit(discoverCombos(db));
       else if (arg === 'affordances') emit(affordanceDomains(db));
-      else console.log(JSON.stringify(exportGraph(db)));
+      else emitRaw(exportGraph(db), false);
       break;
     }
     case 'goal': {
@@ -668,7 +658,7 @@ async function main() {
       const verb = arg;
       if (verb === 'export') {
         const summary = exportSummary(db);
-        console.log(JSON.stringify(summary, null, 2));
+        emitRaw(summary);
         break;
       }
       if (verb === 'import') {
@@ -783,7 +773,139 @@ async function main() {
     default:
       console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
   }
+}
+
+/**
+ * Runs a command and returns what it reported, instead of printing it.
+ *
+ * This is the seam the engine's end-to-end tests use. They used to spawn
+ * `node --experimental-sqlite engine.ts <cmd> --json` and parse stdout, once
+ * per assertion, because the test runner could not load the engine at all.
+ * The runner can now, so the subprocess buys nothing but forty seconds: the
+ * same switch runs, against the same database, through the same `emit`.
+ *
+ * The argv-shaped signature is deliberate. A test says what a person would
+ * type, so the command grouping, flag parsing and argument handling are all
+ * still under test rather than bypassed.
+ */
+function begin(db: Db, argv: string[], mappingOverride?: string) {
+  const resolved = resolveCommand(argv[0], argv.slice(1));
+  if (!resolved.cmd) throw new Error('capture needs a command');
+
+  const state = { value: undefined as unknown, calls: 0 };
+  const previous = sink;
+  sink = data => {
+    state.value = data;
+    state.calls++;
+  };
+  const done = runCommand(
+    db,
+    resolved.cmd,
+    resolved.argv.filter(a => !a.startsWith('--')),
+    new Set(resolved.argv.filter(a => a.startsWith('--'))),
+    mappingOverride
+  );
+  return { state, done, restore: () => void (sink = previous) };
+}
+
+/** A command that reported nothing printed something else — an unknown verb,
+ *  or a path that only writes. Saying so beats returning undefined and failing
+ *  three assertions later. */
+function result(argv: string[], state: { value: unknown; calls: number }): any {
+  if (state.calls === 0) throw new Error(`\`${argv.join(' ')}\` reported no result`);
+  return state.value;
+}
+
+/**
+ * Runs a command and returns what it reported, for the commands that finish
+ * without awaiting anything — which is all but three of them.
+ *
+ * Synchronous on purpose. `runCommand` is declared async because `notify`,
+ * `notify-approvals` and `incidents` reach the network, but every other case
+ * runs to completion before the call returns, so the result is already in hand.
+ * Making the seam synchronous is what lets a test read
+ * `cli('status').health` rather than parenthesising an await at 137 call sites.
+ */
+function capture(db: Db, argv: string[], mappingOverride?: string): any {
+  const { state, done, restore } = begin(db, argv, mappingOverride);
+  try {
+    if (state.calls === 0) {
+      // It awaited something, so the answer is not ready and never will be on
+      // this path. Do not leave the rejection unhandled while saying so.
+      done.catch(() => {});
+      throw new Error(`\`${argv.join(' ')}\` is asynchronous — use captureAsync`);
+    }
+  } finally {
+    restore();
+  }
+  return result(argv, state);
+}
+
+/** The same seam for the three commands that reach the network. */
+async function captureAsync(db: Db, argv: string[], mappingOverride?: string): Promise<any> {
+  const { state, done, restore } = begin(db, argv, mappingOverride);
+  try {
+    await done;
+  } finally {
+    restore();
+  }
+  return result(argv, state);
+}
+
+async function main() {
+  const db = getDb();
+  migrate(db);
+  const resolved = resolveCommand(process.argv[2], process.argv.slice(3));
+  const cmd = resolved.cmd;
+  // Flags are not arguments. Taking argv[3] blindly meant `tt verify --json`
+  // looked for a capability named "--json", which every flag-taking command
+  // silently inherited.
+  const positional = resolved.argv.filter(a => !a.startsWith('--'));
+  const arg = positional[0];
+  const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
+  const mappingOverride = process.env.CONFIG_MAPPING;
+
+  // An unseeded graph answered every question with "Nothing to report", which
+  // is what a healthy graph with no findings says too. A Homebrew install
+  // never runs bootstrap.sh, so that was the entire first-run experience:
+  // a tool that appears to work and reports an empty world.
+  //
+  // `work` and `usage` read the work ledger, `portfolio` reads federation
+  // imports, `incidents` probes a manifest — all can work before any
+  // capability has been discovered — so they are exempt, and report their own
+  // emptiness rather than "no graph".
+  const ledgerCommands = new Set(['work', 'usage', 'portfolio', 'incidents', 'incident']);
+  if (cmd && !ledgerCommands.has(cmd) && cmd !== 'seed' && cmd !== 'where' && cmd !== 'help') {
+    const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get();
+    if (!seeded?.n) {
+      // Seed rather than instruct. A fresh Homebrew install
+      // install both land here, and "go run another command first" is the
+      // wrong first impression for a tool whose pitch is "one command, your
+      // map". Seeding only reads config files and writes the local graph, so
+      // doing it unasked is safe; --json runs stay silent-but-seeded so
+      // scripts get their answer instead of a lecture.
+      const json = process.argv.includes('--json');
+      if (!json) {
+        console.log(
+          `${C.grey}First run — reading your agent config and building the graph…${C.reset}`
+        );
+      }
+      runSeed(db, mappingOverride, json);
+      if (!json) console.log('');
+    }
+  }
+  if (!cmd || cmd === 'help') {
+    if (cmd === 'help' && arg && arg !== '--all') {
+      explain(arg.toLowerCase());
+      db.close();
+      return;
+    }
+    console.log(flags.has('--all') ? HELP : HELP_SHORT);
+    db.close();
+    return;
+  }
+  await runCommand(db, cmd, positional, flags, mappingOverride);
   db.close();
 }
 
-export { emit, main };
+export { emit, main, capture, captureAsync, runCommand };
