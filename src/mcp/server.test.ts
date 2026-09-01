@@ -141,3 +141,39 @@ test('an unknown tool is an error, not a silent success', () => {
   ]);
   expect(reply.error?.code).toBe(-32601);
 });
+
+test('a tool answers with data, not only a string the agent must parse', () => {
+  // Every tool used to return its answer solely as content[0].text — a JSON
+  // document stringified into a text block, which the caller had to re-parse
+  // with no declared shape to check it against.
+  const [reply] = rpc([
+    { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'ambit_stats', arguments: {} } },
+  ]);
+  const result = reply.result;
+
+  expect(result.structuredContent).toBeDefined();
+  expect(result.structuredContent.stats.total).toBeGreaterThan(0);
+
+  // content stays: a client predating structured output still reads it, and a
+  // person tailing the transcript can read JSON.
+  expect(result.content[0].type).toBe('text');
+  expect(JSON.parse(result.content[0].text)).toEqual(result.structuredContent);
+});
+
+test('structuredContent is always an object, even when the answer is a list', () => {
+  // The field is specified as an object; a tool whose answer is an array or a
+  // scalar has to be wrapped rather than omitted, or a client cannot rely on
+  // the field being there at all.
+  const [reply] = rpc([
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'ambit_spof', arguments: {} },
+    },
+  ]);
+  const structured = reply.result.structuredContent;
+  expect(structured).toBeDefined();
+  expect(Array.isArray(structured)).toBe(false);
+  expect(typeof structured).toBe('object');
+});

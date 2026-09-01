@@ -251,7 +251,7 @@ sequenceDiagram
 <details>
 <summary><b>The full 48-tool MCP surface</b></summary>
 
-Forty-eight tools, each advertised once. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
+Forty-eight tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field rather than parsing a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
 
 | Group | Tools | Purpose |
 | :--- | :--- | :--- |
