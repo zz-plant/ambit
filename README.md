@@ -2,7 +2,7 @@
 
 # Ambit
 
-**The meta-MCP capability graph for AI agent environments.**
+**What you, your agents, and your machines can jointly do — and where your own time is going.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
@@ -13,9 +13,9 @@
 
 <br>
 
-<img src="docs/assets/capability-graph-demo.gif" alt="The Ambit tech tree across seven eras: a keystone capability is selected, its outage is simulated and fourteen downstream capabilities go red, the attention lens shows where human time is spent, and a drafted proposal waits to be signed" width="920">
+<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: a tool is selected and its dependents listed, switching it off turns fourteen downstream capabilities red, a second view colours the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
 
-<sub>One environment across seven eras. Take a keystone offline and the cascade is computed, not drawn by hand — then where the human time is going, and a change waiting on a signature.</sub>
+<sub>One setup, mapped. Pick a tool and Ambit shows what depends on it; switch it off and it shows the fourteen things that stop working with it. Then which tools interrupt you most, and a change waiting on your approval.</sub>
 
 </div>
 
@@ -27,14 +27,23 @@ If you use AI agents, your setup is spread across LLM providers, MCP servers, lo
 
 What they add up to — what your human-plus-agent system can actually *do* — is written down nowhere.
 
-Ambit reads those configs and builds one graph out of them. It is a meta-MCP server: an MCP server whose subject is your other MCP servers and the rest of your agent infrastructure. It models that environment as a capability tech tree, which lets it answer questions no single config file can:
+Ambit reads those configs and builds one map out of them. Every tool, model, skill, and credential becomes a point on it; everything one of them needs in order to work becomes a line to another. That map answers questions no single config file can:
 
-1. **What works right now?** What is reached, what is broken, and what is one dependency away.
+1. **What works right now?** What is set up, what is broken, and what is one dependency away.
 2. **What breaks downstream** if a model, tool, or credential goes away.
 3. **What compound abilities emerge** when two independent tools are combined.
 4. **What is worth setting up next**, priced by the human attention it would save.
 
-Both halves of the system can ask. You ask from the terminal; your agent asks over MCP, mid-session, instead of guessing at its own boundary.
+You ask from the terminal. Your agents ask over MCP, mid-session, rather than finding the limit by running into it — Ambit is itself an MCP server, so the thing describing your MCP servers speaks the same protocol they do. (A *meta-MCP server*, if you want the term to search for.)
+
+### The words Ambit uses
+
+Four of them carry most of the meaning, in the terminal and on the map alike.
+
+- **Capability** — one thing your setup can do. Every MCP server, agent, skill, provider, model, and command in your config becomes one, as does every node of the curated tree.
+- **Era** — how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
+- **Reached, next, blocked** — reached means something in your config provides it. Next means the prerequisites are met but nothing was detected: this is the frontier, and `ambit goal` lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.
+- **Hard vs soft prerequisite** — a hard prerequisite gates the capability; a soft one strengthens it without gating. Only hard prerequisites block a node. Both are drawn, soft ones fainter.
 
 <div align="center">
 <img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
@@ -69,7 +78,6 @@ First run — reading your agent config and building the graph…
     infra     26/28
 ```
 
-Each client's MCP servers are read from its standard config path and stay attributed to the runtime that supplied them. A server two runtimes share is one capability with two contribution edges, which is what keeps the redundancy analysis honest — two runtimes pointing at the same binary is not two providers.
 
 ### Option B — visualizer only
 
@@ -208,11 +216,13 @@ Each tool is registered twice: `ambit_*` is canonical, and `tt_*` remains as a l
 
 Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas — and the only path that writes to it is a proposal you approve.
 
-### The graph is a DAG across seven eras
+Each client is read from its own standard config path, and every server stays attributed to the client that listed it. When two clients name the same server, that is one capability with two sources rather than two capabilities — which is what stops Ambit from counting a single binary twice and calling the result redundancy.
 
-Discovered capabilities are placed into a curated tech tree that runs from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy**, and **Assurance** to **Sovereignty**. Prerequisites are edges, so reachability is computed rather than asserted.
+### Seven eras, and what follows from them
 
-Two consequences fall out of that structure:
+Discovered capabilities are placed into a curated tree that runs from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy**, and **Assurance** to **Sovereignty**. Because each capability records what it needs, Ambit works out what you can reach rather than taking a config file's word for it.
+
+Two things follow from that:
 
 - **Combos.** Higher-order abilities appear from tools that were configured separately — a vector store plus local embeddings becomes semantic retrieval, which neither config mentions.
 - **Near misses.** When you are one or two prerequisites from a capability that unlocks several others, that gap is worth naming. `ambit graph combos` lists them.
@@ -240,12 +250,7 @@ Every availability decision gates on lifecycle, not state. A broken capability i
 
 The web UI (`./bootstrap.sh web`) is an operational canvas over the same graph the CLI reads.
 
-Four terms carry most of the meaning, on the canvas and in the CLI alike. The **Docs** button in the UI defines the rest.
-
-- **Capability** — one thing your setup can do. Every MCP server, agent, skill, provider, model, and command in your config becomes one, as does every node of the curated tree.
-- **Era** — how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
-- **Reached, next, blocked** — reached means something in your config provides it. Next means the prerequisites are met but nothing was detected: this is the frontier, and `ambit goal` lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.
-- **Hard vs soft prerequisite** — a hard prerequisite gates the capability; a soft one strengthens it without gating. Only hard prerequisites block a node. Both are drawn, soft ones fainter.
+The **Docs** button defines every term on the canvas; [the four above](#the-words-ambit-uses) cover most of it.
 
 ### Three lenses on the canvas
 
@@ -274,7 +279,7 @@ When an agent proposes an environment change over MCP, the **Proposals** panel s
 
 Host-level agent tooling is a real attack surface, so execution goes through an interceptor rather than straight to the shell.
 
-- **Interception.** The proxy in `src/control_plane/proxy.ts` evaluates DAG prerequisites, lifecycle state, and authority policy before a tool call reaches the environment. An out-of-order or unauthorized call is blocked with `AMBIT_BLOCKED_UNAUTHORIZED` and exit code `2`, leaving `pre_state == post_state`.
+- **Interception.** Before a tool call reaches your machine, the proxy in `src/control_plane/proxy.ts` checks three things: are this capability's prerequisites in place, is it actually working, and is the caller allowed to do this. A call that fails any of them is refused — `AMBIT_BLOCKED_UNAUTHORIZED`, exit code `2` — and nothing on the machine has changed.
 - **Human-in-the-loop remediation.** A blocked execution drafts a structured proposal and an HMAC challenge. `ambit approve <proposal-id> <person>` mints a signed artifact that the executor verifies before any state changes. An artifact stops being valid if the proposal changed after approval, or if it has expired.
 - **Tracing.** Spans and structured events record DAG evaluations, missing authorizations, challenges, and verification receipts.
 - **The environment is simulated.** The decision is real — the DAG check, the authority evaluation, the approval artifact and the audit trail all run against your actual graph. What sits on the other side of the gate is a fixture: `simulatedAdapter` in `src/control_plane/proxy.ts` keeps its state in a JSON file. Ambit ships no deployment integration. A real one implements the three-method `EnvironmentAdapter` in that file, and nothing above the gate changes.
