@@ -57,11 +57,9 @@ const args = process.argv.slice(3);
  */
 if (cmd === '--help' || cmd === 'help') {
   const helpArgs = cmd === 'help' ? args : [];
-  const engineHelp = spawnSync(
-    'node',
-    [...NODE_FLAGS, engineEntry, 'help', ...helpArgs],
-    { stdio: 'inherit' },
-  );
+  const engineHelp = spawnSync('node', [...NODE_FLAGS, engineEntry, 'help', ...helpArgs], {
+    stdio: 'inherit',
+  });
   console.log(`
   ${D}ambit web              Open the visualizer. Needs a git checkout: it is
                          built with dev dependencies an installed copy does
