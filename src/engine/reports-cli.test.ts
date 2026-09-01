@@ -16,6 +16,7 @@ import {
   addEvent,
   beginRun,
   cli,
+  cliAsync,
   dir,
   endRun,
   execFileSync,
@@ -25,8 +26,10 @@ import {
   recordIntervention,
   rows,
   seed,
+  seedWith,
   writeAndReturn,
   writeFileSync,
+  withEnv,
 } from './testing/cli.ts';
 
 test('people are nodes, and what they supply becomes a capability', () => {
@@ -131,28 +134,24 @@ test('infrastructure manifest devices seed as capability-bearing resources', () 
   const dbPath = join(dirPath, 'graph.db');
   const configPath = join(dirPath, 'config.json');
   writeFileSync(configPath, JSON.stringify(WITH_PREFS));
-  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: {
-      ...process.env,
-      OPENCODE_CONFIG: configPath,
-      TOOLCHAIN_DB: dbPath,
-      INFRA_MANIFEST: join(dirPath, 'infra.json'),
-      CONFIG_MAPPING: JSON.stringify({
-        config_keys: {
-          mcp: {
-            type: 'mcp',
-            domain_field: 'type',
-            domain_map: { remote: 'backend', local: 'infra' },
-            desc_template: '{type} server',
-          },
-          agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
-          provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
-          command: { type: 'tool', domain: 'devops', desc_field: 'description' },
+  seedWith({
+    OPENCODE_CONFIG: configPath,
+    TOOLCHAIN_DB: dbPath,
+    INFRA_MANIFEST: join(dirPath, 'infra.json'),
+    CONFIG_MAPPING: JSON.stringify({
+      config_keys: {
+        mcp: {
+          type: 'mcp',
+          domain_field: 'type',
+          domain_map: { remote: 'backend', local: 'infra' },
+          desc_template: '{type} server',
         },
-        skill_dirs: [],
-      }),
-    },
-    stdio: 'ignore',
+        agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
+        provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
+        command: { type: 'tool', domain: 'devops', desc_field: 'description' },
+      },
+      skill_dirs: [],
+    }),
   });
   const db = getDb(dbPath);
   const device = rows(db, "SELECT id, kind FROM capabilities WHERE id = 'device:nuc'");
@@ -189,15 +188,7 @@ test('institutional and economic domains are derived from structure, not pasted 
 // ── Capability surface (§8) ──────────────────────────────────────────────────
 test('tt surface emits the vocabulary a runtime would own', () => {
   seed(WITH_PREFS).close();
-  const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'graph', 'surface'], {
-    env: {
-      ...process.env,
-      TOOLCHAIN_DB: join(dir, 'graph.db'),
-      OPENCODE_CONFIG: join(dir, 'config.json'),
-    },
-    encoding: 'utf8',
-  });
-  const surface = JSON.parse(out);
+  const surface = cli('graph', 'surface');
   expect(surface.schema_version).toBe(1);
   expect(surface.runtime).toBe('opencode');
 
@@ -252,7 +243,7 @@ test('the digest reports a broken capability separately from reducible friction'
 
 test('ntfy is opt-in — nothing is pushed without a topic', async () => {
   seed(WITH_PREFS).close();
-  const r = cli('notify');
+  const r = await cliAsync('notify');
   expect(r.error).toContain('Usage');
 });
 
@@ -415,10 +406,16 @@ test('a credential nothing holds is not seeded', () => {
 
 test('a command whose answer is a list prints the list', () => {
   seed({ mcp: { git: {} } }).close();
+  // One of the few that still spawns, and the reason is the assertion: this is
+  // about what a person *sees*, so it has to go through the formatter and out
+  // of a real stdout. The in-process seam takes the result before `emit`
+  // renders it, which is exactly what makes it fast and exactly why it cannot
+  // answer this question.
+  //
   // The human surface is the primary one, and it was dropping every array of
-  // strings: `tt authority` printed the note about its four lists and none of
-  // the lists. `scalar` had an array branch nothing could reach, which is what
-  // showed the guard above it was catching more than it meant to.
+  // strings: `ambit authority` printed the note about its four lists and none
+  // of the lists. `scalar` had an array branch nothing could reach, which is
+  // what showed the guard above it was catching more than it meant to.
   const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'authority'], {
     env: {
       ...process.env,
@@ -494,7 +491,7 @@ test('audit assembles the trail for a run, a proposal, and a person', () => {
   expect(recent.proposals.length).toBeGreaterThanOrEqual(1);
 });
 
-test('incidents open a run for an offline service and resolve with MTTR', () => {
+test('incidents open a run for an offline service and resolve with MTTR', async () => {
   seed(LOCAL_ONLY).close();
   writeFileSync(
     join(dir, 'infra.json'),
@@ -503,17 +500,9 @@ test('incidents open a run for an offline service and resolve with MTTR', () => 
     })
   );
 
-  const out = execFileSync('node', ['--experimental-sqlite', ENGINE, 'incidents', '--json'], {
-    env: {
-      ...process.env,
-      TOOLCHAIN_DB: join(dir, 'graph.db'),
-      OPENCODE_CONFIG: join(dir, 'config.json'),
-      INFRA_MANIFEST: join(dir, 'infra.json'),
-      AMBIT_APPROVAL_KEY: 'test-approval-key',
-    },
-    encoding: 'utf8',
-  });
-  const report = JSON.parse(out);
+  const report = await withEnv({ INFRA_MANIFEST: join(dir, 'infra.json') }, () =>
+    cliAsync('incidents')
+  );
   expect(report.incidents.length).toBe(1);
   const inc = report.incidents[0];
   expect(inc.service).toBe('svc:ollama');
@@ -543,18 +532,7 @@ test('portfolio reads shared burden and capex across imported environments', () 
       activeSeconds: 1800,
     });
     (db as any).close();
-    const summary = JSON.parse(
-      execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
-        env: {
-          ...process.env,
-          TOOLCHAIN_DB: join(dir, 'graph.db'),
-          OPENCODE_CONFIG: join(dir, 'config.json'),
-          AMBIT_ENV: e,
-          AMBIT_APPROVAL_KEY: 'test-approval-key',
-        },
-        encoding: 'utf8',
-      })
-    );
+    const summary = withEnv({ AMBIT_ENV: e }, () => cli('federation', 'export'));
     const receipt = cli('federation', 'import', writeAndReturn(join(dir, `${env}.json`), summary));
     expect(receipt.capabilities).toBeGreaterThan(0);
   }

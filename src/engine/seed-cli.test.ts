@@ -6,16 +6,15 @@
  */
 import { test, expect } from 'vitest';
 import {
-  ENGINE,
   cli,
   dir,
-  execFileSync,
   getDb,
   join,
   migrate,
   mkdirSync,
   rows,
   seed,
+  seedWith,
   symlinkSync,
   writeFileSync,
 } from './testing/cli.ts';
@@ -304,15 +303,11 @@ test('two runtimes providing the same capability share one node', () => {
   seed({ mcp: { git: {}, exa: {} } }).close();
   const dbPath = join(dir, 'graph.db');
   writeFileSync(join(dir, 'second.json'), JSON.stringify({ mcp: { git: {}, fetch: {} } }));
-  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: {
-      ...process.env,
-      OPENCODE_CONFIG: join(dir, 'second.json'),
-      TOOLCHAIN_DB: dbPath,
-      AMBIT_RUNTIME: 'hermes',
-      CONFIG_MAPPING: JSON.stringify({ config_keys: { mcp: { type: 'mcp' } }, skill_dirs: [] }),
-    },
-    stdio: 'ignore',
+  seedWith({
+    OPENCODE_CONFIG: join(dir, 'second.json'),
+    TOOLCHAIN_DB: dbPath,
+    AMBIT_RUNTIME: 'hermes',
+    CONFIG_MAPPING: JSON.stringify({ config_keys: { mcp: { type: 'mcp' } }, skill_dirs: [] }),
   });
   const db = getDb(dbPath);
 
@@ -338,14 +333,10 @@ test('skills symlinked into a runtime directory are discovered', () => {
   const configPath = join(dir, 'config.json');
   const dbPath = join(dir, 'symlink.db');
   writeFileSync(configPath, JSON.stringify({}));
-  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], {
-    env: {
-      ...process.env,
-      OPENCODE_CONFIG: configPath,
-      TOOLCHAIN_DB: dbPath,
-      CONFIG_MAPPING: JSON.stringify({ config_keys: {}, skill_dirs: [runtime] }),
-    },
-    stdio: 'ignore',
+  seedWith({
+    OPENCODE_CONFIG: configPath,
+    TOOLCHAIN_DB: dbPath,
+    CONFIG_MAPPING: JSON.stringify({ config_keys: {}, skill_dirs: [runtime] }),
   });
   const db = getDb(dbPath);
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'skill:deploying'").length).toBe(1);
@@ -424,13 +415,14 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   );
 
   const dbPath = join(dir, 'auto-discovery.db');
-  const env = { ...process.env } as Record<string, string>;
-  delete env.OPENCODE_CONFIG;
-  delete env.CONFIG_MAPPING;
-  delete env.AMBIT_RUNTIME;
-  execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed', '--json'], {
-    env: { ...env, HOME: home, TOOLCHAIN_DB: dbPath },
-    stdio: 'ignore',
+  // No config and no mapping: the engine has to find the runtimes under HOME
+  // by itself, which is the whole point of this case.
+  seedWith({
+    OPENCODE_CONFIG: undefined,
+    CONFIG_MAPPING: undefined,
+    AMBIT_RUNTIME: undefined,
+    HOME: home,
+    TOOLCHAIN_DB: dbPath,
   });
 
   const db = getDb(dbPath);

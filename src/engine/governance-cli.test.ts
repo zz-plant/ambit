@@ -10,6 +10,7 @@ import {
   LOCAL_ONLY,
   WITH_PEOPLE,
   cli,
+  cliAsync,
   dir,
   existsSync,
   getDb,
@@ -382,12 +383,12 @@ test('an expired approval is refused until re-approved', () => {
   expect(refused.error).toContain('expired');
 });
 
-test('notify-approvals lists approved proposals awaiting apply', () => {
+test('notify-approvals lists approved proposals awaiting apply', async () => {
   seed(APPLIABLE).close();
   const p = cli('propose', 'web-research');
   cli('approve', p.proposal, 'kanav');
 
-  const r = cli('notify-approvals');
+  const r = await cliAsync('notify-approvals');
   expect(r.error).toContain('Usage'); // opt-in: nothing is sent without a topic
 
   // The pending set is readable through the engine directly.

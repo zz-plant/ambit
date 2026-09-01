@@ -7,7 +7,6 @@
 import { test, expect } from 'vitest';
 import {
   APPLIABLE,
-  ENGINE,
   LOCAL_ONLY,
   WITH_ECONOMICS,
   WITH_PREFS,
@@ -16,7 +15,6 @@ import {
   cli,
   dir,
   endRun,
-  execFileSync,
   getDb,
   join,
   recordIntervention,
@@ -436,17 +434,7 @@ test('a federation export carries aggregates and never credentials', () => {
   });
   (db as any).close();
 
-  const summary = JSON.parse(
-    execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
-      env: {
-        ...process.env,
-        TOOLCHAIN_DB: join(dir, 'graph.db'),
-        OPENCODE_CONFIG: join(dir, 'config.json'),
-        AMBIT_APPROVAL_KEY: 'test-approval-key',
-      },
-      encoding: 'utf8',
-    })
-  );
+  const summary = cli('federation', 'export');
   expect(summary.schema_version).toBe(1);
   expect(summary.capabilities.length).toBeGreaterThan(0);
   expect(summary.capabilities.some((c: any) => c.reached)).toBe(true);
@@ -466,17 +454,7 @@ test('a federation import stores a receipt and merges nothing', () => {
   ).n;
 
   // Export to a file, then import that file back into the same graph.
-  const summary = JSON.parse(
-    execFileSync('node', ['--experimental-sqlite', ENGINE, 'federation', 'export'], {
-      env: {
-        ...process.env,
-        TOOLCHAIN_DB: join(dir, 'graph.db'),
-        OPENCODE_CONFIG: join(dir, 'config.json'),
-        AMBIT_APPROVAL_KEY: 'test-approval-key',
-      },
-      encoding: 'utf8',
-    })
-  );
+  const summary = cli('federation', 'export');
   const path = join(dir, 'summary.json');
   writeFileSync(path, JSON.stringify(summary));
 
