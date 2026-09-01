@@ -14,5 +14,11 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/client"]
+  // The client is browser code and is typechecked as such — no node types.
+  // effect-deps.test.ts lives here because it reads this directory, but it is a
+  // Node test: it imports node:fs and node:path and uses import.meta.dirname.
+  // It belongs to the node project below, which has those types, rather than to
+  // a browser project that would have to pretend it does.
+  "include": ["src/client"],
+  "exclude": ["src/client/**/*.test.ts", "src/client/**/*.test.tsx"]
 }

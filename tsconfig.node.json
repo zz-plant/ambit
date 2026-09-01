@@ -18,5 +18,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/engine", "src/mcp", "src/server", "src/control_plane", "src/shared", "server.ts", "scripts"]
+  "include": ["src/engine", "src/mcp", "src/server", "src/control_plane", "src/shared", "server.ts", "scripts", "src/client/**/*.test.ts"]
 }
