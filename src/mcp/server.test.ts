@@ -67,17 +67,6 @@ test('the capability lifecycle is reachable by an agent, not only the CLI', () =
   const [list] = rpc([{ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }]);
   const names = list.result.tools.map((t: any) => t.name);
   for (const tool of [
-    'tt_verify',
-    'tt_evidence',
-    'tt_authority',
-    'tt_actions',
-    'tt_plan',
-    'tt_since',
-    'tt_ledger',
-  ]) {
-    expect(names).toContain(tool);
-  }
-  for (const tool of [
     'ambit_verify',
     'ambit_evidence',
     'ambit_authority',
@@ -90,7 +79,36 @@ test('the capability lifecycle is reachable by an agent, not only the CLI', () =
   }
 });
 
-test('tt_plan and ambit_plan return an ordered gap through MCP', () => {
+test('each tool is advertised once, under the product name', () => {
+  // Every tool was listed twice, as ambit_* and as the legacy tt_*, so
+  // tools/list returned 96 entries for 48 tools — about 3,600 tokens of pure
+  // duplication in the context of every agent that connects.
+  const [list] = rpc([{ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }]);
+  const names: string[] = list.result.tools.map((t: any) => t.name);
+
+  expect(new Set(names).size).toBe(names.length);
+  expect(names.filter(n => !n.startsWith('ambit_'))).toEqual([]);
+
+  // The listing is what costs context, so its size is the thing to hold.
+  const bytes = Buffer.byteLength(JSON.stringify(list.result.tools));
+  expect(bytes).toBeLessThan(20_000);
+});
+
+test('a tt_ name written before the rename still dispatches', () => {
+  // The alias is unadvertised, not removed: an existing config must not break.
+  const [reply] = rpc([
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'tt_authority', arguments: {} },
+    },
+  ]);
+  expect(reply.error).toBeUndefined();
+  expect(reply.result.content[0].text.length).toBeGreaterThan(0);
+});
+
+test('the advertised name and the legacy alias return the same answer', () => {
   const [replyTt, replyAmbit] = rpc([
     {
       jsonrpc: '2.0',

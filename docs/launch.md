@@ -14,7 +14,7 @@ Short directory description:
 
 I built Ambit after my agent setup grew from a few tools into a stack of MCP servers, local scripts, skills, credentials, and runtimes. I could see each config file, but not what the whole system could do, what would fail together, or what one missing dependency was blocking.
 
-Ambit is MIT-licensed and local-first. Its Node 22 SQLite engine maps the stack into a capability DAG; the React SVG view renders it as a Civilization-style tech tree; and 47 MCP tools let an agent query the same model.
+Ambit is MIT-licensed and local-first. Its Node 22 SQLite engine maps the stack into a capability DAG; the React SVG view renders it as a Civilization-style tech tree; and 48 MCP tools let an agent query the same model.
 
 The parts I use most:
 

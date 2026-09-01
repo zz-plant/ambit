@@ -251,7 +251,7 @@ sequenceDiagram
 <details>
 <summary><b>The full 48-tool MCP surface</b></summary>
 
-Forty-eight tools. Each is also registered under a legacy `tt_` prefix, which doubles what `tools/list` returns and costs roughly 3,800 tokens of every agent's context for nothing — the aliases exist for configs written before the rename and are the next thing to remove.
+Forty-eight tools, each advertised once. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
 
 | Group | Tools | Purpose |
 | :--- | :--- | :--- |

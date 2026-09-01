@@ -357,21 +357,21 @@ The graph half is useful the moment you seed — `status`, `plan`, `verify` and 
 ## The full MCP surface
 
 ```
-Graph      tt_stats tt_context tt_cap   tt_combos tt_diff tt_health
-           tt_decay tt_near   tt_bottlenecks        tt_spof tt_impact tt_credentials
+Graph      ambit_stats ambit_context ambit_cap   ambit_combos ambit_diff ambit_health
+           ambit_decay ambit_near   ambit_bottlenecks        ambit_spof ambit_impact ambit_credentials
 
-Lifecycle  tt_verify tt_evidence tt_authority tt_actions tt_plan tt_goal
-           tt_paths  tt_preferences tt_scope  tt_affordances tt_since tt_ledger
+Lifecycle  ambit_verify ambit_evidence ambit_authority ambit_actions ambit_plan ambit_goal
+           ambit_paths  ambit_preferences ambit_scope  ambit_affordances ambit_since ambit_ledger
 
-Operate    tt_work tt_usage tt_run_begin tt_run_end tt_work_event tt_digest
-           tt_economics tt_goal_value tt_opportunities tt_opportunity
-           tt_catalog tt_roi tt_roi_summary tt_audit tt_incidents
-           tt_incident_resolve tt_portfolio tt_can
+Operate    ambit_work ambit_usage ambit_run_begin ambit_run_end ambit_work_event ambit_digest
+           ambit_economics ambit_goal_value ambit_opportunities ambit_opportunity
+           ambit_catalog ambit_roi ambit_roi_summary ambit_audit ambit_incidents
+           ambit_incident_resolve ambit_portfolio ambit_can
 
-Propose    tt_blocked tt_deficits tt_simulate tt_propose tt_proposals tt_proposal
+Propose    ambit_blocked ambit_deficits ambit_simulate ambit_propose ambit_proposals ambit_proposal
 ```
 
-The lifecycle group is "is this real, may I act, what is missing" — and when the answer is *nothing here can do that*, recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again. The operate group is the economic loop read and written by an agent: report work, record what it did, ask which investments rank, and — via `tt_can` — *ask* whether an action is permitted. An agent can ask; it can never approve or apply.
+The lifecycle group is "is this real, may I act, what is missing" — and when the answer is *nothing here can do that*, recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again. The operate group is the economic loop read and written by an agent: report work, record what it did, ask which investments rank, and — via `ambit_can` — *ask* whether an action is permitted. An agent can ask; it can never approve or apply.
 
 ## Runtimes are nodes, not owners
 
@@ -537,10 +537,10 @@ $ ambit goal offline-semantic-search --simulate
 **The Problem Without Ambit:** The agent blindly executes shell commands (`kubectl apply -f ...`), hits an unauthenticated cluster error, attempts to guess credentials, writes invalid config files, wastes 15,000 context tokens in retry loops, and leaves the repository in a broken state.
 
 **With Ambit (Agent Flow over MCP):**
-1. The agent calls `tt_authority` to check its execution permissions:
+1. The agent calls `ambit_authority` to check its execution permissions:
    ```json
    {
-     "name": "tt_authority",
+     "name": "ambit_authority",
      "arguments": { "capability": "act:continuous-delivery/deploy_staging" }
    }
    ```
@@ -555,10 +555,10 @@ $ ambit goal offline-semantic-search --simulate
      "resolution": "Request human approval with signed proposal"
    }
    ```
-3. The agent calls `tt_propose` to generate a structured proposal:
+3. The agent calls `ambit_propose` to generate a structured proposal:
    ```json
    {
-     "name": "tt_propose",
+     "name": "ambit_propose",
      "arguments": { "capability": "deploy-staging" }
    }
    ```

@@ -557,11 +557,20 @@ const BASE_TOOLS = [
   },
 ];
 
-// Provide canonical ambit_* tools and legacy tt_* aliases
-const TOOLS = [
-  ...BASE_TOOLS.map(t => ({ ...t, name: `ambit_${t.name}` })),
-  ...BASE_TOOLS.map(t => ({ ...t, name: `tt_${t.name}` })),
-];
+/**
+ * What the server advertises: one entry per tool, under the product's own name.
+ *
+ * Every tool used to be listed twice, once as `ambit_*` and once as the legacy
+ * `tt_*`, so `tools/list` returned 96 entries for 48 tools — about 29KB, of
+ * which half was the alias set. That is roughly 3,600 tokens of duplication in
+ * the context of every agent that connects, which is a strange thing to ship
+ * from a project whose subject is agents drowning in undifferentiated tools.
+ *
+ * `tt_*` still *dispatches* — see tools/call below — so a config written
+ * before the rename keeps working. It is no longer advertised, because an
+ * alias costs nothing to accept and a great deal to announce.
+ */
+const TOOLS = BASE_TOOLS.map(t => ({ ...t, name: `ambit_${t.name}` }));
 
 let buf = '';
 // Each line is handled in its own function because the body returns to reply.
@@ -590,7 +599,9 @@ function handleLine(line: string) {
         const { name, arguments: args } = params;
         try {
           let res: unknown;
-          // Normalize tool name and capability arguments
+          // Dispatch is keyed on the legacy prefix, and accepts either: the
+          // advertised `ambit_*` name and the unadvertised `tt_*` alias reach
+          // the same case.
           const normalizedName = name.startsWith('ambit_') ? name.replace(/^ambit_/, 'tt_') : name;
           const capId = args?.capId || args?.capabilityId || args?.capability;
           switch (normalizedName) {

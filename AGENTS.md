@@ -10,7 +10,7 @@ Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP serv
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `node:http` in `server.ts` — visualiser API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
-- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 47 tools
+- **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 48 tools
 - **Plugin**: Hooks OpenCode config events from `~/.config/opencode/plugins/`
 
 ## Core Structure
