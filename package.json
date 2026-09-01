@@ -25,7 +25,10 @@
     "assets:hero": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/record-hero-gif.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docs:examples": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/capture-readme-examples.ts",
+    "docs:examples:check": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/capture-readme-examples.ts --check",
+    "assets:demo-tree": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/generate-demo-tree.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",

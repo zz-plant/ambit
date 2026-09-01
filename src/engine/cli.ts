@@ -318,7 +318,22 @@ function statusReport(db: any) {
     ? proposals.filter((p: any) => p.status === 'draft' || p.status === 'approved')
     : [];
 
+  // A sentence before the dump. `status` knew the worst thing about the
+  // environment — the failing checks, the sole-provider capabilities, the
+  // approvals waiting on a person — and made the reader assemble it from
+  // eleven nested sections. The fields below still carry all of it.
+  const spofs = singlePointsOfFailure(db);
+  const worries = [
+    g.failing ? `${g.failing} failing` : null,
+    degraded.length ? `${degraded.length} degraded` : null,
+    Array.isArray(spofs) && spofs.length ? `${spofs.length} with a single provider` : null,
+    pending.length ? `${pending.length} awaiting approval` : null,
+  ].filter(Boolean);
+
   return {
+    summary:
+      `${g.reached}/${g.total} capabilities reached` +
+      (worries.length ? ` · ${worries.join(' · ')}` : ' · nothing failing'),
     reached: g.reached,
     total: g.total,
     verified: g.verified,
@@ -329,7 +344,7 @@ function statusReport(db: any) {
     evidence: [evidenceReport(db)],
     domains,
     degraded: degraded.length ? degraded : undefined,
-    spofs: singlePointsOfFailure(db),
+    spofs,
     bottlenecks: findBottlenecks(db).slice(0, 10),
     deficits: deficits(db),
     frontier: ledgerHistory(db).slice(-5),
@@ -446,8 +461,13 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   if (previousRuntime === undefined) delete process.env.AMBIT_RUNTIME;
   else process.env.AMBIT_RUNTIME = previousRuntime;
 
-  const c = db.prepare('SELECT COUNT(*) as cnt FROM capabilities').get();
-  say(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities`);
+  // `kind != 'action'` is what makes a row a capability, and every count shown
+  // to a person has to use it. Counting the whole table here reported 69 where
+  // `ambit status` reported 41 a second later, in the same run of bootstrap.
+  const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE kind != 'action'").get();
+  const a = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE kind = 'action'").get();
+  const actions = a?.cnt ? ` · ${a.cnt} actions` : '';
+  say(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities${C.grey}${actions}${C.reset}`);
   for (const source of sources) {
     say(`${C.grey}  Seeded from ${source.label}.${C.reset}`);
   }
@@ -459,8 +479,11 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
       `${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`
     );
     say(`${C.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${C.reset}`);
+    // This used to send people to an "Other configurations" section of the
+    // README. There is no such section, and there was none when the line was
+    // written; AGENTS.md is where the variable is actually described.
     say(
-      `${C.grey}  Another format: see "Other configurations" in the README (CONFIG_MAPPING).${C.reset}`
+      `${C.grey}  Another format: set CONFIG_MAPPING to a JSON mapping — see AGENTS.md.${C.reset}`
     );
   }
 }
@@ -746,7 +769,8 @@ async function main() {
       const path = resolveDbPath();
       // Not whether the file exists — opening it creates it, so that is always
       // true by the time this runs. Whether it holds a graph is the question.
-      const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get()?.n ?? 0;
+      const seeded =
+        db.prepare("SELECT COUNT(*) AS n FROM capabilities WHERE kind != 'action'").get()?.n ?? 0;
       emit({
         graph: path,
         capabilities: seeded,

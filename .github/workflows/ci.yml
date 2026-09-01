@@ -38,6 +38,12 @@ jobs:
       - name: Check assets
         run: npm run assets:check
 
+      # Same argument for the console blocks. One of them documented a cascade
+      # for an id no graph contains, which is a claim a reader can only check
+      # by installing the tool and finding out.
+      - name: Check README examples match real output
+        run: npm run docs:examples:check
+
       # The path a new user takes. It must survive a machine with no agent
       # config, which is how it used to fail — with a raw SQLite error.
       - name: Bootstrap on a clean machine
