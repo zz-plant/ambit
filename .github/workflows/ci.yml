@@ -8,6 +8,14 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # `engines` says >=22.18, and `--experimental-sqlite` appears in 31
+        # places across source, scripts and shell. 22 is the floor that claim
+        # rests on; 24 is what a new contributor will actually have installed,
+        # and on it node:sqlite is stable and the flag is a no-op.
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v7
 
@@ -16,7 +24,7 @@ jobs:
       # step, and nothing in the repo needs Bun.
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - run: npm ci
