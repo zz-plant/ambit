@@ -132,16 +132,32 @@ function sameToken(a: string, b: string): boolean {
 /**
  * Whether a request may touch the config routes.
  *
- * A browser that passed the origin check is already trusted — the page it came
- * from is the visualiser this server serves. Anything with no Origin at all is
- * not a browser, and has to present the token.
+ * Three cases, and the middle one is why this is not simply "no Origin means
+ * no browser". A same-origin `fetch` sends no Origin header at all, so the
+ * visualiser this server serves to its own page looked exactly like curl —
+ * which is how the first version of this locked the app out of its own API.
+ * `Sec-Fetch-Site` is what separates them: browsers set it on every request
+ * and script cannot override it, because it is a forbidden header.
+ *
+ *   - an Origin present → judged by the allow-list, as before. This is the
+ *     vite dev path, where the page is on :3000 and the API on :3001.
+ *   - a same-origin browser fetch → allowed; it is this server's own page.
+ *   - anything else → must present the token.
+ *
+ * What this stops is a web page the user happens to visit reading or rewriting
+ * their agent config, and a script or another agent doing it casually. It is
+ * not a boundary against a determined local process: anything running as the
+ * user can send the header itself or read the token file. Loopback binding and
+ * 0600 permissions are what carry that weight.
  */
 export function mayEditConfig(
   pathname: string,
   origin: string,
-  header: string | undefined
+  header: string | undefined,
+  fetchSite?: string
 ): boolean {
   if (!CONFIG_ROUTES.includes(pathname)) return true;
   if (origin) return isAllowedOrigin(origin);
+  if (fetchSite === 'same-origin' || fetchSite === 'none') return true;
   return Boolean(header) && sameToken(header as string, apiToken());
 }

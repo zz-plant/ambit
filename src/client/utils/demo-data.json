@@ -1,0 +1,2297 @@
+{
+  "generatedBy": "npm run demo:generate",
+  "fixture": {
+    "provider": {
+      "anthropic": {
+        "name": "Anthropic"
+      },
+      "ollama": {
+        "name": "Ollama"
+      }
+    },
+    "agent": {
+      "reviewer": {
+        "description": "Reviews diffs before merge"
+      },
+      "researcher": {
+        "description": "Reads docs and summarises"
+      },
+      "steward": {
+        "description": "Keeps repositories consistent"
+      }
+    },
+    "mcp": {
+      "git": {
+        "type": "local",
+        "enabled": true
+      },
+      "github": {
+        "type": "remote",
+        "enabled": true
+      },
+      "filesystem": {
+        "type": "local",
+        "enabled": true
+      },
+      "playwright": {
+        "type": "local",
+        "enabled": true
+      },
+      "sqlite": {
+        "type": "local",
+        "enabled": true
+      },
+      "fetch": {
+        "type": "remote",
+        "enabled": true
+      },
+      "memory": {
+        "type": "local",
+        "enabled": true
+      },
+      "docker": {
+        "type": "local",
+        "enabled": true
+      },
+      "postgres": {
+        "type": "local",
+        "enabled": true
+      },
+      "slack": {
+        "type": "remote",
+        "enabled": true
+      },
+      "sentry": {
+        "type": "remote",
+        "enabled": true
+      },
+      "kubernetes": {
+        "type": "local",
+        "enabled": true
+      },
+      "grafana": {
+        "type": "remote",
+        "enabled": true
+      },
+      "1password": {
+        "type": "local",
+        "enabled": true
+      }
+    },
+    "command": {
+      "deploy": {
+        "description": "Ship to staging"
+      },
+      "migrate": {
+        "description": "Run database migrations"
+      },
+      "bench": {
+        "description": "Run the benchmark suite"
+      }
+    }
+  },
+  "config": {
+    "items": [
+      {
+        "id": "agent:researcher",
+        "name": "researcher",
+        "type": "agent",
+        "status": "built",
+        "description": "Reads docs and summarises",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "maturity": 0.75
+        },
+        "group": "Agents"
+      },
+      {
+        "id": "agent:reviewer",
+        "name": "reviewer",
+        "type": "agent",
+        "status": "built",
+        "description": "Reviews diffs before merge",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "maturity": 0.75
+        },
+        "group": "Agents"
+      },
+      {
+        "id": "agent:steward",
+        "name": "steward",
+        "type": "agent",
+        "status": "built",
+        "description": "Keeps repositories consistent",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "maturity": 0.75
+        },
+        "group": "Agents"
+      },
+      {
+        "id": "cmd:bench",
+        "name": "bench",
+        "type": "command",
+        "status": "built",
+        "description": "Run the benchmark suite",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "frontend",
+          "maturity": 0.6
+        },
+        "group": "Commands"
+      },
+      {
+        "id": "cmd:deploy",
+        "name": "deploy",
+        "type": "command",
+        "status": "built",
+        "description": "Ship to staging",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "maturity": 0.6
+        },
+        "group": "Commands"
+      },
+      {
+        "id": "cmd:migrate",
+        "name": "migrate",
+        "type": "command",
+        "status": "built",
+        "description": "Run database migrations",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "maturity": 0.6
+        },
+        "group": "Commands"
+      },
+      {
+        "id": "mcp:1password",
+        "name": "1password",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "security",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:docker",
+        "name": "docker",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "infra",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:fetch",
+        "name": "fetch",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "remote",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Cloudflare"
+      },
+      {
+        "id": "mcp:filesystem",
+        "name": "filesystem",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:git",
+        "name": "git",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "devops",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:github",
+        "name": "github",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "remote",
+          "domain": "devops",
+          "maturity": 0.8
+        },
+        "group": "Cloudflare"
+      },
+      {
+        "id": "mcp:grafana",
+        "name": "grafana",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "remote",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Cloudflare"
+      },
+      {
+        "id": "mcp:kubernetes",
+        "name": "kubernetes",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:memory",
+        "name": "memory",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:playwright",
+        "name": "playwright",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "frontend",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:postgres",
+        "name": "postgres",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "backend",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "mcp:sentry",
+        "name": "sentry",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "remote",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Cloudflare"
+      },
+      {
+        "id": "mcp:slack",
+        "name": "slack",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "remote",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Cloudflare"
+      },
+      {
+        "id": "mcp:sqlite",
+        "name": "sqlite",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "local",
+          "domain": "backend",
+          "maturity": 0.8
+        },
+        "group": "Local"
+      },
+      {
+        "id": "opencode-core",
+        "name": "OpenCode Core",
+        "type": "framework",
+        "status": "built",
+        "description": "Main agent framework",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "version": "latest",
+          "domain": "meta",
+          "maturity": 1
+        }
+      },
+      {
+        "id": "provider:anthropic",
+        "name": "Anthropic",
+        "type": "provider",
+        "status": "built",
+        "description": "LLM provider",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "key": "anthropic",
+          "domain": "ai-ml",
+          "maturity": 0.85
+        },
+        "group": "Providers"
+      },
+      {
+        "id": "provider:ollama",
+        "name": "Ollama",
+        "type": "provider",
+        "status": "built",
+        "description": "LLM provider",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "key": "ollama",
+          "domain": "ai-ml",
+          "maturity": 0.85
+        },
+        "group": "Providers"
+      }
+    ],
+    "connections": [
+      {
+        "from": "opencode-core",
+        "to": "agent:researcher",
+        "type": "subagent"
+      },
+      {
+        "from": "opencode-core",
+        "to": "agent:reviewer",
+        "type": "subagent"
+      },
+      {
+        "from": "opencode-core",
+        "to": "agent:steward",
+        "type": "subagent"
+      },
+      {
+        "from": "opencode-core",
+        "to": "cmd:bench",
+        "type": "command"
+      },
+      {
+        "from": "opencode-core",
+        "to": "cmd:deploy",
+        "type": "command"
+      },
+      {
+        "from": "opencode-core",
+        "to": "cmd:migrate",
+        "type": "command"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:1password",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:docker",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:fetch",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:filesystem",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:git",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:github",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:grafana",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:kubernetes",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:memory",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:playwright",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:postgres",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:sentry",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:slack",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "mcp:sqlite",
+        "type": "connects"
+      },
+      {
+        "from": "opencode-core",
+        "to": "provider:anthropic",
+        "type": "uses-provider"
+      },
+      {
+        "from": "opencode-core",
+        "to": "provider:ollama",
+        "type": "uses-provider"
+      }
+    ]
+  },
+  "tree": {
+    "items": [
+      {
+        "id": "agent:researcher",
+        "name": "researcher",
+        "type": "agent",
+        "status": "built",
+        "description": "Reads docs and summarises",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "agent:reviewer",
+        "name": "reviewer",
+        "type": "agent",
+        "status": "built",
+        "description": "Reviews diffs before merge",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "agent:steward",
+        "name": "steward",
+        "type": "agent",
+        "status": "built",
+        "description": "Keeps repositories consistent",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:automated-tests",
+        "name": "Automated Tests",
+        "type": "possibility",
+        "status": "built",
+        "description": "A suite the agent can run to check its own work",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "state": "unlocked",
+          "setupSeconds": 1800,
+          "era": 6,
+          "eraName": "Assurance",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:browser-automation",
+        "name": "Browser Automation",
+        "type": "possibility",
+        "status": "built",
+        "description": "The agent can drive a real browser — see rendered pages, click, and verify its own UI work",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "frontend",
+          "state": "unlocked",
+          "setupSeconds": 900,
+          "era": 3,
+          "eraName": "Tool Use",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:code-intelligence",
+        "name": "Code Intelligence",
+        "type": "possibility",
+        "status": "built",
+        "description": "Language-server diagnostics, so the agent sees errors as an IDE would",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "state": "unlocked",
+          "setupSeconds": 120,
+          "era": 1,
+          "eraName": "Foundation",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:context-compaction",
+        "name": "Context Compaction",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Long sessions summarize instead of falling over at the context limit — Enable session compaction so long-running work survives the window",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 4,
+          "eraName": "Memory",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:continuous-delivery",
+        "name": "Continuous Delivery",
+        "type": "possibility",
+        "status": "built",
+        "description": "Agent changes ship through the same gate as human ones",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "unlocked",
+          "setupSeconds": 1800,
+          "era": 6,
+          "eraName": "Assurance",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:data-access",
+        "name": "Data Access",
+        "type": "possibility",
+        "status": "built",
+        "description": "The agent can query real data rather than reasoning about schemas it cannot see",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 600,
+          "era": 3,
+          "eraName": "Tool Use",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:embeddings",
+        "name": "Embeddings",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Text can be turned into vectors — the prerequisite for any retrieval — Configure an embedding model; a small local one is usually enough",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 4,
+          "eraName": "Memory",
+          "next": true,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:evaluation",
+        "name": "Evaluation",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Agent output measured against known-good cases rather than judged by vibes — Collect cases where the agent failed and turn them into a suite you can re-run",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "state": "locked",
+          "setupSeconds": 3600,
+          "era": 6,
+          "eraName": "Assurance",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:extended-context",
+        "name": "Extended Context",
+        "type": "possibility",
+        "status": "specified",
+        "description": "A model configured well past the default window, so long files and sessions survive — Set an explicit context limit per model — most runtimes silently default to 4K and truncate",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 2,
+          "eraName": "Model Access",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:file-editing",
+        "name": "File Editing",
+        "type": "possibility",
+        "status": "built",
+        "description": "The agent can read and modify files directly",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "era": 1,
+          "eraName": "Foundation",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:hosted-inference",
+        "name": "Hosted Inference",
+        "type": "possibility",
+        "status": "built",
+        "description": "At least one hosted model provider configured",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "unlocked",
+          "setupSeconds": 300,
+          "era": 2,
+          "eraName": "Model Access",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:local-embeddings",
+        "name": "Local Embeddings",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Retrieval that never sends your text to a third party — Run the embedding model locally — nomic-embed or bge-small are small enough",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 7,
+          "eraName": "Sovereignty",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:local-runtime",
+        "name": "Local Runtime",
+        "type": "possibility",
+        "status": "built",
+        "description": "A model server running on your own hardware — Ollama, llama.cpp, MLX, or LiteRT",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "unlocked",
+          "setupSeconds": 1800,
+          "era": 2,
+          "eraName": "Model Access",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:local-tool-calling",
+        "name": "Local Tool Calling",
+        "type": "possibility",
+        "status": "specified",
+        "description": "A local model that reliably emits tool calls — the threshold where local models stop being chat toys and start doing agent work — Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls — many local models claim support and fail in practice",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 2,
+          "eraName": "Model Access",
+          "next": true,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:model-routing",
+        "name": "Model Routing",
+        "type": "possibility",
+        "status": "specified",
+        "description": "More than one model available, with agents pinned to the right tier for their work — Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 2,
+          "eraName": "Model Access",
+          "next": true,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:notifications",
+        "name": "Notifications",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Long-running work can reach you when it finishes or needs a decision — configured, but Scheduled Work is not in place yet",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 5,
+          "eraName": "Autonomy",
+          "next": false,
+          "lifecycle": "detected"
+        }
+      },
+      {
+        "id": "combo:observability",
+        "name": "Observability",
+        "type": "possibility",
+        "status": "built",
+        "description": "Traces of what agents did, so failures are diagnosable after the fact",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "state": "unlocked",
+          "setupSeconds": 1800,
+          "era": 6,
+          "eraName": "Assurance",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:offline-capable",
+        "name": "Offline Capable",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The full loop — inference, tools, retrieval — runs with the network off — Verify the agent still completes a real task with the network disabled",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 3600,
+          "era": 7,
+          "eraName": "Sovereignty",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:parallel-execution",
+        "name": "Parallel Execution",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Several agents working at once on independent pieces — Split a broad task across subagents that do not touch the same files",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 5,
+          "eraName": "Autonomy",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:persistent-memory",
+        "name": "Persistent Memory",
+        "type": "possibility",
+        "status": "built",
+        "description": "Facts survive between sessions, so the agent stops relearning your setup every time",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "unlocked",
+          "setupSeconds": 900,
+          "era": 4,
+          "eraName": "Memory",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:private-data-handling",
+        "name": "Private Data Handling",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Sensitive material is processed only by models you control — Route work touching sensitive data to local models by policy, not by habit",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "security",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 7,
+          "eraName": "Sovereignty",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:retrieval",
+        "name": "Retrieval",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The agent pulls relevant context on demand instead of being handed everything up front — Wire retrieval into a skill or agent so context is fetched rather than pasted",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 4,
+          "eraName": "Memory",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:review-loop",
+        "name": "Review Loop",
+        "type": "possibility",
+        "status": "specified",
+        "description": "A second agent checks the first one's output before you see it — configured, but Subagents is not in place yet",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 6,
+          "eraName": "Assurance",
+          "next": false,
+          "lifecycle": "detected"
+        }
+      },
+      {
+        "id": "combo:scheduled-work",
+        "name": "Scheduled Work",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Agents that run on a schedule or a trigger, without you starting them — Move a recurring check onto a schedule instead of remembering to run it",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 5,
+          "eraName": "Autonomy",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:secret-management",
+        "name": "Secret Management",
+        "type": "possibility",
+        "status": "built",
+        "description": "Credentials resolved from a vault or env references instead of literals in config",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "security",
+          "state": "unlocked",
+          "setupSeconds": 900,
+          "era": 3,
+          "eraName": "Tool Use",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:self-hosted-stack",
+        "name": "Self-Hosted Stack",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Your own hardware serving models and tools to your agents — Move inference onto a machine you own and reach it over a private network",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "locked",
+          "setupSeconds": 7200,
+          "era": 7,
+          "eraName": "Sovereignty",
+          "next": true,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:shell-execution",
+        "name": "Shell Execution",
+        "type": "possibility",
+        "status": "built",
+        "description": "The agent can run commands and read their output",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "era": 1,
+          "eraName": "Foundation",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:skill-library",
+        "name": "Skill Library",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Reusable procedures the agent loads on demand, so expertise is not retyped per session — Write a SKILL.md for a workflow you explain more than twice",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 5,
+          "eraName": "Autonomy",
+          "next": true,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:subagents",
+        "name": "Subagents",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Named agents with their own prompts and models, delegated to for specific work — configured, but Model Routing is not in place yet",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 5,
+          "eraName": "Autonomy",
+          "next": false,
+          "lifecycle": "detected"
+        }
+      },
+      {
+        "id": "combo:tool-protocol",
+        "name": "Tool Protocol",
+        "type": "possibility",
+        "status": "built",
+        "description": "At least one MCP server, giving the agent capabilities beyond its own context",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 600,
+          "era": 3,
+          "eraName": "Tool Use",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:vector-store",
+        "name": "Vector Store",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Somewhere to keep and search those vectors — Add a vector store — pgvector or a local LanceDB is enough to start",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 4,
+          "eraName": "Memory",
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "combo:version-control",
+        "name": "Version Control",
+        "type": "possibility",
+        "status": "built",
+        "description": "Git operations, so agent work is reviewable and revertible",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "unlocked",
+          "setupSeconds": 300,
+          "era": 1,
+          "eraName": "Foundation",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "combo:web-research",
+        "name": "Web Research",
+        "type": "possibility",
+        "status": "built",
+        "description": "Live search and fetch, so the agent is not limited to its training cutoff",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "unlocked",
+          "setupSeconds": 300,
+          "era": 3,
+          "eraName": "Tool Use",
+          "next": false,
+          "lifecycle": "configured"
+        }
+      },
+      {
+        "id": "core:reasoning",
+        "name": "Core Reasoning",
+        "type": "meta",
+        "status": "built",
+        "description": "Base LLM reasoning",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "active",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:1password",
+        "name": "1password",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:docker",
+        "name": "docker",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:fetch",
+        "name": "fetch",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:filesystem",
+        "name": "filesystem",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:git",
+        "name": "git",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:github",
+        "name": "github",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:grafana",
+        "name": "grafana",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:kubernetes",
+        "name": "kubernetes",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:memory",
+        "name": "memory",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:playwright",
+        "name": "playwright",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:postgres",
+        "name": "postgres",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:sentry",
+        "name": "sentry",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:slack",
+        "name": "slack",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "mcp:sqlite",
+        "name": "sqlite",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "local server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "provider:anthropic",
+        "name": "anthropic",
+        "type": "provider",
+        "status": "built",
+        "description": "",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "provider:ollama",
+        "name": "ollama",
+        "type": "provider",
+        "status": "built",
+        "description": "",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "runtime:opencode",
+        "name": "opencode",
+        "type": "runtime",
+        "status": "built",
+        "description": "Agent runtime — contributes 22 capabilities",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "tool:bash",
+        "name": "Shell Execution",
+        "type": "tool",
+        "status": "built",
+        "description": "Run commands",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "active",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "tool:bench",
+        "name": "bench",
+        "type": "tool",
+        "status": "built",
+        "description": "Run the benchmark suite",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "tool:deploy",
+        "name": "deploy",
+        "type": "tool",
+        "status": "built",
+        "description": "Ship to staging",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "tool:edit",
+        "name": "File Editor",
+        "type": "tool",
+        "status": "built",
+        "description": "Edit files",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "meta",
+          "state": "active",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "tool:lsp",
+        "name": "LSP Diagnostics",
+        "type": "tool",
+        "status": "built",
+        "description": "Language server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "state": "active",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      },
+      {
+        "id": "tool:migrate",
+        "name": "migrate",
+        "type": "tool",
+        "status": "built",
+        "description": "Run database migrations",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from": "agent:researcher",
+        "to": "combo:subagents",
+        "type": "hard-dep"
+      },
+      {
+        "from": "agent:researcher",
+        "to": "combo:web-research",
+        "type": "hard-dep"
+      },
+      {
+        "from": "agent:reviewer",
+        "to": "combo:review-loop",
+        "type": "hard-dep"
+      },
+      {
+        "from": "agent:reviewer",
+        "to": "combo:subagents",
+        "type": "hard-dep"
+      },
+      {
+        "from": "agent:steward",
+        "to": "combo:subagents",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:automated-tests",
+        "to": "combo:continuous-delivery",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:automated-tests",
+        "to": "combo:observability",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:automated-tests",
+        "to": "combo:review-loop",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:code-intelligence",
+        "to": "combo:automated-tests",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:embeddings",
+        "to": "combo:local-embeddings",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:embeddings",
+        "to": "combo:vector-store",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:extended-context",
+        "to": "combo:context-compaction",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:file-editing",
+        "to": "combo:code-intelligence",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:file-editing",
+        "to": "combo:skill-library",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:hosted-inference",
+        "to": "combo:embeddings",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:hosted-inference",
+        "to": "combo:model-routing",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:local-embeddings",
+        "to": "combo:offline-capable",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:local-runtime",
+        "to": "combo:local-embeddings",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:local-runtime",
+        "to": "combo:local-tool-calling",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:local-runtime",
+        "to": "combo:model-routing",
+        "type": "soft-dep"
+      },
+      {
+        "from": "combo:local-runtime",
+        "to": "combo:self-hosted-stack",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:local-tool-calling",
+        "to": "combo:extended-context",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:local-tool-calling",
+        "to": "combo:offline-capable",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:local-tool-calling",
+        "to": "combo:parallel-execution",
+        "type": "soft-dep"
+      },
+      {
+        "from": "combo:local-tool-calling",
+        "to": "combo:private-data-handling",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:model-routing",
+        "to": "combo:subagents",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:observability",
+        "to": "combo:self-hosted-stack",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:review-loop",
+        "to": "combo:evaluation",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:scheduled-work",
+        "to": "combo:notifications",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:secret-management",
+        "to": "combo:private-data-handling",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:shell-execution",
+        "to": "combo:hosted-inference",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:shell-execution",
+        "to": "combo:local-runtime",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:shell-execution",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:shell-execution",
+        "to": "combo:version-control",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:subagents",
+        "to": "combo:parallel-execution",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:subagents",
+        "to": "combo:review-loop",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:subagents",
+        "to": "combo:scheduled-work",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:tool-protocol",
+        "to": "combo:browser-automation",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:tool-protocol",
+        "to": "combo:data-access",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:tool-protocol",
+        "to": "combo:persistent-memory",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:tool-protocol",
+        "to": "combo:secret-management",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:tool-protocol",
+        "to": "combo:web-research",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:vector-store",
+        "to": "combo:retrieval",
+        "type": "hard-dep"
+      },
+      {
+        "from": "combo:version-control",
+        "to": "combo:continuous-delivery",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:1password",
+        "to": "combo:secret-management",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:docker",
+        "to": "combo:continuous-delivery",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:fetch",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:fetch",
+        "to": "combo:web-research",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:filesystem",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:git",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:git",
+        "to": "combo:version-control",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:github",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:github",
+        "to": "combo:version-control",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:memory",
+        "to": "combo:persistent-memory",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:playwright",
+        "to": "combo:automated-tests",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:playwright",
+        "to": "combo:browser-automation",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:playwright",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:postgres",
+        "to": "combo:data-access",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:sentry",
+        "to": "combo:observability",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:slack",
+        "to": "combo:notifications",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:sqlite",
+        "to": "combo:data-access",
+        "type": "hard-dep"
+      },
+      {
+        "from": "mcp:sqlite",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep"
+      },
+      {
+        "from": "provider:anthropic",
+        "to": "combo:hosted-inference",
+        "type": "hard-dep"
+      },
+      {
+        "from": "provider:ollama",
+        "to": "combo:hosted-inference",
+        "type": "hard-dep"
+      },
+      {
+        "from": "provider:ollama",
+        "to": "combo:local-runtime",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "agent:researcher",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "agent:reviewer",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "agent:steward",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:1password",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:docker",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:fetch",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:filesystem",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:git",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:github",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:grafana",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:kubernetes",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:memory",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:playwright",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:postgres",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:sentry",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:slack",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:sqlite",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "provider:anthropic",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "provider:ollama",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "tool:bench",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "tool:deploy",
+        "type": "hard-dep"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "tool:migrate",
+        "type": "hard-dep"
+      },
+      {
+        "from": "tool:bash",
+        "to": "combo:shell-execution",
+        "type": "hard-dep"
+      },
+      {
+        "from": "tool:deploy",
+        "to": "combo:continuous-delivery",
+        "type": "hard-dep"
+      },
+      {
+        "from": "tool:edit",
+        "to": "combo:file-editing",
+        "type": "hard-dep"
+      },
+      {
+        "from": "tool:lsp",
+        "to": "combo:code-intelligence",
+        "type": "hard-dep"
+      }
+    ]
+  }
+}

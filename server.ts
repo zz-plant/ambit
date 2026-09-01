@@ -430,7 +430,14 @@ const server = createServer(async (req, res) => {
 
   // The origin allow-list only constrains browsers. Reading or rewriting the
   // agent config from anything else needs the token — see src/server/config.ts.
-  if (!mayEditConfig(url.pathname, origin, req.headers['x-ambit-token'] as string | undefined)) {
+  if (
+    !mayEditConfig(
+      url.pathname,
+      origin,
+      req.headers['x-ambit-token'] as string | undefined,
+      req.headers['sec-fetch-site'] as string | undefined
+    )
+  ) {
     res.writeHead(401, { ...headers, 'Content-Type': 'application/json; charset=utf-8' });
     res.end(
       JSON.stringify({

@@ -23,6 +23,8 @@
     "assets:check": "node --experimental-strip-types scripts/check-assets.ts",
     "assets:generate": "node --experimental-strip-types scripts/generate-scenes.ts",
     "assets:hero": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/record-hero-gif.ts",
+    "demo:generate": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/generate-demo-data.ts",
+    "demo:check": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/check-demo-data.ts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test:watch": "vitest",

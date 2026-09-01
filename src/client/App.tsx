@@ -287,7 +287,12 @@ export default function App() {
                 setView('graph');
                 setSource('tree');
                 selectItem(null);
-                loadTechTree();
+                // In the demo the two views are the same invented setup seen
+                // twice, so switching tabs must not go to the network — locally
+                // that fetched the developer's own machine into a page they
+                // asked to be a demo.
+                if (demo) seedDemoTree();
+                else loadTechTree();
               }}
               title="The capability tech tree — prerequisites, frontier, and compound paths"
             >
@@ -300,7 +305,8 @@ export default function App() {
                 setView('graph');
                 setSource('config');
                 selectItem(null);
-                loadConfigSource();
+                if (demo) seedDemo();
+                else loadConfigSource();
               }}
               title="My Setup — discovered local runtimes, tools, and agents"
             >

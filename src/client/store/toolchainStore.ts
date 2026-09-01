@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Item, Connection } from '../utils/configImporter';
 import { importConfig } from '../utils/configImporter';
 import { demoSnapshot, type DemoSnapshot } from '../utils/demoSnapshot';
-import demoTechTree from '../utils/demoTechTree.json';
+import demoData from '../utils/demo-data.json';
 import {
   isApiError,
   type ApiResult,
@@ -383,7 +383,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
    * picture of.
    */
   seedDemoTree: () => {
-    const snapshot = demoTechTree as unknown as {
+    const snapshot = demoData.tree as unknown as {
       items: Omit<Item, 'position'>[];
       connections: Connection[];
     };
@@ -400,224 +400,10 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   },
 
   seedDemo: () => {
-    const items: Omit<Item, 'position'>[] = [
-      {
-        id: 'opencode-core',
-        name: 'OpenCode',
-        type: 'framework',
-        status: 'built',
-        description: 'Main framework',
-        meta: { domain: 'meta' },
-      },
-      {
-        id: 'mcp:playwright',
-        name: 'Playwright',
-        type: 'mcp-server',
-        status: 'built',
-        description: 'Browser automation',
-        meta: { domain: 'quality' },
-      },
-      {
-        id: 'mcp:cloudflare',
-        name: 'Cloudflare',
-        type: 'mcp-server',
-        status: 'built',
-        description: 'Edge compute',
-        meta: { domain: 'backend' },
-      },
-      {
-        id: 'mcp:tailscale',
-        name: 'Tailscale',
-        type: 'mcp-server',
-        status: 'built',
-        description: 'Mesh VPN',
-        meta: { domain: 'infra' },
-      },
-      {
-        id: 'mcp:github',
-        name: 'GitHub',
-        type: 'mcp-server',
-        status: 'built',
-        description: 'CI + repos',
-        meta: { domain: 'devops' },
-      },
-      {
-        id: 'mcp:1password',
-        name: '1Password',
-        type: 'mcp-server',
-        status: 'built',
-        description: 'Secrets',
-        meta: { domain: 'security' },
-      },
-      {
-        id: 'mcp:brew',
-        name: 'Homebrew',
-        type: 'mcp-server',
-        status: 'built',
-        description: 'Packages',
-        meta: { domain: 'devops' },
-      },
-      {
-        id: 'agent:oracle',
-        name: 'Oracle',
-        type: 'agent',
-        status: 'built',
-        description: 'Debugging',
-        meta: { domain: 'meta' },
-      },
-      {
-        id: 'agent:deep',
-        name: 'Deep Agent',
-        type: 'agent',
-        status: 'built',
-        description: 'Autonomous',
-        meta: { domain: 'meta' },
-      },
-      {
-        id: 'agent:steward',
-        name: 'Steward',
-        type: 'agent',
-        status: 'built',
-        description: 'Repos',
-        meta: { domain: 'devops' },
-      },
-      {
-        id: 'skill:frontend',
-        name: 'Frontend',
-        type: 'skill',
-        status: 'built',
-        description: 'UI patterns',
-        meta: { domain: 'frontend' },
-      },
-      {
-        id: 'skill:cloudflare',
-        name: 'Cloudflare',
-        type: 'skill',
-        status: 'built',
-        description: 'Workers',
-        meta: { domain: 'backend' },
-      },
-      {
-        id: 'skill:wrangler',
-        name: 'Wrangler',
-        type: 'skill',
-        status: 'built',
-        description: 'CLI',
-        meta: { domain: 'backend' },
-      },
-      {
-        id: 'skill:playwright',
-        name: 'Browser',
-        type: 'skill',
-        status: 'built',
-        description: 'E2E',
-        meta: { domain: 'quality' },
-      },
-      {
-        id: 'skill:vitest',
-        name: 'Vitest',
-        type: 'skill',
-        status: 'built',
-        description: 'Unit tests',
-        meta: { domain: 'quality' },
-      },
-      {
-        id: 'skill:durable-objects',
-        name: 'Durable Objects',
-        type: 'skill',
-        status: 'specified',
-        description: 'Stateful',
-        meta: { domain: 'backend' },
-      },
-      {
-        id: 'skill:agents-sdk',
-        name: 'Agents SDK',
-        type: 'skill',
-        status: 'specified',
-        description: 'Framework',
-        meta: { domain: 'ai-ml' },
-      },
-      {
-        id: 'skill:llm',
-        name: 'LLM',
-        type: 'skill',
-        status: 'built',
-        description: 'Local models',
-        meta: { domain: 'ai-ml' },
-      },
-      {
-        id: 'skill:gguf',
-        name: 'GGUF',
-        type: 'skill',
-        status: 'built',
-        description: 'Quant',
-        meta: { domain: 'ai-ml' },
-      },
-      {
-        id: 'combo:e2e',
-        name: 'E2E on Edge',
-        type: 'possibility',
-        status: 'specified',
-        description: 'Deploy+verify',
-        meta: { domain: 'quality' },
-      },
-      {
-        id: 'combo:deploy',
-        name: 'Deploy Pipeline',
-        type: 'possibility',
-        status: 'specified',
-        description: 'Push→build',
-        meta: { domain: 'devops' },
-      },
-      {
-        id: 'combo:local-ai',
-        name: 'Local Inference',
-        type: 'possibility',
-        status: 'built',
-        description: 'Quant→run',
-        meta: { domain: 'ai-ml' },
-      },
-      {
-        id: 'tool:bash',
-        name: 'Shell',
-        type: 'framework',
-        status: 'built',
-        description: 'Commands',
-        meta: { domain: 'infra' },
-      },
-      {
-        id: 'tool:edit',
-        name: 'Editor',
-        type: 'framework',
-        status: 'built',
-        description: 'Files',
-        meta: { domain: 'meta' },
-      },
-      {
-        id: 'tool:lsp',
-        name: 'LSP',
-        type: 'framework',
-        status: 'built',
-        description: 'Diagnostics',
-        meta: { domain: 'quality' },
-      },
-    ];
-    const connections = [
-      { from: 'opencode-core', to: 'mcp:playwright', type: 'connects' },
-      { from: 'opencode-core', to: 'mcp:cloudflare', type: 'connects' },
-      { from: 'opencode-core', to: 'mcp:github', type: 'connects' },
-      { from: 'opencode-core', to: 'agent:oracle', type: 'subagent' },
-      { from: 'skill:cloudflare', to: 'combo:e2e', type: 'hard-dep' },
-      { from: 'skill:playwright', to: 'combo:e2e', type: 'hard-dep' },
-      { from: 'skill:cloudflare', to: 'combo:deploy', type: 'hard-dep' },
-      { from: 'skill:wrangler', to: 'combo:deploy', type: 'hard-dep' },
-      { from: 'skill:llm', to: 'combo:local-ai', type: 'hard-dep' },
-      { from: 'skill:gguf', to: 'combo:local-ai', type: 'hard-dep' },
-      { from: 'mcp:playwright', to: 'combo:e2e', type: 'soft-dep' },
-      { from: 'skill:vitest', to: 'combo:e2e', type: 'soft-dep' },
-      { from: 'skill:durable-objects', to: 'combo:deploy', type: 'soft-dep' },
-      { from: 'skill:agents-sdk', to: 'combo:deploy', type: 'soft-dep' },
-    ];
+    const { items, connections } = demoData.config as unknown as {
+      items: Omit<Item, 'position'>[];
+      connections: Connection[];
+    };
     set({
       items: items.map((i, idx) => ({
         ...i,
@@ -628,9 +414,6 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       error: null,
       demo: demoSnapshot(),
     });
-    // Not on a phone: the inspector is a sheet there, so opening one unasked
-    // covers the graph the visitor came to look at.
-    if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
   },
 
   setTreeFilter: treeFilter => {

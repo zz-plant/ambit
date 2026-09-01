@@ -56,6 +56,13 @@ jobs:
       - name: Check README examples match real output
         run: npm run docs:examples:check
 
+      # The published demo is derived from a fixture through the engine. If the
+      # model moves and this is not regenerated, the demo shows a system this
+      # engine would not build — which is how it came to describe a machine
+      # sharing five ids with the one beside it.
+      - name: Check the demo data still matches the engine
+        run: npm run demo:check
+
       # The path a new user takes. It must survive a machine with no agent
       # config, which is how it used to fail — with a raw SQLite error.
       - name: Bootstrap on a clean machine
