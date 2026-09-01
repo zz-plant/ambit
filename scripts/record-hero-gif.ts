@@ -78,8 +78,19 @@ const procs: ChildProcess[] = [];
 const work = mkdtempSync(join(tmpdir(), 'ambit-hero-'));
 const servers: { close(): void }[] = [];
 
+let cleanedUp = false;
 function cleanup() {
+  if (cleanedUp) return;
+  cleanedUp = true;
   for (const p of procs) {
+    // Each child is its own process group leader, so the negative pid takes
+    // the API server's and Chrome's whole subtree with it. Killing the direct
+    // child alone left the API listening: nine of them accumulated over a
+    // session's worth of runs, because each spawns a server and only the
+    // wrapper died.
+    try {
+      if (p.pid) process.kill(-p.pid, 'SIGKILL');
+    } catch {}
     try {
       p.kill('SIGKILL');
     } catch {}
@@ -94,10 +105,15 @@ function cleanup() {
   } catch {}
 }
 process.on('exit', cleanup);
-process.on('SIGINT', () => {
-  cleanup();
-  process.exit(1);
-});
+// 'exit' alone is not enough on two counts: it never fires for a signal, and
+// it cannot fire while the CDP socket and the static server hold the loop
+// open — which is why a finished recording used to sit there having already
+// written the GIF.
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const)
+  process.on(sig, () => {
+    cleanup();
+    process.exit(1);
+  });
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -289,6 +305,43 @@ async function main() {
   // A drafted proposal so the approvals panel has something real in it.
   engine(['propose', 'local-embeddings']);
 
+  // The attention lens colours a node by how often a person had to step in,
+  // read from session_learning. A graph seeded an instant ago has no such
+  // history, so the lens rendered identically to Standard and the beat showed
+  // a tab changing and nothing else. These rows are scenario input, the same
+  // kind of declared fiction as the fixture config above — the heat map over
+  // them is still the engine's own computation.
+  const HISTORY: [string, string, number][] = [
+    ['combo:local-runtime', 'failed', 9],
+    ['combo:secret-management', 'confirm', 24],
+    ['combo:continuous-delivery', 'confirm', 14],
+    ['combo:browser-automation', 'failed', 6],
+    ['combo:data-access', 'intervene', 17],
+    ['combo:persistent-memory', 'intervene', 4],
+  ];
+  execFileSync(
+    NODE,
+    [
+      '--experimental-sqlite',
+      '-e',
+      `const { DatabaseSync } = require('node:sqlite');
+       const db = new DatabaseSync(${JSON.stringify(dbPath)});
+       const rows = ${JSON.stringify(HISTORY)};
+       const known = new Set(db.prepare('SELECT id FROM capabilities').all().map(r => r.id));
+       let wrote = 0;
+       const ins = db.prepare("INSERT INTO session_learning (session_id, capability_id, action, outcome_score) VALUES ('scenario', ?, ?, ?)");
+       for (const [cap, action, n] of rows) {
+         if (!known.has(cap)) continue;
+         for (let i = 0; i < n; i++) ins.run(cap, action, action === 'failed' ? 0 : 1);
+         wrote++;
+       }
+       db.close();
+       if (!wrote) { console.error('no scenario capability matched the graph'); process.exit(1); }
+       console.log(wrote);`,
+    ],
+    { env: SANDBOX, encoding: 'utf8' }
+  );
+
   console.log('Building the client…');
   execSync('npx vite build', { cwd: ROOT, stdio: 'ignore' });
 
@@ -377,7 +430,7 @@ async function main() {
       '--no-default-browser-check',
       'about:blank',
     ],
-    { stdio: 'ignore' }
+    { stdio: 'ignore', detached: true }
   );
   procs.push(chrome);
 
@@ -511,15 +564,18 @@ async function main() {
   })()`);
   await sleep(900);
 
-  // 5 — the other two lenses
+  // 5 — where the human time goes.
+  //
+  // Only this lens. The SPOF lens decides what to highlight with a substring
+  // test on the node id (github / docker / 1password / credential), which the
+  // curated tech-tree nodes never match, so on this view it renders exactly
+  // like Standard. Recording a beat that shows a tab changing and nothing else
+  // is worse than not recording it, and dressing the fixture up to satisfy a
+  // string match would be advertising a check the code does not do.
   console.log('  · attention lens');
   await cdp.clickWhere(deckTab('Attention'));
-  await sleep(1100);
-  await hold(1.8);
-  console.log('  · spof lens');
-  await cdp.clickWhere(deckTab('SPOFs'));
-  await sleep(1100);
-  await hold(1.8);
+  await sleep(1300);
+  await hold(2.4, 'attention lens');
   await cdp.clickWhere(deckTab('Standard'));
   await sleep(900);
 
@@ -539,7 +595,14 @@ async function main() {
   console.log(`Wrote ${OUT_GIF}`);
 }
 
-main().catch(async e => {
+main()
+  .then(() => {
+    // Explicit: the CDP socket and the static server are still open handles,
+    // and waiting for the loop to drain is waiting forever.
+    cleanup();
+    process.exit(0);
+  })
+  .catch(async e => {
   console.error('Recording failed:', e.message);
   // A selector that stopped matching is the expected failure as the UI moves,
   // so the state it died in is worth more than the stack: write the frame out
@@ -551,5 +614,6 @@ main().catch(async e => {
       console.error(`Last frame written to ${shot}`);
     } catch {}
   }
-  process.exit(1);
-});
+    cleanup();
+    process.exit(1);
+  });
