@@ -286,6 +286,10 @@ export default function CivTree({
   return (
     <div
       ref={containerRef}
+      // biome-ignore lint/a11y/noStaticElementInteractions: dragging to pan is a
+      // pointer affordance layered over the canvas. Every node inside carries
+      // role="button", tabIndex and a key handler, so the content it contains
+      // is reachable and operable without a pointer.
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -302,7 +306,7 @@ export default function CivTree({
       }}
     >
       {/* Floating Canvas Zoom & Pan HUD Controls */}
-      <div className="civ-zoom-hud" aria-label="Canvas Zoom Controls">
+      <div className="civ-zoom-hud" role="toolbar" aria-label="Canvas zoom and pan controls">
         <button
           type="button"
           className="civ-zoom-btn"
@@ -424,6 +428,7 @@ export default function CivTree({
           transition: isDragging ? 'none' : 'width 0.12s ease-out, height 0.12s ease-out',
         }}
       >
+        <title>Capability tree: what this setup can do, by era</title>
         <defs>
           <linearGradient id="columnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="rgba(255, 255, 255, 0.03)" />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useToolchainStore } from '../store/toolchainStore';
 
 export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -8,6 +8,16 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved'>('all');
   const [query, setQuery] = useState('');
+
+  // Escape closes it. Dismissal used to be a click on the backdrop and nothing
+  // else, which is unreachable without a pointer.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   if (!isOpen) return null;
 
@@ -36,11 +46,13 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const approvedCount = proposals.filter(p => p.status === 'approved').length;
 
   return (
-    <div className="uplink-modal-overlay" onClick={onClose}>
+    <div className="uplink-modal-overlay" onClick={onClose} role="presentation">
       <div
         className="uplink-modal"
         style={{ maxWidth: '680px', width: '90%', border: '1px solid var(--border-bright)' }}
         onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
       >
         <div className="sp-hdr">
           <span className="sp-sig" style={{ color: 'var(--copper-3)' }}>

@@ -459,6 +459,7 @@ export default function App() {
               </div>
               <div className="app-welcome-diagram">
                 <svg width="340" height="110" viewBox="0 0 340 110">
+                  <title>How Ambit reads your setup: config in, capability graph out</title>
                   <defs>
                     <linearGradient id="heroGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#4f46e5" />

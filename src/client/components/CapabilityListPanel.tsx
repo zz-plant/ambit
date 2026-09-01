@@ -82,10 +82,12 @@ export function CapabilityListPanel() {
       <div className="tp-list">
         {filtered.map(item => {
           return (
-            <div
+            <button
+              type="button"
               key={item.id}
               className={`tp-item ${selectedId === item.id ? 'tp-item--sel' : ''}`}
               onClick={() => selectItem(item.id)}
+              aria-pressed={selectedId === item.id}
             >
               <div className="tp-item-hdr">
                 <span className="tp-item-name">{item.name}</span>
@@ -94,7 +96,7 @@ export function CapabilityListPanel() {
                 </span>
               </div>
               <div className="tp-item-meta">{typeLabel(item.type)}</div>
-            </div>
+            </button>
           );
         })}
         {filtered.length === 0 && (

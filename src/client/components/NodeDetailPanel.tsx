@@ -294,14 +294,19 @@ export function NodeDetailPanel() {
                 c => (c.from === item.id && c.to === n.id) || (c.from === n.id && c.to === item.id)
               );
               return (
-                <div key={n.id} className="sp-link" onClick={() => selectItem(n.id)}>
+                <button
+                  type="button"
+                  key={n.id}
+                  className="sp-link"
+                  onClick={() => selectItem(n.id)}
+                >
                   <span
                     className="sp-link-dot"
                     style={{ background: TYPE_COLORS[n.type] || '#6a8aaa' }}
                   />
                   <span className="sp-link-name">{n.name}</span>
                   {conn && <span className="sp-link-type">{conn.type}</span>}
-                </div>
+                </button>
               );
             })}
           </div>

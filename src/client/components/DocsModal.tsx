@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import concepts from '../../shared/concepts.json';
 
 interface DocsModalProps {
@@ -66,11 +66,26 @@ const ACTIONS = [
 
 export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
   const [tab, setTab] = useState<Tab>('concepts');
+  // Escape closes it. Dismissal used to be a click on the backdrop and nothing
+  // else, which is unreachable without a pointer.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="docs-overlay" onClick={onClose}>
-      <div className="docs-panel" onClick={e => e.stopPropagation()}>
+    <div className="docs-overlay" onClick={onClose} role="presentation">
+      <div
+        className="docs-panel"
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+      >
         <div className="docs-header">
           <div>
             <h2 className="docs-title">How to read this</h2>
