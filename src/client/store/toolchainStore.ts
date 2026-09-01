@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import type { Item, Connection } from '../utils/configImporter';
 import { importConfig } from '../utils/configImporter';
 import { demoSnapshot, type DemoSnapshot } from '../utils/demoSnapshot';
+import {
+  isApiError,
+  type ApiResult,
+  type ApiRoutes,
+  type ApproveResponse,
+  type ProposalRow,
+} from '../../shared/api';
 
 /**
  * The published demo is static files on GitHub Pages with no API behind it, so
@@ -39,6 +46,19 @@ function readInitialTreeFilter(): TreeFilter {
     : 'all';
 }
 
+/**
+ * A typed GET against the API. The store used to call `await res.json()` and
+ * read fields off `any`, which meant a route changing shape produced an empty
+ * panel rather than a compile error. The response types live in
+ * src/shared/api.ts and the server is annotated with the same ones.
+ */
+async function getJson<K extends keyof ApiRoutes>(path: K): Promise<ApiRoutes[K] | null> {
+  const res = await fetch(path);
+  if (!res.ok) return null;
+  const body = (await res.json()) as ApiResult<ApiRoutes[K]>;
+  return isApiError(body) ? null : body;
+}
+
 let backendProbe: Promise<boolean> | null = null;
 /**
  * A live backend answers /api/health with JSON. A static site (the published
@@ -70,15 +90,8 @@ export type { InfrastructureNode, InfrastructureLink, InfrastructureFinding, Inf
 export type ActiveLens = 'default' | 'attention' | 'credentials';
 export type SimulationMode = 'none' | 'outage' | 'acquisition';
 
-export interface ProposalItem {
-  id: string;
-  created_at: string;
-  goal: string;
-  status: 'draft' | 'approved' | 'applied' | 'rejected';
-  steps: string;
-  approved_by?: string;
-  approved_at?: string;
-}
+/** The approval UI's view of a proposal row, from the shared API contract. */
+export type ProposalItem = ProposalRow;
 
 interface StoreState {
   items: Item[];
@@ -274,11 +287,8 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       return;
     }
     try {
-      const res = await fetch('/api/proposals');
-      if (res.ok) {
-        const data = await res.json();
-        set({ proposals: data.proposals || [] });
-      }
+      const data = await getJson('/api/proposals');
+      if (data) set({ proposals: data.proposals });
     } catch {
       /* ignore error */
     }
@@ -317,11 +327,11 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
         body: JSON.stringify({ actor }),
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as ApproveResponse;
         await get().loadProposals();
         return { ok: true, artifact: data.artifact };
       }
-      const err = await res.json();
+      const err = (await res.json()) as { error?: string };
       return { ok: false, error: err?.error || 'Approval failed' };
     } catch (e: any) {
       return { ok: false, error: e?.message || 'Network error' };
@@ -331,13 +341,10 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   loadAttentionData: async () => {
     if (!(await backendAvailable())) return;
     try {
-      const res = await fetch('/api/attention');
-      if (res.ok) {
-        const data = await res.json();
+      const data = await getJson('/api/attention');
+      if (data) {
         const map: Record<string, number> = {};
-        for (const row of data.interventions || []) {
-          map[row.capability_id] = row.count;
-        }
+        for (const row of data.interventions) map[row.capability_id] = row.count;
         set({ attentionInterventions: map });
       }
     } catch {
@@ -642,13 +649,12 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     }
     set({ loading: true, error: null, demo: null });
     try {
-      const res = await fetch('/api/config');
-      if (!res.ok) {
+      const data = await getJson('/api/config');
+      if (!data) {
         set({ error: 'Cannot reach the API. Start it with `npm run server`.', loading: false });
         return;
       }
-      const { config } = await res.json();
-      const base = importConfig(config);
+      const base = importConfig(data.config);
       set({ items: base.items, connections: base.connections, loading: false });
       if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
     } catch (e) {
@@ -682,18 +688,21 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
   loadTechTree: async () => {
     // A static site has no engine to serve a tree — show the welcome screen.
     if (!(await backendAvailable())) {
+      // Same guard as loadConfig: on the published demo this runs when the
+      // Tech Tree tab is clicked, and without it the seeded graph is wiped
+      // back to an empty welcome screen with no way back but a reload.
+      if (get().demo) return false;
       set({ items: [], connections: [], loading: false, error: null, demo: null });
       return false;
     }
     set({ loading: true, error: null, demo: null });
     try {
-      const res = await fetch('/api/tech-tree');
-      if (!res.ok) {
+      const data = await getJson('/api/tech-tree');
+      if (!data) {
         set({ error: 'No graph yet. Run ./bootstrap.sh to seed one.', loading: false });
         return false;
       }
-      const { items, connections } = await res.json();
-      set({ items, connections, loading: false, error: null });
+      set({ items: data.items, connections: data.connections, loading: false, error: null });
       return true;
     } catch (e) {
       set({ error: 'Tech tree unavailable: ' + (e as Error).message, loading: false });

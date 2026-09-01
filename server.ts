@@ -48,6 +48,18 @@ import {
 } from './src/server/config.ts';
 import { buildInfrastructureScan } from './src/server/infrastructure.ts';
 import { scanRepos } from './src/server/repos.ts';
+import type {
+  ApiError,
+  ApproveResponse,
+  AttentionResponse,
+  ConfigApplyRequest,
+  ConfigApplyResponse,
+  ConfigResponse,
+  HealthResponse,
+  McpSnippetResponse,
+  ProposalsResponse,
+  TechTreeResponse,
+} from './src/shared/api.ts';
 
 const API_PORT = Number(process.env.AMBIT_API_PORT || 3001);
 const GRAPH_DB_PATH = resolveDbPath();
@@ -200,7 +212,12 @@ interface Reply {
   body: unknown;
 }
 
-const json = (body: unknown, status = 200): Reply => ({ status, body });
+/**
+ * Every reply is one of the shapes declared in src/shared/api.ts, or an error.
+ * The client imports the same declarations, so a route that changes shape is a
+ * compile error on both sides rather than an empty panel in a browser.
+ */
+const json = <T>(body: T | ApiError, status = 200): Reply => ({ status, body });
 
 async function readJsonBody(req: IncomingMessage): Promise<any> {
   const chunks: Buffer[] = [];
@@ -272,7 +289,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   const method = req.method || 'GET';
 
   if (pathname === '/api/health' && method === 'GET') {
-    return json({
+    return json<HealthResponse>({
       status: 'ok',
       configPath: CONFIG_PATH,
       configExists: existsSync(CONFIG_PATH),
@@ -283,13 +300,13 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   if (pathname === '/api/config' && method === 'GET') {
     const raw = await readConfig();
     if (!raw) return json({ error: 'Config not found at ' + CONFIG_PATH }, 404);
-    return json({ config: raw });
+    return json<ConfigResponse>({ config: raw });
   }
 
   // Edits an entry that already exists, and only the fields named above. It
   // deliberately cannot create one — see src/server/config.ts.
   if (pathname === '/api/config/apply' && method === 'POST') {
-    const body = await readJsonBody(req);
+    const body: ConfigApplyRequest = await readJsonBody(req);
     const raw = (await readConfig()) as any;
     if (!raw) return json({ error: 'Config not found' }, 404);
 
@@ -308,7 +325,9 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
         pick(body.updateCommand.updates, COMMAND_FIELDS)
       );
     }
-    return (await writeConfig(raw)) ? json({ ok: true }) : json({ error: 'Write failed' }, 500);
+    return (await writeConfig(raw))
+      ? json<ConfigApplyResponse>({ ok: true })
+      : json<ConfigApplyResponse>({ error: 'Write failed' }, 500);
   }
 
   // Returns text instead of writing: an MCP entry is executable, so it crosses
@@ -317,7 +336,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     const body = await readJsonBody(req);
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     if (!name) return json({ error: 'name required' }, 400);
-    return json({
+    return json<McpSnippetResponse>({
       configPath: CONFIG_PATH,
       snippet: JSON.stringify({ mcp: { [name]: { ...body.config, enabled: true } } }, null, 2),
     });
@@ -343,17 +362,17 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
         404
       );
     }
-    return json(withGraph(techTreeView));
+    return json<TechTreeResponse>(withGraph(techTreeView));
   }
 
   if (pathname === '/api/proposals' && method === 'GET') {
-    if (!existsSync(GRAPH_DB_PATH)) return json({ proposals: [] });
-    return json({ proposals: withGraph(db => recentProposals(db)) });
+    if (!existsSync(GRAPH_DB_PATH)) return json<ProposalsResponse>({ proposals: [] });
+    return json<ProposalsResponse>({ proposals: withGraph(db => recentProposals(db)) as never });
   }
 
   if (pathname === '/api/attention' && method === 'GET') {
-    if (!existsSync(GRAPH_DB_PATH)) return json({ interventions: [] });
-    return json({ interventions: withGraph(interventionHeatmap) });
+    if (!existsSync(GRAPH_DB_PATH)) return json<AttentionResponse>({ interventions: [] });
+    return json<AttentionResponse>({ interventions: withGraph(interventionHeatmap) as never });
   }
 
   // The browser approval broker. It approves and mints the signed artifact the
@@ -370,7 +389,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
       return json(result, /already approved/.test(result.error) ? 409 : 400);
     }
     broadcast({ type: 'ProposalApproved', proposalId: approve[1], actor });
-    return json({
+    return json<ApproveResponse>({
       proposal: approve[1],
       approved_by: actor,
       artifact: result.artifact,

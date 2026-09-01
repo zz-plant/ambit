@@ -10,29 +10,22 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
-export interface TreeItem {
-  id: string;
-  name: string;
-  type: string;
-  status: 'built' | 'specified';
-  description: string;
-  position: { x: number; y: number; z: number };
-  meta: {
-    domain: string;
-    state: string;
-    setupSeconds: number;
-    era?: number;
-    eraName?: string;
-    next: boolean;
-    lifecycle: string;
-    lastChecked?: string;
-  };
-}
+import {
+  NODE_TYPES,
+  PROPOSAL_STATUSES,
+  type NodeType,
+  type ProposalRow,
+  type ProposalStatus,
+  type TechTreeResponse,
+  type TreeConnection,
+  type TreeItem,
+} from '../shared/api.ts';
 
-export interface TreeConnection {
-  from: string;
-  to: string;
-  type: 'hard-dep' | 'soft-dep';
+/** A category the client can draw, or 'config' — never a value it has no case for. */
+function nodeType(category: string): NodeType {
+  const mapped =
+    category === 'combo' ? 'possibility' : category === 'mcp' ? 'mcp-server' : category;
+  return (NODE_TYPES as readonly string[]).includes(mapped) ? (mapped as NodeType) : 'config';
 }
 
 /**
@@ -48,7 +41,7 @@ export interface TreeConnection {
  * Actions a *person* supplies stay: there are few of them, and they are the
  * only thing connecting a human node to the rest of the graph.
  */
-export function techTreeView(db: Db): { items: TreeItem[]; connections: TreeConnection[] } {
+export function techTreeView(db: Db): TechTreeResponse {
   const caps = db
     .prepare(
       `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle
@@ -161,12 +154,19 @@ export function graphSummary(db: Db): { reached: number; total: number; observat
 }
 
 /** Proposals for the approval UI: the full rows, newest first. */
-export function recentProposals(db: Db, limit = 50): Record<string, any>[] {
+export function recentProposals(db: Db, limit = 50): ProposalRow[] {
+  let rows: Record<string, any>[];
   try {
-    return db.prepare('SELECT * FROM proposals ORDER BY created_at DESC LIMIT ?').all(limit);
+    rows = db.prepare('SELECT * FROM proposals ORDER BY created_at DESC LIMIT ?').all(limit);
   } catch {
     return [];
   }
+  return rows.map(r => ({
+    ...r,
+    status: (PROPOSAL_STATUSES as readonly string[]).includes(r.status)
+      ? (r.status as ProposalStatus)
+      : 'draft',
+  })) as ProposalRow[];
 }
 
 /** How often a person had to step in, per capability — the heatmap's input. */

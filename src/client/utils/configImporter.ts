@@ -1,21 +1,10 @@
+import type { NodeType } from '../../shared/api';
+
 export interface Item {
   id: string;
   name: string;
-  type:
-    | 'framework'
-    | 'mcp-server'
-    | 'agent'
-    | 'provider'
-    | 'model'
-    | 'command'
-    | 'skill'
-    | 'config'
-    | 'possibility'
-    | 'device'
-    | 'service'
-    | 'api'
-    | 'network'
-    | 'workflow';
+  /** The renderable node types, declared once in the API contract. */
+  type: NodeType;
   status: 'built' | 'specified' | 'deprecated';
   description: string;
   position: { x: number; y: number; z: number };
