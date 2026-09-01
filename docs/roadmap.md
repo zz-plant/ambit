@@ -1,3 +1,12 @@
+> **Status: a design document, not a plan of record.**
+>
+> This is 471 lines of intent with no dates, no owners and nothing that can
+> close. It reads as a roadmap and functions as an essay. Items here that are
+> actually going to be built belong in GitHub issues, where they can be
+> assigned and closed; what remains is design rationale, which is why the file
+> now lives in `docs/` beside the deep dive rather than at the repository root
+> where it read as a commitment.
+
 # Roadmap
 
 Ambit today is a capability graph: it reads your configuration, places it on a curated tech tree, and answers questions about the structure — what is reached, what is one step away, what would break if a given thing disappeared.

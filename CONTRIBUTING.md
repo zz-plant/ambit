@@ -10,14 +10,14 @@ cd ambit
 ./bootstrap.sh
 ```
 
-Bun for the visualizer and server, Node 22+ for the engine and CLI. Bootstrap checks for both. A checkout keeps its graph in the checkout (`toolchain-viz.db`), so your working graph is never the one an installed copy uses — `ambit where` prints the path either way.
+Node 22+, and nothing else. The engine, the CLI, the API server and the test runner all open the graph through `node:sqlite`; the visualiser is Vite, which runs on Node too. A checkout keeps its graph in the checkout (`toolchain-viz.db`), so your working graph is never the one an installed copy uses — `ambit where` prints the path either way.
 
 ## Checks
 
 CI runs these on every push and pull request. Running them first is faster than a round trip:
 
 ```bash
-bun run typecheck && bun test && bun run build
+npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 CI also runs `./bootstrap.sh` against a machine with no agent config, because that is the first thing a new user does and it is the path that has broken twice.
