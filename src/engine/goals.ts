@@ -1,9 +1,6 @@
-import { readFileSync } from "fs";
-import { join } from "path";
-import { ENGINE_DIR, loadTechTree } from "./paths.ts";
-import type { Db } from "./db.ts";
-import { planFor, simulateFrontier } from "./planning.ts";
-import { usable } from "./assurance.ts";
+import { loadTechTree } from './paths.ts';
+import type { Db } from './db.ts';
+import { planFor, simulateFrontier } from './planning.ts';
 
 /**
  * Routes a free-form goal into the graph, and compares the paths that close it.
@@ -21,10 +18,49 @@ import { usable } from "./assurance.ts";
  */
 
 const STOPWORDS = new Set([
-  "a", "an", "and", "are", "as", "at", "be", "but", "by", "can", "do", "for",
-  "from", "have", "how", "i", "if", "in", "is", "it", "its", "just", "me",
-  "my", "of", "on", "or", "our", "so", "that", "the", "their", "them", "they",
-  "this", "to", "want", "we", "what", "when", "with", "you", "your",
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'but',
+  'by',
+  'can',
+  'do',
+  'for',
+  'from',
+  'have',
+  'how',
+  'i',
+  'if',
+  'in',
+  'is',
+  'it',
+  'its',
+  'just',
+  'me',
+  'my',
+  'of',
+  'on',
+  'or',
+  'our',
+  'so',
+  'that',
+  'the',
+  'their',
+  'them',
+  'they',
+  'this',
+  'to',
+  'want',
+  'we',
+  'what',
+  'when',
+  'with',
+  'you',
+  'your',
 ]);
 
 /**
@@ -35,7 +71,7 @@ const STOPWORDS = new Set([
 function tokensOf(sentence: string): string[] {
   return sentence
     .toLowerCase()
-    .replace(/[^a-z0-9\s'-]/g, " ")
+    .replace(/[^a-z0-9\s'-]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length > 1 && !STOPWORDS.has(w));
 }
@@ -87,9 +123,7 @@ function matchGoal(sentence: string): GoalCandidate[] {
       return sentence.toLowerCase().includes(p) || words.every(w => tokens.has(w));
     }).length,
   }));
-  return scored
-    .filter(c => c.hits > 0)
-    .sort((a, b) => b.hits - a.hits);
+  return scored.filter(c => c.hits > 0).sort((a, b) => b.hits - a.hits);
 }
 
 /**
@@ -154,7 +188,7 @@ function goalFor(db: Db, sentence?: string) {
     // ranked list exists to show.
     recommended: candidates[0].id,
     candidates,
-    note: 'ranked by how much of the goal the model\'s own vocabulary covers — a shortlist, not an interpretation',
+    note: "ranked by how much of the goal the model's own vocabulary covers — a shortlist, not an interpretation",
   };
 }
 
@@ -175,7 +209,8 @@ function pathsFor(db: Db, goal?: string) {
   if (!goal) return { error: 'Usage: ambit goal <capability> --paths' };
   const plan = planFor(db, goal) as any;
   if (plan.error) return plan;
-  if (plan.degraded) return { goal: plan.goal, degraded: true, lifecycle: plan.lifecycle, note: plan.note };
+  if (plan.degraded)
+    return { goal: plan.goal, degraded: true, lifecycle: plan.lifecycle, note: plan.note };
   // `reachable` in planFor means "every step is plan-able", not "already
   // reached". A plan with zero steps is the nothing-to-close case.
   if (plan.steps === 0) return { goal: plan.goal, note: 'already reached — nothing to close' };
@@ -195,7 +230,15 @@ function pathsFor(db: Db, goal?: string) {
     steps.map((s: any, i: number) => {
       const opts = s.options;
       if (opts.length === 0) {
-        return { id: s.id, name: s.name, setup_seconds: s.setup_seconds, chosen: 'the only way', recurring_cost: undefined, privacy: 'local', reversible: false };
+        return {
+          id: s.id,
+          name: s.name,
+          setup_seconds: s.setup_seconds,
+          chosen: 'the only way',
+          recurring_cost: undefined,
+          privacy: 'local',
+          reversible: false,
+        };
       }
       const o = opts[indices[i]] || opts[0];
       return {
@@ -228,11 +271,17 @@ function pathsFor(db: Db, goal?: string) {
     const hosted = stepsInPath.some(x => x.privacy === 'hosted');
     const recurring = stepsInPath.some(x => x.recurring_cost && x.recurring_cost !== 'none');
     const irreversible = stepsInPath.filter(x => !x.reversible).map(x => x.name);
-    const person = stepsInPath.filter(x => x.requires_person?.length).map(x => ({ step: x.name, person: x.requires_person }));
-    const sim = simulateFrontier(db, stepsInPath.map(s => s.id)) as any;
+    const person = stepsInPath
+      .filter(x => x.requires_person?.length)
+      .map(x => ({ step: x.name, person: x.requires_person }));
+    const sim = simulateFrontier(
+      db,
+      stepsInPath.map(s => s.id)
+    ) as any;
     paths.push({
       setup_seconds: setup,
-      estimated_setup: setup >= 3600 ? `${(setup / 3600).toFixed(1)}h` : `${Math.round(setup / 60)}m`,
+      estimated_setup:
+        setup >= 3600 ? `${(setup / 3600).toFixed(1)}h` : `${Math.round(setup / 60)}m`,
       risk: hosted && recurring ? 'high' : hosted || recurring ? 'medium' : 'low',
       privacy: hosted ? 'hosted' : 'local',
       recurring: recurring ? 'yes' : 'none',

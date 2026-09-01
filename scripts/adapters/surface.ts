@@ -56,7 +56,8 @@ for (const cap of surface.capabilities) {
       if (!fragment.mcp[name]) fragment.mcp[name] = { type: 'local', enabled: true };
       break;
     case 'resource':
-      if (cap.domain === 'ai-ml' && !fragment.provider[name]) fragment.provider[name] = { models: {} };
+      if (cap.domain === 'ai-ml' && !fragment.provider[name])
+        fragment.provider[name] = { models: {} };
       break;
     case 'actor':
     case 'runtime':
@@ -82,7 +83,12 @@ writeFileSync(configPath, JSON.stringify(config));
 
 const mapping = {
   config_keys: {
-    mcp: { type: 'mcp', domain_field: 'type', domain_map: { remote: 'backend', local: 'infra' }, desc_template: '{type} server' },
+    mcp: {
+      type: 'mcp',
+      domain_field: 'type',
+      domain_map: { remote: 'backend', local: 'infra' },
+      desc_template: '{type} server',
+    },
     agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
     provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
   },
@@ -96,8 +102,15 @@ if (!process.argv.includes('--seed')) {
 
 const engine = new URL('../../src/engine/engine.ts', import.meta.url).pathname;
 const result = spawnSync('node', ['--experimental-sqlite', engine, 'seed'], {
-  env: { ...process.env, OPENCODE_CONFIG: configPath, CONFIG_MAPPING: JSON.stringify(mapping), AMBIT_RUNTIME: runtime },
+  env: {
+    ...process.env,
+    OPENCODE_CONFIG: configPath,
+    CONFIG_MAPPING: JSON.stringify(mapping),
+    AMBIT_RUNTIME: runtime,
+  },
   stdio: 'inherit',
 });
-console.log(`\nSurface "${runtime}" contributed ${Object.keys(fragment.mcp).length} providers · ${Object.keys(authority).length} authority grants`);
+console.log(
+  `\nSurface "${runtime}" contributed ${Object.keys(fragment.mcp).length} providers · ${Object.keys(authority).length} authority grants`
+);
 process.exit(result.status || 0);

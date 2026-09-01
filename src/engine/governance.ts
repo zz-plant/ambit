@@ -1,10 +1,10 @@
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import { CONFIG_DEFAULT } from "./paths.ts";
-import { getDb, type Db } from "./db.ts";
-import { runVerification } from "./assurance.ts";
-import { canExecute } from "./assurance.ts";
-import { seedFromConfig } from "./discovery.ts";
-import { mintApproval, verifyApproval } from "./approval.ts";
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { CONFIG_DEFAULT } from './paths.ts';
+import { getDb, type Db } from './db.ts';
+import { runVerification } from './assurance.ts';
+import { canExecute } from './assurance.ts';
+import { seedFromConfig } from './discovery.ts';
+import { mintApproval, verifyApproval } from './approval.ts';
 
 /**
  * The inverse of a declarative config patch: remove exactly what it adds.
@@ -46,21 +46,27 @@ function inverseOf(patch: any, currentConfig: any): any | null {
  */
 function approveProposal(db: Db, proposalId?: string, who?: string) {
   if (!proposalId) return { error: 'Usage: ambit approve <proposal-id> <person>' };
-  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
-  if (row.status === 'approved') return { error: `${proposalId} is already approved by ${row.approved_by}.` };
+  if (row.status === 'approved')
+    return { error: `${proposalId} is already approved by ${row.approved_by}.` };
 
   const humanId = who ? (who.startsWith('human:') ? who : `human:${who}`) : null;
   if (!humanId) return { error: 'Name the person approving: ambit approve <proposal-id> <person>' };
-  const person = db.prepare("SELECT id, name FROM capabilities WHERE id = ? AND category = 'human'").get(humanId);
+  const person = db
+    .prepare("SELECT id, name FROM capabilities WHERE id = ? AND category = 'human'")
+    .get(humanId);
   if (!person) {
-    return { error: `${humanId} is not a person in the graph. Declare them in the actors block first — an approval has to come from someone accountable.` };
+    return {
+      error: `${humanId} is not a person in the graph. Declare them in the actors block first — an approval has to come from someone accountable.`,
+    };
   }
 
   const steps = JSON.parse(row.steps);
   const blocking = steps.filter((s: any) => !s.inverse);
-  db.prepare("UPDATE proposals SET status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ?")
-    .run(humanId, proposalId);
+  db.prepare(
+    "UPDATE proposals SET status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ?"
+  ).run(humanId, proposalId);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'approved', 1, ?)"
   ).run(humanId, `${proposalId}: ${row.goal}`);
@@ -85,14 +91,14 @@ function approveProposal(db: Db, proposalId?: string, who?: string) {
 
 function listProposals(db: Db) {
   const rows = db
-    .prepare("SELECT id, created_at, goal, status FROM proposals ORDER BY created_at DESC")
+    .prepare('SELECT id, created_at, goal, status FROM proposals ORDER BY created_at DESC')
     .all();
   return rows.length ? rows : { note: 'No proposals. Create one with ambit propose <capability>.' };
 }
 
 function showProposal(db: Db, id?: string) {
   if (!id) return { error: 'Usage: ambit proposal <id>' };
-  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(id);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
   if (!row) return { error: `No proposal ${id}. See ambit proposals.` };
   return {
     ...row,
@@ -122,11 +128,13 @@ function showProposal(db: Db, id?: string) {
  */
 function applyProposal(db: Db, proposalId?: string) {
   if (!proposalId) return { error: 'Usage: ambit apply <proposal-id>' };
-  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status === 'applied') return { error: `${proposalId} is already applied.` };
   if (row.status !== 'approved') {
-    return { error: `${proposalId} is ${row.status}. A person has to approve it first: ambit approve ${proposalId} <person>` };
+    return {
+      error: `${proposalId} is ${row.status}. A person has to approve it first: ambit approve ${proposalId} <person>`,
+    };
   }
 
   // The approval broker's signed artifact is what makes an approval spendable.
@@ -140,18 +148,26 @@ function applyProposal(db: Db, proposalId?: string) {
 
   const noInverse = steps.filter((s: any) => !s.inverse).map((s: any) => s.name);
   if (noInverse.length) {
-    return { error: `Refused. No inverse for: ${noInverse.join(', ')}. Nothing runs that cannot be undone.` };
+    return {
+      error: `Refused. No inverse for: ${noInverse.join(', ')}. Nothing runs that cannot be undone.`,
+    };
   }
   const noPatch = steps.filter((s: any) => !s.config_patch).map((s: any) => s.name);
   if (noPatch.length) {
-    return { error: `Refused. These are not configuration changes: ${noPatch.join(', ')}. Apply only edits configuration.` };
+    return {
+      error: `Refused. These are not configuration changes: ${noPatch.join(', ')}. Apply only edits configuration.`,
+    };
   }
 
   // Authority, enforced: every step must be permitted for its capability, or
   // the apply is refused even with a valid approval. CONFIRM is satisfied by
   // the approval; DENY is a hard no.
   for (const step of steps) {
-    const decision = canExecute(db, { actor: row.approved_by, capability: step.id, action: 'execute' });
+    const decision = canExecute(db, {
+      actor: row.approved_by,
+      capability: step.id,
+      action: 'execute',
+    });
     if (decision.decision === 'DENY') {
       return { error: `Refused. ${step.name} is not permitted: ${decision.reason}.` };
     }
@@ -159,13 +175,16 @@ function applyProposal(db: Db, proposalId?: string) {
 
   const configPath = CONFIG_DEFAULT;
   let config: any = {};
-  try { config = JSON.parse(readFileSync(configPath, "utf8")); }
-  catch { return { error: `Cannot read ${configPath}.` }; }
+  try {
+    config = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch {
+    return { error: `Cannot read ${configPath}.` };
+  }
 
   // Backup before the first byte changes, so a rollback has something to fall
   // back on even if this process dies midway.
   const backup = `${configPath}.ambit-${proposalId}.bak`;
-  writeFileSync(backup, JSON.stringify(config, null, 2) + "\n");
+  writeFileSync(backup, JSON.stringify(config, null, 2) + '\n');
 
   const applied: string[] = [];
   for (const step of steps) {
@@ -177,10 +196,11 @@ function applyProposal(db: Db, proposalId?: string) {
       }
     }
   }
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
-  db.prepare("UPDATE proposals SET status = 'applied', applied_at = datetime('now'), backup_path = ? WHERE id = ?")
-    .run(backup, proposalId);
+  db.prepare(
+    "UPDATE proposals SET status = 'applied', applied_at = datetime('now'), backup_path = ? WHERE id = ?"
+  ).run(backup, proposalId);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('apply', ?, 'applied', 1, ?)"
   ).run(row.approved_by, `${proposalId}: ${applied.join(', ')}`);
@@ -217,7 +237,8 @@ function applyProposal(db: Db, proposalId?: string) {
     keys: applied,
     backup,
     verified: verification?.verified ? true : undefined,
-    unverified: verification && !verification.verified ? 'no check declared for this capability' : undefined,
+    unverified:
+      verification && !verification.verified ? 'no check declared for this capability' : undefined,
     seeded,
     note: 'Applied and re-seeded — the graph reflects this change now.',
   };
@@ -232,15 +253,19 @@ function applyProposal(db: Db, proposalId?: string) {
  */
 function rollbackProposal(db: Db, proposalId?: string) {
   if (!proposalId) return { error: 'Usage: ambit rollback <proposal-id>' };
-  const row = db.prepare("SELECT * FROM proposals WHERE id = ?").get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
-  if (row.status !== 'applied') return { error: `${proposalId} is ${row.status}; nothing to reverse.` };
+  if (row.status !== 'applied')
+    return { error: `${proposalId} is ${row.status}; nothing to reverse.` };
 
   const steps = JSON.parse(row.steps);
   const configPath = CONFIG_DEFAULT;
   let config: any = {};
-  try { config = JSON.parse(readFileSync(configPath, "utf8")); }
-  catch { return { error: `Cannot read ${configPath}.` }; }
+  try {
+    config = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch {
+    return { error: `Cannot read ${configPath}.` };
+  }
 
   const removed: string[] = [];
   const restored: string[] = [];
@@ -248,7 +273,10 @@ function rollbackProposal(db: Db, proposalId?: string) {
     const inv = step.inverse || {};
     for (const path of inv.remove || []) {
       const [section, key] = path.split('.');
-      if (config[section] && key in config[section]) { delete config[section][key]; removed.push(path); }
+      if (config[section] && key in config[section]) {
+        delete config[section][key];
+        removed.push(path);
+      }
     }
     for (const [path, value] of Object.entries<any>(inv.restore || {})) {
       const [section, key] = path.split('.');
@@ -257,39 +285,57 @@ function rollbackProposal(db: Db, proposalId?: string) {
       restored.push(path);
     }
   }
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
   db.prepare("UPDATE proposals SET status = 'rolled_back' WHERE id = ?").run(proposalId);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('apply', ?, 'rolled_back', 0, ?)"
   ).run(row.approved_by || 'human:unknown', `${proposalId}`);
 
-  return { proposal: proposalId, rolled_back: true, removed, restored, backup_kept: row.backup_path || undefined };
+  return {
+    proposal: proposalId,
+    rolled_back: true,
+    removed,
+    restored,
+    backup_kept: row.backup_path || undefined,
+  };
 }
 
 // ─── Execution Layer ──────────────────────────────────────────────────────────
 
 function applyRemoval(db, capId) {
-  const configPath = process.env.OPENCODE_CONFIG || (process.env.HOME + "/.config/opencode/opencode.json");
-  if (!existsSync(configPath)) return { error: "Config not found" };
-  const config = JSON.parse(readFileSync(configPath, "utf8"));
-  const prefix = capId.split(":")[0];
-  const key = capId.replace(/^[^:]+:/, "");
-  const sectionMap = { mcp: "mcp", agent: "agent", cmd: "command", provider: "provider" };
+  const configPath =
+    process.env.OPENCODE_CONFIG || process.env.HOME + '/.config/opencode/opencode.json';
+  if (!existsSync(configPath)) return { error: 'Config not found' };
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  const prefix = capId.split(':')[0];
+  const key = capId.replace(/^[^:]+:/, '');
+  const sectionMap = { mcp: 'mcp', agent: 'agent', cmd: 'command', provider: 'provider' };
   const section = sectionMap[prefix];
-  if (!section) return { error: "Unknown prefix: " + prefix };
-  if (!config[section] || !config[section][key]) return { error: "Not found: " + capId };
-  writeFileSync(configPath + ".bak", JSON.stringify(config, null, 2));
+  if (!section) return { error: 'Unknown prefix: ' + prefix };
+  if (!config[section]?.[key]) return { error: 'Not found: ' + capId };
+  writeFileSync(configPath + '.bak', JSON.stringify(config, null, 2));
   delete config[section][key];
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
   const db2 = getDb();
-  try { db2.prepare("INSERT INTO session_learning (session_id, capability_id, action, notes) VALUES ('exec', ?, 'removed', 'Applied removal')").run(capId); } catch {}
+  try {
+    db2
+      .prepare(
+        "INSERT INTO session_learning (session_id, capability_id, action, notes) VALUES ('exec', ?, 'removed', 'Applied removal')"
+      )
+      .run(capId);
+  } catch {}
   db2.close();
   seedFromConfig(db);
-  return { removed: capId, section, key, backup: configPath + ".bak" };
+  return { removed: capId, section, key, backup: configPath + '.bak' };
 }
 
 export {
-  inverseOf, approveProposal, listProposals, showProposal,
-  applyProposal, rollbackProposal, applyRemoval,
+  inverseOf,
+  approveProposal,
+  listProposals,
+  showProposal,
+  applyProposal,
+  rollbackProposal,
+  applyRemoval,
 };

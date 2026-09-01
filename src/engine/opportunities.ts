@@ -1,7 +1,7 @@
-import type { Migratable } from "./migrate.ts";
-import { planFor, simulateFrontier, deficits } from "./planning.ts";
-import { attentionValueCentsPerHour, goalValue } from "./economics.ts";
-import { catalogReport } from "./catalog.ts";
+import type { Migratable } from './migrate.ts';
+import { planFor, simulateFrontier, deficits } from './planning.ts';
+import { attentionValueCentsPerHour } from './economics.ts';
+import { catalogReport } from './catalog.ts';
 
 /**
  * The opportunity engine: where recurring friction becomes a proposed
@@ -42,36 +42,60 @@ interface BurdenCluster {
   resource_cents: number;
 }
 
-const MIDDLEWARE = new Set(['clerical', 'exception', 'physical', 'authority', 'approval', 'application', 'permission block']);
+const MIDDLEWARE = new Set([
+  'clerical',
+  'exception',
+  'physical',
+  'authority',
+  'approval',
+  'application',
+  'permission block',
+]);
 const KEEPERS = new Set(['judgment', 'knowledge']);
 
 /** The burden observed in the window, clustered per (capability, kind). */
 function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
   const cap = new Map<string, { id: string; name: string; reached: boolean; lifecycle: string }>();
-  for (const c of db.prepare("SELECT id, name, state, lifecycle FROM capabilities").all() as any[]) {
-    cap.set(c.id, { id: c.id, name: c.name, reached: c.state !== 'locked', lifecycle: c.lifecycle });
+  for (const c of db
+    .prepare('SELECT id, name, state, lifecycle FROM capabilities')
+    .all() as any[]) {
+    cap.set(c.id, {
+      id: c.id,
+      name: c.name,
+      reached: c.state !== 'locked',
+      lifecycle: c.lifecycle,
+    });
   }
-  const nameOf = (id: string) => (cap.get(id)?.name) || id;
+  const nameOf = (id: string) => cap.get(id)?.name || id;
 
   const out = new Map<string, BurdenCluster>();
   const ensure = (capId: string, kind: string): BurdenCluster => {
     const key = `${capId}|${kind}`;
     if (!out.has(key)) {
       out.set(key, {
-        capability_id: capId, name: nameOf(capId), kind,
-        times: 0, active_seconds: 0, waiting_seconds: 0, runs_affected: 0,
+        capability_id: capId,
+        name: nameOf(capId),
+        kind,
+        times: 0,
+        active_seconds: 0,
+        waiting_seconds: 0,
+        runs_affected: 0,
         reached: cap.get(capId)?.reached ?? true,
         lifecycle: cap.get(capId)?.lifecycle ?? 'unknown',
-        deficit_blocks: 0, uses: 0, resource_cents: 0,
+        deficit_blocks: 0,
+        uses: 0,
+        resource_cents: 0,
       });
     }
     return out.get(key)!;
   };
 
   // The work ledger: interventions with time, per capability and kind.
-  for (const i of db.prepare(
-    "SELECT capability_id, kind, active_seconds, waiting_seconds, run_id FROM human_intervention WHERE started_at >= datetime('now', ?)"
-  ).all(`-${windowDays} days`) as any[]) {
+  for (const i of db
+    .prepare(
+      "SELECT capability_id, kind, active_seconds, waiting_seconds, run_id FROM human_intervention WHERE started_at >= datetime('now', ?)"
+    )
+    .all(`-${windowDays} days`) as any[]) {
     const c = ensure(i.capability_id || 'unattributed', i.kind);
     c.times++;
     c.active_seconds += i.active_seconds || 0;
@@ -81,19 +105,28 @@ function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
 
   // The governance path records approvals etc. in session_learning; fold them
   // in as middleware on the same capability.
-  for (const a of db.prepare(
-    `SELECT capability_id, action FROM session_learning
+  for (const a of db
+    .prepare(
+      `SELECT capability_id, action FROM session_learning
      WHERE action IN ('approved', 'applied', 'blocked:permission')
        AND timestamp >= datetime('now', ?)`
-  ).all(`-${windowDays} days`) as any[]) {
-    const kind = a.action === 'approved' ? 'approval' : a.action === 'applied' ? 'application' : 'permission block';
+    )
+    .all(`-${windowDays} days`) as any[]) {
+    const kind =
+      a.action === 'approved'
+        ? 'approval'
+        : a.action === 'applied'
+          ? 'application'
+          : 'permission block';
     ensure(a.capability_id, kind).times++;
   }
 
   // Capability use attaches exercise frequency to the capability.
-  for (const u of db.prepare(
-    "SELECT capability_id, COUNT(*) n FROM capability_use WHERE used_at >= datetime('now', ?) GROUP BY capability_id"
-  ).all(`-${windowDays} days`) as any[]) {
+  for (const u of db
+    .prepare(
+      "SELECT capability_id, COUNT(*) n FROM capability_use WHERE used_at >= datetime('now', ?) GROUP BY capability_id"
+    )
+    .all(`-${windowDays} days`) as any[]) {
     for (const c of out.values()) if (c.capability_id === u.capability_id) c.uses += u.n;
   }
 
@@ -115,9 +148,28 @@ interface OpportunityCase {
   kind: string;
   capability: string;
   capability_id: string;
-  burden: { interventions_month: number; human_hours_month: number; attention_dollars_month: number; resource_dollars_month: number; runs_affected: number };
-  proposal: { action: string; setup_hours: number; setup_estimate: boolean; recurring: boolean; frontier_gain: number };
-  acquisition_options?: { provider: string; kind: string; setup: string; total_first_year_dollars?: number; privacy: string; rollback?: string }[];
+  burden: {
+    interventions_month: number;
+    human_hours_month: number;
+    attention_dollars_month: number;
+    resource_dollars_month: number;
+    runs_affected: number;
+  };
+  proposal: {
+    action: string;
+    setup_hours: number;
+    setup_estimate: boolean;
+    recurring: boolean;
+    frontier_gain: number;
+  };
+  acquisition_options?: {
+    provider: string;
+    kind: string;
+    setup: string;
+    total_first_year_dollars?: number;
+    privacy: string;
+    rollback?: string;
+  }[];
   expected: { human_hours_month_after: number; savings_dollars_month: number };
   payback_months: number | null;
   roi_annual: number;
@@ -126,7 +178,12 @@ interface OpportunityCase {
 }
 
 /** Prices one cluster into an opportunity case. */
-function priceCluster(db: Migratable, c: BurdenCluster, actor: string, idx: number): OpportunityCase {
+function priceCluster(
+  db: Migratable,
+  c: BurdenCluster,
+  actor: string,
+  idx: number
+): OpportunityCase {
   const hours = (c.active_seconds + c.waiting_seconds) / HOURS;
   const rate = attentionValueCentsPerHour(db, actor);
   const attentionCents = hours * rate;
@@ -141,12 +198,20 @@ function priceCluster(db: Migratable, c: BurdenCluster, actor: string, idx: numb
   let recurring = false;
   if (plan && !plan.error && Array.isArray(plan.order)) {
     const setupSeconds = plan.order.reduce((s: number, o: any) => s + (o.setup_seconds || 0), 0);
-    if (setupSeconds > 0) { setupHours = setupSeconds / HOURS; setupEstimate = false; }
-    recurring = plan.order.some((o: any) => o.options?.some((op: any) => op.recurring_cost && op.recurring_cost !== 'none'));
+    if (setupSeconds > 0) {
+      setupHours = setupSeconds / HOURS;
+      setupEstimate = false;
+    }
+    recurring = plan.order.some((o: any) =>
+      o.options?.some((op: any) => op.recurring_cost && op.recurring_cost !== 'none')
+    );
   }
 
   const sim = simulateFrontier(db as any, [c.capability_id]);
-  const frontierGain = (sim as any)?.frontier_after != null ? (sim as any).frontier_after - (sim as any).frontier_before : 0;
+  const frontierGain =
+    (sim as any)?.frontier_after != null
+      ? (sim as any).frontier_after - (sim as any).frontier_before
+      : 0;
 
   // The supply side, attached so an opportunity is a purchase decision rather
   // than a report: the ways this capability can be acquired, cheapest first.
@@ -159,7 +224,13 @@ function priceCluster(db: Migratable, c: BurdenCluster, actor: string, idx: numb
   const payback = savingsCentsMonth > 0 ? setupCents / savingsCentsMonth : Infinity;
 
   const confidence: OpportunityCase['confidence'] =
-    interventionsMonth >= 5 ? 'high' : interventionsMonth >= 2 ? 'medium' : c.deficit_blocks >= 3 ? 'medium' : 'low';
+    interventionsMonth >= 5
+      ? 'high'
+      : interventionsMonth >= 2
+        ? 'medium'
+        : c.deficit_blocks >= 3
+          ? 'medium'
+          : 'low';
 
   const middleware = MIDDLEWARE.has(c.kind);
   const keeper = KEEPERS.has(c.kind);
@@ -199,7 +270,7 @@ function priceCluster(db: Migratable, c: BurdenCluster, actor: string, idx: numb
       savings_dollars_month: Math.round(savingsCentsMonth) / 100,
     },
     payback_months: Number.isFinite(payback) ? Math.round(payback * 10) / 10 : null,
-    roi_annual: Math.round((savingsCentsMonth * 12 / Math.max(1, setupCents)) * 10) / 10,
+    roi_annual: Math.round(((savingsCentsMonth * 12) / Math.max(1, setupCents)) * 10) / 10,
     confidence,
     note: keeper
       ? 'judgment/knowledge is the reason the human is there — not reducible, however often it recurs'
@@ -225,13 +296,19 @@ const UNIT_CENTS = 1000; // $10
 function allocate(items: OpportunityCase[], budgetCents: number, rate: number) {
   const n = items.length;
   const capacity = Math.max(1, Math.floor(budgetCents / UNIT_CENTS));
-  const weight = items.map((o) => Math.max(1, Math.round(o.proposal.setup_hours * rate / UNIT_CENTS)));
-  const value = items.map((o) => Math.round(o.burden.attention_dollars_month * REDUCTION * 12 * 100 / UNIT_CENTS));
+  const weight = items.map(o =>
+    Math.max(1, Math.round((o.proposal.setup_hours * rate) / UNIT_CENTS))
+  );
+  const value = items.map(o =>
+    Math.round((o.burden.attention_dollars_month * REDUCTION * 12 * 100) / UNIT_CENTS)
+  );
 
   // Classic 0/1 knapsack, bottom-up. keep[][] remembers the choice so the
   // winning combination can be reconstructed rather than only valued.
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(capacity + 1).fill(0));
-  const keep: boolean[][] = Array.from({ length: n + 1 }, () => new Array(capacity + 1).fill(false));
+  const keep: boolean[][] = Array.from({ length: n + 1 }, () =>
+    new Array(capacity + 1).fill(false)
+  );
   for (let i = 1; i <= n; i++) {
     for (let w = 0; w <= capacity; w++) {
       if (weight[i - 1] <= w && dp[i - 1][w - weight[i - 1]] + value[i - 1] > dp[i - 1][w]) {
@@ -254,8 +331,17 @@ function allocate(items: OpportunityCase[], budgetCents: number, rate: number) {
   return {
     budget_dollars: Math.round(budgetCents) / 100,
     setup_dollars: Math.round(picks.reduce((s, o) => s + o.proposal.setup_hours * rate, 0)) / 100,
-    savings_per_year_dollars: Math.round(picks.reduce((s, o) => s + o.burden.attention_dollars_month * REDUCTION * 12, 0) * 10) / 10,
-    picks: picks.map((o) => ({ id: o.id, title: o.title, capability: o.capability, setup_hours: o.proposal.setup_hours, savings_dollars_month: o.expected.savings_dollars_month })),
+    savings_per_year_dollars:
+      Math.round(
+        picks.reduce((s, o) => s + o.burden.attention_dollars_month * REDUCTION * 12, 0) * 10
+      ) / 10,
+    picks: picks.map(o => ({
+      id: o.id,
+      title: o.title,
+      capability: o.capability,
+      setup_hours: o.proposal.setup_hours,
+      savings_dollars_month: o.expected.savings_dollars_month,
+    })),
   };
 }
 
@@ -269,7 +355,11 @@ function allocate(items: OpportunityCase[], budgetCents: number, rate: number) {
  *   ambit opportunities --by=frontier    → what acquiring would unlock
  *   ambit opportunities --budget=10000   → the best combination within $10k
  */
-function opportunitiesFor(db: Migratable, by: OpportunityObjective = 'attention', budgetDollars?: number) {
+function opportunitiesFor(
+  db: Migratable,
+  by: OpportunityObjective = 'attention',
+  budgetDollars?: number
+) {
   const actor = 'human:kanav';
   const rate = attentionValueCentsPerHour(db, actor);
   const cs = clusters(db);
@@ -279,11 +369,16 @@ function opportunitiesFor(db: Migratable, by: OpportunityObjective = 'attention'
   const priced = middleware.map((c, i) => priceCluster(db, c, actor, i));
   const sortKey = (o: OpportunityCase): number => {
     switch (by) {
-      case 'cash': return o.burden.attention_dollars_month + o.burden.resource_dollars_month;
-      case 'roi': return o.roi_annual;
-      case 'reliability': return o.kind === 'deficit' ? 1e9 : o.burden.interventions_month;
-      case 'frontier': return o.proposal.frontier_gain;
-      default: return o.burden.attention_dollars_month;
+      case 'cash':
+        return o.burden.attention_dollars_month + o.burden.resource_dollars_month;
+      case 'roi':
+        return o.roi_annual;
+      case 'reliability':
+        return o.kind === 'deficit' ? 1e9 : o.burden.interventions_month;
+      case 'frontier':
+        return o.proposal.frontier_gain;
+      default:
+        return o.burden.attention_dollars_month;
     }
   };
   const ranked = priced.sort((a, b) => sortKey(b) - sortKey(a));
@@ -296,7 +391,12 @@ function opportunitiesFor(db: Migratable, by: OpportunityObjective = 'attention'
   }
 
   if (ranked.length === 0 && keepers.length === 0) {
-    return { note: `No recurring middleware burden recorded in the last ${WINDOW_DAYS} days. Record work, or seed a deficit with ambit record.`, by, opportunities: [], allocation };
+    return {
+      note: `No recurring middleware burden recorded in the last ${WINDOW_DAYS} days. Record work, or seed a deficit with ambit record.`,
+      by,
+      opportunities: [],
+      allocation,
+    };
   }
 
   return {
@@ -304,7 +404,9 @@ function opportunitiesFor(db: Migratable, by: OpportunityObjective = 'attention'
     window_days: WINDOW_DAYS,
     opportunities: ranked,
     allocation,
-    keepers: keepers.length ? keepers.map((k) => ({ capability: k.name, kind: k.kind, times: k.times })) : undefined,
+    keepers: keepers.length
+      ? keepers.map(k => ({ capability: k.name, kind: k.kind, times: k.times }))
+      : undefined,
     note: `ranked by ${by}. confidence: high = observed ≥5 times, medium = ≥2, low = deficits only. judgment/knowledge are never opportunities.`,
   };
 }
@@ -327,8 +429,8 @@ function opportunityFor(db: Migratable, id?: string) {
  * stated consequence rather than a hope.
  */
 function economicCaseFor(db: Migratable, capabilityId: string) {
-  const cs = clusters(db).filter(c =>
-    (MIDDLEWARE.has(c.kind) || c.kind === 'deficit') && c.capability_id === capabilityId
+  const cs = clusters(db).filter(
+    c => (MIDDLEWARE.has(c.kind) || c.kind === 'deficit') && c.capability_id === capabilityId
   );
   if (cs.length === 0) return null;
   const case_ = priceCluster(db, cs[0], 'human:kanav', 0);
@@ -341,7 +443,8 @@ function economicCaseFor(db: Migratable, capabilityId: string) {
     },
     predicted: {
       savings_dollars_month: case_.expected.savings_dollars_month,
-      human_hours_saved_per_year: Math.round(case_.burden.human_hours_month * REDUCTION * 12 * 10) / 10,
+      human_hours_saved_per_year:
+        Math.round(case_.burden.human_hours_month * REDUCTION * 12 * 10) / 10,
       payback_months: case_.payback_months,
     },
     confidence: case_.confidence,

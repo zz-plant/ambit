@@ -1,11 +1,10 @@
-import { readFileSync } from "fs";
-import { join } from "path";
-import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from "./paths.ts";
-import type { Db } from "./db.ts";
-import { providersOf } from "./inference.ts";
-import { inverseOf } from "./governance.ts";
-import { usable } from "./assurance.ts";
-import { opportunityFor, economicCaseFor } from "./opportunities.ts";
+import { readFileSync } from 'node:fs';
+import { CONFIG_DEFAULT, loadTechTree } from './paths.ts';
+import type { Db } from './db.ts';
+import { providersOf } from './inference.ts';
+import { inverseOf } from './governance.ts';
+import { usable } from './assurance.ts';
+import { opportunityFor, economicCaseFor } from './opportunities.ts';
 
 /**
  * Where a chosen way to close a step fights how a required person prefers
@@ -41,11 +40,17 @@ function conflictForChosen(step: any, chosen: any, db: Db): string[] | undefined
     const recurring = chosen.recurring_cost && chosen.recurring_cost !== 'none';
     if (hosted && prefs.includes('local-when-practical')) {
       const localAlt = (step.options || []).find((o: any) => o.privacy !== 'hosted');
-      hits.push(`${person} prefers local-when-practical; the choice (${chosen.name}) is hosted${localAlt ? ` — ${localAlt.name} matches` : ''}`);
+      hits.push(
+        `${person} prefers local-when-practical; the choice (${chosen.name}) is hosted${localAlt ? ` — ${localAlt.name} matches` : ''}`
+      );
     }
     if (recurring && prefs.includes('minimize-recurring-cost')) {
-      const oneOff = (step.options || []).find((o: any) => !o.recurring_cost || o.recurring_cost === 'none');
-      hits.push(`${person} prefers minimize-recurring-cost; the choice (${chosen.name}) is recurring${oneOff ? ` — ${oneOff.name} matches` : ''}`);
+      const oneOff = (step.options || []).find(
+        (o: any) => !o.recurring_cost || o.recurring_cost === 'none'
+      );
+      hits.push(
+        `${person} prefers minimize-recurring-cost; the choice (${chosen.name}) is recurring${oneOff ? ` — ${oneOff.name} matches` : ''}`
+      );
     }
   }
   return hits.length ? hits : undefined;
@@ -62,13 +67,15 @@ function conflictForChosen(step: any, chosen: any, db: Db): string[] | undefined
  * thing that needs it, so the list can be worked top to bottom.
  */
 function planFor(db: Db, goal?: string) {
-  if (!goal) return { error: "Usage: ambit goal <capability-id>" };
+  if (!goal) return { error: 'Usage: ambit goal <capability-id>' };
   // A bare name is a tech-tree node; anything already carrying a prefix is
   // taken as written, so an action — act:version-control/merge_to_default —
   // can be planned for directly rather than only the capability conferring it.
   const id = goal.includes(':') ? goal : `combo:${goal}`;
 
-  const target = db.prepare("SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?").get(id);
+  const target = db
+    .prepare('SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?')
+    .get(id);
   if (!target) return { error: `No capability ${id}. Try ambit graph combos for the list.` };
   // Same shape as the planned case. Returning a different one here meant
   // callers had to special-case it, and a guard reading `steps === 0` silently
@@ -77,17 +84,31 @@ function planFor(db: Db, goal?: string) {
     // Reachable, but its check is failing. This is not an acquisition and a
     // plan that said "add it" would be proposing to buy what is already broken.
     return {
-      goal: target.name, reachable: false, degraded: true, steps: 0, missing: [], order: [],
+      goal: target.name,
+      reachable: false,
+      degraded: true,
+      steps: 0,
+      missing: [],
+      order: [],
       lifecycle: target.lifecycle,
       note: 'configured, but verification is failing — re-verify with ambit verify before relying on it',
     };
   }
   if (target.state !== 'locked') {
-    return { goal: target.name, reachable: true, steps: 0, missing: [], order: [], note: "already reached" };
+    return {
+      goal: target.name,
+      reachable: true,
+      steps: 0,
+      missing: [],
+      order: [],
+      note: 'already reached',
+    };
   }
 
   const hard = db
-    .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE is_hard_requisite = 1")
+    .prepare(
+      'SELECT from_capability f, to_capability t FROM dependencies WHERE is_hard_requisite = 1'
+    )
     .all();
   const prereqs = new Map<string, string[]>();
   for (const d of hard) {
@@ -95,7 +116,10 @@ function planFor(db: Db, goal?: string) {
     prereqs.get(d.t)!.push(d.f);
   }
   const info = new Map(
-    db.prepare("SELECT id, name, state, kind, unlock_cost_setup, lifecycle FROM capabilities").all().map((c: any) => [c.id, c])
+    db
+      .prepare('SELECT id, name, state, kind, unlock_cost_setup, lifecycle FROM capabilities')
+      .all()
+      .map((c: any) => [c.id, c])
   );
 
   const order: any[] = [];
@@ -104,12 +128,18 @@ function planFor(db: Db, goal?: string) {
   let cyclic = false;
   const walk = (node: string, stack: Set<string>) => {
     if (seen.has(node)) return;
-    if (stack.has(node)) { cyclic = true; return; }
+    if (stack.has(node)) {
+      cyclic = true;
+      return;
+    }
     stack.add(node);
     for (const p of prereqs.get(node) || []) {
       const c = info.get(p);
       if (!c) continue;
-      if (c.state === 'locked') { walk(p, stack); continue; }
+      if (c.state === 'locked') {
+        walk(p, stack);
+        continue;
+      }
       // A degraded or broken prerequisite is not satisfied — the capability is
       // broken, and a plan must say so rather than silently planning on top of
       // it. Re-verify, do not re-add.
@@ -155,7 +185,9 @@ function planFor(db: Db, goal?: string) {
   // is faster and adds a bill and a data boundary.
   const tree = loadTechTree();
   const recipeFor = new Map<string, any>(
-    (tree.nodes || []).filter((n: any) => n.acquisition).map((n: any) => [`combo:${n.id}`, n.acquisition])
+    (tree.nodes || [])
+      .filter((n: any) => n.acquisition)
+      .map((n: any) => [`combo:${n.id}`, n.acquisition])
   );
   for (const step of order) {
     const recipe = recipeFor.get(step.id);
@@ -167,7 +199,9 @@ function planFor(db: Db, goal?: string) {
   // and a plan that hides the conflict reads as if there is no choice. Runs
   // after options are attached, because the conflict is about the choice.
   for (const step of order) {
-    const conflicts = step.options?.length ? conflictForChosen(step, step.options[0], db) : undefined;
+    const conflicts = step.options?.length
+      ? conflictForChosen(step, step.options[0], db)
+      : undefined;
     if (conflicts) step.preference_conflicts = conflicts;
   }
 
@@ -180,7 +214,10 @@ function planFor(db: Db, goal?: string) {
     // that is a raw provider is a thing to install, which this cannot plan.
     reachable: order.every(o => ['capability', 'action'].includes((info.get(o.id) as any)?.kind)),
     steps: order.length,
-    estimated_setup: totalSeconds >= 3600 ? `${(totalSeconds / 3600).toFixed(1)}h` : `${Math.round(totalSeconds / 60)}m`,
+    estimated_setup:
+      totalSeconds >= 3600
+        ? `${(totalSeconds / 3600).toFixed(1)}h`
+        : `${Math.round(totalSeconds / 60)}m`,
     order,
     degraded: degraded.length ? degraded : undefined,
     note: degraded.length
@@ -189,7 +226,6 @@ function planFor(db: Db, goal?: string) {
     cyclic: cyclic || undefined,
   };
 }
-
 
 /**
  * Why a task was blocked, as distinct from *what* was missing.
@@ -202,7 +238,14 @@ function planFor(db: Db, goal?: string) {
  * different days, and "structural" should mean the cause recurs, not that the
  * capability name does.
  */
-const BLOCK_CLASSES = ['reasoning', 'knowledge', 'tool', 'permission', 'infrastructure', 'reliability'] as const;
+const BLOCK_CLASSES = [
+  'reasoning',
+  'knowledge',
+  'tool',
+  'permission',
+  'infrastructure',
+  'reliability',
+] as const;
 type BlockClass = (typeof BLOCK_CLASSES)[number];
 
 const BLOCK_PREFIX = 'blocked:';
@@ -231,32 +274,47 @@ function blockedAction(classifier?: string): string {
  * which is exactly what the CLI did before classification existed.
  */
 function recordFailure(db: Db, capId?: string, classifier?: string, note?: string) {
-  if (!capId) return { error: 'Usage: ambit record <capability> [reasoning|knowledge|tool|permission|infrastructure|reliability] ["what you were trying to do"]' };
+  if (!capId)
+    return {
+      error:
+        'Usage: ambit record <capability> [reasoning|knowledge|tool|permission|infrastructure|reliability] ["what you were trying to do"]',
+    };
   const id = capId.startsWith('combo:') || capId.includes(':') ? capId : `combo:${capId}`;
-  if (!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id)) {
-    return { error: `No capability ${id}. Use an id from ambit graph combos, so deficits aggregate against something real.` };
+  if (!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id)) {
+    return {
+      error: `No capability ${id}. Use an id from ambit graph combos, so deficits aggregate against something real.`,
+    };
   }
   // The second positional may be a classification or — for a call that predates
   // classification — the note itself. Only a known class is taken as one.
-  const cls = classifier && BLOCK_CLASSES.includes(classifier as BlockClass) ? classifier : undefined;
-  const storedNote = cls ? note || null : (classifier || null);
+  const cls =
+    classifier && BLOCK_CLASSES.includes(classifier as BlockClass) ? classifier : undefined;
+  const storedNote = cls ? note || null : classifier || null;
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('task', ?, ?, 0, ?)"
   ).run(id, blockedAction(cls), storedNote);
   const count = db
-    .prepare("SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND (action = 'blocked' OR action LIKE 'blocked:%')")
+    .prepare(
+      "SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND (action = 'blocked' OR action LIKE 'blocked:%')"
+    )
     .get(id);
   const clsCount = cls
-    ? db.prepare("SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND action = ?").get(id, blockedAction(cls))
+    ? db
+        .prepare(
+          'SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND action = ?'
+        )
+        .get(id, blockedAction(cls))
     : undefined;
   return {
     recorded: id,
     classification: cls || 'unclassified',
     times_blocked: count?.n ?? 1,
     times_as_this_class: clsCount?.n ?? undefined,
-    note: (count?.n ?? 1) >= 3
-      ? 'This has blocked work repeatedly. It is a structural deficit, not a one-off — see ambit goal ' + id.replace('combo:', '')
-      : undefined,
+    note:
+      (count?.n ?? 1) >= 3
+        ? 'This has blocked work repeatedly. It is a structural deficit, not a one-off — see ambit goal ' +
+          id.replace('combo:', '')
+        : undefined,
   };
 }
 
@@ -279,7 +337,9 @@ function deficits(db: Db) {
     )
     .all();
   if (rows.length === 0) {
-    return { note: 'Nothing recorded. Use ambit record <capability> when a task is blocked by a missing one.' };
+    return {
+      note: 'Nothing recorded. Use ambit record <capability> when a task is blocked by a missing one.',
+    };
   }
 
   const byClass = db
@@ -307,12 +367,20 @@ function deficits(db: Db) {
     // causes is a capability that keeps failing for different reasons, which
     // is a different signal.
     causes: classOf.get(r.id),
-    verdict: r.times >= 3 && r.state === 'locked' ? 'structural — build it'
-      : r.times >= 3 && !usable(r.lifecycle) ? 'structural — configured but failing verification'
-      : r.times >= 3 ? 'was structural; now reached' : 'incidental so far',
-    recommendation: r.times >= 3 && r.state === 'locked' ? `ambit propose ${r.id.replace('combo:', '')}`
-      : r.times >= 3 && !usable(r.lifecycle) ? `ambit verify ${r.id.replace('combo:', '')}`
-      : undefined,
+    verdict:
+      r.times >= 3 && r.state === 'locked'
+        ? 'structural — build it'
+        : r.times >= 3 && !usable(r.lifecycle)
+          ? 'structural — configured but failing verification'
+          : r.times >= 3
+            ? 'was structural; now reached'
+            : 'incidental so far',
+    recommendation:
+      r.times >= 3 && r.state === 'locked'
+        ? `ambit propose ${r.id.replace('combo:', '')}`
+        : r.times >= 3 && !usable(r.lifecycle)
+          ? `ambit verify ${r.id.replace('combo:', '')}`
+          : undefined,
   }));
 }
 
@@ -333,7 +401,9 @@ function simulateFrontier(db: Db, assume: string[]) {
     .prepare("SELECT id, name, state, lifecycle FROM capabilities WHERE category = 'combo'")
     .all();
   const hard = db
-    .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE is_hard_requisite = 1")
+    .prepare(
+      'SELECT from_capability f, to_capability t FROM dependencies WHERE is_hard_requisite = 1'
+    )
     .all();
   const providers = providersOf(db);
 
@@ -348,18 +418,25 @@ function simulateFrontier(db: Db, assume: string[]) {
   // Only usable capabilities count toward the frontier and can satisfy
   // prerequisites. A degraded or broken one is configured but failing
   // verification, so it neither is reached nor can it unblock an acquisition.
-  const before = new Set(combos.filter((c: any) => c.state !== 'locked' && usable(c.lifecycle)).map((c: any) => c.id));
-  const failing = new Set(combos.filter((c: any) => c.state !== 'locked' && !usable(c.lifecycle)).map((c: any) => c.id));
+  const before = new Set(
+    combos.filter((c: any) => c.state !== 'locked' && usable(c.lifecycle)).map((c: any) => c.id)
+  );
+  const failing = new Set(
+    combos.filter((c: any) => c.state !== 'locked' && !usable(c.lifecycle)).map((c: any) => c.id)
+  );
   // An action is conferred by a capability rather than acquired on its own, so
   // assuming one means assuming the capability that confers it. Counting the
   // action itself would inflate the frontier with something that was never
   // separately obtainable.
   const conferredBy = new Map<string, string>(
-    db.prepare(
-      `SELECT d.to_capability action, d.from_capability capability FROM dependencies d
+    db
+      .prepare(
+        `SELECT d.to_capability action, d.from_capability capability FROM dependencies d
        JOIN capabilities c ON c.id = d.to_capability
        WHERE d.kind = 'provides' AND c.kind = 'action'`
-    ).all().map((r: any) => [r.action, r.capability])
+      )
+      .all()
+      .map((r: any) => [r.action, r.capability])
   );
   const normalise = (a: string) => {
     const id = a.includes(':') ? a : `combo:${a}`;
@@ -379,7 +456,10 @@ function simulateFrontier(db: Db, assume: string[]) {
       // supplies does not appear merely because its prerequisites are met.
       if (!(providers.get(c.id) || []).length) continue;
       const met = (prereqs.get(c.id) || []).every(p => after.has(p) || !p.startsWith('combo:'));
-      if (met) { after.add(c.id); changed = true; }
+      if (met) {
+        after.add(c.id);
+        changed = true;
+      }
     }
   }
 
@@ -424,8 +504,10 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
   let fromOpportunity: any = null;
   if (opp) {
     const resolved = opportunityFor(db, target);
-    if ('capability_id' in resolved) { fromOpportunity = resolved; target = resolved.capability_id; }
-    else return resolved;
+    if ('capability_id' in resolved) {
+      fromOpportunity = resolved;
+      target = resolved.capability_id;
+    } else return resolved;
   }
 
   const plan = planFor(db, target) as any;
@@ -438,11 +520,17 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
   }
 
   let currentConfig: any = {};
-  try { currentConfig = JSON.parse(readFileSync(CONFIG_DEFAULT, "utf8")); } catch { /* no config is fine */ }
+  try {
+    currentConfig = JSON.parse(readFileSync(CONFIG_DEFAULT, 'utf8'));
+  } catch {
+    /* no config is fine */
+  }
 
   const steps = (plan.order || []).map((step: any) => {
     const options = step.options || [];
-    const chosen = options.length ? options[Math.min(optionIndex ?? 0, options.length - 1)] : undefined;
+    const chosen = options.length
+      ? options[Math.min(optionIndex ?? 0, options.length - 1)]
+      : undefined;
     return {
       id: step.id,
       name: step.name,
@@ -464,29 +552,44 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
     };
   });
 
-  const simulated = simulateFrontier(db, steps.map((s: any) => s.id).concat(
-    target.includes(':') ? target : `combo:${target}`
-  ));
+  const simulated = simulateFrontier(
+    db,
+    steps.map((s: any) => s.id).concat(target.includes(':') ? target : `combo:${target}`)
+  );
 
   // The economic case: the goal capability's observed middleware burden, from
   // the opportunity engine. Null when nothing recurring was recorded — the
   // proposal then carries no predicted savings, which is the honest claim.
   const goalId = steps[steps.length - 1]?.id || (target.includes(':') ? target : `combo:${target}`);
   const economic = fromOpportunity
-    ? { observed: fromOpportunity.burden, predicted: fromOpportunity.expected, confidence: fromOpportunity.confidence, note: fromOpportunity.note }
+    ? {
+        observed: fromOpportunity.burden,
+        predicted: fromOpportunity.expected,
+        confidence: fromOpportunity.confidence,
+        note: fromOpportunity.note,
+      }
     : economicCaseFor(db, goalId);
 
   const id = `prop-${Date.now().toString(36)}`;
   db.prepare(
     "INSERT INTO proposals (id, goal, status, steps, simulated, economic_case) VALUES (?, ?, 'draft', ?, ?, ?)"
-  ).run(id, plan.goal, JSON.stringify(steps), JSON.stringify(simulated), economic ? JSON.stringify(economic) : null);
+  ).run(
+    id,
+    plan.goal,
+    JSON.stringify(steps),
+    JSON.stringify(simulated),
+    economic ? JSON.stringify(economic) : null
+  );
 
   const totalSeconds = steps.reduce((t: number, s: any) => t + (s.setup_seconds || 0), 0);
   return {
     proposal: id,
     goal: plan.goal,
     status: 'draft',
-    estimated_setup: totalSeconds >= 3600 ? `${(totalSeconds / 3600).toFixed(1)}h` : `${Math.round(totalSeconds / 60)}m`,
+    estimated_setup:
+      totalSeconds >= 3600
+        ? `${(totalSeconds / 3600).toFixed(1)}h`
+        : `${Math.round(totalSeconds / 60)}m`,
     requires_person: plan.requires_person,
     steps,
     simulated,
@@ -533,12 +636,16 @@ function preferencesReport(db: Db, who?: string) {
   if (who) {
     const hit = people.find(p => p.name.toLowerCase() === who.toLowerCase() || p.name === who);
     if (!hit) return { error: `No preferences recorded for ${who}.` };
-    return { name: hit.name, preferences: hit.prefs, note: 'matched against a step\'s alternatives by tt plan — local vs hosted, one-off vs recurring' };
+    return {
+      name: hit.name,
+      preferences: hit.prefs,
+      note: "matched against a step's alternatives by tt plan — local vs hosted, one-off vs recurring",
+    };
   }
 
   return {
     people: people.map(p => ({ name: p.name, preferences: p.prefs })),
-    note: 'a preference is a word tt plan matches against a step\'s alternatives; a conflict is named, not hidden',
+    note: "a preference is a word tt plan matches against a step's alternatives; a conflict is named, not hidden",
   };
 }
 

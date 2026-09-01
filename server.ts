@@ -1,10 +1,17 @@
 import { Database } from 'bun:sqlite';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { resolveDbPath } from './src/shared/db-path.ts';
 import { migrate } from './src/engine/migrate.ts';
-import { beginRun, endRun, addEvent, recordUse, recordIntervention, recordResource, recordOutcome } from './src/engine/telemetry.ts';
+import {
+  beginRun,
+  endRun,
+  addEvent,
+  recordUse,
+  recordIntervention,
+  recordResource,
+  recordOutcome,
+} from './src/engine/telemetry.ts';
 import { mintApproval } from './src/engine/approval.ts';
 
 const CONFIG_PATH = Bun.env.OPENCODE_CONFIG || Bun.env.HOME + '/.config/opencode/opencode.json';
@@ -13,7 +20,8 @@ const REPO_PATH = Bun.env.REPO_PATH || Bun.env.HOME + '/Documents/GitHub';
 // bootstrap.sh writes). Resolved through the shared helper so the engine, the
 // MCP server and this API cannot drift onto three different files again.
 const GRAPH_DB_PATH = resolveDbPath();
-const INFRA_MANIFEST_PATH = Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
+const INFRA_MANIFEST_PATH =
+  Bun.env.INFRA_MANIFEST || Bun.env.HOME + '/.config/opencode/infrastructure.json';
 const API_PORT = 3001;
 
 let serverMigrated = false;
@@ -55,13 +63,29 @@ async function writeConfig(data: Record<string, unknown>): Promise<boolean> {
 
 interface InfraManifest {
   /** Hosts that run services. */
-  devices?: { id: string; name: string; description?: string; statusUrl?: string; meta?: Record<string, unknown> }[];
+  devices?: {
+    id: string;
+    name: string;
+    description?: string;
+    statusUrl?: string;
+    meta?: Record<string, unknown>;
+  }[];
   /** Services expected on those hosts. */
-  services?: { key: string; label?: string; host?: string; url?: string; expectedMcp?: string; description?: string }[];
+  services?: {
+    key: string;
+    label?: string;
+    host?: string;
+    url?: string;
+    expectedMcp?: string;
+    description?: string;
+  }[];
   links?: InfraLink[];
 }
 
-async function probe(url: string, timeoutMs = 3000): Promise<{ ok: boolean; status?: number; json?: any; error?: string }> {
+async function probe(
+  url: string,
+  timeoutMs = 3000
+): Promise<{ ok: boolean; status?: number; json?: any; error?: string }> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
     const text = await res.text();
@@ -238,7 +262,9 @@ async function buildInfrastructureScan(): Promise<{
 const eventClients = new Set<ReadableStreamDefaultController>();
 const eventEncoder = new TextEncoder();
 function broadcast(payload: Record<string, unknown>): void {
-  const frame = eventEncoder.encode(`data: ${JSON.stringify({ ...payload, timestamp: Date.now() })}\n\n`);
+  const frame = eventEncoder.encode(
+    `data: ${JSON.stringify({ ...payload, timestamp: Date.now() })}\n\n`
+  );
   for (const controller of [...eventClients]) {
     try {
       controller.enqueue(frame);
@@ -277,7 +303,9 @@ function ingestTelemetry(graph: Database, body: any): Record<string, unknown> {
     const o = body.outcome;
     return recordOutcome(db, o.runId, o.achieved, o);
   }
-  return { error: 'Nothing to record. Send one of: run, end, event, use, intervention, resource, outcome.' };
+  return {
+    error: 'Nothing to record. Send one of: run, end, event, use, intervention, resource, outcome.',
+  };
 }
 
 function isAllowedOrigin(origin: string): boolean {
@@ -303,7 +331,7 @@ function ownEntry(bag: any, name: unknown): boolean {
   return (
     typeof name === 'string' &&
     !!bag &&
-    Object.prototype.hasOwnProperty.call(bag, name) &&
+    Object.hasOwn(bag, name) &&
     typeof bag[name] === 'object' &&
     bag[name] !== null
   );
@@ -323,7 +351,7 @@ function corsHeaders(origin: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Vary': 'Origin',
+    Vary: 'Origin',
   };
   if (origin && isAllowedOrigin(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
@@ -331,7 +359,7 @@ function corsHeaders(origin: string): Record<string, string> {
   return headers;
 }
 
-const server = Bun.serve({
+const _server = Bun.serve({
   port: API_PORT,
   // Loopback only. This server reads and writes the OpenCode config, so it must
   // not be reachable from the LAN or over Tailscale.
@@ -356,15 +384,18 @@ const server = Bun.serve({
     if (url.pathname === '/api/config' && req.method === 'GET') {
       const raw = await readConfig();
       if (!raw) {
-        return Response.json({ error: 'Config not found at ' + CONFIG_PATH }, { status: 404, headers });
+        return Response.json(
+          { error: 'Config not found at ' + CONFIG_PATH },
+          { status: 404, headers }
+        );
       }
       return Response.json({ config: raw }, { headers });
     }
 
     // POST /api/config/apply — write delta back to config
     if (url.pathname === '/api/config/apply' && req.method === 'POST') {
-      const body = await req.json() as any;
-      const raw = await readConfig() as any;
+      const body = (await req.json()) as any;
+      const raw = (await readConfig()) as any;
       if (!raw) {
         return Response.json({ error: 'Config not found' }, { status: 404, headers });
       }
@@ -406,15 +437,17 @@ const server = Bun.serve({
     // Deliberately returns text instead of writing: an MCP entry is executable,
     // so it crosses into the config only by a human's own hand.
     if (url.pathname === '/api/config/mcp-snippet' && req.method === 'POST') {
-      const body = await req.json() as any;
+      const body = (await req.json()) as any;
       const name = typeof body?.name === 'string' ? body.name.trim() : '';
       if (!name) return Response.json({ error: 'name required' }, { status: 400, headers });
-      return Response.json({
-        configPath: CONFIG_PATH,
-        snippet: JSON.stringify({ mcp: { [name]: { ...body.config, enabled: true } } }, null, 2),
-      }, { headers });
+      return Response.json(
+        {
+          configPath: CONFIG_PATH,
+          snippet: JSON.stringify({ mcp: { [name]: { ...body.config, enabled: true } } }, null, 2),
+        },
+        { headers }
+      );
     }
-
 
     // GET /api/events — AG-UI shaped state stream.
     //
@@ -442,7 +475,9 @@ const server = Bun.serve({
           eventClients.add(ctrl);
           const send = (type: string, payload: Record<string, unknown>) => {
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type, timestamp: Date.now(), ...payload })}\n\n`)
+              encoder.encode(
+                `data: ${JSON.stringify({ type, timestamp: Date.now(), ...payload })}\n\n`
+              )
             );
           };
 
@@ -453,17 +488,26 @@ const server = Bun.serve({
             // both meant a database predating frontier_snapshots threw on the
             // second query and zeroed the counts from the first — reporting an
             // empty graph for a full one.
-            let reached = 0, total = 0, observations = 0;
+            let reached = 0,
+              total = 0,
+              observations = 0;
             try {
-              const counts = graph.query(
-                "SELECT COUNT(*) AS total, SUM(CASE WHEN state != 'locked' THEN 1 ELSE 0 END) AS reached FROM capabilities"
-              ).get() as any;
+              const counts = graph
+                .query(
+                  "SELECT COUNT(*) AS total, SUM(CASE WHEN state != 'locked' THEN 1 ELSE 0 END) AS reached FROM capabilities"
+                )
+                .get() as any;
               total = counts?.total ?? 0;
               reached = counts?.reached ?? 0;
-            } catch { /* no capabilities table yet */ }
+            } catch {
+              /* no capabilities table yet */
+            }
             try {
-              observations = (graph.query("SELECT COUNT(*) AS n FROM frontier_snapshots").get() as any)?.n ?? 0;
-            } catch { /* ledger predates this database */ }
+              observations =
+                (graph.query('SELECT COUNT(*) AS n FROM frontier_snapshots').get() as any)?.n ?? 0;
+            } catch {
+              /* ledger predates this database */
+            }
             graph.close();
             return { reached, total, observations };
           };
@@ -483,7 +527,11 @@ const server = Bun.serve({
           let last = snapshot();
           send('RunStarted', { runId, threadId: 'ambit' });
           send('StateSnapshot', { snapshot: last });
-          send('TextMessageChunk', { messageId: runId, role: 'assistant', delta: `watching the graph — ${last.total} capabilities, ${last.reached} reached, ${last.observations} observations` });
+          send('TextMessageChunk', {
+            messageId: runId,
+            role: 'assistant',
+            delta: `watching the graph — ${last.total} capabilities, ${last.reached} reached, ${last.observations} observations`,
+          });
 
           // The graph changes when something re-seeds it, which is an external
           // process — so this polls rather than being notified. Every change
@@ -508,7 +556,10 @@ const server = Bun.serve({
             const gained = next.reached - last.reached;
             const direction = gained >= 0 ? 'gained' : 'lost';
             const verb = gained === 0 ? 'changed' : `${direction} ${Math.abs(gained)}`;
-            send('TextMessageChunk', { messageId: runId, delta: `graph ${verb}: reached ${last.reached} → ${next.reached}` });
+            send('TextMessageChunk', {
+              messageId: runId,
+              delta: `graph ${verb}: reached ${last.reached} → ${next.reached}`,
+            });
             last = next;
           }, 2000);
         },
@@ -565,11 +616,18 @@ const server = Bun.serve({
         ensureMigrated(graph);
         let proposals: any[] = [];
         try {
-          proposals = graph.query("SELECT * FROM proposals ORDER BY created_at DESC LIMIT 50").all() as any[];
-        } catch { /* table may be empty or uninitialized */ }
+          proposals = graph
+            .query('SELECT * FROM proposals ORDER BY created_at DESC LIMIT 50')
+            .all() as any[];
+        } catch {
+          /* table may be empty or uninitialized */
+        }
         return Response.json({ proposals }, { headers });
       } catch (e: any) {
-        return Response.json({ error: e?.message || 'failed to load proposals', proposals: [] }, { status: 500, headers });
+        return Response.json(
+          { error: e?.message || 'failed to load proposals', proposals: [] },
+          { status: 500, headers }
+        );
       } finally {
         graph.close();
       }
@@ -585,15 +643,19 @@ const server = Bun.serve({
         ensureMigrated(graph);
         let interventions: any[] = [];
         try {
-          interventions = graph.query(`
+          interventions = graph
+            .query(`
             SELECT capability_id, COUNT(*) as count, MAX(timestamp) as last_seen
             FROM session_learning
             WHERE action IN ('intervene', 'confirm', 'failed', 'blocked', 'approved')
             GROUP BY capability_id
-          `).all() as any[];
-        } catch { /* session_learning may be empty */ }
+          `)
+            .all() as any[];
+        } catch {
+          /* session_learning may be empty */
+        }
         return Response.json({ interventions }, { headers });
-      } catch (e: any) {
+      } catch (_e: any) {
         return Response.json({ interventions: [] }, { headers });
       } finally {
         graph.close();
@@ -611,33 +673,66 @@ const server = Bun.serve({
     if (approveMatch && req.method === 'POST') {
       const proposalId = approveMatch[1];
       let body: any = {};
-      try { body = await req.json(); } catch { /* a body is optional */ }
+      try {
+        body = await req.json();
+      } catch {
+        /* a body is optional */
+      }
       const actor = typeof body?.actor === 'string' && body.actor ? body.actor : 'human:kanav';
 
       const graph = new Database(GRAPH_DB_PATH, { create: true });
       try {
         ensureMigrated(graph);
-        const person = graph.query("SELECT id FROM capabilities WHERE id = ? AND category = 'human'").get(actor) as any;
+        const person = graph
+          .query("SELECT id FROM capabilities WHERE id = ? AND category = 'human'")
+          .get(actor) as any;
         if (!person) {
-          return Response.json({ error: `${actor} is not a person in the graph. Approval has to come from someone accountable.` }, { status: 400, headers });
+          return Response.json(
+            {
+              error: `${actor} is not a person in the graph. Approval has to come from someone accountable.`,
+            },
+            { status: 400, headers }
+          );
         }
-        const row = graph.query("SELECT * FROM proposals WHERE id = ?").get(proposalId) as any;
-        if (!row) return Response.json({ error: `No proposal ${proposalId}.` }, { status: 404, headers });
+        const row = graph.query('SELECT * FROM proposals WHERE id = ?').get(proposalId) as any;
+        if (!row)
+          return Response.json({ error: `No proposal ${proposalId}.` }, { status: 404, headers });
         if (row.status === 'approved') {
-          return Response.json({ error: `${proposalId} is already approved by ${row.approved_by}.` }, { status: 409, headers });
+          return Response.json(
+            { error: `${proposalId} is already approved by ${row.approved_by}.` },
+            { status: 409, headers }
+          );
         }
-        graph.query("UPDATE proposals SET status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ?")
+        graph
+          .query(
+            "UPDATE proposals SET status = 'approved', approved_by = ?, approved_at = datetime('now') WHERE id = ?"
+          )
           .run(actor, proposalId);
-        graph.query("INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'approved', 1, ?)")
+        graph
+          .query(
+            "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'approved', 1, ?)"
+          )
           .run(actor, `${proposalId}: ${row.goal}`);
 
-        const minted = mintApproval(graph as unknown as Parameters<typeof mintApproval>[0], proposalId, {
+        const minted = mintApproval(
+          graph as unknown as Parameters<typeof mintApproval>[0],
+          proposalId,
+          {
+            actor,
+            budgetCents: typeof body?.budgetCents === 'number' ? body.budgetCents : undefined,
+            ttlHours: typeof body?.ttlHours === 'number' ? body.ttlHours : 24,
+          }
+        );
+        broadcast({
+          type: 'ProposalApproved',
+          proposalId,
           actor,
-          budgetCents: typeof body?.budgetCents === 'number' ? body.budgetCents : undefined,
-          ttlHours: typeof body?.ttlHours === 'number' ? body.ttlHours : 24,
+          scope: minted.artifact?.scope_exclude,
         });
-        broadcast({ type: 'ProposalApproved', proposalId, actor, scope: minted.artifact?.scope_exclude });
-        return Response.json({ proposal: proposalId, approved_by: actor, artifact: minted.artifact }, { headers });
+        return Response.json(
+          { proposal: proposalId, approved_by: actor, artifact: minted.artifact },
+          { headers }
+        );
       } finally {
         graph.close();
       }
@@ -674,25 +769,33 @@ const server = Bun.serve({
         //
         // Actions a *person* supplies stay: there are few of them, and they are
         // the only thing connecting a human node to the rest of the graph.
-        const caps = graph.query(
-          `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle
+        const caps = graph
+          .query(
+            `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle
            FROM capabilities c WHERE c.kind != 'action' OR NOT EXISTS (
              SELECT 1 FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
              WHERE d.to_capability = c.id AND d.kind = 'provides' AND p.kind = 'capability'
            )`
-        ).all() as any[];
+          )
+          .all() as any[];
         const visible = new Set(caps.map(c => c.id));
-        const deps = (graph.query(
-          'SELECT from_capability, to_capability, is_hard_requisite FROM dependencies'
-        ).all() as any[]).filter(d => visible.has(d.from_capability) && visible.has(d.to_capability));
+        const deps = (
+          graph
+            .query('SELECT from_capability, to_capability, is_hard_requisite FROM dependencies')
+            .all() as any[]
+        ).filter(d => visible.has(d.from_capability) && visible.has(d.to_capability));
 
         // Era and the "researchable now" state are what make this read as a
         // tech tree rather than a list: Civ's whole grammar is reached / can be
         // researched next / still locked, laid out left to right by era.
         let tree: any = { nodes: [], eras: {} };
         try {
-          tree = JSON.parse(readFileSync(join(import.meta.dir, 'src', 'engine', 'techtree.json'), 'utf8'));
-        } catch { /* tech tree optional */ }
+          tree = JSON.parse(
+            readFileSync(join(import.meta.dir, 'src', 'engine', 'techtree.json'), 'utf8')
+          );
+        } catch {
+          /* tech tree optional */
+        }
         const eraById = new Map<string, number>(
           (tree.nodes || []).map((n: any) => [`combo:${n.id}`, n.era])
         );
@@ -701,10 +804,14 @@ const server = Bun.serve({
         // draws the difference between proven and merely configured, so it
         // needs the evidence beside the structure.
         const lastEvidence = new Map<string, { at: string; passed: boolean }>(
-          (graph.query(
-            `SELECT capability_id, action, MAX(timestamp) AS at FROM session_learning
+          (
+            graph
+              .query(
+                `SELECT capability_id, action, MAX(timestamp) AS at FROM session_learning
              WHERE action IN ('verified','failed') GROUP BY capability_id`
-          ).all() as any[]).map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
+              )
+              .all() as any[]
+          ).map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
         );
 
         const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
@@ -724,7 +831,12 @@ const server = Bun.serve({
           name: c.name,
           // Locked tech-tree nodes render as the 'specified' (wireframe) state,
           // which is how the visualizer already draws something not yet built.
-          type: c.category === 'combo' ? 'possibility' : (c.category === 'mcp' ? 'mcp-server' : c.category),
+          type:
+            c.category === 'combo'
+              ? 'possibility'
+              : c.category === 'mcp'
+                ? 'mcp-server'
+                : c.category,
           status: c.state === 'locked' ? 'specified' : 'built',
           description: c.description,
           position: { x: 0, y: 0, z: 0 },
@@ -759,18 +871,22 @@ const server = Bun.serve({
     // GET /api/health — return server status
     if (url.pathname === '/api/health' && req.method === 'GET') {
       const configExists = await Bun.file(CONFIG_PATH).exists();
-      return Response.json({
-        status: 'ok',
-        configPath: CONFIG_PATH,
-        configExists,
-        infraManifestPath: INFRA_MANIFEST_PATH,
-      }, { headers });
+      return Response.json(
+        {
+          status: 'ok',
+          configPath: CONFIG_PATH,
+          configExists,
+          infraManifestPath: INFRA_MANIFEST_PATH,
+        },
+        { headers }
+      );
     }
 
     // GET /api/repos/scan — cross-repo config diff against global
     if (url.pathname === '/api/repos/scan' && req.method === 'GET') {
       const global = await readConfig();
-      if (!global) return Response.json({ error: 'Global config required' }, { status: 400, headers });
+      if (!global)
+        return Response.json({ error: 'Global config required' }, { status: 400, headers });
 
       // Extract reference sets from global
       const globalMcps = new Set(Object.keys((global.mcp as Record<string, any>) || {}));
@@ -788,20 +904,30 @@ const server = Bun.serve({
         if (!existsSync(configFile)) continue;
 
         let repoConfig: any;
-        try { repoConfig = JSON.parse(await Bun.file(configFile).text()); } catch { continue; }
+        try {
+          repoConfig = JSON.parse(await Bun.file(configFile).text());
+        } catch {
+          continue;
+        }
 
         const repoMcps = new Set(Object.keys((repoConfig.mcp as Record<string, any>) || {}));
         const repoAgents = new Set(Object.keys((repoConfig.agent as Record<string, any>) || {}));
-        const repoCommands = new Set(Object.keys((repoConfig.command as Record<string, any>) || {}));
-        const repoProviders = new Set(Object.keys((repoConfig.provider as Record<string, any>) || {}));
+        const repoCommands = new Set(
+          Object.keys((repoConfig.command as Record<string, any>) || {})
+        );
+        const _repoProviders = new Set(
+          Object.keys((repoConfig.provider as Record<string, any>) || {})
+        );
 
         const uniqueMcps = [...repoMcps].filter(k => !globalMcps.has(k));
         const missingMcps = [...globalMcps].filter(k => k !== 'opencode-core' && !repoMcps.has(k));
         const uniqueAgents = [...repoAgents].filter(k => !globalAgents.has(k));
         const uniqueCommands = [...repoCommands].filter(k => !globalCommands.has(k));
 
-        const driftItems = uniqueMcps.length + missingMcps.length + uniqueAgents.length + uniqueCommands.length;
-        const totalGlobal = globalMcps.size + globalAgents.size + globalCommands.size + globalProviders.size;
+        const driftItems =
+          uniqueMcps.length + missingMcps.length + uniqueAgents.length + uniqueCommands.length;
+        const totalGlobal =
+          globalMcps.size + globalAgents.size + globalCommands.size + globalProviders.size;
         const driftPct = totalGlobal > 0 ? Math.round((driftItems / totalGlobal) * 100) : 0;
 
         repos.push({
@@ -817,16 +943,19 @@ const server = Bun.serve({
       }
 
       repos.sort((a, b) => b.drift - a.drift);
-      return Response.json({
-        globalStats: {
-          mcps: globalMcps.size,
-          agents: globalAgents.size,
-          commands: globalCommands.size,
-          providers: globalProviders.size,
-          totalRepos: repos.length,
+      return Response.json(
+        {
+          globalStats: {
+            mcps: globalMcps.size,
+            agents: globalAgents.size,
+            commands: globalCommands.size,
+            providers: globalProviders.size,
+            totalRepos: repos.length,
+          },
+          repos,
         },
-        repos,
-      }, { headers });
+        { headers }
+      );
     }
 
     // Serve built SPA whenever dist exists; Vite dev still proxies /api separately.

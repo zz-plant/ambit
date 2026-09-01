@@ -1,10 +1,10 @@
-import { readFileSync, existsSync, readdirSync } from "fs";
-import { join } from "path";
-import { ENGINE_DIR, CONFIG_DEFAULT, loadTechTree } from "./paths.ts";
-import type { Db } from "./db.ts";
-import { kindOf, edgeKindOf } from "./ontology.ts";
-import { deriveLifecycles } from "./assurance.ts";
-import { recordFrontier } from "./ledger.ts";
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { CONFIG_DEFAULT, loadTechTree } from './paths.ts';
+import type { Db } from './db.ts';
+import { kindOf, edgeKindOf } from './ontology.ts';
+import { deriveLifecycles } from './assurance.ts';
+import { recordFrontier } from './ledger.ts';
 
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
@@ -17,17 +17,24 @@ import { recordFrontier } from "./ledger.ts";
  */
 function nodeWriter(db: Db) {
   const stmt = db.prepare(
-    "INSERT OR IGNORE INTO capabilities (id, name, domain, description, kind, category, state, maturity_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    'INSERT OR IGNORE INTO capabilities (id, name, domain, description, kind, category, state, maturity_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
   );
   return {
-    run: (id: string, name: string, domain: string, description: string, category: string, state: string, maturity: number) =>
-      stmt.run(id, name, domain, description, kindOf(id, category), category, state, maturity),
+    run: (
+      id: string,
+      name: string,
+      domain: string,
+      description: string,
+      category: string,
+      state: string,
+      maturity: number
+    ) => stmt.run(id, name, domain, description, kindOf(id, category), category, state, maturity),
   };
 }
 
 function edgeWriter(db: Db) {
   const stmt = db.prepare(
-    "INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description, kind) VALUES (?, ?, ?, ?, ?)"
+    'INSERT OR IGNORE INTO dependencies (from_capability, to_capability, is_hard_requisite, description, kind) VALUES (?, ?, ?, ?, ?)'
   );
   return {
     run: (from: string, to: string, isHard: number, description: string) =>
@@ -37,11 +44,23 @@ function edgeWriter(db: Db) {
 
 function parseMapping(mappingStr?: string): Record<string, any> {
   if (mappingStr) {
-    try { return JSON.parse(mappingStr); } catch {}
+    try {
+      return JSON.parse(mappingStr);
+    } catch {}
   }
   return {
-    config_keys: { mcp: { type: 'mcp', domain_field: 'type', domain_map: { remote: 'backend', local: 'infra' }, desc_template: '{type} server' }, agent: { type: 'agent', domain: 'meta', desc_field: 'description' }, provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' }, command: { type: 'tool', domain: 'devops', desc_field: 'description' } },
-    skill_dirs: ["~/.agents/skills", "~/.opencode/skills"],
+    config_keys: {
+      mcp: {
+        type: 'mcp',
+        domain_field: 'type',
+        domain_map: { remote: 'backend', local: 'infra' },
+        desc_template: '{type} server',
+      },
+      agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
+      provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
+      command: { type: 'tool', domain: 'devops', desc_field: 'description' },
+    },
+    skill_dirs: ['~/.agents/skills', '~/.opencode/skills'],
   };
 }
 
@@ -52,7 +71,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record
   // a raw SQLite error from the next query. The curated capability model does
   // not come from the config, so seed it anyway: the graph is then a valid,
   // empty-of-your-stuff frontier rather than nothing.
-  const config = existsSync(cp) ? JSON.parse(readFileSync(cp, "utf8")) : {};
+  const config = existsSync(cp) ? JSON.parse(readFileSync(cp, 'utf8')) : {};
   const mapping = parseMapping(mappingStr);
 
   let count = 0;
@@ -63,16 +82,21 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record
     const entries = config[key] || {};
     for (const [name, val] of Object.entries<any>(entries)) {
       const type = cfg.type || 'tool';
-      const domain = cfg.domain || (cfg.domain_map && cfg.domain_map[val[cfg.domain_field || 'type']]) || 'infra';
-      const desc = (cfg.desc_field ? (val[cfg.desc_field] || '') : cfg.desc_template ? cfg.desc_template.replace('{type}', val.type || type) : '') || '';
+      const domain = cfg.domain || cfg.domain_map?.[val[cfg.domain_field || 'type']] || 'infra';
+      const desc =
+        (cfg.desc_field
+          ? val[cfg.desc_field] || ''
+          : cfg.desc_template
+            ? cfg.desc_template.replace('{type}', val.type || type)
+            : '') || '';
       insert.run(`${type}:${name}`, name, domain, desc.slice(0, 80), type, 'unlocked', 0.5);
       contributed.push(`${type}:${name}`);
       count++;
     }
   }
 
-  for (const dirPattern of (mapping.skill_dirs || [])) {
-    const dir = dirPattern.replace(/^~/, process.env.HOME || "/");
+  for (const dirPattern of mapping.skill_dirs || []) {
+    const dir = dirPattern.replace(/^~/, process.env.HOME || '/');
     if (!existsSync(dir)) continue;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       // Not entry.isDirectory(): a Dirent reports false for a symlink, and
@@ -81,20 +105,38 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record
       // Hermes install, all of them pointing at the same shared directory
       // OpenCode reads — precisely the capabilities two runtimes have in
       // common. existsSync follows the link.
-      if (!existsSync(join(dir, entry.name, "SKILL.md"))) continue;
-      insert.run(`skill:${entry.name}`, entry.name, 'meta', 'Agent skill', 'skill', 'unlocked', 0.55);
+      if (!existsSync(join(dir, entry.name, 'SKILL.md'))) continue;
+      insert.run(
+        `skill:${entry.name}`,
+        entry.name,
+        'meta',
+        'Agent skill',
+        'skill',
+        'unlocked',
+        0.55
+      );
       contributed.push(`skill:${entry.name}`);
       count++;
     }
   }
 
-  insert.run("core:reasoning", "Core Reasoning", "meta", "Base LLM reasoning", "meta", "active", 1.0);
-  insert.run("tool:bash", "Shell Execution", "infra", "Run commands", "tool", "active", 1.0);
-  insert.run("tool:edit", "File Editor", "meta", "Edit files", "tool", "active", 1.0);
-  insert.run("tool:lsp", "LSP Diagnostics", "quality", "Language server", "tool", "active", 0.95);
+  insert.run(
+    'core:reasoning',
+    'Core Reasoning',
+    'meta',
+    'Base LLM reasoning',
+    'meta',
+    'active',
+    1.0
+  );
+  insert.run('tool:bash', 'Shell Execution', 'infra', 'Run commands', 'tool', 'active', 1.0);
+  insert.run('tool:edit', 'File Editor', 'meta', 'Edit files', 'tool', 'active', 1.0);
+  insert.run('tool:lsp', 'LSP Diagnostics', 'quality', 'Language server', 'tool', 'active', 0.95);
   count += 4;
 
-  db.prepare("UPDATE capabilities SET state = 'active' WHERE id IN ('core:reasoning','tool:bash','tool:edit','tool:lsp')").run();
+  db.prepare(
+    "UPDATE capabilities SET state = 'active' WHERE id IN ('core:reasoning','tool:bash','tool:edit','tool:lsp')"
+  ).run();
 
   count += seedModels(db, config, insert);
   count += attributeToRuntime(db, insert, contributed);
@@ -140,7 +182,7 @@ function seedAuthority(db: Db, config: any): number {
     `INSERT OR IGNORE INTO authority (capability_id, action, mode, holder, scope, source, note)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
-  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const has = (id: string) => !!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
   const source = `runtime:${process.env.AMBIT_RUNTIME || 'opencode'}`;
   let count = 0;
 
@@ -195,7 +237,15 @@ function seedAuthority(db: Db, config: any): number {
     for (const [action, value] of Object.entries<any>(spec.scoped || {})) {
       const mode = typeof value === 'string' ? value : value?.mode;
       if (!mode) continue;
-      grant.run(runtimeId, action, mode, runtimeId, value?.scope || '', source, value?.note || null);
+      grant.run(
+        runtimeId,
+        action,
+        mode,
+        runtimeId,
+        value?.scope || '',
+        source,
+        value?.note || null
+      );
       count++;
     }
   }
@@ -218,7 +268,7 @@ function seedAuthority(db: Db, config: any): number {
  * providers as leaves and agents unconnected to anything. Their ids match the
  * visualizer's (`model:<provider>/<name>`) so both halves agree.
  */
-function seedModels(db: Db, config: any, insert: any): number {
+function seedModels(_db: Db, config: any, insert: any): number {
   let count = 0;
   for (const [provider, pv] of Object.entries<any>(config.provider || {})) {
     for (const [model, mv] of Object.entries<any>(pv?.models || {})) {
@@ -248,8 +298,7 @@ function seedModels(db: Db, config: any, insert: any): number {
  * since the schema has foreign keys on both columns.
  */
 function seedDependencies(db: Db, config: any): number {
-  const has = (id: string) =>
-    !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const has = (id: string) => !!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
   const link = edgeWriter(db);
   let count = 0;
 
@@ -282,7 +331,6 @@ function seedDependencies(db: Db, config: any): number {
   return count;
 }
 
-
 /**
  * Records which runtime contributed these capabilities.
  *
@@ -299,7 +347,15 @@ function attributeToRuntime(db: Db, insert: any, contributed: string[]): number 
   const runtime = process.env.AMBIT_RUNTIME || 'opencode';
   if (contributed.length === 0) return 0;
   const id = `runtime:${runtime}`;
-  insert.run(id, runtime, 'meta', `Agent runtime — contributes ${contributed.length} capabilities`, 'runtime', 'unlocked', 0.9);
+  insert.run(
+    id,
+    runtime,
+    'meta',
+    `Agent runtime — contributes ${contributed.length} capabilities`,
+    'runtime',
+    'unlocked',
+    0.9
+  );
   const link = edgeWriter(db);
   for (const capability of contributed) link.run(id, capability, 1, 'Contributed by runtime');
   return 1;
@@ -345,7 +401,11 @@ function seedTechTree(db: Db, insert: any): number {
     const patterns: string[] = node.detect?.any || [];
     const hits = owned.filter(id =>
       patterns.some(p => {
-        try { return new RegExp(p, 'i').test(id); } catch { return false; }
+        try {
+          return new RegExp(p, 'i').test(id);
+        } catch {
+          return false;
+        }
       })
     );
     const meetsMin = !node.detect?.min_models || modelCount >= node.detect.min_models;
@@ -370,7 +430,7 @@ function seedTechTree(db: Db, insert: any): number {
     // useful thing the tree can tell you, so say it rather than hiding it.
     const blocked = proof.length > 0 && missing.length > 0;
     const names = (ids: string[]) =>
-      ids.map(r => (tree.nodes.find((n: any) => n.id === r)?.name || r)).join(', ');
+      ids.map(r => tree.nodes.find((n: any) => n.id === r)?.name || r).join(', ');
     const description = reached
       ? node.description
       : blocked
@@ -429,8 +489,11 @@ function seedTechTree(db: Db, insert: any): number {
         reached ? 'unlocked' : 'locked',
         reached ? 0.7 : 0
       );
-      db.prepare("UPDATE capabilities SET state = ?, maturity_score = ? WHERE id = ?")
-        .run(reached ? 'unlocked' : 'locked', reached ? 0.7 : 0, actionId);
+      db.prepare('UPDATE capabilities SET state = ?, maturity_score = ? WHERE id = ?').run(
+        reached ? 'unlocked' : 'locked',
+        reached ? 0.7 : 0,
+        actionId
+      );
       link.run(id, actionId, 1, 'Provides this action');
       count++;
     }
@@ -451,7 +514,6 @@ function seedTechTree(db: Db, insert: any): number {
 
   return count;
 }
-
 
 /**
  * Seeds the people in the system.
@@ -479,8 +541,8 @@ function seedTechTree(db: Db, insert: any): number {
 function seedActors(db: Db, config: any, mapping: any, insert: any): number {
   const actors = { ...(mapping.actors || {}), ...(config.actors || {}) };
   const link = edgeWriter(db);
-  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
-  const pref = db.prepare("INSERT OR IGNORE INTO preferences (actor_id, preference) VALUES (?, ?)");
+  const has = (id: string) => !!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
+  const pref = db.prepare('INSERT OR IGNORE INTO preferences (actor_id, preference) VALUES (?, ?)');
   let count = 0;
 
   for (const [key, spec] of Object.entries<any>(actors)) {
@@ -492,7 +554,15 @@ function seedActors(db: Db, config: any, mapping: any, insert: any): number {
     // Things only this person can supply.
     for (const provided of spec?.provides || []) {
       const pid = provided.includes(':') ? provided : `act:${provided}`;
-      insert.run(pid, provided.replace(/-/g, ' '), 'social', `Provided by ${name}`, 'human-action', 'unlocked', 1.0);
+      insert.run(
+        pid,
+        provided.replace(/-/g, ' '),
+        'social',
+        `Provided by ${name}`,
+        'human-action',
+        'unlocked',
+        1.0
+      );
       link.run(id, pid, 1, 'Supplied by a person');
       count++;
     }
@@ -548,7 +618,7 @@ function seedActors(db: Db, config: any, mapping: any, insert: any): number {
 function seedCredentials(db: Db, config: any, mapping: any, insert: any): number {
   const credentials = { ...(mapping.credentials || {}), ...(config.credentials || {}) };
   const link = edgeWriter(db);
-  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const has = (id: string) => !!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
   let count = 0;
 
   for (const [key, spec] of Object.entries<any>(credentials)) {
@@ -566,7 +636,7 @@ function seedCredentials(db: Db, config: any, mapping: any, insert: any): number
       spec?.note || 'Credential',
       'credential',
       'unlocked',
-      1.0,
+      1.0
     );
     count++;
     for (const holder of holders) link.run(holder, id, 1, 'Authenticates with');
@@ -590,8 +660,7 @@ function seedCredentials(db: Db, config: any, mapping: any, insert: any): number
  */
 function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
   const combos = { ...(mapping.combos || {}), ...(config.combos || {}) };
-  const has = (id: string) =>
-    !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const has = (id: string) => !!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
   const link = edgeWriter(db);
   let count = 0;
 
@@ -612,8 +681,12 @@ function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
       0
     );
     count++;
-    for (const dep of requires) { link.run(dep, id, 1, 'Hard prerequisite'); }
-    for (const dep of optional) { link.run(dep, id, 0, 'Soft prerequisite'); }
+    for (const dep of requires) {
+      link.run(dep, id, 1, 'Hard prerequisite');
+    }
+    for (const dep of optional) {
+      link.run(dep, id, 0, 'Soft prerequisite');
+    }
   }
 
   return count;
@@ -637,15 +710,19 @@ function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
  * machine that is not declared cannot be assumed.
  */
 function seedInfrastructure(db: Db, insert: any): number {
-  const path = process.env.INFRA_MANIFEST || join(process.env.HOME || "/", ".config", "opencode", "infrastructure.json");
+  const path =
+    process.env.INFRA_MANIFEST ||
+    join(process.env.HOME || '/', '.config', 'opencode', 'infrastructure.json');
   let manifest: any = null;
   try {
-    if (existsSync(path)) manifest = JSON.parse(readFileSync(path, "utf8"));
-  } catch { /* an unreadable manifest is a missing one */ }
+    if (existsSync(path)) manifest = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    /* an unreadable manifest is a missing one */
+  }
   if (!manifest) return 0;
 
   const link = edgeWriter(db);
-  const has = (id: string) => !!db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+  const has = (id: string) => !!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
   let count = 0;
 
   for (const device of manifest.devices || []) {
@@ -661,8 +738,10 @@ function seedInfrastructure(db: Db, insert: any): number {
     count++;
     // A declared status endpoint is what makes it observable; record it.
     if (device.statusUrl) {
-      db.prepare("UPDATE capabilities SET description = ? WHERE id = ?")
-        .run(`${device.description || `Host ${device.name}`} · status: ${device.statusUrl}`, `device:${device.id}`);
+      db.prepare('UPDATE capabilities SET description = ? WHERE id = ?').run(
+        `${device.description || `Host ${device.name}`} · status: ${device.statusUrl}`,
+        `device:${device.id}`
+      );
     }
   }
 
@@ -724,8 +803,15 @@ function seedEconomics(db: Db, config: any): number {
     services: 'service',
   };
   const periodOf = (metric: string) =>
-    metric.includes('_per_hour') ? 'per_hour' : metric.includes('_per_month') ? 'per_month'
-      : metric.includes('_per_request') ? 'per_request' : metric.includes('_per_kwh') ? 'per_kwh' : 'one_time';
+    metric.includes('_per_hour')
+      ? 'per_hour'
+      : metric.includes('_per_month')
+        ? 'per_month'
+        : metric.includes('_per_request')
+          ? 'per_request'
+          : metric.includes('_per_kwh')
+            ? 'per_kwh'
+            : 'one_time';
 
   for (const [block, entityType] of Object.entries(entityTypeOf)) {
     for (const [id, metrics] of Object.entries<any>(config.economics?.[block] || {})) {
@@ -739,7 +825,7 @@ function seedEconomics(db: Db, config: any): number {
 
   // Goals declare dollars; the table stores cents, like every other value.
   const goal = db.prepare(
-    "INSERT OR REPLACE INTO goals (id, name, description, occurrence_rate_per_month, success_value_cents, failure_cost_cents) VALUES (?, ?, ?, ?, ?, ?)"
+    'INSERT OR REPLACE INTO goals (id, name, description, occurrence_rate_per_month, success_value_cents, failure_cost_cents) VALUES (?, ?, ?, ?, ?, ?)'
   );
   for (const [id, spec] of Object.entries<any>(config.goals || {})) {
     goal.run(
@@ -755,7 +841,7 @@ function seedEconomics(db: Db, config: any): number {
 
   // Budgets: what a granted action may cost, per period. Dollars in, cents out.
   const budget = db.prepare(
-    "INSERT OR REPLACE INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES (?, ?, ?, ?, ?, 0)"
+    'INSERT OR REPLACE INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES (?, ?, ?, ?, ?, 0)'
   );
   for (const [id, actions] of Object.entries<any>(config.budgets || {})) {
     for (const [action, spec] of Object.entries<any>(actions)) {
@@ -764,7 +850,11 @@ function seedEconomics(db: Db, config: any): number {
         id,
         action,
         spec.scope || '',
-        spec.budget_cents != null ? spec.budget_cents : (spec.budget_dollars != null ? spec.budget_dollars * 100 : 0),
+        spec.budget_cents != null
+          ? spec.budget_cents
+          : spec.budget_dollars != null
+            ? spec.budget_dollars * 100
+            : 0,
         spec.period || 'month'
       );
       count++;
@@ -805,10 +895,12 @@ function seedCatalog(db: Db, config: any): number {
         a.name,
         recurring === 'monthly' ? 'subscribe' : recurring === 'per-token' ? 'buy' : 'build',
         a.setup_seconds || 0,
-        null, null,
+        null,
+        null,
         a.privacy || 'local',
         a.note || null,
-        null, null,
+        null,
+        null,
         a.config_patch ? 'reversible' : 'irreversible',
         'techtree'
       );
@@ -829,7 +921,7 @@ function seedCatalog(db: Db, config: any): number {
         o.recurring_dollars_per_month != null ? o.recurring_dollars_per_month * 100 : null,
         o.privacy || 'local',
         o.verification || null,
-        Array.isArray(o.runtimes) ? o.runtimes.join(',') : (o.runtimes || null),
+        Array.isArray(o.runtimes) ? o.runtimes.join(',') : o.runtimes || null,
         o.expected_reliability ?? null,
         o.rollback || null,
         'declared'
@@ -842,7 +934,17 @@ function seedCatalog(db: Db, config: any): number {
 }
 
 export {
-  parseMapping, seedFromConfig, seedModels, seedDependencies, attributeToRuntime,
-  seedTechTree, seedActors, seedCombos, seedAuthority, seedInfrastructure,
-  seedEconomics, seedCatalog, seedCredentials,
+  parseMapping,
+  seedFromConfig,
+  seedModels,
+  seedDependencies,
+  attributeToRuntime,
+  seedTechTree,
+  seedActors,
+  seedCombos,
+  seedAuthority,
+  seedInfrastructure,
+  seedEconomics,
+  seedCatalog,
+  seedCredentials,
 };

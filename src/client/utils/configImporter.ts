@@ -1,7 +1,21 @@
 export interface Item {
   id: string;
   name: string;
-  type: 'framework' | 'mcp-server' | 'agent' | 'provider' | 'model' | 'command' | 'skill' | 'config' | 'possibility' | 'device' | 'service' | 'api' | 'network' | 'workflow';
+  type:
+    | 'framework'
+    | 'mcp-server'
+    | 'agent'
+    | 'provider'
+    | 'model'
+    | 'command'
+    | 'skill'
+    | 'config'
+    | 'possibility'
+    | 'device'
+    | 'service'
+    | 'api'
+    | 'network'
+    | 'workflow';
   status: 'built' | 'specified' | 'deprecated';
   description: string;
   position: { x: number; y: number; z: number };
@@ -19,9 +33,25 @@ export interface Connection {
 }
 
 interface OpenCodeConfig {
-  mcp?: Record<string, { type?: string; url?: string; command?: string[]; env?: Record<string, string>; enabled?: boolean }>;
+  mcp?: Record<
+    string,
+    {
+      type?: string;
+      url?: string;
+      command?: string[];
+      env?: Record<string, string>;
+      enabled?: boolean;
+    }
+  >;
   agent?: Record<string, { description?: string; mode?: string; color?: string; model?: string }>;
-  provider?: Record<string, { name?: string; models?: Record<string, { name?: string; limit?: { context?: number; output?: number } }>; embeddings?: Record<string, { name?: string }> }>;
+  provider?: Record<
+    string,
+    {
+      name?: string;
+      models?: Record<string, { name?: string; limit?: { context?: number; output?: number } }>;
+      embeddings?: Record<string, { name?: string }>;
+    }
+  >;
   command?: Record<string, { description?: string }>;
   skills?: { paths?: string[] };
   default_agent?: string;
@@ -102,7 +132,14 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       status: m.enabled !== false ? 'built' : 'specified',
       description: `${m.type || 'local'} MCP server` + (m.url ? ` — ${m.url}` : ''),
       position: { x: 0, y: 0, z: 0 },
-      meta: { url: m.url, command: m.command, envKeys: Object.keys(m.env || {}), type: m.type, domain: inferDomain(name, 'mcp-server', `${m.url || ''} ${(m.command || []).join(' ')}`), maturity: m.enabled !== false ? 0.8 : 0.3 },
+      meta: {
+        url: m.url,
+        command: m.command,
+        envKeys: Object.keys(m.env || {}),
+        type: m.type,
+        domain: inferDomain(name, 'mcp-server', `${m.url || ''} ${(m.command || []).join(' ')}`),
+        maturity: m.enabled !== false ? 0.8 : 0.3,
+      },
       group: m.type === 'remote' ? 'Cloudflare' : 'Local',
     });
     if (m.enabled !== false) {
@@ -120,7 +157,13 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
       status: 'built',
       description: a.description || '',
       position: { x: 0, y: 0, z: 0 },
-      meta: { mode: a.mode, color: a.color, model: a.model, domain: inferDomain(name, 'agent', a.description || ''), maturity: 0.75 },
+      meta: {
+        mode: a.mode,
+        color: a.color,
+        model: a.model,
+        domain: inferDomain(name, 'agent', a.description || ''),
+        maturity: 0.75,
+      },
       group: 'Agents',
     });
     connections.push({ from: 'opencode-core', to: `agent:${name}`, type: 'subagent' });
@@ -153,7 +196,11 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
         meta: { provider: name, context: model.limit?.context, domain: 'ai-ml', maturity: 0.8 },
         group: 'Models',
       });
-      connections.push({ from: `provider:${name}`, to: `model:${name}/${mname}`, type: 'provides' });
+      connections.push({
+        from: `provider:${name}`,
+        to: `model:${name}/${mname}`,
+        type: 'provides',
+      });
     }
   }
 
@@ -191,7 +238,12 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
   }
 
   // ── Structural config items ──
-  const structuralItems: { id: string; name: string; description: string; meta: Record<string, unknown> }[] = [];
+  const structuralItems: {
+    id: string;
+    name: string;
+    description: string;
+    meta: Record<string, unknown>;
+  }[] = [];
 
   if (config.watcher?.ignore?.length) {
     structuralItems.push({
@@ -231,7 +283,6 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
     });
     connections.push({ from: 'opencode-core', to: si.id, type: 'config' });
   }
-
 
   return { items, connections };
 }

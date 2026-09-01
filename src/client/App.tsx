@@ -29,8 +29,13 @@ export default function App() {
   const activeLens = useToolchainStore(s => s.activeLens);
   const setActiveLens = useToolchainStore(s => s.setActiveLens);
 
-  const [showDocs, setShowDocs] = useState(() => new URLSearchParams(window.location.search).get('docs') === 'open');
+  const [showDocs, setShowDocs] = useState(
+    () => new URLSearchParams(window.location.search).get('docs') === 'open'
+  );
   // ?demo=1 skips the LOAD DEMO click so a shared link opens already showing the graph.
+  // Deliberately mount-only. These are store actions with stable identities;
+  // listing them as dependencies would say this effect may re-run, and
+  // re-seeding the demo on a re-render is exactly what it must not do.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('demo') === '1') seedDemo();
     loadProposals();
@@ -39,11 +44,19 @@ export default function App() {
   // Shown once on first run, for real configs as well as the demo — it used to
   // fire only after LOAD DEMO, so the normal path taught nothing.
   const [showGuide, setShowGuide] = useState(() => {
-    try { return localStorage.getItem('cg.seenGuide') !== '1'; } catch { return true; }
+    try {
+      return localStorage.getItem('cg.seenGuide') !== '1';
+    } catch {
+      return true;
+    }
   });
   const dismissGuide = () => {
     setShowGuide(false);
-    try { localStorage.setItem('cg.seenGuide', '1'); } catch { /* private mode */ }
+    try {
+      localStorage.setItem('cg.seenGuide', '1');
+    } catch {
+      /* private mode */
+    }
   };
   // A transient notice from the AG-UI stream — an approval minted in the
   // browser broker, a proposal drafted — so the negotiation surface speaks
@@ -64,14 +77,14 @@ export default function App() {
   const [source, setSource] = useState<'config' | 'tree'>(
     params.get('view') === 'tree' ? 'tree' : 'config'
   );
-  const treeFilter = useToolchainStore(s => s.treeFilter);
-  const setTreeFilter = useToolchainStore(s => s.setTreeFilter);
   // ?view=tree, ?docs=open, ?focus=<id> and ?treeFilter=<domain> make a
   // particular state linkable and shareable; the filter itself is owned by the
   // store (see readInitialTreeFilter), which persists it across sessions.
   const demo = useToolchainStore(s => s.demo);
-  const [view, setView] = useState<'graph' | 'loop'>(params.get('view') === 'loop' ? 'loop' : 'graph');
-  const [focusId, setFocusId] = useState<string | null>(params.get('focus') || null);
+  const [view, setView] = useState<'graph' | 'loop'>(
+    params.get('view') === 'loop' ? 'loop' : 'graph'
+  );
+  const [focusId] = useState<string | null>(params.get('focus') || null);
 
   // The panel is 340px of absolutely-positioned overlay. On a phone that is the
   // whole screen: it covered the landing page, including the button that loads
@@ -126,7 +139,9 @@ export default function App() {
           // approval or a drafted proposal becomes a notice to act on, with the
           // exact command the terminal would run.
           if (event.type === 'ProposalApproved') {
-            setToast(`Approved: ${event.proposalId} — review with \`ambit proposal ${event.proposalId}\`, apply with \`ambit apply ${event.proposalId}\`.`);
+            setToast(
+              `Approved: ${event.proposalId} — review with \`ambit proposal ${event.proposalId}\`, apply with \`ambit apply ${event.proposalId}\`.`
+            );
             return;
           }
           if (event.type === 'WorkEvent') return; // telemetry, not a view change
@@ -134,20 +149,26 @@ export default function App() {
           // Either one is a signal to refetch the graph — the visualiser renders
           // the graph, not the counts, so the patch itself is not applied here.
           if (event.type !== 'StateSnapshot' && event.type !== 'StateDelta') return;
-          const fingerprint = event.type === 'StateDelta'
-            ? 'delta:' + JSON.stringify(event.delta)
-            : JSON.stringify(event.snapshot);
+          const fingerprint =
+            event.type === 'StateDelta'
+              ? 'delta:' + JSON.stringify(event.delta)
+              : JSON.stringify(event.snapshot);
           if (last && fingerprint !== last) {
             source === 'tree' ? loadTechTree() : loadConfig();
           }
           last = fingerprint;
-        } catch { /* a malformed frame should not take the view down */ }
+        } catch {
+          /* a malformed frame should not take the view down */
+        }
       };
       // Deliberately no onerror handler that closes: EventSource reconnects on
       // its own, and closing on the first transient error disabled live updates
       // permanently for the rest of the session.
     });
-    return () => { cancelled = true; es?.close(); };
+    return () => {
+      cancelled = true;
+      es?.close();
+    };
   }, [source, loadTechTree, loadConfig]);
 
   useEffect(() => {
@@ -155,23 +176,27 @@ export default function App() {
     // ?demo=1 already seeded the graph above; loadConfig()'s no-backend path
     // would otherwise clobber that seeded data back to an empty graph.
     if (params.get('demo') === '1') return;
-    if (source === 'tree') loadTechTree(); else loadConfig();
+    if (source === 'tree') loadTechTree();
+    else loadConfig();
     // Intentionally once on mount; the toggles drive later changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadTechTree, loadConfig, source, params.get, dismissGuide]);
 
   useEffect(() => {
     if (focusId && items.length > 0) {
       const item = items.find(i => i.id === focusId);
       if (item) selectItem(item.id);
     }
-  }, [focusId, items.length, selectItem]);
+  }, [focusId, items.length, selectItem, items.find]);
 
   // Global hotkey manager: [/] to search, [\] to toggle console, [?] for docs, [g] for governance, [Esc] to clear/close
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      ) {
         if (e.key === 'Escape') {
           target.blur();
         }
@@ -224,7 +249,9 @@ export default function App() {
           </div>
           <div className="app-status-pill">
             <span className="app-status-dot" />
-            <span>{items.filter(i => i.status === 'built').length} / {items.length} active</span>
+            <span>
+              {items.filter(i => i.status === 'built').length} / {items.length} active
+            </span>
           </div>
         </div>
 
@@ -233,7 +260,12 @@ export default function App() {
             <button
               type="button"
               className={`app-deck-tab ${view === 'graph' && source === 'tree' ? 'app-deck-tab--active' : ''}`}
-              onClick={() => { setView('graph'); setSource('tree'); selectItem(null); loadTechTree(); }}
+              onClick={() => {
+                setView('graph');
+                setSource('tree');
+                selectItem(null);
+                loadTechTree();
+              }}
               title="The capability tech tree — prerequisites, frontier, and compound paths"
             >
               Tech Tree
@@ -241,7 +273,12 @@ export default function App() {
             <button
               type="button"
               className={`app-deck-tab ${view === 'graph' && source === 'config' ? 'app-deck-tab--active' : ''}`}
-              onClick={() => { setView('graph'); setSource('config'); selectItem(null); loadConfigSource(); }}
+              onClick={() => {
+                setView('graph');
+                setSource('config');
+                selectItem(null);
+                loadConfigSource();
+              }}
               title="My Setup — discovered local runtimes, tools, and agents"
             >
               My Setup
@@ -250,7 +287,10 @@ export default function App() {
               <button
                 type="button"
                 className={`app-deck-tab ${view === 'loop' ? 'app-deck-tab--active' : ''}`}
-                onClick={() => { setView('loop'); selectItem(null); }}
+                onClick={() => {
+                  setView('loop');
+                  selectItem(null);
+                }}
                 title="The Economic Loop — attention telemetry, ROI tracking, and ranked investments"
               >
                 Economic Loop
@@ -259,10 +299,15 @@ export default function App() {
             <button
               type="button"
               className={`app-deck-btn ${proposals.some(p => p.status === 'draft') ? 'app-deck-btn--alert' : ''}`}
-              onClick={() => { setShowApprovalModal(true); loadProposals(); }}
+              onClick={() => {
+                setShowApprovalModal(true);
+                loadProposals();
+              }}
               title="Review and sign environment configuration proposals"
             >
-              Proposals {proposals.filter(p => p.status === 'draft').length > 0 && `(${proposals.filter(p => p.status === 'draft').length})`}
+              Proposals{' '}
+              {proposals.filter(p => p.status === 'draft').length > 0 &&
+                `(${proposals.filter(p => p.status === 'draft').length})`}
             </button>
           </nav>
         </div>
@@ -270,11 +315,13 @@ export default function App() {
         <div className="app-deck-right">
           {view === 'graph' && (
             <div className="app-deck-nav">
-              {([
-                ['default', 'Standard', '1'],
-                ['attention', 'Attention', '2'],
-                ['credentials', 'SPOFs', '3'],
-              ] as const).map(([lensKey, label, hotkey]) => (
+              {(
+                [
+                  ['default', 'Standard', '1'],
+                  ['attention', 'Attention', '2'],
+                  ['credentials', 'SPOFs', '3'],
+                ] as const
+              ).map(([lensKey, label, hotkey]) => (
                 <button
                   key={lensKey}
                   type="button"
@@ -282,12 +329,22 @@ export default function App() {
                   onClick={() => setActiveLens(lensKey)}
                   title={`Shortcut: Press ${hotkey}`}
                 >
-                  {label} <span style={{ opacity: 0.5, fontSize: '10px', marginLeft: '4px' }}>[{hotkey}]</span>
+                  {label}{' '}
+                  <span style={{ opacity: 0.5, fontSize: '10px', marginLeft: '4px' }}>
+                    [{hotkey}]
+                  </span>
                 </button>
               ))}
             </div>
           )}
-          <button type="button" className="app-deck-btn" onClick={() => setShowDocs(true)} title="Documentation & Concepts (Hotkey: ?)">Docs</button>
+          <button
+            type="button"
+            className="app-deck-btn"
+            onClick={() => setShowDocs(true)}
+            title="Documentation & Concepts (Hotkey: ?)"
+          >
+            Docs
+          </button>
         </div>
       </header>
 
@@ -301,32 +358,63 @@ export default function App() {
         {error && (
           <div className="app-error">
             <p>{error}</p>
-            <button className="tp-btn" onClick={() => loadConfig()}>Try again</button>
-            {typeof window !== 'undefined' &&
-              !backendAvailable() && (
-                <div style={{ marginTop: '8px', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                  <strong>Published demo note:</strong> Live updates require a running backend. 
-                  <a href="https://zz-plant.github.io/ambit/" style={{ color: 'var(--text-muted)' }} target="_blank" rel="noopener">Open the demo</a> 
-                  or <code>node src/engine/engine.ts seed</code> locally for full functionality.
-                </div>
-              )}
+            <button className="tp-btn" onClick={() => loadConfig()}>
+              Try again
+            </button>
+            {typeof window !== 'undefined' && !backendAvailable() && (
+              <div
+                style={{ marginTop: '8px', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}
+              >
+                <strong>Published demo note:</strong> Live updates require a running backend.
+                <a
+                  href="https://zz-plant.github.io/ambit/"
+                  style={{ color: 'var(--text-muted)' }}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Open the demo
+                </a>
+                or <code>node src/engine/engine.ts seed</code> locally for full functionality.
+              </div>
+            )}
           </div>
         )}
         {showGuide && view === 'graph' && items.length > 0 && (
           <div
             className="app-guide"
-            style={isNarrow ? undefined : { left: leftOpen ? 340 : 0, right: showDetailPanel && selectedId ? 340 : 0 }}
+            style={
+              isNarrow
+                ? undefined
+                : { left: leftOpen ? 340 : 0, right: showDetailPanel && selectedId ? 340 : 0 }
+            }
           >
             <div className="app-guide-head">
               <strong>Getting Started</strong>
-              <button className="app-guide-close" onClick={dismissGuide} aria-label="Dismiss">✕</button>
+              <button className="app-guide-close" onClick={dismissGuide} aria-label="Dismiss">
+                ✕
+              </button>
             </div>
             <ol className="app-guide-steps">
-              <li><strong>Click any node</strong> to inspect dependencies, verified evidence, and blast radius.</li>
-              <li><strong>Outlined nodes</strong> are reachable next steps on your frontier — their description explains what is needed.</li>
-              <li><strong>Tech Tree</strong> visualizes evolutionary prerequisites; <strong>My Setup</strong> inspects discovered local tools and agents.</li>
+              <li>
+                <strong>Click any node</strong> to inspect dependencies, verified evidence, and
+                blast radius.
+              </li>
+              <li>
+                <strong>Outlined nodes</strong> are reachable next steps on your frontier — their
+                description explains what is needed.
+              </li>
+              <li>
+                <strong>Tech Tree</strong> visualizes evolutionary prerequisites;{' '}
+                <strong>My Setup</strong> inspects discovered local tools and agents.
+              </li>
             </ol>
-            <button className="app-guide-more" onClick={() => { setShowDocs(true); dismissGuide(); }}>
+            <button
+              className="app-guide-more"
+              onClick={() => {
+                setShowDocs(true);
+                dismissGuide();
+              }}
+            >
               Read the concept guide →
             </button>
           </div>
@@ -335,7 +423,11 @@ export default function App() {
           <div className="app-welcome">
             <div className="app-welcome-hero">
               <div className="app-welcome-title">Ambit</div>
-              <div className="app-welcome-tagline">Map your agent environment as a capability tech tree.<br/>Audit blast radius, discover emergent combos, and govern changes safely.</div>
+              <div className="app-welcome-tagline">
+                Map your agent environment as a capability tech tree.
+                <br />
+                Audit blast radius, discover emergent combos, and govern changes safely.
+              </div>
               <div className="app-welcome-diagram">
                 <svg width="340" height="110" viewBox="0 0 340 110">
                   <defs>
@@ -344,44 +436,175 @@ export default function App() {
                       <stop offset="100%" stopColor="#0ea5e9" />
                     </linearGradient>
                   </defs>
-                  <rect x={0} y={0} width={340} height={110} rx={12} fill="#111827" stroke="rgba(255,255,255,0.08)" strokeWidth={1}/>
-                  
+                  <rect
+                    x={0}
+                    y={0}
+                    width={340}
+                    height={110}
+                    rx={12}
+                    fill="#111827"
+                    stroke="rgba(255,255,255,0.08)"
+                    strokeWidth={1}
+                  />
+
                   {/* Subtle connection paths */}
-                  <line x1={60} y1={55} x2={150} y2={35} stroke="#3b82f6" strokeWidth={1.5} opacity={0.6}/>
-                  <line x1={150} y1={35} x2={260} y2={55} stroke="#6366f1" strokeWidth={1.5} opacity={0.6}/>
-                  <line x1={60} y1={55} x2={150} y2={75} stroke="#10b981" strokeWidth={1.5} opacity={0.6}/>
-                  <line x1={150} y1={75} x2={260} y2={55} stroke="#10b981" strokeWidth={1.5} opacity={0.6}/>
-                  
+                  <line
+                    x1={60}
+                    y1={55}
+                    x2={150}
+                    y2={35}
+                    stroke="#3b82f6"
+                    strokeWidth={1.5}
+                    opacity={0.6}
+                  />
+                  <line
+                    x1={150}
+                    y1={35}
+                    x2={260}
+                    y2={55}
+                    stroke="#6366f1"
+                    strokeWidth={1.5}
+                    opacity={0.6}
+                  />
+                  <line
+                    x1={60}
+                    y1={55}
+                    x2={150}
+                    y2={75}
+                    stroke="#10b981"
+                    strokeWidth={1.5}
+                    opacity={0.6}
+                  />
+                  <line
+                    x1={150}
+                    y1={75}
+                    x2={260}
+                    y2={55}
+                    stroke="#10b981"
+                    strokeWidth={1.5}
+                    opacity={0.6}
+                  />
+
                   {/* Nodes */}
-                  <circle cx={60} cy={55} r={16} fill="#1e293b" stroke="#3b82f6" strokeWidth={2}/>
-                  <text x={60} y={59} textAnchor="middle" fill="#93c5fd" fontSize={11} fontWeight={600}>LLM</text>
-                  
-                  <circle cx={150} cy={35} r={14} fill="#1e293b" stroke="#6366f1" strokeWidth={2}/>
-                  <text x={150} y={39} textAnchor="middle" fill="#c7d2fe" fontSize={10} fontWeight={600}>MCP</text>
-                  
-                  <circle cx={150} cy={75} r={14} fill="#1e293b" stroke="#10b981" strokeWidth={2}/>
-                  <text x={150} y={79} textAnchor="middle" fill="#a7f3d0" fontSize={10} fontWeight={600}>Tool</text>
-                  
-                  <circle cx={260} cy={55} r={18} fill="#1e293b" stroke="#0ea5e9" strokeWidth={2}/>
-                  <text x={260} y={59} textAnchor="middle" fill="#7dd3fc" fontSize={11} fontWeight={700}>Goal</text>
+                  <circle cx={60} cy={55} r={16} fill="#1e293b" stroke="#3b82f6" strokeWidth={2} />
+                  <text
+                    x={60}
+                    y={59}
+                    textAnchor="middle"
+                    fill="#93c5fd"
+                    fontSize={11}
+                    fontWeight={600}
+                  >
+                    LLM
+                  </text>
+
+                  <circle cx={150} cy={35} r={14} fill="#1e293b" stroke="#6366f1" strokeWidth={2} />
+                  <text
+                    x={150}
+                    y={39}
+                    textAnchor="middle"
+                    fill="#c7d2fe"
+                    fontSize={10}
+                    fontWeight={600}
+                  >
+                    MCP
+                  </text>
+
+                  <circle cx={150} cy={75} r={14} fill="#1e293b" stroke="#10b981" strokeWidth={2} />
+                  <text
+                    x={150}
+                    y={79}
+                    textAnchor="middle"
+                    fill="#a7f3d0"
+                    fontSize={10}
+                    fontWeight={600}
+                  >
+                    Tool
+                  </text>
+
+                  <circle cx={260} cy={55} r={18} fill="#1e293b" stroke="#0ea5e9" strokeWidth={2} />
+                  <text
+                    x={260}
+                    y={59}
+                    textAnchor="middle"
+                    fill="#7dd3fc"
+                    fontSize={11}
+                    fontWeight={700}
+                  >
+                    Goal
+                  </text>
                 </svg>
               </div>
               <div className="app-welcome-actions">
-                <button className="app-welcome-btn" onClick={() => { seedDemo(); }}>Explore Interactive Demo</button>
-                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => { seedDemo(); setView('loop'); }}>View Economic Loop</button>
-                <button className="app-welcome-btn app-welcome-btn-outline" onClick={() => setShowDocs(true)}>Documentation</button>
-                <a href="https://github.com/zz-plant/ambit" target="_blank" rel="noopener" className="app-welcome-btn app-welcome-btn-outline">GitHub</a>
+                <button
+                  className="app-welcome-btn"
+                  onClick={() => {
+                    seedDemo();
+                  }}
+                >
+                  Explore Interactive Demo
+                </button>
+                <button
+                  className="app-welcome-btn app-welcome-btn-outline"
+                  onClick={() => {
+                    seedDemo();
+                    setView('loop');
+                  }}
+                >
+                  View Economic Loop
+                </button>
+                <button
+                  className="app-welcome-btn app-welcome-btn-outline"
+                  onClick={() => setShowDocs(true)}
+                >
+                  Documentation
+                </button>
+                <a
+                  href="https://github.com/zz-plant/ambit"
+                  target="_blank"
+                  rel="noopener"
+                  className="app-welcome-btn app-welcome-btn-outline"
+                >
+                  GitHub
+                </a>
               </div>
-              <div className="app-welcome-code"><code>node src/engine/engine.ts seed &amp;&amp; node src/engine/engine.ts status</code></div>
-              <div className="app-welcome-modes"><span><em>LOAD DEMO</em> — a sample capability graph to click around</span><span><em>SEE THE LOOP</em> — where time goes, what to build next, what it paid back</span><span>The real thing: Node 22, no dependencies — one command</span></div>
+              <div className="app-welcome-code">
+                <code>
+                  node src/engine/engine.ts seed &amp;&amp; node src/engine/engine.ts status
+                </code>
+              </div>
+              <div className="app-welcome-modes">
+                <span>
+                  <em>LOAD DEMO</em> — a sample capability graph to click around
+                </span>
+                <span>
+                  <em>SEE THE LOOP</em> — where time goes, what to build next, what it paid back
+                </span>
+                <span>The real thing: Node 22, no dependencies — one command</span>
+              </div>
             </div>
           </div>
         )}
         {view === 'loop' && demo ? (
           <DemoDashboard />
         ) : items.length > 0 ? (
-          <Suspense fallback={<div className="app-loading"><div className="app-loading-ring" /><p>Loading capability graph…</p></div>}>
-            <CivTree items={items} connections={connections} selectedId={selectedId} hoveredId={hoveredId} onSelect={selectItem} onHover={hoverItem} leftInset={leftOpen && !isNarrow ? 348 : 8} />
+          <Suspense
+            fallback={
+              <div className="app-loading">
+                <div className="app-loading-ring" />
+                <p>Loading capability graph…</p>
+              </div>
+            }
+          >
+            <CivTree
+              items={items}
+              connections={connections}
+              selectedId={selectedId}
+              hoveredId={hoveredId}
+              onSelect={selectItem}
+              onHover={hoverItem}
+              leftInset={leftOpen && !isNarrow ? 348 : 8}
+            />
           </Suspense>
         ) : null}
       </div>
@@ -393,7 +616,11 @@ export default function App() {
       )}
 
       {leftOpen && isNarrow && (
-        <div className="app-drawer-backdrop" onClick={() => setLeftOpen(false)} aria-hidden="true" />
+        <div
+          className="app-drawer-backdrop"
+          onClick={() => setLeftOpen(false)}
+          aria-hidden="true"
+        />
       )}
 
       <aside className={`app-console ${leftOpen ? 'app-console--open' : ''}`}>
@@ -407,13 +634,20 @@ export default function App() {
       {toast && (
         <div role="status" className="ambit-toast">
           <span>{toast}</span>
-          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', justifyContent: 'flex-end' }}>
+          <div
+            style={{ display: 'flex', gap: '6px', marginTop: '6px', justifyContent: 'flex-end' }}
+          >
             {toast.includes('Approved:') && (
               <button
                 type="button"
                 className="tp-btn-sm"
-                style={{ fontSize: '10px', padding: '2px 8px', color: 'var(--ok)', borderColor: 'var(--ok)' }}
-                onClick={(e) => {
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 8px',
+                  color: 'var(--ok)',
+                  borderColor: 'var(--ok)',
+                }}
+                onClick={e => {
                   e.stopPropagation();
                   setShowApprovalModal(true);
                   setToast(null);
@@ -426,7 +660,7 @@ export default function App() {
               type="button"
               className="tp-btn-sm"
               style={{ fontSize: '10px', padding: '2px 8px' }}
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 setToast(null);
               }}
@@ -441,7 +675,9 @@ export default function App() {
         {selectedId
           ? (() => {
               const item = items.find(i => i.id === selectedId);
-              return item ? `Selected ${item.name}. ${item.status === 'built' ? 'Reached' : 'Not reached'}.` : '';
+              return item
+                ? `Selected ${item.name}. ${item.status === 'built' ? 'Reached' : 'Not reached'}.`
+                : '';
             })()
           : ''}
       </div>

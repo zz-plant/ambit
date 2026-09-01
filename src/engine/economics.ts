@@ -1,4 +1,4 @@
-import type { Migratable } from "./migrate.ts";
+import type { Migratable } from './migrate.ts';
 
 /**
  * The economic model: what a unit of agency, capacity or service costs, and
@@ -20,19 +20,28 @@ import type { Migratable } from "./migrate.ts";
 export const DEFAULT_ATTENTION_CENTS_PER_HOUR = 25000;
 
 /** A declared economic value in cents, or null when none is recorded. */
-function valueCents(db: Migratable, entityType: string, entityId: string, metric: string): number | null {
-  const row = db.prepare(
-    "SELECT value_cents FROM economics WHERE entity_type = ? AND entity_id = ? AND metric = ? AND source = 'declared' ORDER BY id DESC LIMIT 1"
-  ).get(entityType, entityId, metric) as any;
+function valueCents(
+  db: Migratable,
+  entityType: string,
+  entityId: string,
+  metric: string
+): number | null {
+  const row = db
+    .prepare(
+      "SELECT value_cents FROM economics WHERE entity_type = ? AND entity_id = ? AND metric = ? AND source = 'declared' ORDER BY id DESC LIMIT 1"
+    )
+    .get(entityType, entityId, metric) as any;
   return row?.value_cents ?? null;
 }
 
 /** One metric for every entity of a type, as a map keyed by entity id. */
 function metricByEntity(db: Migratable, entityType: string, metric: string): Map<string, number> {
   const out = new Map<string, number>();
-  for (const r of db.prepare(
-    "SELECT entity_id, value_cents FROM economics WHERE entity_type = ? AND metric = ? AND source = 'declared'"
-  ).all(entityType, metric) as any[]) {
+  for (const r of db
+    .prepare(
+      "SELECT entity_id, value_cents FROM economics WHERE entity_type = ? AND metric = ? AND source = 'declared'"
+    )
+    .all(entityType, metric) as any[]) {
     out.set(r.entity_id, r.value_cents);
   }
   return out;
@@ -46,9 +55,9 @@ function attentionValueCentsPerHour(db: Migratable, actorId: string): number {
 
 /** The goal row, matched by id or by name. */
 function goalValue(db: Migratable, goalIdOrName: string): Record<string, any> | null {
-  const byId = db.prepare("SELECT * FROM goals WHERE id = ?").get(goalIdOrName) as any;
+  const byId = db.prepare('SELECT * FROM goals WHERE id = ?').get(goalIdOrName) as any;
   if (byId) return byId;
-  const byName = db.prepare("SELECT * FROM goals WHERE name = ?").get(goalIdOrName) as any;
+  const byName = db.prepare('SELECT * FROM goals WHERE name = ?').get(goalIdOrName) as any;
   return byName || null;
 }
 
@@ -62,22 +71,28 @@ function goalValue(db: Migratable, goalIdOrName: string): Record<string, any> | 
  * difference between "declared" and "defaulted".
  */
 function economicsReport(db: Migratable) {
-  const rows = db.prepare(
-    "SELECT entity_type, entity_id, metric, value_cents, period, source FROM economics ORDER BY entity_type, entity_id, metric"
-  ).all() as any[];
-  const goals = db.prepare("SELECT id, name, occurrence_rate_per_month, success_value_cents, failure_cost_cents FROM goals ORDER BY id").all() as any[];
+  const rows = db
+    .prepare(
+      'SELECT entity_type, entity_id, metric, value_cents, period, source FROM economics ORDER BY entity_type, entity_id, metric'
+    )
+    .all() as any[];
+  const goals = db
+    .prepare(
+      'SELECT id, name, occurrence_rate_per_month, success_value_cents, failure_cost_cents FROM goals ORDER BY id'
+    )
+    .all() as any[];
 
-  const dollars = (cents: number | null) => cents == null ? undefined : Math.round(cents) / 100;
+  const dollars = (cents: number | null) => (cents == null ? undefined : Math.round(cents) / 100);
 
   return {
-    economics: rows.map((r) => ({
+    economics: rows.map(r => ({
       entity: `${r.entity_type}:${r.entity_id}`,
       metric: r.metric,
       value_dollars: dollars(r.value_cents),
       period: r.period,
       source: r.source,
     })),
-    goals: goals.map((g) => ({
+    goals: goals.map(g => ({
       id: g.id,
       name: g.name,
       occurrence_rate_per_month: g.occurrence_rate_per_month,
@@ -88,6 +103,4 @@ function economicsReport(db: Migratable) {
   };
 }
 
-export {
-  valueCents, metricByEntity, attentionValueCentsPerHour, goalValue, economicsReport,
-};
+export { valueCents, metricByEntity, attentionValueCentsPerHour, goalValue, economicsReport };

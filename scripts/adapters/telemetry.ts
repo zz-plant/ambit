@@ -53,9 +53,13 @@ rl.on('line', (line: string) => {
     console.error(`line ${lines}: not JSON — skipped`);
     return;
   }
-  const verb = ['run', 'end', 'event', 'use', 'intervention', 'resource', 'outcome'].find(k => body[k]);
+  const verb = ['run', 'end', 'event', 'use', 'intervention', 'resource', 'outcome'].find(
+    k => body[k]
+  );
   if (!verb) {
-    console.error(`line ${lines}: no ledger verb — send one of run, end, event, use, intervention, resource, outcome`);
+    console.error(
+      `line ${lines}: no ledger verb — send one of run, end, event, use, intervention, resource, outcome`
+    );
     return;
   }
   // Awaited on close: process.exit must not kill a fetch before it sends.

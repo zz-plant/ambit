@@ -17,9 +17,7 @@ import { join } from 'node:path';
  * ~/.config/opencode/toolchain-viz.db and therefore wrote every event into a
  * database the engine never read — which is why session_learning stayed empty.
  */
-const DB_PATH =
-  process.env.TOOLCHAIN_DB ||
-  join(process.cwd(), 'toolchain-viz.db');
+const DB_PATH = process.env.TOOLCHAIN_DB || join(process.cwd(), 'toolchain-viz.db');
 
 // Runs in a child process because node:sqlite needs --experimental-sqlite,
 // which the host process will not necessarily have been started with.
@@ -62,10 +60,10 @@ function write(capabilityId, action, notes) {
 /** Both shapes appear across OpenCode versions. */
 const field = (event, key) => event?.properties?.[key] ?? event?.[key];
 
-export const TechTreeTracker = async (ctx) => {
+export const TechTreeTracker = async ctx => {
   if (!ctx?.on) return { techTreeAvailable: false, dbPath: DB_PATH };
 
-  const record = (action, notes) => (event) => {
+  const record = (action, notes) => event => {
     const name = field(event, 'name');
     const type = field(event, 'type');
     if (name && type) write(`${type}:${name}`, action, notes);
@@ -73,7 +71,7 @@ export const TechTreeTracker = async (ctx) => {
 
   ctx.on('config:added', record('built', 'Added to configuration'));
   ctx.on('config:removed', record('removed', 'Removed from configuration'));
-  ctx.on('combo:unlocked', (event) => {
+  ctx.on('combo:unlocked', event => {
     const name = field(event, 'combo');
     if (name) write(`combo:${name}`, 'unlocked', 'Combo prerequisites satisfied');
   });

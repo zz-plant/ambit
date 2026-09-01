@@ -18,7 +18,14 @@ function isNarrowViewport(): boolean {
 }
 
 export type TreeFilter = 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
-export const TREE_FILTERS: readonly TreeFilter[] = ['all', 'server', 'agent', 'skill', 'combo', 'compact'];
+export const TREE_FILTERS: readonly TreeFilter[] = [
+  'all',
+  'server',
+  'agent',
+  'skill',
+  'combo',
+  'compact',
+];
 
 /** The one place the filter's initial value comes from: URL param wins over a
  *  saved preference, both are validated, everything else is 'all'. */
@@ -41,7 +48,12 @@ let backendProbe: Promise<boolean> | null = null;
  */
 export function backendAvailable(): Promise<boolean> {
   backendProbe ??= fetch('/api/health')
-    .then(r => r.json().then((j: any) => j?.status === 'ok').catch(() => false))
+    .then(r =>
+      r
+        .json()
+        .then((j: any) => j?.status === 'ok')
+        .catch(() => false)
+    )
     .catch(() => false);
   return backendProbe;
 }
@@ -53,12 +65,7 @@ import type {
   InfrastructureScan,
 } from '../../shared/types.ts';
 
-export type {
-  InfrastructureNode,
-  InfrastructureLink,
-  InfrastructureFinding,
-  InfrastructureScan,
-};
+export type { InfrastructureNode, InfrastructureLink, InfrastructureFinding, InfrastructureScan };
 
 export type ActiveLens = 'default' | 'attention' | 'credentials';
 export type SimulationMode = 'none' | 'outage' | 'acquisition';
@@ -103,7 +110,10 @@ interface StoreState {
   startAcquisitionSimulation: (nodeId: string) => void;
   clearSimulation: () => void;
   loadProposals: () => Promise<void>;
-  approveProposal: (proposalId: string, actor?: string) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
+  approveProposal: (
+    proposalId: string,
+    actor?: string
+  ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
   loadAttentionData: () => Promise<void>;
   setItems: (items: Item[], connections: Connection[]) => void;
   selectItem: (id: string | null) => void;
@@ -153,17 +163,19 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
 
   setItems: (items, connections) => set({ items, connections }),
 
-  selectItem: (id) => {
+  selectItem: id => {
     const s = get();
     const next = s.selectedItem === id ? null : id;
     set({ selectedItem: next, showDetailPanel: next !== null, showStarPanel: next !== null });
   },
-  hoverItem: (id) => set({ hoveredItem: id }),
-  setSearch: (q) => set({ searchQuery: q }),
-  toggleDetailPanel: () => set(s => ({ showDetailPanel: !s.showDetailPanel, showStarPanel: !s.showDetailPanel })),
-  toggleStarPanel: () => set(s => ({ showDetailPanel: !s.showStarPanel, showStarPanel: !s.showStarPanel })),
-  setShowApprovalModal: (show) => set({ showApprovalModal: show }),
-  setActiveLens: (lens) => set({ activeLens: lens }),
+  hoverItem: id => set({ hoveredItem: id }),
+  setSearch: q => set({ searchQuery: q }),
+  toggleDetailPanel: () =>
+    set(s => ({ showDetailPanel: !s.showDetailPanel, showStarPanel: !s.showDetailPanel })),
+  toggleStarPanel: () =>
+    set(s => ({ showDetailPanel: !s.showStarPanel, showStarPanel: !s.showStarPanel })),
+  setShowApprovalModal: show => set({ showApprovalModal: show }),
+  setActiveLens: lens => set({ activeLens: lens }),
 
   startOutageSimulation: (nodeId: string) => {
     const { connections } = get();
@@ -223,11 +235,12 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     });
   },
 
-  clearSimulation: () => set({
-    simulationMode: 'none',
-    simulatedNodeId: null,
-    simulatedCascadeIds: new Set<string>(),
-  }),
+  clearSimulation: () =>
+    set({
+      simulationMode: 'none',
+      simulatedNodeId: null,
+      simulatedCascadeIds: new Set<string>(),
+    }),
 
   loadProposals: async () => {
     if (!(await backendAvailable())) {
@@ -255,8 +268,8 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
             ]),
             approved_by: 'human:kanav',
             approved_at: new Date(Date.now() - 72000000).toISOString(),
-          }
-        ]
+          },
+        ],
       });
       return;
     }
@@ -266,19 +279,25 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
         const data = await res.json();
         set({ proposals: data.proposals || [] });
       }
-    } catch { /* ignore error */ }
+    } catch {
+      /* ignore error */
+    }
   },
 
   approveProposal: async (proposalId: string, actor = 'human:kanav') => {
     if (!(await backendAvailable())) {
       // Demo mode approval simulation
       set(state => ({
-        proposals: state.proposals.map(p => p.id === proposalId ? {
-          ...p,
-          status: 'approved',
-          approved_by: actor,
-          approved_at: new Date().toISOString(),
-        } : p)
+        proposals: state.proposals.map(p =>
+          p.id === proposalId
+            ? {
+                ...p,
+                status: 'approved',
+                approved_by: actor,
+                approved_at: new Date().toISOString(),
+              }
+            : p
+        ),
       }));
       return {
         ok: true,
@@ -288,7 +307,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
           timestamp: new Date().toISOString(),
           signature: 'hmac-sha256-demo-sig-7f8a9b2c3d4e5f',
           expires_at: new Date(Date.now() + 86400000).toISOString(),
-        }
+        },
       };
     }
     try {
@@ -321,20 +340,22 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
         }
         set({ attentionInterventions: map });
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   },
-  loadFromJSON: (jsonStr) => {
+  loadFromJSON: jsonStr => {
     try {
       const data = JSON.parse(jsonStr);
       const items: Item[] = (data.items || []).map((i: Partial<Item>) => ({
         ...i,
         status: i.status || 'built',
         position: i.position || { x: 0, y: 0, z: 0 },
-        meta: i.meta || {}
+        meta: i.meta || {},
       }));
       const connections: Connection[] = (data.connections || []).map((c: Partial<Connection>) => ({
         ...c,
-        type: c.type || 'connects'
+        type: c.type || 'connects',
       }));
       set({ items, connections, loading: false, error: null });
       return true;
@@ -345,48 +366,239 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
 
   seedDemo: () => {
     const items: Omit<Item, 'position'>[] = [
-      {id:'opencode-core',name:'OpenCode',type:'framework',status:'built',description:'Main framework',meta:{domain:'meta'}},
-      {id:'mcp:playwright',name:'Playwright',type:'mcp-server',status:'built',description:'Browser automation',meta:{domain:'quality'}},
-      {id:'mcp:cloudflare',name:'Cloudflare',type:'mcp-server',status:'built',description:'Edge compute',meta:{domain:'backend'}},
-      {id:'mcp:tailscale',name:'Tailscale',type:'mcp-server',status:'built',description:'Mesh VPN',meta:{domain:'infra'}},
-      {id:'mcp:github',name:'GitHub',type:'mcp-server',status:'built',description:'CI + repos',meta:{domain:'devops'}},
-      {id:'mcp:1password',name:'1Password',type:'mcp-server',status:'built',description:'Secrets',meta:{domain:'security'}},
-      {id:'mcp:brew',name:'Homebrew',type:'mcp-server',status:'built',description:'Packages',meta:{domain:'devops'}},
-      {id:'agent:oracle',name:'Oracle',type:'agent',status:'built',description:'Debugging',meta:{domain:'meta'}},
-      {id:'agent:deep',name:'Deep Agent',type:'agent',status:'built',description:'Autonomous',meta:{domain:'meta'}},
-      {id:'agent:steward',name:'Steward',type:'agent',status:'built',description:'Repos',meta:{domain:'devops'}},
-      {id:'skill:frontend',name:'Frontend',type:'skill',status:'built',description:'UI patterns',meta:{domain:'frontend'}},
-      {id:'skill:cloudflare',name:'Cloudflare',type:'skill',status:'built',description:'Workers',meta:{domain:'backend'}},
-      {id:'skill:wrangler',name:'Wrangler',type:'skill',status:'built',description:'CLI',meta:{domain:'backend'}},
-      {id:'skill:playwright',name:'Browser',type:'skill',status:'built',description:'E2E',meta:{domain:'quality'}},
-      {id:'skill:vitest',name:'Vitest',type:'skill',status:'built',description:'Unit tests',meta:{domain:'quality'}},
-      {id:'skill:durable-objects',name:'Durable Objects',type:'skill',status:'specified',description:'Stateful',meta:{domain:'backend'}},
-      {id:'skill:agents-sdk',name:'Agents SDK',type:'skill',status:'specified',description:'Framework',meta:{domain:'ai-ml'}},
-      {id:'skill:llm',name:'LLM',type:'skill',status:'built',description:'Local models',meta:{domain:'ai-ml'}},
-      {id:'skill:gguf',name:'GGUF',type:'skill',status:'built',description:'Quant',meta:{domain:'ai-ml'}},
-      {id:'combo:e2e',name:'E2E on Edge',type:'possibility',status:'specified',description:'Deploy+verify',meta:{domain:'quality'}},
-      {id:'combo:deploy',name:'Deploy Pipeline',type:'possibility',status:'specified',description:'Push→build',meta:{domain:'devops'}},
-      {id:'combo:local-ai',name:'Local Inference',type:'possibility',status:'built',description:'Quant→run',meta:{domain:'ai-ml'}},
-      {id:'tool:bash',name:'Shell',type:'framework',status:'built',description:'Commands',meta:{domain:'infra'}},
-      {id:'tool:edit',name:'Editor',type:'framework',status:'built',description:'Files',meta:{domain:'meta'}},
-      {id:'tool:lsp',name:'LSP',type:'framework',status:'built',description:'Diagnostics',meta:{domain:'quality'}},
+      {
+        id: 'opencode-core',
+        name: 'OpenCode',
+        type: 'framework',
+        status: 'built',
+        description: 'Main framework',
+        meta: { domain: 'meta' },
+      },
+      {
+        id: 'mcp:playwright',
+        name: 'Playwright',
+        type: 'mcp-server',
+        status: 'built',
+        description: 'Browser automation',
+        meta: { domain: 'quality' },
+      },
+      {
+        id: 'mcp:cloudflare',
+        name: 'Cloudflare',
+        type: 'mcp-server',
+        status: 'built',
+        description: 'Edge compute',
+        meta: { domain: 'backend' },
+      },
+      {
+        id: 'mcp:tailscale',
+        name: 'Tailscale',
+        type: 'mcp-server',
+        status: 'built',
+        description: 'Mesh VPN',
+        meta: { domain: 'infra' },
+      },
+      {
+        id: 'mcp:github',
+        name: 'GitHub',
+        type: 'mcp-server',
+        status: 'built',
+        description: 'CI + repos',
+        meta: { domain: 'devops' },
+      },
+      {
+        id: 'mcp:1password',
+        name: '1Password',
+        type: 'mcp-server',
+        status: 'built',
+        description: 'Secrets',
+        meta: { domain: 'security' },
+      },
+      {
+        id: 'mcp:brew',
+        name: 'Homebrew',
+        type: 'mcp-server',
+        status: 'built',
+        description: 'Packages',
+        meta: { domain: 'devops' },
+      },
+      {
+        id: 'agent:oracle',
+        name: 'Oracle',
+        type: 'agent',
+        status: 'built',
+        description: 'Debugging',
+        meta: { domain: 'meta' },
+      },
+      {
+        id: 'agent:deep',
+        name: 'Deep Agent',
+        type: 'agent',
+        status: 'built',
+        description: 'Autonomous',
+        meta: { domain: 'meta' },
+      },
+      {
+        id: 'agent:steward',
+        name: 'Steward',
+        type: 'agent',
+        status: 'built',
+        description: 'Repos',
+        meta: { domain: 'devops' },
+      },
+      {
+        id: 'skill:frontend',
+        name: 'Frontend',
+        type: 'skill',
+        status: 'built',
+        description: 'UI patterns',
+        meta: { domain: 'frontend' },
+      },
+      {
+        id: 'skill:cloudflare',
+        name: 'Cloudflare',
+        type: 'skill',
+        status: 'built',
+        description: 'Workers',
+        meta: { domain: 'backend' },
+      },
+      {
+        id: 'skill:wrangler',
+        name: 'Wrangler',
+        type: 'skill',
+        status: 'built',
+        description: 'CLI',
+        meta: { domain: 'backend' },
+      },
+      {
+        id: 'skill:playwright',
+        name: 'Browser',
+        type: 'skill',
+        status: 'built',
+        description: 'E2E',
+        meta: { domain: 'quality' },
+      },
+      {
+        id: 'skill:vitest',
+        name: 'Vitest',
+        type: 'skill',
+        status: 'built',
+        description: 'Unit tests',
+        meta: { domain: 'quality' },
+      },
+      {
+        id: 'skill:durable-objects',
+        name: 'Durable Objects',
+        type: 'skill',
+        status: 'specified',
+        description: 'Stateful',
+        meta: { domain: 'backend' },
+      },
+      {
+        id: 'skill:agents-sdk',
+        name: 'Agents SDK',
+        type: 'skill',
+        status: 'specified',
+        description: 'Framework',
+        meta: { domain: 'ai-ml' },
+      },
+      {
+        id: 'skill:llm',
+        name: 'LLM',
+        type: 'skill',
+        status: 'built',
+        description: 'Local models',
+        meta: { domain: 'ai-ml' },
+      },
+      {
+        id: 'skill:gguf',
+        name: 'GGUF',
+        type: 'skill',
+        status: 'built',
+        description: 'Quant',
+        meta: { domain: 'ai-ml' },
+      },
+      {
+        id: 'combo:e2e',
+        name: 'E2E on Edge',
+        type: 'possibility',
+        status: 'specified',
+        description: 'Deploy+verify',
+        meta: { domain: 'quality' },
+      },
+      {
+        id: 'combo:deploy',
+        name: 'Deploy Pipeline',
+        type: 'possibility',
+        status: 'specified',
+        description: 'Push→build',
+        meta: { domain: 'devops' },
+      },
+      {
+        id: 'combo:local-ai',
+        name: 'Local Inference',
+        type: 'possibility',
+        status: 'built',
+        description: 'Quant→run',
+        meta: { domain: 'ai-ml' },
+      },
+      {
+        id: 'tool:bash',
+        name: 'Shell',
+        type: 'framework',
+        status: 'built',
+        description: 'Commands',
+        meta: { domain: 'infra' },
+      },
+      {
+        id: 'tool:edit',
+        name: 'Editor',
+        type: 'framework',
+        status: 'built',
+        description: 'Files',
+        meta: { domain: 'meta' },
+      },
+      {
+        id: 'tool:lsp',
+        name: 'LSP',
+        type: 'framework',
+        status: 'built',
+        description: 'Diagnostics',
+        meta: { domain: 'quality' },
+      },
     ];
     const connections = [
-      {from:'opencode-core',to:'mcp:playwright',type:'connects'},{from:'opencode-core',to:'mcp:cloudflare',type:'connects'},
-      {from:'opencode-core',to:'mcp:github',type:'connects'},{from:'opencode-core',to:'agent:oracle',type:'subagent'},
-      {from:'skill:cloudflare',to:'combo:e2e',type:'hard-dep'},{from:'skill:playwright',to:'combo:e2e',type:'hard-dep'},
-      {from:'skill:cloudflare',to:'combo:deploy',type:'hard-dep'},{from:'skill:wrangler',to:'combo:deploy',type:'hard-dep'},
-      {from:'skill:llm',to:'combo:local-ai',type:'hard-dep'},{from:'skill:gguf',to:'combo:local-ai',type:'hard-dep'},
-      {from:'mcp:playwright',to:'combo:e2e',type:'soft-dep'},{from:'skill:vitest',to:'combo:e2e',type:'soft-dep'},
-      {from:'skill:durable-objects',to:'combo:deploy',type:'soft-dep'},{from:'skill:agents-sdk',to:'combo:deploy',type:'soft-dep'},
+      { from: 'opencode-core', to: 'mcp:playwright', type: 'connects' },
+      { from: 'opencode-core', to: 'mcp:cloudflare', type: 'connects' },
+      { from: 'opencode-core', to: 'mcp:github', type: 'connects' },
+      { from: 'opencode-core', to: 'agent:oracle', type: 'subagent' },
+      { from: 'skill:cloudflare', to: 'combo:e2e', type: 'hard-dep' },
+      { from: 'skill:playwright', to: 'combo:e2e', type: 'hard-dep' },
+      { from: 'skill:cloudflare', to: 'combo:deploy', type: 'hard-dep' },
+      { from: 'skill:wrangler', to: 'combo:deploy', type: 'hard-dep' },
+      { from: 'skill:llm', to: 'combo:local-ai', type: 'hard-dep' },
+      { from: 'skill:gguf', to: 'combo:local-ai', type: 'hard-dep' },
+      { from: 'mcp:playwright', to: 'combo:e2e', type: 'soft-dep' },
+      { from: 'skill:vitest', to: 'combo:e2e', type: 'soft-dep' },
+      { from: 'skill:durable-objects', to: 'combo:deploy', type: 'soft-dep' },
+      { from: 'skill:agents-sdk', to: 'combo:deploy', type: 'soft-dep' },
     ];
-    set({ items: items.map((i,idx) => ({...i, position:{x:100+(idx%6)*80, y:50+Math.floor(idx/6)*70, z:0}})), connections, loading:false, error:null, demo: demoSnapshot() });
+    set({
+      items: items.map((i, idx) => ({
+        ...i,
+        position: { x: 100 + (idx % 6) * 80, y: 50 + Math.floor(idx / 6) * 70, z: 0 },
+      })),
+      connections,
+      loading: false,
+      error: null,
+      demo: demoSnapshot(),
+    });
     // Not on a phone: the inspector is a sheet there, so opening one unasked
     // covers the graph the visitor came to look at.
     if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
   },
 
-  setTreeFilter: (treeFilter) => {
+  setTreeFilter: treeFilter => {
     set({ treeFilter });
     if (typeof window === 'undefined') return;
     localStorage.setItem('ambit.treeFilter', treeFilter);
@@ -395,24 +607,28 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     window.history.replaceState({}, document.title, url);
   },
 
-  updateItem: (id, updates) => set(state => ({
-    items: state.items.map(i => i.id === id ? { ...i, ...updates } : i),
-  })),
+  updateItem: (id, updates) =>
+    set(state => ({
+      items: state.items.map(i => (i.id === id ? { ...i, ...updates } : i)),
+    })),
 
-  deleteItem: (id) => set(state => ({
-    items: state.items.filter(i => i.id !== id),
-    connections: state.connections.filter(c => c.from !== id && c.to !== id),
-    selectedItem: state.selectedItem === id ? null : state.selectedItem,
-  })),
+  deleteItem: id =>
+    set(state => ({
+      items: state.items.filter(i => i.id !== id),
+      connections: state.connections.filter(c => c.from !== id && c.to !== id),
+      selectedItem: state.selectedItem === id ? null : state.selectedItem,
+    })),
 
-  addConnection: (from, to, type) => set(state => {
-    if (state.connections.some(c => c.from === from && c.to === to)) return state;
-    return { connections: [...state.connections, { from, to, type }] };
-  }),
+  addConnection: (from, to, type) =>
+    set(state => {
+      if (state.connections.some(c => c.from === from && c.to === to)) return state;
+      return { connections: [...state.connections, { from, to, type }] };
+    }),
 
-  removeConnection: (from, to) => set(state => ({
-    connections: state.connections.filter(c => !(c.from === from && c.to === to)),
-  })),
+  removeConnection: (from, to) =>
+    set(state => ({
+      connections: state.connections.filter(c => !(c.from === from && c.to === to)),
+    })),
 
   loadConfig: async () => {
     // No live backend means the published demo: an empty graph and the
@@ -434,7 +650,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
       const { config } = await res.json();
       const base = importConfig(config);
       set({ items: base.items, connections: base.connections, loading: false });
-      if (!isNarrowViewport()) get().selectItem("mcp:cloudflare");
+      if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
     } catch (e) {
       set({ error: 'Could not load: ' + (e as Error).message, loading: false });
     }
@@ -447,8 +663,8 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           enableMcp: enabled ? [name] : [],
-          disableMcp: !enabled ? [name] : []
-        })
+          disableMcp: !enabled ? [name] : [],
+        }),
       });
       if (res.ok) {
         await get().loadConfig();
@@ -485,10 +701,19 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     }
   },
 
-  reset: () => set({
-    items: [], connections: [], selectedItem: null, hoveredItem: null,
-    searchQuery: '', showDetailPanel: false, showStarPanel: false, loading: false, error: null, demo: null,
-  }),
+  reset: () =>
+    set({
+      items: [],
+      connections: [],
+      selectedItem: null,
+      hoveredItem: null,
+      searchQuery: '',
+      showDetailPanel: false,
+      showStarPanel: false,
+      loading: false,
+      error: null,
+      demo: null,
+    }),
 }));
 
 export const useAmbitStore = useToolchainStore;

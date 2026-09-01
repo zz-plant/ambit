@@ -1,8 +1,6 @@
-import { spawnSync } from "child_process";
-import { readFileSync } from "fs";
-import { join } from "path";
-import { ENGINE_DIR, loadTechTree } from "./paths.ts";
-import type { Db } from "./db.ts";
+import { spawnSync } from 'node:child_process';
+import { loadTechTree } from './paths.ts';
+import type { Db } from './db.ts';
 
 // ─── Verification ─────────────────────────────────────────────────────────────
 
@@ -22,8 +20,17 @@ import type { Db } from "./db.ts";
  * action may declare its own — reading a repository is a weaker claim than
  * *having read a particular repository*, and the two should not be conflated.
  */
-function verifyCheck(db: Db, id: string, name: string, verify: any): {
-  id: string; name: string; status: string; detail?: string; ms: number;
+function verifyCheck(
+  db: Db,
+  id: string,
+  name: string,
+  verify: any
+): {
+  id: string;
+  name: string;
+  status: string;
+  detail?: string;
+  ms: number;
 } {
   const started = Date.now();
   let status: 'verified' | 'failed' | 'unverifiable' = 'unverifiable';
@@ -54,7 +61,7 @@ function verifyCheck(db: Db, id: string, name: string, verify: any): {
   if (status !== 'unverifiable') {
     // A capability the graph has never seen cannot carry evidence, and the
     // foreign key would reject the row.
-    const exists = db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ?").get(id);
+    const exists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
     if (exists) {
       db.prepare(
         "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, ?)"
@@ -123,7 +130,11 @@ export const FAILING_LIFECYCLES = ['degraded', 'broken'] as const;
 export const usable = (lifecycle?: string): boolean =>
   !lifecycle || !FAILING_LIFECYCLES.includes(lifecycle as any);
 
-function lifecycleFrom(reached: boolean, hasProvider: boolean, history: { action: string }[]): string {
+function lifecycleFrom(
+  reached: boolean,
+  hasProvider: boolean,
+  history: { action: string }[]
+): string {
   if (!reached) return hasProvider ? 'detected' : 'unknown';
   if (history.length === 0) return 'configured';
   // evidenceFor returns newest first.
@@ -146,10 +157,14 @@ function deriveLifecycles(db: Db): number {
     .prepare("SELECT id, state FROM capabilities WHERE kind IN ('capability', 'action')")
     .all();
   const provided = new Set(
-    db.prepare("SELECT DISTINCT to_capability t FROM dependencies WHERE kind IN ('provides', 'contributes')")
-      .all().map((r: any) => r.t)
+    db
+      .prepare(
+        "SELECT DISTINCT to_capability t FROM dependencies WHERE kind IN ('provides', 'contributes')"
+      )
+      .all()
+      .map((r: any) => r.t)
   );
-  const update = db.prepare("UPDATE capabilities SET lifecycle = ? WHERE id = ?");
+  const update = db.prepare('UPDATE capabilities SET lifecycle = ? WHERE id = ?');
   let count = 0;
   for (const node of nodes) {
     const history = db
@@ -198,7 +213,9 @@ function authorityReport(db: Db) {
     )
     .all();
   if (grants.length === 0) {
-    return { note: "No authority declared. Seed a graph, or declare authority on a capability in the model." };
+    return {
+      note: 'No authority declared. Seed a graph, or declare authority on a capability in the model.',
+    };
   }
 
   // Runtime-wide grants apply to everything that runtime contributes, so they
@@ -206,11 +223,13 @@ function authorityReport(db: Db) {
   // copied onto every capability at seed — where a later contribution would
   // silently miss them.
   const runtimeReach = new Map<string, Set<string>>();
-  for (const r of db.prepare(
-    `SELECT rt.from_capability runtime, p.to_capability capability
+  for (const r of db
+    .prepare(
+      `SELECT rt.from_capability runtime, p.to_capability capability
      FROM dependencies rt JOIN dependencies p ON p.from_capability = rt.to_capability
      WHERE rt.kind = 'contributes' AND p.kind = 'provides'`
-  ).all()) {
+    )
+    .all()) {
     if (!runtimeReach.has(r.runtime)) runtimeReach.set(r.runtime, new Set());
     runtimeReach.get(r.runtime)!.add(r.capability);
   }
@@ -219,31 +238,56 @@ function authorityReport(db: Db) {
   // individual actions too, or the finer vocabulary would quietly be the freer
   // one.
   const conferred = new Map<string, string[]>();
-  for (const r of db.prepare(
-    `SELECT d.from_capability capability, d.to_capability action
+  for (const r of db
+    .prepare(
+      `SELECT d.from_capability capability, d.to_capability action
      FROM dependencies d JOIN capabilities c ON c.id = d.to_capability
      WHERE d.kind = 'provides' AND c.kind = 'action'`
-  ).all()) {
+    )
+    .all()) {
     if (!conferred.has(r.capability)) conferred.set(r.capability, []);
     conferred.get(r.capability)!.push(r.action);
   }
   for (const reach of runtimeReach.values()) {
-    for (const capId of [...reach]) for (const actionId of conferred.get(capId) || []) reach.add(actionId);
+    for (const capId of [...reach])
+      for (const actionId of conferred.get(capId) || []) reach.add(actionId);
   }
 
   // Collected first and resolved after, so which source wins does not depend on
   // the order rows come back in.
   const collected = new Map<string, any>();
-  const record = (id: string, name: string, state: string, kind: string, lifecycle: string, action: string, mode: string, source: string, scope: string) => {
+  const record = (
+    id: string,
+    name: string,
+    state: string,
+    kind: string,
+    lifecycle: string,
+    action: string,
+    mode: string,
+    source: string,
+    scope: string
+  ) => {
     const key = `${id}|${action}|${scope}`;
     if (!collected.has(key)) {
-      collected.set(key, { name, id, kind, action, scope: scope || undefined, reached: state !== 'locked' && usable(lifecycle), lifecycle, grants: [] });
+      collected.set(key, {
+        name,
+        id,
+        kind,
+        action,
+        scope: scope || undefined,
+        reached: state !== 'locked' && usable(lifecycle),
+        lifecycle,
+        grants: [],
+      });
     }
     collected.get(key)!.grants.push({ source, mode });
   };
 
   const nodes = new Map(
-    db.prepare("SELECT id, name, state, kind, lifecycle FROM capabilities").all().map((c: any) => [c.id, c])
+    db
+      .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
+      .all()
+      .map((c: any) => [c.id, c])
   );
 
   for (const g of grants) {
@@ -252,11 +296,31 @@ function authorityReport(db: Db) {
       for (const capId of runtimeReach.get(g.capability_id) || []) {
         const target = nodes.get(capId) as any;
         if (!target) continue;
-        record(capId, target.name, target.state, target.kind, target.lifecycle, g.action, g.mode, g.source, g.scope);
+        record(
+          capId,
+          target.name,
+          target.state,
+          target.kind,
+          target.lifecycle,
+          g.action,
+          g.mode,
+          g.source,
+          g.scope
+        );
       }
       continue;
     }
-    record(g.capability_id, g.name, g.state, g.kind, g.lifecycle, g.action, g.mode, g.source, g.scope);
+    record(
+      g.capability_id,
+      g.name,
+      g.state,
+      g.kind,
+      g.lifecycle,
+      g.action,
+      g.mode,
+      g.source,
+      g.scope
+    );
   }
 
   const detail = [...collected.values()]
@@ -266,13 +330,21 @@ function authorityReport(db: Db) {
       // Narrowed means a runtime is stricter than the model says the action is
       // — the case worth surfacing, because it is the machine in front of you
       // disagreeing with the general description.
-      const narrowedBy = declared.length && narrower(declared[0].mode, mode) !== declared[0].mode
-        ? entry.grants.find((g: any) => g.mode === mode && g.source !== 'techtree')?.source
-        : entry.grants.length === 1 && entry.grants[0].source !== 'techtree' && mode !== 'autonomous'
-          ? entry.grants[0].source
-          : undefined;
+      const narrowedBy =
+        declared.length && narrower(declared[0].mode, mode) !== declared[0].mode
+          ? entry.grants.find((g: any) => g.mode === mode && g.source !== 'techtree')?.source
+          : entry.grants.length === 1 &&
+              entry.grants[0].source !== 'techtree' &&
+              mode !== 'autonomous'
+            ? entry.grants[0].source
+            : undefined;
       const { grants: _grants, ...rest } = entry;
-      return { ...rest, mode, sources: entry.grants.map((g: any) => g.source), narrowed_by: narrowedBy };
+      return {
+        ...rest,
+        mode,
+        sources: entry.grants.map((g: any) => g.source),
+        narrowed_by: narrowedBy,
+      };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
   const execute = detail.filter(d => d.action === 'execute' || !['observe'].includes(d.action));
@@ -283,7 +355,7 @@ function authorityReport(db: Db) {
     needs_approval: named(execute.filter(r => r.reached && r.mode === 'confirm')),
     forbidden: named(execute.filter(r => r.mode === 'forbidden')),
     narrowed_by_runtime: named(execute.filter(r => r.narrowed_by)),
-    note: "reached means the system can perform it; mode says whether it may without asking. A degraded or broken capability is not listed as reached however its permission reads.",
+    note: 'reached means the system can perform it; mode says whether it may without asking. A degraded or broken capability is not listed as reached however its permission reads.',
     detail,
   };
 }
@@ -291,10 +363,10 @@ function authorityReport(db: Db) {
 function runVerification(db: Db, which?: string) {
   const tree = loadTechTree();
   if (!tree?.nodes?.length) {
-    return { error: "No capability model to verify against." };
+    return { error: 'No capability model to verify against.' };
   }
   // ambit verify act:<capability>/<action> — an action's own check.
-  if (which && which.startsWith('act:')) {
+  if (which?.startsWith('act:')) {
     const [capId, actionName] = which.replace(/^act:/, '').split('/');
     const node = (tree.nodes || []).find((n: any) => n.id === capId);
     const action = node?.contract?.can?.find((a: any) => (a.id ?? a) === actionName);
@@ -304,7 +376,9 @@ function runVerification(db: Db, which?: string) {
     const runs = history.length;
     const passes = history.filter((h: any) => h.action === 'verified').length;
     deriveLifecycles(db);
-    (r as any).lifecycle = db.prepare("SELECT lifecycle FROM capabilities WHERE id = ?").get(r.id)?.lifecycle;
+    (r as any).lifecycle = db
+      .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
+      .get(r.id)?.lifecycle;
     return {
       checked: 1,
       verified: r.status === 'verified' ? 1 : 0,
@@ -322,7 +396,7 @@ function runVerification(db: Db, which?: string) {
     return { error: `No capability ${which} in the model.` };
   }
   if (nodes.length === 0) {
-    return { error: "No checks declared." };
+    return { error: 'No checks declared.' };
   }
 
   const results = nodes.flatMap((n: any) => {
@@ -334,10 +408,14 @@ function runVerification(db: Db, which?: string) {
       .filter((a: any) => a?.verify?.command)
       .map((a: any) => verifyAction(db, n, a));
     // A named node with no check still answers: unverifiable.
-    return own.length ? [...own, ...actions] : actions.length ? actions : [verifyCapability(db, n.id, n)];
+    return own.length
+      ? [...own, ...actions]
+      : actions.length
+        ? actions
+        : [verifyCapability(db, n.id, n)];
   });
 
-  const withReliability = results.map((r) => {
+  const withReliability = results.map(r => {
     const history = evidenceFor(db, r.id);
     const runs = history.length;
     const passes = history.filter((h: any) => h.action === 'verified').length;
@@ -350,7 +428,9 @@ function runVerification(db: Db, which?: string) {
   // Evidence just changed, so what it is worth just changed too.
   deriveLifecycles(db);
   for (const r of withReliability as any[]) {
-    r.lifecycle = db.prepare("SELECT lifecycle FROM capabilities WHERE id = ?").get(r.id)?.lifecycle;
+    r.lifecycle = db
+      .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
+      .get(r.id)?.lifecycle;
   }
 
   // The gate, stated rather than implied: these now read as unavailable until
@@ -358,8 +438,8 @@ function runVerification(db: Db, which?: string) {
   // why a check is worth declaring in the first place. A capability that was
   // never reached reads as detected or unknown rather than failing, so it is
   // not listed here; there was nothing available to lose.
-  const nowUnavailable = withReliability.filter((r: any) =>
-    r.lifecycle === 'degraded' || r.lifecycle === 'broken'
+  const nowUnavailable = withReliability.filter(
+    (r: any) => r.lifecycle === 'degraded' || r.lifecycle === 'broken'
   );
 
   return {
@@ -387,7 +467,9 @@ function runVerification(db: Db, which?: string) {
  */
 function actionsReport(db: Db, capId?: string) {
   const scope = capId
-    ? (capId.startsWith('combo:') || capId.includes(':') ? capId : `combo:${capId}`)
+    ? capId.startsWith('combo:') || capId.includes(':')
+      ? capId
+      : `combo:${capId}`
     : undefined;
 
   const actions = db
@@ -404,8 +486,12 @@ function actionsReport(db: Db, capId?: string) {
 
   if (actions.length === 0) {
     return scope
-      ? { note: `${scope} declares no contract. Only some capabilities name their actions; see contract.can in the model.` }
-      : { note: 'No actions in the graph. Seed one, or declare contract.can on a capability in the model.' };
+      ? {
+          note: `${scope} declares no contract. Only some capabilities name their actions; see contract.can in the model.`,
+        }
+      : {
+          note: 'No actions in the graph. Seed one, or declare contract.can on a capability in the model.',
+        };
   }
 
   // Effective authority, resolved the same way `tt authority` resolves it, so
@@ -472,7 +558,10 @@ function scopeCovers(scope: string, target: string): boolean {
  * reads like coverage until someone checks.
  */
 function scopeReport(db: Db, target?: string) {
-  if (!target) return { error: 'Usage: ambit authority scope <target> — e.g. repo:owner/name, device:nuc, svc:ollama' };
+  if (!target)
+    return {
+      error: 'Usage: ambit authority scope <target> — e.g. repo:owner/name, device:nuc, svc:ollama',
+    };
   const grants = db
     .prepare(
       `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note,
@@ -482,7 +571,10 @@ function scopeReport(db: Db, target?: string) {
     )
     .all();
   if (grants.length === 0) {
-    return { target, note: 'No authority declared. Seed a graph, or declare authority on a capability in the model.' };
+    return {
+      target,
+      note: 'No authority declared. Seed a graph, or declare authority on a capability in the model.',
+    };
   }
 
   const rows = grants.map((g: any) => ({
@@ -506,9 +598,7 @@ function scopeReport(db: Db, target?: string) {
     grants: rows,
     // The effective mode for the target: the narrowest of the covering grants,
     // which is the answer to "may this target be touched, and how much".
-    effective: covering.length
-      ? covering.map(r => r.mode).reduce(narrower)
-      : 'forbidden',
+    effective: covering.length ? covering.map(r => r.mode).reduce(narrower) : 'forbidden',
     note: excluded.length
       ? `${excluded.length} grant(s) are scoped elsewhere and do not cover ${target}. The effective mode is from the covering grants only.`
       : undefined,
@@ -534,19 +624,31 @@ function scopeReport(db: Db, target?: string) {
  */
 function canExecute(
   db: Db,
-  input: { actor?: string; capability: string; action?: string; target?: string; spendCents?: number }
+  input: {
+    actor?: string;
+    capability: string;
+    action?: string;
+    target?: string;
+    spendCents?: number;
+  }
 ) {
-  const capability = input.capability.startsWith('combo:') || input.capability.includes(':')
-    ? input.capability : `combo:${input.capability}`;
+  const capability =
+    input.capability.startsWith('combo:') || input.capability.includes(':')
+      ? input.capability
+      : `combo:${input.capability}`;
   const action = input.action || 'execute';
 
-  const cap = db.prepare("SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?").get(capability);
+  const cap = db
+    .prepare('SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?')
+    .get(capability);
   if (!cap) return { decision: 'DENY', reason: `no capability ${capability}`, capability, action };
 
-  const grants = db.prepare(
-    `SELECT capability_id, action, mode, holder, scope, source, note
+  const grants = db
+    .prepare(
+      `SELECT capability_id, action, mode, holder, scope, source, note
      FROM authority WHERE capability_id = ? AND action = ?`
-  ).all(capability, action) as any[];
+    )
+    .all(capability, action) as any[];
 
   const covering = grants.filter((g: any) => {
     if (g.holder && input.actor && g.holder !== input.actor) return false;
@@ -554,15 +656,23 @@ function canExecute(
     return true;
   });
 
-  const governing = covering.length ? covering.map((g: any) => g.mode).reduce(narrower) : 'forbidden';
+  const governing = covering.length
+    ? covering.map((g: any) => g.mode).reduce(narrower)
+    : 'forbidden';
   const grant = covering.find((g: any) => g.mode === governing);
-  const scope = covering.filter(g => g.scope).map(g => g.scope).join(', ') || undefined;
+  const scope =
+    covering
+      .filter(g => g.scope)
+      .map(g => g.scope)
+      .join(', ') || undefined;
 
   // Budget: declared, spent, remaining. No budget declared is no limit, and
   // the report says so rather than inventing one.
-  const budget = db.prepare(
-    "SELECT budget_cents, spent_cents FROM budgets WHERE capability_id = ? AND action = ? AND scope = ? LIMIT 1"
-  ).get(capability, action, scope || '');
+  const budget = db
+    .prepare(
+      'SELECT budget_cents, spent_cents FROM budgets WHERE capability_id = ? AND action = ? AND scope = ? LIMIT 1'
+    )
+    .get(capability, action, scope || '');
   const remaining = budget ? budget.budget_cents - budget.spent_cents : null;
   const overBudget = input.spendCents != null && remaining != null && input.spendCents > remaining;
 
@@ -572,30 +682,47 @@ function canExecute(
     return {
       decision: 'DENY',
       reason: `${cap.name} is ${cap.lifecycle} — configured but failing verification. Re-verify before acting.`,
-      capability, action, governing_grant: grant, scope, remaining_budget_cents: remaining,
+      capability,
+      action,
+      governing_grant: grant,
+      scope,
+      remaining_budget_cents: remaining,
     };
   }
   if (governing === 'forbidden') {
     return {
       decision: 'DENY',
-      reason: covering.length ? 'the covering grants forbid it' : 'no grant covers this capability/action/target',
-      capability, action, governing_grant: undefined, scope, remaining_budget_cents: remaining,
+      reason: covering.length
+        ? 'the covering grants forbid it'
+        : 'no grant covers this capability/action/target',
+      capability,
+      action,
+      governing_grant: undefined,
+      scope,
+      remaining_budget_cents: remaining,
     };
   }
   if (overBudget) {
     return {
       decision: 'DENY',
       reason: `spend ${input.spendCents} exceeds the ${remaining} cents remaining on the budget`,
-      capability, action, governing_grant: grant, scope, remaining_budget_cents: remaining,
+      capability,
+      action,
+      governing_grant: grant,
+      scope,
+      remaining_budget_cents: remaining,
     };
   }
 
   return {
     decision: governing === 'autonomous' ? 'ALLOW' : 'CONFIRM',
-    reason: governing === 'autonomous'
-      ? 'granted autonomous'
-      : 'permitted, with a person in the loop',
-    capability, action, governing_grant: grant, scope, remaining_budget_cents: remaining,
+    reason:
+      governing === 'autonomous' ? 'granted autonomous' : 'permitted, with a person in the loop',
+    capability,
+    action,
+    governing_grant: grant,
+    scope,
+    remaining_budget_cents: remaining,
   };
 }
 
@@ -608,4 +735,15 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
   return { capability, action, spent_cents: cents };
 }
 
-export { verifyCapability, evidenceFor, authorityReport, actionsReport, runVerification, deriveLifecycles, scopeReport, scopeCovers, canExecute, recordSpend };
+export {
+  verifyCapability,
+  evidenceFor,
+  authorityReport,
+  actionsReport,
+  runVerification,
+  deriveLifecycles,
+  scopeReport,
+  scopeCovers,
+  canExecute,
+  recordSpend,
+};

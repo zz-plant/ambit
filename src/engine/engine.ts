@@ -12,43 +12,95 @@
  * This file stays the entry point and re-exports the same names it always did,
  * so nothing importing the engine has to know the split happened.
  */
-import { main } from "./cli.ts";
+import { main } from './cli.ts';
 
-export { getDb, migrate } from "./db.ts";
-export { seedFromConfig, seedEconomics, seedCatalog } from "./discovery.ts";
+export { getDb, migrate } from './db.ts';
+export { seedFromConfig, seedEconomics, seedCatalog } from './discovery.ts';
 export {
-  computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
-  analyzeImpact, nearMissCombos, singlePointsOfFailure,
-  affordanceDomains, surfaceFor, credentialReport,
-} from "./inference.ts";
-export { runVerification, evidenceFor, authorityReport, actionsReport, scopeReport, canExecute, recordSpend } from "./assurance.ts";
-export { ledgerSince, ledgerHistory } from "./ledger.ts";
-export { planFor, recordFailure, deficits, simulateFrontier, propose, preferencesReport } from "./planning.ts";
-export { goalFor, pathsFor } from "./goals.ts";
-export { humanDigest, digestMessage, notify, pendingApprovals, pendingMessage, notifyPending } from "./attention.ts";
+  computeDecay,
+  discoverCombos,
+  sessionDiff,
+  domainHealth,
+  findBottlenecks,
+  analyzeImpact,
+  nearMissCombos,
+  singlePointsOfFailure,
+  affordanceDomains,
+  surfaceFor,
+  credentialReport,
+} from './inference.ts';
 export {
-  beginRun, endRun, addEvent, recordUse, recordIntervention,
-  recordResource, recordOutcome, workReport, usageReport,
-} from "./telemetry.ts";
+  runVerification,
+  evidenceFor,
+  authorityReport,
+  actionsReport,
+  scopeReport,
+  canExecute,
+  recordSpend,
+} from './assurance.ts';
+export { ledgerSince, ledgerHistory } from './ledger.ts';
 export {
-  valueCents, metricByEntity, attentionValueCentsPerHour, goalValue, economicsReport,
-} from "./economics.ts";
-export { opportunitiesFor, opportunityFor, economicCaseFor } from "./opportunities.ts";
-export { roiFor, roiSummary } from "./roi.ts";
-export { exportSummary, importSummary } from "./federation.ts";
-export { portfolio } from "./portfolio.ts";
-export { incidents, resolveIncident } from "./incident.ts";
-export { catalogReport } from "./catalog.ts";
-export { auditFor } from "./audit.ts";
+  planFor,
+  recordFailure,
+  deficits,
+  simulateFrontier,
+  propose,
+  preferencesReport,
+} from './planning.ts';
+export { goalFor, pathsFor } from './goals.ts';
 export {
-  applyRemoval, listProposals, showProposal, approveProposal, inverseOf,
-  applyProposal, rollbackProposal,
-} from "./governance.ts";
-export { proposalHash, mintApproval, verifyApproval } from "./approval.ts";
+  humanDigest,
+  digestMessage,
+  notify,
+  pendingApprovals,
+  pendingMessage,
+  notifyPending,
+} from './attention.ts';
 export {
-  executeThroughControlPlane, setupControlPlaneGraph, createInitialMockEnvironment,
-  readMockEnvironment, writeMockEnvironment,
-  type AgentExecutionRequest, type ControlPlaneResult, type MockEnvironmentState, type OpenTelemetrySpan,
-} from "../control_plane/proxy.ts";
+  beginRun,
+  endRun,
+  addEvent,
+  recordUse,
+  recordIntervention,
+  recordResource,
+  recordOutcome,
+  workReport,
+  usageReport,
+} from './telemetry.ts';
+export {
+  valueCents,
+  metricByEntity,
+  attentionValueCentsPerHour,
+  goalValue,
+  economicsReport,
+} from './economics.ts';
+export { opportunitiesFor, opportunityFor, economicCaseFor } from './opportunities.ts';
+export { roiFor, roiSummary } from './roi.ts';
+export { exportSummary, importSummary } from './federation.ts';
+export { portfolio } from './portfolio.ts';
+export { incidents, resolveIncident } from './incident.ts';
+export { catalogReport } from './catalog.ts';
+export { auditFor } from './audit.ts';
+export {
+  applyRemoval,
+  listProposals,
+  showProposal,
+  approveProposal,
+  inverseOf,
+  applyProposal,
+  rollbackProposal,
+} from './governance.ts';
+export { proposalHash, mintApproval, verifyApproval } from './approval.ts';
+export {
+  executeThroughControlPlane,
+  setupControlPlaneGraph,
+  createInitialMockEnvironment,
+  readMockEnvironment,
+  writeMockEnvironment,
+  type AgentExecutionRequest,
+  type ControlPlaneResult,
+  type MockEnvironmentState,
+  type OpenTelemetrySpan,
+} from '../control_plane/proxy.ts';
 
 if (import.meta.main) main();

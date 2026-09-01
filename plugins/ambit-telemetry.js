@@ -34,28 +34,32 @@ async function ensureRun() {
   const res = await fetch(`${SERVER}/api/telemetry`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ run: { goal: 'opencode session work', source: 'opencode-plugin', runType: 'task' } }),
+    body: JSON.stringify({
+      run: { goal: 'opencode session work', source: 'opencode-plugin', runType: 'task' },
+    }),
   }).catch(() => null);
-  if (!res || !res.ok) return null;
+  if (!res?.ok) return null;
   try {
     runId = (await res.json()).run;
   } catch {}
   return runId;
 }
 
-export const AmbitTelemetry = async (ctx) => {
+export const AmbitTelemetry = async _ctx => {
   return {
     // The tool ran. Recorded as a work event under the process run — the
     // observation "this session exercised a tool" is the base of the ledger,
     // and the economic loop's frequency counts come from it.
-    'tool.execute.after': async (input) => {
+    'tool.execute.after': async input => {
       const id = await ensureRun();
       if (!id) return;
-      await post({ event: { runId: id, kind: 'tool', action: input?.tool || 'unknown', actor: 'agent' } });
+      await post({
+        event: { runId: id, kind: 'tool', action: input?.tool || 'unknown', actor: 'agent' },
+      });
     },
     // A permission prompt is human agency of the authority kind. The reply is
     // not observable through a hook yet, so this records the ask only.
-    'permission.asked': async (input) => {
+    'permission.asked': async input => {
       const id = await ensureRun();
       if (!id) return;
       await post({

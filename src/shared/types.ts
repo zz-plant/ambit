@@ -3,7 +3,15 @@
  * Single source of truth across Node engine, Bun server, MCP server, and client.
  */
 
-export const KINDS = ['capability', 'action', 'provider', 'resource', 'actor', 'runtime', 'credential'] as const;
+export const KINDS = [
+  'capability',
+  'action',
+  'provider',
+  'resource',
+  'actor',
+  'runtime',
+  'credential',
+] as const;
 export type NodeKind = (typeof KINDS)[number];
 export type Kind = NodeKind;
 
@@ -23,10 +31,26 @@ export type Kind = NodeKind;
  */
 export const NON_FRONTIER_KINDS: NodeKind[] = ['credential'];
 
-export const EDGE_KINDS = ['provides', 'contributes', 'requires', 'optional', 'authorizes', 'runs_on', 'uses'] as const;
+export const EDGE_KINDS = [
+  'provides',
+  'contributes',
+  'requires',
+  'optional',
+  'authorizes',
+  'runs_on',
+  'uses',
+] as const;
 export type EdgeKind = (typeof EDGE_KINDS)[number];
 
-export const LIFECYCLES = ['unknown', 'detected', 'configured', 'verified', 'reliable', 'degraded', 'broken'] as const;
+export const LIFECYCLES = [
+  'unknown',
+  'detected',
+  'configured',
+  'verified',
+  'reliable',
+  'degraded',
+  'broken',
+] as const;
 export type Lifecycle = (typeof LIFECYCLES)[number];
 
 export const STATES = ['reached', 'next', 'blocked'] as const;
@@ -35,7 +59,14 @@ export type State = (typeof STATES)[number];
 export const AUTHORITY_MODES = ['autonomous', 'confirm', 'forbidden'] as const;
 export type AuthorityMode = (typeof AUTHORITY_MODES)[number];
 
-export const INTERVENTION_KINDS = ['judgment', 'authority', 'knowledge', 'physical', 'clerical', 'exception'] as const;
+export const INTERVENTION_KINDS = [
+  'judgment',
+  'authority',
+  'knowledge',
+  'physical',
+  'clerical',
+  'exception',
+] as const;
 export type InterventionKind = (typeof INTERVENTION_KINDS)[number];
 
 export const AFFORDANCE_DOMAINS = [
@@ -124,9 +155,10 @@ export interface SurfaceManifest {
 
 export interface RuntimeAdapter {
   readonly runtimeId: string;
-  readConfig(path?: string): Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
+  readConfig(
+    path?: string
+  ): Promise<Record<string, unknown> | null> | Record<string, unknown> | null;
   extractCapabilities?(config: unknown): DiscoveredCapability[];
   extractAuthority?(config: unknown): AuthorityGrant[];
   exportSurface?(db: any): SurfaceManifest;
 }
-

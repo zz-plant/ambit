@@ -10,11 +10,11 @@
  * for skills, agents, and settings.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
-import { authorityBlock } from "../shared/authority.ts";
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { authorityBlock } from '../shared/authority.ts';
 
-const HOME = process.env.HOME || "/";
+const HOME = process.env.HOME || '/';
 
 export interface ClaudeCodeFragment {
   runtime: string;
@@ -27,7 +27,7 @@ export interface ClaudeCodeFragment {
 
 function readJson(path: string): any {
   try {
-    return JSON.parse(readFileSync(path, "utf8"));
+    return JSON.parse(readFileSync(path, 'utf8'));
   } catch {
     return null;
   }
@@ -36,19 +36,21 @@ function readJson(path: string): any {
 /** Directories holding SKILL.md subdirectories — user skills and plugin skills. */
 function skillDirs(claudeHome: string): string[] {
   const dirs: string[] = [];
-  const userSkills = join(claudeHome, "skills");
+  const userSkills = join(claudeHome, 'skills');
   if (existsSync(userSkills)) dirs.push(userSkills);
 
-  const marketplaces = join(claudeHome, "plugins", "marketplaces");
+  const marketplaces = join(claudeHome, 'plugins', 'marketplaces');
   if (existsSync(marketplaces)) {
     for (const entry of readdirSync(marketplaces)) {
-      for (const candidate of [join(marketplaces, entry, "skills"), join(marketplaces, entry)]) {
+      for (const candidate of [join(marketplaces, entry, 'skills'), join(marketplaces, entry)]) {
         if (!existsSync(candidate)) continue;
         try {
           if (!statSync(candidate).isDirectory()) continue;
-        } catch { continue; }
-        const holdsSkills = readdirSync(candidate).some(
-          name => existsSync(join(candidate, name, "SKILL.md"))
+        } catch {
+          continue;
+        }
+        const holdsSkills = readdirSync(candidate).some(name =>
+          existsSync(join(candidate, name, 'SKILL.md'))
         );
         if (holdsSkills) dirs.push(candidate);
       }
@@ -63,16 +65,16 @@ function skillDirs(claudeHome: string): string[] {
  * install can just call `readClaudeCode()`.
  */
 export function readClaudeCode(
-  claudeHome = process.env.CLAUDE_HOME || join(HOME, ".claude"),
-  claudeJson = process.env.CLAUDE_CONFIG || join(HOME, ".claude.json")
+  claudeHome = process.env.CLAUDE_HOME || join(HOME, '.claude'),
+  claudeJson = process.env.CLAUDE_CONFIG || join(HOME, '.claude.json')
 ): ClaudeCodeFragment | null {
   if (!existsSync(claudeJson) && !existsSync(claudeHome)) return null;
 
   const cfg = readJson(claudeJson) || {};
-  const settings = readJson(join(claudeHome, "settings.json")) || {};
+  const settings = readJson(join(claudeHome, 'settings.json')) || {};
 
   const fragment: ClaudeCodeFragment = {
-    runtime: "claude-code",
+    runtime: 'claude-code',
     mcp: {},
     agent: {},
     provider: {},
@@ -84,7 +86,7 @@ export function readClaudeCode(
     for (const [name, server] of Object.entries<any>(servers || {})) {
       if (fragment.mcp[name]) continue;
       fragment.mcp[name] = {
-        type: server?.url || server?.type === "http" || server?.type === "sse" ? "remote" : "local",
+        type: server?.url || server?.type === 'http' || server?.type === 'sse' ? 'remote' : 'local',
         command: server?.command ? [server.command, ...(server.args || [])].flat() : undefined,
         enabled: server?.enabled !== false,
       };
@@ -94,25 +96,27 @@ export function readClaudeCode(
   const projects = Object.values<any>(cfg.projects || {});
   for (const project of projects) collectMcp(project?.mcpServers);
 
-  const agentsDir = join(claudeHome, "agents");
+  const agentsDir = join(claudeHome, 'agents');
   if (existsSync(agentsDir)) {
     for (const file of readdirSync(agentsDir)) {
-      if (!file.endsWith(".md")) continue;
-      const name = file.replace(/\.md$/, "");
-      const body = readFileSync(join(agentsDir, file), "utf8").slice(0, 2000);
+      if (!file.endsWith('.md')) continue;
+      const name = file.replace(/\.md$/, '');
+      const body = readFileSync(join(agentsDir, file), 'utf8').slice(0, 2000);
       const described = body.match(/^description:\s*(.+)$/m);
-      fragment.agent[name] = { description: described?.[1]?.trim().slice(0, 80) || "Claude Code subagent" };
+      fragment.agent[name] = {
+        description: described?.[1]?.trim().slice(0, 80) || 'Claude Code subagent',
+      };
     }
   }
 
   const model = settings.model || cfg.model;
-  if (typeof model === "string" && model) {
-    fragment.provider["anthropic"] = { models: { [model]: {} } };
+  if (typeof model === 'string' && model) {
+    fragment.provider.anthropic = { models: { [model]: {} } };
   }
 
   const permissions = settings.permissions || {};
   const skillCount = fragment.skills.paths.reduce(
-    (n, dir) => n + readdirSync(dir).filter(name => existsSync(join(dir, name, "SKILL.md"))).length,
+    (n, dir) => n + readdirSync(dir).filter(name => existsSync(join(dir, name, 'SKILL.md'))).length,
     0
   );
 
@@ -126,7 +130,7 @@ export function readClaudeCode(
     projectScopedMcp: projects.filter(p => Object.keys(p?.mcpServers || {}).length).length,
     skillCount,
     subagents: Object.keys(fragment.agent).length,
-    userMemory: existsSync(join(claudeHome, "CLAUDE.md")),
+    userMemory: existsSync(join(claudeHome, 'CLAUDE.md')),
     statusline: Boolean(settings.statusLine),
   };
 
@@ -141,21 +145,26 @@ export function readClaudeCode(
  */
 export function claudeCodeSeedInput(fragment: ClaudeCodeFragment): { config: any; mapping: any } {
   const authority = authorityBlock({
-    execute: fragment.observed.permissionMode ?? "default",
-    note: `claude-code permissions.defaultMode: ${fragment.observed.permissionMode ?? "default"}`,
+    execute: fragment.observed.permissionMode ?? 'default',
+    note: `claude-code permissions.defaultMode: ${fragment.observed.permissionMode ?? 'default'}`,
   });
 
-  const config = { mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider, authority };
+  const config = {
+    mcp: fragment.mcp,
+    agent: fragment.agent,
+    provider: fragment.provider,
+    authority,
+  };
   const mapping = {
     config_keys: {
       mcp: {
-        type: "mcp",
-        domain_field: "type",
-        domain_map: { remote: "backend", local: "infra" },
-        desc_template: "claude-code {type} server",
+        type: 'mcp',
+        domain_field: 'type',
+        domain_map: { remote: 'backend', local: 'infra' },
+        desc_template: 'claude-code {type} server',
       },
-      agent: { type: "agent", domain: "meta", desc_field: "description" },
-      provider: { type: "provider", domain: "ai-ml" },
+      agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
+      provider: { type: 'provider', domain: 'ai-ml' },
     },
     skill_dirs: fragment.skills.paths,
   };
