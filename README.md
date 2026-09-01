@@ -13,9 +13,9 @@
 
 <br>
 
-<img src="docs/assets/capability-graph-demo.gif" alt="The Ambit capability map updating live: unlocking nodes, calculating reachable frontiers, and handling approvals" width="920">
+<img src="docs/assets/capability-graph-demo.gif" alt="The Ambit tech tree across seven eras: a keystone capability is selected, its outage is simulated and fourteen downstream capabilities go red, the attention lens shows where human time is spent, and a drafted proposal waits to be signed" width="920">
 
-<sub>Adding a provider unlocks compound capabilities across the stack, surfaces reachable next steps, and streams verification and approval receipts.</sub>
+<sub>One environment across seven eras. Take a keystone offline and the cascade is computed, not drawn by hand — then where the human time is going, and a change waiting on a signature.</sub>
 
 </div>
 
