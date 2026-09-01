@@ -16,7 +16,7 @@ import type { Migratable } from './migrate.ts';
  * so a run can be entered by hand when no adapter saw it.
  *
  * Like migrate.ts, the recorder is deliberately free of any `node:sqlite` or
- * `bun:sqlite` import: the engine records under Node, the visualizer API
+ * driver import: the engine records through the CLI, the visualiser API
  * records under Bun, and both can, because the whole surface used here is
  * `prepare(...).run/get/all`.
  */

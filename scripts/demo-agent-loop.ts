@@ -9,7 +9,7 @@
  * a capability nothing new provides unlocks with it. If the loop breaks, this
  * script fails rather than rendering a fiction.
  *
- * Needs rsvg-convert and ffmpeg. Usage: bun run scripts/demo-agent-loop.ts
+ * Needs rsvg-convert and ffmpeg. Usage: node --experimental-strip-types scripts/demo-agent-loop.ts
  */
 
 import { execSync, spawnSync, spawn } from 'node:child_process';
@@ -51,7 +51,9 @@ writeFileSync(
 
 const ENV = { ...process.env, AMBIT_DB: dbPath, OPENCODE_CONFIG: configPath };
 
-const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
+const strip = (s: string) =>
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the point — this strips ANSI colour from captured output.
+  s.replace(/\x1b\[[0-9;]*m/g, '');
 
 function cli(...args: string[]): string[] {
   const r = spawnSync(
@@ -77,7 +79,7 @@ async function mcp(calls: { name: string; args: any }[]): Promise<string[][]> {
   const done = new Promise<void>(resolve => {
     proc.stdout.on('data', (c: Buffer) => {
       buf += c.toString();
-      let i;
+      let i: number;
       while ((i = buf.indexOf('\n')) >= 0) {
         const line = buf.slice(0, i);
         buf = buf.slice(i + 1);
@@ -96,14 +98,14 @@ async function mcp(calls: { name: string; args: any }[]): Promise<string[][]> {
       clientInfo: { name: 'demo-agent', version: '0' },
     },
   });
-  calls.forEach((c, i) =>
+  calls.forEach((c, i) => {
     send({
       jsonrpc: '2.0',
       id: i + 1,
       method: 'tools/call',
       params: { name: c.name, arguments: c.args },
-    })
-  );
+    });
+  });
   await done;
   proc.kill();
   // First response is the handshake; the rest map 1:1 onto calls.

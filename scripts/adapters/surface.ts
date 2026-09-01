@@ -10,7 +10,7 @@
  * an Ambit graph can round-trip through it, which is how the contract gets
  * exercised before anyone else adopts it.
  *
- *   SURFACE=/path/to/surface.json bun run scripts/adapters/surface.ts --seed
+ *   SURFACE=/path/to/surface.json node --experimental-strip-types scripts/adapters/surface.ts --seed
  *
  * The surface is vocabulary, not state: ids, kinds, edges, authority. State
  * (reached/locked) is not in it, because a runtime's export should describe

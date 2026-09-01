@@ -644,7 +644,7 @@ export const useToolchainStore = create<StoreState>((set, get) => ({
     try {
       const res = await fetch('/api/config');
       if (!res.ok) {
-        set({ error: 'Cannot reach the API. Start it with `bun run server`.', loading: false });
+        set({ error: 'Cannot reach the API. Start it with `npm run server`.', loading: false });
         return;
       }
       const { config } = await res.json();

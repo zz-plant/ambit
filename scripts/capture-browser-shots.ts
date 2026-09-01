@@ -54,7 +54,7 @@ async function captureShot(
 
 async function main() {
   console.log('🚀 Building production client...');
-  execSync('bun run build', { stdio: 'inherit' });
+  execSync('npm run build', { stdio: 'inherit' });
 
   console.log(`🚀 Starting preview server on port ${PORT}...`);
   const server = spawn(
@@ -81,16 +81,11 @@ async function main() {
       3500
     );
 
-    // 2. My Setup / Config Inspection with a focused node (1440x900)
-    await captureShot(
-      `${BASE_URL}/?demo=1&focus=mcp:context7`,
-      join(ASSETS_DIR, 'screenshot-config.png'),
-      1440,
-      900,
-      3500
-    );
+    // No My Setup capture: ?demo=1 short-circuits both loaders, so the tab
+    // only moves the nav highlight — the canvas stays the seeded demo graph.
+    // A second shot of it was a pixel-for-pixel duplicate of screenshot-tree.
 
-    // 3. Docs Modal (1440x900)
+    // 2. Docs Modal (1440x900)
     await captureShot(
       `${BASE_URL}/?demo=1&docs=open`,
       join(ASSETS_DIR, 'screenshot-docs.png'),
@@ -99,7 +94,7 @@ async function main() {
       3500
     );
 
-    // 4. Social preview (1280x640)
+    // 3. Social preview (1280x640)
     await captureShot(
       `${BASE_URL}/?demo=1&view=tree`,
       join(ASSETS_DIR, 'ambit-social-preview.png'),

@@ -24,7 +24,7 @@ That second description is **effective capability**, and it is the object Ambit 
 
 Capability *change* is recorded over time — see [the ledger](#the-ledger) — which is the accounting half of that table rather than a seventh state.
 
-Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities — and for individual contract actions, so `ambit verify act:version-control/commit_changes` proves the action rather than the capability that confers it — a check that last failed **gates** the capability out of everything that decides availability, and authority is enforced where it matters most: nothing applies without a signed approval artifact and a per-step `canExecute` pass. [The roadmap](../ROADMAP.md) is the rest.
+Six of seven, with the caveats stated in the table rather than hidden: checks exist for eight capabilities — and for individual contract actions, so `ambit verify act:version-control/commit_changes` proves the action rather than the capability that confers it — a check that last failed **gates** the capability out of everything that decides availability, and authority is enforced where it matters most: nothing applies without a signed approval artifact and a per-step `canExecute` pass. [The roadmap](./roadmap.md) is the rest.
 
 ```console
 $ ambit verify            # run the declared checks, record what happened
@@ -214,7 +214,7 @@ The same ledger that `attention` reads is written by observation, not by hand. T
 
 ```console
 $ echo '{"run":{"goal":"recover production service","runType":"incident"}}' \
-    | bun run scripts/adapters/telemetry.ts
+    | node --experimental-strip-types scripts/adapters/telemetry.ts
 ```
 
 `scripts/adapters/telemetry.ts` is the ingestion client (stdin → one JSON object per line → `POST /api/telemetry`). A plugin bridge ships at `plugins/tech-tree-telemetry.js`: copy it to `~/.config/opencode/plugins/` and every tool execution in an OpenCode session lands in the ledger as a work event, and every permission prompt as an `authority` intervention. The endpoint is loopback-only and origin-allowlisted like every other route, and a telemetry payload is structured data — never a command.
@@ -378,9 +378,9 @@ The lifecycle group is "is this real, may I act, what is missing" — and when t
 Ambit represents agent runtimes rather than being one. A runtime becomes a node, and everything it contributes hangs off it — so two runtimes configuring the same MCP server produce **one capability with two providers**, not two capabilities.
 
 ```bash
-bun run scripts/adapters/claude-code.ts          # what Claude Code provides
-bun run scripts/adapters/claude-code.ts --seed   # add it to the graph
-bun run scripts/adapters/hermes.ts               # the same for Hermes
+node --experimental-strip-types scripts/adapters/claude-code.ts          # what Claude Code provides
+node --experimental-strip-types scripts/adapters/claude-code.ts --seed   # add it to the graph
+node --experimental-strip-types scripts/adapters/hermes.ts               # the same for Hermes
 ```
 
 The Claude Code adapter reads `~/.claude.json` and `~/.claude/` — MCP servers global and per project, skills, subagents, a pinned model — plus the authority the runtime states outright: permission mode, and how many allow, deny and ask rules are in force. Rule *names* only; an allow rule can name a path, and those are not Ambit's to copy into a graph you may export.

@@ -17,8 +17,8 @@
  * for skills, agents, and settings. If a structured export appears later, this
  * should consume that instead; reading another tool's files is a stopgap.
  *
- *   bun run scripts/adapters/claude-code.ts            # print the graph fragment
- *   bun run scripts/adapters/claude-code.ts --seed     # seed it into Ambit
+ *   node --experimental-strip-types scripts/adapters/claude-code.ts            # print the graph fragment
+ *   node --experimental-strip-types scripts/adapters/claude-code.ts --seed     # seed it into Ambit
  */
 
 import { writeFileSync } from 'node:fs';
@@ -51,7 +51,7 @@ const { config, mapping } = claudeCodeSeedInput(fragment);
 const configPath = join(process.env.TMPDIR || '/tmp', `ambit-claude-code-${process.pid}.json`);
 writeFileSync(configPath, JSON.stringify(config));
 
-const engine = join(import.meta.dir, '..', '..', 'src', 'engine', 'engine.ts');
+const engine = join(import.meta.dirname, '..', '..', 'src', 'engine', 'engine.ts');
 const result = spawnSync('node', ['--experimental-sqlite', engine, 'seed'], {
   env: {
     ...process.env,
