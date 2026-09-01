@@ -26,6 +26,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "docs:examples": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/capture-readme-examples.ts",
     "docs:examples:check": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/capture-readme-examples.ts --check",
     "assets:demo-tree": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/generate-demo-tree.ts"
@@ -37,6 +38,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.0.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^10.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

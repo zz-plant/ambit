@@ -31,8 +31,12 @@ jobs:
 
       # Covers the engine, the client, and the control plane — whose HMAC
       # approval path used to be tested only by a pytest file no job ran.
+      # Coverage runs the same suite, so it replaces the plain test step rather
+      # than doubling it. The thresholds are a floor: the engine is well
+      # covered, and what they hold is that the client and the two servers do
+      # not get worse.
       - name: Test
-        run: npm test
+        run: npm run test:coverage
 
       - name: Lint and format
         run: npm run lint

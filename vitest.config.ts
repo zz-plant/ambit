@@ -17,5 +17,17 @@ export default defineConfig({
     // slower than a unit assertion and CI runners are not fast.
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}', 'server.ts'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/engine/testing/**', 'src/client/vite-env.d.ts'],
+      reporter: ['text-summary', 'json-summary'],
+      // A floor, not a target. Set just under what the suite covers today so
+      // it cannot quietly slide; raise it when a gap is closed rather than
+      // treating the number as a goal in itself. The engine is well covered;
+      // what these thresholds mostly hold is that the client and the two
+      // servers do not get worse.
+      thresholds: { statements: 55, branches: 47, functions: 55, lines: 57 },
+    },
   },
 });
