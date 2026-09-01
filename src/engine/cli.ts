@@ -151,50 +151,67 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   verify [cap] [--history]   run the declared check, or show past verification
   impact <id>       what actually breaks if a capability goes away
 
+  Grouped: graph · plan · check · govern · report — try \`ambit plan\`
   help --all        every command
   help [term]       one concept explained`;
 
 const HELP = `ambit - what your system can do, what it costs, what to change
 
-  status            health · degraded · spofs · deficits · pending approvals
-  graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
-  goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
-                    delta, compare acquisition paths, or check preferences
-  attention [days]  how much work still runs through the human, and what is reducible
-  notify <topic>    push the attention digest to ntfy — nothing is sent without a topic
-  notify-approvals <topic>   push the approved-proposals-waiting count to ntfy
-  work [limit]      recent runs, each with what it cost
-  usage [days]      where capability effort actually went
-  economics         declared costs and goal values
-  opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
-                    ranked investments — observed burden, priced, compared;
-                    --budget allocates the best combination within $N
-  opportunity <id>  one ranked case in full
-  roi [proposal-id]  cumulative savings and forecast accuracy, or one proposal's
-                    before/after verdict
-  incidents         probe the manifest, open incident runs for offline services
-  incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
-  portfolio [--budget=N]   across imported environments — shared burden, spofs,
-                    where capex would produce the most
-  catalog <cap>       the ways to acquire a capability, compared by cost
-  audit [run|prop|human|days]   the trail — who approved what, what ran, did it hold
-  federation export|import   the signed summary a portfolio layer reads
-  impact <id>       what actually breaks if a capability goes away
-  credentials       what revoking each credential would end
-  verify [cap] [--history]   run the declared check, or show past verification
-  authority [cap] [scope <target>]   what may run unattended, what each action
-                    may touch, and whether a scope covers a target
-  can <cap> [--target X] [--spend N]   the decision API: ALLOW / CONFIRM / DENY
-  history [since <when>]   how the frontier moved
-  propose <cap> [option]    draft a reviewable acquisition (with its simulation)
-  proposals / proposal <id>
-  approve <id> <person>
-  apply <id> / rollback <id>
-  record <cap> [class] [note]   record that a task was blocked by a capability
+Five groups. Every verb also works on its own — \`ambit impact x\` and
+\`ambit graph impact x\` are the same command.
+
   seed              seed from the agent config
-  share [--redact] [--out=path]   write a self-contained HTML snapshot of the
-                    map — names, states, edges only; nothing leaves the machine
-  where             where the graph is stored
+  status            health · degraded · spofs · deficits · pending approvals
+
+graph — the structure, and what it would cost to lose a piece
+  graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
+  graph impact <id>       what actually breaks if a capability goes away
+  graph catalog <cap>     the ways to acquire a capability, compared by cost
+  graph share [--redact] [--out=path]   a self-contained HTML snapshot of the
+                          map — names, states, edges only; nothing leaves the machine
+  graph where             where the graph is stored
+
+plan — what to acquire next, and whether it paid
+  plan goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan
+                          the delta, compare acquisition paths, check preferences
+  plan opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
+                          ranked investments — observed burden, priced, compared;
+                          --budget allocates the best combination within $N
+  plan opportunity <id>   one ranked case in full
+  plan propose <cap> [option]   draft a reviewable acquisition, with its simulation
+  plan roi [proposal-id]  cumulative savings and forecast accuracy, or one
+                          proposal's before/after verdict
+  plan portfolio [--budget=N]   across imported environments — shared burden,
+                          spofs, where capex would produce the most
+
+check — what is proven, what is permitted, what is currently broken
+  check verify [cap] [--history]   run the declared check, or past verification
+  check authority [cap] [scope <target>]   what may run unattended, what each
+                          action may touch, whether a scope covers a target
+  check can <cap> [--target X] [--spend N]   the decision API: ALLOW/CONFIRM/DENY
+  check credentials       what revoking each credential would end
+  check incidents         probe the manifest, open incident runs for offline services
+  check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
+
+govern — the reviewable path from proposal to applied change
+  govern proposals / govern proposal <id>
+  govern approve <id> <person>
+  govern apply <id> / govern rollback <id>
+  govern history [since <when>]   how the frontier moved
+  govern audit [run|prop|human|days]   the trail — who approved what, what ran,
+                          and whether it held
+
+report — what the system cost to operate
+  report work [limit]     recent runs, each with what it cost
+  report usage [days]     where capability effort actually went
+  report economics        declared costs and goal values
+  report attention [days] how much work still runs through the human
+  report notify <topic>   push the attention digest to ntfy — nothing is sent
+                          without a topic
+  report notify-approvals <topic>   push the approved-waiting count to ntfy
+  report record <cap> [class] [note]   record that a task was blocked
+  report federation export|import   the signed summary a portfolio layer reads
+
   help [term]       this list, or one concept explained`;
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
@@ -448,16 +465,59 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   }
 }
 
+/**
+ * The five nouns the commands group under, and the verbs each one owns.
+ *
+ * There are thirty-five commands. They used to sit in one flat list, which
+ * meant `help --all` was the only way to find anything and the list itself
+ * taught nothing about how the parts relate. Grouping is presentation, not a
+ * rename: every flat name still dispatches, so nothing anyone has typed or
+ * scripted stops working — `ambit impact x` and `ambit graph impact x` are the
+ * same command.
+ */
+const GROUPS: Record<string, string[]> = {
+  graph: ['impact', 'where', 'share', 'catalog'],
+  plan: ['goal', 'opportunities', 'opportunity', 'roi', 'propose', 'portfolio'],
+  check: ['verify', 'authority', 'can', 'credentials', 'incidents', 'incident'],
+  govern: ['proposals', 'proposal', 'approve', 'apply', 'rollback', 'history', 'audit'],
+  report: [
+    'work',
+    'usage',
+    'economics',
+    'attention',
+    'digest',
+    'notify',
+    'notify-approvals',
+    'federation',
+    'record',
+  ],
+};
+
+/**
+ * Resolves `<group> <verb>` to the verb the switch below dispatches on.
+ *
+ * `graph` is also a command in its own right (`graph surface`, `graph combos`),
+ * so it only rewrites when the word after it is one this group actually owns.
+ */
+function resolveCommand(cmd: string | undefined, argv: string[]): { cmd?: string; argv: string[] } {
+  if (!cmd || !(cmd in GROUPS)) return { cmd, argv };
+  const sub = argv.find(a => !a.startsWith('--'));
+  if (!sub || !GROUPS[cmd].includes(sub)) return { cmd, argv };
+  const i = argv.indexOf(sub);
+  return { cmd: sub, argv: [...argv.slice(0, i), ...argv.slice(i + 1)] };
+}
+
 async function main() {
   const db = getDb();
   migrate(db);
-  const cmd = process.argv[2];
+  const resolved = resolveCommand(process.argv[2], process.argv.slice(3));
+  const cmd = resolved.cmd;
   // Flags are not arguments. Taking argv[3] blindly meant `tt verify --json`
   // looked for a capability named "--json", which every flag-taking command
   // silently inherited.
-  const positional = process.argv.slice(3).filter(a => !a.startsWith('--'));
+  const positional = resolved.argv.filter(a => !a.startsWith('--'));
   const arg = positional[0];
-  const flags = new Set(process.argv.slice(3).filter(a => a.startsWith('--')));
+  const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
   const mappingOverride = process.env.CONFIG_MAPPING;
 
   // An unseeded graph answered every question with "Nothing to report", which
