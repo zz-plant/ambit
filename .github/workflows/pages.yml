@@ -13,7 +13,7 @@ on:
       - 'src/shared/**'
       - 'vite.config.ts'
       - 'package.json'
-      - 'bun.lock'
+      - 'package-lock.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -32,14 +32,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
 
-      - run: bun install --frozen-lockfile
+      - run: npm ci
 
       - name: Build
-        run: bun run build
+        run: npm run build
 
       - name: Publish to gh-pages
         run: |
