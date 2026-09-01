@@ -1,6 +1,7 @@
 #!/usr/bin/env node --experimental-sqlite
 import { readFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
+import type { Db } from '../engine/db.ts';
 import {
   getDb,
   migrate,
@@ -65,7 +66,7 @@ const VERSION = JSON.parse(
  * as "this environment has no capabilities" rather than "this tool was never
  * set up" — the exact confusion Ambit exists to remove. Say which it is.
  */
-function emptyGraphNotice(db) {
+function emptyGraphNotice(db: Db) {
   const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get();
   if (seeded?.n) return null;
   return {
@@ -77,10 +78,10 @@ function emptyGraphNotice(db) {
   };
 }
 
-function respond(id, r) {
+function respond(id: unknown, r: unknown) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, result: r }) + '\n');
 }
-function err(id, c, m) {
+function err(id: unknown, c: number, m: string) {
   process.stdout.write(
     JSON.stringify({ jsonrpc: '2.0', id, error: { code: c, message: m } }) + '\n'
   );
@@ -95,7 +96,7 @@ function getWarmDb() {
   return dbHandle;
 }
 
-function tt(cb) {
+function tt<T>(cb: (db: Db) => T): T {
   const db = getWarmDb();
   return cb(db);
 }
@@ -568,7 +569,7 @@ let buf = '';
 // the first message in a chunk was ever answered — and a client that batches
 // initialize with tools/list, or whose requests simply arrive coalesced, would
 // hang waiting for a response that was never going to come.
-function handleLine(line) {
+function handleLine(line: string) {
   if (!line.trim()) return;
   try {
     const msg = JSON.parse(line);
@@ -588,7 +589,7 @@ function handleLine(line) {
       case 'tools/call': {
         const { name, arguments: args } = params;
         try {
-          let res;
+          let res: unknown;
           // Normalize tool name and capability arguments
           const normalizedName = name.startsWith('ambit_') ? name.replace(/^ambit_/, 'tt_') : name;
           const capId = args?.capId || args?.capabilityId || args?.capability;
@@ -614,7 +615,7 @@ function handleLine(line) {
                     .prepare(
                       "SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'"
                     )
-                    .get();
+                    .get() ?? { total: 0, unlocked: 0, verified: 0, failing: 0 };
                   const d = db
                     .prepare(
                       "SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain"
@@ -816,7 +817,7 @@ function handleLine(line) {
           if (notice) res = { ...notice, result: res };
           return respond(id, { content: [{ type: 'text', text: JSON.stringify(res, null, 2) }] });
         } catch (e) {
-          return err(id, -32000, e.message);
+          return err(id, -32000, e instanceof Error ? e.message : String(e));
         }
       }
       default:

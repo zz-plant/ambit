@@ -50,7 +50,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
             <div className="sp-designation">Governance &amp; Policy Enactments</div>
             <div className="sp-class">Review, sign, and authorize environment modifications</div>
           </div>
-          <button className="sp-close" onClick={onClose}>
+          <button type="button" className="sp-close" onClick={onClose}>
             ✕
           </button>
         </div>

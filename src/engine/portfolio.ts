@@ -90,7 +90,7 @@ function portfolio(db: Migratable, budgetDollars?: number) {
 
   // Where the capex goes: the environment whose declared opportunities add to
   // the most annual savings.
-  let allocation;
+  let allocation: Record<string, any>[] | undefined;
   if (budgetDollars != null && budgetDollars > 0) {
     allocation = imports
       .map(imp => {

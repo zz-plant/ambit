@@ -358,7 +358,7 @@ export default function App() {
         {error && (
           <div className="app-error">
             <p>{error}</p>
-            <button className="tp-btn" onClick={() => loadConfig()}>
+            <button type="button" className="tp-btn" onClick={() => loadConfig()}>
               Try again
             </button>
             {typeof window !== 'undefined' && !backendAvailable() && (
@@ -390,7 +390,12 @@ export default function App() {
           >
             <div className="app-guide-head">
               <strong>Getting Started</strong>
-              <button className="app-guide-close" onClick={dismissGuide} aria-label="Dismiss">
+              <button
+                type="button"
+                className="app-guide-close"
+                onClick={dismissGuide}
+                aria-label="Dismiss"
+              >
                 ✕
               </button>
             </div>
@@ -409,6 +414,7 @@ export default function App() {
               </li>
             </ol>
             <button
+              type="button"
               className="app-guide-more"
               onClick={() => {
                 setShowDocs(true);
@@ -537,6 +543,7 @@ export default function App() {
               </div>
               <div className="app-welcome-actions">
                 <button
+                  type="button"
                   className="app-welcome-btn"
                   onClick={() => {
                     seedDemo();
@@ -545,6 +552,7 @@ export default function App() {
                   Explore Interactive Demo
                 </button>
                 <button
+                  type="button"
                   className="app-welcome-btn app-welcome-btn-outline"
                   onClick={() => {
                     seedDemo();
@@ -554,6 +562,7 @@ export default function App() {
                   View Economic Loop
                 </button>
                 <button
+                  type="button"
                   className="app-welcome-btn app-welcome-btn-outline"
                   onClick={() => setShowDocs(true)}
                 >

@@ -303,14 +303,19 @@ function rollbackProposal(db: Db, proposalId?: string) {
 
 // ─── Execution Layer ──────────────────────────────────────────────────────────
 
-function applyRemoval(db, capId) {
+function applyRemoval(db: Db, capId: string) {
   const configPath =
     process.env.OPENCODE_CONFIG || process.env.HOME + '/.config/opencode/opencode.json';
   if (!existsSync(configPath)) return { error: 'Config not found' };
   const config = JSON.parse(readFileSync(configPath, 'utf8'));
   const prefix = capId.split(':')[0];
   const key = capId.replace(/^[^:]+:/, '');
-  const sectionMap = { mcp: 'mcp', agent: 'agent', cmd: 'command', provider: 'provider' };
+  const sectionMap: Record<string, string> = {
+    mcp: 'mcp',
+    agent: 'agent',
+    cmd: 'command',
+    provider: 'provider',
+  };
   const section = sectionMap[prefix];
   if (!section) return { error: 'Unknown prefix: ' + prefix };
   if (!config[section]?.[key]) return { error: 'Not found: ' + capId };

@@ -76,7 +76,7 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
             <h2 className="docs-title">How to read this</h2>
             <p className="docs-subtitle">Your setup, placed on a tree of agent capabilities</p>
           </div>
-          <button className="docs-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="docs-close" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
@@ -84,6 +84,7 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
         <div className="docs-tabs" role="tablist">
           {TABS.map(t => (
             <button
+              type="button"
               key={t.id}
               role="tab"
               aria-selected={tab === t.id}

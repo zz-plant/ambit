@@ -78,11 +78,11 @@ export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
   const width = order.length * COL_W + 60;
 
   const pos = new Map<string, { x: number; y: number }>();
-  order.forEach((k, ci) =>
-    cols
-      .get(k)!
-      .forEach((c, ri) => pos.set(c.id, { x: 40 + ci * COL_W + COL_W / 2, y: TOP + ri * ROW_H }))
-  );
+  order.forEach((k, ci) => {
+    cols.get(k)!.forEach((c, ri) => {
+      pos.set(c.id, { x: 40 + ci * COL_W + COL_W / 2, y: TOP + ri * ROW_H });
+    });
+  });
 
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 

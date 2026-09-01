@@ -5,7 +5,7 @@ import { loadTechTree } from './paths.ts';
 
 // ─── Near-Miss Combos (1-2 prerequisites away) ───────────────────────────────
 
-function nearMissCombos(db) {
+function nearMissCombos(db: Db) {
   const deps = db
     .prepare(
       "SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'"
@@ -15,10 +15,10 @@ function nearMissCombos(db) {
     .prepare('SELECT id, name, maturity_score, state, lifecycle FROM capabilities')
     .all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
-  const groups = new Map();
+  const groups = new Map<string, Record<string, any>[]>();
   for (const d of deps) {
     if (!groups.has(d.to_capability)) groups.set(d.to_capability, []);
-    groups.get(d.to_capability).push(d);
+    groups.get(d.to_capability)!.push(d);
   }
   const results = [];
   for (const [comboId, prereqs] of groups) {
@@ -73,7 +73,7 @@ function nearMissCombos(db) {
   return results.sort((a, b) => b.met_maturity - a.met_maturity);
 }
 
-function computeDecay(db) {
+function computeDecay(db: Db) {
   const caps = db
     .prepare(
       "SELECT id, name, domain, maturity_score, updated_at FROM capabilities WHERE state IN ('unlocked','active')"
@@ -101,7 +101,7 @@ function computeDecay(db) {
 
 // ─── Combo Discovery ──────────────────────────────────────────────────────────
 
-function discoverCombos(db) {
+function discoverCombos(db: Db) {
   const deps = db
     .prepare(
       "SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE to_capability LIKE 'combo:%'"
@@ -112,10 +112,10 @@ function discoverCombos(db) {
     .all();
   const capMap = new Map<string, Record<string, any>>(caps.map(c => [c.id, c]));
   const results = [];
-  const groups = new Map();
+  const groups = new Map<string, Record<string, any>[]>();
   for (const d of deps) {
     if (!groups.has(d.to_capability)) groups.set(d.to_capability, []);
-    groups.get(d.to_capability).push(d);
+    groups.get(d.to_capability)!.push(d);
   }
   for (const [comboId, prereqs] of groups) {
     const combo = capMap.get(comboId);
@@ -148,7 +148,7 @@ function discoverCombos(db) {
 
 // ─── Session Diff ─────────────────────────────────────────────────────────────
 
-function sessionDiff(db) {
+function sessionDiff(db: Db) {
   const caps = db
     .prepare(
       "SELECT id, name, domain, maturity_score, state FROM capabilities WHERE state IN ('unlocked','active')"
@@ -191,7 +191,7 @@ function sessionDiff(db) {
 
 // ─── Domain Health ────────────────────────────────────────────────────────────
 
-function domainHealth(db) {
+function domainHealth(db: Db) {
   const caps = db
     .prepare(
       "SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as active, AVG(maturity_score) as avg_maturity FROM capabilities GROUP BY domain"
@@ -239,7 +239,7 @@ function domainHealth(db) {
 
 // ─── Bottlenecks ──────────────────────────────────────────────────────────────
 
-function findBottlenecks(db) {
+function findBottlenecks(db: Db) {
   const caps = db
     .prepare(
       "SELECT id, name, domain, lifecycle FROM capabilities WHERE state IN ('unlocked','active')"
@@ -270,7 +270,7 @@ function findBottlenecks(db) {
     const ds = downstream.get(cap.id);
     if (!ds || ds.size === 0) continue;
     let comboUnlocks = 0;
-    ds.forEach(to => {
+    ds.forEach((to: string) => {
       if (comboIds.has(to)) comboUnlocks++;
     });
     results.push({
@@ -558,7 +558,7 @@ function credentialReport(db: Db) {
   });
 }
 
-function exportGraph(db) {
+function exportGraph(db: Db) {
   const caps = db.prepare('SELECT * FROM capabilities').all();
   const deps = db.prepare('SELECT * FROM dependencies').all();
   const items = caps.map(c => {
