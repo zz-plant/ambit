@@ -1,4 +1,4 @@
-import { test, expect } from 'bun:test';
+import { test, expect } from 'vitest';
 import concepts from '../../shared/concepts.json';
 
 test('every concept is complete enough to teach with', () => {

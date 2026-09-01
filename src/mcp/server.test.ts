@@ -1,11 +1,11 @@
-import { test, expect, beforeAll, afterAll } from 'bun:test';
+import { test, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-const ENGINE = join(import.meta.dir, '..', 'engine', 'engine.ts');
-const SERVER = join(import.meta.dir, 'server.ts');
+const ENGINE = join(import.meta.dirname, '..', 'engine', 'engine.ts');
+const SERVER = join(import.meta.dirname, 'server.ts');
 let dir: string;
 
 // Seeded once for the file rather than per test. Every test here is

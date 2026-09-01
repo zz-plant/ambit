@@ -23,7 +23,7 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - name: Test
-        run: bun test
+        run: npm test
 
       # `build` typechecks first, so this covers both.
       - name: Typecheck and build
