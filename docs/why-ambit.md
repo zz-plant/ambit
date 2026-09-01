@@ -106,7 +106,7 @@ The same argument extends past software — robots add physical actuation, and b
 
 ---
 
-**What actually exists today** is narrower than the argument above, deliberately so: capability discovery, dependency mapping, maturity and decay analysis, failure-cascade analysis, near-miss discovery, and an MCP-readable model of the environment. Verified capability, explicit authority, and goal-to-capability planning are [the roadmap](../ROADMAP.md), not the product.
+**What actually exists today** is narrower than the argument above, deliberately so: capability discovery, dependency mapping, maturity and decay analysis, failure-cascade analysis, near-miss discovery, and an MCP-readable model of the environment. Verified capability, explicit authority, and goal-to-capability planning are [the roadmap](./roadmap.md), not the product.
 
 The [README](../README.md) describes only what runs.
 

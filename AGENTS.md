@@ -1,15 +1,15 @@
 # Agent Guide
 
-Ambit — the combined action space of the user, their agents, and their machines. See [ROADMAP.md](./ROADMAP.md) for where the data model is heading; treat it as direction, not as description of what exists.
+Ambit — the combined action space of the user, their agents, and their machines. See [the roadmap](./docs/roadmap.md) for where the data model is heading; treat it as direction, not as description of what exists.
 
 Capability graph engine, ERAS-era SVG and 3D constellation visualizers, MCP server, passive tracking plugin, consultant agent, and teachable skill.
 
 ## Tech Stack
 
-- **Frontend**: React, TypeScript, Vite, Vanilla CSS, Three.js (React Three Fiber)
+- **Frontend**: React, TypeScript, Vite, vanilla CSS
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
-- **Backend**: `Bun.serve` in `server.ts` — visualizer API, consultant endpoints, and static `dist/` in production
+- **Backend**: `node:http` in `server.ts` — visualiser API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
 - **MCP Server**: JSON-RPC over stdio at `src/mcp/server.ts`, 47 tools
 - **Plugin**: Hooks OpenCode config events from `~/.config/opencode/plugins/`
 
@@ -61,10 +61,10 @@ One renderer: `CivTree.tsx` (SVG), era columns as filter metadata — the 3D mod
 
 Two configs, because the halves have different constraints:
 
-- `tsconfig.json` — `src/client`, full `strict`. Keep it at zero errors.
-- `tsconfig.node.json` — engine, MCP server, `server.ts`, scripts. Relaxed, since `node:sqlite` is experimental and types every row as `unknown`.
+- `tsconfig.json` — `src/client`, `strict`.
+- `tsconfig.node.json` — engine, MCP server, control plane, `server.ts`, scripts. Also `strict`: `db.ts` narrows the `node:sqlite` handle once at the boundary, so nothing downstream needs the exemption this config used to carry.
 
-`bun run typecheck` runs both, and `bun run build` runs it first.
+Both must stay at zero errors. `npm run typecheck` runs both, and `npm run build` runs it first.
 
 ## Concurrent sessions
 
@@ -80,7 +80,7 @@ worktree rather than sharing this one.
 `server.ts` reads and writes `~/.config/opencode/opencode.json`, and `/api/config/apply` can add an MCP server — a command OpenCode will later execute. Two invariants protect that, and neither may be relaxed:
 
 0. **No entry creation** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups use `Object.hasOwnProperty` — a bare truth test accepts `__proto__` and pollutes every object in the process.
-1. **Loopback only** — `Bun.serve({ hostname: '127.0.0.1' })`. Never bind `0.0.0.0`; the LAN and Tailscale must not reach this.
+1. **Loopback only** — `server.listen(API_PORT, '127.0.0.1')`. Never bind `0.0.0.0`; the LAN and Tailscale must not reach this.
 2. **Origin allowlist** — requests with a non-local `Origin` are rejected with 403 *before* routing. CORS response headers are not sufficient on their own: a simple request (`Content-Type: text/plain`) skips preflight and still reaches the handler, so the check must reject the request, not just omit the header.
 
 ## Infrastructure scan

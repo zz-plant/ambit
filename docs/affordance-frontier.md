@@ -1,6 +1,6 @@
 # The affordance frontier
 
-> This document is theory. It describes the object Ambit is trying to model, not what the software currently does. For that, see the [README](../README.md); for what is planned, [ROADMAP.md](../ROADMAP.md).
+> This document is theory. It describes the object Ambit is trying to model, not what the software currently does. For that, see the [README](../README.md); for what is planned, [the roadmap](./roadmap.md).
 
 ## The object
 
@@ -119,7 +119,7 @@ C(S_t) = { outcomes S can reliably and legitimately cause at time t }
 ΔC     = C(S_t+1) − C(S_t)
 ```
 
-Ambit's [ledger](../ROADMAP.md) is a first, narrow implementation of ΔC over one kind of system.
+Ambit's [ledger](./roadmap.md) is a first, narrow implementation of ΔC over one kind of system.
 
 ## The AGI thesis
 
@@ -159,4 +159,4 @@ What has not landed, and is the honest boundary:
 - **The non-digital domains are derived, not keyworded.** `ambit graph affordances` reads each capability's structural domain off the graph — institutional when an authority holder is required, economic when a budget and counterparty are implied, cognitive when a person supplies it, physical when a device runs it, machine-composed-human when a person and a machine both supply it. The visualiser does not render them as columns.
 - **Environment is not a term.** The robotics example above lists it alongside cognition, actuation and authority; the model has no way to say that an affordance holds in one workspace and not another.
 
-Those are [roadmap](../ROADMAP.md) items, and the theory above still runs ahead of them.
+Those are [roadmap](./roadmap.md) items, and the theory above still runs ahead of them.

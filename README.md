@@ -7,208 +7,47 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
-[![Bun](https://img.shields.io/badge/bun-%3E%3D1.1-fbf0df?style=flat-square&logo=bun&logoColor=black)](https://bun.sh)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
-[**Live Interactive Demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get Started](#get-started) · [5 Core Strengths](#where-ambit-succeeds) · [Terminal CLI](#ask-questions-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [Deep Dive](./docs/deep-dive.md)
+[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [How it works](#how-it-works) · [Deep dive](./docs/deep-dive.md)
 
 <br>
 
 <img src="docs/assets/capability-graph-demo.gif" alt="The Ambit capability map updating live: unlocking nodes, calculating reachable frontiers, and handling approvals" width="920">
-<sub><strong>Live Frontier:</strong> Adding a provider unlocks compound capabilities across your stack, surfaces reachable next steps, and streams verification & approval receipts.</sub>
 
-<br><br>
-
-**[Open the zero-install demo →](https://zz-plant.github.io/ambit/?demo=1)**
+<sub>Adding a provider unlocks compound capabilities across the stack, surfaces reachable next steps, and streams verification and approval receipts.</sub>
 
 </div>
 
 ---
 
-Try the [zero-install demo](https://zz-plant.github.io/ambit/?demo=1) first. It uses example data; a local checkout is required to inspect your own machine.
+## What Ambit is
 
----
+If you use AI agents, your setup is spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials, and more than one machine. Every piece has its own config file.
 
-## Why Ambit?
+What they add up to — what your human-plus-agent system can actually *do* — is written down nowhere.
 
-If you use AI agents, your setup is fragmented across dozens of pieces: LLM providers, MCP servers, local CLI tools, skill directories, API keys, and multiple machines. Each tool has its own isolated config file.
+Ambit reads those configs and builds one graph out of them. It is a meta-MCP server: an MCP server whose subject is your other MCP servers and the rest of your agent infrastructure. It models that environment as a capability tech tree, which lets it answer questions no single config file can:
 
-**What they all add up to — what your human + agent system can actually *do* — is invisible.**
+1. **What works right now?** What is reached, what is broken, and what is one dependency away.
+2. **What breaks downstream** if a model, tool, or credential goes away.
+3. **What compound abilities emerge** when two independent tools are combined.
+4. **What is worth setting up next**, priced by the human attention it would save.
 
-Ambit is the **meta-MCP server** for that sprawl: the MCP server that maps, audits, and plans across your other MCP servers and agent infrastructure. It models the environment as a formal capability tech tree, answering questions no single config or tool list can:
-
-1. **What works right now?** What is reached, what is broken, and what is one dependency away?
-2. **What breaks downstream** if a model, tool, or credential expires?
-3. **What compound abilities emerge** when two independent tools are combined?
-4. **What is worth setting up next**, priced by the human attention time it will save?
+Both halves of the system can ask. You ask from the terminal; your agent asks over MCP, mid-session, instead of guessing at its own boundary.
 
 <div align="center">
-<img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: your tools and skills drawn as connected nodes in themed civilization eras" width="900">
-<br><sub><strong>The Capability Tech Tree:</strong> Filled nodes are active · Outlined nodes are one step away on your frontier · Faded nodes have unmet prerequisites</sub>
+<img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
+<br><sub>Filled nodes are active · Outlined nodes are one step away on your frontier · Faded nodes have unmet prerequisites</sub>
 </div>
 
 ---
 
-## Architecture & Data Flow
+## Get started
 
-```mermaid
-flowchart LR
-    subgraph Discovery["1. Host Discovery"]
-        CFG["OpenCode / Claude Code / Cursor / Windsurf / Gemini CLI / Claude Desktop / Codex"]
-        SKILLS["Agent Skills (~/.agents/skills)"]
-        INFRA["Infrastructure & Device Manifest"]
-    end
+The [hosted demo](https://zz-plant.github.io/ambit/?demo=1) runs on example data and installs nothing. Inspecting your own machine needs a local checkout.
 
-    subgraph CoreEngine["2. Ambit Core Engine (SQLite)"]
-        DAG["Capability DAG\n(7 Eras & Emergent Combos)"]
-        ASSURE["Lifecycle & Health Checks\n(Active / Degraded / Broken)"]
-        LEDGER["Frontier & Work Ledger\n(Agency & Attention Accounting)"]
-        GOV["Governance & Approval Broker\n(Signed HMAC Receipts)"]
-    end
-
-    subgraph Surfaces["3. Control Surfaces"]
-        CLI["Terminal CLI\n(ambit status, goal, impact)"]
-        MCP["MCP Server\n(47 Tools for Agent Self-Reflection)"]
-        WEB["Tech Tree UI\n(Civilization-Style SVG Canvas)"]
-    end
-
-    Discovery --> CoreEngine
-    CoreEngine --> Surfaces
-    Surfaces -.->|"Propose & Apply Patches"| CoreEngine
-```
-
----
-
-## Where Ambit Succeeds
-
-Ambit is built around five core capabilities designed to solve agent environment sprawl:
-
-### 1. Civilization-Style Capability Graph & Combo Unlocks
-Instead of a flat list of isolated tools, Ambit constructs a Directed Acyclic Graph (DAG) of capabilities across 7 evolutionary eras (from *Foundation* and *Tool Use* to *Memory*, *Assurance*, and *Sovereignty*).
-* **Compound "Combo" Discovery:** Detects higher-order abilities unlocked by combining separate tools (e.g. `Vector DB` + `Local Embeddings` $\to$ `Semantic Retrieval`).
-* **Near-Miss Detection:** Tells you when you are 1–2 simple prerequisites away from unlocking major new automation capabilities.
-
-> [!TIP]
-> Run `ambit graph combos` in your terminal to immediately identify tools you can unlock with minimal setup time.
-
-### 2. Agent Meta-Introspection via MCP (47 Tools)
-Ambit embeds directly into agent loops (**OpenCode**, **Claude Code**, etc.) via the Model Context Protocol. Rather than hallucinating or blindly failing, agents can query their own operational boundary mid-flight.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Developer
-    participant Agent as AI Agent (Claude Code / OpenCode)
-    participant Ambit as Ambit Engine (MCP)
-    participant Host as Local Host / Infrastructure
-
-    Developer->>Agent: "Deploy billing service hotfix to staging"
-    Agent->>Ambit: tt_authority("act:continuous-delivery/deploy_staging")
-    Note over Ambit,Agent: Checks Prerequisites & Authority Contracts
-    Ambit-->>Agent: { "status": "blocked", "authority": "confirm", "missing": ["credential:k8s-kubeconfig"] }
-    Agent->>Ambit: tt_propose("deploy-staging")
-    Ambit-->>Agent: { "proposal_id": "prop-staging-42", "applicable": true }
-    Agent->>Developer: "I require staging kubeconfig & confirmation. Please run `ambit approve prop-staging-42`"
-    Developer->>Ambit: ambit approve prop-staging-42 (Mints HMAC Token)
-    Developer->>Host: ambit apply prop-staging-42 (Applies & Verifies)
-```
-
-<details>
-<summary><b>🔍 View the Full 47-Tool MCP Surface</b></summary>
-
-| Group | Tools | Purpose |
-| :--- | :--- | :--- |
-| **Graph & Topology** | `tt_stats`, `tt_context`, `tt_cap`, `tt_combos`, `tt_diff`, `tt_health`, `tt_decay`, `tt_near`, `tt_bottlenecks`, `tt_spof`, `tt_impact`, `tt_credentials` | Query graph structure, SPOFs, combo prerequisites, and blast radius. |
-| **Lifecycle & Assurance** | `tt_verify`, `tt_evidence`, `tt_authority`, `tt_actions`, `tt_plan`, `tt_goal`, `tt_paths`, `tt_preferences`, `tt_scope`, `tt_affordances`, `tt_since`, `tt_ledger` | Inspect health lifecycles, test verification contracts, and compute prerequisite paths. |
-| **Operations & Economics** | `tt_work`, `tt_usage`, `tt_run_begin`, `tt_run_end`, `tt_work_event`, `tt_digest`, `tt_economics`, `tt_goal_value`, `tt_opportunities`, `tt_opportunity`, `tt_catalog`, `tt_roi`, `tt_roi_summary`, `tt_audit`, `tt_incidents`, `tt_incident_resolve`, `tt_portfolio`, `tt_can` | Record telemetry, compute attention ROI, query opportunities, and verify permissions. |
-| **Governance & Planning** | `tt_blocked`, `tt_deficits`, `tt_simulate`, `tt_propose`, `tt_proposals`, `tt_proposal` | Propose environment patches and simulate future frontier states safely. |
-
-</details>
-
-### 3. Resilience, SPOF & Cascade Failure Analysis
-Ambit strictly separates **configuration (`state`)** from **health (`lifecycle`)**:
-* **Health Attestation:** A capability can be configured but `degraded` or `broken` if its verification command fails.
-* **Single Points of Failure (SPOF):** Automatically calculates bottlenecks where dozens of downstream capabilities rely on a single fragile dependency.
-
-> [!WARNING]
-> Revoking a shared credential or stopping a Docker daemon can silently break multiple independent agents. Ambit flags these shared dependencies before failure cascades occur.
-
-### 4. Attention Economics & Human-Agency Accounting
-Quantifies friction and human-in-the-loop interventions in real dollars and time:
-* **Attention Ledger:** Calculates the cognitive cost of manual interventions vs. autonomous agent execution time.
-* **Opportunity Engine:** Ranks candidate tools and skills by **realized ROI** based on observed failure patterns and setup time.
-
-### 5. Zero-Trust Local Governance & Signed Approvals
-Host-level agent tools represent high-risk attack surfaces. Ambit enforces strict defense-in-depth:
-* **Active Control Plane Interception:** Real-time proxy intercepts out-of-order or high-risk tool calls (e.g. destructive production deployments), blocks rogue agent executions (`AMBIT_BLOCKED_UNAUTHORIZED`), and guarantees **state invariance** (`pre_state == post_state`).
-* **Cryptographic HMAC Remediation:** Enforces human-in-the-loop remediation challenges (`ambit approve <proposal-id> <person>`), minting signed HMAC artifacts verified before any state transition.
-* **Strict Loopback Isolation:** Binds strictly to `127.0.0.1` and blocks non-local `Origin` headers before routing.
-* **No Remote Code Execution:** The web/API layer cannot create arbitrary MCP command entries over HTTP.
-
-> [!CAUTION]
-> Ambit purposefully rejects requests to add new MCP executable entries over HTTP. Modifying agent execution capabilities must always go through signed local receipts or manual configuration.
-
----
-
-### 🛡️ Verified Incident Trace: Autonomous Agent Interception & Remediation
-
-Read the full incident walkthrough and forensic log in [**`docs/incidents/INCIDENT_TRACE_001.md`**](./docs/incidents/INCIDENT_TRACE_001.md).
-
-```bash
-# 1. Run the automated Pytest intervention trace suite
-bun run test:control-plane
-
-# 2. Run the 90-second terminal incident demonstration
-bun run demo:incident
-
-# 3. Replay the verified terminal recording
-asciinema play docs/incidents/demo_intervention_trace.cast
-```
-
----
-
----
-
-## Visual Tour & Interactive Decision Suite
-
-The Ambit Web UI (`./bootstrap.sh web`) is an interactive operational canvas equipped with live simulation and governance lenses:
-
-<div align="center">
-
-### The Built-in Capability & Ontology Guide
-<img src="docs/assets/screenshot-docs.png" alt="Ambit Built-in Docs and Ontology Guide" width="850">
-<sub>Plain-language definitions of capabilities, eras, verification contracts, and authority levels.</sub>
-
-<br><br>
-
-### Configuration & Live Inspection
-<img src="docs/assets/screenshot-config.png" alt="Ambit Configuration and Health Inspection" width="850">
-<sub>Inspect providers, runtimes, MCP servers, and per-action execution boundaries.</sub>
-
-</div>
-
-### 🎛️ Four Dynamic Lenses on the Capability Canvas
-
-| Lens | What It Renders | Ideal For |
-| :--- | :--- | :--- |
-| **🗺️ Standard Tree** | Chronological 7-era columns with reached, frontier, and locked nodes. | Exploring high-level evolutionary progression. |
-| **🔥 Attention Heatmap** | Nodes glowing amber/crimson based on human intervention frequency and \$ / month friction cost. | Identifying which tools are interrupting developers the most. |
-| **🛡️ Credential SPOFs** | Highlights shared authentication tokens and Single Points of Failure. | Audit blast radius before rotating API keys or access tokens. |
-| **💻 Physical Hosts** | Groups capabilities into machine clusters (Laptop, GPU Server, Edge Pi, Cloud). | Diagnosing distributed homelab and edge device outages. |
-
-### ⚡ Interactive Simulator (Outage Blast Radius & What-If Frontier)
-Click any node in the inspector panel to enter simulation mode:
-* **`[⚡ Simulate Outage (Blast Radius)]`**: Dims the canvas and renders the entire multi-hop failure cascade in **pulsing red** with a sticky count of disabled downstream capabilities.
-* **`[✨ Simulate Unlocking (What-If)]`**: Simulates acquiring a locked primitive and lights up newly reachable compound capabilities in **glowing emerald green**.
-
-### 🛡️ 1-Click Proposal Approval Broker
-When an autonomous agent running in Claude Code or OpenCode proposes an environment change via MCP (`tt_propose`), click **`🛡️ PROPOSALS`** in the top navigation bar to review the diff and mint a cryptographically signed HMAC approval receipt in one click.
-
----
-
-## Get Started
-
-### Option A: Run from a checkout (CLI, engine, and visualizer)
+### Option A — full install (CLI, engine, visualizer)
 
 ```bash
 git clone https://github.com/zz-plant/ambit.git
@@ -216,7 +55,7 @@ cd ambit
 ./bootstrap.sh
 ```
 
-On first run, Ambit automatically discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and `~/.agents/skills`, initializes the local SQLite database, and reports your frontier. Each client's MCP servers are read from its standard config path and stay attributed to the runtime that supplied them — a server two runtimes share is one capability with two contribution edges, which is what makes the redundancy analysis honest.
+On first run Ambit discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and `~/.agents/skills`, initializes a local SQLite database, and reports your frontier.
 
 ```console
 First run — reading your agent config and building the graph…
@@ -230,7 +69,9 @@ First run — reading your agent config and building the graph…
     infra     26/28
 ```
 
-### Option B: Run only the visual tree
+Each client's MCP servers are read from its standard config path and stay attributed to the runtime that supplied them. A server two runtimes share is one capability with two contribution edges, which is what keeps the redundancy analysis honest — two runtimes pointing at the same binary is not two providers.
+
+### Option B — visualizer only
 
 ```bash
 git clone https://github.com/zz-plant/ambit.git
@@ -238,20 +79,71 @@ cd ambit
 ./bootstrap.sh web
 ```
 
-*Want to preview without touching anything? Run `./bootstrap.sh --dry-run`.*
+`bootstrap.sh` also links the `ambit` command into `~/.local/bin` when that directory is on your PATH. If it is not, the script prints the `ln -s` line to run instead, and everything below works the same way with `/path/to/ambit/cli.js` in place of `ambit`.
+
+To see what the installer would do without running it: `./bootstrap.sh --dry-run`.
+
+> [!NOTE]
+> The npm package is built and ready but not yet published, so `npx ambit` will not work. Use the checkout paths above.
 
 ---
 
-## Connect It to Your Agent
+## Ask from the terminal
 
-Register Ambit as an MCP server so your agent can inspect its own toolchain and plan around missing capabilities. The npm package is not published yet, so use the checkout path below.
+| Command | What it answers |
+|---|---|
+| `ambit status` | Environment health — active, degraded, and fragile nodes, plus pending approvals |
+| `ambit goal <name>` | The path to unlock a capability, in order, with setup estimates |
+| `ambit impact <id>` | Blast radius: what breaks if this tool, model, or credential goes down |
+| `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
+| `ambit opportunities` | What to set up next, ranked by the attention time it would save |
+| `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
+| `ambit verify [id]` | Run a capability's declared check and record whether it actually works |
+| `ambit history [since]` | How the frontier moved, separating what you acquired from what emerged |
+| `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
+
+`ambit help` lists the full surface, grouped by what you are trying to do.
+
+Everything above answers on a graph Ambit builds by itself. A second group — `attention`, `work`, `usage`, `opportunities`, `roi`, `audit` — prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need rather than returning a number, and they become useful after a few weeks of recorded runs, not on install.
+
+### Goal pathing
+
+```console
+$ ambit goal local-embeddings
+
+  Local Embeddings
+    missing: 1
+    steps: 2 · estimated setup: 25m
+    order: Embeddings Provider → Local Embeddings
+```
+
+### Single point of failure
+
+```console
+$ ambit impact tool:docker
+
+  Impact of tool:docker:
+    direct dependents: 4
+    downstream cascade: 12 capabilities blocked
+    critical path: Container Sandbox → Isolated Evaluation → Self-Testing
+```
+
+`ambit share` builds its HTML from an allow-list — name, kind, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as "a person", and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.
+
+---
+
+## Connect it to your agent
+
+Registering Ambit as an MCP server lets an agent inspect its own toolchain and plan around what is missing.
 
 ### Claude Code
+
 ```bash
-claude mcp add ambit -- /absolute/path/to/ambit/cli.js mcp
+claude mcp add ambit -- ambit mcp
 ```
 
 ### OpenCode (`~/.config/opencode/opencode.json`)
+
 ```json
 {
   "mcp": {
@@ -264,120 +156,204 @@ claude mcp add ambit -- /absolute/path/to/ambit/cli.js mcp
 }
 ```
 
-*An agent can inspect the map, query missing steps, and **propose** configuration changes — but applying changes always requires your explicit approval.*
+Both assume `bootstrap.sh` linked `ambit` onto your PATH. If it did not, use the absolute path to `cli.js` instead.
 
-Here is the whole loop, recorded from a live run (`bun run scripts/demo-agent-loop.ts` re-records it — every frame is real engine output, not a mockup):
+An agent can read the map, query what a goal is missing, and **propose** a configuration change. Applying one always requires your approval.
+
+Here is the whole loop from a live run. `node --experimental-strip-types scripts/demo-agent-loop.ts` re-records it, and every frame is real engine output — a failing loop fails the recording rather than rendering a fiction.
 
 <div align="center">
 <img src="docs/assets/agent-loop-demo.gif" alt="An agent hits a missing capability, asks Ambit why over MCP, and drafts a proposal; a person approves and applies it; the frontier moves and Local Embeddings unlocks through composition" width="920">
 <br><sub>Agent: hits a block, records the deficit, asks <code>goal</code>, drafts a proposal · Human: <code>approve</code>, <code>apply</code> · One config patch, four capabilities.</sub>
 </div>
 
----
+### What the exchange looks like
 
-## Ask Questions from the Terminal
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Developer
+    participant Agent as AI Agent (Claude Code / OpenCode)
+    participant Ambit as Ambit Engine (MCP)
+    participant Host as Local Host
 
-| Command | What It Answers |
-|---|---|
-| `ambit status` | Overall environment health — active, degraded, and fragile nodes |
-| `ambit goal <name>` | Step-by-step path to unlock a capability with time estimates |
-| `ambit impact <id>` | Blast radius: what breaks if this tool, model, or credential goes down |
-| `ambit opportunities` | Ranked suggestions for what to set up next, priced by time saved |
-| `ambit authority` | Per-action permissions: what runs autonomously vs. what requires confirmation |
-| `ambit history since` | Frontier movement: what capabilities were unlocked over time |
-| `ambit share` | A self-contained HTML snapshot of your map, safe to post — names, states, and edges only, written locally; `--redact` drops the names too |
-
-### Example: Goal Pathing
-
-```console
-$ ambit goal local-embeddings
-
-  Local Embeddings
-    missing: 1
-    steps: 2 · estimated setup: 25m
-    order: Embeddings Provider → Local Embeddings
+    Developer->>Agent: "Deploy the billing hotfix to staging"
+    Agent->>Ambit: ambit_authority("act:continuous-delivery/deploy_staging")
+    Note over Ambit,Agent: Checks prerequisites and authority contracts
+    Ambit-->>Agent: { status: "blocked", authority: "confirm", missing: ["credential:k8s-kubeconfig"] }
+    Agent->>Ambit: ambit_propose("deploy-staging")
+    Ambit-->>Agent: { proposal_id: "prop-staging-42", applicable: true }
+    Agent->>Developer: "I need the staging kubeconfig and your confirmation: ambit approve prop-staging-42"
+    Developer->>Ambit: ambit approve prop-staging-42 (mints a signed artifact)
+    Developer->>Host: ambit apply prop-staging-42 (applies and verifies)
 ```
 
-### Example: Single Point of Failure (SPOF) Analysis
+<details>
+<summary><b>The full 48-tool MCP surface</b></summary>
 
-```console
-$ ambit impact tool:docker
+Each tool is registered twice: `ambit_*` is canonical, and `tt_*` remains as a legacy alias. Forty-eight distinct tools, ninety-six names in `tools/list`.
 
-  Impact of tool:docker:
-    direct dependents: 4
-    downstream cascade: 12 capabilities blocked
-    critical path: Container Sandbox → Isolated Evaluation → Self-Testing
+| Group | Tools | Purpose |
+| :--- | :--- | :--- |
+| **Graph & topology** | `stats`, `context`, `cap`, `combos`, `diff`, `health`, `decay`, `near`, `bottlenecks`, `spof`, `impact`, `credentials` | Query structure, single points of failure, combo prerequisites, and blast radius. |
+| **Lifecycle & assurance** | `verify`, `evidence`, `authority`, `actions`, `plan`, `goal`, `paths`, `preferences`, `scope`, `affordances`, `since`, `ledger` | Inspect health, run verification contracts, resolve authority scope, compute prerequisite paths. |
+| **Work & economics** | `work`, `usage`, `run_begin`, `run_end`, `work_event`, `digest`, `economics`, `goal_value`, `opportunities`, `opportunity`, `catalog`, `roi`, `roi_summary`, `audit`, `incidents`, `incident_resolve`, `portfolio`, `can` | Record telemetry, price attention, rank opportunities, and check permission before acting. |
+| **Governance & planning** | `blocked`, `deficits`, `simulate`, `propose`, `proposals`, `proposal` | Record deficits, simulate future frontier states, and draft reviewable patches. |
+
+</details>
+
+---
+
+## How it works
+
+Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas — and the only path that writes to it is a proposal you approve.
+
+### The graph is a DAG across seven eras
+
+Discovered capabilities are placed into a curated tech tree that runs from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy**, and **Assurance** to **Sovereignty**. Prerequisites are edges, so reachability is computed rather than asserted.
+
+Two consequences fall out of that structure:
+
+- **Combos.** Higher-order abilities appear from tools that were configured separately — a vector store plus local embeddings becomes semantic retrieval, which neither config mentions.
+- **Near misses.** When you are one or two prerequisites from a capability that unlocks several others, that gap is worth naming. `ambit graph combos` lists them.
+
+### Configured is not working
+
+Ambit keeps two properties apart, and the distinction is load-bearing:
+
+- `state` is **structural** — is this thing configured, and what does it depend on. This is what the frontier ledger records.
+- `lifecycle` is **health** — did its declared verification command actually pass. A capability can be fully configured and still `degraded` or `broken`.
+
+Every availability decision gates on lifecycle, not state. A broken capability is excluded from plans, simulations, goals, authority checks, and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan.
+
+`ambit status` reports proven, unproven, and failing counts. The map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured-but-never-verified.
+
+### Fragility is computed, not guessed
+
+- **Single points of failure** — capabilities with exactly one provider.
+- **Bottlenecks** — nodes ranked by how much sits downstream of them.
+- **Shared credentials** — providers presenting the same credential fail together, so three providers behind one token is not redundancy. This one is declared rather than inferred: name the sharers in a `credentials` block and `ambit impact credential:...` will show what revoking it would end.
+
+---
+
+## The map
+
+The web UI (`./bootstrap.sh web`) is an operational canvas over the same graph the CLI reads.
+
+Four terms carry most of the meaning, on the canvas and in the CLI alike. The **Docs** button in the UI defines the rest.
+
+- **Capability** — one thing your setup can do. Every MCP server, agent, skill, provider, model, and command in your config becomes one, as does every node of the curated tree.
+- **Era** — how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
+- **Reached, next, blocked** — reached means something in your config provides it. Next means the prerequisites are met but nothing was detected: this is the frontier, and `ambit goal` lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.
+- **Hard vs soft prerequisite** — a hard prerequisite gates the capability; a soft one strengthens it without gating. Only hard prerequisites block a node. Both are drawn, soft ones fainter.
+
+### Three lenses on the canvas
+
+Press <kbd>1</kbd>–<kbd>3</kbd> to switch.
+
+| Lens | What it renders | Use it for |
+| :--- | :--- | :--- |
+| **Standard** | Chronological era columns with reached, frontier, and locked nodes. | Reading overall progression and what is nearby. |
+| **Attention** | Nodes warmed amber to crimson by how often a human has had to intervene. | Finding which tools keep interrupting you. |
+| **SPOFs** | Highlights capabilities that hang off shared authentication. | Checking blast radius before rotating a key. |
+
+### Simulation
+
+Select a node to open the inspector, then simulate against it. Neither mode writes anything.
+
+- **Simulate outage** dims the canvas and renders the multi-hop failure cascade in red, with a running count of disabled downstream capabilities.
+- **Simulate unlocking** acquires a locked primitive hypothetically and lights up everything that becomes reachable in green.
+
+### Approving proposals
+
+When an agent proposes an environment change over MCP, the **Proposals** panel shows the diff and mints a signed approval receipt in one click. The same thing happens from the terminal with `ambit approve <id> <who>`.
+
+---
+
+## The control plane
+
+Host-level agent tooling is a real attack surface, so execution goes through an interceptor rather than straight to the shell.
+
+- **Interception.** The proxy in `src/control_plane/proxy.ts` evaluates DAG prerequisites, lifecycle state, and authority policy before a tool call reaches the environment. An out-of-order or unauthorized call is blocked with `AMBIT_BLOCKED_UNAUTHORIZED` and exit code `2`, leaving `pre_state == post_state`.
+- **Human-in-the-loop remediation.** A blocked execution drafts a structured proposal and an HMAC challenge. `ambit approve <proposal-id> <person>` mints a signed artifact that the executor verifies before any state changes. An artifact stops being valid if the proposal changed after approval, or if it has expired.
+- **Tracing.** Spans and structured events record DAG evaluations, missing authorizations, challenges, and verification receipts.
+- **The environment is simulated.** The decision is real — the DAG check, the authority evaluation, the approval artifact and the audit trail all run against your actual graph. What sits on the other side of the gate is a fixture: `simulatedAdapter` in `src/control_plane/proxy.ts` keeps its state in a JSON file. Ambit ships no deployment integration. A real one implements the three-method `EnvironmentAdapter` in that file, and nothing above the gate changes.
+
+A worked example — an autonomous deploy agent blocked mid-flight, then remediated — is written up in [`docs/incidents/INCIDENT_TRACE_001.md`](./docs/incidents/INCIDENT_TRACE_001.md).
+
+```bash
+npm test                                                  # 198 tests, 16 files
+npm run demo:incident                                     # the 90-second terminal walkthrough
+asciinema play docs/incidents/demo_intervention_trace.cast # replay the recording
 ```
 
 ---
 
-## Exemplary Use Cases in Action
+## In practice
 
-### 1. The Blast Radius Audit (Preventing Silent Outages)
-* **The Situation:** Rotating a shared personal access token (`github-user-token`).
-* **Before Ambit:** You revoke the token; two background MCP tools and a scheduled sync agent crash silently in production.
-* **With Ambit:** Running `ambit impact credential:github/user-token` warns you that 3 providers and 8 capabilities depend on this single token, prompting you to provision granular tokens first.
+### The combo you already almost have
 
-### 2. The "Near-Miss" Combo Unlock
-* **The Situation:** You have local Postgres and Ollama installed, but your agent cannot perform private semantic code search.
-* **With Ambit:** `ambit graph combos` points out you are 1 step away (`CREATE EXTENSION vector;`). Running `ambit goal offline-semantic-search --simulate` shows you that this 5-minute fix unlocks 6 downstream capabilities with zero cloud API costs.
+You run local Postgres and Ollama, but your agent cannot do private semantic code search over your repositories.
 
-### 3. In-Flight Agent Self-Diagnosis via MCP
-* **The Situation:** An autonomous agent in Claude Code is asked to deploy to staging.
-* **Before Ambit:** The agent runs raw `kubectl` commands, gets unauthorized errors, retries endlessly, and corrupts local state.
-* **With Ambit:** The agent calls `tt_authority` over MCP, sees `authority: confirm` and `missing: staging-kubeconfig`, stops cleanly, and asks the human to approve a signed proposal.
+`ambit graph combos` reports the gap as one step — `CREATE EXTENSION vector;` — and `ambit goal offline-semantic-search --simulate` shows what that five-minute change reaches, with no cloud API in the path.
 
----
+### An agent diagnosing itself
 
-## How Ambit Compares
+An agent in Claude Code is asked to deploy to staging. Left alone it runs `kubectl`, collects unauthorized errors, retries, and leaves local state worse than it found it.
 
-```
-+-----------------------------------------------------------------------------------+
-|                            THE AGENT TOOLING STACK                               |
-+-----------------------------------------------------------------------------------+
-|  1. Workflow Orchestration | LangGraph, CrewAI, Temporal (Execution Control Flow) |
-|  2. Semantic Tool Routing  | Tool-RAG, Gorilla, AnyTool (API Search)              |
-|  3. Capability & Frontier  | Ambit (Prerequisites, Combos, SPOF, Attention Cost)  |  <-- Ambit
-|  4. Protocol Layer         | Model Context Protocol (JSON-RPC stdio/SSE)          |
-|  5. Runtime / Isolation    | E2B, Docker, Nix, Local OS Host Filesystem           |
-+-----------------------------------------------------------------------------------+
-```
+Calling `ambit_authority` first returns `authority: confirm` and `missing: staging-kubeconfig`. The agent stops cleanly and asks for an approval it can name.
 
-* **vs. Vector Tool-RAG:** Vector search finds tools by semantic keyword similarity, but is blind to prerequisite order and broken dependencies. Ambit models prerequisites and verifies health.
-* **vs. Workflow State Machines (LangGraph):** LangGraph models *what to do in a specific task workflow*. Ambit models *what the host environment as a whole is capable of executing*.
-* **vs. Package Managers (Nix/Homebrew):** Nix builds isolated binaries; Ambit models the higher-level cognitive affordance and human attention economics.
+### Rotating a shared token
+
+You are about to revoke a personal access token. Without a model of what depends on it, two background MCP tools and a scheduled sync agent fail silently some hours later.
+
+`ambit impact credential:github/user-token` names the providers and capabilities standing on that one credential, which is the argument for provisioning granular tokens first.
+
+This one needs setup first. Ambit will not guess which providers share a secret, so the credential graph is read from a `credentials` block you write — the [deep dive](./docs/deep-dive.md) has the format. Until you do, `ambit credentials` reports that none are declared.
 
 ---
 
-## Security & Invariants
+## Where this sits in the stack
 
-Because Ambit inspects developer toolchains and configuration files, security invariants are strictly enforced:
+Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.
 
-1. **Loopback Only:** The API server binds strictly to `127.0.0.1`. Remote network interfaces are never opened.
-2. **Strict Origin Validation:** Requests with non-local `Origin` headers are rejected with `403 Forbidden` prior to routing.
-3. **No Entry Creation over HTTP:** The HTTP server can edit existing tool settings, but **cannot create new MCP server entries** over HTTP, eliminating remote code execution (RCE) vectors.
-4. **Local Data Sovereignty:** Everything is stored locally in an embedded SQLite database. Zero telemetry or credentials leave your machine.
+- **Against vector tool-RAG.** Semantic search finds tools that sound relevant. It has no view of prerequisite order and cannot tell a working tool from a broken one.
+- **Against workflow state machines.** LangGraph models control flow within one task. Ambit models what the host environment is capable of executing at all.
+- **Against package managers.** Nix and Homebrew install binaries. Ambit models the affordance those binaries add up to, and what it costs a person to keep them working.
 
 ---
 
-## Documentation & Deep Dive
+## Security invariants
 
-* [Deep Dive Architecture & API Guide](./docs/deep-dive.md) — Detailed reference on nodes, assurance checks, authority contracts, the work ledger, and all 47 MCP tools.
-* [Why Ambit](./docs/why-ambit.md) — The engineering motivation and backstory.
-* [The Affordance Frontier](./docs/affordance-frontier.md) — Theoretical foundation: capability as a property of human-machine systems.
-* [Roadmap](./ROADMAP.md) — Future development milestones.
-* [Security Guide](./SECURITY.md) & [Agent Invariants](./AGENTS.md) — Security policies and rules.
-* [Launch Kit](./docs/launch.md) — Listing copy, repository topics, Show HN draft, and the social-preview asset.
+Ambit reads developer toolchains and writes to agent configs, so a few properties are fixed and cannot be relaxed. [`AGENTS.md`](./AGENTS.md) and [`SECURITY.md`](./SECURITY.md) carry the full posture.
+
+1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
+2. **Origin allowlist.** A request with a non-local `Origin` is rejected with 403 *before* routing. Response headers alone are not sufficient — a simple request skips preflight and would otherwise reach the handler.
+3. **No entry creation over HTTP.** The HTTP layer can edit fields on existing MCP entries and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution. Adding a server returns a snippet for you to paste.
+4. **Local data only.** Everything lives in an embedded SQLite database on your machine. No telemetry, no credentials leaving the host.
+
+---
+
+## Documentation
+
+* [Deep dive](./docs/deep-dive.md) — nodes, assurance checks, authority contracts, the work ledger, and every MCP tool in detail.
+* [Why Ambit](./docs/why-ambit.md) — what the tool is for and why it exists.
+* [The affordance frontier](./docs/affordance-frontier.md) — capability as a property of human-machine systems rather than of software.
+* [Roadmap](./docs/roadmap.md) — where the data model is heading. Direction, not description.
+* [Changelog](./CHANGELOG.md) — what changed per release, and why.
+* [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) — the rules above, in full.
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Whether it is adding new capability models, refining runtime adapters, improving UI visualizations, or reporting edge cases:
+New capability models, runtime adapters, visualization work, and edge-case reports are all welcome.
 
-- Review [CONTRIBUTING.md](./CONTRIBUTING.md) for development workflow and PR guidelines.
-- Review [SECURITY.md](./SECURITY.md) and [AGENTS.md](./AGENTS.md) for core security invariants.
-- Read our [Code of Conduct](./CODE_OF_CONDUCT.md) to understand community standards.
+- [CONTRIBUTING.md](./CONTRIBUTING.md) — development workflow and PR guidelines.
+- [AGENTS.md](./AGENTS.md) — the invariants a change must not break.
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — community standards.
+
+`npm run lint && npm run typecheck && npm test` is the gate. Both halves of the repo typecheck under `strict`, and the suite runs against real SQLite.
 
 ---
 
