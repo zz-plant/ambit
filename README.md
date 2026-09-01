@@ -285,6 +285,7 @@ Here is the whole loop, recorded from a live run (`bun run scripts/demo-agent-lo
 | `ambit opportunities` | Ranked suggestions for what to set up next, priced by time saved |
 | `ambit authority` | Per-action permissions: what runs autonomously vs. what requires confirmation |
 | `ambit history since` | Frontier movement: what capabilities were unlocked over time |
+| `ambit share` | A self-contained HTML snapshot of your map, safe to post — names, states, and edges only, written locally; `--redact` drops the names too |
 
 ### Example: Goal Pathing
 

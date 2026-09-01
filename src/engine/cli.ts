@@ -7,6 +7,7 @@ import { getDb, migrate } from "./db.ts";
 import { seedFromConfig } from "./discovery.ts";
 import { readClaudeCode, claudeCodeSeedInput } from "./claude-code.ts";
 import { discoverMcpClients } from "./mcp-clients.ts";
+import { shareSnapshot } from "./share.ts";
 import {
   computeDecay, discoverCombos, sessionDiff, domainHealth, findBottlenecks,
   analyzeImpact, nearMissCombos, singlePointsOfFailure, exportGraph,
@@ -151,6 +152,8 @@ const HELP = `ambit - what your system can do, what it costs, what to change
   apply <id> / rollback <id>
   record <cap> [class] [note]   record that a task was blocked by a capability
   seed              seed from the agent config
+  share [--redact] [--out=path]   write a self-contained HTML snapshot of the
+                    map — names, states, edges only; nothing leaves the machine
   where             where the graph is stored
   help [term]       this list, or one concept explained`;
 
@@ -548,6 +551,24 @@ async function main() {
     }
     // Where the graph lives is not obvious once the CLI is installed rather
     // than cloned, and every other component resolves the same path.
+    case "share": {
+      // Written locally, never posted: the file is the product, and where it
+      // goes next is the person's decision made outside this tool.
+      const out = [...flags].find(f => f.startsWith('--out='))?.slice(6) || 'ambit-map.html';
+      const snap = shareSnapshot(db, { redact: flags.has('--redact') });
+      writeFileSync(out, snap.html);
+      emit({
+        wrote: out,
+        nodes: snap.nodes,
+        reached: snap.reached,
+        proven: snap.proven,
+        redacted_names: snap.redacted_names,
+        note: flags.has('--redact')
+          ? 'Names outside the curated model are replaced by category and index.'
+          : 'Names are included; --redact shares the shape of the setup without them. Commands, URLs, paths, and descriptions are never included.',
+      });
+      break;
+    }
     case "where": {
       const path = resolveDbPath();
       // Not whether the file exists — opening it creates it, so that is always
