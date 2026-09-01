@@ -603,17 +603,17 @@ main()
     process.exit(0);
   })
   .catch(async e => {
-  console.error('Recording failed:', e.message);
-  // A selector that stopped matching is the expected failure as the UI moves,
-  // so the state it died in is worth more than the stack: write the frame out
-  // where a person can look at it.
-  if (cdpRef) {
-    try {
-      const shot = join(tmpdir(), `ambit-hero-failure-${process.pid}.png`);
-      writeFileSync(shot, await cdpRef.shot());
-      console.error(`Last frame written to ${shot}`);
-    } catch {}
-  }
+    console.error('Recording failed:', e.message);
+    // A selector that stopped matching is the expected failure as the UI moves,
+    // so the state it died in is worth more than the stack: write the frame out
+    // where a person can look at it.
+    if (cdpRef) {
+      try {
+        const shot = join(tmpdir(), `ambit-hero-failure-${process.pid}.png`);
+        writeFileSync(shot, await cdpRef.shot());
+        console.error(`Last frame written to ${shot}`);
+      } catch {}
+    }
     cleanup();
     process.exit(1);
   });
