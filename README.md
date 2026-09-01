@@ -54,7 +54,7 @@ Ambit is the **meta-MCP server** for that sprawl: the MCP server that maps, audi
 ```mermaid
 flowchart LR
     subgraph Discovery["1. Host Discovery"]
-        CFG["OpenCode / Claude Code / Cursor / Windsurf"]
+        CFG["OpenCode / Claude Code / Cursor / Windsurf / Gemini CLI / Claude Desktop / Codex"]
         SKILLS["Agent Skills (~/.agents/skills)"]
         INFRA["Infrastructure & Device Manifest"]
     end
@@ -216,7 +216,7 @@ cd ambit
 ./bootstrap.sh
 ```
 
-On first run, Ambit automatically discovers OpenCode, Claude Code, Cursor, Windsurf, and `~/.agents/skills`, initializes the local SQLite database, and reports your frontier. Cursor and Windsurf MCP servers are read from their standard config paths and remain attributed to the runtime that supplied them.
+On first run, Ambit automatically discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and `~/.agents/skills`, initializes the local SQLite database, and reports your frontier. Each client's MCP servers are read from its standard config path and stay attributed to the runtime that supplied them — a server two runtimes share is one capability with two contribution edges, which is what makes the redundancy analysis honest.
 
 ```console
 First run — reading your agent config and building the graph…

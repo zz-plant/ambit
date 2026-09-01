@@ -451,15 +451,21 @@ test('skills symlinked into a runtime directory are discovered', () => {
   expect(rows(db, "SELECT id FROM capabilities WHERE id = 'skill:deploying'").length).toBe(1);
 });
 
-test('seed combines OpenCode, Claude Code, Cursor, and Windsurf configs', () => {
+test('seed combines OpenCode, Claude Code, and every MCP client it knows', () => {
   const home = join(dir, 'home');
   const openCodeConfig = join(home, '.config', 'opencode', 'opencode.json');
   const claudeConfig = join(home, '.claude.json');
   const cursorConfig = join(home, '.cursor', 'mcp.json');
   const windsurfConfig = join(home, '.codeium', 'windsurf', 'mcp_config.json');
+  const geminiConfig = join(home, '.gemini', 'settings.json');
+  const desktopConfig = join(home, '.config', 'Claude', 'claude_desktop_config.json');
+  const codexConfig = join(home, '.codex', 'config.toml');
   mkdirSync(join(home, '.config', 'opencode'), { recursive: true });
   mkdirSync(join(home, '.cursor'), { recursive: true });
   mkdirSync(join(home, '.codeium', 'windsurf'), { recursive: true });
+  mkdirSync(join(home, '.gemini'), { recursive: true });
+  mkdirSync(join(home, '.config', 'Claude'), { recursive: true });
+  mkdirSync(join(home, '.codex'), { recursive: true });
   writeFileSync(openCodeConfig, JSON.stringify({
     mcp: { filesystem: { type: 'local', command: ['filesystem-mcp'] } },
   }));
@@ -476,6 +482,25 @@ test('seed combines OpenCode, Claude Code, Cursor, and Windsurf configs', () => 
       linear: { serverUrl: 'https://mcp.linear.app/sse' },
     },
   }));
+  // Gemini CLI keeps mcpServers inside its general settings file.
+  writeFileSync(geminiConfig, JSON.stringify({
+    theme: 'dark',
+    mcpServers: { maps: { command: 'maps-mcp' } },
+  }));
+  writeFileSync(desktopConfig, JSON.stringify({
+    mcpServers: { sqlite: { command: 'uvx', args: ['mcp-server-sqlite'] } },
+  }));
+  // Codex is the one TOML config; the reader handles tables, strings, arrays.
+  writeFileSync(codexConfig, [
+    'model = "o4"',
+    '',
+    '[mcp_servers.docs]',
+    'command = "npx"',
+    'args = ["-y", "docs-mcp"]',
+    '',
+    '[other_section]',
+    'ignored = true',
+  ].join('\n'));
 
   const dbPath = join(dir, 'auto-discovery.db');
   const env = { ...process.env } as Record<string, string>;
@@ -488,26 +513,35 @@ test('seed combines OpenCode, Claude Code, Cursor, and Windsurf configs', () => 
   });
 
   const db = new Database(dbPath);
-  const capabilities = rows(db, "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf')");
+  const capabilities = rows(db, "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex')");
   expect(capabilities.map(row => row.id).sort()).toEqual([
     'mcp:browser',
+    'mcp:docs',
     'mcp:filesystem',
     'mcp:github',
     'mcp:linear',
+    'mcp:maps',
+    'mcp:sqlite',
     'runtime:claude-code',
+    'runtime:claude-desktop',
+    'runtime:codex',
     'runtime:cursor',
+    'runtime:gemini-cli',
     'runtime:opencode',
     'runtime:windsurf',
   ]);
   const contributions = rows(db, `
     SELECT from_capability f, to_capability t
     FROM dependencies
-    WHERE from_capability IN ('runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf')
+    WHERE from_capability LIKE 'runtime:%'
   `);
   expect(contributions).toContainEqual({ f: 'runtime:opencode', t: 'mcp:filesystem' });
   expect(contributions).toContainEqual({ f: 'runtime:claude-code', t: 'mcp:browser' });
   expect(contributions).toContainEqual({ f: 'runtime:cursor', t: 'mcp:github' });
   expect(contributions).toContainEqual({ f: 'runtime:windsurf', t: 'mcp:linear' });
+  expect(contributions).toContainEqual({ f: 'runtime:gemini-cli', t: 'mcp:maps' });
+  expect(contributions).toContainEqual({ f: 'runtime:claude-desktop', t: 'mcp:sqlite' });
+  expect(contributions).toContainEqual({ f: 'runtime:codex', t: 'mcp:docs' });
   db.close();
 });
 
