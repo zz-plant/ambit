@@ -23,7 +23,13 @@ coverage/
 .sisyphus/
 .codex/
 .agent/
-.claude/
+.claude/*
+# …except the dev-server config. That is project setup, not local scratch:
+# it is what a preview launcher resolves "ambit-dev" against. It was already
+# committed, but as a file the ignore rules also excluded — a state where
+# `git add` on a sibling silently does nothing and no one finds out why. An
+# excluded directory cannot have children re-included, hence `.claude/*`.
+!.claude/launch.json
 .wrangler/
 .playwright-mcp/
 .playwright-cli/
