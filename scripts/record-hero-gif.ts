@@ -276,7 +276,7 @@ const byText = (sel: string, text: string) => `(() => {
   const els = [...document.querySelectorAll(${JSON.stringify(sel)})];
   const label = e => e.textContent.trim().toLowerCase();
   // Prefix first, then containment: several controls carry a decorative glyph
-  // ahead of the word (the sidebar toggle renders as "\u25e7Sidebar"), and a
+  // ahead of the word (the list toggle renders as "\u25e7List"), and a
   // strict prefix match rejects them for a character that is not part of the
   // product's vocabulary. Ambiguity is still reported rather than guessed at.
   const hits = els.filter(e => label(e).startsWith(want));
@@ -490,8 +490,8 @@ async function main() {
   // between framing seven era columns and cutting off the last two. The tree
   // is what this frame is of, so the list folds away for it and comes back
   // for the steps that read from it.
-  // The canvas opens at 100% scrolled to the origin, which puts most of the
-  // tree below the fold. Fit is what a person presses first.
+  // The canvas opens fitted to the window's width; Fit fits both axes, which
+  // is what a person presses to see the whole thing.
   await cdp.clickWhere(`document.querySelector('[aria-label="Fit graph to view"]')`);
   await sleep(1200);
 
@@ -546,7 +546,7 @@ async function main() {
   // 3 — blast radius
   const simmed = await cdp.clickWhere(`(() => {
     const b = [...document.querySelectorAll('.sp-action-btn')]
-      .find(e => /simulate (outage|unlocking)/i.test(e.textContent));
+      .find(e => /simulate (an outage|unlocking)/i.test(e.textContent));
     if (!b) throw new Error('no simulate button. panel buttons: ' +
       [...document.querySelectorAll('.sp-action-btn')].map(e => e.textContent.trim()).join(' | ') || '(panel absent)');
     return b;

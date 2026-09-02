@@ -16,7 +16,7 @@ export interface LinkState {
   view: View;
   focusId: string | null;
   docsOpen: boolean;
-  /** `?demo=1`: skip the LOAD DEMO click so a shared link opens on the graph. */
+  /** `?demo=1`: skip the "Open the demo" click so a shared link opens on the graph. */
   demo: boolean;
   /** `?guide=off`: never show the first-run guide, for screenshots. */
   guideOff: boolean;

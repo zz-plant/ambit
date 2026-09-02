@@ -18,6 +18,9 @@ import { useAmbitStore } from './store/ambitStore';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 
+/** The width of the docked capability list and of the detail panel. */
+const PANEL_W = 340;
+
 const Loading = () => (
   <div className="app-loading">
     <div className="app-loading-ring" />
@@ -41,7 +44,6 @@ export default function App() {
   const demo = useAmbitStore(s => s.demo);
   const proposals = useAmbitStore(s => s.proposals);
   const showApprovalModal = useAmbitStore(s => s.showApprovalModal);
-  const activeLens = useAmbitStore(s => s.activeLens);
 
   const selectItem = useAmbitStore(s => s.selectItem);
   const hoverItem = useAmbitStore(s => s.hoverItem);
@@ -52,7 +54,6 @@ export default function App() {
   const loadProposals = useAmbitStore(s => s.loadProposals);
   const loadAttentionData = useAmbitStore(s => s.loadAttentionData);
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
-  const setActiveLens = useAmbitStore(s => s.setActiveLens);
 
   // The URL is read once; the toggles own every later change.
   const [link] = useState(() =>
@@ -144,17 +145,37 @@ export default function App() {
   };
 
   const selected = selectedId ? items.find(i => i.id === selectedId) : undefined;
+  const detailOpen = Boolean(showDetailPanel && selectedId);
+  const listInset = leftOpen && !isNarrow ? PANEL_W : 0;
+
+  // No graph yet: the welcome page, on its own. The chrome around the map —
+  // a capability list reading "(0)", a status pill reading "0 / 0" — would
+  // otherwise be the first thing a visitor saw.
+  if (!items.length && !loading && !error) {
+    return (
+      <div className="app">
+        <WelcomeScreen
+          onExploreDemo={seedDemo}
+          onViewLoop={() => {
+            seedDemo();
+            setView('loop');
+          }}
+          onShowDocs={() => setShowDocs(true)}
+        />
+        <DocsModal isOpen={showDocs} onClose={() => setShowDocs(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
       <AppDeck
-        active={items.filter(i => i.status === 'built').length}
+        reached={items.filter(i => i.status === 'built').length}
         total={items.length}
         view={view}
         source={source}
         demo={demo !== null}
         draftCount={proposals.filter(p => p.status === 'draft').length}
-        activeLens={activeLens}
         leftOpen={leftOpen}
         onToggleSidebar={() => setLeftOpen(o => !o)}
         onShowTree={showTree}
@@ -164,7 +185,6 @@ export default function App() {
           selectItem(null);
         }}
         onShowProposals={showProposals}
-        onSetLens={setActiveLens}
         onShowDocs={() => setShowDocs(true)}
       />
 
@@ -178,32 +198,8 @@ export default function App() {
             </button>
           </div>
         )}
-        {showGuide && view === 'graph' && items.length > 0 && (
-          <GettingStartedGuide
-            style={
-              isNarrow
-                ? undefined
-                : { left: leftOpen ? 340 : 0, right: showDetailPanel && selectedId ? 340 : 0 }
-            }
-            onDismiss={dismissGuide}
-            onReadMore={() => {
-              setShowDocs(true);
-              dismissGuide();
-            }}
-          />
-        )}
-        {!items.length && !loading && (
-          <WelcomeScreen
-            onExploreDemo={seedDemo}
-            onViewLoop={() => {
-              seedDemo();
-              setView('loop');
-            }}
-            onShowDocs={() => setShowDocs(true)}
-          />
-        )}
         {view === 'loop' && demo ? (
-          <DemoDashboard />
+          <DemoDashboard leftInset={listInset} />
         ) : items.length > 0 ? (
           <Suspense fallback={<Loading />}>
             <CivTree
@@ -213,13 +209,24 @@ export default function App() {
               hoveredId={hoveredId}
               onSelect={selectItem}
               onHover={hoverItem}
-              leftInset={leftOpen && !isNarrow ? 348 : 8}
+              leftInset={listInset ? listInset + 8 : 8}
+              rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
             />
           </Suspense>
         ) : null}
+        {showGuide && view === 'graph' && items.length > 0 && (
+          <GettingStartedGuide
+            style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
+            onDismiss={dismissGuide}
+            onReadMore={() => {
+              setShowDocs(true);
+              dismissGuide();
+            }}
+          />
+        )}
       </div>
 
-      {showDetailPanel && selectedId && (
+      {detailOpen && (
         <aside className="app-detail-panel" aria-label="Capability details">
           <NodeDetailPanel />
         </aside>
@@ -233,9 +240,11 @@ export default function App() {
         />
       )}
 
-      <aside className={`app-console ${leftOpen ? 'app-console--open' : ''}`}>
-        <CapabilityListPanel />
-      </aside>
+      {leftOpen && (
+        <aside className="app-console" aria-label="Capabilities">
+          <CapabilityListPanel />
+        </aside>
+      )}
 
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
       <DocsModal isOpen={showDocs} onClose={() => setShowDocs(false)} />
@@ -244,7 +253,7 @@ export default function App() {
         <Toast
           message={toast}
           onDismiss={() => setToast(null)}
-          onViewGovernance={() => {
+          onViewProposals={() => {
             setShowApprovalModal(true);
             setToast(null);
           }}

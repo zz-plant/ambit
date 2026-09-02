@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use Ambit in research or reference it in a standard, please cite it."
-title: "Ambit: a capability graph for agent infrastructure"
+title: "Ambit: what you, your agents, and your machines can jointly do"
 abstract: >-
   Ambit discovers the capabilities implicit in an agent stack's configuration and
   models them as a graph of goals, capabilities, providers, resources, authority,

@@ -1,5 +1,4 @@
 import { spawn, execSync } from 'node:child_process';
-import { existsSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -71,9 +70,13 @@ async function main() {
     }
     console.log(`🌐 Server active at ${BASE_URL}`);
 
+    // ?guide=off on every shot: the first-run card is for a person in front
+    // of the screen, and in a screenshot it covered the legend and the last
+    // row of nodes — in the README, and in the social card.
+
     // 1. Tech Tree Screenshot (1440x900)
     await captureShot(
-      `${BASE_URL}/?demo=1&view=tree`,
+      `${BASE_URL}/?demo=1&view=tree&guide=off`,
       join(ASSETS_DIR, 'screenshot-tree.png'),
       1440,
       900,
@@ -84,43 +87,14 @@ async function main() {
     // lands on the tree, and this shot was a pixel-for-pixel duplicate of
     // screenshot-tree back when the two tabs shared one seeded dataset.
     await captureShot(
-      `${BASE_URL}/?demo=1&view=config`,
+      `${BASE_URL}/?demo=1&view=config&guide=off`,
       join(ASSETS_DIR, 'screenshot-config.png'),
       1440,
       900,
       3500
     );
 
-    // 3. Docs Modal (1440x900)
-    await captureShot(
-      `${BASE_URL}/?demo=1&docs=open`,
-      join(ASSETS_DIR, 'screenshot-docs.png'),
-      1440,
-      900,
-      3500
-    );
-
-    // 4. Social preview (1280x640)
-    await captureShot(
-      `${BASE_URL}/?demo=1&view=tree`,
-      join(ASSETS_DIR, 'ambit-social-preview.png'),
-      1280,
-      640,
-      3500
-    );
-
-    // Copy to social-preview.png and public/social-preview.png
-    copyFileSync(
-      join(ASSETS_DIR, 'ambit-social-preview.png'),
-      join(ASSETS_DIR, 'social-preview.png')
-    );
-    if (existsSync(join(process.cwd(), 'public'))) {
-      copyFileSync(
-        join(ASSETS_DIR, 'ambit-social-preview.png'),
-        join(process.cwd(), 'public', 'social-preview.png')
-      );
-    }
-
+    // The social card is composed, not captured: `npm run assets:generate`.
     console.log('🎉 All screenshots generated successfully!');
   } finally {
     server.kill();

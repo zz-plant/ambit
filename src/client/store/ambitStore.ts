@@ -95,6 +95,7 @@ import type {
   InfrastructureFinding,
   InfrastructureScan,
 } from '../../shared/types.ts';
+import { WEB_ACTOR } from '../utils/copy';
 
 export type { InfrastructureNode, InfrastructureLink, InfrastructureFinding, InfrastructureScan };
 
@@ -275,7 +276,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     }
   },
 
-  approveProposal: async (proposalId: string, actor = 'human:kanav') => {
+  approveProposal: async (proposalId: string, actor = WEB_ACTOR) => {
     if (!(await backendAvailable())) {
       // Demo mode approval simulation
       set(state => ({
@@ -386,9 +387,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   loadConfig: async () => {
     // No live backend means the published demo: an empty graph and the
-    // welcome screen, not an error. LOAD DEMO is the entry there.
+    // welcome screen, not an error. "Open the demo" is the entry there.
     if (!(await backendAvailable())) {
-      // The health probe is async: if LOAD DEMO was clicked (or ?demo=1 ran)
+      // The health probe is async: if "Open the demo" was clicked (or ?demo=1 ran)
       // while this was in flight, don't clobber the seeded graph on resolve.
       if (get().demo) return;
       set({ items: [], connections: [], loading: false, error: null, demo: null });

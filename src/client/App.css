@@ -21,25 +21,35 @@
   --accent: #6366f1;
   --accent-dim: #4f46e5;
   --accent-soft: rgba(99, 102, 241, 0.12);
-  --accent-glow: none;
+  --on-accent: #ffffff;
 
   /* Accent Spectrum */
   --copper-1: #ef4444;
   --copper-2: #f97316;
   --copper-3: #f59e0b;
   --copper-4: #fbbf24;
-  --copper-glow: none;
 
   /* Semantic Status Colors */
   --ok: #10b981;
-  --ok-glow: none;
   --warn: #f59e0b;
-  --warn-glow: none;
   --error: #f43f5e;
-  --error-glow: none;
+  --error-deep: #e11d48;
   --info: #0284c7;
   --plasma: #8b5cf6;
-  --plasma-glow: none;
+
+  /* One colour per kind of node. The map, the detail panel, the list and the
+     docs all read these, so a server is the same amber everywhere. */
+  --type-framework: var(--accent);
+  --type-server: #f59e0b;
+  --type-agent: #ec4899;
+  --type-skill: #10b981;
+  --type-provider: #0284c7;
+  --type-model: #3b82f6;
+  --type-combo: #8b5cf6;
+  --type-tool: #d97706;
+  --type-device: #14b8a6;
+  --type-network: #0ea5e9;
+  --type-other: #7b8799;
 
   /* Crisp, Subtle Borders */
   --border: rgba(255, 255, 255, 0.08);
@@ -50,17 +60,18 @@
   --border-copper: rgba(245, 158, 11, 0.4);
   --border-soft: rgba(255, 255, 255, 0.07);
 
-  /* Typography */
+  /* Typography. Muted text sits on the darkest ground at 5.3:1; the previous
+     value was 4.1:1, under the AA floor for the 10–11px labels it is used on. */
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-caption: #475569;
+  --text-muted: #7b8799;
   --text-copper: #fbbf24;
 
   --muted-bg: #0f172a;
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 8px;
+  --radius-md: 10px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-full: 9999px;
@@ -103,6 +114,39 @@ html, body, #root {
 
 code, pre, .code, .sp-cli-cmd {
   font-family: var(--font-mono);
+}
+
+/* One focus ring for everything that can take focus. Individual controls
+   used to reset the outline and only two of them put anything back, so a
+   keyboard user lost their place on most of the ~40 buttons in the app. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Text for screen readers only: the live region that announces a selection.
+   It rendered as visible text in the top-left corner while this was missing. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .app {
@@ -166,6 +210,18 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.app-deck-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--warn);
+  color: var(--bg-canvas);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
 }
 
 .app-status-pill {
@@ -263,6 +319,65 @@ code, pre, .code, .sp-cli-cmd {
   background: rgba(245, 158, 11, 0.08);
 }
 
+/* The two generic buttons the panels and modals share. */
+.tp-btn,
+.tp-btn-sm {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.tp-btn {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.tp-btn-sm {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+}
+
+.tp-btn:hover,
+.tp-btn-sm:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+
+.tp-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tp-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.tp-btn--primary:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+  color: var(--on-accent);
+}
+
+/* On narrow screens the console is a sheet over the map; this is what a tap
+   outside it lands on. */
+.app-drawer-backdrop {
+  position: absolute;
+  inset: 50px 0 0 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 29;
+}
+
 /* ─── SIDEBAR & CAPABILITY LIST PANEL ─── */
 .toolchain-panel {
   position: absolute;
@@ -313,13 +428,16 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
   font-size: 12px;
   font-family: var(--font-sans);
-  outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .tp-search:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.tp-search:focus-visible {
+  outline: none;
 }
 
 .tp-search-clear {
@@ -696,173 +814,225 @@ code, pre, .code, .sp-cli-cmd {
 
 .tp-item:focus-visible,
 .sp-link:focus-visible {
-  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
 /* ─── CANVAS HUD & CONTROLS ─── */
-.civ-tree-container {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  overflow: auto;
+/* The canvas scrolls; the HUD is pinned to the viewport above it. The zoom
+   controls sit left, the lenses right, so neither covers a column header. */
+.civ-hud {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  height: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0 12px;
+  pointer-events: none;
 }
 
-.civ-hud {
-  position: absolute;
-  top: 14px;
-  left: 14px;
+.civ-hud > * {
+  pointer-events: auto;
+}
+
+/* Room for the HUD above the era headers, so it never sits on a column name. */
+.civ-tree-svg {
+  display: block;
+  margin-top: 44px;
+}
+
+.civ-zoom-hud,
+.civ-lens-hud {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
+  padding: 3px;
   background: var(--bg-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
-  padding: 4px 8px;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  z-index: 20;
 }
 
-.civ-hud-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.civ-hud-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 500;
-  margin-right: 2px;
-}
-
-.civ-hud-btn {
+.civ-zoom-btn {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.civ-zoom-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.civ-zoom-badge {
+  min-width: 40px;
+  text-align: center;
   font-size: 11px;
   font-weight: 500;
-  padding: 3px 8px;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.civ-hud-btn:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
-}
-
-.civ-hud-btn--active {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border-color: var(--border-bright);
-}
-
-.civ-hud-zoom {
-  font-size: 11px;
   color: var(--text-muted);
-  min-width: 32px;
-  text-align: center;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
 }
 
-.civ-hud-divider {
+.civ-zoom-divider {
   width: 1px;
-  height: 14px;
+  height: 16px;
+  margin: 0 3px;
   background: var(--border);
 }
 
+.civ-lens-hud .app-deck-tab {
+  padding: 3px 10px;
+  font-size: 11.5px;
+}
+
+.civ-lens-key {
+  margin-left: 5px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Pinned under the HUD like the HUD itself: a zero-height sticky strip, so
+   the banner appearing does not push the map down. */
+.civ-sim-wrap {
+  position: sticky;
+  top: 52px;
+  left: 0;
+  z-index: 20;
+  height: 0;
+  padding-left: 12px;
+}
+
 .civ-sim-banner {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 12px;
+  max-width: 100%;
   padding: 6px 14px;
   border-radius: var(--radius-full);
   font-size: 12px;
   font-weight: 500;
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--shadow-md);
-  z-index: 25;
 }
 
 .civ-sim-banner--outage {
-  background: rgba(244, 63, 94, 0.15);
-  border: 1px solid rgba(244, 63, 94, 0.4);
-  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.5);
+  color: var(--error);
 }
 
 .civ-sim-banner--acquisition {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: var(--ok);
 }
 
 .civ-sim-banner-close {
   background: transparent;
-  border: none;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
   color: currentColor;
-  cursor: pointer;
+  padding: 2px 10px;
+  font-family: var(--font-sans);
+  font-size: 11px;
   font-weight: 600;
+  cursor: pointer;
+}
+
+/* A transient notice from the graph stream. */
+.ambit-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  max-width: 560px;
+  padding: 10px 14px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.45;
 }
 
 /* ─── WELCOME / LANDING VIEW ─── */
+/* Shown on its own, with none of the app chrome: there is no graph yet, so a
+   capability list reading "(0)" and a status pill reading "0 / 0" would be
+   the first thing a visitor saw. */
 .app-welcome {
-  height: 100%;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow-y: auto;
 }
 
 .app-welcome-hero {
-  max-width: 580px;
+  max-width: 560px;
   width: 100%;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
 }
 
 .app-welcome-title {
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.6px;
   color: var(--text-primary);
 }
 
 .app-welcome-tagline {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.55;
   color: var(--text-secondary);
+  max-width: 460px;
 }
 
 .app-welcome-diagram {
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 .app-welcome-actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 18px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
 .app-welcome-btn {
-  height: 36px;
-  padding: 0 16px;
+  height: 38px;
+  padding: 0 20px;
   border-radius: var(--radius-sm);
   background: var(--accent);
-  color: #ffffff;
+  color: var(--on-accent);
   border: 1px solid transparent;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 500;
   font-family: var(--font-sans);
   cursor: pointer;
@@ -871,42 +1041,42 @@ code, pre, .code, .sp-cli-cmd {
   justify-content: center;
   gap: 6px;
   text-decoration: none;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease;
 }
 
 .app-welcome-btn:hover {
   background: var(--accent-dim);
 }
 
-.app-welcome-btn-outline {
-  background: var(--bg-surface);
+.app-welcome-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.app-welcome-link:hover {
   color: var(--text-primary);
-  border-color: var(--border);
 }
 
-.app-welcome-btn-outline:hover {
-  background: var(--bg-elevated);
-  border-color: var(--border-bright);
-}
-
-.app-welcome-code {
-  font-size: 11.5px;
+.app-welcome-local {
+  font-size: 12px;
+  line-height: 1.6;
   color: var(--text-muted);
 }
 
-.app-welcome-code code {
+.app-welcome-local code {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-radius: var(--radius-xs);
-}
-
-.app-welcome-modes {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  color: var(--text-secondary);
   font-size: 11.5px;
-  color: var(--text-muted);
 }
 
 /* ─── MODAL DIALOGS (GOVERNANCE / DOCS) ─── */
@@ -961,12 +1131,157 @@ code, pre, .code, .sp-cli-cmd {
   border-color: var(--border);
 }
 
+.gov-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.gov-search {
+  width: 180px;
+  height: 28px;
+  font-size: 11.5px;
+}
+
+.gov-empty {
+  padding: 32px 0;
+  text-align: center;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.gov-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.gov-card {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.gov-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--warn);
+}
+
+.gov-card--approved::before {
+  background: var(--ok);
+}
+
+.gov-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gov-id {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.gov-status {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  color: var(--warn);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.gov-status--approved {
+  color: var(--ok);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.gov-goal {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.gov-steps {
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gov-step {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent-dim);
+  font-size: 11.5px;
+}
+
+.gov-step code {
+  color: var(--text-secondary);
+}
+
+.gov-step-via {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.gov-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.gov-signed {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ok);
+}
+
+.gov-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
 /* ─── GUIDE CALLOUT ─── */
+/* Top right, under the lens switcher. It used to sit bottom left, where it
+   covered the legend and the last row of nodes — in the README screenshots
+   too. Insets for the detail panel are set inline. */
 .app-guide {
   position: absolute;
-  bottom: 20px;
-  margin: 0 20px;
-  max-width: 480px;
+  top: 56px;
+  right: 16px;
+  max-width: 340px;
   background: var(--bg-glass);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -1019,66 +1334,354 @@ code, pre, .code, .sp-cli-cmd {
   padding: 0;
 }
 
-/* ─── ECONOMIC LOOP DASHBOARD ─── */
+/* ─── TIME & COST DASHBOARD ─── */
+/* Fills the scene beside the console rather than under it: the left inset is
+   set inline from the same state that positions the map. */
 .loop-dashboard {
-  height: 100%;
+  position: absolute;
+  inset: 0;
   overflow-y: auto;
-  padding: 24px 32px;
+  padding: 24px 28px 40px;
+  background: var(--bg-deep);
+  transition: left 0.15s ease;
+}
+
+.loop-inner {
+  max-width: 920px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
 }
 
 .loop-hero {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .loop-title {
   font-size: 20px;
   font-weight: 700;
+  letter-spacing: -0.3px;
   color: var(--text-primary);
 }
 
 .loop-subtitle {
-  font-size: 13px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
   color: var(--text-muted);
+  max-width: 520px;
+}
+
+.loop-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.loop-stat {
+  min-width: 150px;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.loop-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.loop-stat-value--ok {
+  color: var(--ok);
+}
+
+.loop-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.loop-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.loop-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+}
+
+.loop-chip--ok {
+  color: var(--ok);
+}
+
+.loop-chip--error {
+  color: var(--error);
+}
+
+.loop-chip--warn {
+  color: var(--warn);
+}
+
+.loop-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.loop-section-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.loop-filter-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.loop-filter-tab {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.loop-filter-tab:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-bright);
+}
+
+.loop-filter-tab--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.loop-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.loop-card {
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.loop-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--accent);
+}
+
+.loop-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.loop-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.loop-card-line {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.loop-card-line strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.loop-card-line .is-ok {
+  color: var(--ok);
+}
+
+.loop-card-line .is-warn {
+  color: var(--warn);
+}
+
+.loop-confidence {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.loop-confidence--high {
+  color: var(--ok);
+}
+
+.loop-confidence--medium {
+  color: var(--warn);
+}
+
+.loop-confidence--low {
+  color: var(--text-muted);
+}
+
+.payback-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.payback-track {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.payback-fill {
+  height: 100%;
+  background: var(--ok);
+  border-radius: var(--radius-full);
+}
+
+.loop-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.loop-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.loop-option {
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 2px 8px;
+  color: var(--text-muted);
+  background: var(--bg-deep);
+}
+
+.loop-option strong {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.loop-sim-btn {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.loop-sim-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .loop-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
-.loop-card {
+.loop-list {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius);
+  padding: 4px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.loop-card-title {
-  font-size: 13px;
+.loop-list-row {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  line-height: 1.45;
+}
+
+.loop-list-row:last-child {
+  border-bottom: none;
+}
+
+.loop-list-row strong {
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.loop-card-stat {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-primary);
+.loop-foot {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
 }
 
-.loop-card-desc {
-  font-size: 11.5px;
+.loop-foot code {
   color: var(--text-secondary);
-  line-height: 1.45;
+  background: var(--bg-surface);
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-size: 11px;
 }
 
 /* ─── LOADING & ERROR STATES ─── */
@@ -1330,16 +1933,15 @@ code, pre, .code, .sp-cli-cmd {
     border-top: 1px solid var(--border);
   }
 
+  /* The row scrolls sideways rather than clipping: on a 375px screen the
+     controls used to run past the right edge with overflow visible, so two of
+     the three lenses were simply gone. With the lenses moved onto the map the
+     view tabs fit in the scrolling row, so they are reachable on a phone. The
+     status pill, the one purely informational element, gives up its width. */
   .app-deck-center {
-    display: none;
+    flex: 0 0 auto;
   }
 
-  /* Hiding the centre tabs was not enough: what remained still ran past the
-     right edge with overflow visible, so on a 375px screen the Docs button sat
-     at x=537 and two of the three lenses were off-screen. Nothing was clipped
-     in a way a person could scroll to — the controls were simply gone. The row
-     scrolls now, and the status pill, the one element here that is purely
-     informational, gives up its width rather than competing for it. */
   .app-deck {
     overflow-x: auto;
     justify-content: flex-start;
@@ -1353,6 +1955,27 @@ code, pre, .code, .sp-cli-cmd {
 
   .app-status-pill {
     display: none;
+  }
+
+  .app-guide {
+    top: auto;
+    bottom: 16px;
+    left: 16px;
+    right: 16px !important;
+    max-width: none;
+  }
+
+  .civ-lens-hud {
+    display: none;
+  }
+
+  .loop-dashboard {
+    left: 0 !important;
+    padding: 16px 16px 40px;
+  }
+
+  .loop-hero {
+    align-items: flex-start;
   }
 }
 

@@ -1,25 +1,7 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
-
-const TYPE_COLORS: Record<string, string> = {
-  framework: '#6366f1',
-  runtime: '#6366f1',
-  tool: '#64748b',
-  'mcp-server': '#f59e0b',
-  agent: '#ec4899',
-  provider: '#0284c7',
-  model: '#3b82f6',
-  command: '#64748b',
-  skill: '#10b981',
-  config: '#d97706',
-  possibility: '#8b5cf6',
-  device: '#14b8a6',
-  service: '#6366f1',
-  api: '#f59e0b',
-  network: '#0ea5e9',
-  workflow: '#8b5cf6',
-};
+import { typeColor, typeSymbol } from '../utils/typeColors';
 
 export function NodeDetailPanel() {
   const items = useAmbitStore(s => s.items);
@@ -36,7 +18,7 @@ export function NodeDetailPanel() {
 
   if (!item) return null;
 
-  const typeColor = TYPE_COLORS[item.type] || '#64748b';
+  const color = typeColor(item.type);
 
   const lifecycle = item.meta?.lifecycle as string | undefined;
   const lastChecked = item.meta?.lastChecked as string | undefined;
@@ -97,16 +79,8 @@ export function NodeDetailPanel() {
   return (
     <div className="star-panel">
       <div className="sp-hdr">
-        <span className="sp-sig" style={{ color: typeColor }}>
-          {item.type === 'framework'
-            ? '★'
-            : item.type === 'mcp-server'
-              ? '◈'
-              : item.type === 'agent'
-                ? '◆'
-                : item.type === 'skill'
-                  ? '◇'
-                  : '●'}
+        <span className="sp-sig" style={{ color }} aria-hidden="true">
+          {typeSymbol(item.type)}
         </span>
         <div className="sp-title-group">
           <div className="sp-designation">{item.name}</div>
@@ -126,7 +100,12 @@ export function NodeDetailPanel() {
             </span>
           </div>
         </div>
-        <button type="button" className="sp-close" onClick={() => selectItem(null)}>
+        <button
+          type="button"
+          className="sp-close"
+          onClick={() => selectItem(null)}
+          aria-label="Close details"
+        >
           ✕
         </button>
       </div>
@@ -141,16 +120,17 @@ export function NodeDetailPanel() {
             marginTop: '4px',
             marginBottom: '8px',
             fontSize: '11.5px',
-            color: '#f59e0b',
+            color: 'var(--warn)',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
           }}
         >
-          <span>★</span>
+          <span aria-hidden="true">★</span>
           <span>
-            <strong>Keystone Component:</strong> High-leverage foundation enabling{' '}
-            {downstreamEnables.length} downstream branches.
+            <strong>Keystone.</strong> {downstreamEnables.length} other{' '}
+            {downstreamEnables.length === 1 ? 'capability depends' : 'capabilities depend'} on this
+            one.
           </span>
         </div>
       )}
@@ -172,7 +152,7 @@ export function NodeDetailPanel() {
         </div>
       )}
 
-      {/* Simulation Controls: Blast Radius & What-If Frontier Simulator */}
+      {/* Simulation: an outage for a reached node, an unlock for one that is not. */}
       {(() => {
         const isSimulated = simulatedNodeId === item.id;
 
@@ -185,12 +165,12 @@ export function NodeDetailPanel() {
                 style={{
                   width: '100%',
                   background: 'var(--accent)',
-                  color: '#fff',
+                  color: 'var(--on-accent)',
                   fontWeight: 600,
                 }}
                 onClick={clearSim}
               >
-                ✕ Exit Simulation
+                Exit simulation
               </button>
             ) : item.status === 'built' ? (
               <button
@@ -204,7 +184,7 @@ export function NodeDetailPanel() {
                 }}
                 onClick={() => startOutage(item.id)}
               >
-                Simulate Outage (Blast Radius)
+                Simulate an outage
               </button>
             ) : (
               <button
@@ -218,7 +198,7 @@ export function NodeDetailPanel() {
                 }}
                 onClick={() => startAcquisition(item.id)}
               >
-                Simulate Acquisition (Unlock)
+                Simulate unlocking this
               </button>
             )}
           </div>
@@ -237,7 +217,7 @@ export function NodeDetailPanel() {
           <div className="sp-adv-list">
             {advisories.map((a, i) => (
               <div key={i} className="sp-adv-item">
-                <span style={{ color: typeColor }}>{a.icon}</span>
+                <span style={{ color }}>{a.icon}</span>
                 <span>{a.label}</span>
               </div>
             ))}
@@ -245,16 +225,14 @@ export function NodeDetailPanel() {
         </div>
       )}
 
-      {/* CLI Quick-Action Commands with 1-Click Copy */}
+      {/* The same questions from the terminal, one click to copy. */}
       <div className="sp-cli-actions">
         <div
           className="sp-section-label"
           style={{ display: 'flex', justifyContent: 'space-between' }}
         >
           <span>Commands</span>
-          {copiedCmd && (
-            <span style={{ color: 'var(--ok)', textTransform: 'none' }}>✓ Copied {copiedCmd}!</span>
-          )}
+          {copiedCmd && <span style={{ color: 'var(--ok)', textTransform: 'none' }}>Copied</span>}
         </div>
         <div className="sp-cli-row">
           <code className="sp-cli-cmd">ambit impact {item.id}</code>
@@ -301,10 +279,7 @@ export function NodeDetailPanel() {
                   className="sp-link"
                   onClick={() => selectItem(n.id)}
                 >
-                  <span
-                    className="sp-link-dot"
-                    style={{ background: TYPE_COLORS[n.type] || '#6a8aaa' }}
-                  />
+                  <span className="sp-link-dot" style={{ background: typeColor(n.type) }} />
                   <span className="sp-link-name">{n.name}</span>
                   {conn && <span className="sp-link-type">{conn.type}</span>}
                 </button>

@@ -105,7 +105,7 @@ stateDiagram-v2
 
 ## The full CLI surface
 
-Run `ambit` with no arguments and it shows the surface. Thirty-five commands group under five nouns, and the grouping is presentation only — every verb also works flat, so `ambit impact x` and `ambit graph impact x` are the same command:
+Run `ambit` with no arguments and it shows where the environment stands; `ambit help --all` shows the surface. Thirty-five commands group under five nouns, and the grouping is presentation only — every verb also works flat, so `ambit impact x` and `ambit graph impact x` are the same command:
 
 ```
            seed · status · help [term]
@@ -652,28 +652,6 @@ $ ambit status
 
 ---
 
-## Why an AI might ask you to install Ambit
+## Why
 
-The interesting case is not *"you should install another developer tool."* It is an agent recognising:
-
-> I keep encountering environmental limitations that neither of us can represent or fix systematically.
-
-That happens when every session rediscovers the same machines and permissions, when unrelated tasks fail on the same missing primitive, when capabilities exist but their composition is unclear, or when the distinction between *possible* and *permitted* lives only in conversation.
-
-The point is not to make the agent indiscriminately more powerful. It is to give the joint system a durable representation of the environment it is already building.
-
-## Why this may matter beyond developer tooling
-
-As AI systems acquire more persistent means of action, capability increasingly becomes a **systems property** rather than a model property. Effective agency can grow through thousands of small integrations without any dramatic increase in model intelligence — credentials, persistence, schedulers, tools, machines, memory, delegation, and network reach all contribute.
-
-A useful design norm follows:
-
-> **No increase in effective capability without a corresponding increase in legibility, verification, and governability.**
-
-Ambit does not attempt to solve alignment. It addresses a narrower problem: the growth of effective agency outpacing our ability to represent, bound, verify, and revoke it.
-
-A mature capability graph could make several invariants explicit — no autonomous acquisition of new authority; no delegation beyond the delegator's; no persistent worker without an owner and a kill path; no capability promotion without verification; no irreversible action without a recovery path.
-
-The larger idea is simple: **make capability accumulation explicit rather than accidental.**
-
-There is a longer version of this argument in [why-ambit.md](./why-ambit.md), and the theory it rests on — affordances as relational, robotics and BCIs as the cases that test the abstraction, and the intellectual genealogy — in [affordance-frontier.md](./affordance-frontier.md).
+The argument for the tool — why capability should be distinct from authority, why effective agency grows faster than model intelligence, and what a system's action space should be accountable to — is made once, in [why-ambit.md](./why-ambit.md). The theory it rests on, with robotics and brain-computer interfaces as the cases that test it, is in [affordance-frontier.md](./affordance-frontier.md).

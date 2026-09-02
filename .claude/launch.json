@@ -9,6 +9,18 @@
         "dev"
       ],
       "port": 3000
+    },
+    {
+      "name": "ambit-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "4187",
+        "--strictPort"
+      ],
+      "port": 4187
     }
   ]
 }

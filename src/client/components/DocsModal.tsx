@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import concepts from '../../shared/concepts.json';
+import { typeColor } from '../utils/typeColors';
 
 interface DocsModalProps {
   isOpen: boolean;
@@ -19,22 +20,22 @@ const HOTKEYS = [
   { key: '/', desc: 'Search capabilities in the sidebar' },
   { key: '\\', desc: 'Toggle capabilities sidebar' },
   { key: 'J / K', desc: 'Navigate up / down through capabilities' },
-  { key: '1 - 3', desc: 'Switch graph lens (1: Standard, 2: Attention, 3: SPOFs)' },
-  { key: '+ / -', desc: 'Zoom in / out on the canvas' },
-  { key: '0', desc: 'Reset zoom to 100%' },
-  { key: 'G', desc: 'Open Proposals & Governance modal' },
-  { key: '?', desc: 'Open Documentation & Concept guide' },
-  { key: 'ESC', desc: 'Clear selection or close active modal' },
+  { key: '1 - 3', desc: 'Switch lens (1: Standard, 2: Attention, 3: Shared credentials)' },
+  { key: '+ / -', desc: 'Zoom in / out on the map' },
+  { key: '0', desc: 'Back to actual size' },
+  { key: 'G', desc: 'Open proposals' },
+  { key: '?', desc: 'Open this guide' },
+  { key: 'ESC', desc: 'Clear the selection, or close whatever is open' },
 ];
 
 const NODE_TYPES = [
-  { color: 'var(--accent)', sym: '★', label: 'Framework', desc: 'The agent runtime itself' },
-  { color: '#f59e0b', sym: '◈', label: 'MCP server', desc: 'A tool the agent can call' },
-  { color: '#ec4899', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
-  { color: '#10b981', sym: '◇', label: 'Skill', desc: 'A procedure loaded on demand' },
-  { color: '#0284c7', sym: '⬢', label: 'Provider / model', desc: 'Where inference happens' },
+  { type: 'framework', sym: '★', label: 'Runtime', desc: 'The agent runtime itself' },
+  { type: 'mcp-server', sym: '◈', label: 'Tool server', desc: 'A tool the agent can call' },
+  { type: 'agent', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
+  { type: 'skill', sym: '◇', label: 'Skill', desc: 'A procedure loaded on demand' },
+  { type: 'provider', sym: '●', label: 'Provider or model', desc: 'Where inference happens' },
   {
-    color: '#8b5cf6',
+    type: 'possibility',
     sym: '●',
     label: 'Tech tree node',
     desc: 'A capability you reach by having others',
@@ -138,7 +139,7 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
               <h3 className="docs-h3">The circles</h3>
               {NODE_TYPES.map(n => (
                 <div key={n.label} className="docs-row">
-                  <span className="docs-swatch" style={{ background: n.color }}>
+                  <span className="docs-swatch" style={{ background: typeColor(n.type) }}>
                     {n.sym}
                   </span>
                   <span>
@@ -176,8 +177,8 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
 
               <h3 className="docs-h3">Two sources</h3>
               <p className="docs-p">
-                <strong>CONFIG</strong> shows your <code>opencode.json</code> as a graph.{' '}
-                <strong>TECH TREE</strong> shows the curated capability tree with your position on
+                <strong>My Setup</strong> shows what was found in your agent configs as a graph.{' '}
+                <strong>Tech Tree</strong> shows the curated capability tree with your position on
                 it. Same renderer, different question.
               </p>
             </>
@@ -210,9 +211,7 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
 
           {tab === 'hotkeys' && (
             <>
-              <p className="docs-lede">
-                Operate Ambit entirely from your keyboard with demoscene-speed shortcuts.
-              </p>
+              <p className="docs-lede">Everything on the map has a key.</p>
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}
               >

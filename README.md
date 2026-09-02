@@ -5,7 +5,7 @@
 **What you, your agents, and your machines can jointly do — and where your own time is going.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=1f7a8c)](https://github.com/zz-plant/ambit/releases/latest)
+[![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=6366f1)](https://github.com/zz-plant/ambit/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
@@ -166,7 +166,7 @@ $ ambit status
         provable now: Automated Tests, Browser Automation, Code Intelligence, File Editing, Local Runtime, Shell Execution, Version Control, Web Research
         note: configured is not working — ambit verify would turn 8 of the unproven into evidence
     domains:
-      ai-ml
+      ████░░░░░░ ai-ml     4/11
     …
 ```
 <!-- /example -->
@@ -337,13 +337,13 @@ The **Docs** button defines every term on the canvas; [the four above](#the-word
 
 ### Three lenses on the canvas
 
-Press <kbd>1</kbd>–<kbd>3</kbd> to switch.
+The switch sits over the map, top right. Press <kbd>1</kbd>–<kbd>3</kbd> to change it from the keyboard.
 
 | Lens | What it renders | Use it for |
 | :--- | :--- | :--- |
 | **Standard** | Chronological era columns with reached, frontier, and locked nodes. | Reading overall progression and what is nearby. |
 | **Attention** | Nodes warmed amber to crimson by how often a human has had to intervene. | Finding which tools keep interrupting you. |
-| **SPOFs** | Highlights capabilities that hang off shared authentication. | Checking blast radius before rotating a key. |
+| **Shared credentials** | Highlights capabilities that hang off shared authentication. | Checking blast radius before rotating a key. |
 
 ### Simulation
 
@@ -383,7 +383,7 @@ asciinema play docs/incidents/demo_intervention_trace.cast # replay the recordin
 
 You run local Postgres and Ollama, but your agent cannot do private semantic code search over your repositories.
 
-`ambit graph combos` reports the gap as one step — `CREATE EXTENSION vector;` — and `ambit goal offline-semantic-search --simulate` shows what that five-minute change reaches, with no cloud API in the path.
+`ambit graph combos` reports the gap as one step — `CREATE EXTENSION vector;` — and `ambit goal retrieval --simulate` shows what that five-minute change reaches, with no cloud API in the path.
 
 ### An agent diagnosing itself
 

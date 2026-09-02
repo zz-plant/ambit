@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAmbitStore } from '../store/ambitStore';
+import { WEB_ACTOR } from '../utils/copy';
+
+/** How the signer reads in the panel: the browser's own approvals are "you". */
+function signerLabel(actor: string | null | undefined): string {
+  if (!actor || actor === WEB_ACTOR) return 'you';
+  return actor.replace(/^human:/, '');
+}
 
 export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const proposals = useAmbitStore(s => s.proposals);
@@ -23,7 +30,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   const handleApprove = async (proposalId: string) => {
     setApprovingId(proposalId);
-    await approveProposal(proposalId, 'human:kanav');
+    await approveProposal(proposalId, WEB_ACTOR);
     setApprovingId(null);
   };
 
@@ -44,101 +51,69 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   const draftCount = proposals.filter(p => p.status === 'draft').length;
   const approvedCount = proposals.filter(p => p.status === 'approved').length;
+  const tabs: [typeof statusTab, string][] = [
+    ['all', `All (${proposals.length})`],
+    ['draft', `Waiting${draftCount > 0 ? ` (${draftCount})` : ''}`],
+    ['approved', `Approved (${approvedCount})`],
+  ];
 
   return (
     <div className="uplink-modal-overlay" onClick={onClose} role="presentation">
       <div
         className="uplink-modal"
-        style={{ maxWidth: '680px', width: '90%', border: '1px solid var(--border-bright)' }}
+        style={{ maxWidth: '680px', width: '90%' }}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="proposals-title"
       >
         <div className="sp-hdr">
-          <span className="sp-sig" style={{ color: 'var(--copper-3)' }}>
-            📜
-          </span>
           <div className="sp-title-group">
-            <div className="sp-designation">Governance &amp; Policy Enactments</div>
-            <div className="sp-class">Review, sign, and authorize environment modifications</div>
+            <h2 id="proposals-title" className="sp-designation">
+              Proposals
+            </h2>
+            <div className="sp-class">
+              Changes an agent wants to make to your setup. Nothing is applied until you approve it,
+              and applying is a command you run.
+            </div>
           </div>
-          <button type="button" className="sp-close" onClick={onClose}>
+          <button type="button" className="sp-close" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
 
-        {/* Status Tabs and Search Filter */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '12px',
-            flexWrap: 'wrap',
-            gap: '8px',
-          }}
-        >
-          <div className="gov-tabs">
-            <button
-              type="button"
-              className={`gov-tab ${statusTab === 'all' ? 'gov-tab--active' : ''}`}
-              onClick={() => setStatusTab('all')}
-            >
-              All ({proposals.length})
-            </button>
-            <button
-              type="button"
-              className={`gov-tab ${statusTab === 'draft' ? 'gov-tab--active' : ''}`}
-              onClick={() => setStatusTab('draft')}
-            >
-              Pending Review {draftCount > 0 && `(${draftCount})`}
-            </button>
-            <button
-              type="button"
-              className={`gov-tab ${statusTab === 'approved' ? 'gov-tab--active' : ''}`}
-              onClick={() => setStatusTab('approved')}
-            >
-              Ratified &amp; Signed ({approvedCount})
-            </button>
+        <div className="gov-toolbar">
+          <div className="gov-tabs" role="group" aria-label="Filter proposals">
+            {tabs.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={`gov-tab ${statusTab === key ? 'gov-tab--active' : ''}`}
+                aria-pressed={statusTab === key}
+                onClick={() => setStatusTab(key)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-
-          <div style={{ width: '180px' }}>
-            <input
-              type="text"
-              placeholder="Search proposals…"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="tp-search"
-              style={{ fontSize: '11px', padding: '4px 8px' }}
-            />
-          </div>
+          <input
+            type="search"
+            placeholder="Search proposals"
+            aria-label="Search proposals"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            className="tp-search gov-search"
+          />
         </div>
 
         {filtered.length === 0 ? (
-          <div
-            style={{
-              padding: '32px 0',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font)',
-              fontSize: '12px',
-            }}
-          >
+          <div className="gov-empty">
             {proposals.length === 0
-              ? 'No pending policy proposals. Autonomous agents submit enactments here when requesting environment access.'
-              : 'No proposals match your active filter.'}
+              ? 'Nothing waiting. When an agent needs a change to your setup, it appears here for you to approve.'
+              : 'No proposals match that filter.'}
           </div>
         ) : (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              marginTop: '12px',
-              maxHeight: '460px',
-              overflowY: 'auto',
-            }}
-          >
+          <div className="gov-list">
             {filtered.map(p => {
               let parsedSteps: any[] = [];
               try {
@@ -149,187 +124,67 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               const isApproved = p.status === 'approved';
 
               return (
-                <div
-                  key={p.id}
-                  style={{
-                    background: 'var(--bg-surface)',
-                    border: isApproved ? '1px solid var(--ok)' : '1px solid var(--border)',
-                    boxShadow: isApproved
-                      ? '0 4px 20px rgba(16, 185, 129, 0.12)'
-                      : '0 2px 8px rgba(0,0,0,0.15)',
-                    borderRadius: 'var(--radius)',
-                    padding: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: 4,
-                      bottom: 0,
-                      background: isApproved ? 'var(--ok)' : 'var(--accent)',
-                    }}
-                  />
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'var(--font)',
-                        fontWeight: 700,
-                        fontSize: '12px',
-                        color: 'var(--accent)',
-                      }}
-                    >
-                      📜 POLICY ENACTMENT: {p.id}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        padding: '3px 10px',
-                        borderRadius: 'var(--radius-xs)',
-                        fontWeight: 800,
-                        letterSpacing: '0.8px',
-                        background: isApproved
-                          ? 'rgba(0, 255, 136, 0.15)'
-                          : 'rgba(255, 170, 0, 0.15)',
-                        color: isApproved ? 'var(--ok)' : 'var(--copper-3)',
-                        border: `1px solid ${isApproved ? 'var(--ok)' : 'var(--copper-3)'}`,
-                      }}
-                    >
-                      {isApproved ? '✓ RATIFIED & SIGNED' : 'AWAITING OPERATOR RATIFICATION'}
+                <div key={p.id} className={`gov-card ${isApproved ? 'gov-card--approved' : ''}`}>
+                  <div className="gov-card-head">
+                    <code className="gov-id">{p.id}</code>
+                    <span className={`gov-status ${isApproved ? 'gov-status--approved' : ''}`}>
+                      {isApproved ? 'Approved' : 'Waiting for your approval'}
                     </span>
                   </div>
 
-                  <div
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {p.goal}
-                  </div>
+                  <div className="gov-goal">{p.goal}</div>
 
                   {parsedSteps.length > 0 && (
-                    <div
-                      style={{
-                        fontSize: '11px',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px',
-                        background: 'var(--bg-deep)',
-                        padding: '10px',
-                        borderRadius: 'var(--radius-xs)',
-                        border: '1px solid var(--border)',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          fontSize: '10px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '1px',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
-                        Action Schedule ({parsedSteps.length} steps):
-                      </span>
+                    <div className="gov-steps">
+                      <div className="sp-section-label">
+                        {parsedSteps.length} {parsedSteps.length === 1 ? 'step' : 'steps'}
+                      </div>
                       {parsedSteps.map((step, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            paddingLeft: '8px',
-                            borderLeft: '2px solid var(--accent-dim)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <code style={{ color: 'var(--accent)' }}>
-                            {step.action || step.key || JSON.stringify(step)}
-                          </code>
+                        <div key={idx} className="gov-step">
+                          <code>{step.action || step.key || JSON.stringify(step)}</code>
                           {step.provider && (
-                            <span style={{ fontSize: '10px', color: 'var(--copper-3)' }}>
-                              via {step.provider}
-                            </span>
+                            <span className="gov-step-via">via {step.provider}</span>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {isApproved ? (
-                    <div
-                      style={{
-                        marginTop: '4px',
-                        paddingTop: '10px',
-                        borderTop: '1px solid var(--border)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <span style={{ fontSize: '11px', color: 'var(--ok)', fontWeight: 600 }}>
-                        🛡️ Sealed by {p.approved_by || 'Operator'} · HMAC verified
-                      </span>
-                      <button
-                        type="button"
-                        className="tp-btn-sm"
-                        style={{
-                          fontSize: '11px',
-                          padding: '4px 12px',
-                          borderColor: 'var(--ok)',
-                          color: 'var(--ok)',
-                        }}
-                        onClick={() => copyApplyCmd(p.id)}
-                      >
-                        {copiedId === p.id ? '✓ Copied to Clipboard!' : `Copy: ambit apply ${p.id}`}
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                      <button
-                        type="button"
-                        className="tp-btn"
-                        style={{
-                          background: 'var(--ok)',
-                          color: 'var(--bg-deep)',
-                          borderColor: 'var(--ok)',
-                          fontWeight: 800,
-                          padding: '6px 16px',
-                        }}
-                        disabled={approvingId === p.id}
-                        onClick={() => handleApprove(p.id)}
-                      >
-                        {approvingId === p.id ? 'Minting HMAC Token…' : '⚖️ Ratify & Sign Policy'}
-                      </button>
-                    </div>
-                  )}
+                  <div className="gov-foot">
+                    {isApproved ? (
+                      <>
+                        <span className="gov-signed">
+                          Signed by {signerLabel(p.approved_by)} · receipt verified
+                        </span>
+                        <button
+                          type="button"
+                          className="tp-btn-sm"
+                          onClick={() => copyApplyCmd(p.id)}
+                        >
+                          {copiedId === p.id ? 'Copied' : `Copy: ambit apply ${p.id}`}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="gov-hint">
+                          Approving signs a receipt; nothing runs yet.
+                        </span>
+                        <button
+                          type="button"
+                          className="tp-btn tp-btn--primary"
+                          disabled={approvingId === p.id}
+                          onClick={() => handleApprove(p.id)}
+                        >
+                          {approvingId === p.id ? 'Signing…' : 'Approve and sign'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-          <button type="button" className="tp-btn-sm" onClick={onClose}>
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
 import { isRuntimeNode } from '../utils/labels';
+import { typeColor, typeSymbol } from '../utils/typeColors';
 import {
   buildAdjacency,
   buildColumns,
@@ -9,6 +10,7 @@ import {
   columnLabel,
   columnOf,
   costOf,
+  eraOf,
   isNext,
   layoutNodes,
   NODE_R,
@@ -25,6 +27,8 @@ import { ZoomHud } from './civ/ZoomHud.tsx';
 interface CivTreeProps {
   /** Pixels of the scene covered by the docked panel, so column one is visible. */
   leftInset?: number;
+  /** Pixels covered by the detail panel, so the lens switcher stays clear of it. */
+  rightInset?: number;
   items: Item[];
   connections: Connection[];
   selectedId: string | null;
@@ -41,6 +45,7 @@ export default function CivTree({
   onSelect,
   onHover,
   leftInset = 0,
+  rightInset = 0,
 }: CivTreeProps) {
   // Owned by the store so the HUD can render the control; see App.tsx.
   const filter = useAmbitStore(s => s.treeFilter) as TypeFilter;
@@ -78,17 +83,23 @@ export default function CivTree({
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
 
-  const COLORS: Record<string, string> = {
-    framework: '#00f0ff',
-    runtime: '#00f0ff',
-    'mcp-server': '#ffaa00',
-    agent: '#ff007f',
-    skill: '#00ff88',
-    provider: '#38bdf8',
-    combo: '#b537f2',
-    possibility: '#b537f2',
-    tool: '#e08a00',
-    device: '#00ffcc',
+  // The tree view is one kind of node in era columns; the setup view is many
+  // kinds in domain columns. The legend and the spotlights follow.
+  const isTreeView = filtered.some(i => eraOf(i) !== undefined);
+  const lifecycleOf = (item: Item) => (item.meta?.lifecycle as string | undefined) ?? '';
+  const keystone = (item: Item) =>
+    (downstream.get(item.id) || []).length >= 3 || isRuntimeNode(item);
+  const SPOTLIGHTS: Record<string, (item: Item) => boolean> = {
+    Reached: i => i.status === 'built',
+    'Next step': i => i.status !== 'built' && isNext(i),
+    Blocked: i => i.status !== 'built' && !isNext(i),
+    Server: i => i.type === 'mcp-server',
+    Agent: i => i.type === 'agent',
+    Skill: i => i.type === 'skill',
+    Combo: i => i.type === 'possibility',
+    Keystone: keystone,
+    Passing: i => ['verified', 'reliable'].includes(lifecycleOf(i)),
+    Failing: i => ['degraded', 'broken'].includes(lifecycleOf(i)),
   };
   const hoverTarget = hoverItem || hoveredId;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
@@ -156,6 +167,20 @@ export default function CivTree({
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
+  // Open with every column on screen. At 100% the seventh era sat past the
+  // right edge with nothing to say it was there, and in the setup view every
+  // edge to the runtime column ran off the canvas towards a node nobody could
+  // see. Fits once per dataset; the zoom controls own it after that.
+  const fittedFor = React.useRef<number | null>(null);
+  React.useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el || fittedFor.current === contentWidth) return;
+    fittedFor.current = contentWidth;
+    const available = el.clientWidth - leftInset - 16;
+    if (available <= 0) return;
+    setZoom(Math.max(0.4, Math.min(1, +(available / contentWidth).toFixed(2))));
+  }, [contentWidth, leftInset]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (
       (e.target as HTMLElement).closest('[role="button"]') ||
@@ -221,6 +246,9 @@ export default function CivTree({
         containerRef={containerRef}
         contentWidth={contentWidth}
         contentHeight={contentHeight}
+        activeLens={activeLens}
+        onSetLens={setActiveLens}
+        rightInset={rightInset}
       />
 
       <SimulationBanner
@@ -229,6 +257,7 @@ export default function CivTree({
         simulatedItem={simulatedItem}
         simulatedCascadeIds={simulatedCascadeIds}
         clearSimulation={clearSimulation}
+        rightInset={rightInset}
       />
       {/* Main SVG Vector Canvas */}
       <svg
@@ -239,7 +268,6 @@ export default function CivTree({
           width: `${contentWidth * zoom}px`,
           height: `${contentHeight * zoom}px`,
           minWidth: `${contentWidth * zoom}px`,
-          transition: isDragging ? 'none' : 'width 0.12s ease-out, height 0.12s ease-out',
         }}
       >
         <title>Capability tree: what this setup can do, by era</title>
@@ -328,15 +356,15 @@ export default function CivTree({
                 : 0.35;
           const strokeColor = isSimLine
             ? simulationMode === 'outage'
-              ? '#f43f5e'
-              : '#10b981'
+              ? 'var(--error)'
+              : 'var(--ok)'
             : inChain
               ? 'var(--accent)'
               : isHard
                 ? 'rgba(99, 102, 241, 0.6)'
                 : isSoft
                   ? 'rgba(148, 163, 184, 0.4)'
-                  : '#f59e0b';
+                  : 'var(--warn)';
 
           return (
             <line
@@ -362,7 +390,7 @@ export default function CivTree({
             <g key={domain}>
               {caps.map((item, ri) => {
                 const cy = START_Y + ri * ROW_H + NODE_R;
-                const defaultColor = COLORS[item.type] || '#64748b';
+                const defaultColor = typeColor(item.type);
                 const inChain = chainIds.has(item.id);
                 const selected = item.id === selectedId;
 
@@ -379,8 +407,7 @@ export default function CivTree({
                     item.id.includes('1password') ||
                     item.id.includes('credential'));
 
-                const downList = downstream.get(item.id) || [];
-                const isKeystone = downList.length >= 3 || isRuntimeNode(item);
+                const isKeystone = keystone(item);
 
                 const next = isNext(item);
                 const reached = item.status === 'built';
@@ -392,25 +419,7 @@ export default function CivTree({
                 const readinessPct = totalPrereqs > 0 ? builtPrereqs / totalPrereqs : 1;
                 const hasEureka = next && builtPrereqs > 0 && totalPrereqs > 1;
 
-                const isSpotlit =
-                  !spotlightGroup ||
-                  (spotlightGroup === 'Framework'
-                    ? item.type === 'framework'
-                    : spotlightGroup === 'Server'
-                      ? item.type === 'mcp-server'
-                      : spotlightGroup === 'Agent'
-                        ? item.type === 'agent'
-                        : spotlightGroup === 'Skill'
-                          ? item.type === 'skill'
-                          : spotlightGroup === 'Combo'
-                            ? item.type === 'possibility'
-                            : spotlightGroup === 'Keystone'
-                              ? isKeystone
-                              : spotlightGroup === 'Passing'
-                                ? ['verified', 'reliable'].includes(item.meta?.lifecycle as string)
-                                : spotlightGroup === 'Failing'
-                                  ? ['degraded', 'broken'].includes(item.meta?.lifecycle as string)
-                                  : true);
+                const isSpotlit = !spotlightGroup || (SPOTLIGHTS[spotlightGroup]?.(item) ?? true);
 
                 const dimmed = (chainIds.size > 0 && !inChain) || isSimDimmed || !isSpotlit;
                 const baseOpacity =
@@ -426,12 +435,12 @@ export default function CivTree({
                             ? 0.95
                             : 0.4;
 
-                let nodeFill = reached ? defaultColor : '#1e293b';
+                let nodeFill = reached ? defaultColor : 'var(--bg-elevated)';
                 let sc =
                   inChain && !selected
                     ? 'var(--accent)'
                     : selected
-                      ? '#ffffff'
+                      ? 'var(--on-accent)'
                       : reached
                         ? defaultColor
                         : 'var(--border-subtle)';
@@ -439,44 +448,35 @@ export default function CivTree({
 
                 if (simulationMode === 'outage') {
                   if (isSimRoot) {
-                    nodeFill = '#f43f5e';
-                    sc = '#ffffff';
+                    nodeFill = 'var(--error)';
+                    sc = 'var(--on-accent)';
                     sw = 2.5;
                   } else if (isSimAffected) {
-                    nodeFill = '#e11d48';
-                    sc = '#ffffff';
+                    nodeFill = 'var(--error-deep)';
+                    sc = 'var(--on-accent)';
                     sw = 2;
                   }
                 } else if (simulationMode === 'acquisition') {
                   if (isSimRoot) {
-                    nodeFill = '#6366f1';
-                    sc = '#ffffff';
+                    nodeFill = 'var(--accent)';
+                    sc = 'var(--on-accent)';
                     sw = 2.5;
                   } else if (isSimAffected) {
-                    nodeFill = '#10b981';
-                    sc = '#ffffff';
+                    nodeFill = 'var(--ok)';
+                    sc = 'var(--on-accent)';
                     sw = 2;
                   }
                 } else if (isAttentionHot) {
-                  nodeFill = interventionCount > 20 ? '#ef4444' : '#f59e0b';
-                  sc = '#ffffff';
+                  nodeFill = interventionCount > 20 ? 'var(--copper-1)' : 'var(--warn)';
+                  sc = 'var(--on-accent)';
                   sw = 2;
                 } else if (isSpofHot) {
-                  nodeFill = '#8b5cf6';
-                  sc = '#f59e0b';
+                  nodeFill = 'var(--plasma)';
+                  sc = 'var(--warn)';
                   sw = 2;
                 }
 
-                const sym =
-                  item.type === 'framework'
-                    ? '★'
-                    : item.type === 'mcp-server'
-                      ? '◈'
-                      : item.type === 'agent'
-                        ? '◆'
-                        : item.type === 'skill'
-                          ? '◇'
-                          : '●';
+                const sym = typeSymbol(item.type);
                 const label = item.name.length > 20 ? item.name.slice(0, 18) + '…' : item.name;
                 const dialRadius = NODE_R + 6;
                 const dialCircumference = 2 * Math.PI * dialRadius;
@@ -606,7 +606,13 @@ export default function CivTree({
                     <text
                       y={4}
                       textAnchor="middle"
-                      fill={reached ? '#ffffff' : dimmed ? 'var(--text-muted)' : '#ffffff'}
+                      fill={
+                        reached
+                          ? 'var(--on-accent)'
+                          : dimmed
+                            ? 'var(--text-muted)'
+                            : 'var(--on-accent)'
+                      }
                       fontSize={14}
                       fontWeight={700}
                     >
@@ -619,14 +625,14 @@ export default function CivTree({
                         <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
                           <circle
                             r={6}
-                            fill="#10b981"
+                            fill="var(--ok)"
                             stroke="var(--bg-canvas)"
                             strokeWidth={1.5}
                           />
                           <text
                             y={3}
                             textAnchor="middle"
-                            fill="#ffffff"
+                            fill="var(--on-accent)"
                             fontSize={9}
                             fontWeight={800}
                           >
@@ -640,14 +646,14 @@ export default function CivTree({
                         <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
                           <circle
                             r={6}
-                            fill="#f43f5e"
+                            fill="var(--error)"
                             stroke="var(--bg-canvas)"
                             strokeWidth={1.5}
                           />
                           <text
                             y={3}
                             textAnchor="middle"
-                            fill="#ffffff"
+                            fill="var(--on-accent)"
                             fontSize={9}
                             fontWeight={800}
                           >
@@ -805,7 +811,7 @@ export default function CivTree({
             );
           })()}
 
-        {/* Legend */}
+        {/* Legend. Clicking an entry spotlights the nodes it describes. */}
         <g transform={`translate(${START_X}, ${contentHeight - 35})`}>
           <line
             x1={0}
@@ -815,54 +821,100 @@ export default function CivTree({
             stroke="var(--border)"
             strokeWidth={1}
           />
-          {[
-            { color: 'var(--accent)', sym: '★', label: 'Framework' },
-            { color: '#f59e0b', sym: '◈', label: 'Server' },
-            { color: '#ec4899', sym: '◆', label: 'Agent' },
-            { color: '#10b981', sym: '◇', label: 'Skill' },
-            { color: '#8b5cf6', sym: '●', label: 'Combo' },
-            { color: '#f59e0b', sym: '👑', label: 'Keystone' },
-            { color: '#10b981', sym: '✓', label: 'Passing' },
-            { color: '#f43f5e', sym: '!', label: 'Failing' },
-            { stroke: 'var(--accent)', style: 'solid', label: 'Required' },
-            { stroke: 'var(--text-muted)', style: 'dashed', label: 'Optional' },
-          ].map((l, i) => {
-            const lx = 10 + i * 115;
+          {(isTreeView
+            ? [
+                { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
+                { kind: 'ring', label: 'Next step' },
+                { kind: 'faded', label: 'Blocked' },
+                { kind: 'square', label: 'Keystone' },
+                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+                { kind: 'line', label: 'Required' },
+                { kind: 'line', dashed: true, label: 'Optional' },
+              ]
+            : [
+                { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Server' },
+                { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
+                { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
+                { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
+                { kind: 'square', label: 'Keystone' },
+                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+                { kind: 'line', label: 'Required' },
+                { kind: 'line', dashed: true, label: 'Optional' },
+              ]
+          ).map((l, i) => {
+            const lx = 10 + i * 112;
+            const clickable = Boolean(SPOTLIGHTS[l.label]);
             const isLegendActive = spotlightGroup === l.label;
             return (
               <g
-                key={i}
+                key={l.label}
                 transform={`translate(${lx}, 8)`}
                 style={{
-                  cursor: l.color ? 'pointer' : 'default',
+                  cursor: clickable ? 'pointer' : 'default',
                   opacity: spotlightGroup && !isLegendActive ? 0.45 : 1,
                 }}
                 onClick={() => {
-                  if (l.color) setSpotlightGroup(curr => (curr === l.label ? null : l.label));
+                  if (clickable) setSpotlightGroup(curr => (curr === l.label ? null : l.label));
                 }}
               >
-                {l.color ? (
+                {l.kind === 'node' && (
                   <>
                     <circle
                       r={7}
                       fill={l.color}
                       opacity={0.9}
-                      stroke={isLegendActive ? '#ffffff' : 'none'}
+                      stroke={isLegendActive ? 'var(--on-accent)' : 'none'}
                       strokeWidth={isLegendActive ? 2 : 0}
                     />
-                    <text y={3} textAnchor="middle" fill="#ffffff" fontSize={9.5} fontWeight={700}>
-                      {l.sym}
-                    </text>
+                    {l.sym && (
+                      <text
+                        y={3}
+                        textAnchor="middle"
+                        fill="var(--on-accent)"
+                        fontSize={9.5}
+                        fontWeight={700}
+                      >
+                        {l.sym}
+                      </text>
+                    )}
                   </>
-                ) : (
+                )}
+                {l.kind === 'ring' && (
+                  <circle r={7} fill="var(--bg-elevated)" stroke="var(--accent)" strokeWidth={2} />
+                )}
+                {l.kind === 'faded' && (
+                  <circle
+                    r={7}
+                    fill="var(--bg-elevated)"
+                    stroke="var(--border-bright)"
+                    strokeWidth={1}
+                    opacity={0.7}
+                  />
+                )}
+                {l.kind === 'square' && (
+                  <rect
+                    x={-8}
+                    y={-8}
+                    width={16}
+                    height={16}
+                    rx={3}
+                    fill="none"
+                    stroke="rgba(245, 158, 11, 0.7)"
+                    strokeWidth={1.5}
+                    strokeDasharray="3,2"
+                  />
+                )}
+                {l.kind === 'line' && (
                   <line
                     x1={-10}
                     y1={0}
                     x2={10}
                     y2={0}
-                    stroke={l.stroke}
+                    stroke={l.dashed ? 'var(--text-muted)' : 'var(--accent)'}
                     strokeWidth={1.5}
-                    strokeDasharray={l.style === 'dashed' ? '4,3' : 'none'}
+                    strokeDasharray={l.dashed ? '4,3' : 'none'}
                   />
                 )}
                 <text

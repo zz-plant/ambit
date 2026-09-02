@@ -1,6 +1,6 @@
 # Agent Guide
 
-Ambit — the combined action space of the user, their agents, and their machines. See [the roadmap](./docs/roadmap.md) for where the data model is heading; treat it as direction, not as description of what exists.
+Ambit — what you, your agents, and your machines can jointly do — and where your own time is going. See [the roadmap](./docs/roadmap.md) for where the data model is heading; treat it as direction, not as description of what exists.
 
 Capability graph engine, ERAS-era SVG visualiser, MCP server, control plane interceptor, and passive tracking plugins for OpenCode.
 
@@ -73,7 +73,7 @@ src/client/                React frontend
   hooks/                   useViewport (narrow screens, the console) · useHotkeys · useGraphStream
                            (the AG-UI state stream) · useGuide · useToast · useLatest
   components/
-    AppDeck.tsx            The top bar: view tabs, lenses, proposals, docs
+    AppDeck.tsx            The top bar: list toggle, view tabs, proposals, docs
     WelcomeScreen.tsx      What an empty graph shows — the pitch and the ways in
     GettingStartedGuide.tsx  The first-run card
     Toast.tsx              A transient notice from the graph stream

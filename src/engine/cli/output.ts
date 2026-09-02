@@ -66,6 +66,30 @@ function emit(data: any): void {
     (Array.isArray(v) && v.length === 0) ||
     (Array.isArray(v) && v.some(x => typeof x === 'object'));
 
+  // A list of counts against totals — the per-domain rows of `status` — reads
+  // as a bar, not as five nested "total / reached" pairs. bootstrap.sh used to
+  // draw this on its own from the JSON, so the first-run report and the
+  // command a minute later showed the same numbers two different ways.
+  const isProgressRow = (v: any) =>
+    typeof v === 'object' &&
+    v !== null &&
+    typeof v.total === 'number' &&
+    typeof v.reached === 'number' &&
+    Object.keys(v).length <= 4;
+  const bar = (reached: number, total: number) => {
+    const n = total > 0 ? Math.round((reached / total) * 10) : 0;
+    return '█'.repeat(n) + '░'.repeat(10 - n);
+  };
+  const renderProgress = (rows: any[], indent: string) => {
+    const width = Math.max(...rows.map(r => String(r.domain ?? r.name ?? r.id ?? '').length), 0);
+    for (const r of rows) {
+      const name = String(r.domain ?? r.name ?? r.id ?? '').padEnd(width);
+      console.log(
+        `${indent}${C.grey}${bar(r.reached, r.total)}${C.reset} ${name}  ${r.reached}/${r.total}`
+      );
+    }
+  };
+
   const renderOne = (row: any, indent = '  ') => {
     if (typeof row !== 'object' || row === null) {
       console.log(indent + String(row));
@@ -87,6 +111,10 @@ function emit(data: any): void {
     for (const [k, v] of Object.entries(row)) {
       if (Array.isArray(v) && v.some(x => typeof x === 'object')) {
         console.log(`${indent}  ${C.grey}${label(k)}:${C.reset}`);
+        if (v.length > 0 && v.every(isProgressRow)) {
+          renderProgress(v, indent + '    ');
+          continue;
+        }
         for (const child of v.slice(0, 5)) renderOne(child, indent + '    ');
       }
     }

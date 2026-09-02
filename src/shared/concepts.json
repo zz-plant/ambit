@@ -13,7 +13,7 @@
       "term": "Era",
       "short": "How far up the tree a capability sits",
       "long": "The tech tree runs through seven eras: Foundation, Model Access, Tool Use, Memory, Autonomy, Assurance, Sovereignty. Later eras depend on earlier ones — you cannot run fully offline before you have a local runtime. Eras describe ordering, not importance.",
-      "seen": "Column headers in the ERAS view"
+      "seen": "Column headers on the Tech Tree"
     },
     {
       "key": "state",
@@ -34,7 +34,7 @@
       "term": "Maturity",
       "short": "A 0-1 estimate of how established a capability is",
       "long": "Seeded from what kind of thing it is and whether it is enabled, then adjusted as your config changes. It is a rough ordering signal, not a measurement — treat a 0.8 as 'more settled than a 0.5', not as a score that means anything on its own.",
-      "seen": "The ring around each node, and MATURITY in the detail panel"
+      "seen": "The ring around each node, and Maturity in the detail panel"
     },
     {
       "key": "decay",
@@ -83,7 +83,7 @@
       "term": "Domain",
       "short": "The area of work a capability belongs to",
       "long": "infra, devops, backend, frontend, ai-ml, quality, security, or meta. Inferred from the capability's name, which means a stack unlike the keyword table's assumptions will land more things in the meta fallback — that table is the first thing to edit.",
-      "seen": "Column grouping, and DOMAIN in the detail panel"
+      "seen": "Column grouping, and Domain in the detail panel"
     }
   ]
 }

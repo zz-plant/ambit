@@ -34,32 +34,14 @@ fi
 # summary below; the engine now reports for itself when it found no config.
 node --experimental-sqlite "$ROOT/src/engine/engine.ts" seed
 
-# Ask the engine where it put the graph rather than reconstructing the rule.
-# Guessing is how the summary previously ended up reading a different database
-# than seed had just written, and always reporting an empty graph.
-DB="$(node --experimental-sqlite "$ROOT/src/engine/engine.ts" where --json | sed -n 's/.*"graph": *"\([^"]*\)".*/\1/p')"
-DB="${DB:-$ROOT/toolchain-viz.db}"
-# Render the engine's own status report rather than keeping a second copy of
-# its queries here. The copy that used to live in this file counted every row
-# in the capabilities table — the 28 `action` rows and the providers included —
-# so it announced "28/69 capabilities" seconds before `ambit status` said
-# "15/41" about the same graph. A reader has no way to tell which is real. The
-# rule for what counts as a capability lives in one place now; this only draws.
-node --experimental-sqlite "$ROOT/src/engine/engine.ts" status --json 2>/dev/null | node -e "
-let raw='';
-process.stdin.on('data', c => raw += c).on('end', () => {
-  let s; try { s = JSON.parse(raw); } catch { return; }
-  if (typeof s.total !== 'number') return;
-  const bar = (r, t) => { const n = t > 0 ? Math.round((r / t) * 10) : 0; return '█'.repeat(n) + '░'.repeat(10 - n); };
-  console.log('┌─ Your environment ────────────────────────────────────┐');
-  console.log('│ ' + s.reached + '/' + s.total + ' capabilities reached · ' + (s.domains || []).length + ' domains');
-  for (const d of s.domains || []) console.log('│ ' + bar(d.reached, d.total) + ' ' + String(d.domain).padEnd(12) + ' ' + d.reached + '/' + d.total);
-  if (s.actions) console.log('│ ' + ' '.repeat(10) + ' ' + 'actions'.padEnd(12) + ' ' + s.actions.reached + '/' + s.actions.total);
-  console.log('└───────────────────────────────────────────────────────┘');
-});" || true
+# The first-run report is `ambit status` itself, so what the installer prints
+# and what the command prints a minute later are the same thing. The copy that
+# used to live here counted every row in the capabilities table — the action
+# rows and the providers included — and announced "28/69 capabilities" seconds
+# before `ambit status` said "15/41" about the same graph.
+node --experimental-sqlite --disable-warning=ExperimentalWarning "$ROOT/src/engine/engine.ts" status 2>/dev/null || true
 
-# The CLI is \`ambit\`. Older installs knew it as \`tt\`; link the current name,
-# and keep \`tt\` as an alias when nothing already occupies it.
+# Link the \`ambit\` command onto the PATH when ~/.local/bin is on it.
 echo ""
 if command -v ambit >/dev/null 2>&1; then
   :
@@ -67,7 +49,6 @@ else
   chmod +x "$ROOT/cli.js"
   if [ -d "$HOME/.local/bin" ] && case ":$PATH:" in *":$HOME/.local/bin:"*) true ;; *) false ;; esac; then
     ln -sf "$ROOT/cli.js" "$HOME/.local/bin/ambit"
-    command -v tt >/dev/null 2>&1 || ln -sf "$ROOT/cli.js" "$HOME/.local/bin/tt"
     echo "Linked ambit → ~/.local/bin/ambit"
   else
     echo "To get the ambit command on your PATH:"

@@ -10,6 +10,7 @@
  */
 import type { ProposalRow } from '../../shared/api';
 import type { Connection, Item } from '../utils/configImporter';
+import { WEB_ACTOR } from '../utils/copy';
 import demoData from '../utils/demo-data.json';
 
 interface Graph {
@@ -77,7 +78,7 @@ export function demoProposals(): ProposalRow[] {
       steps: JSON.stringify([
         { action: 'enable_extension', provider: 'tool:postgres', status: 'done' },
       ]),
-      approved_by: 'human:kanav',
+      approved_by: WEB_ACTOR,
       approved_at: new Date(Date.now() - 72000000).toISOString(),
     },
   ];

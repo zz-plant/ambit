@@ -15,6 +15,8 @@ interface SimulationBannerProps {
   /** A Set, not a list — the count is what the banner reports. */
   simulatedCascadeIds: Set<string>;
   clearSimulation: () => void;
+  /** Pixels the detail panel covers on the right, so the banner stops short of it. */
+  rightInset?: number;
 }
 
 export function SimulationBanner({
@@ -23,62 +25,30 @@ export function SimulationBanner({
   simulatedItem,
   simulatedCascadeIds,
   clearSimulation,
+  rightInset = 0,
 }: SimulationBannerProps) {
   if (simulationMode === 'none') return null;
 
+  const name = simulatedItem?.name || simulatedNodeId;
+  const n = simulatedCascadeIds.size;
+  const outage = simulationMode === 'outage';
+  const plural = n === 1 ? 'capability' : 'capabilities';
+
   return (
-    <div
-      style={{
-        position: 'sticky',
-        top: 56,
-        left: 16,
-        zIndex: 20,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '12px',
-        background:
-          simulationMode === 'outage'
-            ? 'linear-gradient(90deg, #ff2a55, #880022)'
-            : 'linear-gradient(90deg, #00f0ff, #0088cc)',
-        color: '#ffffff',
-        padding: '8px 16px',
-        borderRadius: 'var(--radius)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
-        border: '1px solid rgba(255,255,255,0.2)',
-        backdropFilter: 'blur(8px)',
-      }}
-    >
-      <span
-        style={{
-          fontWeight: 700,
-          fontSize: '12px',
-          letterSpacing: '0.4px',
-          fontFamily: 'var(--font)',
-        }}
+    <div className="civ-sim-wrap" style={{ paddingRight: 12 + rightInset }}>
+      <div
+        role="status"
+        className={`civ-sim-banner ${outage ? 'civ-sim-banner--outage' : 'civ-sim-banner--acquisition'}`}
       >
-        {simulationMode === 'outage'
-          ? `⚡ BLAST RADIUS SIMULATION: Outage of "${simulatedItem?.name || simulatedNodeId}" disables ${simulatedCascadeIds.size} downstream capabilities.`
-          : `✨ FRONTIER SIMULATION: Unlocking "${simulatedItem?.name || simulatedNodeId}" makes +${simulatedCascadeIds.size} compound capabilities reachable.`}
-      </span>
-      <button
-        type="button"
-        style={{
-          background: '#ffffff',
-          color: simulationMode === 'outage' ? '#ff2a55' : '#0088cc',
-          border: 'none',
-          borderRadius: 'var(--radius-xs)',
-          padding: '4px 10px',
-          cursor: 'pointer',
-          fontWeight: 800,
-          fontFamily: 'var(--font)',
-          fontSize: '11px',
-          letterSpacing: '0.5px',
-          textTransform: 'uppercase',
-        }}
-        onClick={clearSimulation}
-      >
-        ✕ Exit Simulation
-      </button>
+        <span>
+          {outage
+            ? `If ${name} went down, ${n} downstream ${plural} would stop working.`
+            : `Adding ${name} would make ${n} more ${plural} reachable.`}
+        </span>
+        <button type="button" className="civ-sim-banner-close" onClick={clearSimulation}>
+          Done
+        </button>
+      </div>
     </div>
   );
 }

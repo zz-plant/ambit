@@ -384,7 +384,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   const approve = pathname.match(/^\/api\/proposals\/([^/]+)\/approve$/);
   if (approve && method === 'POST') {
     const body = await readJsonBody(req).catch(() => ({}));
-    const actor = typeof body?.actor === 'string' && body.actor ? body.actor : 'human:kanav';
+    const actor = typeof body?.actor === 'string' && body.actor ? body.actor : 'human:web';
     const result = withGraph(db => approveProposal(db, approve[1], actor)) as any;
     if (result.error) {
       return json(result, /already approved/.test(result.error) ? 409 : 400);

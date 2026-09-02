@@ -1,32 +1,23 @@
 import type { Source, View } from '../linkState';
-import type { ActiveLens } from '../store/ambitStore';
-
-const LENSES = [
-  ['default', 'Standard', '1'],
-  ['attention', 'Attention', '2'],
-  ['credentials', 'SPOFs', '3'],
-] as const;
 
 interface AppDeckProps {
-  active: number;
+  reached: number;
   total: number;
   view: View;
   source: Source;
-  /** Whether the store holds demo data; the loop tab only exists there. */
+  /** Whether the store holds demo data; the time-and-cost tab only exists there. */
   demo: boolean;
   draftCount: number;
-  activeLens: ActiveLens;
   leftOpen: boolean;
   onToggleSidebar: () => void;
   onShowTree: () => void;
   onShowSetup: () => void;
   onShowLoop: () => void;
   onShowProposals: () => void;
-  onSetLens: (lens: ActiveLens) => void;
   onShowDocs: () => void;
 }
 
-/** The top bar: sidebar toggle, brand, reach count, the view tabs, the lenses. */
+/** The top bar: list toggle, brand, reach count, the view tabs, proposals, docs. */
 export default function AppDeck(p: AppDeckProps) {
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
   return (
@@ -36,29 +27,32 @@ export default function AppDeck(p: AppDeckProps) {
           type="button"
           className="app-deck-btn"
           onClick={p.onToggleSidebar}
-          title="Toggle capabilities sidebar (Hotkey: \)"
+          aria-pressed={p.leftOpen}
+          title="Show or hide the capability list (\\)"
         >
-          <span style={{ fontSize: '12px' }}>{p.leftOpen ? '◧' : '◫'}</span>
-          <span>Sidebar</span>
+          <span aria-hidden="true" style={{ fontSize: '12px' }}>
+            {p.leftOpen ? '◧' : '◫'}
+          </span>
+          <span>List</span>
         </button>
         <div className="app-brand-group">
           <span className="app-brand">Ambit</span>
         </div>
-        <div className="app-status-pill">
+        <div className="app-status-pill" title="Capabilities something in this setup provides">
           <span className="app-status-dot" />
           <span>
-            {p.active} / {p.total} active
+            {p.reached} of {p.total} reached
           </span>
         </div>
       </div>
 
       <div className="app-deck-center">
-        <nav className="app-deck-nav" aria-label="Primary Navigation">
+        <nav className="app-deck-nav" aria-label="View">
           <button
             type="button"
             className={tab(p.view === 'graph' && p.source === 'tree')}
             onClick={p.onShowTree}
-            title="The capability tech tree — prerequisites, frontier, and compound paths"
+            title="The curated capability tree, with your position on it"
           >
             Tech Tree
           </button>
@@ -66,7 +60,7 @@ export default function AppDeck(p: AppDeckProps) {
             type="button"
             className={tab(p.view === 'graph' && p.source === 'config')}
             onClick={p.onShowSetup}
-            title="My Setup — discovered local runtimes, tools, and agents"
+            title="The servers, agents and models found on this machine"
           >
             My Setup
           </button>
@@ -75,46 +69,29 @@ export default function AppDeck(p: AppDeckProps) {
               type="button"
               className={tab(p.view === 'loop')}
               onClick={p.onShowLoop}
-              title="The Economic Loop — attention telemetry, ROI tracking, and ranked investments"
+              title="Where human attention goes, and what would pay back fastest"
             >
-              Economic Loop
+              Time &amp; cost
             </button>
           )}
-          <button
-            type="button"
-            className={`app-deck-btn ${p.draftCount > 0 ? 'app-deck-btn--alert' : ''}`}
-            onClick={p.onShowProposals}
-            title="Review and sign environment configuration proposals"
-          >
-            Proposals {p.draftCount > 0 && `(${p.draftCount})`}
-          </button>
         </nav>
       </div>
 
       <div className="app-deck-right">
-        {p.view === 'graph' && (
-          <div className="app-deck-nav">
-            {LENSES.map(([lens, label, hotkey]) => (
-              <button
-                key={lens}
-                type="button"
-                className={tab(p.activeLens === lens)}
-                onClick={() => p.onSetLens(lens)}
-                title={`Shortcut: Press ${hotkey}`}
-              >
-                {label}{' '}
-                <span style={{ opacity: 0.5, fontSize: '10px', marginLeft: '4px' }}>
-                  [{hotkey}]
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        <button
+          type="button"
+          className={`app-deck-btn ${p.draftCount > 0 ? 'app-deck-btn--alert' : ''}`}
+          onClick={p.onShowProposals}
+          title="Changes an agent wants to make, waiting for your approval (g)"
+        >
+          Proposals
+          {p.draftCount > 0 && <span className="app-deck-count">{p.draftCount}</span>}
+        </button>
         <button
           type="button"
           className="app-deck-btn"
           onClick={p.onShowDocs}
-          title="Documentation & Concepts (Hotkey: ?)"
+          title="Every term on the map, defined (?)"
         >
           Docs
         </button>

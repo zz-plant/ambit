@@ -2,7 +2,7 @@
   "name": "ambit-cli",
   "version": "0.4.1",
   "private": false,
-  "description": "The meta-MCP capability graph for AI agent environments",
+  "description": "What you, your agents, and your machines can jointly do — and where your own time is going.",
   "mcpName": "io.github.zz-plant/ambit",
   "type": "module",
   "engines": {
