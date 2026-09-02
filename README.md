@@ -56,6 +56,11 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 The [hosted demo](https://zz-plant.github.io/ambit/?demo=1) runs on example data and installs nothing. Inspecting your own machine needs a local checkout.
 
+<div align="center">
+<img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, drawn as nodes in domain columns" width="900">
+<br><sub>My Setup is the same map built from discovered config rather than the curated tree — every server, agent, and model found on the machine, placed in its domain</sub>
+</div>
+
 ### Option A — full install (CLI, engine, visualizer)
 
 ```bash

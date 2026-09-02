@@ -1,6 +1,5 @@
 import { spawn, execSync } from 'node:child_process';
-import { existsSync, copyFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -33,7 +32,11 @@ async function captureShot(
   delayMs = 2500
 ) {
   console.log(`📸 Capturing: ${outFile} (${width}x${height})...`);
-  const tmpProfile = mkdtempSync(join(tmpdir(), 'ambit-chrome-'));
+  // Deliberately no --user-data-dir: Chrome writes the screenshot and then
+  // never exits when pointed at a fresh profile, so every shot would burn the
+  // timeout below and land in the fallback, overwriting a good capture with a
+  // pre-render one. Sequential runs on the default profile do not collide, and
+  // the bytes come out identical either way.
   try {
     const cmd = `"${CHROME_PATH}" --headless=new --disable-gpu --no-sandbox --no-first-run --hide-scrollbars --window-size=${width},${height} --virtual-time-budget=${delayMs} --timeout=15000 --screenshot="${outFile}" "${url}"`;
     execSync(cmd, { stdio: 'pipe', timeout: 20000 });
@@ -44,10 +47,6 @@ async function captureShot(
     try {
       execSync(fallbackCmd, { stdio: 'pipe', timeout: 15000 });
       console.log(`✅ Saved ${outFile} via fallback`);
-    } catch {}
-  } finally {
-    try {
-      rmSync(tmpProfile, { recursive: true, force: true });
     } catch {}
   }
 }
@@ -81,11 +80,18 @@ async function main() {
       3500
     );
 
-    // No My Setup capture: ?demo=1 short-circuits both loaders, so the tab
-    // only moves the nav highlight — the canvas stays the seeded demo graph.
-    // A second shot of it was a pixel-for-pixel duplicate of screenshot-tree.
+    // 2. My Setup (1440x900). ?view=config is load-bearing: ?demo=1 alone now
+    // lands on the tree, and this shot was a pixel-for-pixel duplicate of
+    // screenshot-tree back when the two tabs shared one seeded dataset.
+    await captureShot(
+      `${BASE_URL}/?demo=1&view=config`,
+      join(ASSETS_DIR, 'screenshot-config.png'),
+      1440,
+      900,
+      3500
+    );
 
-    // 2. Docs Modal (1440x900)
+    // 3. Docs Modal (1440x900)
     await captureShot(
       `${BASE_URL}/?demo=1&docs=open`,
       join(ASSETS_DIR, 'screenshot-docs.png'),
@@ -94,7 +100,7 @@ async function main() {
       3500
     );
 
-    // 3. Social preview (1280x640)
+    // 4. Social preview (1280x640)
     await captureShot(
       `${BASE_URL}/?demo=1&view=tree`,
       join(ASSETS_DIR, 'ambit-social-preview.png'),
