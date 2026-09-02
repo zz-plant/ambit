@@ -9,7 +9,7 @@ Capability graph engine, ERAS-era SVG visualiser, MCP server, control plane inte
 - **Frontend**: React, TypeScript, Vite, vanilla CSS
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
-- **Backend**: `node:http` in `server.ts` — visualiser API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
+- **Backend**: `node:http` in `src/server/api.ts` — visualiser API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
 - **MCP Server**: JSON-RPC over stdio in `src/mcp/`, 48 `ambit_*` tools
 - **Plugins**: `plugins/ambit-telemetry.js` (tool executions and permission prompts → the work ledger) and `plugins/ambit-tracker.js` (configuration changes), both copied to `~/.config/opencode/plugins/`
 
@@ -19,6 +19,7 @@ Capability graph engine, ERAS-era SVG visualiser, MCP server, control plane inte
 src/engine/engine.ts       Entry point and public surface; re-exports the modules below
 src/engine/paths.ts        Where the authored data lives, and which config to read
 src/engine/db.ts           The handle, the schema, additive column migrations, backfills
+src/engine/rows.ts         What a row of each table looks like — a query names its row type from here
 src/engine/migrate.ts      Bringing a database up to the current schema — ADDED_COLUMNS lives here
 src/engine/ontology.ts     Node kinds and edge kinds — what a thing is, what a relation means
 src/engine/discovery.ts    Orchestrates the seed: which passes run, in what order
@@ -67,7 +68,15 @@ src/mcp/server.ts          What a tool does — a warm handle and the dispatch s
 src/mcp/protocol.ts        JSON-RPC over stdio: how a result or an error leaves the process
 docs/incidents/            Forensic incident traces & asciinema terminal recordings
 src/client/                React frontend
+  App.tsx                  The shell: which view is showing, and how the hooks and panels fit
+  linkState.ts             What a URL asks the app to open on — pure, tested without a window
+  hooks/                   useViewport (narrow screens, the console) · useHotkeys · useGraphStream
+                           (the AG-UI state stream) · useGuide · useToast · useLatest
   components/
+    AppDeck.tsx            The top bar: view tabs, lenses, proposals, docs
+    WelcomeScreen.tsx      What an empty graph shows — the pitch and the ways in
+    GettingStartedGuide.tsx  The first-run card
+    Toast.tsx              A transient notice from the graph stream
     CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend
     civ/layout.ts          ERAS column positioning — pure, and tested apart from the renderer
     civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree
@@ -77,7 +86,9 @@ src/client/                React frontend
     ApprovalModal.tsx      The proposal diff, and the one-click approval receipt
     DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
     DemoDashboard.tsx      The hosted demo's landing view
-  store/ambitStore.ts      All state, actions, demo data (toolchainStore.ts re-exports it)
+  store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
+  store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
+  store/toolchainStore.ts  The store's former name, re-exported so old imports keep working
   utils/
     configImporter.ts      inferDomain, and mapping an imported config onto the graph
     demoSnapshot.ts        The fixture the hosted demo renders
@@ -92,7 +103,7 @@ One renderer: `CivTree.tsx` (SVG), era columns as filter metadata — the 3D mod
 Two configs, because the halves have different constraints:
 
 - `tsconfig.json` — `src/client`, `strict`.
-- `tsconfig.node.json` — engine, MCP server, control plane, `server.ts`, scripts. Also `strict`: `db.ts` narrows the `node:sqlite` handle once at the boundary, so nothing downstream needs the exemption this config used to carry.
+- `tsconfig.node.json` — engine, MCP server, control plane, the API server, scripts. Also `strict`: `db.ts` narrows the `node:sqlite` handle once at the boundary, so nothing downstream needs the exemption this config used to carry.
 
 Both must stay at zero errors. `npm run typecheck` runs both, and `npm run build` runs it first.
 
@@ -107,7 +118,7 @@ worktree rather than sharing this one.
 
 ## Security posture
 
-`server.ts` reads and writes `~/.config/opencode/opencode.json`, and `/api/config/apply` can add an MCP server — a command OpenCode will later execute. Two invariants protect that, and neither may be relaxed:
+`src/server/api.ts` reads and writes `~/.config/opencode/opencode.json`, and `/api/config/apply` can add an MCP server — a command OpenCode will later execute. Two invariants protect that, and neither may be relaxed:
 
 0. **No entry creation** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups use `Object.hasOwnProperty` — a bare truth test accepts `__proto__` and pollutes every object in the process.
 1. **Loopback only** — `server.listen(API_PORT, '127.0.0.1')`. Never bind `0.0.0.0`; the LAN and Tailscale must not reach this.

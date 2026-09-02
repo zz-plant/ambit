@@ -1,5 +1,16 @@
 import type { Db } from './db.ts';
 import { canExecute } from './assurance.ts';
+import type {
+  CapabilityRow,
+  CapabilityUseRow,
+  HumanInterventionRow,
+  OutcomeRow,
+  ProposalRow,
+  ResourceConsumptionRow,
+  SessionLearningRow,
+  WorkEventRow,
+  WorkRunRow,
+} from './rows.ts';
 
 /**
  * The audit trail: who approved what, what ran, against what target, under
@@ -18,33 +29,50 @@ import { canExecute } from './assurance.ts';
  */
 
 function auditRun(db: Db, runId: string) {
-  const run = db.prepare('SELECT * FROM work_runs WHERE id = ?').get(runId);
+  const run = db.prepare('SELECT * FROM work_runs WHERE id = ?').get<WorkRunRow>(runId);
   if (!run) return { error: `No run ${runId}.` };
   const events = db
     .prepare(
       'SELECT at, kind, actor, capability_id, action, detail FROM work_events WHERE run_id = ? ORDER BY at'
     )
-    .all(runId) as any[];
+    .all<Pick<WorkEventRow, 'at' | 'kind' | 'actor' | 'capability_id' | 'action' | 'detail'>>(
+      runId
+    );
   const interventions = db
     .prepare(
       'SELECT actor_id, kind, capability_id, active_seconds, waiting_seconds, action, outcome FROM human_intervention WHERE run_id = ? ORDER BY started_at'
     )
-    .all(runId) as any[];
+    .all<
+      Pick<
+        HumanInterventionRow,
+        | 'actor_id'
+        | 'kind'
+        | 'capability_id'
+        | 'active_seconds'
+        | 'waiting_seconds'
+        | 'action'
+        | 'outcome'
+      >
+    >(runId);
   const uses = db
     .prepare(
       'SELECT capability_id, duration_seconds, source FROM capability_use WHERE run_id = ? ORDER BY used_at'
     )
-    .all(runId) as any[];
+    .all<Pick<CapabilityUseRow, 'capability_id' | 'duration_seconds' | 'source'>>(runId);
   const resources = db
     .prepare(
       'SELECT resource_id, kind, quantity, unit, cost_cents FROM resource_consumption WHERE run_id = ? ORDER BY recorded_at'
     )
-    .all(runId) as any[];
+    .all<Pick<ResourceConsumptionRow, 'resource_id' | 'kind' | 'quantity' | 'unit' | 'cost_cents'>>(
+      runId
+    );
   const outcome = db
     .prepare(
       'SELECT achieved, objective_metric, objective_name, value_cents FROM outcomes WHERE run_id = ? ORDER BY recorded_at DESC LIMIT 1'
     )
-    .get(runId);
+    .get<Pick<OutcomeRow, 'achieved' | 'objective_metric' | 'objective_name' | 'value_cents'>>(
+      runId
+    );
 
   return {
     run: runId,
@@ -67,7 +95,7 @@ function auditRun(db: Db, runId: string) {
 }
 
 function auditProposal(db: Db, proposalId: string) {
-  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   const steps = JSON.parse(row.steps);
   const artifact = row.approval_artifact ? JSON.parse(row.approval_artifact) : undefined;
@@ -76,7 +104,11 @@ function auditProposal(db: Db, proposalId: string) {
   // The enforcement decision for each step, re-run — the audit's "was this
   // permitted" column, resolved the same way apply resolved it.
   const enforcement = steps.map((s: any) => {
-    const d = canExecute(db, { actor: row.approved_by, capability: s.id, action: 'execute' });
+    const d = canExecute(db, {
+      actor: row.approved_by ?? undefined,
+      capability: s.id,
+      action: 'execute',
+    });
     return {
       step: s.name,
       capability: s.id,
@@ -129,27 +161,29 @@ function auditProposal(db: Db, proposalId: string) {
 
 function auditActor(db: Db, actorId: string) {
   const id = actorId.startsWith('human:') ? actorId : `human:${actorId}`;
-  const person = db.prepare('SELECT name FROM capabilities WHERE id = ?').get(id);
+  const person = db
+    .prepare('SELECT name FROM capabilities WHERE id = ?')
+    .get<Pick<CapabilityRow, 'name'>>(id);
   if (!person) return { error: `${id} is not in the graph.` };
 
   const approvals = db
     .prepare(
       'SELECT id, goal, status, approved_at FROM proposals WHERE approved_by = ? ORDER BY approved_at DESC'
     )
-    .all(id) as any[];
+    .all<Pick<ProposalRow, 'id' | 'goal' | 'status' | 'approved_at'>>(id);
   const interventions = db
     .prepare(
       `SELECT kind, capability_id, COUNT(*) times, COALESCE(SUM(active_seconds),0) active
      FROM human_intervention WHERE actor_id = ? AND started_at >= datetime('now', '-30 days')
      GROUP BY kind, capability_id ORDER BY times DESC`
     )
-    .all(id) as any[];
+    .all<{ kind: string; capability_id: string | null; times: number; active: number }>(id);
   const acts = db
     .prepare(
       `SELECT action, capability_id, notes, timestamp FROM session_learning
      WHERE session_id = 'approval' AND capability_id = ? ORDER BY timestamp DESC LIMIT 20`
     )
-    .all(id) as any[];
+    .all<Pick<SessionLearningRow, 'action' | 'capability_id' | 'notes' | 'timestamp'>>(id);
 
   return {
     person: person.name,
@@ -177,20 +211,28 @@ function auditRecent(db: Db, days: number) {
       `SELECT session_id, action, capability_id, notes, timestamp FROM session_learning
      WHERE timestamp >= datetime('now', ?) ORDER BY timestamp DESC LIMIT 40`
     )
-    .all(`-${days} days`) as any[];
+    .all<
+      Pick<SessionLearningRow, 'session_id' | 'action' | 'capability_id' | 'notes' | 'timestamp'>
+    >(`-${days} days`);
   const proposals = db
     .prepare(
       `SELECT id, goal, status, approved_at, applied_at FROM proposals
      WHERE created_at >= datetime('now', ?) OR approved_at >= datetime('now', ?) OR applied_at >= datetime('now', ?)
      ORDER BY created_at DESC LIMIT 20`
     )
-    .all(`-${days} days`, `-${days} days`, `-${days} days`) as any[];
+    .all<Pick<ProposalRow, 'id' | 'goal' | 'status' | 'approved_at' | 'applied_at'>>(
+      `-${days} days`,
+      `-${days} days`,
+      `-${days} days`
+    );
   const runs = db
     .prepare(
       `SELECT id, goal, run_type, outcome, started_at, ended_at FROM work_runs
      WHERE started_at >= datetime('now', ?) ORDER BY started_at DESC LIMIT 20`
     )
-    .all(`-${days} days`) as any[];
+    .all<Pick<WorkRunRow, 'id' | 'goal' | 'run_type' | 'outcome' | 'started_at' | 'ended_at'>>(
+      `-${days} days`
+    );
 
   return {
     window_days: days,

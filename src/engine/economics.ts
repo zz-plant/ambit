@@ -1,4 +1,5 @@
 import type { Migratable } from './migrate.ts';
+import type { EconomicsRow, GoalRow } from './rows.ts';
 
 /**
  * The economic model: what a unit of agency, capacity or service costs, and
@@ -30,7 +31,7 @@ function valueCents(
     .prepare(
       "SELECT value_cents FROM economics WHERE entity_type = ? AND entity_id = ? AND metric = ? AND source = 'declared' ORDER BY id DESC LIMIT 1"
     )
-    .get(entityType, entityId, metric) as any;
+    .get<Pick<EconomicsRow, 'value_cents'>>(entityType, entityId, metric);
   return row?.value_cents ?? null;
 }
 
@@ -41,7 +42,7 @@ function metricByEntity(db: Migratable, entityType: string, metric: string): Map
     .prepare(
       "SELECT entity_id, value_cents FROM economics WHERE entity_type = ? AND metric = ? AND source = 'declared'"
     )
-    .all(entityType, metric) as any[]) {
+    .all<Pick<EconomicsRow, 'entity_id' | 'value_cents'>>(entityType, metric)) {
     out.set(r.entity_id, r.value_cents);
   }
   return out;
@@ -54,10 +55,10 @@ function attentionValueCentsPerHour(db: Migratable, actorId: string): number {
 }
 
 /** The goal row, matched by id or by name. */
-function goalValue(db: Migratable, goalIdOrName: string): Record<string, any> | null {
-  const byId = db.prepare('SELECT * FROM goals WHERE id = ?').get(goalIdOrName) as any;
+function goalValue(db: Migratable, goalIdOrName: string): GoalRow | null {
+  const byId = db.prepare('SELECT * FROM goals WHERE id = ?').get<GoalRow>(goalIdOrName);
   if (byId) return byId;
-  const byName = db.prepare('SELECT * FROM goals WHERE name = ?').get(goalIdOrName) as any;
+  const byName = db.prepare('SELECT * FROM goals WHERE name = ?').get<GoalRow>(goalIdOrName);
   return byName || null;
 }
 
@@ -75,12 +76,22 @@ function economicsReport(db: Migratable) {
     .prepare(
       'SELECT entity_type, entity_id, metric, value_cents, period, source FROM economics ORDER BY entity_type, entity_id, metric'
     )
-    .all() as any[];
+    .all<
+      Pick<
+        EconomicsRow,
+        'entity_type' | 'entity_id' | 'metric' | 'value_cents' | 'period' | 'source'
+      >
+    >();
   const goals = db
     .prepare(
       'SELECT id, name, occurrence_rate_per_month, success_value_cents, failure_cost_cents FROM goals ORDER BY id'
     )
-    .all() as any[];
+    .all<
+      Pick<
+        GoalRow,
+        'id' | 'name' | 'occurrence_rate_per_month' | 'success_value_cents' | 'failure_cost_cents'
+      >
+    >();
 
   const dollars = (cents: number | null) => (cents == null ? undefined : Math.round(cents) / 100);
 

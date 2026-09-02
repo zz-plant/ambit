@@ -1,5 +1,6 @@
 import type { Migratable } from './migrate.ts';
 import { attentionValueCentsPerHour } from './economics.ts';
+import type { CapabilityRow, ProposalRow } from './rows.ts';
 
 /**
  * Realized ROI: what an applied proposal actually changed, measured from the
@@ -53,15 +54,13 @@ function windowStats(
       `SELECT COUNT(*) n, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
      FROM human_intervention WHERE capability_id = ? AND started_at ${startOp} ? AND started_at ${endOp} ?`
     )
-    .get(capabilityId, start, end) as any;
+    .get<{ n: number; active: number; waiting: number }>(capabilityId, start, end);
   const failures =
-    (
-      db
-        .prepare(
-          `SELECT COUNT(*) n FROM session_learning WHERE capability_id = ? AND action = 'failed' AND timestamp ${startOp} ? AND timestamp ${endOp} ?`
-        )
-        .get(capabilityId, start, end) as any
-    )?.n || 0;
+    db
+      .prepare(
+        `SELECT COUNT(*) n FROM session_learning WHERE capability_id = ? AND action = 'failed' AND timestamp ${startOp} ? AND timestamp ${endOp} ?`
+      )
+      .get<{ n: number }>(capabilityId, start, end)?.n || 0;
   const hours = ((row?.active || 0) + (row?.waiting || 0)) / 3600;
   return {
     interventions: row?.n || 0,
@@ -80,16 +79,20 @@ function windowStats(
  */
 function roiFor(db: Migratable, proposalId?: string) {
   if (!proposalId) return { error: 'Usage: ambit roi <proposal-id>' };
-  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status !== 'applied' || !row.applied_at) {
     return { error: `${proposalId} is ${row.status}; ROI needs an apply to measure against.` };
   }
 
   const steps = JSON.parse(row.steps);
-  const capId = steps[steps.length - 1]?.id || row.goal_id || null;
+  // The proposals table has no goal_id column; this used to fall back to one
+  // and read undefined, which the loose row type let through.
+  const capId = steps[steps.length - 1]?.id || null;
   const capName = capId
-    ? (db.prepare('SELECT name FROM capabilities WHERE id = ?').get(capId) as any)?.name || capId
+    ? db
+        .prepare('SELECT name FROM capabilities WHERE id = ?')
+        .get<Pick<CapabilityRow, 'name'>>(capId)?.name || capId
     : row.goal;
 
   const actor = row.approved_by || 'human:kanav';
@@ -187,7 +190,7 @@ function roiSummary(db: Migratable) {
     .prepare(
       "SELECT id, goal, applied_at, economic_case, observed_roi FROM proposals WHERE status = 'applied' ORDER BY applied_at"
     )
-    .all() as any[];
+    .all<Pick<ProposalRow, 'id' | 'goal' | 'applied_at' | 'economic_case' | 'observed_roi'>>();
 
   const measured: any[] = [];
   let pending = 0;

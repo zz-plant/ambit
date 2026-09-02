@@ -18,6 +18,13 @@ permissions:
 jobs:
   greet:
     runs-on: ubuntu-latest
+    # The action's own first-interaction check greeted the repository owner on
+    # three consecutive pull requests. Someone who already holds write access
+    # is not a first-time contributor whatever the count says, so skip the
+    # owner, members and collaborators outright.
+    if: >-
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'),
+        github.event.pull_request.author_association || github.event.issue.author_association)
     steps:
       # No checkout: pull_request_target runs with write access, and this job
       # never executes anything from the contributor's branch.
@@ -33,6 +40,6 @@ jobs:
           pr_message: |
             Thanks for your first pull request.
 
-            CI runs `npm run lint && npm run typecheck && npm test && npm run build`, then bootstraps on a machine with no agent config; running the first line locally is faster than a round trip. If the change touches `server.ts`, the checklist in the PR template names the three invariants it must keep: loopback only, non-local origins rejected before routing, no entry creation over HTTP.
+            CI runs `npm run lint && npm run typecheck && npm test && npm run build`, then bootstraps on a machine with no agent config; running the first line locally is faster than a round trip. If the change touches `src/server/api.ts`, the checklist in the PR template names the three invariants it must keep: loopback only, non-local origins rejected before routing, no entry creation over HTTP.
 
             Ambit is a personal project, so review may take a few days.

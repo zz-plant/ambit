@@ -1,4 +1,5 @@
 import type { Migratable } from './migrate.ts';
+import type { CapabilityRow, OutcomeRow, WorkEventRow, WorkRunRow } from './rows.ts';
 
 /**
  * The work ledger: one row per run of actual effort, the events inside it, the
@@ -61,8 +62,9 @@ function beginRun(db: Migratable, input: BeginRunInput = {}) {
   );
   return {
     run: id,
-    started_at: (db.prepare('SELECT started_at FROM work_runs WHERE id = ?').get(id) as any)
-      ?.started_at,
+    started_at: db
+      .prepare('SELECT started_at FROM work_runs WHERE id = ?')
+      .get<Pick<WorkRunRow, 'started_at'>>(id)?.started_at,
   };
 }
 
@@ -75,8 +77,9 @@ function endRun(db: Migratable, runId: string, outcome: string, outcomeValueCent
   return {
     run: runId,
     outcome,
-    ended_at: (db.prepare('SELECT ended_at FROM work_runs WHERE id = ?').get(runId) as any)
-      ?.ended_at,
+    ended_at: db
+      .prepare('SELECT ended_at FROM work_runs WHERE id = ?')
+      .get<Pick<WorkRunRow, 'ended_at'>>(runId)?.ended_at,
   };
 }
 
@@ -104,7 +107,9 @@ function addEvent(db: Migratable, runId: string, event: EventInput) {
   return {
     run: runId,
     kind: event.kind,
-    at: (db.prepare('SELECT at FROM work_events WHERE id = last_insert_rowid()').get() as any)?.at,
+    at: db
+      .prepare('SELECT at FROM work_events WHERE id = last_insert_rowid()')
+      .get<Pick<WorkEventRow, 'at'>>()?.at,
   };
 }
 
@@ -213,40 +218,40 @@ function workReport(db: Migratable, limit = 20): any {
     .prepare(
       'SELECT id, goal, goal_id, run_type, source, started_at, ended_at, outcome, outcome_value_cents FROM work_runs ORDER BY started_at DESC LIMIT ?'
     )
-    .all(limit) as any[];
+    .all<WorkRunRow>(limit);
   if (runs.length === 0)
     return { note: 'No runs recorded. Begin one with a runtime adapter, or ambit record work.' };
 
   const nameOf = new Map(
     db
       .prepare('SELECT id, name FROM capabilities')
-      .all()
-      .map((c: any) => [c.id, c.name])
+      .all<Pick<CapabilityRow, 'id' | 'name'>>()
+      .map(c => [c.id, c.name] as const)
   );
 
   return runs.map(r => {
     const elapsed = durationSeconds(r.started_at, r.ended_at);
-    const events = (
-      db.prepare('SELECT COUNT(*) n FROM work_events WHERE run_id = ?').get(r.id) as any
-    ).n;
+    const events = db
+      .prepare('SELECT COUNT(*) n FROM work_events WHERE run_id = ?')
+      .get<{ n: number }>(r.id)!.n;
     const uses = db
       .prepare(
         'SELECT capability_id, SUM(duration_seconds) total FROM capability_use WHERE run_id = ? GROUP BY capability_id'
       )
-      .all(r.id) as any[];
+      .all<{ capability_id: string; total: number | null }>(r.id);
     const interventions = db
       .prepare(
         'SELECT kind, COUNT(*) n, SUM(active_seconds) active FROM human_intervention WHERE run_id = ? GROUP BY kind'
       )
-      .all(r.id) as any[];
+      .all<{ kind: string; n: number; active: number | null }>(r.id);
     const resources = db
       .prepare(
         'SELECT kind, SUM(cost_cents) cost, COUNT(*) n FROM resource_consumption WHERE run_id = ? GROUP BY kind'
       )
-      .all(r.id) as any[];
+      .all<{ kind: string; cost: number | null; n: number }>(r.id);
     const outcome = db
       .prepare('SELECT * FROM outcomes WHERE run_id = ? ORDER BY recorded_at DESC LIMIT 1')
-      .get(r.id);
+      .get<OutcomeRow>(r.id);
     return {
       run: r.id,
       goal: r.goal || (r.goal_id ? nameOf.get(r.goal_id) || r.goal_id : undefined),
@@ -292,14 +297,16 @@ function usageReport(db: Migratable, days = 30): any {
      WHERE u.used_at >= datetime('now', ?)
      GROUP BY u.capability_id ORDER BY times DESC`
     )
-    .all(`-${days} days`) as any[];
+    .all<{ capability_id: string; times: number; duration_seconds: number | null }>(
+      `-${days} days`
+    );
   if (rows.length === 0) return { note: `No capability use recorded in the last ${days} days.` };
 
   const nameOf = new Map(
     db
       .prepare('SELECT id, name FROM capabilities')
-      .all()
-      .map((c: any) => [c.id, c.name])
+      .all<Pick<CapabilityRow, 'id' | 'name'>>()
+      .map(c => [c.id, c.name] as const)
   );
   const byRun = new Map<string, number>();
   const byIntervention = new Map<string, number>();
@@ -307,14 +314,15 @@ function usageReport(db: Migratable, days = 30): any {
     .prepare(
       "SELECT capability_id, COUNT(*) n FROM human_intervention WHERE started_at >= datetime('now', ?) GROUP BY capability_id"
     )
-    .all(`-${days} days`) as any[]) {
-    byIntervention.set(r.capability_id, r.n);
+    .all<{ capability_id: string | null; n: number }>(`-${days} days`)) {
+    // An intervention with no capability cannot be attributed to a use.
+    if (r.capability_id) byIntervention.set(r.capability_id, r.n);
   }
   for (const r of db
     .prepare(
       "SELECT run_id, COUNT(*) n FROM work_events WHERE at >= datetime('now', ?) GROUP BY run_id"
     )
-    .all(`-${days} days`) as any[]) {
+    .all<{ run_id: string; n: number }>(`-${days} days`)) {
     byRun.set(r.run_id, r.n);
   }
 

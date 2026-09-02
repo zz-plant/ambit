@@ -17,7 +17,7 @@
     "typecheck:client": "tsc --noEmit -p tsconfig.json",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "start": "NODE_ENV=production npm run server",
-    "server": "node --experimental-sqlite --disable-warning=ExperimentalWarning server.ts",
+    "server": "node --experimental-sqlite --disable-warning=ExperimentalWarning src/server/api.ts",
     "build:cli": "rm -rf dist-cli && tsc -p tsconfig.publish.json && cp src/engine/schema.sql src/engine/techtree.json dist-cli/engine/ && cp src/shared/concepts.json dist-cli/shared/",
     "prepublishOnly": "npm run build:cli",
     "prepack": "npm run build:cli",

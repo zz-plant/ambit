@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
 import { deriveLifecycles } from './lifecycle.ts';
+import type { CapabilityRow } from '../rows.ts';
 
 // ─── Verification ─────────────────────────────────────────────────────────────
 
@@ -168,10 +169,10 @@ function runVerification(db: Db, which?: string) {
 
   // Evidence just changed, so what it is worth just changed too.
   deriveLifecycles(db);
-  for (const r of withReliability as any[]) {
+  for (const r of withReliability) {
     r.lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
-      .get(r.id)?.lifecycle;
+      .get<Pick<CapabilityRow, 'lifecycle'>>(r.id)?.lifecycle;
   }
 
   // The gate, stated rather than implied: these now read as unavailable until

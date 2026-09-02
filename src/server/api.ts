@@ -15,16 +15,16 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { access } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
-import { getDb, type Db } from './src/engine/db.ts';
-import { migrate } from './src/engine/migrate.ts';
-import { resolveDbPath } from './src/shared/db-path.ts';
+import { getDb, type Db } from '../engine/db.ts';
+import { migrate } from '../engine/migrate.ts';
+import { resolveDbPath } from '../shared/db-path.ts';
 import {
   techTreeView,
   graphSummary,
   recentProposals,
   interventionHeatmap,
-} from './src/engine/views.ts';
-import { approveProposal } from './src/engine/governance.ts';
+} from '../engine/views.ts';
+import { approveProposal } from '../engine/governance.ts';
 import {
   beginRun,
   endRun,
@@ -33,7 +33,7 @@ import {
   recordIntervention,
   recordResource,
   recordOutcome,
-} from './src/engine/telemetry.ts';
+} from '../engine/telemetry.ts';
 import {
   CONFIG_PATH,
   INFRA_MANIFEST_PATH,
@@ -46,9 +46,9 @@ import {
   pick,
   isAllowedOrigin,
   corsHeaders,
-} from './src/server/config.ts';
-import { buildInfrastructureScan } from './src/server/infrastructure.ts';
-import { scanRepos } from './src/server/repos.ts';
+} from './config.ts';
+import { buildInfrastructureScan } from './infrastructure.ts';
+import { scanRepos } from './repos.ts';
 import type {
   ApiError,
   ApproveResponse,
@@ -60,7 +60,7 @@ import type {
   McpSnippetResponse,
   ProposalsResponse,
   TechTreeResponse,
-} from './src/shared/api.ts';
+} from '../shared/api.ts';
 
 const API_PORT = Number(process.env.AMBIT_API_PORT || 3001);
 const GRAPH_DB_PATH = resolveDbPath();

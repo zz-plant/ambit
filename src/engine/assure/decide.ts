@@ -12,6 +12,7 @@
  */
 import type { Db } from '../db.ts';
 import { usable } from './lifecycle.ts';
+import type { AuthorityRow, CapabilityRow } from '../rows.ts';
 
 /** Narrowest wins. Two sources disagreeing is not a tie to break arbitrarily. */
 const MODE_RANK: Record<string, number> = { autonomous: 0, confirm: 1, forbidden: 2 };
@@ -71,7 +72,7 @@ function canExecute(
 
   const cap = db
     .prepare('SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?')
-    .get(capability);
+    .get<Pick<CapabilityRow, 'id' | 'name' | 'state' | 'lifecycle'>>(capability);
   if (!cap) return { decision: 'DENY', reason: `no capability ${capability}`, capability, action };
 
   const grants = db
@@ -79,7 +80,7 @@ function canExecute(
       `SELECT capability_id, action, mode, holder, scope, source, note
      FROM authority WHERE capability_id = ? AND action = ?`
     )
-    .all(capability, action) as any[];
+    .all<Omit<AuthorityRow, 'id'>>(capability, action);
 
   const covering = grants.filter((g: any) => {
     if (g.holder && input.actor && g.holder !== input.actor) return false;

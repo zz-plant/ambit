@@ -8,15 +8,10 @@
  * people to it, and the tree was one unmarked click away.
  */
 import { expect, test } from 'vitest';
+import { readLinkState } from './linkState';
 
 /** The rule App.tsx applies when it decides the initial source. */
-function initialSource(search: string): 'config' | 'tree' {
-  const params = new URLSearchParams(search);
-  const view = params.get('view');
-  if (view === 'tree') return 'tree';
-  if (view === 'config') return 'config';
-  return params.get('demo') === '1' ? 'tree' : 'config';
-}
+const initialSource = (search: string) => readLinkState(search).source;
 
 test('the demo link opens the view its own hero image shows', () => {
   expect(initialSource('?demo=1')).toBe('tree');

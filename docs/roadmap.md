@@ -15,6 +15,25 @@ That is a model of **what exists**. This document describes the move to a model 
 
 Nothing below is implemented unless it appears in the README. Sections are ordered by dependency, not by date.
 
+## Status at a glance
+
+Each section below ends with what it still lacks. This is that ending, collected, so a reader deciding whether the project is real does not have to find it eleven times.
+
+| § | Section | Status | What remains |
+|---|---|---|---|
+| 1 | Separate capability from implementation | built | `resource` is a kind with little behind it, and an action has no object: *read repo A* and *write repo B* are one node. |
+| 2 | The human and the machines in the graph | partly built | Cost and risk tolerance are not modelled. The infrastructure manifest is read, not probed, so a device's reachability gates nothing. |
+| 3 | Acquisition recipes | partly built | A recipe's multi-step verification is not executable; a check is one read-only command. |
+| 4 | Detection becomes verification | built, and gates | Nothing enforces the gate. A failing check demotes a capability; nothing promotes one on evidence. |
+| 5 | Goal → capability delta | partly built | A goal outside the known vocabulary has no route in, and whole-strategy alternatives have to be authored. |
+| 6 | Failure becomes an input | built | The classification is declared, not inferred, and recurrence becoming a proposal is still a human step. |
+| 7 | The ledger | shipped | Nothing writes evidence of *use*, so which capabilities are actually exercised is unanswered. |
+| 7b | Affordance domains | built, derived | The map does not render the new domains as columns, and *environment* has no representation. |
+| 8 | A runtime adapter layer | partly built | A runtime-owned capability surface exists as an export and a reader; no runtime publishes one yet. |
+| 9 | Authority as a first-class edge | built, enforces nothing | Scope is checked and reported, not mediated. |
+| 10 | A second-generation MCP | partly built | A capability with no declared check applies unverified, reported rather than refused. |
+| 11 | The visualiser as a negotiating surface | built and shipping | Only the state and run subset of AG-UI; no tool-call or reasoning events, by design. |
+
 ---
 
 ## Four layers

@@ -1,3 +1,4 @@
+import type { Statement } from './rows.ts';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ENGINE_DIR } from './paths.ts';
@@ -19,11 +20,7 @@ import { kindOf, edgeKindOf } from './ontology.ts';
  * is the whole surface used here.
  */
 export interface Migratable {
-  prepare(sql: string): {
-    all(...params: unknown[]): Record<string, any>[];
-    get(...params: unknown[]): Record<string, any> | undefined;
-    run(...params: unknown[]): unknown;
-  };
+  prepare(sql: string): Statement;
   exec(sql: string): void;
 }
 

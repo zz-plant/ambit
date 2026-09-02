@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useToolchainStore } from '../store/toolchainStore';
+import { useAmbitStore } from '../store/ambitStore';
 import { typeLabel, statusLabel } from '../utils/labels';
 
 const FILTER_TYPES = [
@@ -12,11 +12,11 @@ const FILTER_TYPES = [
 ] as const;
 
 export function CapabilityListPanel() {
-  const items = useToolchainStore(s => s.items);
-  const searchQuery = useToolchainStore(s => s.searchQuery);
-  const setSearch = useToolchainStore(s => s.setSearch);
-  const selectItem = useToolchainStore(s => s.selectItem);
-  const selectedId = useToolchainStore(s => s.selectedItem);
+  const items = useAmbitStore(s => s.items);
+  const searchQuery = useAmbitStore(s => s.searchQuery);
+  const setSearch = useAmbitStore(s => s.setSearch);
+  const selectItem = useAmbitStore(s => s.selectItem);
+  const selectedId = useAmbitStore(s => s.selectedItem);
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const filtered = items.filter(i => {

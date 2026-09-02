@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ENGINE_DIR } from './paths.ts';
 import type { Db } from './db.ts';
+import type { CapabilityRow } from './rows.ts';
 
 /**
  * A shareable snapshot of the map: one self-contained HTML file, built from an
@@ -22,10 +23,12 @@ export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
       `SELECT id, name, domain, category, state, lifecycle, kind FROM capabilities
      WHERE kind != 'action' ORDER BY domain, name`
     )
-    .all() as any[];
+    .all<
+      Pick<CapabilityRow, 'id' | 'name' | 'domain' | 'category' | 'state' | 'lifecycle' | 'kind'>
+    >();
   const deps = db
     .prepare('SELECT from_capability f, to_capability t, is_hard_requisite hard FROM dependencies')
-    .all() as any[];
+    .all<{ f: string; t: string; hard: number }>();
 
   let eras: Record<string, string> = {};
   const eraById = new Map<string, number>();

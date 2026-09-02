@@ -2,6 +2,7 @@ import type { Migratable } from './migrate.ts';
 import { planFor, simulateFrontier, deficits } from './planning.ts';
 import { attentionValueCentsPerHour } from './economics.ts';
 import { catalogReport } from './catalog.ts';
+import type { CapabilityRow, HumanInterventionRow, SessionLearningRow } from './rows.ts';
 
 /**
  * The opportunity engine: where recurring friction becomes a proposed
@@ -58,7 +59,7 @@ function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
   const cap = new Map<string, { id: string; name: string; reached: boolean; lifecycle: string }>();
   for (const c of db
     .prepare('SELECT id, name, state, lifecycle FROM capabilities')
-    .all() as any[]) {
+    .all<Pick<CapabilityRow, 'id' | 'name' | 'state' | 'lifecycle'>>()) {
     cap.set(c.id, {
       id: c.id,
       name: c.name,
@@ -95,7 +96,12 @@ function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
     .prepare(
       "SELECT capability_id, kind, active_seconds, waiting_seconds, run_id FROM human_intervention WHERE started_at >= datetime('now', ?)"
     )
-    .all(`-${windowDays} days`) as any[]) {
+    .all<
+      Pick<
+        HumanInterventionRow,
+        'capability_id' | 'kind' | 'active_seconds' | 'waiting_seconds' | 'run_id'
+      >
+    >(`-${windowDays} days`)) {
     const c = ensure(i.capability_id || 'unattributed', i.kind);
     c.times++;
     c.active_seconds += i.active_seconds || 0;
@@ -111,7 +117,7 @@ function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
      WHERE action IN ('approved', 'applied', 'blocked:permission')
        AND timestamp >= datetime('now', ?)`
     )
-    .all(`-${windowDays} days`) as any[]) {
+    .all<Pick<SessionLearningRow, 'capability_id' | 'action'>>(`-${windowDays} days`)) {
     const kind =
       a.action === 'approved'
         ? 'approval'
@@ -126,7 +132,7 @@ function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
     .prepare(
       "SELECT capability_id, COUNT(*) n FROM capability_use WHERE used_at >= datetime('now', ?) GROUP BY capability_id"
     )
-    .all(`-${windowDays} days`) as any[]) {
+    .all<{ capability_id: string; n: number }>(`-${windowDays} days`)) {
     for (const c of out.values()) if (c.capability_id === u.capability_id) c.uses += u.n;
   }
 

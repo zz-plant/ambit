@@ -62,7 +62,7 @@ beforeAll(async () => {
 
   const port = await freePort();
   base = `http://127.0.0.1:${port}`;
-  server = spawn('node', ['--experimental-sqlite', join(ROOT, 'server.ts')], {
+  server = spawn('node', ['--experimental-sqlite', join(ROOT, 'src', 'server', 'api.ts')], {
     env: { ...env, AMBIT_API_PORT: String(port) },
     cwd: ROOT,
     stdio: 'ignore',
