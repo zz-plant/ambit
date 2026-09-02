@@ -8,7 +8,7 @@ No. Ambit reads OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desk
 
 ## Does anything leave my machine?
 
-No. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. The one command that produces something meant for sharing, `ambit share`, builds its HTML from an allow-list, so commands, paths, URLs, and economics cannot enter the file, and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command. [SECURITY.md](../SECURITY.md) lists the invariants.
+Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. Two commands are explicit exceptions, and both send text read from your graph: `ambit notify <topic>` pushes the attention digest, which names the capabilities that interrupted you most, how often, and the suggested fix for each; `ambit notify-approvals <topic>` pushes the ids, goals, and approval times of proposals waiting to be applied. Each is one HTTP POST to [ntfy](https://ntfy.sh), or to a server you name with `NTFY_SERVER`, and nothing is sent without a topic. An ntfy topic is readable by anyone who knows its name, so pick one you would not guess. `ambit share` produces a file meant for sharing but does not upload it: the HTML is built from an allow-list, so commands, paths, URLs, and economics cannot enter it, and `--redact` replaces every non-curated name with its category. [SECURITY.md](../SECURITY.md) lists the invariants.
 
 ## What do I need installed?
 
@@ -29,7 +29,7 @@ No. `attention`, `work`, `usage`, `opportunities`, `roi`, and `audit` price the 
 
 ## Can an agent change my configuration through Ambit?
 
-An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Approving and applying are not MCP tools. They run from the terminal or the map, by a person, and `ambit apply` writes a `.bak` beside any file it edits. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
+An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Approving and applying are not MCP tools. They run from the terminal or the map, by a person, and `ambit apply` writes a `.bak` beside any file it edits. The map also has a direct editor for entries that already exist, such as switching an MCP server off, which writes to the config on a person's click without a proposal; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
 
 ## What is the difference between "reached" and "verified"?
 
