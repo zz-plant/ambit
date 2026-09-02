@@ -33,7 +33,7 @@ function conflictForChosen(step: any, chosen: any, db: Db): string[] | undefined
       `SELECT p.preference, c.name FROM preferences p
        JOIN capabilities c ON c.id = p.actor_id`
     )
-    .all() as any[];
+    .all<{ preference: string; name: string }>();
   const prefsByPerson = new Map<string, string[]>();
   for (const r of rows) {
     if (!prefsByPerson.has(r.name)) prefsByPerson.set(r.name, []);
@@ -176,7 +176,7 @@ function planFor(db: Db, goal?: string) {
        JOIN capabilities c ON c.id = d.from_capability
        WHERE c.kind = 'actor' AND d.kind IN ('provides', 'authorizes')`
     )
-    .all();
+    .all<{ f: string; t: string }>();
   const humanFor = new Map<string, string[]>();
   for (const e of humanEdges) {
     if (!humanFor.has(e.t)) humanFor.set(e.t, []);
@@ -251,7 +251,7 @@ function preferencesReport(db: Db, who?: string) {
        JOIN capabilities c ON c.id = p.actor_id
        ORDER BY c.name, p.preference`
     )
-    .all() as any[];
+    .all<{ actor_id: string; preference: string; name: string; state: string }>();
   if (rows.length === 0) {
     return { note: 'No preferences declared. Add a `prefers` list to an actor in the config.' };
   }

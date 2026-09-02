@@ -131,9 +131,9 @@ function deficits(db: Db) {
        WHERE s.action LIKE 'blocked:%'
        GROUP BY s.capability_id, s.action ORDER BY times DESC`
     )
-    .all();
+    .all<{ id: string; class: string; times: number }>();
   const classOf = new Map<string, string[]>();
-  for (const r of byClass as any[]) {
+  for (const r of byClass) {
     if (!classOf.has(r.id)) classOf.set(r.id, []);
     classOf.get(r.id)!.push(`${r.class} ×${r.times}`);
   }

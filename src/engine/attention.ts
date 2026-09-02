@@ -1,4 +1,5 @@
 import type { Migratable } from './migrate.ts';
+import type { HumanInterventionRow, ProposalRow, SessionLearningRow } from './rows.ts';
 
 /**
  * Where the human is in the graph — and how much of the work still runs
@@ -86,7 +87,7 @@ function humanDigest(db: Migratable, days?: number | string) {
          AND timestamp >= datetime('now', ?)
        ORDER BY timestamp DESC`
     )
-    .all(`-${window} days`) as any[];
+    .all<Pick<SessionLearningRow, 'capability_id' | 'action' | 'timestamp'>>(`-${window} days`);
 
   const interventions = db
     .prepare(
@@ -95,7 +96,18 @@ function humanDigest(db: Migratable, days?: number | string) {
        WHERE started_at >= datetime('now', ?)
        ORDER BY started_at DESC`
     )
-    .all(`-${window} days`) as any[];
+    .all<
+      Pick<
+        HumanInterventionRow,
+        | 'actor_id'
+        | 'kind'
+        | 'capability_id'
+        | 'started_at'
+        | 'active_seconds'
+        | 'waiting_seconds'
+        | 'run_id'
+      >
+    >(`-${window} days`);
 
   if (actions.length === 0 && interventions.length === 0) {
     return {
@@ -256,7 +268,7 @@ function pendingApprovals(db: Migratable) {
     .prepare(
       "SELECT id, goal, approved_at FROM proposals WHERE status = 'approved' ORDER BY approved_at ASC"
     )
-    .all() as any[];
+    .all<Pick<ProposalRow, 'id' | 'goal' | 'approved_at'>>();
   return rows;
 }
 

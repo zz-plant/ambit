@@ -8,6 +8,10 @@
 import type { Db } from '../db.ts';
 import { PROVISION_EDGES } from '../ontology.ts';
 import { usable } from '../assurance.ts';
+import type { CapabilityRow } from '../rows.ts';
+
+/** The columns the fragility reports read off a node. */
+type CapNode = Pick<CapabilityRow, 'id' | 'name' | 'state' | 'kind' | 'lifecycle'>;
 
 // ─── Impact Analysis ─────────────────────────────────────────────────────────
 
@@ -193,25 +197,25 @@ function singlePointsOfFailure(db: Db) {
   const names = new Map(
     db
       .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
-      .all()
-      .map((c: any) => [c.id, c])
+      .all<CapNode>()
+      .map(c => [c.id, c] as const)
   );
   const credsOf = credentialsOf(db);
   const out: any[] = [];
   for (const [target, list] of providers) {
-    const t = names.get(target) as any;
+    const t = names.get(target);
     if (!t || t.state === 'locked' || !usable(t.lifecycle)) continue; // not available; nothing to lose
     // An action conferred by a capability has one provider by definition, not
     // by fragility, and listing all of them would bury the real answers. An
     // action a *person* supplies is a different matter — one provider there is
     // exactly the finding, because only that person can do it.
-    if (t.kind === 'action' && (names.get(list[0]) as any)?.kind === 'capability') continue;
+    if (t.kind === 'action' && names.get(list[0])?.kind === 'capability') continue;
 
     if (list.length === 1) {
       out.push({
         capability: t.name,
         id: target,
-        sole_provider: (names.get(list[0]) as any)?.name || list[0],
+        sole_provider: names.get(list[0])?.name || list[0],
         provider_id: list[0],
       });
       continue;
@@ -226,8 +230,8 @@ function singlePointsOfFailure(db: Db) {
       out.push({
         capability: t.name,
         id: target,
-        providers: list.map(p => (names.get(p) as any)?.name || p),
-        sole_credential: (names.get(cred) as any)?.name || cred,
+        providers: list.map(p => names.get(p)?.name || p),
+        sole_credential: names.get(cred)?.name || cred,
         credential_id: cred,
       });
     }
@@ -256,7 +260,7 @@ function credentialReport(db: Db) {
     .prepare(
       "SELECT id, name, description FROM capabilities WHERE kind = 'credential' ORDER BY name"
     )
-    .all();
+    .all<Pick<CapabilityRow, 'id' | 'name' | 'description'>>();
   if (creds.length === 0) {
     return {
       note: 'No credentials declared. Add a `credentials` block naming which providers share one.',
@@ -267,24 +271,24 @@ function credentialReport(db: Db) {
   const nodes = new Map(
     db
       .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
-      .all()
-      .map((c: any) => [c.id, c])
+      .all<CapNode>()
+      .map(c => [c.id, c] as const)
   );
-  const nameOf = (id: string) => (nodes.get(id) as any)?.name || id;
+  const nameOf = (id: string) => nodes.get(id)?.name || id;
 
-  return creds.map((cred: any) => {
+  return creds.map(cred => {
     const holders = [...credsOf.entries()].filter(([, cs]) => cs.includes(cred.id)).map(([p]) => p);
     const ends: string[] = [];
     const weakens: string[] = [];
     for (const [target, list] of providers) {
-      const t = nodes.get(target) as any;
+      const t = nodes.get(target);
       // Availability read the same way `tt spof` reads it, so the two surfaces
       // cannot disagree about what a revocation would cost. A capability whose
       // check is already failing is not something this credential is holding up.
       if (!t || t.state === 'locked' || !usable(t.lifecycle)) continue;
       // Same exclusion `tt spof` makes: an action conferred by a capability
       // goes down with it by definition, and listing both doubles every entry.
-      if (t.kind === 'action' && (nodes.get(list[0]) as any)?.kind === 'capability') continue;
+      if (t.kind === 'action' && nodes.get(list[0])?.kind === 'capability') continue;
       if (!list.some(p => (credsOf.get(p) || []).includes(cred.id))) continue;
       (sharedCredentials(list, credsOf).includes(cred.id) ? ends : weakens).push(t.name);
     }

@@ -1,4 +1,5 @@
 import type { Migratable } from './migrate.ts';
+import type { CatalogRow } from './rows.ts';
 
 /**
  * The acquisition catalog: the supply side for a capability, compared.
@@ -32,7 +33,7 @@ function catalogReport(db: Migratable, capabilityId?: string) {
             privacy, verification, runtimes, expected_reliability, rollback, source
      FROM catalog WHERE capability_id = ? ORDER BY provider`
     )
-    .all(id) as any[];
+    .all<Omit<CatalogRow, 'id' | 'capability_id'>>(id);
   if (rows.length === 0) {
     return {
       capability: id,

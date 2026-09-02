@@ -2,6 +2,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Migratable } from './migrate.ts';
+import type { ProposalRow } from './rows.ts';
 
 /**
  * The approval broker: mints a signed artifact that binds an approval to an
@@ -61,7 +62,7 @@ export interface MintApprovalInput {
  * all of it against the row it is about to apply.
  */
 function mintApproval(db: Migratable, proposalId: string, input: MintApprovalInput) {
-  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status !== 'approved')
     return { error: `${proposalId} is ${row.status}; an approval artifact is minted on approval.` };

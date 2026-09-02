@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Migratable } from './migrate.ts';
 import { opportunitiesFor } from './opportunities.ts';
+import type { CapabilityRow, ProposalRow } from './rows.ts';
 
 /**
  * Federation: what one environment's Ambit is willing to say about itself to
@@ -37,78 +38,73 @@ function signSummary(summary: unknown): string | undefined {
  * Everything is a count or a declared number — nothing a credential lives in.
  */
 function exportSummary(db: Migratable) {
-  const capabilities = (
-    db
-      .prepare(
-        `SELECT id, name, kind, domain, state, lifecycle FROM capabilities
+  const capabilities = db
+    .prepare(
+      `SELECT id, name, kind, domain, state, lifecycle FROM capabilities
      WHERE kind != 'action' ORDER BY id`
-      )
-      .all() as any[]
-  ).map(c => ({
-    id: c.id,
-    name: c.name,
-    kind: c.kind,
-    domain: c.domain,
-    reached: c.state !== 'locked',
-    lifecycle: c.lifecycle,
-  }));
+    )
+    .all<Pick<CapabilityRow, 'id' | 'name' | 'kind' | 'domain' | 'state' | 'lifecycle'>>()
+    .map(c => ({
+      id: c.id,
+      name: c.name,
+      kind: c.kind,
+      domain: c.domain,
+      reached: c.state !== 'locked',
+      lifecycle: c.lifecycle,
+    }));
 
   // Human burden, summed per capability over the same 30-day window the
   // opportunity engine reads.
-  const burden = (
-    db
-      .prepare(
-        `SELECT capability_id, COUNT(*) times, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
+  const burden = db
+    .prepare(
+      `SELECT capability_id, COUNT(*) times, COALESCE(SUM(active_seconds),0) active, COALESCE(SUM(waiting_seconds),0) waiting
      FROM human_intervention WHERE started_at >= datetime('now', '-30 days') AND capability_id IS NOT NULL
      GROUP BY capability_id ORDER BY times DESC`
-      )
-      .all() as any[]
-  ).map(r => ({
-    capability_id: r.capability_id,
-    interventions_month: r.times,
-    human_hours_month: Math.round(((r.active + r.waiting) / 3600) * 10) / 10,
-  }));
+    )
+    .all<{ capability_id: string; times: number; active: number; waiting: number }>()
+    .map(r => ({
+      capability_id: r.capability_id,
+      interventions_month: r.times,
+      human_hours_month: Math.round(((r.active + r.waiting) / 3600) * 10) / 10,
+    }));
 
   // Person-specific single points of failure: a reached capability only a
   // human supplies. The portfolio's "worst person-SPOF" question needs this
   // on every environment's summary, and it is a count, not a person's data.
-  const person_spofs = (
-    db
-      .prepare(
-        `SELECT c.id FROM capabilities c
+  const person_spofs = db
+    .prepare(
+      `SELECT c.id FROM capabilities c
      WHERE c.kind = 'capability' AND c.state != 'locked'
        AND (SELECT COUNT(*) FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
             WHERE d.to_capability = c.id AND d.kind IN ('provides','contributes')) = 1
        AND (SELECT p.kind FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
             WHERE d.to_capability = c.id AND d.kind IN ('provides','contributes') LIMIT 1) = 'actor'`
-      )
-      .all() as any[]
-  ).map(r => r.id);
+    )
+    .all<Pick<CapabilityRow, 'id'>>()
+    .map(r => r.id);
 
-  const operatingCost = (
-    db
-      .prepare(
-        `SELECT resource_id, SUM(cost_cents) cost_cents FROM resource_consumption
+  const operatingCost = db
+    .prepare(
+      `SELECT resource_id, SUM(cost_cents) cost_cents FROM resource_consumption
      WHERE recorded_at >= datetime('now', '-30 days') GROUP BY resource_id ORDER BY cost_cents DESC`
-      )
-      .all() as any[]
-  ).map(r => ({ resource_id: r.resource_id, cost_cents: r.cost_cents }));
+    )
+    .all<{ resource_id: string | null; cost_cents: number }>()
+    .map(r => ({ resource_id: r.resource_id, cost_cents: r.cost_cents }));
 
   const opportunities = (opportunitiesFor(db, 'attention') as any).opportunities || [];
 
-  const proposals = (
-    db
-      .prepare(
-        'SELECT id, goal, status, economic_case, observed_roi FROM proposals ORDER BY created_at DESC'
-      )
-      .all() as any[]
-  ).map(p => ({
-    id: p.id,
-    goal: p.goal,
-    status: p.status,
-    economic_case: p.economic_case ? JSON.parse(p.economic_case) : undefined,
-    observed_roi: p.observed_roi ? JSON.parse(p.observed_roi) : undefined,
-  }));
+  const proposals = db
+    .prepare(
+      'SELECT id, goal, status, economic_case, observed_roi FROM proposals ORDER BY created_at DESC'
+    )
+    .all<Pick<ProposalRow, 'id' | 'goal' | 'status' | 'economic_case' | 'observed_roi'>>()
+    .map(p => ({
+      id: p.id,
+      goal: p.goal,
+      status: p.status,
+      economic_case: p.economic_case ? JSON.parse(p.economic_case) : undefined,
+      observed_roi: p.observed_roi ? JSON.parse(p.observed_roi) : undefined,
+    }));
 
   const summary = {
     schema_version: SCHEMA_VERSION,
@@ -119,14 +115,13 @@ function exportSummary(db: Migratable) {
     person_spofs,
     operating_cost_dollars_month:
       Math.round(operatingCost.reduce((s, r) => s + r.cost_cents, 0)) / 100,
-    deficits: (
-      db
-        .prepare(
-          `SELECT capability_id, COUNT(*) times FROM session_learning
+    deficits: db
+      .prepare(
+        `SELECT capability_id, COUNT(*) times FROM session_learning
        WHERE (action = 'blocked' OR action LIKE 'blocked:%') GROUP BY capability_id ORDER BY times DESC`
-        )
-        .all() as any[]
-    ).map(d => ({ capability_id: d.capability_id, times: d.times })),
+      )
+      .all<{ capability_id: string; times: number }>()
+      .map(d => ({ capability_id: d.capability_id, times: d.times })),
     opportunities: opportunities.slice(0, 10).map((o: any) => ({
       capability_id: o.capability_id,
       kind: o.kind,

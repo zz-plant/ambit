@@ -9,6 +9,7 @@
 import type { Db } from '../db.ts';
 import { usable } from './lifecycle.ts';
 import { narrower, scopeCovers } from './decide.ts';
+import type { CapabilityRow } from '../rows.ts';
 
 /**
  * Where a capability's authority is narrower than its technical reach.
@@ -108,15 +109,15 @@ function authorityReport(db: Db) {
   const nodes = new Map(
     db
       .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
-      .all()
-      .map((c: any) => [c.id, c])
+      .all<Pick<CapabilityRow, 'id' | 'name' | 'state' | 'kind' | 'lifecycle'>>()
+      .map(c => [c.id, c] as const)
   );
 
   for (const g of grants) {
     if (g.kind === 'runtime') {
       // A runtime's own grant is a statement about everything it supplies.
       for (const capId of runtimeReach.get(g.capability_id) || []) {
-        const target = nodes.get(capId) as any;
+        const target = nodes.get(capId);
         if (!target) continue;
         record(
           capId,

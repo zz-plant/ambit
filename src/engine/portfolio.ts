@@ -1,4 +1,5 @@
 import type { Migratable } from './migrate.ts';
+import type { FederationImportRow } from './rows.ts';
 
 /**
  * The portfolio layer: what the imported environments, taken together, look
@@ -19,7 +20,7 @@ function parsed(db: Migratable) {
     .prepare(
       'SELECT environment, received_at, signed, summary FROM federation_imports ORDER BY received_at'
     )
-    .all() as any[];
+    .all<Pick<FederationImportRow, 'environment' | 'received_at' | 'signed' | 'summary'>>();
   return rows.map(r => {
     let s: any = {};
     try {

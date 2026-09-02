@@ -1,20 +1,15 @@
 import { DatabaseSync } from 'node:sqlite';
 import { resolveDbPath } from '../shared/db-path.ts';
-import { migrate } from './migrate.ts';
+import { type Migratable, migrate } from './migrate.ts';
 
 /**
- * node:sqlite is experimental and types every row as `unknown`, which would
- * require a hand-written row type at each of the ~40 query sites. This narrows
- * the handle to the surface the engine actually uses, with rows as loose
- * records — the same guarantee the code had before, now stated explicitly.
+ * node:sqlite is experimental and types every row as `unknown`. This narrows
+ * the handle to the surface the engine actually uses; a query names its row
+ * type at the call (`.all<Pick<CapabilityRow, 'id' | 'name'>>()`) from the
+ * shapes in rows.ts, and one that names nothing gets the loose record the
+ * engine always had.
  */
-interface Db {
-  prepare(sql: string): {
-    all(...params: unknown[]): Record<string, any>[];
-    get(...params: unknown[]): Record<string, any> | undefined;
-    run(...params: unknown[]): unknown;
-  };
-  exec(sql: string): void;
+interface Db extends Migratable {
   close(): void;
 }
 
