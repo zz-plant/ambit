@@ -1,0 +1,28 @@
+# Ambit
+
+> A capability graph for AI agent environments, and a meta-MCP server: what you, your agents, and your machines can jointly do, what breaks downstream, and what is worth setting up next.
+
+Ambit reads the configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, and Codex CLI into one local SQLite graph. Every tool, model, skill, and credential becomes a node; everything one needs in order to work becomes an edge. Three surfaces read that graph: a terminal CLI (`ambit`), an MCP server (`ambit mcp`, 48 tools), and a web map. The only path that writes to it is a proposal a person approves. Nothing leaves the machine.
+
+Vocabulary: a *capability* is one thing the setup can do. Its *era* is how far up the curated tree it sits. A capability is *reached* (something provides it), *next* (prerequisites met, nothing detected), or *blocked* (a prerequisite is missing). *State* is structural (configured or not); *lifecycle* is health (its declared check passed or not), and availability decisions gate on lifecycle.
+
+## Docs
+
+- [README](https://github.com/zz-plant/ambit/blob/main/README.md): what it is, install, the CLI, the MCP surface, security invariants
+- [Deep dive](https://github.com/zz-plant/ambit/blob/main/docs/deep-dive.md): nodes, assurance checks, authority contracts, the work ledger, every MCP tool
+- [FAQ](https://github.com/zz-plant/ambit/blob/main/docs/faq.md): short answers to the common questions
+- [Why Ambit](https://github.com/zz-plant/ambit/blob/main/docs/why-ambit.md): the argument for modelling capability as a property of the whole system
+- [Agent guide](https://github.com/zz-plant/ambit/blob/main/AGENTS.md): repository layout and the invariants a change must not break
+- [Security](https://github.com/zz-plant/ambit/blob/main/SECURITY.md): loopback only, no entry creation over HTTP, local data only
+
+## Use it from an agent
+
+- Register: `claude mcp add ambit -- ambit mcp`
+- Before acting, call `ambit_authority` for the action; it returns whether it is allowed, needs confirmation, or is blocked, and what is missing
+- To close a gap, call `ambit_goal`, then `ambit_propose`; a person approves and applies from the terminal or the map
+
+## Optional
+
+- [Live demo](https://zz-plant.github.io/ambit/?demo=1): the map on example data, nothing to install
+- [Roadmap](https://github.com/zz-plant/ambit/blob/main/docs/roadmap.md): where the data model is heading
+- [Changelog](https://github.com/zz-plant/ambit/blob/main/CHANGELOG.md)

@@ -9,7 +9,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
-[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [How it works](#how-it-works) · [Deep dive](./docs/deep-dive.md)
+[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [How it works](#how-it-works) · [FAQ](./docs/faq.md) · [Deep dive](./docs/deep-dive.md)
 
 <br>
 
@@ -18,6 +18,17 @@
 <sub>One setup, mapped. Pick a tool and Ambit shows what depends on it; switch it off and it shows the fourteen things that stop working with it. Then which tools interrupt you most, and a change waiting on your approval.</sub>
 
 </div>
+
+---
+
+## Try it in 30 seconds
+
+| | |
+| :--- | :--- |
+| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1). Example data, nothing to install. |
+| **On your machine** | `brew install zz-plant/tap/ambit && ambit` reads your real agent config and prints where you stand. |
+| **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab. |
+| **From your agent** | `claude mcp add ambit -- ambit mcp` and the agent can ask what it is able to do before it tries. |
 
 ---
 
@@ -96,8 +107,23 @@ cd ambit
 
 To see what the installer would do without running it: `./bootstrap.sh --dry-run`.
 
+### Option C — Homebrew (CLI and engine)
+
+```bash
+brew install zz-plant/tap/ambit
+ambit
+```
+
+The formula installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux. The map needs a checkout (Option B); `ambit web` says so and points there.
+
 > [!NOTE]
-> The npm package is built and ready but not yet published, so `npx ambit` will not work. Use the checkout paths above.
+> The npm package is built and ready but not yet published, so `npx ambit` will not work. Use Homebrew or the checkout paths above.
+
+### Option D — GitHub Codespaces
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1)
+
+The devcontainer installs dependencies, seeds a graph, and starts the map on port 3000. Nothing touches your machine, and the graph it draws is the container's, so it is the way to read the code and the canvas side by side before deciding to install.
 
 ---
 
@@ -379,6 +405,14 @@ This one needs setup first. Ambit will not guess which providers share a secret,
 
 Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.
 
+| | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Vector tool-RAG | by similarity | – | – | – | – |
+| Workflow state machines (LangGraph) | – | within one task | – | – | within one task |
+| Package managers (Nix, Homebrew) | – | for binaries | – | – | – |
+| A list of configured MCP servers | by name | – | – | – | – |
+| **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
+
 - **Against vector tool-RAG.** Semantic search finds tools that sound relevant. It has no view of prerequisite order and cannot tell a working tool from a broken one.
 - **Against workflow state machines.** LangGraph models control flow within one task. Ambit models what the host environment is capable of executing at all.
 - **Against package managers.** Nix and Homebrew install binaries. Ambit models the affordance those binaries add up to, and what it costs a person to keep them working.
@@ -398,12 +432,15 @@ Ambit reads developer toolchains and writes to agent configs, so a few propertie
 
 ## Documentation
 
+* [FAQ](./docs/faq.md) — what needs installing, what leaves the machine, why the attention commands are empty on day one.
 * [Deep dive](./docs/deep-dive.md) — nodes, assurance checks, authority contracts, the work ledger, and every MCP tool in detail.
 * [Why Ambit](./docs/why-ambit.md) — what the tool is for and why it exists.
 * [The affordance frontier](./docs/affordance-frontier.md) — capability as a property of human-machine systems rather than of software.
 * [Roadmap](./docs/roadmap.md) — where the data model is heading. Direction, not description.
 * [Changelog](./CHANGELOG.md) — what changed per release, and why.
 * [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) — the rules above, in full.
+* [Support](./SUPPORT.md) — where each kind of question goes.
+* [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) — the project in one page, for an agent that is deciding whether to recommend it.
 
 ---
 
@@ -416,6 +453,19 @@ New capability models, runtime adapters, visualization work, and edge-case repor
 - [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — community standards.
 
 `npm run lint && npm run typecheck && npm test` is the gate. Both halves of the repo typecheck under `strict`, and the suite runs against real SQLite.
+
+---
+
+## Support the project
+
+Ambit is a personal project. If it answered a question your config files could not, the cheapest way to help is a star: it is how the next person with the same stack finds it.
+
+- [Star the repository](https://github.com/zz-plant/ambit/stargazers), and [watch releases](https://github.com/zz-plant/ambit/releases) for the notes that explain each change.
+- Post an `ambit share --redact` snapshot of your own map. The file names nothing on your machine, and every real graph is an argument the demo cannot make.
+- Report the runtime it does not read yet, or the capability it models wrong. Both are [issue templates](https://github.com/zz-plant/ambit/issues/new/choose).
+- Citing it in writing? [`CITATION.cff`](./CITATION.cff) is what GitHub's *Cite this repository* button reads.
+
+<a href="https://star-history.com/#zz-plant/ambit&Date"><img src="https://api.star-history.com/svg?repos=zz-plant/ambit&type=Date" alt="Star history for zz-plant/ambit" width="600"></a>
 
 ---
 

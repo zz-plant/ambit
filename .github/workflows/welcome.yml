@@ -1,0 +1,38 @@
+name: Welcome
+
+# A first issue or pull request from someone is the moment they decide whether
+# the project is worth a second one. This posts a short, specific reply so that
+# moment is not silence. It runs only on a person's first interaction; a
+# second issue from the same account gets nothing.
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      # No checkout: pull_request_target runs with write access, and this job
+      # never executes anything from the contributor's branch.
+      - uses: actions/first-interaction@v3
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
+            Thanks for opening your first issue here.
+
+            If it is about your own graph, `ambit share --redact` produces a snapshot that names nothing on your machine and usually reproduces a layout or cascade problem on its own. If it is about how a capability is modelled, say which era or prerequisite you would change and why; the curated tree encodes opinions, and arguing with them is the point of the capability-model template.
+
+            Ambit is a personal project, so expect a reply in days rather than hours.
+          pr_message: |
+            Thanks for your first pull request.
+
+            CI runs `npm run lint && npm run typecheck && npm test && npm run build`, then bootstraps on a machine with no agent config; running the first line locally is faster than a round trip. If the change touches `server.ts`, the checklist in the PR template names the three invariants it must keep: loopback only, non-local origins rejected before routing, no entry creation over HTTP.
+
+            Ambit is a personal project, so review may take a few days.
