@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useToolchainStore } from '../store/toolchainStore';
+import { useAmbitStore } from '../store/ambitStore';
 
 export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const proposals = useToolchainStore(s => s.proposals);
-  const approveProposal = useToolchainStore(s => s.approveProposal);
+  const proposals = useAmbitStore(s => s.proposals);
+  const approveProposal = useAmbitStore(s => s.approveProposal);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved'>('all');

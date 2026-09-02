@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Item } from '../utils/configImporter';
-import { useToolchainStore } from '../store/toolchainStore';
+import { useAmbitStore } from '../store/ambitStore';
 import App from '../App';
 import CapabilityListPanel from './CapabilityListPanel';
 import NodeDetailPanel from './NodeDetailPanel';
@@ -51,7 +51,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  const serverState = useToolchainStore.getInitialState();
+  const serverState = useAmbitStore.getInitialState();
   serverState.items.splice(0, serverState.items.length, capability, dependency);
   serverState.connections.splice(0, serverState.connections.length, {
     from: capability.id,
@@ -62,7 +62,7 @@ beforeEach(() => {
   serverState.showDetailPanel = true;
   serverState.searchQuery = '';
 
-  useToolchainStore.setState({
+  useAmbitStore.setState({
     items: [capability, dependency],
     connections: [{ from: capability.id, to: dependency.id, type: 'hard-dep' }],
     selectedItem: capability.id,
@@ -72,13 +72,13 @@ beforeEach(() => {
 });
 
 afterAll(() => {
-  const serverState = useToolchainStore.getInitialState();
+  const serverState = useAmbitStore.getInitialState();
   serverState.items.splice(0);
   serverState.connections.splice(0);
   serverState.selectedItem = null;
   serverState.showDetailPanel = false;
   serverState.searchQuery = '';
-  useToolchainStore.setState({
+  useAmbitStore.setState({
     items: [],
     connections: [],
     selectedItem: null,

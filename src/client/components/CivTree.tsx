@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
-import { useToolchainStore } from '../store/toolchainStore';
+import { useAmbitStore } from '../store/ambitStore';
 import { isRuntimeNode } from '../utils/labels';
 import {
   buildAdjacency,
@@ -43,14 +43,14 @@ export default function CivTree({
   leftInset = 0,
 }: CivTreeProps) {
   // Owned by the store so the HUD can render the control; see App.tsx.
-  const filter = useToolchainStore(s => s.treeFilter) as TypeFilter;
-  const activeLens = useToolchainStore(s => s.activeLens);
-  const setActiveLens = useToolchainStore(s => s.setActiveLens);
-  const simulationMode = useToolchainStore(s => s.simulationMode);
-  const simulatedNodeId = useToolchainStore(s => s.simulatedNodeId);
-  const simulatedCascadeIds = useToolchainStore(s => s.simulatedCascadeIds);
-  const clearSimulation = useToolchainStore(s => s.clearSimulation);
-  const attentionInterventions = useToolchainStore(s => s.attentionInterventions);
+  const filter = useAmbitStore(s => s.treeFilter) as TypeFilter;
+  const activeLens = useAmbitStore(s => s.activeLens);
+  const setActiveLens = useAmbitStore(s => s.setActiveLens);
+  const simulationMode = useAmbitStore(s => s.simulationMode);
+  const simulatedNodeId = useAmbitStore(s => s.simulatedNodeId);
+  const simulatedCascadeIds = useAmbitStore(s => s.simulatedCascadeIds);
+  const clearSimulation = useAmbitStore(s => s.clearSimulation);
+  const attentionInterventions = useAmbitStore(s => s.attentionInterventions);
 
   const simulatedItem = items.find(i => i.id === simulatedNodeId);
 

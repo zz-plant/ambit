@@ -1,5 +1,5 @@
 import React from 'react';
-import { useToolchainStore } from '../store/toolchainStore';
+import { useAmbitStore } from '../store/ambitStore';
 import type { DemoOpportunity } from '../utils/demoSnapshot';
 
 /**
@@ -42,9 +42,9 @@ function Confidence({ level }: { level: DemoOpportunity['confidence'] }) {
 }
 
 function OpportunityCard({ o }: { o: DemoOpportunity }) {
-  const startAcquisition = useToolchainStore(s => s.startAcquisitionSimulation);
-  const selectItem = useToolchainStore(s => s.selectItem);
-  const items = useToolchainStore(s => s.items);
+  const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
+  const selectItem = useAmbitStore(s => s.selectItem);
+  const items = useAmbitStore(s => s.items);
 
   // Map opportunity to a node ID if present
   const targetNodeId = o.id.includes('deploy')
@@ -184,7 +184,7 @@ function OpportunityCard({ o }: { o: DemoOpportunity }) {
 }
 
 export default function DemoDashboard() {
-  const demo = useToolchainStore(s => s.demo);
+  const demo = useAmbitStore(s => s.demo);
   const [confidenceFilter, setConfidenceFilter] = React.useState<'all' | 'high' | 'medium'>('all');
 
   if (!demo) return null;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useToolchainStore } from '../store/toolchainStore';
+import { useAmbitStore } from '../store/ambitStore';
 import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 
 const TYPE_COLORS: Record<string, string> = {
@@ -22,14 +22,14 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export function NodeDetailPanel() {
-  const items = useToolchainStore(s => s.items);
-  const connections = useToolchainStore(s => s.connections);
-  const selectedId = useToolchainStore(s => s.selectedItem);
-  const selectItem = useToolchainStore(s => s.selectItem);
-  const simulatedNodeId = useToolchainStore(s => s.simulatedNodeId);
-  const startOutage = useToolchainStore(s => s.startOutageSimulation);
-  const startAcquisition = useToolchainStore(s => s.startAcquisitionSimulation);
-  const clearSim = useToolchainStore(s => s.clearSimulation);
+  const items = useAmbitStore(s => s.items);
+  const connections = useAmbitStore(s => s.connections);
+  const selectedId = useAmbitStore(s => s.selectedItem);
+  const selectItem = useAmbitStore(s => s.selectItem);
+  const simulatedNodeId = useAmbitStore(s => s.simulatedNodeId);
+  const startOutage = useAmbitStore(s => s.startOutageSimulation);
+  const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
+  const clearSim = useAmbitStore(s => s.clearSimulation);
 
   const item = items.find(i => i.id === selectedId);
   const [copiedCmd, setCopiedCmd] = React.useState<string | null>(null);
