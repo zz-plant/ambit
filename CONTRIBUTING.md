@@ -30,6 +30,16 @@ CI also runs `./bootstrap.sh` against a machine with no agent config, because th
 
 **Detection that is honest about itself.** A capability inferred from a filename is weaker evidence than one with a declared check that passes. Contributions that turn the first kind into the second are the most valuable ones here.
 
+## A first contribution
+
+Three kinds of change are small, self-contained, and worth more than their size:
+
+- **A runtime reader.** If you use an agent client Ambit does not discover, the readers in `src/engine/mcp-clients.ts` are each about a screen long: find the config file, map its server entries onto the shape `seedFromConfig` accepts, and add a test beside the others. Every one makes the shared model more useful.
+- **A declared check.** Any capability in `src/engine/techtree.json` that is inferred from a filename but has no `verify` command is a candidate. A check that passes turns "configured" into "working" for everyone who has that tool.
+- **A README block that drifted.** The console examples are captured by `npm run docs:examples`, and CI fails when they no longer match. If a command's output moved and the README did not, re-capture and send the diff.
+
+Issues labelled [`good first issue`](https://github.com/zz-plant/ambit/labels/good%20first%20issue) are scoped to one of these, and a first pull request gets a reply that names what CI will run. You can also open in [Codespaces](https://codespaces.new/zz-plant/ambit?quickstart=1); the devcontainer seeds a graph and starts the map, so nothing needs installing to read the code and the canvas side by side.
+
 ## Things to keep true
 
 - `server.ts` binds loopback only, rejects non-local origins before routing, and cannot create configuration entries. An MCP entry carries a command the runtime executes, so creating one over HTTP would be remote code execution.

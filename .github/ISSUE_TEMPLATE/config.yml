@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: FAQ and support
+    url: https://github.com/zz-plant/ambit/blob/main/docs/faq.md
+    about: What needs installing, what leaves the machine, why the attention commands are empty on day one.
   - name: Security Advisories
     url: https://github.com/zz-plant/ambit/security/advisories/new
     about: Please report security vulnerabilities privately here.

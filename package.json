@@ -3,6 +3,7 @@
   "version": "0.4.1",
   "private": false,
   "description": "The meta-MCP capability graph for AI agent environments",
+  "mcpName": "io.github.zz-plant/ambit",
   "type": "module",
   "engines": {
     "node": ">=22.18"

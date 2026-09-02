@@ -1,0 +1,15 @@
+{
+  "name": "Ambit",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm ci && ./bootstrap.sh",
+  "postAttachCommand": "npm run dev",
+  "forwardPorts": [3000, 3001],
+  "portsAttributes": {
+    "3000": { "label": "Ambit map", "onAutoForward": "openPreview" },
+    "3001": { "label": "Ambit API", "onAutoForward": "silent" }
+  },
+  "customizations": {
+    "codespaces": { "openFiles": ["README.md"] },
+    "vscode": { "extensions": ["biomejs.biome"] }
+  }
+}

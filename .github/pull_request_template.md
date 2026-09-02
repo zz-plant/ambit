@@ -3,7 +3,7 @@
 **Checks** — CI runs these; running them locally first is faster than a round trip:
 
 ```bash
-bun run typecheck && bun test && bun run build
+npm run lint && npm run typecheck && npm test && npm run build
 ```
 
 - [ ] `bootstrap.sh` still works on a machine with no agent config (CI covers this; break it and the first run of a new user is a stack trace)
