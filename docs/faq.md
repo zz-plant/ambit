@@ -8,7 +8,7 @@ No. Ambit reads OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desk
 
 ## Does anything leave my machine?
 
-No. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. The one command that produces something meant for sharing, `ambit share`, builds its HTML from an allow-list, so commands, paths, URLs, and economics cannot enter the file, and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command. [SECURITY.md](../SECURITY.md) lists the invariants.
+Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. Two commands are explicit exceptions: `ambit notify <topic>` pushes the attention digest and `ambit notify-approvals <topic>` pushes the approved-and-waiting count to [ntfy](https://ntfy.sh), or to a server you name with `NTFY_SERVER`. Each is a single HTTP POST of short text, no graph data, and nothing is sent without a topic. `ambit share` produces a file meant for sharing but does not upload it: the HTML is built from an allow-list, so commands, paths, URLs, and economics cannot enter it, and `--redact` replaces every non-curated name with its category. [SECURITY.md](../SECURITY.md) lists the invariants.
 
 ## What do I need installed?
 

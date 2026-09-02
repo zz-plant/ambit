@@ -297,7 +297,7 @@ Forty-eight tools, each advertised once. Each answers with MCP `structuredConten
 
 ## How it works
 
-Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas — and the only path that writes to it is a proposal you approve.
+Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas. Discovery, verification, and the work ledger write to the graph; the only path that writes to your agent configuration is a proposal you approve.
 
 Each client is read from its own standard config path, and every server stays attributed to the client that listed it. When two clients name the same server, that is one capability with two sources rather than two capabilities — which is what stops Ambit from counting a single binary twice and calling the result redundancy.
 
