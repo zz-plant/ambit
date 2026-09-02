@@ -347,7 +347,7 @@ async function main() {
 
   const apiPort = await freePort();
   console.log(`Starting the API on ${apiPort}…`);
-  const api = spawn(NODE, ['--experimental-sqlite', join(ROOT, 'server.ts')], {
+  const api = spawn(NODE, ['--experimental-sqlite', join(ROOT, 'src', 'server', 'api.ts')], {
     env: { ...SANDBOX, AMBIT_API_PORT: String(apiPort) },
     cwd: ROOT,
     stdio: 'ignore',

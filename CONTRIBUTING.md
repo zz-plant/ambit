@@ -42,6 +42,6 @@ Issues labelled [`good first issue`](https://github.com/zz-plant/ambit/labels/go
 
 ## Things to keep true
 
-- `server.ts` binds loopback only, rejects non-local origins before routing, and cannot create configuration entries. An MCP entry carries a command the runtime executes, so creating one over HTTP would be remote code execution.
+- `src/server/api.ts` binds loopback only, rejects non-local origins before routing, and cannot create configuration entries. An MCP entry carries a command the runtime executes, so creating one over HTTP would be remote code execution.
 - The engine, the MCP server, and the visualizer API all resolve `src/shared/db-path.ts`. Three components with three ideas of where the graph lives is a bug that has already shipped once.
 - Nothing phones home. There is no telemetry, and adding any would need to be argued in an issue first.

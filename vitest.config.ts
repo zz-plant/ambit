@@ -19,7 +19,7 @@ export default defineConfig({
     hookTimeout: 30_000,
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}', 'server.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/engine/testing/**', 'src/client/vite-env.d.ts'],
       reporter: ['text-summary', 'json-summary'],
       // A floor, not a target. Set just under what the suite covers today so

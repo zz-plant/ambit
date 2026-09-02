@@ -2,8 +2,9 @@
   // Server-side code: the engine, the MCP server, the control plane, the API
   // server and the build scripts. Strict, like the client — the exemption used
   // to be justified by node:sqlite returning untyped rows, but db.ts narrows
-  // the handle once at the boundary (rows as `Record<string, any>`), so the
-  // rest of this code has no reason to opt out of the checker.
+  // the handle once at the boundary and each query names its row type from
+  // src/engine/rows.ts, so the rest of this code has no reason to opt out of
+  // the checker.
   "compilerOptions": {
     "target": "ESNext",
     "lib": ["ESNext"],
@@ -18,5 +19,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/engine", "src/mcp", "src/server", "src/control_plane", "src/shared", "server.ts", "scripts", "src/client/**/*.test.ts"]
+  "include": ["src/engine", "src/mcp", "src/server", "src/control_plane", "src/shared", "scripts", "src/client/**/*.test.ts"]
 }
