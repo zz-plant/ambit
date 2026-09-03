@@ -2,7 +2,7 @@
 
 > A capability graph for AI agent environments, and a meta-MCP server: what you, your agents, and your machines can jointly do, what breaks downstream, and what is worth setting up next.
 
-Ambit reads the configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, and Codex CLI into one local SQLite graph. Every tool, model, skill, and credential becomes a node; everything one needs in order to work becomes an edge. Three surfaces read that graph: a terminal CLI (`ambit`), an MCP server (`ambit mcp`, 48 tools), and a web map. Discovery, verification, and the work ledger write to the graph, so MCP tools such as `ambit_run_begin` and `ambit_work_event` record rows in the local database. Your agent configuration is different: it changes only through a proposal a person approves, or through the map's editor for entries that already exist, which a person operates and which cannot create an entry. Nothing leaves the machine except two opt-in pushes to ntfy: `ambit notify <topic>` sends the attention digest (capability names, intervention counts, suggested fixes) and `ambit notify-approvals <topic>` sends the ids and goals of approved proposals awaiting apply.
+Ambit reads the configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, and Codex CLI into one local SQLite graph. Every tool, model, skill, and credential becomes a node; everything one needs in order to work becomes an edge. Three surfaces read that graph: a terminal CLI (`ambit`), an MCP server (`ambit mcp`, 55 tools), and a web map. Discovery, verification, and the work ledger write to the graph, so MCP tools such as `ambit_run_begin` and `ambit_work_event` record rows in the local database. Your agent configuration is different: it changes only through a proposal a person approves, or through the map's editor for entries that already exist, which a person operates and which cannot create an entry. Nothing leaves the machine except two opt-in pushes to ntfy: `ambit notify <topic>` sends the attention digest (capability names, intervention counts, suggested fixes) and `ambit notify-approvals <topic>` sends the ids and goals of approved proposals awaiting apply.
 
 Vocabulary: a *capability* is one thing the setup can do. Its *era* is how far up the curated tree it sits. A capability is *reached* (something provides it), *next* (prerequisites met, nothing detected), or *blocked* (a prerequisite is missing). *State* is structural (configured or not); *lifecycle* is health (its declared check passed or not), and availability decisions gate on lifecycle.
 
@@ -18,8 +18,10 @@ Vocabulary: a *capability* is one thing the setup can do. Its *era* is how far u
 ## Use it from an agent
 
 - Register: `claude mcp add ambit -- ambit mcp`
-- Before acting, call `ambit_authority` for the action; it returns whether it is allowed, needs confirmation, or is blocked, and what is missing
-- To close a gap, call `ambit_goal`, then `ambit_propose`; a person approves and applies from the terminal or the map
+- On connect, read the resource `ambit://briefing`: what is reached and proven, what is failing, what is waiting on a person, what blocked work recently, and what is worth reaching next, in about 1,200 tokens
+- Before running a tool you have not used this session, call `ambit_can` with the capability. `yes` act, `ask` put it to the person, `no` do not retry it under another name — the refusal has already been recorded as a deficit
+- To close a gap, call `ambit_next` or `ambit_goal`, then `ambit_propose`; a person approves and applies from the terminal or the map
+- A skill you wrote yourself goes on the map with `ambit_register_skill`, which requires a read-only command that proves it works and runs it immediately
 
 ## Optional
 
