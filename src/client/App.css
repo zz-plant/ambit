@@ -1448,7 +1448,7 @@ code, pre, .code, .sp-cli-cmd {
    one. */
 .loop-dashboard {
   --fig-data: #818cf8;
-  --fig-data-soft: rgba(129, 140, 248, 0.22);
+  --fig-data-soft: rgba(129, 140, 248, 0.32);
   --fig-context: #64748b;
   --fig-good: #10b981;
   --fig-bad: #f43f5e;
@@ -1556,7 +1556,7 @@ code, pre, .code, .sp-cli-cmd {
 /* The comparison the band is measured from. Dashed so it reads as a reference
    rather than as a second series. */
 .fig-spark-base {
-  stroke: var(--fig-rule);
+  stroke: rgba(255, 255, 255, 0.28);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
