@@ -32,12 +32,21 @@ export {
 export {
   runVerification,
   evidenceFor,
+  declaredCheck,
   authorityReport,
   actionsReport,
   scopeReport,
   canExecute,
   recordSpend,
+  setPromotion,
+  evaluatePromotions,
+  promotionReport,
 } from './assurance.ts';
+export { briefing, briefingText } from './briefing.ts';
+export { nextSteps, nextLines } from './next.ts';
+export { classifySignal, captureFailure, signalReport } from './failures.ts';
+export { registerSkill, registeredSkills } from './skills.ts';
+export { exportSync, importSync } from './sync.ts';
 export { ledgerSince, ledgerHistory } from './ledger.ts';
 export {
   planFor,

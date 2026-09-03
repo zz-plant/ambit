@@ -11,6 +11,8 @@
  *                        `usable`, the gate the rest of the engine reads
  *   assure/verify.ts     running a declared check and recording what happened
  *   assure/decide.ts     canExecute — the gate the control plane consults
+ *   assure/promote.ts    authority that widens on evidence and narrows on one
+ *                        failing check
  *   assure/reports.ts    the same model, read rather than enforced
  */
 export {
@@ -24,8 +26,22 @@ export {
   verifyCheck,
   verifyCapability,
   verifyAction,
+  declaredCheck,
   evidenceFor,
   runVerification,
 } from './assure/verify.ts';
-export { MODE_RANK, narrower, scopeCovers, canExecute, recordSpend } from './assure/decide.ts';
+export {
+  MODE_RANK,
+  narrower,
+  scopeCovers,
+  missingPrerequisites,
+  canExecute,
+  recordSpend,
+} from './assure/decide.ts';
+export {
+  setPromotion,
+  evaluatePromotions,
+  promotionReport,
+  evidenceCount,
+} from './assure/promote.ts';
 export { authorityReport, actionsReport, scopeReport } from './assure/reports.ts';

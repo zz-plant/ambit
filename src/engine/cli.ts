@@ -1,7 +1,7 @@
 import { existsSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
-import { C, emit, emitRaw, setSink } from './cli/output.ts';
+import { C, emit, emitRaw, emitText, setSink } from './cli/output.ts';
 import { HELP, HELP_SHORT } from './cli/help.ts';
 import { explain, statusReport } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
@@ -22,7 +22,14 @@ import {
   actionsReport,
   scopeReport,
   canExecute,
+  setPromotion,
+  promotionReport,
 } from './assurance.ts';
+import { briefing, briefingText } from './briefing.ts';
+import { nextSteps } from './next.ts';
+import { signalReport } from './failures.ts';
+import { registerSkill, registeredSkills } from './skills.ts';
+import { exportSync, importSync } from './sync.ts';
 import { ledgerHistory, ledgerSince } from './ledger.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
 import { goalFor, pathsFor } from './goals.ts';
@@ -61,7 +68,34 @@ async function runCommand(
   mappingOverride?: string
 ): Promise<void> {
   const arg = positional[0];
+  /** `--key=value` off the flag set, since flags are parsed as a bare set. */
+  const value = (name: string) =>
+    [...flags].find(f => f.startsWith(`--${name}=`))?.slice(name.length + 3);
   switch (cmd) {
+    // What an agent should know before its first tool call. Prose by default
+    // because that is what gets pasted into a system prompt; --json for the
+    // runtime hooks that compose it into something else.
+    case 'briefing':
+    case 'brief': {
+      if (process.argv.includes('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
+      else emitText(briefingText(db, { mark: !flags.has('--peek') }));
+      break;
+    }
+    case 'next':
+      emit(nextSteps(db, Number(arg) || undefined));
+      break;
+    case 'signals':
+      emit(signalReport(db, Number(arg) || undefined));
+      break;
+    case 'skills':
+      emit(registeredSkills(db));
+      break;
+    case 'sync': {
+      if (arg === 'export') emit(exportSync(db, positional[1]));
+      else if (arg === 'import') emit(importSync(db, positional[1]));
+      else emit({ error: 'Usage: ambit sync export [path] | ambit sync import <path>' });
+      break;
+    }
     case 'status':
       emit(statusReport(db));
       break;
@@ -172,9 +206,22 @@ async function runCommand(
       }
       break;
     case 'authority': {
-      // Grants, then per-capability actions, then scope coverage — one verb.
+      // Grants, then per-capability actions, then scope coverage, then the
+      // thresholds that widen a grant on evidence — one verb.
       if (arg === 'scope') emit(scopeReport(db, positional[1]));
-      else if (arg) emit(actionsReport(db, arg));
+      else if (arg === 'promote') {
+        if (!positional[1]) emit(promotionReport(db));
+        else
+          emit(
+            setPromotion(db, {
+              capability: positional[1],
+              action: positional[2],
+              after: value('after'),
+              window: value('window'),
+              person: value('by'),
+            })
+          );
+      } else if (arg) emit(actionsReport(db, arg));
       else emit(authorityReport(db));
       break;
     }
@@ -217,9 +264,29 @@ async function runCommand(
     case 'rollback':
       emit(rollbackProposal(db, arg));
       break;
-    case 'record':
-      emit(recordFailure(db, arg, positional[1], positional[2]));
+    case 'record': {
+      // Two things a session records against the graph: what stopped it, and
+      // what it built so that thing stops stopping it. The second is a
+      // registration, and `--provides` or `--verify` is what says so.
+      if (
+        arg?.startsWith('skill:') ||
+        flags.has('--verify') ||
+        value('verify') ||
+        value('provides')
+      )
+        emit(
+          registerSkill(db, {
+            id: arg,
+            name: value('name'),
+            provides: value('provides'),
+            verify: value('verify'),
+            runtime: value('by'),
+            description: value('description'),
+          })
+        );
+      else emit(recordFailure(db, arg, positional[1], positional[2]));
       break;
+    }
     case 'seed': {
       runSeed(db, mappingOverride, process.argv.includes('--json'));
       break;

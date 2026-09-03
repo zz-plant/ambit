@@ -283,7 +283,7 @@ const BASE_TOOLS = [
   {
     name: 'can',
     description:
-      'The decision API: may this actor perform this action on this target within this spend? Returns ALLOW, CONFIRM or DENY with the governing grant, scope, and remaining budget. Ask before acting; an agent can ask, never grant.',
+      'Ask before running a tool you have not used this session. Answers verdict yes (act), ask (put it to the person) or no (do not retry it under another name), with the reason, what is missing, the governing grant, scope and remaining budget. One indexed read of the graph — nothing is probed or executed. A no records the deficit itself, so a wall you hit repeatedly becomes visible as infrastructure that should exist. An agent can ask; it can never grant.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -293,6 +293,15 @@ const BASE_TOOLS = [
         actor: { type: 'string' },
         target: { type: 'string' },
         spendCents: { type: 'number' },
+        tool: {
+          type: 'string',
+          description:
+            'The tool or command you were about to run, recorded with the deficit on a no.',
+        },
+        record: {
+          type: 'boolean',
+          description: 'Record the deficit on a no. Default true — that is the point of asking.',
+        },
       },
     },
   },
@@ -450,6 +459,71 @@ const BASE_TOOLS = [
     name: 'ledger',
     description:
       "Every recorded frontier observation — how the system's capacity for action has changed over time",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'briefing',
+    description:
+      'What this environment is, before you touch it: what is reached and proven, what is configured but failing, what is waiting on a person, what blocked work recently, what is worth reaching next, and what changed since the last briefing. Read this at the start of a session rather than inferring the stack from what you happen to try. Also available as the resource ambit://briefing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: { type: 'boolean', description: 'Return the prose form rather than the fields.' },
+      },
+    },
+  },
+  {
+    name: 'next',
+    description:
+      'The capabilities worth reaching next, each with why, what it costs, and the command that would propose it. Ranked by what has actually blocked work once the ledger has observations, and by leverage per hour of setup before then — the answer says which.',
+    inputSchema: { type: 'object', properties: { limit: { type: 'number' } } },
+  },
+  {
+    name: 'record_failure',
+    description:
+      'Report a tool failure you just hit, as the runtime reported it — exit code, error text, or the error kind. Ambit classifies it (tool, permission, infrastructure, reliability), attributes it to a capability where it can, and keeps it either way. Cheaper and more honest than deciding yourself whether it was worth recording.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tool: { type: 'string' },
+        message: { type: 'string' },
+        exitCode: { type: 'number' },
+        errorKind: { type: 'string' },
+        capabilityId: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'signals',
+    description:
+      'Failures observed in the window without anyone recording them, by class and by tool — including the ones Ambit could not attribute to any capability, which are a gap in the model rather than in the environment.',
+    inputSchema: { type: 'object', properties: { days: { type: 'number' } } },
+  },
+  {
+    name: 'register_skill',
+    description:
+      'Put a skill you wrote on the map: an id, the capability it supplies, and a read-only command that proves it still works. The check is required — an unverifiable claim of new capability is worth less than nothing — and it runs immediately, so the registration either arrives proven or arrives honest about failing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        name: { type: 'string' },
+        provides: { type: 'string' },
+        verify: { type: 'string' },
+        description: { type: 'string' },
+      },
+      required: ['id', 'verify'],
+    },
+  },
+  {
+    name: 'skills',
+    description: 'What has been registered this way, and what each check last said.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'promotions',
+    description:
+      "Authority thresholds: which grants a person has said may widen on evidence, how much evidence each still needs, and what has already been promoted or put back. Setting a threshold is a person's act on the CLI — an agent can read this, never set it.",
     inputSchema: { type: 'object', properties: {} },
   },
 ];

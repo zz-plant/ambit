@@ -108,14 +108,15 @@ stateDiagram-v2
 Run `ambit` with no arguments and it shows where the environment stands; `ambit help --all` shows the surface. Thirty-five commands group under five nouns, and the grouping is presentation only — every verb also works flat, so `ambit impact x` and `ambit graph impact x` are the same command:
 
 ```
-           seed · status · help [term]
-graph      impact <id> · catalog <cap> · where
-           share [--redact] [--out=path]
+           seed · briefing [--json|--peek] · status · next [n] · help [term]
+graph      impact <id> · catalog <cap> · where · skills
+           share [--redact] [--out=path] · sync export|import <path>
            graph [surface|combos|affordances]
-plan       goal <cap-or-sentence> [--paths|--simulate|--prefs]
+plan       goal <cap-or-sentence> [--paths|--simulate|--prefs] · next [n]
            opportunities [--by=…] [--budget=N] · opportunity <id>
            propose <cap> [option] · roi [proposal-id] · portfolio [--budget=N]
 check      verify [cap] [--history] · authority [cap] [scope <target>]
+           authority promote [<cap> <action> --after=N --window=30d --by=<person>]
            can <cap> [--target X] [--spend N] · credentials
            incidents · incident resolve <svc> <outcome>
 govern     proposals · proposal <id> · approve <id> <person>
@@ -123,14 +124,17 @@ govern     proposals · proposal <id> · approve <id> <person>
            audit [run|prop|human|days]
 report     work [limit] · usage [days] · economics · attention [days]
            digest [days] · notify <topic> · notify-approvals <topic>
-           record <cap> [class] [note] · federation export|import
+           record <cap> [class] [note] · record skill:<name> --provides= --verify=
+           signals [days] · federation export|import
 ```
 
 Two more sit outside the groups because they start a process rather than answer a question: `ambit web` opens the visualiser (it needs a checkout — an installed copy carries no dev dependencies) and `ambit mcp` runs the MCP server.
 
 | | asks |
 |---|---|
+| `ambit briefing` | What an agent should know before its first tool call — reached and proven, configured but failing, waiting on a person, blocked recently, worth reaching next, and what changed since the last briefing. Prose, capped near 1,200 tokens, also served as the MCP resource `ambit://briefing` |
 | `ambit status` | How are we doing — reached, verified, failing, degraded, SPOFs, recurring deficits, pending approvals, all in one report |
+| `ambit next [n]` | What to reach next and why — ranked by what has actually blocked work once the ledger has observations, and by leverage per hour of setup before then. The answer says which basis it used |
 | `ambit graph` | The whole graph as JSON; `graph surface` is the runtime-owned vocabulary a runtime would publish, `graph combos` the near-reachable ones, `graph affordances` the structural domains |
 | `ambit impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |
 | `ambit goal <sentence>` | Route a free-form goal — "deploy without me" — to the capabilities whose words cover it, each with its plan delta |
@@ -148,6 +152,10 @@ Two more sit outside the groups because they start a process rather than answer 
 | `ambit incidents` | Probe the infrastructure manifest; open an incident run for every offline service with the authority decision for its recovery. `incident resolve <svc> <outcome>` closes it with MTTR |
 | `ambit portfolio [--budget=N]` | Across imported environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most |
 | `ambit federation export\|import` | The signed summary a portfolio layer reads — aggregates only, no credentials, no raw sessions |
+| `ambit sync export\|import <path>` | The graph and the ledger as one file, so a container rebuilt from nothing gets its history back. No authority grants, no skill check commands, no credentials — a command in a data file is a command that runs on import |
+| `ambit authority promote <cap> <action> --after=N --by=<person>` | The threshold that widens a grant once its evidence supports it. A person sets it once; a single failing check afterwards puts the grant back, with nobody asked |
+| `ambit record skill:<name> --provides=<cap> --verify="<cmd>"` | Put a skill the agent wrote on the map, with the read-only check that proves it. The check is required and runs immediately |
+| `ambit signals [days]` | Failures observed without anyone recording them, by class and by tool — including the ones no capability could be attributed to |
 
 Every command prints for a person by default and takes `--json` for scripts.
 
@@ -358,7 +366,7 @@ flowchart TD
 - `ambit audit` is the governance trail: a run end to end, a proposal's steps/approval/enforcement/result, or one person's approvals and interventions.
 - `ambit portfolio` reads `federation` imports across environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most. A portfolio layer reads signed receipts; it never merges graphs, and the receipts carry aggregates only — no credentials, no raw sessions.
 
-The graph half is useful the moment you seed — `status`, `plan`, `verify` and `authority` need no telemetry at all. The economic loop fills in as you use it: `ambit attention` starts counting your interventions immediately, and the plugin bridge makes every OpenCode session feed the ledger automatically, so `opportunities` stops saying "nothing observed" within days, not months.
+The graph half is useful the moment you seed — `status`, `briefing`, `next`, `plan`, `verify` and `authority` need no telemetry at all. The economic loop fills in as you use it: `ambit attention` starts counting your interventions immediately, and the plugin bridge makes every OpenCode session feed the ledger automatically — including the failures it hits, which are classified from the signals a runtime states outright (a shell's own message for a missing binary, an MCP error kind, a permission refusal) rather than from reading what a failure was about. So `deficits` and `opportunities` stop saying "nothing observed" within a day of real work, without anyone remembering to record anything. `ambit signals` is the raw view, including the failures no capability could be attributed to — those are a gap in the model, not in the environment.
 
 ## The full MCP surface
 
@@ -375,9 +383,17 @@ Operate    ambit_work ambit_usage ambit_run_begin ambit_run_end ambit_work_event
            ambit_incident_resolve ambit_portfolio ambit_can
 
 Propose    ambit_blocked ambit_deficits ambit_simulate ambit_propose ambit_proposals ambit_proposal
+
+Session    ambit_briefing ambit_next ambit_record_failure ambit_signals
+           ambit_register_skill ambit_skills ambit_promotions
 ```
 
-The lifecycle group is "is this real, may I act, what is missing" — and when the answer is *nothing here can do that*, recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again. The operate group is the economic loop read and written by an agent: report work, record what it did, ask which investments rank, and — via `ambit_can` — *ask* whether an action is permitted. An agent can ask; it can never approve or apply.
+One resource sits beside the tools: `ambit://briefing`, which a client reads on
+connect. A tool has to be thought of; a resource arrives unasked, which is the
+only way it reaches the agent that does not know Ambit is there — the one that
+most needs to be told what is already broken.
+
+The session group is §12: what an agent knows before it starts, what it should reach next, the failures it hit reported as the runtime described them, and the skills it wrote itself put on the map with checks. The lifecycle group is "is this real, may I act, what is missing" — and when the answer is *nothing here can do that*, recording it so a deficit hit repeatedly becomes visible as infrastructure that should exist rather than a wall to work around again. The operate group is the economic loop read and written by an agent: report work, record what it did, ask which investments rank, and — via `ambit_can` — *ask* whether an action is permitted. An agent can ask; it can never approve or apply.
 
 ## Runtimes are nodes, not owners
 

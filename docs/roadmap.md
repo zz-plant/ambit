@@ -33,6 +33,7 @@ Each section below ends with what it still lacks. This is that ending, collected
 | 9 | Authority as a first-class edge | built, enforces nothing | Scope is checked and reported, not mediated. |
 | 10 | A second-generation MCP | partly built | A capability with no declared check applies unverified, reported rather than refused. |
 | 11 | The visualiser as a negotiating surface | built and shipping | Only the state and run subset of AG-UI; no tool-call or reasoning events, by design. |
+| 12 | The long-running agent | built, except the install | The briefing, passive capture, the one-question contract, the curriculum, registered skills, promotion on evidence, the travelling ledger. What remains is §12.9: the package is not on the registry, so every path in still starts with a checkout. |
 
 ---
 
@@ -198,7 +199,9 @@ The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `de
 
 `state` is untouched beside it, deliberately: `state` is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore `broken` and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.
 
-Unbuilt: the gate is read at the decision surfaces — plans, simulations, authority, near-miss and bottleneck analyses — but nothing enforces it. Ambit describes availability and permission; it does not mediate action, and the check whose failure flips a capability to `broken` still has to be re-verified by hand. The remaining half of §4's promise — verification that *promotes* a capability on evidence rather than only demoting it on failure — is the executable recipe in §3.
+Promotion on evidence is built, at the grain where it changes what happens: §12.6. A person sets a threshold on a grant once — *stop asking me about this after three passing checks in thirty days* — and the evidence decides when it takes effect. A single failing check afterwards puts the grant back, and that half needs nobody. The lifecycle itself still only moves on the evidence of its own check, which is what it should do.
+
+Unbuilt: the gate is read at the decision surfaces — plans, simulations, authority, near-miss and bottleneck analyses — but nothing enforces it. Ambit describes availability and permission; it does not mediate action, and the check whose failure flips a capability to `broken` still has to be re-verified by hand.
 
 ## 5. Goal → capability delta — partly built
 
@@ -261,7 +264,9 @@ Built. `ambit record <capability>` records that work was blocked by something mi
 
 Classification is built. `ambit record <capability> <class> ["what you were trying to do"]` records why work was blocked — reasoning, knowledge, tool, permission, infrastructure, or reliability — and `ambit status` reports the causes beside the count, so a capability blocked four times as a missing tool and once as a missing permission reads as one structural deficit and one incident rather than five of a kind. `ambit_blocked` accepts the same classification over MCP.
 
-Unbuilt: the classification is declared, not inferred — a person or agent says why work was blocked, and nothing yet reads the failure's own text to classify it. And the loop from "this cause recurs" to "propose the permanent upgrade" (§5/§10) is still a human step.
+Inference is built, from the signals rather than from the prose: §12.2. A runtime already states that a command was not found, that permission was denied, that a host was unreachable, that an MCP call returned an error kind — and the telemetry bridge hands those over for classification, so the ledger fills from work instead of from someone remembering to record it. A failure whose shape says nothing is left unclassified rather than guessed at, and one that cannot be attributed to a capability is kept anyway, since "this keeps failing and the model cannot name it" is a finding about the model.
+
+Unbuilt: the loop from "this cause recurs" to "propose the permanent upgrade" (§5/§10) is still a human step, deliberately — `ambit next` ranks the recurrences and drafts nothing until someone chooses.
 
 The tree already tells you to write a SKILL.md for anything you explain more than twice. Generalised, that rule is the governing principle of the whole project:
 
@@ -352,7 +357,7 @@ Unbuilt: nothing enforces any of this. Ambit describes authority, it does not me
 
 ## 10. A second-generation MCP — partly built
 
-Today's seventeen tools are analytical: they answer questions about the graph. The next set exposes a lifecycle:
+Today's seventeen tools were analytical: they answered questions about the graph. The next set exposes a lifecycle:
 
 ```
 cg_state  cg_can  cg_goal  cg_plan  cg_explain_plan
@@ -391,9 +396,9 @@ An apply now re-seeds, so the graph reflects the change immediately rather than 
 
 What remains: a capability with no declared check applies unverified, which is reported rather than hidden — the honest answer to "did this work" is "it cannot say". Refusing unverified applies outright would break the acquisition path for every capability whose recipe is not a check, so it stays a report until executable verification per recipe (§3's multi-step remainder) can back it.
 
-Built: the surface is 31 tools where it was 17 analytical ones, adding `ambit_verify`, `ambit_evidence`, `ambit_authority`, `ambit_actions`, `ambit_plan`, `ambit_since`, `ambit_ledger`, `ambit_blocked` and `ambit_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent. `ambit_actions` is the one an agent should reach for before acting: `ambit_authority` answers at the capability grain, and permission is per action.
+Built: the surface is 55 tools where it was 17 analytical ones, adding `ambit_verify`, `ambit_evidence`, `ambit_authority`, `ambit_actions`, `ambit_plan`, `ambit_since`, `ambit_ledger`, `ambit_blocked` and `ambit_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent. `ambit_actions` is the one an agent should reach for before acting: `ambit_authority` answers at the capability grain, and permission is per action.
 
-Unbuilt: everything that changes the world. No `apply_step`, `request_approval`, `simulate` or `rollback`. Ambit still only describes.
+Unbuilt: everything that changes the world. `ambit_simulate` and `ambit_propose` exist; there is no `apply_step`, `request_approval` or `rollback` over MCP, and that is a decision rather than a gap (§10's second paragraph above). Ambit still only describes.
 
 ## 11. The visualiser becomes a negotiating surface — built and shipping
 
@@ -402,13 +407,121 @@ Ambit implements the state and run subset of [AG-UI](https://docs.ag-ui.com), th
 `StateDelta` is the protocol's reason for existing: a patch is smaller than a snapshot, and a client that kept the connect snapshot can apply it. The delta is emitted for every change after the initial snapshot, so the transport is honest about what changed rather than resending the whole graph.
 
 The visual negotiating surface is shipping:
-1. **Interactive Simulation:** `[Simulate Outage (Blast Radius)]` and `[Simulate Unlocking (What-If)]` project multi-hop cascade blast radii in pulsing red and reachable compound unlocks in glowing emerald green directly on the canvas.
-2. **1-Click Proposal Approval Broker:** `ApprovalModal` displays drafted agent proposals, verifies step inverses, and mints signed HMAC receipts with copy-ready `ambit apply <id>` commands.
-3. **Four Dynamic Decision Lenses:** Tech Tree, Attention Heatmap, Credential SPOFs, and Physical Host Clusters.
+1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* lights what becomes reachable in green. Neither writes anything.
+2. **Approval in one click.** The Proposals panel shows what an agent drafted, whether every step has an inverse, and signs a receipt; applying stays a command the person runs.
+3. **Three lenses**, switched on the map itself: Standard, Attention (nodes warmed by how often a person had to step in) and Shared credentials. The host-cluster lens was sunset with the 3D views.
 
 Not implemented: tool calls and reasoning events. Ambit does not execute agent steps — it models the environment those steps would run in — so fabricating a tool-call or reasoning stream would be noise in the protocol's own vocabulary. Calling Ambit "AG-UI compatible" would still overstate it; it implements the state and run subset deliberately.
 
 **A2UI was evaluated and rejected.** It is a generative UI specification: agents describe components and the front end renders them. Ambit's interface is a designed visual grammar — era columns, three states, dependency edges, a legend — and its legibility is the product. Letting an agent improvise components would replace a representation that was reasoned about with one that is generated per response. A2UI suits surfaces where the agent's output shape is unknown in advance; here it is known and deliberate.
+
+## 12. The long-running agent — built, except the install
+
+Everything above assumes someone asks. A long-running agent — one that works with the same person across weeks, on more than one machine, and wants to become more capable — does not ask. It hits a missing binary mid-task, works around it, and hits it again next week. Ambit's thesis is exactly that agent's loop: friction, deficit, acquisition with approval, verification, a larger action space. What is missing is the plumbing that puts Ambit in front of the agent at the moment friction happens, and that turns growth into something the person can grant rather than something the agent has to request each time.
+
+Each part below states what it is, the interface, the data it reads or writes, and the test that says it is done. All but the last are built, and their acceptance tests are in `src/engine/agent-loop.test.ts` and `src/mcp/server.test.ts` rather than in this document.
+
+### 12.1 The session briefing — built
+
+**What.** Twenty lines the agent has before its first tool call, without asking: what is reached, what is failing, what is one step away, what is waiting for approval, and what the last session recorded as blocked.
+
+**Interface.** An MCP *resource*, `ambit://briefing`, alongside the tools, since a resource is what a runtime reads at connect and a tool has to be thought of first. The same text from `ambit briefing` on the CLI, `--json` for a runtime that wants the fields, and `--peek` for a look that does not move the "since last briefing" mark. The README documents the Claude Code `SessionStart` hook that injects it; OpenCode reads the resource, so it has no plugin event of its own. The briefing is prose with ids, not YAML: an agent quotes it, a person skims it.
+
+**Data.** Read-only over what exists, except for the mark: `capabilities` (state, lifecycle), `proposals` (drafts), `session_learning` (the week's deficits), `failure_signals`, and the frontier delta since the previous briefing (§7). Reading it also applies any authority threshold whose evidence now supports it (§12.6) — asking what the environment is like is the right moment for a promotion someone already authorised to take effect.
+
+**Done when.** A fresh agent session on a seeded machine can answer "what can you do here, what is broken, what is waiting on me" before running anything, and the briefing is under 1,200 tokens on a 200-node graph. Both are asserted; the cap is enforced by trimming whole lines from the bottom, since the order is the order of usefulness.
+
+### 12.2 Passive deficit capture — built
+
+**What.** The ledger fills without anyone recording anything. Today `ambit record` and `ambit_blocked` exist and the README warns that the economic commands are useless on install because nothing has been observed. The tracker plugin records configuration changes; the telemetry plugin records tool executions and permission prompts. Neither records *failure*.
+
+**Interface.** The telemetry bridge reports a failed tool execution and the engine classifies it — `command not found`, `EACCES`, `ECONNREFUSED`, a 401, an MCP error kind, exit 127 — into the classes §6 already defines. The bridge gathers and never decides: a bridge that made its own judgement about what counts as a permission error would be a second copy of that rule, and the two would disagree within a release. The same classifier serves `POST /api/telemetry` with a `failure` body and the `ambit_record_failure` tool, so an agent can report a failure it just hit without a bridge at all. A failure whose shape says nothing — a test that failed, a type error — is left alone: those are work going wrong, not capability deficits, and counting them would drown the signal.
+
+**Data.** Two writes, deliberately. Every signal goes to `failure_signals` with its class, the tool and the raw text, so the unattributed count is honest. A signal Ambit can attribute — by the MCP tool's own server name, or by the curated model's `detect` vocabulary, which is the same matching that turns a config file into a graph — also writes the `session_learning` row the deficit reports already read, so nothing downstream had to change.
+
+**Done when.** A session that fails three times on the same missing capability shows that deficit in `ambit status` and in the next briefing with nobody recording anything, and a failure that cannot be attributed is still counted and named in `ambit signals`.
+
+### 12.3 One question before acting — built
+
+**What.** The habit worth teaching an agent is a single call before any tool it has not used this session: may I, unattended or with confirmation, and if not, what is missing. `ambit_can` and `ambit_actions` exist; what does not is the contract that makes calling them cheap enough to be automatic.
+
+**Interface.** `ambit_can` answers in one round trip with a `verdict` of exactly `yes`, `ask` or `no`, a `reason` written as a sentence an agent can repeat to a person, and `missing` on the branch where the answer is no because something is not there. `decision` stays as ALLOW / CONFIRM / DENY, because that is the right vocabulary for the control plane and the wrong one for a question asked fifty times a session. Nothing is probed and nothing runs: the answer is three indexed reads. The snippet ships in the README and in `llms.txt`, and the `no` branch records the deficit in the same call, so the habit costs one round trip rather than two.
+
+**Data.** Reads `authority`, `lifecycle`, and the capability's unmet hard prerequisites. Writes through §12.2 on a `no`, which is reported back as `recorded_deficit` so the agent knows it does not need to record it again.
+
+**Done when.** The three verdicts come back from a graph with an autonomous, a confirm and a forbidden grant; a forbidden answer tells the agent in words not to retry it under another name; and a refusal over MCP arrives with the deficit already filed.
+
+### 12.4 A curriculum, not a frontier — built
+
+**What.** `ambit goal` answers *how do I reach X*. A pair that wants to grow asks *what should we reach next, and why*. `ambit opportunities` answers that once the ledger has data; on a cold start it has nothing to rank by. The tree already knows leverage (how much sits downstream, keystones) and cost (setup seconds); nothing surfaces the three best next steps with a reason a person would accept.
+
+**Interface.** `ambit next` and `ambit_next`: three capabilities, each with *why* (what it unlocks, in names), *cost* (setup time, the cheapest catalogued option's recurring bill and privacy consequence), and the `ambit propose` command that would draft it. Not a drafted proposal — answering "what next" by writing three proposal rows every time someone asks a question is how a table fills with documents nobody chose. Ranking uses observed blocks when the ledger has them and leverage per hour of setup when it does not, and says which. Only capabilities one acquisition away are offered; anything further is a project, and `ambit goal` is where projects live. It is what the briefing shows after what is broken.
+
+**Done when.** On a freshly seeded machine `ambit next` returns three reachable, unreached capabilities with plain-language reasons and says its basis is structural; after four recorded blocks on one of them, the same command puts it first and says its basis is observed.
+
+### 12.5 The agent's own growth on the map — built
+
+**What.** Ambit maps tools, servers and models. A long-running agent grows mostly through what it writes for itself: skills, memory, procedures it has proven. Those are the Skill Library and Persistent Memory nodes of the curated tree, and today they are reached when a directory exists, not when it contains anything the agent made.
+
+**Interface.** `ambit record skill:<name> --provides=<capability> --verify="<read-only check>"`, and `ambit_register_skill` over MCP. The check is required and is refused if absent: an unverifiable claim of new capability is the exact failure this project exists to prevent, and it is worst coming from the agent whose reach it widens. It runs immediately, so a registration arrives either proven or honest about failing. `ambit skills` lists what has been registered and what each check last said.
+
+**Data.** A provider node plus a `provides` edge to the capability it supplies, and a row in `declared_checks` carrying the command and the runtime that registered it. Lifecycle derivation now covers anything with a declared check, whatever its kind, so a registered skill degrades on a failing check exactly as a curated capability does.
+
+**Done when.** A registration with no check is refused; one with a passing check appears in `ambit skills` attributed to the runtime that registered it, verifies by name, and moves to `verified`; one whose check fails says so rather than reporting success.
+
+### 12.6 From evidence to authority — built
+
+**What.** The person widens what runs unattended when there is proof it works. §4 records evidence and §9 records authority in separate tables, and nothing connects them: a capability can pass fifty checks and stay at `confirm` forever. This is the piece that makes *become more capable* something the person grants on evidence rather than something the agent argues for each time.
+
+**Interface.** `ambit authority promote <capability> <action> --after=N --window=30d --by=<person>`. It refuses a person who is not in the graph, the same rule approval follows, and refuses a threshold below two, because one passing run is not a pattern. A forbidden grant is refused outright: a threshold on `forbidden` would be a mechanism for talking a system into what it was told not to do. Thresholds are applied wherever evidence changes or is read — after a verification, and when the briefing is composed — so a promotion never waits for someone to run a command named "promote", which is the confirmation prompt it was meant to replace. CLI only, like approve: an agent can read `ambit_promotions` and can never set one.
+
+**Data.** `authority` gains `promote_after`, `promote_window_days`, `promote_set_by`, `promoted_at` and `promoted_on_evidence`; each transition writes a `session_learning` row. Demotion compares against the row id recorded at promotion, not the timestamp: `datetime('now')` resolves to the second, so a check failing in the same second would have compared as "not after it" and the demotion would silently never have happened.
+
+**Done when.** A threshold set once promotes the grant when the evidence arrives and `ambit_can` starts answering `yes`; a single failing check puts it back to `ask` with nobody asked; and failures inside the window hold the promotion rather than being outvoted by passes.
+
+### 12.7 The digest as heartbeat — built into the briefing
+
+**What.** `ambit digest` and `ambit notify` exist and are optional. What keeps a person running the tool, and what gives an agent something to cite, is a short, regular account: *this week the system gained twelve reachable capabilities, three emerged from combination, you were interrupted forty fewer times, two grants were promoted on evidence.*
+
+**Interface.** Built into the briefing rather than beside it. Every briefing carries what changed since the last one — gained, emergent, diminished, and any grant that widened or narrowed on evidence — so the account arrives in the place both parties already read, and the mark moves when it is read rather than on a schedule. The existing `ambit digest` and `ambit notify <topic>` are unchanged for the person who wants it pushed.
+
+**Done when.** A briefing after a week of work names what was gained, what emerged from composition rather than acquisition, and what authority changed, and every line of it can be reproduced with one command.
+
+### 12.8 A ledger that travels — built
+
+**What.** A long-running agent lives in containers that reset and on more than one host. The graph and ledger are one SQLite file in one place, and `federation export|import` moves signed aggregates for a portfolio view, not the working state.
+
+**Interface.** `ambit sync export <path>` writes the graph and the ledger as one file against an explicit table and column allow-list, and `ambit sync import <path>` merges by id and timestamp rather than overwriting — capabilities take the newer of the two, observations already present are skipped, so importing the same file twice changes nothing.
+
+Two things are deliberately absent from the file. **Commands**: a registered skill's check is a command, and a command that travels in a data file is a command that runs on the machine importing it. The skill arrives as a node with its evidence, and the file names it as needing its check re-registered locally. **Authority**: a grant states what may run unattended *here*, and importing one would let a permissive machine widen a careful one by moving a file, which inverts the direction authority is supposed to travel.
+
+**Done when.** A machine that imports another's file reports the same deficits, importing it again is a no-op, and a grant that is autonomous on the exporting machine is still `ask` on the importing one.
+
+### 12.9 One line to install — unbuilt
+
+**What.** An agent that decides Ambit would help cannot act on that until the package exists. Every path today is a git checkout.
+
+**Interface.** `claude mcp add ambit -- npx -y ambit-cli mcp`, and the equivalent OpenCode entry, working on a machine with Node and nothing else. The publish workflow exists and waits on a token.
+
+**Done when.** The README's *connect it to your agent* section has no clone step, and the CI job that refuses to advertise the npm package is removed because the package is on the registry.
+
+### What §12 adds up to
+
+```
+session starts → briefing (12.1) → agent asks before acting (12.3)
+      ↑                                       │
+      │                          no → deficit recorded (12.2)
+      │                                       │
+      │                          recurs → next (12.4) → propose → approve
+      │                                       │
+      │                          acquire → verify → registered (12.5)
+      │                                       │
+      │                          evidence accrues → authority widens (12.6)
+      │                                       │
+      └────── digest says what changed (12.7), on every machine (12.8)
+```
+
+The arrows exist now. What does not is §12.9: until the package is on the registry, an agent that decides Ambit would help still cannot act on that decision without a checkout, which is the one remaining reason this loop stays a thing you set up rather than a thing you install.
 
 ---
 
@@ -488,7 +601,7 @@ supports decisions, and governs change.
 
 ## Honest status
 
-Sections 1, 5, 6, 7, 9 and 11's state stream are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder.
+Sections 1, 5, 6, 7, 9 and 11's state stream are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder. Section 12 is built but for the npm publish it waits on, and it is the part that decides whether a long-running agent ever reaches for the rest: a briefing it does not have to ask for, deficits recorded from failures the runtime already reported, one cheap question before acting, and authority that widens on evidence a person set the price of in advance.
 
 The through-line in what remains is enforcement and objects. Ambit can now say what may be done, by whom, with what, on what evidence, and — since scope became checkable — whether a grant covers a given target. It still does not stop anything, and the target is a string the grant is compared against rather than something the action holds.
 

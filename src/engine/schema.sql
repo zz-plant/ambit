@@ -149,6 +149,15 @@ CREATE TABLE IF NOT EXISTS authority (
     scope TEXT NOT NULL DEFAULT '',
     source TEXT NOT NULL,
     note TEXT,
+    -- §12.6: the evidence that would widen this grant, and what widened it.
+    -- Null promote_after is the default and means the grant only ever changes
+    -- by hand. Promotion needs a person to set the threshold; demotion on a
+    -- failing check needs nobody.
+    promote_after INTEGER,
+    promote_window_days INTEGER,
+    promote_set_by TEXT,
+    promoted_at TEXT,
+    promoted_on_evidence TEXT,
     UNIQUE(capability_id, action, holder, scope, source)
 );
 
@@ -373,3 +382,38 @@ CREATE TABLE IF NOT EXISTS catalog (
 
 CREATE INDEX IF NOT EXISTS idx_catalog_cap ON catalog(capability_id);
 CREATE INDEX IF NOT EXISTS idx_intervention_cap ON human_intervention(capability_id);
+
+-- Raw failure signals captured from a runtime, before anything is concluded
+-- from them. Roadmap §12.2: the ledger should fill from work rather than from
+-- someone remembering to record a deficit.
+--
+-- Separate from session_learning on purpose. session_learning.capability_id is
+-- a foreign key, so a signal Ambit cannot attribute to a capability has nowhere
+-- to live there — and "we failed forty times at something we cannot name" is
+-- itself a finding, not a row to drop. Attributable signals are written here
+-- *and* to session_learning, so the deficit reports are unchanged.
+CREATE TABLE IF NOT EXISTS failure_signals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    session_id TEXT,
+    tool TEXT,
+    class TEXT NOT NULL,
+    signal TEXT NOT NULL,
+    capability_id TEXT,
+    detail TEXT,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_failure_signals_cap ON failure_signals(capability_id);
+CREATE INDEX IF NOT EXISTS idx_failure_signals_time ON failure_signals(timestamp);
+
+-- A check declared outside the curated model — §12.5. techtree.json holds the
+-- checks for capabilities Ambit ships knowledge of; this holds the ones an
+-- agent registers for a skill it wrote itself. Same runner, same evidence.
+CREATE TABLE IF NOT EXISTS declared_checks (
+    capability_id TEXT PRIMARY KEY REFERENCES capabilities(id),
+    command TEXT NOT NULL,
+    timeout_seconds REAL NOT NULL DEFAULT 10,
+    source TEXT NOT NULL DEFAULT 'agent',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

@@ -138,6 +138,15 @@ function deficits(db: Db) {
     classOf.get(r.id)!.push(`${r.class} ×${r.times}`);
   }
 
+  // The cause that recurs most for each capability, which is what decides
+  // whether a deficit is an acquisition, a repair, or a permission somebody
+  // has to grant. Before failures were captured from the runtime (§12.2) a
+  // permission-class deficit was rare enough not to need its own verdict; now
+  // it is the common case, and "was structural; now reached" is the wrong
+  // thing to say about a server that answers 403 three times a week.
+  const dominant = new Map<string, string>();
+  for (const r of byClass) if (!dominant.has(r.id)) dominant.set(r.id, r.class);
+
   return rows.map((r: any) => ({
     name: r.name,
     id: r.id,
@@ -154,15 +163,21 @@ function deficits(db: Db) {
         ? 'structural — build it'
         : r.times >= 3 && !usable(r.lifecycle)
           ? 'structural — configured but failing verification'
-          : r.times >= 3
-            ? 'was structural; now reached'
-            : 'incidental so far',
+          : r.times >= 3 && dominant.get(r.id) === 'permission'
+            ? 'structural — reached, and refused. This is a grant, not an acquisition'
+            : r.times >= 3 && dominant.get(r.id) === 'infrastructure'
+              ? 'structural — reached, and unreachable. This is a repair, not an acquisition'
+              : r.times >= 3
+                ? 'was structural; now reached'
+                : 'incidental so far',
     recommendation:
       r.times >= 3 && r.state === 'locked'
         ? `ambit propose ${r.id.replace('combo:', '')}`
         : r.times >= 3 && !usable(r.lifecycle)
           ? `ambit verify ${r.id.replace('combo:', '')}`
-          : undefined,
+          : r.times >= 3 && dominant.get(r.id) === 'permission'
+            ? `ambit authority ${r.id.replace('combo:', '')}`
+            : undefined,
   }));
 }
 

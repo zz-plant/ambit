@@ -233,6 +233,20 @@ Registering Ambit as an MCP server lets an agent inspect its own toolchain and p
 claude mcp add ambit -- ambit mcp
 ```
 
+Ambit also publishes a resource, `ambit://briefing`, which a client reads on
+connect: what is reached and proven, what is configured but failing, what is
+waiting on you, what blocked work in the last week, and what is worth reaching
+next. It is capped at about 1,200 tokens. To put the same thing at the top of
+every session yourself, add a hook to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "ambit briefing" }] }]
+  }
+}
+```
+
 ### OpenCode (`~/.config/opencode/opencode.json`)
 
 ```json
@@ -250,6 +264,14 @@ claude mcp add ambit -- ambit mcp
 Both assume `bootstrap.sh` linked `ambit` onto your PATH. If it did not, use the absolute path to `cli.js` instead.
 
 An agent can read the map, query what a goal is missing, and **propose** a configuration change. Applying one always requires your approval.
+
+**One line for the agent's own instructions.** The habit worth teaching is a single question before an unfamiliar tool, because the alternative is the retry loop that spends your attention:
+
+> Before running a tool you have not used this session, call `ambit_can` with
+> the capability. On `yes`, act. On `ask`, put it to the person. On `no`, it has
+> already recorded the deficit, so do not retry it under another name.
+
+It answers from the graph without probing anything, and a refusal files itself as a deficit — which is what makes the fourth occurrence show up as infrastructure that should exist rather than as a wall to work around again.
 
 Here is the whole loop from a live run. `node --experimental-strip-types scripts/demo-agent-loop.ts` re-records it, and every frame is real engine output — a failing loop fails the recording rather than rendering a fiction.
 
@@ -280,9 +302,9 @@ sequenceDiagram
 ```
 
 <details>
-<summary><b>The full 48-tool MCP surface</b></summary>
+<summary><b>The full 55-tool MCP surface</b></summary>
 
-Forty-eight tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field rather than parsing a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
+Fifty-five tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field rather than parsing a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
 
 | Group | Tools | Purpose |
 | :--- | :--- | :--- |
@@ -290,6 +312,7 @@ Forty-eight tools, each advertised once. Each answers with MCP `structuredConten
 | **Lifecycle & assurance** | `verify`, `evidence`, `authority`, `actions`, `plan`, `goal`, `paths`, `preferences`, `scope`, `affordances`, `since`, `ledger` | Inspect health, run verification contracts, resolve authority scope, compute prerequisite paths. |
 | **Work & economics** | `work`, `usage`, `run_begin`, `run_end`, `work_event`, `digest`, `economics`, `goal_value`, `opportunities`, `opportunity`, `catalog`, `roi`, `roi_summary`, `audit`, `incidents`, `incident_resolve`, `portfolio`, `can` | Record telemetry, price attention, rank opportunities, and check permission before acting. |
 | **Governance & planning** | `blocked`, `deficits`, `simulate`, `propose`, `proposals`, `proposal` | Record deficits, simulate future frontier states, and draft reviewable patches. |
+| **The long-running agent** | `briefing`, `next`, `record_failure`, `signals`, `register_skill`, `skills`, `promotions` | Know the environment before touching it, see what is worth reaching next, report a failure the runtime already noticed, and put a skill you wrote on the map with the check that proves it. |
 
 </details>
 

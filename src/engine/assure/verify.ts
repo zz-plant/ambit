@@ -9,7 +9,33 @@ import { spawnSync } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
 import { deriveLifecycles } from './lifecycle.ts';
+import { evaluatePromotions } from './promote.ts';
 import type { CapabilityRow } from '../rows.ts';
+
+/**
+ * A check declared outside the curated model — §12.5.
+ *
+ * techtree.json holds the checks for capabilities Ambit ships knowledge of.
+ * This holds the ones an agent registered for something it wrote itself. Same
+ * runner, same evidence table, same gate: a registered skill whose check fails
+ * is degraded exactly like a git MCP server whose check fails.
+ */
+function declaredCheck(db: Db, id: string): { command: string[]; timeout_seconds: number } | null {
+  let row: { command: string; timeout_seconds: number } | undefined;
+  try {
+    row = db
+      .prepare('SELECT command, timeout_seconds FROM declared_checks WHERE capability_id = ?')
+      .get<{ command: string; timeout_seconds: number }>(id);
+  } catch {
+    return null; // database predates the table
+  }
+  if (!row) return null;
+  try {
+    return { command: JSON.parse(row.command), timeout_seconds: row.timeout_seconds };
+  } catch {
+    return null;
+  }
+}
 
 // ─── Verification ─────────────────────────────────────────────────────────────
 
@@ -103,6 +129,37 @@ function evidenceFor(db: Db, id: string) {
 }
 
 function runVerification(db: Db, which?: string) {
+  // A registered skill is not in the curated model, so it is answered before
+  // the model is consulted at all — otherwise `ambit verify skill:x` would say
+  // no such capability about something the agent just put on the map.
+  if (which?.includes(':') && !which.startsWith('combo:') && !which.startsWith('act:')) {
+    const declared = declaredCheck(db, which);
+    if (declared) {
+      const name =
+        db.prepare('SELECT name FROM capabilities WHERE id = ?').get(which)?.name || which;
+      const r = verifyCheck(db, which, String(name), declared);
+      const history = evidenceFor(db, which);
+      deriveLifecycles(db);
+      const authority = evaluatePromotions(db);
+      return {
+        checked: 1,
+        verified: r.status === 'verified' ? 1 : 0,
+        failed: r.status === 'failed' ? 1 : 0,
+        results: [
+          {
+            ...r,
+            reliability: history.length
+              ? `${history.filter((h: any) => h.action === 'verified').length}/${history.length}`
+              : undefined,
+            lifecycle: db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get(which)
+              ?.lifecycle,
+          },
+        ],
+        authority_changed:
+          authority.promoted.length || authority.demoted.length ? authority : undefined,
+      };
+    }
+  }
   const tree = loadTechTree();
   if (!tree?.nodes?.length) {
     return { error: 'No capability model to verify against.' };
@@ -118,6 +175,7 @@ function runVerification(db: Db, which?: string) {
     const runs = history.length;
     const passes = history.filter((h: any) => h.action === 'verified').length;
     deriveLifecycles(db);
+    const authority = evaluatePromotions(db);
     (r as any).lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
       .get(r.id)?.lifecycle;
@@ -126,6 +184,8 @@ function runVerification(db: Db, which?: string) {
       verified: r.status === 'verified' ? 1 : 0,
       failed: r.status === 'failed' ? 1 : 0,
       results: [{ ...r, reliability: runs ? `${passes}/${runs}` : undefined }],
+      authority_changed:
+        authority.promoted.length || authority.demoted.length ? authority : undefined,
     };
   }
   // A named node verifies itself even when it declares no check — the answer
@@ -167,8 +227,11 @@ function runVerification(db: Db, which?: string) {
     };
   });
 
-  // Evidence just changed, so what it is worth just changed too.
+  // Evidence just changed, so what it is worth just changed too — and so has
+  // what it earns. A threshold a person set in advance takes effect here
+  // rather than waiting for someone to run a command named "promote".
   deriveLifecycles(db);
+  const authority = evaluatePromotions(db);
   for (const r of withReliability) {
     r.lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
@@ -195,7 +258,12 @@ function runVerification(db: Db, which?: string) {
     gate: nowUnavailable.length
       ? 'these now read as degraded or broken — configured, but their check is failing. They are excluded from plans, simulations and authority until re-verified.'
       : undefined,
+    // §12.6: what this evidence just earned, or just cost. Reported here
+    // because a promotion nobody is told about is indistinguishable from a
+    // permission that was always too wide.
+    authority_changed:
+      authority.promoted.length || authority.demoted.length ? authority : undefined,
   };
 }
 
-export { verifyCheck, verifyCapability, verifyAction, evidenceFor, runVerification };
+export { verifyCheck, verifyCapability, verifyAction, declaredCheck, evidenceFor, runVerification };

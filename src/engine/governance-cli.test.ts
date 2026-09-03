@@ -421,7 +421,9 @@ test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
 
   const deny = cli('can', 'offline-capable', '--target=device:nuc');
   expect(deny.decision).toBe('DENY');
-  expect(deny.reason).toContain('no grant covers');
+  expect(deny.verdict).toBe('no');
+  expect(deny.reason).toContain('No grant covers');
+  expect(deny.reason).toContain('device:nuc');
 
   // Without a target, both grants cover and the narrowest (confirm) wins.
   const mixed = cli('can', 'offline-capable');

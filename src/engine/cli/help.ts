@@ -11,7 +11,9 @@
 const HELP_SHORT = `ambit - what your system can do, what it costs, what to change
 
   seed              seed from the agent config
+  briefing          what an agent should know before its first tool call
   status            health · degraded · spofs · deficits · pending approvals
+  next              the three capabilities worth reaching next, and why
   graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
   goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
                     delta, compare acquisition paths, or check preferences
@@ -30,6 +32,9 @@ Five groups. Every verb also works on its own — \`ambit impact x\` and
 \`ambit graph impact x\` are the same command.
 
   seed              seed from the agent config
+  briefing [--json] [--peek]   what an agent should know before its first tool
+                    call — broken, waiting, blocked, next. --peek does not
+                    move the "since last briefing" mark
   status            health · degraded · spofs · deficits · pending approvals
 
 graph — the structure, and what it would cost to lose a piece
@@ -39,8 +44,14 @@ graph — the structure, and what it would cost to lose a piece
   graph share [--redact] [--out=path]   a self-contained HTML snapshot of the
                           map — names, states, edges only; nothing leaves the machine
   graph where             where the graph is stored
+  graph skills            what the agent registered that it built itself
+  graph sync export [path] / graph sync import <path>   the graph and ledger as
+                          one file, so a rebuilt container keeps its history —
+                          no commands, no grants, no credentials
 
 plan — what to acquire next, and whether it paid
+  plan next [n]           the capabilities worth reaching next, each with why,
+                          what it costs, and the command that proposes it
   plan goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan
                           the delta, compare acquisition paths, check preferences
   plan opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
@@ -57,6 +68,9 @@ check — what is proven, what is permitted, what is currently broken
   check verify [cap] [--history]   run the declared check, or past verification
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
+  check authority promote [<cap> <action> --after=N --window=30d --by=<person>]
+                          widen a grant once the evidence supports it; one
+                          failing check puts it back, with nobody asked
   check can <cap> [--target X] [--spend N]   the decision API: ALLOW/CONFIRM/DENY
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services
@@ -79,6 +93,9 @@ report — what the system cost to operate
                           without a topic
   report notify-approvals <topic>   push the approved-waiting count to ntfy
   report record <cap> [class] [note]   record that a task was blocked
+  report record skill:<name> --provides=<cap> --verify="<command>"   put a skill
+                          the agent wrote on the map, with the check that proves it
+  report signals [days]   failures observed without anyone recording them
   report federation export|import   the signed summary a portfolio layer reads
 
   help [term]       this list, or one concept explained`;

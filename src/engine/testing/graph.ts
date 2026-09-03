@@ -36,7 +36,12 @@ export interface GraphFixture {
   authority?: {
     capability: string;
     action?: string;
-    mode: 'auto' | 'confirm' | 'deny';
+    // The engine's own vocabulary. This said `'auto' | 'confirm' | 'deny'`,
+    // which are three words the authority table has never held — so every
+    // fixture that wanted an autonomous grant wrote `mode: 'auto'` and then
+    // issued an UPDATE to correct it, and a grant written straight from the
+    // fixture silently ranked as unknown rather than as permitted.
+    mode: 'autonomous' | 'confirm' | 'forbidden';
     holder?: string;
     scope?: string;
     source?: string;

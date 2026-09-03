@@ -177,3 +177,50 @@ test('structuredContent is always an object, even when the answer is a list', ()
   expect(Array.isArray(structured)).toBe(false);
   expect(typeof structured).toBe('object');
 });
+
+// ── §12.1: the briefing an agent gets without asking ─────────────────────────
+
+test('the server offers the briefing as a resource, not only as a tool', () => {
+  // A tool has to be thought of. A resource is what a runtime reads on
+  // connect, which is the only way it reaches the agent that does not know
+  // Ambit is there — the one that most needs to know what is broken.
+  const [init, list, read] = rpc([
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+    { jsonrpc: '2.0', id: 2, method: 'resources/list', params: {} },
+    { jsonrpc: '2.0', id: 3, method: 'resources/read', params: { uri: 'ambit://briefing' } },
+  ]);
+
+  expect(init.result.capabilities.resources).toBeDefined();
+  expect(list.result.resources.map((r: any) => r.uri)).toEqual(['ambit://briefing']);
+
+  const text = read.result.contents[0].text;
+  expect(text).toContain('Ambit ·');
+  expect(text).toContain('ambit_can');
+  expect(text.length).toBeLessThanOrEqual(1200 * 4);
+});
+
+test('an unknown resource is refused rather than answered with the briefing', () => {
+  const [reply] = rpc([
+    { jsonrpc: '2.0', id: 1, method: 'resources/read', params: { uri: 'ambit://everything' } },
+  ]);
+  expect(reply.error.code).toBe(-32602);
+});
+
+test('asking and being refused records the deficit in the same call', () => {
+  // The habit only survives if it costs one round trip. An agent that has to
+  // make a second call to record the wall it just hit will stop recording.
+  const [reply] = rpc([
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'ambit_can',
+        arguments: { capability: 'combo:secret-management', tool: 'op read' },
+      },
+    },
+  ]);
+  const answer = reply.result.structuredContent;
+  expect(answer.verdict).toBe('no');
+  expect(answer.recorded_deficit).toBeTruthy();
+});

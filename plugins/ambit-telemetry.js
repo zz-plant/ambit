@@ -45,6 +45,38 @@ async function ensureRun() {
   return runId;
 }
 
+/**
+ * What the runtime said about a failure, in whatever shape this version of
+ * OpenCode reports it.
+ *
+ * Ambit classifies; this only gathers. A bridge that decides for itself what
+ * counts as a permission error is a second copy of that rule, and the two will
+ * disagree within a release. See src/engine/failures.ts and docs/roadmap.md
+ * §12.2.
+ */
+function failureFrom(input) {
+  const out = input?.output ?? input?.result ?? input;
+  const exitCode = out?.exitCode ?? out?.exit_code ?? out?.code;
+  const message =
+    out?.stderr ||
+    out?.error?.message ||
+    (typeof out?.error === 'string' ? out.error : '') ||
+    (out?.isError ? String(out?.content?.[0]?.text ?? '') : '') ||
+    '';
+  const failed =
+    out?.isError === true ||
+    (typeof exitCode === 'number' && exitCode !== 0) ||
+    Boolean(out?.error);
+  if (!failed) return null;
+  return {
+    tool: input?.tool || input?.name || 'unknown',
+    exitCode: typeof exitCode === 'number' ? exitCode : undefined,
+    message: String(message).slice(0, 500),
+    errorKind: out?.error?.kind || out?.errorKind || undefined,
+    source: 'opencode',
+  };
+}
+
 export const AmbitTelemetry = async _ctx => {
   return {
     // The tool ran. Recorded as a work event under the process run — the
@@ -56,6 +88,23 @@ export const AmbitTelemetry = async _ctx => {
       await post({
         event: { runId: id, kind: 'tool', action: input?.tool || 'unknown', actor: 'agent' },
       });
+      // The ledger's other half: what did not work. Recording a deficit used
+      // to require someone to stop mid-failure and run a command, which is the
+      // worst moment to ask, so nobody ever did and every report that reads
+      // deficits opened by saying nothing had been observed.
+      const failure = failureFrom(input);
+      if (failure) await post({ failure });
+    },
+    // Present in some versions and not others; both paths reach the same
+    // recorder, and a duplicate is deduplicated by nothing — an error reported
+    // twice is two observations, which is honest about how it was reported.
+    'tool.execute.error': async input => {
+      const failure = failureFrom(input) || {
+        tool: input?.tool || 'unknown',
+        message: String(input?.error?.message || input?.error || '').slice(0, 500),
+        source: 'opencode',
+      };
+      await post({ failure });
     },
     // A permission prompt is human agency of the authority kind. The reply is
     // not observable through a hook yet, so this records the ask only.
@@ -65,7 +114,7 @@ export const AmbitTelemetry = async _ctx => {
       await post({
         intervention: {
           runId: id,
-          actorId: 'human:kanav',
+          actorId: process.env.AMBIT_ACTOR || 'human:operator',
           kind: 'authority',
           action: input?.permission || input?.action || undefined,
           outcome: 'asked',

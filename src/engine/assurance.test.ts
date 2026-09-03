@@ -37,11 +37,13 @@ test('no grant at all is a denial, not a default allow', () => {
   db.close();
 });
 
-test('an unknown capability is denied by name', () => {
+test('an unknown capability is denied by name, and says to record it', () => {
   const db = makeGraph({});
   const d = canExecute(db, { capability: 'combo:nope' });
   expect(d.decision).toBe('DENY');
-  expect(d.reason).toContain('no capability');
+  expect(d.verdict).toBe('no');
+  expect(d.reason).toContain('Nothing in the graph supplies combo:nope');
+  expect(d.reason).toContain('deficit');
   db.close();
 });
 
@@ -78,9 +80,8 @@ test('when grants disagree the narrowest one governs', () => {
 test('a grant held by someone else does not cover this actor', () => {
   const db = makeGraph({
     ...deployable,
-    authority: [{ capability: 'combo:deploy', mode: 'auto', holder: 'human:alice' }],
+    authority: [{ capability: 'combo:deploy', mode: 'autonomous', holder: 'human:alice' }],
   });
-  db.prepare("UPDATE authority SET mode = 'autonomous'").run();
   expect(canExecute(db, { capability: 'combo:deploy', actor: 'human:alice' }).decision).toBe(
     'ALLOW'
   );
@@ -91,9 +92,8 @@ test('a grant held by someone else does not cover this actor', () => {
 test('a grant scoped to staging does not authorize production', () => {
   const db = makeGraph({
     ...deployable,
-    authority: [{ capability: 'combo:deploy', mode: 'auto', scope: 'env:staging' }],
+    authority: [{ capability: 'combo:deploy', mode: 'autonomous', scope: 'env:staging' }],
   });
-  db.prepare("UPDATE authority SET mode = 'autonomous'").run();
   expect(canExecute(db, { capability: 'combo:deploy', target: 'env:staging' }).decision).toBe(
     'ALLOW'
   );
@@ -106,9 +106,8 @@ test('a grant scoped to staging does not authorize production', () => {
 test('permission does not override a failing implementation', () => {
   const db = makeGraph({
     capabilities: [{ id: 'combo:deploy', name: 'Deploy', lifecycle: 'broken' }],
-    authority: [{ capability: 'combo:deploy', mode: 'auto' }],
+    authority: [{ capability: 'combo:deploy', mode: 'autonomous' }],
   });
-  db.prepare("UPDATE authority SET mode = 'autonomous'").run();
   const d = canExecute(db, { capability: 'combo:deploy' });
   expect(d.decision).toBe('DENY');
   expect(d.reason).toContain('broken');
@@ -118,9 +117,8 @@ test('permission does not override a failing implementation', () => {
 test('a spend beyond the remaining budget is refused', () => {
   const db = makeGraph({
     ...deployable,
-    authority: [{ capability: 'combo:deploy', mode: 'auto' }],
+    authority: [{ capability: 'combo:deploy', mode: 'autonomous' }],
   });
-  db.prepare("UPDATE authority SET mode = 'autonomous'").run();
   db.prepare(
     'INSERT INTO budgets (capability_id, action, scope, budget_cents, spent_cents) VALUES (?,?,?,?,?)'
   ).run('combo:deploy', 'execute', '', 1000, 900);

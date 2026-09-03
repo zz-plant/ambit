@@ -54,6 +54,13 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ['proposals', 'approval_artifact', 'TEXT'],
   // What actually happened after an apply, so the next prediction can learn.
   ['proposals', 'observed_roi', 'TEXT'],
+  // §12.6: a grant can carry the evidence threshold that would widen it. Null
+  // means what it has always meant — this grant only ever changes by hand.
+  ['authority', 'promote_after', 'INTEGER'],
+  ['authority', 'promote_window_days', 'INTEGER'],
+  ['authority', 'promote_set_by', 'TEXT'],
+  ['authority', 'promoted_at', 'TEXT'],
+  ['authority', 'promoted_on_evidence', 'TEXT'],
 ];
 
 function addMissingColumns(db: Migratable) {

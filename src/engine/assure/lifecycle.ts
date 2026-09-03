@@ -63,15 +63,26 @@ function lifecycleFrom(
 }
 
 /**
- * Recomputes lifecycle for every capability and action.
+ * Recomputes lifecycle for every capability, action, and anything else carrying
+ * a check.
  *
  * Runs on seed and after verification, which are the two moments the inputs can
  * change. Nothing else writes the column, so it cannot drift from the evidence
  * it is derived from.
+ *
+ * The third group is the agent's own registrations (§12.5). A node is included
+ * because it declares a check, not because of what kind it is: a skill an agent
+ * wrote and proved should degrade on a failing check exactly as a curated
+ * capability does, and a lifecycle that never moved would leave it reading as
+ * configured for ever however much evidence accumulated.
  */
 function deriveLifecycles(db: Db): number {
   const nodes = db
-    .prepare("SELECT id, state FROM capabilities WHERE kind IN ('capability', 'action')")
+    .prepare(
+      `SELECT id, state FROM capabilities
+       WHERE kind IN ('capability', 'action')
+          OR id IN (SELECT capability_id FROM declared_checks)`
+    )
     .all();
   const provided = new Set(
     db

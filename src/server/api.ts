@@ -34,6 +34,7 @@ import {
   recordResource,
   recordOutcome,
 } from '../engine/telemetry.ts';
+import { captureFailure } from '../engine/failures.ts';
 import {
   CONFIG_PATH,
   INFRA_MANIFEST_PATH,
@@ -116,6 +117,11 @@ function broadcast(payload: Record<string, unknown>): void {
  * means rather than fighting a foreign schema: { run } begins a run, { end }
  * closes it, and event / use / intervention / resource / outcome each record
  * one row. Never a command.
+ *
+ * { failure } is the §12.2 verb: a tool failed, here is what the runtime said
+ * about it. Ambit classifies it rather than the bridge doing so — a bridge that
+ * decides what counts as a permission error is a second place for that rule to
+ * live, and it would drift.
  */
 function ingestTelemetry(db: Db, body: any): Record<string, unknown> {
   const ledger = db as never;
@@ -135,8 +141,12 @@ function ingestTelemetry(db: Db, body: any): Record<string, unknown> {
     const o = body.outcome;
     return recordOutcome(ledger, o.runId, o.achieved, o);
   }
+  if (body.failure) {
+    return captureFailure(db, { source: 'api', ...body.failure });
+  }
   return {
-    error: 'Nothing to record. Send one of: run, end, event, use, intervention, resource, outcome.',
+    error:
+      'Nothing to record. Send one of: run, end, event, use, intervention, resource, outcome, failure.',
   };
 }
 

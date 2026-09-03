@@ -38,6 +38,23 @@ function emitRaw(data: unknown, pretty = true): void {
 }
 
 /**
+ * A result that is already prose.
+ *
+ * The briefing is written for a reader — an agent quoting a sentence, a person
+ * skimming one — so putting it through the key/value formatter would take the
+ * one command whose output is deliberately a paragraph and turn it back into
+ * fields. Still goes through the sink, so a test reads the same string a
+ * terminal shows.
+ */
+function emitText(text: string): void {
+  if (sink) {
+    sink(text);
+    return;
+  }
+  console.log(text);
+}
+
+/**
  * Prints a result for a person to read, or raw JSON with --json.
  *
  * Every command used to dump JSON.stringify unconditionally, which meant the
@@ -148,4 +165,4 @@ export function setSink(next: ((data: unknown) => void) | null): ((data: unknown
   return previous;
 }
 
-export { C, emit, emitRaw };
+export { C, emit, emitRaw, emitText };

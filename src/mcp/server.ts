@@ -56,6 +56,14 @@ import {
   incidents,
   resolveIncident,
   portfolio,
+  briefing,
+  briefingText,
+  nextSteps,
+  captureFailure,
+  signalReport,
+  registerSkill,
+  registeredSkills,
+  promotionReport,
 } from '../engine/engine.ts';
 
 const DB_PATH = resolveDbPath();
@@ -103,6 +111,24 @@ process.on('exit', () => {
   }
 });
 
+const BRIEFING_URI = 'ambit://briefing';
+
+/**
+ * What this server offers to be read rather than called.
+ *
+ * One resource, deliberately. A briefing that competes with four other
+ * documents for the top of a context window is a briefing nobody reads.
+ */
+const RESOURCES = [
+  {
+    uri: BRIEFING_URI,
+    name: 'Environment briefing',
+    description:
+      'What this environment can do, what is configured but failing, what is waiting on a person, what blocked work recently, and what is worth reaching next. Read it before reporting what this system can do.',
+    mimeType: 'text/plain',
+  },
+];
+
 let buf = '';
 // Each line is handled in its own function because the body returns to reply.
 // Inlined in the loop, that `return` exited the whole stdin handler, so only
@@ -121,11 +147,33 @@ function handleLine(line: string) {
       case 'initialize':
         return respond(id, {
           protocolVersion: '2024-11-05',
-          capabilities: { tools: {} },
+          capabilities: { tools: {}, resources: {} },
           serverInfo: { name: 'ambit', version: VERSION },
         });
       case 'tools/list':
         return respond(id, { tools: TOOLS });
+      // Resources are what a runtime reads on connect, without being asked to.
+      // A tool an agent has to think of calling is no use to the agent that
+      // does not know Ambit is there, which is exactly the one that most needs
+      // to know what is broken before it starts. See docs/roadmap.md §12.1.
+      case 'resources/list':
+        return respond(id, { resources: RESOURCES });
+      case 'resources/read': {
+        const uri = params?.uri;
+        if (uri !== BRIEFING_URI) return err(id, -32602, `Unknown resource: ${uri}`);
+        return respond(id, {
+          contents: [
+            {
+              uri: BRIEFING_URI,
+              mimeType: 'text/plain',
+              // Reading the briefing is what moves the "since last briefing"
+              // mark: the next session should be told what changed since this
+              // one was told, not since someone last ran a command.
+              text: tt(db => briefingText(db, { mark: true })),
+            },
+          ],
+        });
+      }
       case 'tools/call': {
         const { name, arguments: args } = params;
         try {
@@ -242,7 +290,50 @@ function handleLine(line: string) {
               res = tt(db => opportunityFor(db, args.id));
               break;
             case 'tt_can':
-              res = tt(db => canExecute(db, { ...args, capability: capId || args?.capability }));
+              res = tt(db => {
+                const decision: any = canExecute(db, {
+                  ...args,
+                  capability: capId || args?.capability,
+                });
+                // The point of asking before acting is that a refusal costs
+                // nothing to record. Doing it here rather than asking the
+                // agent to make a second call is what keeps the habit cheap:
+                // one round trip answers the question and files the deficit.
+                if (decision.verdict === 'no' && args?.record !== false) {
+                  const recorded = captureFailure(db, {
+                    source: 'ambit_can',
+                    tool: args?.tool || decision.action,
+                    errorKind: decision.missing?.length ? 'missing_tool' : 'permission_denied',
+                    message: decision.reason,
+                    capabilityId: decision.capability,
+                  });
+                  decision.recorded_deficit = recorded.recorded ? recorded.class : false;
+                }
+                return decision;
+              });
+              break;
+            case 'tt_briefing':
+              res = args?.text
+                ? { briefing: tt(db => briefingText(db, { mark: true })) }
+                : tt(db => briefing(db, { mark: true }));
+              break;
+            case 'tt_next':
+              res = tt(db => nextSteps(db, args?.limit));
+              break;
+            case 'tt_record_failure':
+              res = tt(db => captureFailure(db, { ...args, source: args?.source || 'agent' }));
+              break;
+            case 'tt_signals':
+              res = tt(db => signalReport(db, args?.days));
+              break;
+            case 'tt_register_skill':
+              res = tt(db => registerSkill(db, args || {}));
+              break;
+            case 'tt_skills':
+              res = tt(db => registeredSkills(db));
+              break;
+            case 'tt_promotions':
+              res = tt(db => promotionReport(db));
               break;
             case 'tt_roi':
               res = tt(db => roiFor(db, args.proposalId));

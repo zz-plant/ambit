@@ -13,8 +13,8 @@
  * same command.
  */
 const GROUPS: Record<string, string[]> = {
-  graph: ['impact', 'where', 'share', 'catalog'],
-  plan: ['goal', 'opportunities', 'opportunity', 'roi', 'propose', 'portfolio'],
+  graph: ['impact', 'where', 'share', 'catalog', 'skills', 'sync'],
+  plan: ['goal', 'next', 'opportunities', 'opportunity', 'roi', 'propose', 'portfolio'],
   check: ['verify', 'authority', 'can', 'credentials', 'incidents', 'incident'],
   govern: ['proposals', 'proposal', 'approve', 'apply', 'rollback', 'history', 'audit'],
   report: [
@@ -27,6 +27,7 @@ const GROUPS: Record<string, string[]> = {
     'notify-approvals',
     'federation',
     'record',
+    'signals',
   ],
 };
 
