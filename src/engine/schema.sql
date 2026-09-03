@@ -417,3 +417,30 @@ CREATE TABLE IF NOT EXISTS declared_checks (
     source TEXT NOT NULL DEFAULT 'agent',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- A place where acting does not matter. Roadmap §12 follow-up: between "ask a
+-- person" and "act on the world" sits acting somewhere the consequences are
+-- contained, which is the cheapest way for an agent to accumulate the evidence
+-- that earns wider authority.
+--
+-- One person declares one target as practice ground, once, and it is recorded
+-- as their act. A sandbox never opens a forbidden grant: what was refused
+-- outright is refused everywhere, and a practice environment that could be used
+-- to rehearse a forbidden action would be a way round the refusal.
+CREATE TABLE IF NOT EXISTS sandboxes (
+    target TEXT PRIMARY KEY,
+    declared_by TEXT NOT NULL,
+    note TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- A proposal a person turned down, and why. Approval was recordable from the
+-- start and refusal was not, so the graph could only ever learn what someone
+-- said yes to — which is half a signal, and the wrong half for predicting what
+-- they will accept next.
+CREATE TABLE IF NOT EXISTS proposal_rejections (
+    proposal_id TEXT PRIMARY KEY REFERENCES proposals(id),
+    rejected_by TEXT NOT NULL,
+    reason TEXT,
+    rejected_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

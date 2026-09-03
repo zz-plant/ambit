@@ -302,9 +302,9 @@ sequenceDiagram
 ```
 
 <details>
-<summary><b>The full 55-tool MCP surface</b></summary>
+<summary><b>The full 60-tool MCP surface</b></summary>
 
-Fifty-five tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field rather than parsing a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
+Sixty tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field rather than parsing a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
 
 | Group | Tools | Purpose |
 | :--- | :--- | :--- |
@@ -313,6 +313,7 @@ Fifty-five tools, each advertised once. Each answers with MCP `structuredContent
 | **Work & economics** | `work`, `usage`, `run_begin`, `run_end`, `work_event`, `digest`, `economics`, `goal_value`, `opportunities`, `opportunity`, `catalog`, `roi`, `roi_summary`, `audit`, `incidents`, `incident_resolve`, `portfolio`, `can` | Record telemetry, price attention, rank opportunities, and check permission before acting. |
 | **Governance & planning** | `blocked`, `deficits`, `simulate`, `propose`, `proposals`, `proposal` | Record deficits, simulate future frontier states, and draft reviewable patches. |
 | **The long-running agent** | `briefing`, `next`, `record_failure`, `signals`, `register_skill`, `skills`, `promotions` | Know the environment before touching it, see what is worth reaching next, report a failure the runtime already noticed, and put a skill you wrote on the map with the check that proves it. |
+| **Expanding what is permitted** | `objects`, `budgets`, `reversible`, `preferences_observed`, `pending` | What may be done to a particular target and what is proved there, what may be spent without asking, what would have to be written for an acquisition to need no person, and what is waiting on one right now. |
 
 </details>
 

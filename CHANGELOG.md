@@ -5,6 +5,24 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 ## Unreleased
 
 - **The map looks like one product.** The client had two palettes — the slate-and-indigo tokens, and a cyberpunk cyan/magenta/neon-green the tree painted its nodes with — and fifteen CSS classes that no rule defined, so the zoom controls, the toast, the small buttons, the dashboard's filter tabs and the sidebar toggle all rendered as browser defaults. Every kind of node now has one colour, read from `App.css` by the map, the detail panel and the docs alike; the missing rules exist; the favicon and the social card are drawn in the same indigo as the app. The landing page renders on its own, without a capability list reading "(0)" behind it. The time-and-cost view sits beside the capability list instead of under it. The lens switcher moved from the top bar onto the map it colours. The map opens fitted to the window, so the seventh era and the runtime column are on screen instead of past the edge; the first-run card sits top right instead of on the legend; the legend describes the view it is under. The proposals panel says "waiting for your approval" and "approve and sign" where it said "AWAITING OPERATOR RATIFICATION" and "Ratify & Sign Policy", and signs as the web surface rather than as the author. Muted text passes AA contrast, every control shows a focus ring, and motion respects the reduced-motion setting.
+- **What makes the loop widen, not just report.** The previous entry gave an agent a way to notice a gap, name it and ask. Nothing in that made the environment more capable: an agent could be told no all week and end it exactly as able as it started. Nine changes to the part that decides whether anything comes of the asking.
+
+  A threshold now counts successful work as well as passing checks, so an environment where the job succeeds daily stops having to run synthetic self-tests to earn trust it has already demonstrated. A failed run still counts against nothing, because attributing a run's outcome to every capability it touched would demote whatever a bad afternoon went near.
+
+  `ambit authority promote` with no arguments now names the grants that have earned a threshold nobody set. The interruption a threshold would end is exactly what stops anyone noticing it could, so the graph says it rather than waiting to be asked.
+
+  Scope decides. Two rules, in order: a forbidden grant wins outright at any specificity, and among the rest the most specific covering scope governs. Under narrowest-wins alone a grant saying "autonomous on staging" could never beat a standing "confirm everywhere", which made the only trade anyone actually wants inexpressible. `--scope` on a promotion writes that grant and leaves the standing one untouched. `ambit authority sandbox` declares somewhere acting does not matter, which is where a scoped threshold gets met cheaply; it relaxes confirmation and never a refusal.
+
+  `ambit budget set <cap> --amount=$20 --by=<person>` grants standing spend. Budgets existed and could only be written by the code that recorded spend, so the ceiling was real and the delegation was not.
+
+  `ambit reject <id> <person> "why"` records the half of every decision that used to vanish. `ambit preferences --observed` reads both halves, and `ambit propose` drafts the alternative the record favours and says why. A trait needs three decisions to count, and one that has gone both ways reads as contested rather than settled by majority.
+
+  `ambit proposals --pending` and the approval push carry the decision rather than announcing that one exists, and `ambit approve` takes several ids and one name. Every acquisition costs one interruption; a week of drafts read together is one sitting.
+
+  `ambit reversible` publishes what could be acquired without a person and what could not, which is the same list read backwards. `ambit objects <target>` and `ambit verify --target=` give authority and evidence an object, so committing to one repository forty times stops being a claim about the next one.
+
+  Five more MCP tools, twenty-two more tests.
+
 - **Ambit reaches the agent at the moment friction happens.** Every command until now waited to be asked, which is no use to the agent that hits a missing binary mid-task, works around it, and hits the same one next week.
 
   `ambit briefing`, served to a client on connect as the MCP resource `ambit://briefing`, says what is reached and proven, what is configured but failing, what is waiting on a person, what blocked work in the last week, and what is worth reaching next — prose, capped near 1,200 tokens, trimmed from the bottom because the order is the order of usefulness.

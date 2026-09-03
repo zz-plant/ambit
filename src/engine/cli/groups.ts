@@ -13,10 +13,19 @@
  * same command.
  */
 const GROUPS: Record<string, string[]> = {
-  graph: ['impact', 'where', 'share', 'catalog', 'skills', 'sync'],
-  plan: ['goal', 'next', 'opportunities', 'opportunity', 'roi', 'propose', 'portfolio'],
-  check: ['verify', 'authority', 'can', 'credentials', 'incidents', 'incident'],
-  govern: ['proposals', 'proposal', 'approve', 'apply', 'rollback', 'history', 'audit'],
+  graph: ['impact', 'where', 'share', 'catalog', 'skills', 'sync', 'objects'],
+  plan: [
+    'goal',
+    'next',
+    'opportunities',
+    'opportunity',
+    'roi',
+    'propose',
+    'portfolio',
+    'reversible',
+  ],
+  check: ['verify', 'authority', 'can', 'credentials', 'incidents', 'incident', 'budget'],
+  govern: ['proposals', 'proposal', 'approve', 'reject', 'apply', 'rollback', 'history', 'audit'],
   report: [
     'work',
     'usage',
@@ -28,6 +37,7 @@ const GROUPS: Record<string, string[]> = {
     'federation',
     'record',
     'signals',
+    'preferences',
   ],
 };
 

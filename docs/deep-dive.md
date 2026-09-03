@@ -109,23 +109,27 @@ Run `ambit` with no arguments and it shows where the environment stands; `ambit 
 
 ```
            seed · briefing [--json|--peek] · status · next [n] · help [term]
-graph      impact <id> · catalog <cap> · where · skills
+graph      impact <id> · catalog <cap> · where · skills · objects [target]
            share [--redact] [--out=path] · sync export|import <path>
            graph [surface|combos|affordances]
 plan       goal <cap-or-sentence> [--paths|--simulate|--prefs] · next [n]
+           reversible
            opportunities [--by=…] [--budget=N] · opportunity <id>
            propose <cap> [option] · roi [proposal-id] · portfolio [--budget=N]
-check      verify [cap] [--history] · authority [cap] [scope <target>]
-           authority promote [<cap> <action> --after=N --window=30d --by=<person>]
+check      verify [cap] [--history] [--target=<object>]
+           authority [cap] [scope <target>]
+           authority promote [<cap> <action> --after=N --window=30d --scope=X --by=<person>]
+           authority sandbox [<target> --by=<person>] · budget [set|clear]
            can <cap> [--target X] [--spend N] · credentials
            incidents · incident resolve <svc> <outcome>
-govern     proposals · proposal <id> · approve <id> <person>
+govern     proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
+           reject <id> <person> ["why"]
            apply <id> · rollback <id> · history [since <when>]
            audit [run|prop|human|days]
 report     work [limit] · usage [days] · economics · attention [days]
            digest [days] · notify <topic> · notify-approvals <topic>
            record <cap> [class] [note] · record skill:<name> --provides= --verify=
-           signals [days] · federation export|import
+           signals [days] · preferences [--observed] · federation export|import
 ```
 
 Two more sit outside the groups because they start a process rather than answer a question: `ambit web` opens the visualiser (it needs a checkout — an installed copy carries no dev dependencies) and `ambit mcp` runs the MCP server.
@@ -156,6 +160,13 @@ Two more sit outside the groups because they start a process rather than answer 
 | `ambit authority promote <cap> <action> --after=N --by=<person>` | The threshold that widens a grant once its evidence supports it. A person sets it once; a single failing check afterwards puts the grant back, with nobody asked |
 | `ambit record skill:<name> --provides=<cap> --verify="<cmd>"` | Put a skill the agent wrote on the map, with the read-only check that proves it. The check is required and runs immediately |
 | `ambit signals [days]` | Failures observed without anyone recording them, by class and by tool — including the ones no capability could be attributed to |
+| `ambit objects [target]` | What may be done to a particular thing, and what has been proved about doing it *there*. Evidence about one repository is not a claim about another |
+| `ambit authority sandbox <target> --by=<person>` | Somewhere acting does not matter. Confirmation is relaxed inside it; a refusal never is, because rehearsing a forbidden action would be a way round it |
+| `ambit budget set <cap> --amount=$20 --by=<person>` | Standing spend that needs no person. When it is spent the answer goes back to asking, which is what makes a ceiling safer than approving each purchase |
+| `ambit reversible` | Which unreached capabilities could be acquired without a person, and which need hands. The same list, read backwards, is what an agent can never do for itself |
+| `ambit reject <id> <person> ["why"]` | A refusal, recorded. Approval was always written to the graph and refusal was not, so nothing could learn the shape of a no |
+| `ambit preferences [--observed]` | What someone declared they prefer, or what they have actually approved and refused |
+| `ambit proposals --pending` | The drafts waiting on a decision, each with cost, bill and what it unlocks — so approving is one sitting rather than one interruption per proposal |
 
 Every command prints for a person by default and takes `--json` for scripts.
 
@@ -386,7 +397,12 @@ Propose    ambit_blocked ambit_deficits ambit_simulate ambit_propose ambit_propo
 
 Session    ambit_briefing ambit_next ambit_record_failure ambit_signals
            ambit_register_skill ambit_skills ambit_promotions
+
+Expand     ambit_objects ambit_budgets ambit_reversible ambit_preferences_observed
+           ambit_pending
 ```
+
+The expand group is §13: what may be done to a particular object, what may be spent without asking, what would have to be written for an acquisition to need no person, what this person actually approves, and what is waiting on them right now. All read-only. Widening authority is a person's act throughout, and an agent that could grant itself more would make the distinction meaningless.
 
 One resource sits beside the tools: `ambit://briefing`, which a client reads on
 connect. A tool has to be thought of; a resource arrives unasked, which is the

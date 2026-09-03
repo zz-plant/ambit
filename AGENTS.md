@@ -45,6 +45,10 @@ src/engine/next.ts         What to reach next and why — observed blocks, then 
 src/engine/failures.ts     Failures the runtime already reported, classified and attributed
 src/engine/skills.ts       Skills the agent wrote, registered with the check that proves them
 src/engine/sync.ts         The graph and ledger as one file — no commands, no grants
+src/engine/budgets.ts      Standing spend: delegated authority with a ceiling
+src/engine/objects.ts      What may be done to what, and what is proved there
+src/engine/observed.ts     What a person actually approves, from approvals and refusals
+src/engine/reversibility.ts  What could be acquired without a person, and what could not
 src/engine/planning.ts     The gap to a capability, and simulating closing it
 src/engine/goals.ts        Routing a free-form goal into the graph, and comparing its paths
 src/engine/governance.ts   Approval, apply, rollback — everything that can change the world
@@ -68,7 +72,8 @@ src/engine/testing/        The shared test harness: a throwaway graph, driven in
 src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority,
                            session_learning, frontier_snapshots, proposals, schema_meta,
                            work ledger, economics, goals, budgets, federation_imports,
-                           failure_signals, declared_checks)
+                           failure_signals, declared_checks, sandboxes,
+                           proposal_rejections)
 src/control_plane/proxy.ts Autonomous control plane interceptor, DAG gate & OpenTelemetry trace logger
 src/control_plane/cli.ts   Control plane CLI execution wrapper
 src/mcp/tools.ts           What a tool is — the catalogue, as pure data. No engine imports
@@ -147,4 +152,6 @@ worktree rather than sharing this one.
 7. **Availability**: `state` is structural and is what the frontier ledger records — never change it to express verification. The gate is `lifecycle`: a capability whose lifecycle is `degraded` or `broken` is configured but not working, and every availability decision (plan, simulate, goal, authority, actions, canExecute, near, combos, bottlenecks, spof, deficits, opportunities, roi, status) must exclude it via `usable(lifecycle)`. Never write a state-only availability check; it silently re-admits broken capabilities. New snapshot columns (e.g. `lifecycles`) go through `ADDED_COLUMNS` in `migrate.ts`.
 8. **Nothing that travels may execute.** A registered skill's check is a command, so `ambit sync export` carries the skill node and not its check, and `ambit sync import` never writes `declared_checks`. The same rule already keeps `config_patch` declarative and keeps entry creation off the HTTP API: a command inside a data file is a command that runs on whoever opens it. An authority grant does not travel either — importing one would let a permissive machine widen a careful one by moving a file.
 9. **Classification belongs to the engine, not the bridge.** A telemetry bridge reports what a runtime said about a failure — exit code, message, error kind — and `src/engine/failures.ts` decides what it means. A bridge that judges for itself what counts as a permission error is a second copy of that rule, and the two will disagree within a release. A failure whose shape says nothing stays unclassified; never guess.
-10. **Promotion needs a person; demotion needs nobody.** A grant only widens against a threshold someone set in advance (`promote_set_by` records who), never against evidence alone, and never on a `forbidden` grant. It narrows on a single failing check with no one asked. Compare the failing evidence against the row id recorded at promotion, not the timestamp — `datetime('now')` resolves to the second, and a check that fails in the same second would compare as "not after it".
+10. **Authority resolution is two rules, in order.** A forbidden grant wins outright at any specificity — a narrower scope must never be a route to something refused. Among what is left, the most specific covering scope governs, ties going to the narrower mode. Never collapse this back to narrowest-wins alone: under that rule a grant saying "autonomous on staging" can never beat a standing "confirm everywhere", and the trade of blast radius for autonomy becomes inexpressible. A sandbox relaxes confirmation and never a refusal, for the same reason.
+11. **Only checks count as failures.** Promotion counts passing checks and successful uses; a failed run is not evidence that a capability failed, and attributing a run's outcome to everything it touched would demote whatever a bad afternoon went near. Use carries no object, so it never counts toward a scoped threshold.
+12. **Promotion needs a person; demotion needs nobody.** A grant only widens against a threshold someone set in advance (`promote_set_by` records who), never against evidence alone, and never on a `forbidden` grant. It narrows on a single failing check with no one asked. Compare the failing evidence against the row id recorded at promotion, not the timestamp — `datetime('now')` resolves to the second, and a check that fails in the same second would compare as "not after it".

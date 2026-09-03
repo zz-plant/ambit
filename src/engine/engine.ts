@@ -41,7 +41,14 @@ export {
   setPromotion,
   evaluatePromotions,
   promotionReport,
+  suggestPromotions,
+  declareSandbox,
+  removeSandbox,
 } from './assurance.ts';
+export { setBudget, budgetReport, clearBudget } from './budgets.ts';
+export { reversibilityReport } from './reversibility.ts';
+export { observedPreferences, observedReport, preferredOption } from './observed.ts';
+export { objectReport, knownObjects } from './objects.ts';
 export { briefing, briefingText } from './briefing.ts';
 export { nextSteps, nextLines } from './next.ts';
 export { classifySignal, captureFailure, signalReport } from './failures.ts';
@@ -62,6 +69,7 @@ export {
   digestMessage,
   notify,
   pendingApprovals,
+  pendingDrafts,
   pendingMessage,
   notifyPending,
 } from './attention.ts';
@@ -95,6 +103,9 @@ export {
   listProposals,
   showProposal,
   approveProposal,
+  approveProposals,
+  rejectProposal,
+  pendingProposals,
   inverseOf,
   applyProposal,
   rollbackProposal,

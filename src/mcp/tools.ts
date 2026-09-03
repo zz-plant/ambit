@@ -521,6 +521,36 @@ const BASE_TOOLS = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'objects',
+    description:
+      'What may be done to a particular thing, and what has been proved about doing it there. Ask before touching a target you have not touched: evidence about one repository is not a claim about another, which is the whole reason objects are named. With no target, the objects the graph knows.',
+    inputSchema: { type: 'object', properties: { target: { type: 'string' } } },
+  },
+  {
+    name: 'budgets',
+    description:
+      'Standing budgets: what may be spent without asking, on what, and how much is left this period. A budget is delegated authority with a ceiling, so an action inside it does not need a person. Read-only from here; a person sets one on the CLI.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'reversible',
+    description:
+      'Which unreached capabilities could be acquired without a person, and which need hands. apply refuses any step with no computed inverse, so this is also the list of what an agent cannot do for itself. Use it to say which contribution to the model would buy the most autonomy.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'preferences_observed',
+    description:
+      'What this person has actually approved and turned down, by trait: local or hosted, one-off or recurring. A trait needs three decisions before it counts, and one that has gone both ways is reported as contested rather than settled. ambit_propose already drafts against this; read it to explain a draft.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'pending',
+    description:
+      'Drafts waiting on a person, each with what it would cost, what it bills, and what it unlocks — the reading a person would otherwise have to do per proposal. Surface these together rather than one at a time: every acquisition costs one interruption, and a batch is one sitting.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'promotions',
     description:
       "Authority thresholds: which grants a person has said may widen on evidence, how much evidence each still needs, and what has already been promoted or put back. Setting a threshold is a person's act on the CLI — an agent can read this, never set it.",

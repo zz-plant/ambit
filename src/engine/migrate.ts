@@ -61,6 +61,14 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ['authority', 'promote_set_by', 'TEXT'],
   ['authority', 'promoted_at', 'TEXT'],
   ['authority', 'promoted_on_evidence', 'TEXT'],
+  // A budget is a standing grant with a ceiling, so it has to know when its
+  // period began or "20 dollars a month" silently means "20 dollars ever".
+  ['budgets', 'period_start', 'TEXT'],
+  ['budgets', 'granted_by', 'TEXT'],
+  // The object an observation was about. An action has no object in the model
+  // yet; this is where evidence starts carrying one, so *read repository A* and
+  // *read repository B* stop being the same recorded fact.
+  ['session_learning', 'object', 'TEXT'],
 ];
 
 function addMissingColumns(db: Migratable) {

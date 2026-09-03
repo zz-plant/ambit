@@ -34,6 +34,7 @@ Each section below ends with what it still lacks. This is that ending, collected
 | 10 | A second-generation MCP | partly built | A capability with no declared check applies unverified, reported rather than refused. |
 | 11 | The visualiser as a negotiating surface | built and shipping | Only the state and run subset of AG-UI; no tool-call or reasoning events, by design. |
 | 12 | The long-running agent | built, except the install | The briefing, passive capture, the one-question contract, the curriculum, registered skills, promotion on evidence, the travelling ledger. What remains is §12.9: the package is not on the registry, so every path in still starts with a checkout. |
+| 13 | Expanding the ambit | built | What makes the loop widen rather than only report: evidence from real work, a threshold the graph asks for, scope traded for mode, a sandbox, standing budgets, reversibility as the growth lever, learning from refusals, and actions that carry objects. |
 
 ---
 
@@ -353,7 +354,9 @@ Also built: authority derived from the runtime that would execute the step. Herm
 
 And the granularity the section asked for. The `docker-container-management` sketch above — inspect autonomous, recreate confirm, change_mount forbidden — is expressible now that a capability's contract actions are nodes with their own authority.
 
-Unbuilt: nothing enforces any of this. Ambit describes authority, it does not mediate action. Scope is recorded and unchecked.
+Scope now decides rather than merely being reported (§13.3). Two rules, in order: a forbidden grant wins outright at any specificity, and among the rest the most specific covering scope governs, ties going to the narrower mode. That is what makes *yes, on staging* expressible — under narrowest-wins alone, a grant saying "autonomous on staging" could never beat the standing "confirm everywhere", so the trade of a smaller blast radius for unattended operation bought nothing and nobody offered it.
+
+Unbuilt: Ambit still describes authority rather than mediating action everywhere. The control plane consults the gate; nothing forces a runtime to.
 
 ## 10. A second-generation MCP — partly built
 
@@ -396,7 +399,7 @@ An apply now re-seeds, so the graph reflects the change immediately rather than 
 
 What remains: a capability with no declared check applies unverified, which is reported rather than hidden — the honest answer to "did this work" is "it cannot say". Refusing unverified applies outright would break the acquisition path for every capability whose recipe is not a check, so it stays a report until executable verification per recipe (§3's multi-step remainder) can back it.
 
-Built: the surface is 55 tools where it was 17 analytical ones, adding `ambit_verify`, `ambit_evidence`, `ambit_authority`, `ambit_actions`, `ambit_plan`, `ambit_since`, `ambit_ledger`, `ambit_blocked` and `ambit_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent. `ambit_actions` is the one an agent should reach for before acting: `ambit_authority` answers at the capability grain, and permission is per action.
+Built: the surface is 60 tools where it was 17 analytical ones, adding `ambit_verify`, `ambit_evidence`, `ambit_authority`, `ambit_actions`, `ambit_plan`, `ambit_since`, `ambit_ledger`, `ambit_blocked` and `ambit_deficits` — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent. `ambit_actions` is the one an agent should reach for before acting: `ambit_authority` answers at the capability grain, and permission is per action.
 
 Unbuilt: everything that changes the world. `ambit_simulate` and `ambit_propose` exist; there is no `apply_step`, `request_approval` or `rollback` over MCP, and that is a decision rather than a gap (§10's second paragraph above). Ambit still only describes.
 
@@ -523,6 +526,64 @@ session starts → briefing (12.1) → agent asks before acting (12.3)
 
 The arrows exist now. What does not is §12.9: until the package is on the registry, an agent that decides Ambit would help still cannot act on that decision without a checkout, which is the one remaining reason this loop stays a thing you set up rather than a thing you install.
 
+## 13. Expanding the ambit — built
+
+§12 puts Ambit in front of the agent at the moment friction happens. It does not, on its own, make anything grow. An agent can now notice a gap, name it, ask about it and be told no, and the environment is exactly as capable at the end of that as at the start.
+
+What decides whether the loop widens is elsewhere, and mostly not in the agent. Every acquisition costs one human interruption, so the growth rate is the number of proposals multiplied by the odds of a yes, divided by what saying yes costs — and only the last term is easy to change. The other half is that the evidence which earns autonomy was synthetic: a threshold counted `ambit verify` runs, which are self-tests the agent triggers, while the ledger recorded the capability doing the actual job and none of it counted.
+
+Nine changes, all built, all with acceptance tests in `src/engine/expansion.test.ts`.
+
+### 13.1 The graph asks for the threshold
+
+§12.6 built the mechanism for widening a grant on evidence and left a person to think of using it. The interruption a threshold would end is precisely what stops anyone noticing it could: someone confirming the same action for the eleventh time is not, at that moment, reflecting on the shape of their week.
+
+So the graph says it. `ambit authority promote` with no arguments reports `worth_promoting`: grants confirmed by hand three or more times in the window, with clean evidence and no threshold set, each with the command that would end the asking and the note that `--scope` buys the same thing for one target only. It suggests and never acts. An agent that could set its own threshold would be granting itself authority through a side door, so this stays a report and the setting stays on the CLI.
+
+### 13.2 Real work counts as evidence
+
+A threshold now counts passing checks *and* successful uses: the capability exercised inside a run that achieved its outcome. The second is the stronger claim and accrues without anyone asking for it, so an environment where the work succeeds daily no longer has to run synthetic checks to earn the trust it has already demonstrated.
+
+Only checks count against. A run that failed is not evidence that a capability failed, and attributing a whole run's outcome to everything it touched would demote whatever a bad afternoon went near. Scoped thresholds count checks only, because use carries no object and work done anywhere must not earn authority somewhere specific.
+
+### 13.3 Scope traded for mode
+
+The real negotiation is rarely yes or no. It is *yes, on staging*. `--scope` on a promotion writes a new grant for that target and leaves the standing one untouched, so what was widened is legible as its own row rather than hidden as an edit to the general case. The resolution rule that makes it mean anything is in §9 above.
+
+### 13.4 Somewhere to practise
+
+Between asking a person and acting on the world sits acting where the consequences are contained, and nothing in the model let anyone say where that is. `ambit authority sandbox <target> --by=<person>` declares one. Confirmation is relaxed inside it; a refusal never is. Rehearsing a forbidden action in a sandbox would be a way round the refusal rather than a way to earn past it.
+
+The point is the evidence. Practice ground is where a scoped threshold gets met cheaply, which is the intended path: practise in staging, earn staging.
+
+### 13.5 A ceiling instead of a gate
+
+Budgets have existed since the decision API needed one and could only be written by the code recording spend, so the ceiling was real and the delegation was not. `ambit budget set <cap> --amount=$20 --by=<person>` grants standing spend. Inside it, a paid action stops costing a person their attention; when it is spent the answer goes back to asking, with nobody having to notice. A period elapsing is treated as spent-nothing on read, because *per month* has to mean per month even when the first call after the turn is a question, and a decision API that wrote to the database to answer one would be a strange thing to put in front of every action.
+
+### 13.6 Reversibility as the growth lever
+
+`ambit apply` refuses any step without a computed inverse. Read the other way round, that refusal is the exact list of what the agent can never do for itself. `ambit reversible` publishes both halves: the unreached capabilities whose acquisition is already a declarative patch, and the ones that are manual only because nobody has written one — separating "the recipes exist and none is a config change" from "no acquisition recipe at all", which are different pieces of work. It is the most direct answer to what a contribution to this repository would buy.
+
+### 13.7 Learning from the refusals
+
+Approval was recordable from the first version and refusal was not, so the graph's memory of decisions was one-sided and it was the wrong side: a list of yeses cannot tell you what a no looks like. `ambit reject <id> <person> "why"` records the other half.
+
+`ambit preferences --observed` reads both: which traits — local or hosted, one-off or recurring — this person has actually accepted and refused. A trait needs three decisions before it counts, and one that has gone both ways is reported as contested rather than settled by majority, because a person who approved two hosted services and refused two others has a rule this cannot see. `ambit propose` drafts the alternative the record favours and names why, so the default is arguable rather than mysterious.
+
+### 13.8 The cost of a yes
+
+`ambit proposals --pending` and the approval push now carry the decision instead of announcing that one exists: goal, cost, recurring bill, what it unlocks, whether it is applicable. A push saying "two proposals await you" is a second interruption before the first can be answered. `ambit approve` takes several ids and one name, because a person reading a week's drafts together approves more of them than a person interrupted once per draft. Each still gets its own signed artifact, and apply still runs one at a time so a failed verification rolls back that one rather than the batch.
+
+### 13.9 Actions carry objects
+
+The move §12 named as next, in the slice that pays first. Authority and evidence can now refer to an object: `ambit verify <cap> --target=<object>` files the result against that object, `ambit objects <target>` reports what may be done to one thing and what has been proved about doing it there, and a decision about a target carries `evidence_here`. The object vocabulary is the one scope already used — `repo:owner/name`, `env:staging`, `device:nuc` — read at last as what it always was, a claim about a thing.
+
+The era tree is untouched. Restructuring it around objects is a larger change and this is not it; what this establishes is that an agent which has committed to one repository forty times has proved nothing about the next one, and that the graph can now say so.
+
+### What §13 adds up to
+
+Section 12 made the agent aware. This is what makes awareness compound: evidence that accrues from the work itself, a person who is asked once for a threshold instead of eleven times for a confirmation, a smaller blast radius as something purchasable, somewhere to practise, a ceiling that fails back to asking, and a record of what this person actually says yes to.
+
 ---
 
 ## What this is optimising
@@ -601,11 +662,11 @@ supports decisions, and governs change.
 
 ## Honest status
 
-Sections 1, 5, 6, 7, 9 and 11's state stream are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder. Section 12 is built but for the npm publish it waits on, and it is the part that decides whether a long-running agent ever reaches for the rest: a briefing it does not have to ask for, deficits recorded from failures the runtime already reported, one cheap question before acting, and authority that widens on evidence a person set the price of in advance.
+Sections 1, 5, 6, 7, 9, 11's state stream and 13 are built, with their remaining edges recorded under each. Sections 2, 3, 4, 8 and 10 have most of their substance built and a named remainder. Section 12 is built but for the npm publish it waits on, and it is the part that decides whether a long-running agent ever reaches for the rest: a briefing it does not have to ask for, deficits recorded from failures the runtime already reported, one cheap question before acting, and authority that widens on evidence a person set the price of in advance.
 
 The through-line in what remains is enforcement and objects. Ambit can now say what may be done, by whom, with what, on what evidence, and — since scope became checkable — whether a grant covers a given target. It still does not stop anything, and the target is a string the grant is compared against rather than something the action holds.
 
-That last distinction is the next architectural move, and it is not another object type: the object types are largely in place. What none of them expresses is that an action has no object. Every entry on the list the graph will eventually need — read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only — is a verb bound to a noun, and Ambit has only the verbs. Once actions carry objects, authority and evidence can refer to them per object, and the era tree stops being the ontology and becomes what it should be: a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist.
+That last distinction was the next architectural move, and §13.9 takes the first half of it: authority and evidence now refer to objects, so *read repository A* and *read repository B* are different recorded facts even though they are still the same node. What remains is the tree itself. Every entry on the list the graph will eventually need — read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only — is a verb bound to a noun, and Ambit has only the verbs. Once actions carry objects, authority and evidence can refer to them per object, and the era tree stops being the ontology and becomes what it should be: a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist.
 
 The economic half above is built through its first turn — the work ledger prices attention, the opportunity engine ranks the durable fixes, and realized ROI writes the verdict back. What it has not yet had is a long enough run of real observations to be worth trusting: those reports start empty and become useful after weeks of recorded work, not on install.
 

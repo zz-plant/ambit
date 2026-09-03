@@ -24,7 +24,13 @@ import {
   canExecute,
   setPromotion,
   promotionReport,
+  declareSandbox,
+  removeSandbox,
 } from './assurance.ts';
+import { setBudget, budgetReport, clearBudget } from './budgets.ts';
+import { reversibilityReport } from './reversibility.ts';
+import { observedReport } from './observed.ts';
+import { objectReport } from './objects.ts';
 import { briefing, briefingText } from './briefing.ts';
 import { nextSteps } from './next.ts';
 import { signalReport } from './failures.ts';
@@ -45,7 +51,10 @@ import { catalogReport } from './catalog.ts';
 import { auditFor } from './audit.ts';
 import {
   approveProposal,
+  approveProposals,
+  rejectProposal,
   listProposals,
+  pendingProposals,
   showProposal,
   applyProposal,
   rollbackProposal,
@@ -87,8 +96,35 @@ async function runCommand(
     case 'signals':
       emit(signalReport(db, Number(arg) || undefined));
       break;
+    case 'preferences':
+      // Declared, or observed: what someone said they want, and what they have
+      // actually approved. The second is the one a draft should read.
+      emit(flags.has('--observed') ? observedReport(db) : preferencesReport(db, arg));
+      break;
     case 'skills':
       emit(registeredSkills(db));
+      break;
+    case 'budget': {
+      if (arg === 'set')
+        emit(
+          setBudget(db, {
+            capability: positional[1],
+            action: positional[2],
+            amount: value('amount'),
+            period: value('period'),
+            scope: value('scope'),
+            person: value('by'),
+          })
+        );
+      else if (arg === 'clear') emit(clearBudget(db, positional[1], positional[2], value('scope')));
+      else emit(budgetReport(db));
+      break;
+    }
+    case 'reversible':
+      emit(reversibilityReport(db));
+      break;
+    case 'objects':
+      emit(objectReport(db, arg));
       break;
     case 'sync': {
       if (arg === 'export') emit(exportSync(db, positional[1]));
@@ -202,14 +238,19 @@ async function runCommand(
             : { error: 'Usage: ambit verify <id> --history' }
         );
       } else {
-        emit(runVerification(db, arg));
+        emit(runVerification(db, arg, value('target')));
       }
       break;
     case 'authority': {
       // Grants, then per-capability actions, then scope coverage, then the
       // thresholds that widen a grant on evidence — one verb.
       if (arg === 'scope') emit(scopeReport(db, positional[1]));
-      else if (arg === 'promote') {
+      else if (arg === 'sandbox') {
+        // Somewhere acting does not matter, so evidence can be gathered where
+        // a mistake costs nothing.
+        if (positional[1] === 'remove') emit(removeSandbox(db, positional[2]));
+        else emit(declareSandbox(db, positional[1], value('by'), positional[2]));
+      } else if (arg === 'promote') {
         if (!positional[1]) emit(promotionReport(db));
         else
           emit(
@@ -218,6 +259,7 @@ async function runCommand(
               action: positional[2],
               after: value('after'),
               window: value('window'),
+              scope: value('scope'),
               person: value('by'),
             })
           );
@@ -247,13 +289,23 @@ async function runCommand(
       emit(propose(db, arg, Number(positional[1]) || undefined));
       break;
     case 'proposals':
-      emit(listProposals(db));
+      // What exists, or what is actually waiting on a decision.
+      emit(flags.has('--pending') ? pendingProposals(db) : listProposals(db));
       break;
     case 'proposal':
       emit(showProposal(db, arg));
       break;
-    case 'approve':
-      emit(approveProposal(db, arg, positional[1]));
+    case 'approve': {
+      // The last positional is the person; everything before it is a proposal.
+      // Approving a week's drafts in one sitting is the difference between an
+      // environment that grows and a backlog nobody opens.
+      const ids = positional.slice(0, -1);
+      const person = positional[positional.length - 1];
+      emit(ids.length > 1 ? approveProposals(db, ids, person) : approveProposal(db, arg, person));
+      break;
+    }
+    case 'reject':
+      emit(rejectProposal(db, arg, positional[1], positional[2]));
       break;
     case 'apply':
       emit(applyProposal(db, arg));

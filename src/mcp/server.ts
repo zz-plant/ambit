@@ -64,6 +64,11 @@ import {
   registerSkill,
   registeredSkills,
   promotionReport,
+  objectReport,
+  budgetReport,
+  reversibilityReport,
+  observedReport,
+  pendingProposals,
 } from '../engine/engine.ts';
 
 const DB_PATH = resolveDbPath();
@@ -334,6 +339,21 @@ function handleLine(line: string) {
               break;
             case 'tt_promotions':
               res = tt(db => promotionReport(db));
+              break;
+            case 'tt_objects':
+              res = tt(db => objectReport(db, args?.target));
+              break;
+            case 'tt_budgets':
+              res = tt(db => budgetReport(db));
+              break;
+            case 'tt_reversible':
+              res = tt(db => reversibilityReport(db));
+              break;
+            case 'tt_preferences_observed':
+              res = tt(db => observedReport(db));
+              break;
+            case 'tt_pending':
+              res = tt(db => pendingProposals(db));
               break;
             case 'tt_roi':
               res = tt(db => roiFor(db, args.proposalId));

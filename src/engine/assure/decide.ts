@@ -54,6 +54,43 @@ function narrower(a: string, b: string): string {
 }
 
 /**
+ * How specific a scope claim is. An empty scope claims everything and is the
+ * least specific thing a grant can say.
+ */
+function specificity(scope?: string): number {
+  if (!scope) return 0;
+  return scope.split(/[:/]/).filter(Boolean).length;
+}
+
+/**
+ * Which grants decide, when several cover the same action.
+ *
+ * Narrowest-wins was the whole rule, and it made the useful negotiation
+ * inexpressible. What a person actually says is rarely yes or no; it is *yes,
+ * on staging* — and under narrowest-wins a grant saying "autonomous on
+ * staging" could never beat the standing "confirm everywhere", so the trade of
+ * a smaller blast radius for unattended operation bought nothing.
+ *
+ * The rule is therefore two rules, in this order:
+ *
+ *   1. A forbidden grant wins outright, at any specificity. What was refused
+ *      is refused, and a narrower scope must never be a way to reach it.
+ *   2. Among what is left, the most specific covering scope decides, because a
+ *      grant written about this exact target is a later and better-informed
+ *      statement than one written about everything. Ties go to the narrower
+ *      mode, which is the old rule doing the job it was right for.
+ */
+function governingMode(covering: Array<{ mode: string; scope?: string }>): string {
+  if (!covering.length) return 'forbidden';
+  if (covering.some(g => g.mode === 'forbidden')) return 'forbidden';
+  const mostSpecific = Math.max(...covering.map(g => specificity(g.scope)));
+  return covering
+    .filter(g => specificity(g.scope) === mostSpecific)
+    .map(g => g.mode)
+    .reduce(narrower);
+}
+
+/**
  * Whether a scope covers a target.
  *
  * Scope is a prefix claim: `repo:owner/name` covers `repo:owner/name` and
@@ -129,10 +166,15 @@ function canExecute(
     return true;
   });
 
-  const governing = covering.length
-    ? covering.map((g: any) => g.mode).reduce(narrower)
-    : 'forbidden';
+  const governing = governingMode(covering as any);
   const grant = covering.find((g: any) => g.mode === governing);
+
+  // A declared practice environment: somewhere the person has said acting does
+  // not matter. It relaxes a confirmation, never a refusal — rehearsing a
+  // forbidden action in a sandbox would be a way round the refusal rather than
+  // a way to earn past it.
+  const sandbox =
+    input.target && governing !== 'forbidden' ? sandboxCovering(db, input.target) : null;
   const scope =
     covering
       .filter(g => g.scope)
@@ -141,12 +183,20 @@ function canExecute(
 
   // Budget: declared, spent, remaining. No budget declared is no limit, and
   // the report says so rather than inventing one.
+  //
+  // An elapsed period is treated as spent-nothing without writing the reset.
+  // "Twenty dollars a month" has to mean per month even when the first call
+  // after the month turns over is a read, and a decision API that wrote to the
+  // database to answer a question would be a surprising thing to put in front
+  // of every action.
   const budget = db
     .prepare(
-      'SELECT budget_cents, spent_cents FROM budgets WHERE capability_id = ? AND action = ? AND scope = ? LIMIT 1'
+      `SELECT budget_cents, spent_cents, period, period_start
+       FROM budgets WHERE capability_id = ? AND action = ? AND scope = ? LIMIT 1`
     )
     .get(capability, action, scope || '');
-  const remaining = budget ? budget.budget_cents - budget.spent_cents : null;
+  const spent = budget ? (periodElapsed(db, budget) ? 0 : budget.spent_cents) : 0;
+  const remaining = budget ? budget.budget_cents - spent : null;
   const overBudget = input.spendCents != null && remaining != null && input.spendCents > remaining;
 
   // The lifecycle gate: configured but failing is not working, and permission
@@ -192,19 +242,79 @@ function canExecute(
     };
   }
 
+  const unattended = governing === 'autonomous' || Boolean(sandbox);
   return {
-    decision: governing === 'autonomous' ? 'ALLOW' : 'CONFIRM',
-    verdict: governing === 'autonomous' ? ('yes' as const) : ('ask' as const),
-    reason:
-      governing === 'autonomous'
+    decision: unattended ? 'ALLOW' : 'CONFIRM',
+    verdict: unattended ? ('yes' as const) : ('ask' as const),
+    reason: sandbox
+      ? `${input.target} is a sandbox ${sandbox.declared_by} declared, so ${cap.name} runs unattended there. It stays at confirm elsewhere.`
+      : governing === 'autonomous'
         ? `${cap.name} may run unattended for ${action}.`
         : `${cap.name} is permitted for ${action}, with a person in the loop. Ask before running it.`,
     capability,
     action,
     governing_grant: grant,
     scope,
+    sandbox: sandbox?.target,
+    // What this action has actually been proved to do to this object, as
+    // opposed to what it has been proved to do in general. Reading repository A
+    // is a different fact from reading repository B, and an answer about a
+    // target should say which one it has.
+    evidence_here: input.target ? objectEvidence(db, capability, action, input.target) : undefined,
     remaining_budget_cents: remaining,
   };
+}
+
+/** Whether a budget's period has rolled over since it was last reset. */
+function periodElapsed(db: Db, budget: { period?: string; period_start?: string | null }): boolean {
+  if (!budget.period_start) return false;
+  const days: Record<string, number> = { day: 1, week: 7, month: 30, quarter: 91, year: 365 };
+  const span = days[budget.period || 'month'] ?? 30;
+  const elapsed = db
+    .prepare("SELECT (julianday('now') - julianday(?)) AS days")
+    .get(budget.period_start)?.days;
+  return typeof elapsed === 'number' && elapsed >= span;
+}
+
+/** The declared sandbox covering a target, if one does. */
+function sandboxCovering(db: Db, target: string) {
+  try {
+    return (
+      db
+        .prepare('SELECT target, declared_by FROM sandboxes')
+        .all<{ target: string; declared_by: string }>()
+        .find(s => scopeCovers(s.target, target)) || null
+    );
+  } catch {
+    return null; // database predates the table
+  }
+}
+
+/**
+ * Passing and failing checks recorded against this action *on this object*.
+ *
+ * Evidence has always been per capability, which is the grain the curated model
+ * has. It is not the grain anyone acts at: an agent that has committed to one
+ * repository forty times has proved nothing about the next one. Recording the
+ * object is the first half of the roadmap's remaining architectural move, and
+ * this is where it is read.
+ */
+function objectEvidence(db: Db, capability: string, action: string, object: string) {
+  try {
+    const row = db
+      .prepare(
+        `SELECT SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passes,
+                SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
+                MAX(timestamp) AS last_seen
+         FROM session_learning
+         WHERE capability_id IN (?, ?) AND object = ? AND action IN ('verified','failed')`
+      )
+      .get(capability, `act:${capability.replace('combo:', '')}/${action}`, object);
+    if (!row?.passes && !row?.failures) return undefined;
+    return { passes: row.passes ?? 0, failures: row.failures ?? 0, last_seen: row.last_seen };
+  } catch {
+    return undefined;
+  }
 }
 
 /** Records spend against a budget, so the next canExecute sees it. */
@@ -215,4 +325,15 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
   ).run(capability, action, scope, cents);
   return { capability, action, spent_cents: cents };
 }
-export { MODE_RANK, narrower, scopeCovers, missingPrerequisites, canExecute, recordSpend };
+export {
+  MODE_RANK,
+  narrower,
+  specificity,
+  governingMode,
+  scopeCovers,
+  sandboxCovering,
+  objectEvidence,
+  missingPrerequisites,
+  canExecute,
+  recordSpend,
+};

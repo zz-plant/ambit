@@ -33,7 +33,11 @@ export {
 export {
   MODE_RANK,
   narrower,
+  specificity,
+  governingMode,
   scopeCovers,
+  sandboxCovering,
+  objectEvidence,
   missingPrerequisites,
   canExecute,
   recordSpend,
@@ -42,6 +46,9 @@ export {
   setPromotion,
   evaluatePromotions,
   promotionReport,
+  suggestPromotions,
+  declareSandbox,
+  removeSandbox,
   evidenceCount,
 } from './assure/promote.ts';
 export { authorityReport, actionsReport, scopeReport } from './assure/reports.ts';

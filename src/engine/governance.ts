@@ -5,6 +5,7 @@ import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
 import { seedFromConfig } from './discovery.ts';
 import { mintApproval, verifyApproval } from './approval.ts';
+import { pendingDrafts } from './attention.ts';
 
 /**
  * The inverse of a declarative config patch: remove exactly what it adds.
@@ -44,12 +45,86 @@ function inverseOf(patch: any, currentConfig: any): any | null {
  * authorised a given expansion of the frontier. Approving changes nothing
  * about the world; it changes what is permitted to change it.
  */
+/**
+ * Approves several proposals in one act.
+ *
+ * Not a convenience. Every acquisition costs one interruption, and a person who
+ * has to be interrupted once per proposal will approve fewer of them than a
+ * person who reads a week's drafts together — so the batch is the difference
+ * between an environment that grows and one that accumulates a backlog of
+ * unread documents. Each is still approved individually underneath, with its
+ * own artifact and its own recorded evidence; what is shared is the sitting
+ * down.
+ */
+function approveProposals(db: Db, ids: string[], who?: string) {
+  if (!ids.length) return { error: 'Usage: ambit approve <proposal-id> [<proposal-id>…] <person>' };
+  if (ids.length === 1) return approveProposal(db, ids[0], who);
+  const results = ids.map(id => ({ id, ...(approveProposal(db, id, who) as any) }));
+  const approved = results.filter(r => !r.error);
+  return {
+    approved: approved.length,
+    refused: results.length - approved.length,
+    results,
+    note: approved.length
+      ? 'Each carries its own signed artifact. Apply them one at a time — apply verifies, and rolls back the one that fails rather than the batch.'
+      : undefined,
+  };
+}
+
+/**
+ * Records that a person turned a proposal down, and why.
+ *
+ * Approval was recordable from the first version and refusal was not, which
+ * made the graph's memory of decisions one-sided: it could say what someone had
+ * agreed to and never what they had declined, so nothing could learn the shape
+ * of a no. The reason is optional and is the most valuable part of the row.
+ */
+function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: string) {
+  if (!proposalId) return { error: 'Usage: ambit reject <proposal-id> <person> ["why"]' };
+  const row = db.prepare('SELECT id, goal, status FROM proposals WHERE id = ?').get(proposalId);
+  if (!row) return { error: `No proposal ${proposalId}.` };
+  if (row.status === 'applied') {
+    return {
+      error: `${proposalId} has already been applied. ambit rollback ${proposalId} undoes it.`,
+    };
+  }
+  const humanId = who ? (who.startsWith('human:') ? who : `human:${who}`) : null;
+  if (!humanId) return { error: 'Name the person deciding: ambit reject <proposal-id> <person>' };
+  const person = db
+    .prepare("SELECT id, name FROM capabilities WHERE id = ? AND category = 'human'")
+    .get(humanId);
+  if (!person) {
+    return {
+      error: `${humanId} is not a person in the graph. Declare them in the actors block first.`,
+    };
+  }
+  db.prepare(
+    `INSERT INTO proposal_rejections (proposal_id, rejected_by, reason) VALUES (?, ?, ?)
+     ON CONFLICT(proposal_id) DO UPDATE SET rejected_by = excluded.rejected_by, reason = excluded.reason`
+  ).run(proposalId, humanId, reason ?? null);
+  db.prepare("UPDATE proposals SET status = 'rejected' WHERE id = ?").run(proposalId);
+  db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'rejected', 0, ?)"
+  ).run(humanId, `${proposalId}: ${row.goal}${reason ? ` — ${reason}` : ''}`);
+  return {
+    proposal: proposalId,
+    goal: row.goal,
+    rejected_by: person.name,
+    reason,
+    note: 'Recorded. A refusal teaches the next draft as much as an approval does — see ambit preferences --observed.',
+  };
+}
+
 function approveProposal(db: Db, proposalId?: string, who?: string) {
   if (!proposalId) return { error: 'Usage: ambit approve <proposal-id> <person>' };
   const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status === 'approved')
     return { error: `${proposalId} is already approved by ${row.approved_by}.` };
+  if (row.status === 'rejected')
+    return {
+      error: `${proposalId} was turned down. Draft a new one rather than re-approving this.`,
+    };
 
   const humanId = who ? (who.startsWith('human:') ? who : `human:${who}`) : null;
   if (!humanId) return { error: 'Name the person approving: ambit approve <proposal-id> <person>' };
@@ -94,6 +169,26 @@ function listProposals(db: Db) {
     .prepare('SELECT id, created_at, goal, status FROM proposals ORDER BY created_at DESC')
     .all();
   return rows.length ? rows : { note: 'No proposals. Create one with ambit propose <capability>.' };
+}
+
+/**
+ * The drafts waiting on a person, with what each would cost and buy.
+ *
+ * `listProposals` answers what exists. This answers what a person has to decide,
+ * which is a different list and a shorter one: an approval that needs the reader
+ * to open each proposal in turn is an approval that waits a week.
+ */
+function pendingProposals(db: Db) {
+  const drafts = pendingDrafts(db) as any[];
+  if (!drafts.length) {
+    return { note: 'Nothing waiting on you. ambit next suggests what is worth proposing.' };
+  }
+  return {
+    waiting: drafts.length,
+    drafts,
+    approve_all: `ambit approve ${drafts.map(d => d.id).join(' ')} <your name>`,
+    note: 'Approving several at once is one sitting rather than several interruptions; each still gets its own signed artifact. `ambit reject <id> <person> "why"` records a no, which teaches the next draft.',
+  };
 }
 
 function showProposal(db: Db, id?: string) {
@@ -338,7 +433,10 @@ function applyRemoval(db: Db, capId: string) {
 export {
   inverseOf,
   approveProposal,
+  approveProposals,
+  rejectProposal,
   listProposals,
+  pendingProposals,
   showProposal,
   applyProposal,
   rollbackProposal,

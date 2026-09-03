@@ -10,6 +10,7 @@ import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
 import { deriveLifecycles } from './lifecycle.ts';
 import { evaluatePromotions } from './promote.ts';
+import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
 
 /**
@@ -128,7 +129,7 @@ function evidenceFor(db: Db, id: string) {
     .all(id);
 }
 
-function runVerification(db: Db, which?: string) {
+function runVerification(db: Db, which?: string, target?: string) {
   // A registered skill is not in the curated model, so it is answered before
   // the model is consulted at all — otherwise `ambit verify skill:x` would say
   // no such capability about something the agent just put on the map.
@@ -227,6 +228,14 @@ function runVerification(db: Db, which?: string) {
     };
   });
 
+  // A check run against a named object is evidence about that object, not a
+  // second claim about the verb in general. Attaching it here rather than
+  // threading a parameter through every check keeps the runner unchanged: what
+  // changes is what the evidence is understood to be about.
+  if (target) {
+    for (const r of results) attachObject(db, r.id, target);
+  }
+
   // Evidence just changed, so what it is worth just changed too — and so has
   // what it earns. A threshold a person set in advance takes effect here
   // rather than waiting for someone to run a command named "promote".
@@ -255,6 +264,7 @@ function runVerification(db: Db, which?: string) {
     now_unavailable: nowUnavailable.length
       ? nowUnavailable.map((r: any) => ({ id: r.id, name: r.name, lifecycle: r.lifecycle }))
       : undefined,
+    object: target,
     gate: nowUnavailable.length
       ? 'these now read as degraded or broken — configured, but their check is failing. They are excluded from plans, simulations and authority until re-verified.'
       : undefined,

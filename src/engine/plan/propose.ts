@@ -13,6 +13,7 @@ import { usable } from '../assurance.ts';
 import { providersOf } from '../inference.ts';
 import { inverseOf } from '../governance.ts';
 import { economicCaseFor, opportunityFor } from '../opportunities.ts';
+import { preferredOption } from '../observed.ts';
 import { conflictForChosen, planFor } from './route.ts';
 
 // ─── Proposals ────────────────────────────────────────────────────────────────
@@ -157,11 +158,23 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
     /* no config is fine */
   }
 
+  // Which alternative to draft. An explicit option number is the person's
+  // choice and is obeyed. Without one, the record decides: a proposal drafted
+  // against what this person has actually approved before is likelier to be
+  // approved now, and a draft that is refused costs the same interruption as
+  // one that is accepted.
+  const chosenBecause: string[] = [];
   const steps = (plan.order || []).map((step: any) => {
     const options = step.options || [];
-    const chosen = options.length
-      ? options[Math.min(optionIndex ?? 0, options.length - 1)]
-      : undefined;
+    let index = 0;
+    if (optionIndex != null) {
+      index = Math.min(optionIndex, Math.max(options.length - 1, 0));
+    } else if (options.length > 1) {
+      const preferred = preferredOption(db, options);
+      index = preferred.index;
+      if (preferred.because && index !== 0) chosenBecause.push(preferred.because);
+    }
+    const chosen = options.length ? options[index] : undefined;
     return {
       id: step.id,
       name: step.name,
@@ -230,6 +243,9 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
     // needing an installer or a running service has no inverse, and a
     // proposal containing one stays a document.
     applicable: steps.every((s: any) => s.inverse),
+    // Named rather than silent: a default picked from someone's past decisions
+    // is a claim about them, and they should be able to argue with it.
+    chosen_because: chosenBecause.length ? chosenBecause[0] : undefined,
     note: steps.every((s: any) => s.inverse)
       ? 'Every step is a reversible config change. A person approves it (ambit approve), then ambit apply edits the config, re-seeds, and rolls back on a failed check.'
       : 'Draft only. A step without a computed inverse cannot be applied — it describes work a person does.',

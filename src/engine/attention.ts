@@ -272,17 +272,83 @@ function pendingApprovals(db: Migratable) {
   return rows;
 }
 
-/** The attention router's other message: an approved proposal awaits apply. */
+/** What a draft would cost and buy, from what the proposal already stored. */
+function draftSummary(row: any) {
+  let steps: any[] = [];
+  let simulated: any = {};
+  try {
+    steps = JSON.parse(row.steps);
+  } catch {}
+  try {
+    simulated = JSON.parse(row.simulated);
+  } catch {}
+  const seconds = steps.reduce((t: number, s: any) => t + (s.setup_seconds || 0), 0);
+  const recurring = steps.map((s: any) => s.recurring_cost).filter(Boolean);
+  const unlocks = (simulated.unblocked || []).map((u: any) => u.name);
+  return {
+    id: row.id,
+    goal: row.goal,
+    cost: seconds >= 3600 ? `${(seconds / 3600).toFixed(1)}h` : `${Math.round(seconds / 60)}m`,
+    recurring: recurring.length ? recurring.join(', ') : undefined,
+    privacy: steps.map((s: any) => s.privacy).find(Boolean),
+    unlocks: unlocks.length ? unlocks : undefined,
+    applicable: steps.length > 0 && steps.every((s: any) => s.inverse),
+  };
+}
+
+/**
+ * Drafts a person has not decided on, with what each would cost and buy.
+ *
+ * The rate at which an environment grows is the number of proposals multiplied
+ * by the odds of a yes, divided by what saying yes costs. Only the last term is
+ * easy to change, and most of it is the person having to open a terminal, read
+ * a proposal, and reconstruct what it was for. This is that reading, done in
+ * advance.
+ */
+function pendingDrafts(db: Migratable) {
+  const rows = db
+    .prepare(
+      "SELECT id, goal, steps, simulated, created_at FROM proposals WHERE status = 'draft' ORDER BY created_at ASC"
+    )
+    .all<any>();
+  return rows.map(draftSummary);
+}
+
+/**
+ * The attention router's other message: what is waiting on a person, and what
+ * it would take to decide.
+ *
+ * Carries the decision, not a notification that a decision exists. A push
+ * saying "two proposals await you" is a second interruption before the first
+ * one can be answered; a push carrying the goal, the cost and what it unlocks
+ * can be decided on a phone and applied later.
+ */
 function pendingMessage(db: Migratable): string {
   const pending = pendingApprovals(db);
-  if (pending.length === 0) return 'Ambit: no approved proposals waiting on you.';
-  const lines = [
-    `Ambit · ${pending.length} approved proposal${pending.length === 1 ? '' : 's'} await apply`,
-  ];
-  for (const p of pending.slice(0, 5)) {
-    lines.push(`  ${p.id}: ${p.goal}${p.approved_at ? ` (approved ${p.approved_at})` : ''}`);
+  const drafts = pendingDrafts(db);
+  if (pending.length === 0 && drafts.length === 0) return 'Ambit: nothing waiting on you.';
+  const lines: string[] = [];
+  if (drafts.length) {
+    lines.push(`Ambit · ${drafts.length} draft${drafts.length === 1 ? '' : 's'} waiting on you`);
+    for (const d of drafts.slice(0, 5)) {
+      const buys = d.unlocks ? `, unlocks ${d.unlocks.slice(0, 3).join(', ')}` : '';
+      const bill = d.recurring ? `, ${d.recurring}` : '';
+      lines.push(`  ${d.id}: ${d.goal} — ${d.cost}${bill}${buys}`);
+    }
+    lines.push(
+      `Approve: ambit approve ${drafts
+        .slice(0, 3)
+        .map(d => d.id)
+        .join(' ')} <your name>`
+    );
   }
-  lines.push('Review with ambit proposal <id>, then ambit apply <id> — approvals expire.');
+  if (pending.length) {
+    lines.push(
+      `${pending.length} approved proposal${pending.length === 1 ? '' : 's'} await apply:`
+    );
+    for (const p of pending.slice(0, 5)) lines.push(`  ${p.id}: ${p.goal}`);
+    lines.push('Apply with ambit apply <id> — approvals expire.');
+  }
   return lines.join('\n');
 }
 
@@ -315,4 +381,12 @@ async function notifyPending(db: Migratable, topic?: string): Promise<any> {
   }
 }
 
-export { humanDigest, digestMessage, notify, pendingApprovals, pendingMessage, notifyPending };
+export {
+  humanDigest,
+  digestMessage,
+  notify,
+  pendingApprovals,
+  pendingDrafts,
+  pendingMessage,
+  notifyPending,
+};
