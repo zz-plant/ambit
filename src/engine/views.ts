@@ -10,6 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
+import { REACHED_SQL } from './vocabulary.ts';
 import {
   NODE_TYPES,
   PROPOSAL_STATUSES,
@@ -135,9 +136,13 @@ export function graphSummary(db: Db): { reached: number; total: number; observat
     observations = 0;
   try {
     const counts = db
+      // Counted the same way every other surface counts it. This said
+      // `state != 'locked'`, which agrees with the rest only because a third
+      // state has never been added — and would have diverged silently the day
+      // one was.
       .prepare(
-        "SELECT COUNT(*) AS total, SUM(CASE WHEN state != 'locked' THEN 1 ELSE 0 END) AS reached" +
-          ' FROM capabilities'
+        `SELECT COUNT(*) AS total, SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) AS reached
+         FROM capabilities`
       )
       .get();
     total = counts?.total ?? 0;

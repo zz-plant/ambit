@@ -19,8 +19,15 @@
  * as data. `content` stays, because a client that predates structured output
  * still reads it, and because a person tailing the transcript can read JSON.
  */
-function toolResult(value: unknown) {
-  const text = JSON.stringify(value, null, 2);
+function toolResult(value: unknown, notice?: string) {
+  // A notice rides on the human-readable half only. It used to be merged into
+  // the value itself, which moved every tool's actual answer under a `result`
+  // key whenever the graph happened to be unseeded — so the typed surface
+  // changed shape depending on the state of a database, and a client reading
+  // `structuredContent.verdict` got undefined on a fresh machine.
+  const text = notice
+    ? `${notice}\n\n${JSON.stringify(value, null, 2)}`
+    : JSON.stringify(value, null, 2);
   // structuredContent must be an object; a bare array or scalar is wrapped so
   // the field is always present and always the same shape of thing.
   const structured =

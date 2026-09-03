@@ -20,6 +20,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { defaultMapping } from '../../src/engine/seed/writers.ts';
 
 const path = process.env.SURFACE || process.argv[process.argv.indexOf('--path') + 1];
 if (!path) {
@@ -44,7 +45,9 @@ if (!surface.schema_version || !Array.isArray(surface.capabilities)) {
 // A capability of provider kind becomes a config entry under the section its
 // kind maps to; authority grants become the authority block; the runtime id
 // attributes everything.
-const fragment: any = { mcp: {}, agent: {}, provider: {} };
+// No `agent` key: nothing in a surface produces one, so declaring it only
+// meant the mapping below claimed to map something that was always empty.
+const fragment: any = { mcp: {}, provider: {} };
 const authority: any = {};
 
 for (const cap of surface.capabilities) {
@@ -76,29 +79,19 @@ for (const grant of surface.authority || []) {
     : grant.mode;
 }
 
-const config = { mcp: fragment.mcp, agent: fragment.agent, provider: fragment.provider, authority };
+const config = { mcp: fragment.mcp, provider: fragment.provider, authority };
 const runtime = surface.runtime || 'surface';
-const configPath = join(process.env.TMPDIR || '/tmp', `ambit-surface-${process.pid}.json`);
-writeFileSync(configPath, JSON.stringify(config));
+const mapping = defaultMapping({ only: ['mcp', 'provider'], skillDirs: [] });
 
-const mapping = {
-  config_keys: {
-    mcp: {
-      type: 'mcp',
-      domain_field: 'type',
-      domain_map: { remote: 'backend', local: 'infra' },
-      desc_template: '{type} server',
-    },
-    agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
-    provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
-  },
-  skill_dirs: [],
-};
-
+// Written only on the path that seeds. Printing the fragment used to leave a
+// config file in TMPDIR that nothing would ever read or clean up.
 if (!process.argv.includes('--seed')) {
   console.log(JSON.stringify(fragment, null, 2));
   process.exit(0);
 }
+
+const configPath = join(process.env.TMPDIR || '/tmp', `ambit-surface-${process.pid}.json`);
+writeFileSync(configPath, JSON.stringify(config));
 
 const engine = new URL('../../src/engine/engine.ts', import.meta.url).pathname;
 const result = spawnSync('node', ['--experimental-sqlite', engine, 'seed'], {

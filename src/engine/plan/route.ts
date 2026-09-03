@@ -13,6 +13,7 @@
 import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
 import { usable } from '../assurance.ts';
+import { preferredOption } from '../observed.ts';
 
 /**
  * Where a chosen way to close a step fights how a required person prefers
@@ -207,9 +208,14 @@ function planFor(db: Db, goal?: string) {
   // and a plan that hides the conflict reads as if there is no choice. Runs
   // after options are attached, because the conflict is about the choice.
   for (const step of order) {
-    const conflicts = step.options?.length
-      ? conflictForChosen(step, step.options[0], db)
+    // Against the option a proposal would actually draft, not against the
+    // first one listed. `propose` picks by what this person has approved
+    // before, so warning about a conflict with an alternative nobody is going
+    // to choose was worse than not warning at all.
+    const likely = step.options?.length
+      ? step.options[preferredOption(db, step.options).index]
       : undefined;
+    const conflicts = step.options?.length ? conflictForChosen(step, likely, db) : undefined;
     if (conflicts) step.preference_conflicts = conflicts;
   }
 

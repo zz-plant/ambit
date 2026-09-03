@@ -278,4 +278,42 @@ function signalReport(db: Db, days = 30) {
   };
 }
 
-export { classifySignal, attribute, captureFailure, signalReport, SIGNALS, type RawFailure };
+/**
+ * Records the deficit behind a refusal, wherever the refusal was asked for.
+ *
+ * The MCP tool recorded one and the CLI did not, so the same question had
+ * different consequences depending on which surface asked it — and the CLI is
+ * where a person asks on an agent's behalf, which is exactly the case worth
+ * counting. Both call this now.
+ */
+function recordRefusal(
+  db: Db,
+  decision: {
+    verdict?: string;
+    capability?: string;
+    action?: string;
+    reason?: string;
+    missing?: string[];
+  },
+  tool?: string
+) {
+  if (decision.verdict !== 'no') return undefined;
+  const recorded = captureFailure(db, {
+    source: 'can',
+    tool: tool || decision.action,
+    errorKind: decision.missing?.length ? 'missing_tool' : 'permission_denied',
+    message: decision.reason,
+    capabilityId: decision.capability,
+  });
+  return recorded.recorded ? recorded.class : false;
+}
+
+export {
+  classifySignal,
+  attribute,
+  captureFailure,
+  recordRefusal,
+  signalReport,
+  SIGNALS,
+  type RawFailure,
+};

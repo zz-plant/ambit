@@ -1,5 +1,9 @@
 import type { Migratable } from './migrate.ts';
 import type { HumanInterventionRow, ProposalRow, SessionLearningRow } from './rows.ts';
+// The intervention vocabulary lives in one file: this list was here, again
+// under another name in opportunities.ts, and a third time as a subset in the
+// promotion suggester.
+import { KEEPER_KINDS, MIDDLEWARE_KINDS } from './vocabulary.ts';
 
 /**
  * Where the human is in the graph — and how much of the work still runs
@@ -43,17 +47,6 @@ const HUMAN_ACTIONS: Record<string, string> = {
 };
 
 /** Human agency worth keeping. Never reducible, however often it recurs. */
-const KEEPER_KINDS = new Set(['judgment', 'knowledge']);
-/** Middleware kinds: the human is the duct, and recurring use is a fixable gap. */
-const MIDDLEWARE_KINDS = new Set([
-  'clerical',
-  'exception',
-  'physical',
-  'authority',
-  'approval',
-  'application',
-  'permission block',
-]);
 
 const FIX_FOR: Record<string, string> = {
   approval: 'grant bounded authority for %s rather than approving each time',

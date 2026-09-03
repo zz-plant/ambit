@@ -60,6 +60,7 @@ import {
   briefingText,
   nextSteps,
   captureFailure,
+  recordRefusal,
   signalReport,
   registerSkill,
   registeredSkills,
@@ -70,6 +71,7 @@ import {
   observedReport,
   pendingProposals,
 } from '../engine/engine.ts';
+import { REACHED_SQL, graphCounts, notSeeded } from '../engine/vocabulary.ts';
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(
@@ -81,16 +83,11 @@ const VERSION = JSON.parse(
  * as "this environment has no capabilities" rather than "this tool was never
  * set up" — the exact confusion Ambit exists to remove. Say which it is.
  */
-function emptyGraphNotice(db: Db) {
+function emptyGraphNotice(db: Db): string | null {
   const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get();
   if (seeded?.n) return null;
-  return {
-    graph: 'not seeded',
-    meaning:
-      "This is not an environment without capabilities — Ambit has not been run here yet. Do not report the user's stack as empty.",
-    fix: 'Run `ambit seed` in a shell, or ./bootstrap.sh from a checkout, then ask again.',
-    database: DB_PATH,
-  };
+  const n = notSeeded('Run `ambit seed` in a shell, then ask again.');
+  return `${n.meaning} ${n.fix} (graph: ${DB_PATH})`;
 }
 
 let dbHandle: any = null;
@@ -190,35 +187,30 @@ function handleLine(line: string) {
           const capId = args?.capId || args?.capabilityId || args?.capability;
           switch (normalizedName) {
             case 'tt_stats':
-              res = tt(db => ({
-                stats: db
-                  .prepare(
-                    "SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'"
-                  )
-                  .get(),
-                domains: db
-                  .prepare(
-                    "SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain"
-                  )
-                  .all(),
-              }));
+              res = tt(db => {
+                const c = graphCounts(db);
+                return {
+                  stats: {
+                    total: c.total,
+                    unlocked: c.reached,
+                    verified: c.proven,
+                    failing: c.failing,
+                  },
+                  domains: db
+                    .prepare(
+                      `SELECT domain, COUNT(*) as total, SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) as unlocked
+                       FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain`
+                    )
+                    .all(),
+                };
+              });
               break;
+            // The session context block, which is what the briefing is. This
+            // used to be a second, weaker summary computed from its own copy of
+            // the stats query; keeping two answers to "what is this
+            // environment" only guaranteed they would disagree.
             case 'tt_context':
-              res = {
-                text: tt(db => {
-                  const g = db
-                    .prepare(
-                      "SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'"
-                    )
-                    .get() ?? { total: 0, unlocked: 0, verified: 0, failing: 0 };
-                  const d = db
-                    .prepare(
-                      "SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as unlocked FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain"
-                    )
-                    .all();
-                  return `Toolchain: ${g.unlocked}/${g.total} reached · ${g.verified} verified · ${g.failing} failing\n${d.map(s => `  ${s.domain.padEnd(12)} ${s.unlocked}/${s.total}`).join('\n')}`;
-                }),
-              };
+              res = { text: tt(db => briefingText(db, { mark: true })) };
               break;
             case 'tt_cap':
               res = tt(db =>
@@ -304,15 +296,9 @@ function handleLine(line: string) {
                 // nothing to record. Doing it here rather than asking the
                 // agent to make a second call is what keeps the habit cheap:
                 // one round trip answers the question and files the deficit.
-                if (decision.verdict === 'no' && args?.record !== false) {
-                  const recorded = captureFailure(db, {
-                    source: 'ambit_can',
-                    tool: args?.tool || decision.action,
-                    errorKind: decision.missing?.length ? 'missing_tool' : 'permission_denied',
-                    message: decision.reason,
-                    capabilityId: decision.capability,
-                  });
-                  decision.recorded_deficit = recorded.recorded ? recorded.class : false;
+                if (args?.record !== false) {
+                  const recorded = recordRefusal(db, decision, args?.tool);
+                  if (recorded !== undefined) decision.recorded_deficit = recorded;
                 }
                 return decision;
               });
@@ -467,8 +453,7 @@ function handleLine(line: string) {
               return err(id, -32601, `Unknown: ${name}`);
           }
           const notice = tt(db => emptyGraphNotice(db));
-          if (notice) res = { ...notice, result: res };
-          return respond(id, toolResult(res));
+          return respond(id, toolResult(res, notice ?? undefined));
         } catch (e) {
           return err(id, -32000, e instanceof Error ? e.message : String(e));
         }

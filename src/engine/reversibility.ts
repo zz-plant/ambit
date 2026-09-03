@@ -16,6 +16,7 @@
 import type { Db } from './db.ts';
 import { loadTechTree } from './paths.ts';
 import { usable } from './assurance.ts';
+import { catalogReport } from './catalog.ts';
 
 interface Alternative {
   name?: string;
@@ -69,14 +70,22 @@ function reversibilityReport(db: Db) {
     // Alternatives hang off the acquisition recipe, which is also where the
     // absence of one is meaningful: a capability with no recipe at all is a
     // different investment from one whose recipes all need hands.
+    //
+    // The catalog is consulted as well, because it also holds alternatives
+    // declared in config rather than in the curated model — reading only the
+    // model would report "no acquisition recipe at all" about a capability
+    // somebody had catalogued by hand. Only the model carries patches, so the
+    // reversible count still comes from there.
     const alternatives: Alternative[] = node.acquisition?.alternatives || [];
+    const catalogued = catalogReport(db, id) as any;
+    const catalogCount = Array.isArray(catalogued?.options) ? catalogued.options.length : 0;
     const withPatch = alternatives.filter(a => a.config_patch);
     const entry = {
       capability: node.name || node.id,
       id,
       unblocks: dependents.get(id) || 0,
       setup: node.setup_seconds ? `${Math.round(node.setup_seconds / 60)}m` : 'unknown',
-      alternatives: alternatives.length,
+      alternatives: Math.max(alternatives.length, catalogCount),
       reversible_alternatives: withPatch.length,
       hint: node.hint,
     };
@@ -86,7 +95,7 @@ function reversibilityReport(db: Db) {
         ...entry,
         // Two different investments, and the report should not blur them: one
         // needs a patch written, the other needs the recipe itself.
-        blocker: alternatives.length
+        blocker: Math.max(alternatives.length, catalogCount)
           ? 'the recipes exist and none of them is a config change'
           : 'no acquisition recipe at all',
       });

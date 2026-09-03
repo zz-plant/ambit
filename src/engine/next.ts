@@ -17,6 +17,7 @@ import type { Db } from './db.ts';
 import { usable } from './assurance.ts';
 import { deficits } from './planning.ts';
 import { catalogReport } from './catalog.ts';
+import { opportunitiesFor } from './opportunities.ts';
 
 /** How many recommendations a curriculum is. Three is a choice; ten is a list. */
 const HOW_MANY = 3;
@@ -68,10 +69,29 @@ function candidates(db: Db): Candidate[] {
   // How often each capability has actually stopped work. Present from the
   // first recorded deficit, which is what makes the ranking tip from
   // structural to observed without anyone switching it over.
+  //
+  // Deficits captured from a runtime attribute to the provider that failed —
+  // a 403 from a git server files against that server, which is the precise
+  // thing to say. This report is about capabilities, so a provider's blocks
+  // are rolled up to whatever it supplies; otherwise the half of the ledger
+  // that fills itself could never influence what gets suggested.
   const blocked = new Map<string, number>();
+  const supplies = new Map<string, string[]>();
+  for (const d of db
+    .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE kind = 'provides'")
+    .all<{ f: string; t: string }>()) {
+    if (!supplies.has(d.f)) supplies.set(d.f, []);
+    supplies.get(d.f)!.push(d.t);
+  }
   const recorded = deficits(db);
   if (Array.isArray(recorded)) {
-    for (const d of recorded as any[]) blocked.set(d.id, d.times_blocked || 0);
+    for (const d of recorded as any[]) {
+      const times = d.times_blocked || 0;
+      blocked.set(d.id, (blocked.get(d.id) || 0) + times);
+      for (const supplied of supplies.get(d.id) || []) {
+        blocked.set(supplied, (blocked.get(supplied) || 0) + times);
+      }
+    }
   }
 
   const out: Candidate[] = [];
@@ -129,6 +149,22 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
   }
 
   const observed = all.some(c => c.observed_blocks > 0);
+
+  // The other ranker. `opportunities` prices observed human burden and this
+  // ranks structural leverage; they answer the same question from different
+  // evidence and used to have no idea the other existed, so a person could be
+  // told two different next steps with no way to see they were related. Where
+  // both have an opinion about a capability, this one names the priced case
+  // rather than restating it.
+  const priced = new Map<string, string>();
+  try {
+    const ranked = opportunitiesFor(db) as any;
+    for (const o of ranked?.opportunities || []) {
+      if (o.capability_id && o.id) priced.set(o.capability_id, o.id);
+    }
+  } catch {
+    /* the economic half needs a ledger; structural ranking stands alone */
+  }
   const scored = all
     .map(c => {
       const hours = Math.max(c.setup_seconds, 300) / 3600;
@@ -174,6 +210,9 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
         // person has actually chosen.
         propose: `ambit propose ${short}`,
         plan: `ambit goal ${short}`,
+        // Both rankers have priced this one. Say so rather than pretending
+        // this is the only reading.
+        priced_case: priced.has(c.id) ? `ambit opportunity ${priced.get(c.id)}` : undefined,
       };
     }),
     note: observed

@@ -120,7 +120,7 @@ function deficits(db: Db) {
     .all();
   if (rows.length === 0) {
     return {
-      note: 'Nothing recorded. Use ambit record <capability> when a task is blocked by a missing one.',
+      note: 'Nothing recorded yet. Failures a runtime reports are captured on their own once the telemetry bridge is installed (plugins/ambit-telemetry.js); ambit record <capability> is the manual path.',
     };
   }
 

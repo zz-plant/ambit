@@ -118,12 +118,26 @@ function emit(data: any): void {
     // them, which `scalar`'s array branch shows was never the intent — and it
     // silently removed the answer from the commands whose answer is a list:
     // `tt authority` printed its note and its per-row detail and not the four
-    // lists the note is about. Plain objects are still skipped; an array of
-    // objects is rendered as nesting by the loop below.
+    // lists the note is about.
     for (const [k, v] of Object.entries(row)) {
       if (k === headKey || skip(k, v)) continue;
       if (typeof v === 'object' && !Array.isArray(v)) continue;
       console.log(`${indent}  ${C.grey}${label(k)}:${C.reset} ${scalar(v)}`);
+    }
+    // A nested plain object used to be dropped entirely, which is how `ambit
+    // can` came to print six of its nine fields: the governing grant and the
+    // evidence about the target were visible only with --json, and nothing
+    // said so. Rendered as an indented block rather than skipped.
+    for (const [k, v] of Object.entries(row)) {
+      if (k === headKey || skip(k, v)) continue;
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) continue;
+      const entries = Object.entries(v).filter(([, x]) => !skip(k, x));
+      if (!entries.length) continue;
+      console.log(`${indent}  ${C.grey}${label(k)}:${C.reset}`);
+      for (const [ck, cv] of entries) {
+        if (typeof cv === 'object' && !Array.isArray(cv)) continue;
+        console.log(`${indent}    ${C.grey}${label(ck)}:${C.reset} ${scalar(cv)}`);
+      }
     }
     for (const [k, v] of Object.entries(row)) {
       if (Array.isArray(v) && v.some(x => typeof x === 'object')) {

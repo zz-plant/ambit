@@ -15,6 +15,7 @@ import { ledgerHistory } from '../ledger.ts';
 import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { C } from './output.ts';
+import { FAILING, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
 function ago(ts: string | null | undefined): string | undefined {
@@ -42,7 +43,7 @@ function evidenceReport(db: any) {
   const rows = db
     .prepare(
       `SELECT lifecycle, COUNT(*) AS n FROM capabilities
-     WHERE kind = 'capability' AND state IN ('unlocked','active') GROUP BY lifecycle`
+       WHERE kind = 'capability' AND ${REACHED_SQL} GROUP BY lifecycle`
     )
     .all();
   const count = (...ls: string[]) =>
@@ -54,6 +55,16 @@ function evidenceReport(db: any) {
     const withCheck = (tree.nodes || [])
       .filter((n: any) => n.verify?.command)
       .map((n: any) => `combo:${n.id}`);
+    // Checks an agent registered for something it wrote count as well. This
+    // read the curated model only, so a registered skill could never appear as
+    // provable however many checks it carried.
+    try {
+      for (const r of db.prepare('SELECT capability_id FROM declared_checks').all()) {
+        withCheck.push(r.capability_id);
+      }
+    } catch {
+      /* database predates declared_checks */
+    }
     if (withCheck.length) {
       const placeholders = withCheck.map(() => '?').join(',');
       checkable = db
@@ -75,9 +86,9 @@ function evidenceReport(db: any) {
     .get();
 
   return {
-    proven: count('verified', 'reliable'),
+    proven: count(...PROVEN),
     unproven: count('configured'),
-    failing: count('degraded', 'broken'),
+    failing: count(...FAILING),
     last_check: ago(last?.t) || 'never',
     provable_now: checkable.slice(0, 8),
     note: checkable.length
@@ -89,19 +100,18 @@ function evidenceReport(db: any) {
 // The report `status` composes. One surface for "how are we doing", so the
 // person does not have to learn six commands to answer one question.
 function statusReport(db: any) {
-  const g = db
-    .prepare(
-      "SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached, SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) as verified, SUM(CASE WHEN lifecycle IN ('degraded','broken') THEN 1 ELSE 0 END) as failing FROM capabilities WHERE kind != 'action'"
-    )
-    .get();
+  const counts = graphCounts(db);
+  const g = { ...counts, verified: counts.proven };
   const domains = db
     .prepare(
-      "SELECT domain, COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain"
+      `SELECT domain, COUNT(*) as total, SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) as reached
+       FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain`
     )
     .all();
   const actions = db
     .prepare(
-      "SELECT COUNT(*) as total, SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) as reached FROM capabilities WHERE kind = 'action'"
+      `SELECT COUNT(*) as total, SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) as reached
+       FROM capabilities WHERE kind = 'action'`
     )
     .get();
 
@@ -110,11 +120,11 @@ function statusReport(db: any) {
   const degraded = db
     .prepare(
       `SELECT id, name, domain FROM capabilities
-     WHERE state IN ('unlocked','active') AND lifecycle IN ('degraded','broken')
-     ORDER BY id`
+       WHERE ${REACHED_SQL} AND ${FAILING_SQL} ORDER BY id`
     )
     .all();
 
+  const recorded = deficits(db);
   const proposals = listProposals(db);
   const pending = Array.isArray(proposals)
     ? proposals.filter((p: any) => p.status === 'draft' || p.status === 'approved')
@@ -124,6 +134,21 @@ function statusReport(db: any) {
   // environment — the failing checks, the sole-provider capabilities, the
   // approvals waiting on a person — and made the reader assemble it from
   // eleven nested sections. The fields below still carry all of it.
+  // Two more ways things happen without a person. `status` is the one report
+  // that claims to say how the environment stands, so it has to count them.
+  let sandboxes = 0;
+  let budgets = 0;
+  try {
+    sandboxes = db.prepare('SELECT COUNT(*) AS n FROM sandboxes').get()?.n ?? 0;
+  } catch {
+    /* database predates sandboxes */
+  }
+  try {
+    budgets = db.prepare('SELECT COUNT(*) AS n FROM budgets WHERE budget_cents > 0').get()?.n ?? 0;
+  } catch {
+    /* database predates budgets */
+  }
+
   const spofs = singlePointsOfFailure(db);
   const worries = [
     g.failing ? `${g.failing} failing` : null,
@@ -140,15 +165,30 @@ function statusReport(db: any) {
     total: g.total,
     verified: g.verified,
     failing: g.failing,
-    actions: actions?.total ? { reached: actions.reached, total: actions.total } : undefined,
+    // A scalar, not a nested pair. Now that the formatter renders nested
+    // objects rather than dropping them, two numbers in a box cost four lines
+    // of a report whose job is to be read at a glance.
+    actions: actions?.total ? `${actions.reached}/${actions.total} reached` : undefined,
     // An array of one, not an object: the generic renderer prints nested rows
     // and skips nested objects, and this block must reach the reader.
+    unattended:
+      sandboxes || budgets
+        ? [
+            {
+              sandboxes: sandboxes || undefined,
+              standing_budgets: budgets || undefined,
+              note: 'ambit authority lists what each one covers.',
+            },
+          ]
+        : undefined,
     evidence: [evidenceReport(db)],
     domains,
     degraded: degraded.length ? degraded : undefined,
     spofs,
     bottlenecks: findBottlenecks(db).slice(0, 10),
-    deficits: deficits(db),
+    // The empty case belongs to `ambit deficits`, which explains how they get
+    // recorded. Here it would be a paragraph of advice inside a health report.
+    deficits: Array.isArray(recorded) ? recorded : undefined,
     frontier: ledgerHistory(db).slice(-5),
     pending,
   };

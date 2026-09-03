@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { defaultMapping } from './seed/writers.ts';
 
 export interface McpClientSeed {
   runtime: 'cursor' | 'windsurf' | 'gemini-cli' | 'claude-desktop' | 'codex';
@@ -132,17 +133,7 @@ export function discoverMcpClients(home = process.env.HOME || '/'): McpClientSee
       label: client.label,
       path,
       config: { mcp },
-      mapping: {
-        config_keys: {
-          mcp: {
-            type: 'mcp',
-            domain_field: 'type',
-            domain_map: { remote: 'backend', local: 'infra' },
-            desc_template: `${client.runtime} {type} server`,
-          },
-        },
-        skill_dirs: [],
-      },
+      mapping: defaultMapping({ runtime: client.runtime, only: ['mcp'], skillDirs: [] }),
     });
   }
   return found;

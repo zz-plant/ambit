@@ -95,6 +95,31 @@ const TABLES: Array<{
     ],
     key: ['source', 'tool', 'signal', 'timestamp'],
   },
+  // Work runs come before anything that references one. The list is applied in
+  // order and a row whose foreign key cannot be satisfied is skipped, so an
+  // intervention exported without its run was silently dropped on every
+  // import — and since successful work became the evidence that earns
+  // authority (§13.2), leaving the runs behind meant a rebuilt container lost
+  // exactly the record that had been earning it.
+  {
+    table: 'work_runs',
+    columns: [
+      'id',
+      'goal',
+      'run_type',
+      'source',
+      'started_at',
+      'ended_at',
+      'outcome',
+      'outcome_value_cents',
+    ],
+    key: ['id'],
+  },
+  {
+    table: 'capability_use',
+    columns: ['run_id', 'capability_id', 'used_at', 'duration_seconds', 'source'],
+    key: ['run_id', 'capability_id', 'used_at'],
+  },
   {
     table: 'human_intervention',
     columns: [
@@ -109,6 +134,18 @@ const TABLES: Array<{
       'outcome',
     ],
     key: ['run_id', 'actor_id', 'started_at'],
+  },
+  {
+    table: 'outcomes',
+    columns: [
+      'run_id',
+      'achieved',
+      'objective_metric',
+      'objective_name',
+      'value_cents',
+      'recorded_at',
+    ],
+    key: ['run_id', 'recorded_at'],
   },
 ];
 
@@ -172,7 +209,14 @@ function exportSync(db: Db, path?: string) {
           reregister: `ambit record ${s.id} --verify="…"`,
         }))
       : undefined,
-    excluded: ['authority grants', 'skill check commands', 'proposals', 'approval artifacts'],
+    excluded: [
+      'authority grants',
+      'skill check commands',
+      'proposals',
+      'approval artifacts',
+      'budgets',
+      'sandboxes',
+    ],
   };
 
   const file = path || 'ambit-sync.json';

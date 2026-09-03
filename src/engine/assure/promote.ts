@@ -18,6 +18,7 @@
  */
 import type { Db } from '../db.ts';
 import type { AuthorityRow } from '../rows.ts';
+import { GATE_KINDS } from '../vocabulary.ts';
 
 /** "three passing checks and two successful uses", or whichever half exists. */
 function describeEvidence(e: { passes: number; uses: number }): string {
@@ -424,7 +425,7 @@ function suggestPromotions(db: Db, windowDaysLookback = 30) {
     asked = db
       .prepare(
         `SELECT capability_id, COUNT(*) AS times FROM human_intervention
-         WHERE kind IN ('authority', 'approval', 'permission block')
+         WHERE kind IN (${GATE_KINDS.map(k => `'${k}'`).join(',')})
            AND capability_id IS NOT NULL
            AND started_at >= datetime('now', ?)
          GROUP BY capability_id HAVING times >= 3 ORDER BY times DESC LIMIT 10`

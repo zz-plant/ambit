@@ -51,7 +51,7 @@ export { observedPreferences, observedReport, preferredOption } from './observed
 export { objectReport, knownObjects } from './objects.ts';
 export { briefing, briefingText } from './briefing.ts';
 export { nextSteps, nextLines } from './next.ts';
-export { classifySignal, captureFailure, signalReport } from './failures.ts';
+export { classifySignal, captureFailure, recordRefusal, signalReport } from './failures.ts';
 export { registerSkill, registeredSkills } from './skills.ts';
 export { exportSync, importSync } from './sync.ts';
 export { ledgerSince, ledgerHistory } from './ledger.ts';

@@ -158,6 +158,7 @@ $ ambit status
     total: 56
     verified: 0
     failing: 0
+    actions: 18/28 reached
     evidence:
         proven: 0
         unproven: 14
@@ -166,7 +167,6 @@ $ ambit status
         provable now: Automated Tests, Browser Automation, Code Intelligence, File Editing, Local Runtime, Shell Execution, Version Control, Web Research
         note: configured is not working — ambit verify would turn 8 of the unproven into evidence
     domains:
-      ████░░░░░░ ai-ml     4/11
     …
 ```
 <!-- /example -->

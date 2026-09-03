@@ -2,7 +2,7 @@
   "name": "ambit-cli",
   "version": "0.4.1",
   "private": false,
-  "description": "What you, your agents, and your machines can jointly do — and where your own time is going.",
+  "description": "What you, your agents, and your machines can jointly do \u2014 and where your own time is going.",
   "mcpName": "io.github.zz-plant/ambit",
   "type": "module",
   "engines": {
@@ -31,8 +31,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "docs:examples": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/capture-readme-examples.ts",
-    "docs:examples:check": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/capture-readme-examples.ts --check",
-    "assets:demo-tree": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/generate-demo-tree.ts"
+    "docs:examples:check": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/capture-readme-examples.ts --check"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",

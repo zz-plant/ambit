@@ -2,6 +2,7 @@ import type { Migratable } from './migrate.ts';
 import { planFor, simulateFrontier, deficits } from './planning.ts';
 import { attentionValueCentsPerHour } from './economics.ts';
 import { catalogReport } from './catalog.ts';
+import { KEEPER_KINDS as KEEPERS, MIDDLEWARE_KINDS as MIDDLEWARE } from './vocabulary.ts';
 import type { CapabilityRow, HumanInterventionRow, SessionLearningRow } from './rows.ts';
 
 /**
@@ -42,17 +43,6 @@ interface BurdenCluster {
   uses: number;
   resource_cents: number;
 }
-
-const MIDDLEWARE = new Set([
-  'clerical',
-  'exception',
-  'physical',
-  'authority',
-  'approval',
-  'application',
-  'permission block',
-]);
-const KEEPERS = new Set(['judgment', 'knowledge']);
 
 /** The burden observed in the window, clustered per (capability, kind). */
 function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
@@ -398,7 +388,7 @@ function opportunitiesFor(
 
   if (ranked.length === 0 && keepers.length === 0) {
     return {
-      note: `No recurring middleware burden recorded in the last ${WINDOW_DAYS} days. Record work, or seed a deficit with ambit record.`,
+      note: `No recurring middleware burden recorded in the last ${WINDOW_DAYS} days. Install the telemetry bridge and this fills from real sessions; ambit next ranks structurally in the meantime.`,
       by,
       opportunities: [],
       allocation,

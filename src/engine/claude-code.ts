@@ -13,6 +13,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { authorityBlock } from '../shared/authority.ts';
+import { defaultMapping } from './seed/writers.ts';
 
 /**
  * Read per call, not once at import.
@@ -164,18 +165,12 @@ export function claudeCodeSeedInput(fragment: ClaudeCodeFragment): { config: any
     provider: fragment.provider,
     authority,
   };
-  const mapping = {
-    config_keys: {
-      mcp: {
-        type: 'mcp',
-        domain_field: 'type',
-        domain_map: { remote: 'backend', local: 'infra' },
-        desc_template: 'claude-code {type} server',
-      },
-      agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
-      provider: { type: 'provider', domain: 'ai-ml' },
-    },
-    skill_dirs: fragment.skills.paths,
-  };
+  // One builder, named by the runtime. This was a copy of the default mapping
+  // differing only in the two words before "{type} server".
+  const mapping = defaultMapping({
+    runtime: 'claude-code',
+    only: ['mcp', 'agent', 'provider'],
+    skillDirs: fragment.skills.paths,
+  });
   return { config, mapping };
 }

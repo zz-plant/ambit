@@ -20,6 +20,7 @@ import { listProposals } from './governance.ts';
 import { ledgerSince } from './ledger.ts';
 import { nextSteps } from './next.ts';
 import { signalReport } from './failures.ts';
+import { FAILING_SQL, REACHED_SQL, graphCounts, notSeeded } from './vocabulary.ts';
 
 /** Roughly four characters to a token, which is close enough to hold a budget. */
 const CHARS_PER_TOKEN = 4;
@@ -54,23 +55,9 @@ function markBriefed(db: Db) {
  */
 function briefing(db: Db, options: { mark?: boolean } = {}) {
   const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get()?.n ?? 0;
-  if (!seeded) {
-    return {
-      environment: 'not seeded',
-      meaning:
-        'Ambit has not run here. This is not an environment without capabilities — do not report the stack as empty.',
-      fix: 'ambit seed',
-    };
-  }
+  if (!seeded) return { environment: 'not seeded', ...notSeeded() };
 
-  const g = db
-    .prepare(
-      `SELECT COUNT(*) AS total,
-              SUM(CASE WHEN state IN ('unlocked','active') THEN 1 ELSE 0 END) AS reached,
-              SUM(CASE WHEN lifecycle IN ('verified','reliable') THEN 1 ELSE 0 END) AS proven
-       FROM capabilities WHERE kind != 'action'`
-    )
-    .get<any>();
+  const g = graphCounts(db);
 
   // Actions count here even though they do not count in the reach figure. A
   // contract action whose check fails is the finest-grained thing this model
@@ -79,16 +66,12 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
   const broken = db
     .prepare(
       `SELECT id, name, kind FROM capabilities
-       WHERE state IN ('unlocked','active') AND lifecycle IN ('degraded','broken')
-       ORDER BY kind, name LIMIT 5`
+       WHERE ${REACHED_SQL} AND ${FAILING_SQL} ORDER BY kind, name LIMIT 5`
     )
     .all<any>();
   const failing =
     db
-      .prepare(
-        `SELECT COUNT(*) AS n FROM capabilities
-       WHERE state IN ('unlocked','active') AND lifecycle IN ('degraded','broken')`
-      )
+      .prepare(`SELECT COUNT(*) AS n FROM capabilities WHERE ${REACHED_SQL} AND ${FAILING_SQL}`)
       .get<any>()?.n ?? 0;
 
   // A threshold a person set earlier takes effect here. The alternative is a

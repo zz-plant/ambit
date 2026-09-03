@@ -317,13 +317,48 @@ function objectEvidence(db: Db, capability: string, action: string, object: stri
   }
 }
 
-/** Records spend against a budget, so the next canExecute sees it. */
+/**
+ * Records spend against a budget, so the next canExecute sees it.
+ *
+ * Only ever against a budget that exists. The previous version inserted one
+ * with a ceiling of zero when none was declared, which made recording a single
+ * cent of spend against an unbudgeted capability refuse every later spend
+ * for ever — remaining came out negative, and `ambit budget` hid the row that
+ * was doing it, because a report of standing budgets reasonably skips the ones
+ * with no ceiling. Spending where nothing was delegated is not a budget with no
+ * room; it is an absence of a budget, and the answer says so.
+ */
 function recordSpend(db: Db, capability: string, action: string, scope: string, cents: number) {
-  db.prepare(
-    `INSERT INTO budgets (capability_id, action, scope, budget_cents, spent_cents, period) VALUES (?, ?, ?, 0, ?, 'manual')
-     ON CONFLICT(capability_id, action, scope) DO UPDATE SET spent_cents = spent_cents + excluded.spent_cents`
-  ).run(capability, action, scope, cents);
-  return { capability, action, spent_cents: cents };
+  const existing = db
+    .prepare(
+      'SELECT id, budget_cents, spent_cents FROM budgets WHERE capability_id = ? AND action = ? AND scope = ?'
+    )
+    .get<{ id: number; budget_cents: number; spent_cents: number }>(capability, action, scope);
+  if (!existing) {
+    return {
+      capability,
+      action,
+      spent_cents: cents,
+      recorded: false,
+      note: `No budget covers ${capability} / ${action}. The spend is not tracked against a ceiling — ambit budget set ${capability.replace('combo:', '')} --amount=$N --by=<person> declares one.`,
+    };
+  }
+  db.prepare('UPDATE budgets SET spent_cents = spent_cents + ? WHERE id = ?').run(
+    cents,
+    existing.id
+  );
+  const remaining = existing.budget_cents - (existing.spent_cents + cents);
+  return {
+    capability,
+    action,
+    spent_cents: cents,
+    recorded: true,
+    remaining_cents: remaining,
+    note:
+      remaining <= 0
+        ? 'The budget is spent. This action asks a person again until the period turns over.'
+        : undefined,
+  };
 }
 export {
   MODE_RANK,

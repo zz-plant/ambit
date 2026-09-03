@@ -294,7 +294,11 @@ test('a deficit against an unknown capability is refused, not silently kept', ()
   seed(LOCAL_ONLY).close();
   const r = cli('record', 'not-a-capability');
   expect(r.error).toContain('No capability');
-  expect(cli('status').deficits.note).toContain('Nothing recorded');
+  // `status` reports deficits only when there are some. The empty-state advice
+  // belongs to `ambit deficits`, which is where someone asking about deficits
+  // is looking; inside a health report it was a paragraph of instructions.
+  expect(cli('status').deficits).toBeUndefined();
+  expect(cli('report', 'record').error).toContain('Usage');
 });
 
 test('losing one of several providers is not a critical loss', () => {

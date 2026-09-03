@@ -173,12 +173,49 @@ function authorityReport(db: Db) {
   const execute = detail.filter(d => d.action === 'execute' || !['observe'].includes(d.action));
   const named = (rows: any[]) => rows.map(r => (r.scope ? `${r.name} · ${r.scope}` : r.name));
 
+  // A sandbox and a standing budget both widen what runs without a person, and
+  // neither is a grant, so a report built from the authority table alone was
+  // silently incomplete: the one place someone looks to see what acts
+  // unattended did not mention two of the three ways it can.
+  let sandboxes: Array<{ target: string; declared_by: string }> = [];
+  try {
+    sandboxes = db.prepare('SELECT target, declared_by FROM sandboxes ORDER BY target').all();
+  } catch {
+    /* database predates sandboxes */
+  }
+  let budgets: Array<Record<string, unknown>> = [];
+  try {
+    budgets = db
+      .prepare(
+        `SELECT b.capability_id, b.action, b.scope, b.budget_cents, b.spent_cents, b.period, c.name
+         FROM budgets b LEFT JOIN capabilities c ON c.id = b.capability_id
+         WHERE b.budget_cents > 0 ORDER BY b.capability_id`
+      )
+      .all()
+      .map((b: any) => ({
+        capability: b.name || b.capability_id,
+        action: b.action,
+        scope: b.scope || undefined,
+        remaining: `$${((b.budget_cents - b.spent_cents) / 100).toFixed(2)} of $${(b.budget_cents / 100).toFixed(2)} per ${b.period}`,
+      }));
+  } catch {
+    /* database predates period columns */
+  }
+
   return {
     autonomous: named(execute.filter(r => r.reached && r.mode === 'autonomous')),
     needs_approval: named(execute.filter(r => r.reached && r.mode === 'confirm')),
     forbidden: named(execute.filter(r => r.mode === 'forbidden')),
     narrowed_by_runtime: named(execute.filter(r => r.narrowed_by)),
+    unattended_inside: sandboxes.length
+      ? sandboxes.map(s => `${s.target} (sandbox, declared by ${s.declared_by})`)
+      : undefined,
+    spendable_without_asking: budgets.length ? budgets : undefined,
     note: 'reached means the system can perform it; mode says whether it may without asking. A degraded or broken capability is not listed as reached however its permission reads.',
+    also:
+      sandboxes.length || budgets.length
+        ? 'A sandbox relaxes confirmation inside itself and never a refusal; a budget is spend delegated in advance. Both widen what happens without you, and neither is a grant.'
+        : undefined,
     detail,
   };
 }

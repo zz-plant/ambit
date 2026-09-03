@@ -27,6 +27,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { authorityBlock } from '../../src/shared/authority.ts';
 import { parse as parseYaml } from 'yaml';
+import { defaultMapping } from '../../src/engine/seed/writers.ts';
 
 const HERMES_HOME = process.env.HERMES_HOME || join(process.env.HOME || '/', '.hermes');
 
@@ -150,19 +151,11 @@ writeFileSync(
   })
 );
 
-const mapping = {
-  config_keys: {
-    mcp: {
-      type: 'mcp',
-      domain_field: 'type',
-      domain_map: { remote: 'backend', local: 'infra' },
-      desc_template: 'hermes {type} server',
-    },
-    agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
-    provider: { type: 'provider', domain: 'ai-ml' },
-  },
-  skill_dirs: fragment.skills.paths,
-};
+const mapping = defaultMapping({
+  runtime: 'hermes',
+  only: ['mcp', 'agent', 'provider'],
+  skillDirs: fragment.skills.paths,
+});
 
 const engine = join(import.meta.dirname, '..', '..', 'src', 'engine', 'engine.ts');
 const result = spawnSync('node', ['--experimental-sqlite', engine, 'seed'], {

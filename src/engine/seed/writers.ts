@@ -36,26 +36,51 @@ function edgeWriter(db: Db) {
   };
 }
 
+/**
+ * The mapping that says how a config's keys become nodes.
+ *
+ * There were five copies of this object: the default here, and one each in the
+ * Hermes adapter, the Claude Code reader, the MCP-client reader and the surface
+ * adapter. Four of the five differed only in the words in front of "{type}
+ * server", so what looked like four decisions was one decision written four
+ * times, and a change to how an MCP entry becomes a node reached whichever
+ * copies the author happened to remember.
+ *
+ * `runtime` supplies that prefix. `only` narrows the result to the keys a
+ * particular source actually carries, since a reader that never sees providers
+ * should not claim to map them.
+ */
+function defaultMapping(
+  options: { runtime?: string; only?: string[]; skillDirs?: string[] } = {}
+): Record<string, any> {
+  const prefix = options.runtime ? `${options.runtime} ` : '';
+  const keys: Record<string, any> = {
+    mcp: {
+      type: 'mcp',
+      domain_field: 'type',
+      domain_map: { remote: 'backend', local: 'infra' },
+      desc_template: `${prefix}{type} server`,
+    },
+    agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
+    provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
+    command: { type: 'tool', domain: 'devops', desc_field: 'description' },
+  };
+  const config_keys = options.only
+    ? Object.fromEntries(options.only.filter(k => keys[k]).map(k => [k, keys[k]]))
+    : keys;
+  return {
+    config_keys,
+    skill_dirs: options.skillDirs ?? ['~/.agents/skills', '~/.opencode/skills'],
+  };
+}
+
 function parseMapping(mappingStr?: string): Record<string, any> {
   if (mappingStr) {
     try {
       return JSON.parse(mappingStr);
     } catch {}
   }
-  return {
-    config_keys: {
-      mcp: {
-        type: 'mcp',
-        domain_field: 'type',
-        domain_map: { remote: 'backend', local: 'infra' },
-        desc_template: '{type} server',
-      },
-      agent: { type: 'agent', domain: 'meta', desc_field: 'description' },
-      provider: { type: 'provider', domain: 'ai-ml', name_field: 'name' },
-      command: { type: 'tool', domain: 'devops', desc_field: 'description' },
-    },
-    skill_dirs: ['~/.agents/skills', '~/.opencode/skills'],
-  };
+  return defaultMapping();
 }
 
-export { nodeWriter, edgeWriter, parseMapping };
+export { defaultMapping, nodeWriter, edgeWriter, parseMapping };

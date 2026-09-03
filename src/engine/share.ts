@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import { ENGINE_DIR } from './paths.ts';
 import type { Db } from './db.ts';
 import type { CapabilityRow } from './rows.ts';
+import { usable } from './assurance.ts';
+import { PROVEN, REACHED_STATES } from './vocabulary.ts';
 
 /**
  * A shareable snapshot of the map: one self-contained HTML file, built from an
@@ -55,9 +57,9 @@ export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
     return c.name;
   };
 
-  const reached = (c: any) => c.state === 'unlocked' || c.state === 'active';
-  const proven = (c: any) => ['verified', 'reliable'].includes(c.lifecycle);
-  const failing = (c: any) => ['degraded', 'broken'].includes(c.lifecycle);
+  const reached = (c: any) => (REACHED_STATES as readonly string[]).includes(c.state);
+  const proven = (c: any) => (PROVEN as readonly string[]).includes(c.lifecycle);
+  const failing = (c: any) => !usable(c.lifecycle);
 
   // Columns: curated capabilities by era, the concrete stack by domain.
   const cols = new Map<string, any[]>();

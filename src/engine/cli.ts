@@ -33,7 +33,7 @@ import { observedReport } from './observed.ts';
 import { objectReport } from './objects.ts';
 import { briefing, briefingText } from './briefing.ts';
 import { nextSteps } from './next.ts';
-import { signalReport } from './failures.ts';
+import { recordRefusal, signalReport } from './failures.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
 import { exportSync, importSync } from './sync.ts';
 import { ledgerHistory, ledgerSince } from './ledger.ts';
@@ -268,17 +268,20 @@ async function runCommand(
       break;
     }
     case 'can': {
-      const target = [...flags].find(f => f.startsWith('--target='))?.slice(9);
-      const spend = [...flags].find(f => f.startsWith('--spend='))?.slice(8);
-      const actor = [...flags].find(f => f.startsWith('--actor='))?.slice(8);
-      emit(
-        canExecute(db, {
-          actor,
-          capability: arg,
-          target,
-          spendCents: spend ? Number(spend) : undefined,
-        })
-      );
+      const decision: any = canExecute(db, {
+        actor: value('actor'),
+        capability: arg,
+        target: value('target'),
+        spendCents: value('spend') ? Number(value('spend')) : undefined,
+      });
+      // A refusal is a deficit whoever asked. This surface used to be the
+      // silent one, which meant the same question had different consequences
+      // depending on where it was asked.
+      if (!flags.has('--no-record')) {
+        const recorded = recordRefusal(db, decision, value('tool'));
+        if (recorded !== undefined) decision.recorded_deficit = recorded;
+      }
+      emit(decision);
       break;
     }
     case 'history':
