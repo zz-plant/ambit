@@ -37,6 +37,32 @@ interface CivTreeProps {
   onHover: (id: string | null) => void;
 }
 
+/**
+ * The attention lens is a magnitude, so it gets one hue in four steps rather
+ * than two colours either side of a number nobody wrote down.
+ *
+ * The bins come from the data — a quarter of the observed maximum each — so
+ * the ramp always spans the range actually present, and the legend can print
+ * the boundaries instead of asking the reader to guess what "warm" means.
+ */
+function heatBins(max: number): { from: number; to: number; label: string }[] {
+  const top = Math.max(max, 4);
+  const width = Math.ceil(top / 4);
+  return [0, 1, 2, 3].map(i => {
+    const from = i * width + 1;
+    const to = i === 3 ? top : (i + 1) * width;
+    return { from, to, label: i === 3 ? `${from}+` : `${from}–${to}` };
+  });
+}
+
+/** Which of the four steps a count falls in, 1-based; 0 means no interventions. */
+function heatStep(count: number, max: number): number {
+  if (count <= 0) return 0;
+  const bins = heatBins(max);
+  const hit = bins.findIndex(b => count <= b.to);
+  return hit === -1 ? bins.length : hit + 1;
+}
+
 export default function CivTree({
   items,
   connections,
@@ -56,6 +82,12 @@ export default function CivTree({
   const simulatedCascadeIds = useAmbitStore(s => s.simulatedCascadeIds);
   const clearSimulation = useAmbitStore(s => s.clearSimulation);
   const attentionInterventions = useAmbitStore(s => s.attentionInterventions);
+  // The top of the scale the lens is drawn against, and the number its legend
+  // prints. Taken from the data so the ramp spans what is actually there.
+  const attentionMax = React.useMemo(
+    () => Math.max(0, ...Object.values(attentionInterventions ?? {}).map(Number)),
+    [attentionInterventions]
+  );
 
   const simulatedItem = items.find(i => i.id === simulatedNodeId);
 
@@ -400,6 +432,7 @@ export default function CivTree({
 
                 const interventionCount = attentionInterventions[item.id] || 0;
                 const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
+                const heat = heatStep(interventionCount, attentionMax);
                 const isSpofHot =
                   activeLens === 'credentials' &&
                   (item.id.includes('github') ||
@@ -467,7 +500,11 @@ export default function CivTree({
                     sw = 2;
                   }
                 } else if (isAttentionHot) {
-                  nodeFill = interventionCount > 20 ? 'var(--copper-1)' : 'var(--warn)';
+                  // One hue, four steps, brighter with more — a quantity read
+                  // as a quantity. It used to be two colours split at twenty:
+                  // red above, amber below, a threshold nothing stated and a
+                  // second hue that made a magnitude look like a category.
+                  nodeFill = `var(--heat-${heat})`;
                   sc = 'var(--on-accent)';
                   sw = 2;
                 } else if (isSpofHot) {
@@ -821,30 +858,53 @@ export default function CivTree({
             stroke="var(--border)"
             strokeWidth={1}
           />
-          {(isTreeView
+          {(activeLens === 'attention'
             ? [
-                { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
-                { kind: 'ring', label: 'Next step' },
-                { kind: 'faded', label: 'Blocked' },
-                { kind: 'square', label: 'Keystone' },
-                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-                { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-                { kind: 'line', label: 'Required' },
-                { kind: 'line', dashed: true, label: 'Optional' },
+                // A scale with no unit is a row of coloured dots. Say what is
+                // being counted, once, at the head of the ramp.
+                { kind: 'label' as const, label: 'Interventions a month' },
+                ...heatBins(attentionMax).map((b, i) => ({
+                  kind: 'node' as const,
+                  color: `var(--heat-${i + 1})`,
+                  label: b.label,
+                })),
               ]
-            : [
-                { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Server' },
-                { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
-                { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
-                { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
-                { kind: 'square', label: 'Keystone' },
-                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-                { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-                { kind: 'line', label: 'Required' },
-                { kind: 'line', dashed: true, label: 'Optional' },
-              ]
-          ).map((l, i) => {
-            const lx = 10 + i * 112;
+            : activeLens === 'credentials'
+              ? [
+                  {
+                    kind: 'node' as const,
+                    color: 'var(--plasma)',
+                    label: 'Shares a credential',
+                  },
+                  { kind: 'faded' as const, label: 'Fails alone' },
+                ]
+              : isTreeView
+                ? [
+                    { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
+                    { kind: 'ring', label: 'Next step' },
+                    { kind: 'faded', label: 'Blocked' },
+                    { kind: 'square', label: 'Keystone' },
+                    { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                    { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+                    { kind: 'line', label: 'Required' },
+                    { kind: 'line', dashed: true, label: 'Optional' },
+                  ]
+                : [
+                    { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Server' },
+                    { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
+                    { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
+                    { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
+                    { kind: 'square', label: 'Keystone' },
+                    { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                    { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+                    { kind: 'line', label: 'Required' },
+                    { kind: 'line', dashed: true, label: 'Optional' },
+                  ]
+          ).map((l: any, i: number) => {
+            // The heat scale is a ramp, so its swatches sit close together and
+            // read as one object rather than as five separate keys.
+            const lx =
+              activeLens === 'attention' ? (i === 0 ? 10 : 150 + (i - 1) * 62) : 10 + i * 112;
             const clickable = Boolean(SPOTLIGHTS[l.label]);
             const isLegendActive = spotlightGroup === l.label;
             return (
@@ -906,6 +966,7 @@ export default function CivTree({
                     strokeDasharray="3,2"
                   />
                 )}
+                {l.kind === 'label' && null}
                 {l.kind === 'line' && (
                   <line
                     x1={-10}
@@ -918,7 +979,7 @@ export default function CivTree({
                   />
                 )}
                 <text
-                  x={12}
+                  x={l.kind === 'label' ? 0 : 12}
                   y={3.5}
                   fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
                   fontSize={10.5}

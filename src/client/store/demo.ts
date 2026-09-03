@@ -49,11 +49,23 @@ export function demoConfigGraph(): Graph {
 }
 
 /** What the attention lens warms before a real ledger has anything to say. */
+/**
+ * Interventions per capability, for the attention lens.
+ *
+ * Keyed on nodes the demo fixture actually contains. The previous keys —
+ * `tool:bash`, `skill:vitest`, `mcp:cloudflare` — are in no fixture, so
+ * pressing 2 on the view the demo link opens dimmed the whole map and warmed
+ * nothing: a lens that appeared broken because its data pointed at a graph
+ * that had been regenerated out from under it.
+ *
+ * The counts are the same four the Time & cost page prices, so the two
+ * surfaces are reading one ledger rather than telling two stories.
+ */
 export const DEMO_ATTENTION: Record<string, number> = {
-  'tool:bash': 42,
-  'mcp:github': 28,
-  'skill:vitest': 14,
-  'mcp:cloudflare': 8,
+  'combo:data-access': 39, // manual data transfer
+  'combo:continuous-delivery': 31, // deploy to production
+  'combo:code-intelligence': 12, // architecture review — a keeper
+  'combo:observability': 7, // payment anomaly
 };
 
 /** Two proposals for the Proposals panel: one waiting, one approved. */

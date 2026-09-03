@@ -50,10 +50,27 @@ export interface DemoSnapshot {
       hours: number;
       suggested_fix: string;
     }[];
-    keepers: { kind: string; capability: string; times: number }[];
+    keepers: { kind: string; capability: string; times: number; hours: number }[];
   };
   opportunities: DemoOpportunity[];
-  roi: { hours_per_year: number; dollars_per_year: number; accuracy: number; verdict: string };
+  roi: {
+    hours_per_year: number;
+    dollars_per_year: number;
+    accuracy: number;
+    verdict: string;
+    /**
+     * Hours a person spent inside the loop, month by month, oldest first.
+     *
+     * The headline number is a difference, and a difference is unreadable
+     * without the two things it sits between: the area between this line and
+     * the January figure *is* the 41 hours. Two months carry an annotation,
+     * because the drops are the point — a capability landed and the line
+     * stepped down.
+     */
+    monthly_hours: { month: string; hours: number; acquired?: string }[];
+    /** What the forecast said, against what the ledger later observed. */
+    forecast: { predicted_hours: number; observed_hours: number };
+  };
 }
 
 /**
@@ -81,7 +98,7 @@ export function demoSnapshot(): DemoSnapshot {
       pending: [{ id: 'prop-msrv0x', goal: 'Automate invoice retrieval' }],
     },
     attention: {
-      interventions: 84,
+      interventions: 89,
       reducible: [
         {
           kind: 'clerical',
@@ -105,7 +122,7 @@ export function demoSnapshot(): DemoSnapshot {
           suggested_fix: 'the case recurs — encode the handling as a capability',
         },
       ],
-      keepers: [{ kind: 'judgment', capability: 'Architecture review', times: 12 }],
+      keepers: [{ kind: 'judgment', capability: 'Architecture review', times: 12, hours: 2.4 }],
     },
     opportunities: [
       {
@@ -161,6 +178,23 @@ export function demoSnapshot(): DemoSnapshot {
       dollars_per_year: 9600,
       accuracy: 1.1,
       verdict: 'performing near forecast',
+      // Twelve months against January's 11.0h: the gap sums to the 41 hours
+      // above, so the picture and the headline are the same claim.
+      monthly_hours: [
+        { month: 'Jan', hours: 11.0 },
+        { month: 'Feb', hours: 10.4 },
+        { month: 'Mar', hours: 10.2 },
+        { month: 'Apr', hours: 9.1, acquired: 'Automated Tests' },
+        { month: 'May', hours: 8.6 },
+        { month: 'Jun', hours: 7.9 },
+        { month: 'Jul', hours: 7.2 },
+        { month: 'Aug', hours: 6.8 },
+        { month: 'Sep', hours: 6.4 },
+        { month: 'Oct', hours: 5.1, acquired: 'Scheduled Work' },
+        { month: 'Nov', hours: 4.3 },
+        { month: 'Dec', hours: 4.0 },
+      ],
+      forecast: { predicted_hours: 37, observed_hours: 41 },
     },
   };
 }

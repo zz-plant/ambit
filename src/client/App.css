@@ -37,6 +37,17 @@
   --info: #0284c7;
   --plasma: #8b5cf6;
 
+  /* The attention lens: one hue, four steps, brighter with more. A magnitude
+     wants a sequential ramp, not two colours split at a threshold — and on a
+     dark ground more-is-brighter is the direction that reads. Every step
+     clears 3:1 against the canvas (3.87, 6.10, 9.05, 11.64) and the steps are
+     monotonic in luminance, which is what makes the order legible without the
+     legend. */
+  --heat-1: #b45309;
+  --heat-2: #d97706;
+  --heat-3: #f59e0b;
+  --heat-4: #fbbf24;
+
   /* One colour per kind of node. The map, the detail panel, the list and the
      docs all read these, so a server is the same amber everywhere. */
   --type-framework: var(--accent);
@@ -1379,69 +1390,6 @@ code, pre, .code, .sp-cli-cmd {
   max-width: 520px;
 }
 
-.loop-stats {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.loop-stat {
-  min-width: 150px;
-  padding: 10px 14px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.loop-stat-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.loop-stat-value--ok {
-  color: var(--ok);
-}
-
-.loop-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  color: var(--text-muted);
-}
-
-.loop-chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.loop-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-}
-
-.loop-chip--ok {
-  color: var(--ok);
-}
-
-.loop-chip--error {
-  color: var(--error);
-}
-
-.loop-chip--warn {
-  color: var(--warn);
-}
-
 .loop-section-head {
   display: flex;
   justify-content: space-between;
@@ -1487,184 +1435,598 @@ code, pre, .code, .sp-cli-cmd {
   border-color: var(--accent);
 }
 
-.loop-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* ── Figures ──────────────────────────────────────────────────────────────
+   The quantitative half of the demo. Two colours do the work: the data hue
+   for the thing being measured, and a recessive grey for context. They are
+   not chosen by eye — the pair clears CVD ΔE 16.7 and normal-vision ΔE 17.4
+   against each other and 3:1 against this surface, which is what makes an
+   emphasis chart readable rather than merely tasteful.
+
+   Green and red never share an edge anywhere below. Under deuteranopia they
+   are the same colour, so the grey segment separates them and every mark
+   carries a written label. Colour is the last encoding here, never the only
+   one. */
+.loop-dashboard {
+  --fig-data: #818cf8;
+  --fig-data-soft: rgba(129, 140, 248, 0.22);
+  --fig-context: #64748b;
+  --fig-good: #10b981;
+  --fig-bad: #f43f5e;
+  --fig-track: rgba(255, 255, 255, 0.07);
+  --fig-rule: rgba(255, 255, 255, 0.14);
 }
 
-.loop-card {
-  position: relative;
+.fig {
   background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px 14px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 14px;
+  margin: 0 0 18px;
 }
 
-.loop-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 3px;
-  background: var(--accent);
-}
-
-.loop-card-head {
+.fig-caption {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
 }
 
-.loop-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.loop-card-line {
+.fig-caption-title {
   font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.loop-card-line strong {
   font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: 0.01em;
 }
 
-.loop-card-line .is-ok {
-  color: var(--ok);
-}
-
-.loop-card-line .is-warn {
-  color: var(--warn);
-}
-
-.loop-confidence {
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 1px 7px;
-  border-radius: var(--radius-full);
-  border: 1px solid currentColor;
-  white-space: nowrap;
-}
-
-.loop-confidence--high {
-  color: var(--ok);
-}
-
-.loop-confidence--medium {
-  color: var(--warn);
-}
-
-.loop-confidence--low {
-  color: var(--text-muted);
-}
-
-.payback-meter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.fig-caption-note {
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.payback-track {
-  flex: 1;
-  height: 4px;
-  background: var(--bg-elevated);
-  border-radius: var(--radius-full);
-  overflow: hidden;
+.fig-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
 }
 
-.payback-fill {
-  height: 100%;
-  background: var(--ok);
-  border-radius: var(--radius-full);
+.fig-kpis .fig {
+  margin: 0;
 }
 
-.loop-card-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+.fig--kpi .fig-caption,
+.fig--assurance .fig-caption {
+  display: block;
+}
+
+.fig--kpi .fig-caption-note,
+.fig--assurance .fig-caption-note {
+  display: block;
   margin-top: 2px;
 }
 
-.loop-options {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+/* A hero number is a figure, not a headline: big enough to be the first thing
+   read, with the unit small beside it so the digits stay the mark. */
+.fig-kpi-value {
+  font-size: 30px;
+  font-weight: 650;
+  line-height: 1.1;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
 }
 
-.loop-option {
-  font-size: 11px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 2px 8px;
-  color: var(--text-muted);
-  background: var(--bg-deep);
-}
-
-.loop-option strong {
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.loop-sim-btn {
-  height: 26px;
-  padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
-  font-family: var(--font-sans);
-  font-size: 11px;
+.fig-kpi-unit {
+  font-size: 13px;
   font-weight: 500;
-  cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  color: var(--text-secondary);
+  letter-spacing: 0;
 }
 
-.loop-sim-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.loop-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 14px;
-}
-
-.loop-list {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 4px 14px;
+.fig-kpi-second {
+  display: block;
   font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* ── Sparkline ── */
+.fig-spark {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.fig-spark-band {
+  fill: var(--fig-data-soft);
+  stroke: none;
+}
+
+.fig-spark-line {
+  fill: none;
+  stroke: var(--fig-data);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* The comparison the band is measured from. Dashed so it reads as a reference
+   rather than as a second series. */
+.fig-spark-base {
+  stroke: var(--fig-rule);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.fig-spark-mark {
+  stroke: var(--fig-rule);
+  stroke-width: 1;
+}
+
+.fig-spark-dot {
+  fill: var(--fig-data);
+  stroke: var(--bg-surface);
+  stroke-width: 1.5;
+}
+
+.fig-spark-dot--last {
+  fill: var(--text-primary);
+}
+
+.fig-spark-label {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Two marks on one axis ── */
+.fig-pair {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.fig-pair-track {
+  stroke: var(--fig-track);
+  stroke-width: 1;
+}
+
+.fig-pair-span,
+.fig-dumbbell-span {
+  stroke: var(--fig-data);
+  stroke-width: 2;
+  opacity: 0.45;
+}
+
+.fig-dot {
+  fill: var(--fig-data);
+  stroke: var(--bg-surface);
+  stroke-width: 1.5;
+}
+
+.fig-dot-hollow {
+  fill: var(--bg-surface);
+  stroke: var(--fig-data);
+  stroke-width: 2;
+}
+
+.fig-tick {
+  fill: var(--text-muted);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fig-tick--strong {
+  fill: var(--text-secondary);
+}
+
+/* ── Part to whole ── */
+.fig-stack {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  margin-bottom: 12px;
+}
+
+.fig-stack-seg {
+  border-radius: 3px;
+  min-width: 3px;
+}
+
+.fig-stack-seg--proven {
+  background: var(--fig-good);
+}
+
+.fig-stack-seg--unproven {
+  background: var(--fig-context);
+}
+
+.fig-stack-seg--failing {
+  background: var(--fig-bad);
+}
+
+.fig-stack-seg--unreached {
+  background: var(--fig-track);
+}
+
+.fig-key {
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+}
+
+.fig-key-item {
+  display: grid;
+  grid-template-columns: 10px 28px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
-.loop-list-row {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-subtle);
-  line-height: 1.45;
+.fig-key-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
 }
 
-.loop-list-row:last-child {
+.fig-key-swatch--proven {
+  background: var(--fig-good);
+}
+
+.fig-key-swatch--unproven {
+  background: var(--fig-context);
+}
+
+.fig-key-swatch--failing {
+  background: var(--fig-bad);
+}
+
+.fig-key-swatch--unreached {
+  background: var(--fig-track);
+}
+
+.fig-key-n {
+  text-align: right;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── The table of what to set up next ── */
+.fig-table-wrap {
+  overflow-x: auto;
+}
+
+.fig-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.fig-table th,
+.fig-table td {
+  text-align: left;
+  vertical-align: middle;
+  padding: 12px 14px 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.fig-table thead th {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--fig-rule);
+  white-space: nowrap;
+}
+
+/* The axis is drawn once, in the header, because every row below shares it. */
+.fig-th-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+  margin-top: 3px;
+  padding-right: 34px;
+  border-top: 1px solid var(--fig-track);
+  padding-top: 2px;
+}
+
+.fig-table tbody th {
+  font-weight: 500;
+  max-width: 260px;
+  padding-right: 20px;
+}
+
+.fig-table tbody tr:last-child th,
+.fig-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.loop-list-row strong {
+.fig-table .is-num {
+  text-align: right;
+  color: var(--text-secondary);
+  padding-right: 18px;
+}
+
+.fig-row-title {
+  display: block;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.fig-conf {
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.fig-conf--high::before,
+.fig-conf--medium::before,
+.fig-conf--low::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: 1px;
+  background: var(--fig-context);
+}
+
+.fig-conf--high::before {
+  background: var(--fig-data);
+}
+
+.fig-row-options {
+  display: block;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+.fig-row-options span {
+  display: block;
+}
+
+.fig-row-svg {
+  display: block;
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  overflow: visible;
+}
+
+.fig-bar {
+  fill: var(--fig-data);
+}
+
+.fig-inline-label {
+  fill: var(--text-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* The value being moved away from: present, and clearly the lesser of the two. */
+.fig-inline-label--soft {
+  fill: var(--text-muted);
+  font-weight: 500;
+}
+
+.fig-leader {
+  stroke: var(--fig-rule);
+  stroke-width: 1;
+}
+
+.fig-axis-line {
+  stroke: var(--fig-track);
+  stroke-width: 1;
+}
+
+.fig-axis-tick {
+  stroke: var(--fig-rule);
+  stroke-width: 1;
+}
+
+.fig-row-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fig-row-btn:hover {
+  border-color: var(--fig-data);
+  color: var(--text-primary);
+}
+
+.fig-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin: 10px 0 0;
+}
+
+.fig-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ── Interruption bars ── */
+.fig-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fig-bar-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 190px) 1fr 44px;
+  grid-template-areas: 'name track count' 'note note note';
+  align-items: center;
+  gap: 4px 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.fig-bar-row:last-child {
+  border-bottom: none;
+}
+
+.fig-bar-name {
+  grid-area: name;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.fig-tag {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 1px 6px;
+  margin-left: 7px;
+  vertical-align: 1px;
+}
+
+.fig-bar-track {
+  grid-area: track;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 12px;
+}
+
+.fig-bar-fill {
+  height: 9px;
+  border-radius: 4px;
+  background: var(--fig-data);
+  min-width: 3px;
+}
+
+/* The keeper is context, so it recedes twice: the grey, and a hatch that
+   survives a greyscale print and a forced-colors mode. */
+.fig-bar-fill--kept {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--fig-context) 0 3px,
+    rgba(100, 116, 139, 0.35) 3px 6px
+  );
+}
+
+.fig-bar-value {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.fig-bar-count {
+  grid-area: count;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.fig-bar-note {
+  grid-area: note;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.fig-bar-row.is-kept .fig-bar-note {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.fig-axis {
+  display: grid;
+  grid-template-columns: minmax(120px, 190px) 1fr;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.fig-axis-spacer {
+  display: block;
+}
+
+.fig-axis-scale {
+  position: relative;
+  display: block;
+  height: 14px;
+  border-top: 1px solid var(--fig-track);
+  padding-right: 52px;
+}
+
+.fig-axis-tick-label {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 860px) {
+  /* A caption and its note stop fitting on one line long before the chart
+     does. Stack them rather than let the title wrap around the note. */
+  .fig-caption {
+    display: block;
+  }
+
+  .fig-caption-note {
+    display: block;
+    margin-top: 2px;
+  }
+
+  .fig-bar-row {
+    grid-template-columns: 1fr 44px;
+    grid-template-areas: 'name count' 'track track' 'note note';
+  }
+
+  .fig-axis {
+    grid-template-columns: 1fr;
+  }
+
+  .fig-axis-spacer {
+    display: none;
+  }
 }
 
 .loop-foot {
