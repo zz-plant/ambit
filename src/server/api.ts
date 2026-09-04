@@ -73,21 +73,33 @@ const GRAPH_DB_PATH = resolveDbPath();
  * migrates the database itself. Starting the server against a graph seeded by
  * an older Ambit otherwise queried columns that did not exist yet and returned
  * 500 until some other command happened to migrate it.
+ *
+ * Kept warm across requests: reopening SQLite and running 19 PRAGMA checks and
+ * 447 lines of DDL every two seconds per connected SSE client produced massive
+ * statement compilation overhead and lock contention.
  */
-function openGraph(): Db {
-  const db = getDb(GRAPH_DB_PATH);
-  migrate(db as never);
-  return db;
+let warmDb: Db | null = null;
+function getWarmGraph(): Db {
+  if (!warmDb) {
+    warmDb = getDb(GRAPH_DB_PATH);
+    migrate(warmDb as never);
+  }
+  return warmDb;
 }
 
-/** Runs `fn` against the graph and always closes the handle. */
-function withGraph<T>(fn: (db: Db) => T): T {
-  const db = openGraph();
-  try {
-    return fn(db);
-  } finally {
-    db.close();
+process.on('exit', () => {
+  if (warmDb) {
+    try {
+      warmDb.close();
+    } catch {}
+    warmDb = null;
   }
+});
+
+/** Runs `fn` against the graph using the warm handle. */
+function withGraph<T>(fn: (db: Db) => T): T {
+  const db = getWarmGraph();
+  return fn(db);
 }
 
 // ── The live stream ──────────────────────────────────────────────────────────

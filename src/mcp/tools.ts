@@ -3,7 +3,7 @@
  *
  * Pure data — no engine imports, no database. Split out of server.ts, which
  * held the catalogue, the JSON-RPC framing, a warm database handle and a
- * forty-eight-case dispatch switch in 870 lines. What a tool *is* and what it
+ * sixty-case dispatch switch. What a tool *is* and what it
  * *does* are different questions, and they are answered in different files now.
  */
 

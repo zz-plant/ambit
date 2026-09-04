@@ -86,7 +86,7 @@ async function runCommand(
     // runtime hooks that compose it into something else.
     case 'briefing':
     case 'brief': {
-      if (process.argv.includes('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
+      if (flags.has('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
       else emitText(briefingText(db, { mark: !flags.has('--peek') }));
       break;
     }
@@ -343,7 +343,7 @@ async function runCommand(
       break;
     }
     case 'seed': {
-      runSeed(db, mappingOverride, process.argv.includes('--json'));
+      runSeed(db, mappingOverride, flags.has('--json'));
       break;
     }
     // Where the graph lives is not obvious once the CLI is installed rather
@@ -494,7 +494,7 @@ async function main() {
       // map". Seeding only reads config files and writes the local graph, so
       // doing it unasked is safe; --json runs stay silent-but-seeded so
       // scripts get their answer instead of a lecture.
-      const json = process.argv.includes('--json');
+      const json = flags.has('--json');
       if (!json) {
         console.log(
           `${C.grey}First run — reading your agent config and building the graph…${C.reset}`

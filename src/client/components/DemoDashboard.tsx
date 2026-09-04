@@ -537,13 +537,14 @@ export default function DemoDashboard({ leftInset = 0 }: DemoDashboardProps) {
         <section>
           <div className="loop-section-head">
             <h3 className="loop-section-title">What to set up next</h3>
-            <div className="loop-filter-tabs" role="group" aria-label="Filter by confidence">
+            <div className="loop-filter-tabs" role="tablist" aria-label="Filter by confidence">
               {filters.map(([key, label]) => (
                 <button
                   key={key}
                   type="button"
+                  role="tab"
                   className={`loop-filter-tab ${confidenceFilter === key ? 'loop-filter-tab--active' : ''}`}
-                  aria-pressed={confidenceFilter === key}
+                  aria-selected={confidenceFilter === key}
                   onClick={() => setConfidenceFilter(key)}
                 >
                   {label}

@@ -43,6 +43,14 @@ function readJson(path: string): any {
   }
 }
 
+function safeReaddir(path: string): string[] {
+  try {
+    return readdirSync(path);
+  } catch {
+    return [];
+  }
+}
+
 /** Directories holding SKILL.md subdirectories — user skills and plugin skills. */
 function skillDirs(claudeHome: string): string[] {
   const dirs: string[] = [];
@@ -51,7 +59,7 @@ function skillDirs(claudeHome: string): string[] {
 
   const marketplaces = join(claudeHome, 'plugins', 'marketplaces');
   if (existsSync(marketplaces)) {
-    for (const entry of readdirSync(marketplaces)) {
+    for (const entry of safeReaddir(marketplaces)) {
       for (const candidate of [join(marketplaces, entry, 'skills'), join(marketplaces, entry)]) {
         if (!existsSync(candidate)) continue;
         try {
@@ -59,7 +67,7 @@ function skillDirs(claudeHome: string): string[] {
         } catch {
           continue;
         }
-        const holdsSkills = readdirSync(candidate).some(name =>
+        const holdsSkills = safeReaddir(candidate).some(name =>
           existsSync(join(candidate, name, 'SKILL.md'))
         );
         if (holdsSkills) dirs.push(candidate);
@@ -126,7 +134,7 @@ export function readClaudeCode(
 
   const permissions = settings.permissions || {};
   const skillCount = fragment.skills.paths.reduce(
-    (n, dir) => n + readdirSync(dir).filter(name => existsSync(join(dir, name, 'SKILL.md'))).length,
+    (n, dir) => n + safeReaddir(dir).filter(name => existsSync(join(dir, name, 'SKILL.md'))).length,
     0
   );
 

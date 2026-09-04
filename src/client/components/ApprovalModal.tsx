@@ -58,11 +58,13 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   ];
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click to dismiss modal
     <div className="uplink-modal-overlay" onClick={onClose} role="presentation">
       <div
         className="uplink-modal"
         style={{ maxWidth: '680px', width: '90%' }}
         onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="proposals-title"
@@ -83,13 +85,14 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         </div>
 
         <div className="gov-toolbar">
-          <div className="gov-tabs" role="group" aria-label="Filter proposals">
+          <div className="gov-tabs" role="tablist" aria-label="Filter proposals">
             {tabs.map(([key, label]) => (
               <button
                 key={key}
                 type="button"
+                role="tab"
                 className={`gov-tab ${statusTab === key ? 'gov-tab--active' : ''}`}
-                aria-pressed={statusTab === key}
+                aria-selected={statusTab === key}
                 onClick={() => setStatusTab(key)}
               >
                 {label}

@@ -156,10 +156,16 @@ let detectors: Array<{ id: string; res: RegExp[] }> | null = null;
  */
 function attribute(db: Db, tool?: string): string | null {
   if (!tool) return null;
-  // An MCP tool names its server: mcp__github__create_issue → mcp:github.
-  const mcp = /^mcp__([^_]+(?:_[^_]+)*?)__/.exec(tool);
-  if (mcp) {
-    const id = `mcp:${mcp[1].replace(/_/g, '-')}`;
+  // An MCP tool names its server:
+  // - Claude Code: mcp__github__create_issue → mcp:github
+  // - OpenCode / standard URI: github/create_issue or mcp:github:create_issue or mcp/github/create_issue
+  // - Single underscore: mcp_github_create_issue
+  const mcpClaude = /^mcp__([^_]+(?:_[^_]+)*?)__/.exec(tool);
+  const mcpSlashOrColon = /^(?:mcp[:/])?([a-zA-Z0-9_-]+)[:/][a-zA-Z0-9_-]+$/.exec(tool);
+  const mcpUnderscore = /^mcp_([a-zA-Z0-9-]+)_[a-zA-Z0-9_-]+$/.exec(tool);
+  const serverCandidate = mcpClaude?.[1] || mcpSlashOrColon?.[1] || mcpUnderscore?.[1];
+  if (serverCandidate) {
+    const id = `mcp:${serverCandidate.replace(/_/g, '-')}`;
     if (db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id)) return id;
   }
   if (!detectors) {

@@ -73,12 +73,20 @@ const TABLES: Array<{
   },
   {
     table: 'session_learning',
-    columns: ['session_id', 'capability_id', 'action', 'outcome_score', 'notes', 'timestamp'],
+    columns: [
+      'session_id',
+      'capability_id',
+      'action',
+      'outcome_score',
+      'notes',
+      'object',
+      'timestamp',
+    ],
     key: ['capability_id', 'action', 'timestamp'],
   },
   {
     table: 'frontier_snapshots',
-    columns: ['taken_at', 'frontier_size', 'states', 'kinds', 'verified', 'lifecycles'],
+    columns: ['taken_at', 'reached', 'total', 'verified', 'states', 'kinds', 'lifecycles'],
     key: ['taken_at'],
   },
   {
@@ -106,6 +114,7 @@ const TABLES: Array<{
     columns: [
       'id',
       'goal',
+      'goal_id',
       'run_type',
       'source',
       'started_at',
@@ -129,6 +138,7 @@ const TABLES: Array<{
       'capability_id',
       'action',
       'started_at',
+      'ended_at',
       'active_seconds',
       'waiting_seconds',
       'outcome',
@@ -146,6 +156,11 @@ const TABLES: Array<{
       'recorded_at',
     ],
     key: ['run_id', 'recorded_at'],
+  },
+  {
+    table: 'resource_consumption',
+    columns: ['run_id', 'resource_id', 'kind', 'quantity', 'unit', 'cost_cents', 'recorded_at'],
+    key: ['run_id', 'recorded_at', 'kind'],
   },
 ];
 
@@ -302,8 +317,12 @@ function importSync(db: Db, path?: string) {
         continue;
       }
       try {
-        insert.run(...cols.map(c => (row[c] === undefined ? null : row[c])));
-        added[spec.table]++;
+        const info = insert.run(...cols.map(c => (row[c] === undefined ? null : row[c]))) as any;
+        if (info && info.changes > 0) {
+          added[spec.table]++;
+        } else {
+          skipped[spec.table]++;
+        }
       } catch {
         // A foreign key this machine cannot satisfy yet — an observation about
         // a capability whose node did not come across. Counted, not fatal.

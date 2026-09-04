@@ -10,7 +10,7 @@ Capability graph engine, ERAS-era SVG visualiser, MCP server, control plane inte
 - **Store**: Zustand, persisted to browser localStorage
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `node:http` in `src/server/api.ts` — visualiser API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
-- **MCP Server**: JSON-RPC over stdio in `src/mcp/`, 48 `ambit_*` tools
+- **MCP Server**: JSON-RPC over stdio in `src/mcp/`, 60 `ambit_*` tools
 - **Plugins**: `plugins/ambit-telemetry.js` (tool executions and permission prompts → the work ledger) and `plugins/ambit-tracker.js` (configuration changes), both copied to `~/.config/opencode/plugins/`
 
 ## Core Structure

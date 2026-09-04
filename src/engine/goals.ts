@@ -112,24 +112,35 @@ function goalVocabulary(): GoalCandidate[] {
  * Each matching phrase counts toward the capability that owns it, so a goal
  * the sentence names several ways outranks one it touches once.
  */
+function phraseMatches(p: string, sentence: string, tokens: Set<string>): boolean {
+  if (sentence.toLowerCase().includes(p)) return true;
+  const words = tokensOf(p);
+  if (words.length === 0) return false;
+  // A phrase of several words that survives stopword removal as a single
+  // common word must not match on that word alone. "without me" reduces to
+  // ["without"], so every sentence containing "without" scored a hit for
+  // Scheduled Work — including "search my code without sending it to a
+  // cloud", where the word is part of a negation about privacy and the
+  // recommendation came back as an automation capability.
+  if (p.trim().split(/\s+/).length > 1 && words.length < 2) return false;
+  return words.every(w => tokens.has(w));
+}
+
+/**
+ * Scores a goal sentence against the curated vocabulary.
+ *
+ * A phrase matches when the sentence contains it verbatim, or when every
+ * content word of the phrase appears in the sentence — "unattended" in
+ * "maintain the homelab unattended" is the single-word case of the same rule.
+ * Each matching phrase counts toward the capability that owns it, so a goal
+ * the sentence names several ways outranks one it touches once.
+ */
 function matchGoal(sentence: string): GoalCandidate[] {
   const tokens = new Set(tokensOf(sentence));
   const vocab = goalVocabulary();
   const scored = vocab.map(c => ({
     ...c,
-    hits: c.phrases.filter(p => {
-      if (sentence.toLowerCase().includes(p)) return true;
-      const words = tokensOf(p);
-      if (words.length === 0) return false;
-      // A phrase of several words that survives stopword removal as a single
-      // common word must not match on that word alone. "without me" reduces to
-      // ["without"], so every sentence containing "without" scored a hit for
-      // Scheduled Work — including "search my code without sending it to a
-      // cloud", where the word is part of a negation about privacy and the
-      // recommendation came back as an automation capability.
-      if (p.trim().split(/\s+/).length > 1 && words.length < 2) return false;
-      return words.every(w => tokens.has(w));
-    }).length,
+    hits: c.phrases.filter(p => phraseMatches(p, sentence, tokens)).length,
   }));
   return scored.filter(c => c.hits > 0).sort((a, b) => b.hits - a.hits);
 }
@@ -172,6 +183,7 @@ function goalFor(db: Db, sentence?: string) {
     };
   }
 
+  const tokens = new Set(tokensOf(sentence));
   const candidates = matches.map(m => {
     const plan = planFor(db, m.id) as any;
     return {
@@ -179,7 +191,7 @@ function goalFor(db: Db, sentence?: string) {
       name: m.name,
       domain: m.domain,
       score: m.hits,
-      matched_phrases: m.phrases.filter(p => sentence.toLowerCase().includes(p)),
+      matched_phrases: m.phrases.filter(p => phraseMatches(p, sentence, tokens)),
       // The delta, folded in so a candidate list is also a plan shortlist.
       reachable: plan.error ? undefined : plan.reachable,
       steps: plan.error ? undefined : plan.steps,

@@ -251,6 +251,7 @@ export default function CivTree({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: Dragging to pan is a pointer affordance layered over the canvas. Content inside is keyboard operable.
     <div
       ref={containerRef}
       // Dragging to pan is a pointer affordance layered over the canvas. The
@@ -519,6 +520,7 @@ export default function CivTree({
                 const dialCircumference = 2 * Math.PI * dialRadius;
 
                 return (
+                  // biome-ignore lint/a11y/useSemanticElements: SVG element groups cannot be HTML buttons
                   <g
                     key={item.id}
                     transform={`translate(${cx}, ${cy})`}
@@ -908,8 +910,18 @@ export default function CivTree({
             const clickable = Boolean(SPOTLIGHTS[l.label]);
             const isLegendActive = spotlightGroup === l.label;
             return (
+              // biome-ignore lint/a11y/noStaticElementInteractions: Legend items trigger interactive filtering
               <g
                 key={l.label}
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                aria-label={clickable ? `Highlight ${l.label}` : undefined}
+                onKeyDown={e => {
+                  if (clickable && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    setSpotlightGroup(curr => (curr === l.label ? null : l.label));
+                  }
+                }}
                 transform={`translate(${lx}, 8)`}
                 style={{
                   cursor: clickable ? 'pointer' : 'default',

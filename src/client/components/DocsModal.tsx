@@ -80,10 +80,12 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
   if (!isOpen) return null;
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click to dismiss modal
     <div className="docs-overlay" onClick={onClose} role="presentation">
       <div
         className="docs-panel"
         onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
