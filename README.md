@@ -441,6 +441,15 @@ Ambit sits above the protocol layer and below workflow orchestration. It neither
 - **Against workflow state machines.** LangGraph models control flow within one task. Ambit models what the host environment is capable of executing at all.
 - **Against package managers.** Nix and Homebrew install binaries. Ambit models the affordance those binaries add up to, and what it costs a person to keep them working.
 
+### Position in the revisable-delegation loop
+
+Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds two steps, **capability** (what the assembled human-plus-agent system can do, and whether that is configured or verified) and **authorization** (which of it has been delegated, to whom, under what ceiling). The shared record shape for the loop is [STD-07, the Revisable Delegation Record](https://ethotechnics.org/standards/std-07-revisable-delegation-record).
+
+- **Canonical export**: the graph and ledger, via `ambit sync export` (schema version 1) and the `ambit_*` MCP tools. In STD-07 terms, `capabilities` plus lifecycle map to `capability` records, `authority` rows and `budget set` ceilings map to `authorization` records, and `work_runs` with `outcomes` map to `action` and `outcome`. Ambit does not yet emit that shape; the mapping is the next step, not a claim.
+- **What is honestly not there**: authority is checked and reported, not enforced. `ambit authority` resolves scope and mode, the control plane consults the gate, and nothing forces a runtime to. Until a runtime does, an STD-07 `action` record from Ambit would be a record of a simulated environment, and the export will say so.
+- **Wired to**: nothing yet. No sibling consumes Ambit's export and Ambit consumes none. The `upstream` and `downstream` arrays in [`server.json`](./server.json) are empty on purpose and fill in only when an edge exists in code.
+- **Siblings**: [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), [Ethotechnics](https://ethotechnics.org) (the record shape and the vocabulary).
+
 ---
 
 ## Security invariants

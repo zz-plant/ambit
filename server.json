@@ -15,7 +15,9 @@
       "identifier": "ambit-cli",
       "version": "0.4.1",
       "runtimeHint": "npx",
-      "transport": { "type": "stdio" },
+      "transport": {
+        "type": "stdio"
+      },
       "packageArguments": [
         {
           "type": "positional",
@@ -25,5 +27,23 @@
         }
       ]
     }
-  ]
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "org.ethotechnics.revisable-delegation": {
+        "loopPosition": [
+          "capability",
+          "authorization"
+        ],
+        "standard": "https://ethotechnics.org/standards/std-07-revisable-delegation-record",
+        "schema": "https://ethotechnics.org/api/schema/revisable-delegation-record.schema.json",
+        "schemaVersion": "0.1.0",
+        "conformanceLevel": null,
+        "kinds": [],
+        "note": "Ambit describes capability and authority and does not yet emit STD-07 records. Authority contracts are checked and reported, not enforced.",
+        "upstream": [],
+        "downstream": []
+      }
+    }
+  }
 }
