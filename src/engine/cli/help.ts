@@ -96,6 +96,9 @@ govern — the reviewable path from proposal to applied change
   govern history [since <when>]   how the frontier moved
   govern audit [run|prop|human|days]   the trail — who approved what, what ran,
                           and whether it held
+  govern delegation [verify] [--record] [--export] [--limit=N]   grants that
+                          narrowed themselves because what they rest on stopped
+                          passing, written in the STD-07 record shape
 
 report — what the system cost to operate
   report work [limit]     recent runs, each with what it cost

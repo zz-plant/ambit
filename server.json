@@ -38,11 +38,27 @@
         "standard": "https://ethotechnics.org/standards/std-07-revisable-delegation-record",
         "schema": "https://ethotechnics.org/api/schema/revisable-delegation-record.schema.json",
         "schemaVersion": "0.1.0",
-        "conformanceLevel": null,
-        "kinds": [],
-        "note": "Ambit describes capability and authority and does not yet emit STD-07 records. Authority contracts are checked and reported, not enforced.",
+        "conformanceLevel": 2,
+        "kinds": [
+          "capability",
+          "authorization",
+          "discrepancy",
+          "revision"
+        ],
+        "note": "Level 2 is claimed for the four kinds listed and nothing else. Nothing reads these records yet.",
         "upstream": [],
-        "downstream": []
+        "downstream": [],
+        "notEmitted": {
+          "kinds": [
+            "belief",
+            "action",
+            "objection",
+            "outcome"
+          ],
+          "why": "Ambit holds the capability and authorization steps. Its environment adapter is simulated, so an action record from here would attest to a fixture."
+        },
+        "enforced": "An unattended grant whose hard prerequisite is failing returns CONFIRM at every decision, whether or not any record has been written.",
+        "export": "ambit delegation --export"
       }
     }
   }

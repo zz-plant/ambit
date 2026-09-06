@@ -10,6 +10,7 @@ import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
 import { deriveLifecycles } from './lifecycle.ts';
 import { evaluatePromotions } from './promote.ts';
+import { recordDelegationState } from '../delegation.ts';
 import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
 
@@ -142,6 +143,7 @@ function runVerification(db: Db, which?: string, target?: string) {
       const history = evidenceFor(db, which);
       deriveLifecycles(db);
       const authority = evaluatePromotions(db);
+      recordDelegationState(db);
       return {
         checked: 1,
         verified: r.status === 'verified' ? 1 : 0,
@@ -177,6 +179,7 @@ function runVerification(db: Db, which?: string, target?: string) {
     const passes = history.filter((h: any) => h.action === 'verified').length;
     deriveLifecycles(db);
     const authority = evaluatePromotions(db);
+    recordDelegationState(db);
     (r as any).lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
       .get(r.id)?.lifecycle;
@@ -241,6 +244,7 @@ function runVerification(db: Db, which?: string, target?: string) {
   // rather than waiting for someone to run a command named "promote".
   deriveLifecycles(db);
   const authority = evaluatePromotions(db);
+  recordDelegationState(db);
   for (const r of withReliability) {
     r.lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
