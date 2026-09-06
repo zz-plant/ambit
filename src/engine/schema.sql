@@ -444,3 +444,28 @@ CREATE TABLE IF NOT EXISTS proposal_rejections (
     reason TEXT,
     rejected_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- The delegation record log. STD-07, the Revisable Delegation Record:
+-- https://ethotechnics.org/standards/std-07-revisable-delegation-record
+--
+-- Append-only and hash-chained. `body` is the whole record as emitted, sealed
+-- with its integrity block; `hash` is sha256 over the record *without* that
+-- block, keys sorted, which is what the standard defines and what a reader
+-- elsewhere recomputes. `prior_hash` is the hash of the previous row, so a
+-- deleted or reordered record is detectable rather than merely regrettable.
+--
+-- Nothing here gates anything. The gate is canExecute, which narrows a grant
+-- whose foundation is failing whether or not a record was ever written; this
+-- table is the account of that having happened.
+CREATE TABLE IF NOT EXISTS delegation_records (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_id TEXT NOT NULL UNIQUE,
+    kind TEXT NOT NULL,
+    subject TEXT NOT NULL DEFAULT '',
+    recorded_at TEXT NOT NULL DEFAULT (datetime('now')),
+    body TEXT NOT NULL,
+    hash TEXT NOT NULL,
+    prior_hash TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_delegation_kind ON delegation_records(kind);

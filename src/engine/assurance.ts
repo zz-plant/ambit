@@ -39,6 +39,7 @@ export {
   sandboxCovering,
   objectEvidence,
   missingPrerequisites,
+  brokenFoundations,
   canExecute,
   recordSpend,
 } from './assure/decide.ts';

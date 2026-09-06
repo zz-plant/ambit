@@ -37,6 +37,12 @@ import { recordRefusal, signalReport } from './failures.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
 import { exportSync, importSync } from './sync.ts';
 import { ledgerHistory, ledgerSince } from './ledger.ts';
+import {
+  recordDelegationState,
+  delegationRecords,
+  delegationManifest,
+  verifyChain,
+} from './delegation.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
@@ -282,6 +288,29 @@ async function runCommand(
         if (recorded !== undefined) decision.recorded_deficit = recorded;
       }
       emit(decision);
+      break;
+    }
+    case 'delegation': {
+      // What the graph has recorded about grants narrowing themselves, in the
+      // shared record shape. `--record` writes the account for the current
+      // state; verification already calls it, so this is for asking on demand.
+      if (flags.has('--record')) emit(recordDelegationState(db));
+      else if (flags.has('--export')) {
+        for (const record of delegationRecords(db, Number(value('limit') || 500))) {
+          emitText(JSON.stringify(record));
+        }
+      } else if (arg === 'verify') emit(verifyChain(db));
+      else
+        emit({
+          ...delegationManifest(db),
+          recent: delegationRecords(db, Number(value('limit') || 10)).map(r => ({
+            record_id: r.record_id,
+            kind: r.kind,
+            subject: r.subject,
+            summary: r.summary,
+            recorded_at: r.time.recorded_at,
+          })),
+        });
       break;
     }
     case 'history':

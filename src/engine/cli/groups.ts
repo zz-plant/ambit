@@ -25,7 +25,17 @@ const GROUPS: Record<string, string[]> = {
     'reversible',
   ],
   check: ['verify', 'authority', 'can', 'credentials', 'incidents', 'incident', 'budget'],
-  govern: ['proposals', 'proposal', 'approve', 'reject', 'apply', 'rollback', 'history', 'audit'],
+  govern: [
+    'proposals',
+    'proposal',
+    'approve',
+    'reject',
+    'apply',
+    'rollback',
+    'history',
+    'audit',
+    'delegation',
+  ],
   report: [
     'work',
     'usage',

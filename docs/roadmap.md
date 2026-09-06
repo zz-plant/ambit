@@ -30,7 +30,7 @@ Each section below ends with what it still lacks. This is that ending, collected
 | 7 | The ledger | shipped | Nothing writes evidence of *use*, so which capabilities are actually exercised is unanswered. |
 | 7b | Affordance domains | built, derived | The map does not render the new domains as columns, and *environment* has no representation. |
 | 8 | A runtime adapter layer | partly built | A runtime-owned capability surface exists as an export and a reader; no runtime publishes one yet. |
-| 9 | Authority as a first-class edge | built, enforces nothing | Scope is checked and reported, not mediated. |
+| 9 | Authority as a first-class edge | built, and mediates one thing | A grant narrows when what it rests on fails. Nothing still forces a *runtime* to consult the gate. |
 | 10 | A second-generation MCP | partly built | A capability with no declared check applies unverified, reported rather than refused. |
 | 11 | The visualiser as a negotiating surface | built and shipping | Only the state and run subset of AG-UI; no tool-call or reasoning events, by design. |
 | 12 | The long-running agent | built, except the install | The briefing, passive capture, the one-question contract, the curriculum, registered skills, promotion on evidence, the travelling ledger. What remains is §12.9: the package is not on the registry, so every path in still starts with a checkout. |
@@ -329,7 +329,7 @@ Do not model "Claude has tool X, Hermes has tool Y". Model what each runtime *pr
 
 The point is durability. You stop maintaining a setup for one assistant and start maintaining a capability fabric that different intelligences attach to — which matters more each time the model landscape shifts.
 
-## 9. Authority as a first-class edge — built, and enforces nothing
+## 9. Authority as a first-class edge — built, and mediates one thing
 
 The server already refuses to create MCP entries because those entries contain commands that get executed, binds to loopback, and rejects foreign origins. That boundary should be **generalised, never weakened**.
 
@@ -356,7 +356,45 @@ And the granularity the section asked for. The `docker-container-management` ske
 
 Scope now decides rather than merely being reported (§13.3). Two rules, in order: a forbidden grant wins outright at any specificity, and among the rest the most specific covering scope governs, ties going to the narrower mode. That is what makes *yes, on staging* expressible — under narrowest-wins alone, a grant saying "autonomous on staging" could never beat the standing "confirm everywhere", so the trade of a smaller blast radius for unattended operation bought nothing and nobody offered it.
 
-Unbuilt: Ambit still describes authority rather than mediating action everywhere. The control plane consults the gate; nothing forces a runtime to.
+Mediating, now, in one place that matters. A grant holds only while what it rests on still works: `canExecute` reads the hard prerequisites of the capability being acted on, and an unattended grant standing over a failing one returns CONFIRM instead of ALLOW. The graph had known both halves of this for a long time — the credential is broken, the grant depends on it — and joined them nowhere, so the answer stayed autonomous while its foundation was gone. That was the concrete shape of "describes rather than mediates".
+
+Three properties of how it does it. The stored grant is never rewritten: what a person declared stays declared, and the narrowing is a property of the decision, so nothing has to remember to put it back when the check passes again. It needs no recorder to have run first, because a gate that depended on a background job would be advisory again. And a declared sandbox is exempt, since consequences are contained there and acting on a broken foundation somewhere that does not matter is how the evidence to fix it gets gathered.
+
+What that costs the caller is stated back to them: the decision carries `narrowed_by`, naming the capability and the lifecycle that took the grant down.
+
+`ambit delegation` writes the account of it in the STD-07 record shape (§9b), which is separate work from the enforcement and deliberately downstream of it.
+
+Still unbuilt: nothing forces a *runtime* to consult the gate at all. A runtime that never calls `canExecute` is unaffected by any of this, and that is the remaining half of the section.
+
+## 9b. The record of a delegation narrowing itself — built
+
+§9 makes the gate mediate. This is the account of it, in a shape something
+other than Ambit can read: [STD-07, the Revisable Delegation
+Record](https://ethotechnics.org/standards/std-07-revisable-delegation-record).
+
+`ambit delegation --record` writes four kinds for every grant currently
+narrowed by a failing foundation: a `capability` record for the thing that
+broke, an `authorization` record for the grant, carrying in `depends_on` what
+it rests on and in `invalidated_by` what would end it, a `discrepancy` for the
+divergence, and a `revision` superseding the authorization. Verification calls
+it too, since that is the moment evidence changes.
+
+Append-only and hash-chained: sha256 over the record without its integrity
+block, keys sorted, each row carrying the hash of the one before, so an edited
+or deleted record is detectable. `ambit delegation verify` recomputes the
+chain. `ambit delegation --export` emits newline-delimited JSON.
+
+Conformance is declared as level 2 for those four kinds and nothing else.
+`action` and `outcome` are deliberately not emitted: the environment adapter is
+simulated, so an action record from here would attest to a fixture. The
+manifest in `server.json` says so, because the standard's own adoption note is
+that declaring a level honestly is conformance and claiming one the log does
+not earn is not.
+
+Unbuilt: nothing reads these records yet. Ambit is the second system in the
+portfolio to emit the shape and there is still no consumer, which is the thing
+worth building next — a record format with publishers and no readers is a
+documentation format.
 
 ## 10. A second-generation MCP — partly built
 

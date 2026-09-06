@@ -12,6 +12,7 @@
  */
 import type { Db } from '../db.ts';
 import { usable } from './lifecycle.ts';
+import { FAILING } from '../vocabulary.ts';
 import type { AuthorityRow, CapabilityRow } from '../rows.ts';
 
 /**
@@ -44,6 +45,33 @@ function missingPrerequisites(db: Db, capability: string): string[] {
     )
     .all<Pick<CapabilityRow, 'name'>>(capability)
     .map(r => r.name);
+}
+
+/**
+ * Hard prerequisites the system can reach but whose checks are failing.
+ *
+ * `missingPrerequisites` answers what is absent. This answers the harder case:
+ * everything is installed, the capability's own check still passes, and the
+ * thing it stands on has started failing. The graph has always known this — it
+ * is one join away, and the same join the impact analysis runs — and nothing
+ * consulted it when deciding what may run unattended. That was the concrete
+ * shape of the roadmap's "authority is described rather than mediated": the
+ * credential is broken, and the grant still says autonomous.
+ *
+ * Hard requisites only. A soft prerequisite strengthens a capability without
+ * gating it, so a failing one is not grounds to narrow anything.
+ */
+function brokenFoundations(db: Db, capability: string) {
+  return db
+    .prepare(
+      `SELECT c.id, c.name, c.lifecycle FROM dependencies d
+       JOIN capabilities c ON c.id = d.from_capability
+       WHERE d.to_capability = ? AND d.is_hard_requisite = 1
+         AND c.state != 'locked'
+         AND c.lifecycle IN (${FAILING.map(() => '?').join(',')})
+       ORDER BY c.name`
+    )
+    .all<Pick<CapabilityRow, 'id' | 'name' | 'lifecycle'>>(capability, ...FAILING);
 }
 
 /** Narrowest wins. Two sources disagreeing is not a tie to break arbitrarily. */
@@ -242,15 +270,32 @@ function canExecute(
     };
   }
 
-  const unattended = governing === 'autonomous' || Boolean(sandbox);
+  // The grant holds only while what it rests on is still working.
+  //
+  // Evaluated here, at the decision, rather than written back to the mode
+  // column: the stored grant is what a person declared and should not be
+  // silently rewritten by a check, and a gate that depended on some recorder
+  // having run first would be advisory again. `ambit delegation` writes the
+  // record of this happening; the narrowing itself needs nothing to have run.
+  //
+  // A sandbox is exempt. It relaxes a confirmation because consequences are
+  // contained there, and acting on a broken foundation somewhere that does not
+  // matter is how the evidence to fix it gets gathered.
+  const foundation =
+    governing === 'autonomous' && !sandbox ? brokenFoundations(db, capability) : [];
+  const unattended = (governing === 'autonomous' && !foundation.length) || Boolean(sandbox);
+  const foundationNames = foundation.map(f => `${f.name} is ${f.lifecycle}`).join(', ');
   return {
     decision: unattended ? 'ALLOW' : 'CONFIRM',
     verdict: unattended ? ('yes' as const) : ('ask' as const),
     reason: sandbox
       ? `${input.target} is a sandbox ${sandbox.declared_by} declared, so ${cap.name} runs unattended there. It stays at confirm elsewhere.`
-      : governing === 'autonomous'
-        ? `${cap.name} may run unattended for ${action}.`
-        : `${cap.name} is permitted for ${action}, with a person in the loop. Ask before running it.`,
+      : foundation.length
+        ? `${cap.name} is granted unattended for ${action}, but ${foundationNames}. What the grant rests on stopped holding, so it asks a person until the check passes again.`
+        : governing === 'autonomous'
+          ? `${cap.name} may run unattended for ${action}.`
+          : `${cap.name} is permitted for ${action}, with a person in the loop. Ask before running it.`,
+    narrowed_by: foundation.length ? foundation : undefined,
     capability,
     action,
     governing_grant: grant,
@@ -369,6 +414,7 @@ export {
   sandboxCovering,
   objectEvidence,
   missingPrerequisites,
+  brokenFoundations,
   canExecute,
   recordSpend,
 };
