@@ -5,12 +5,13 @@
  * that has never run and a check that passed an hour ago are different states,
  * and everything that decides availability reads the difference.
  */
+import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
 import { deriveLifecycles } from './lifecycle.ts';
 import { evaluatePromotions } from './promote.ts';
-import { recordDelegationState } from '../delegation.ts';
+import { pullDelegationSources, recordDelegationState } from '../delegation.ts';
 import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
 
@@ -245,6 +246,11 @@ function runVerification(db: Db, which?: string, target?: string) {
   deriveLifecycles(db);
   const authority = evaluatePromotions(db);
   recordDelegationState(db);
+  // Every declared source, read on the run where this graph's evidence changes
+  // anyway. After the lifecycles and promotions above, deliberately: what
+  // arrives here is evidence attributed to another system, and running it
+  // before them would suggest it decides something. It does not.
+  pullDelegationSources(db, path => readFileSync(path, 'utf8'));
   for (const r of withReliability) {
     r.lifecycle = db
       .prepare('SELECT lifecycle FROM capabilities WHERE id = ?')
