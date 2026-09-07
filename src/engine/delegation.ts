@@ -30,6 +30,19 @@ import type { Db } from './db.ts';
 import { brokenFoundations } from './assure/decide.ts';
 
 export const RECORD_SCHEMA_VERSION = '0.1.0';
+
+/**
+ * Which Ambit wrote this.
+ *
+ * Two environments run the same tech tree, so they name capabilities
+ * identically — which is exactly what makes one a usable source for the other,
+ * and exactly what makes "is this record mine?" impossible to answer from the
+ * system id alone. `AMBIT_ENV` or the hostname, the same identity federation
+ * already uses, so a graph does not have two names for itself.
+ */
+export function thisInstance(): string {
+  return process.env.AMBIT_ENV || process.env.HOSTNAME || 'unnamed';
+}
 export const RECORD_STANDARD_URL =
   'https://ethotechnics.org/standards/std-07-revisable-delegation-record';
 export const RECORD_SCHEMA_URL =
@@ -48,7 +61,7 @@ export type DelegationRecord = {
   schema_version: string;
   record_id: string;
   kind: (typeof EMITTED_KINDS)[number];
-  system: { id: 'ambit'; version?: string; origin?: string };
+  system: { id: 'ambit'; instance?: string; version?: string; origin?: string };
   actor: { id: string; kind: 'human' | 'model' | 'service' | 'institution'; on_behalf_of?: string };
   subject: string;
   summary: string;
@@ -273,7 +286,7 @@ export function recordDelegationState(db: Db): {
         schema_version: RECORD_SCHEMA_VERSION,
         record_id: capabilityId,
         kind: 'capability',
-        system: { id: 'ambit' },
+        system: { id: 'ambit', instance: thisInstance() },
         actor: { id: 'ambit', kind: 'service' },
         subject: failing.id,
         summary: `${failing.name} is ${failing.lifecycle}: its declared check is not passing.`,
@@ -297,7 +310,7 @@ export function recordDelegationState(db: Db): {
         schema_version: RECORD_SCHEMA_VERSION,
         record_id: authorizationId,
         kind: 'authorization',
-        system: { id: 'ambit' },
+        system: { id: 'ambit', instance: thisInstance() },
         actor: { id: grant.source || 'ambit', kind: 'service' },
         subject: `${grant.capability_id}/${grant.action}`,
         summary: `${grant.name} may run ${grant.action} unattended${grant.scope ? ` within ${grant.scope}` : ''}.`,
@@ -331,7 +344,7 @@ export function recordDelegationState(db: Db): {
         schema_version: RECORD_SCHEMA_VERSION,
         record_id: discrepancyId,
         kind: 'discrepancy',
-        system: { id: 'ambit' },
+        system: { id: 'ambit', instance: thisInstance() },
         actor: { id: 'ambit', kind: 'service' },
         subject: failing.id,
         summary: `${failing.name} was expected to be passing and is ${failing.lifecycle}.`,
@@ -354,7 +367,7 @@ export function recordDelegationState(db: Db): {
         schema_version: RECORD_SCHEMA_VERSION,
         record_id: `ambit:revision:${grant.id}:${failing.id}#${stamp}`,
         kind: 'revision',
-        system: { id: 'ambit' },
+        system: { id: 'ambit', instance: thisInstance() },
         actor: { id: 'ambit', kind: 'service' },
         subject: `${grant.capability_id}/${grant.action}`,
         summary: `${grant.name} asks a person for ${grant.action} until ${failing.name} passes again.`,
@@ -460,7 +473,7 @@ export function recordObjection(db: Db, input: ObjectionInput): ObjectionResult 
     schema_version: RECORD_SCHEMA_VERSION,
     record_id: `ambit:objection:${input.record}#${existing + 1}`,
     kind: 'objection',
-    system: { id: 'ambit' },
+    system: { id: 'ambit', instance: thisInstance() },
     actor: { id: by, kind: 'human' },
     subject: input.record,
     summary: `${by} challenges ${input.record} and asks for ${input.requested}.`,
@@ -534,7 +547,7 @@ export function answerObjection(db: Db, input: AnswerInput): ObjectionResult {
     schema_version: RECORD_SCHEMA_VERSION,
     record_id: `ambit:revision:answer:${input.objection}`,
     kind: 'revision',
-    system: { id: 'ambit' },
+    system: { id: 'ambit', instance: thisInstance() },
     actor: { id: by, kind: 'human' },
     subject: String(objection.content.challenges ?? objection.subject),
     summary:
@@ -721,11 +734,34 @@ export function ingestForeignRecords(db: Db, text: string): IngestSummary {
       });
       continue;
     }
-    if (system === 'ambit') {
+    // Refusing this graph's own output, and only that.
+    //
+    // The first version refused every record whose system was `ambit`, which
+    // reads as the same rule and is not: it also refused the one pairing in
+    // this portfolio whose subject vocabulary actually matches. Another
+    // environment running the same tech tree names capabilities identically,
+    // which is what makes its discrepancies legible here at all. Refract's are
+    // about claims in documents and name nothing this graph has.
+    //
+    // So the test is the instance, not the system. Reading back what this graph
+    // wrote would make its own output look like outside corroboration; reading
+    // what another environment wrote is the point.
+    if (system === 'ambit' && record.system?.instance === thisInstance()) {
       summary.rejected.push({
         at: record.record_id,
         reason:
           'this graph emitted that record; ingesting it would make its own output look like outside evidence',
+      });
+      continue;
+    }
+    if (system === 'ambit' && !record.system?.instance) {
+      // Written before instances were stamped. Such a record cannot say which
+      // Ambit produced it, and a graph cannot tell an old record of its own
+      // from a peer's, so it is refused rather than guessed at.
+      summary.rejected.push({
+        at: record.record_id,
+        reason:
+          'an ambit record with no system.instance cannot be told apart from this graph’s own output',
       });
       continue;
     }
@@ -746,20 +782,24 @@ export function ingestForeignRecords(db: Db, text: string): IngestSummary {
 
     const observed =
       typeof record.content?.observed === 'string' ? record.content.observed : record.summary || '';
+    // Scoped by sender. Two environments running the same tech tree produce the
+    // same record ids for the same capability, so a bare record_id would let
+    // the second environment's report look like a duplicate of the first's.
+    const origin = `${system}${record.system?.instance ? `/${record.system.instance}` : ''}`;
     const already =
       db
-        .prepare('SELECT COUNT(*) AS n FROM failure_signals WHERE detail LIKE ?')
-        .get<{ n: number }>(`%${record.record_id}%`)?.n ?? 0;
+        .prepare('SELECT COUNT(*) AS n FROM failure_signals WHERE source = ? AND detail LIKE ?')
+        .get<{ n: number }>(`std07:${origin}`, `%${record.record_id}%`)?.n ?? 0;
     if (already) continue;
 
     db.prepare(
       `INSERT INTO failure_signals (source, session_id, tool, class, signal, capability_id, detail)
        VALUES (?, NULL, NULL, 'reported', 'foreign-discrepancy', ?, ?)`
-    ).run(`std07:${system}`, known.id, `${record.record_id} — ${observed}`.slice(0, 300));
+    ).run(`std07:${origin}`, known.id, `${record.record_id} — ${observed}`.slice(0, 300));
 
     summary.admitted.push({
       record_id: record.record_id,
-      system,
+      system: origin,
       capability: known.name,
       summary: record.summary || observed,
     });
@@ -771,6 +811,7 @@ export function ingestForeignRecords(db: Db, text: string): IngestSummary {
 export type DelegationSource = {
   id: string;
   system: string;
+  instance: string;
   location: string;
   enabled: boolean;
   declared_by: string;
@@ -797,7 +838,7 @@ export type SourceResult = { ok: false; reason: string } | { ok: true; source: D
  */
 export function declareDelegationSource(
   db: Db,
-  input: { id: string; system: string; location: string; by: string }
+  input: { id: string; system: string; location: string; by: string; instance?: string }
 ): SourceResult {
   const id = input.id.trim();
   const system = input.system.trim();
@@ -808,22 +849,38 @@ export function declareDelegationSource(
     return { ok: false, reason: 'a source needs the system it comes from: pass --system' };
   if (!location) return { ok: false, reason: 'a source needs a path: pass --from' };
   if (!by) return { ok: false, reason: 'a source is a person’s declaration: pass --by' };
+  // Another Ambit is the one source whose subject vocabulary matches this
+  // graph's exactly, which is what makes it worth reading — and what makes it
+  // indistinguishable from this graph's own output unless it says which
+  // environment it is. So naming one is required, and naming this one is
+  // refused: reading back what this graph wrote would turn its own output into
+  // outside corroboration.
+  const instance = input.instance?.trim() ?? '';
   if (system === 'ambit') {
-    return {
-      ok: false,
-      reason:
-        'ambit cannot be its own source: reading its own output back would make it look like outside corroboration',
-    };
+    if (!instance) {
+      return {
+        ok: false,
+        reason:
+          'an ambit source must say which environment it is: pass --instance. Two Ambit graphs name capabilities identically, so without it a peer’s report cannot be told from this graph’s own',
+      };
+    }
+    if (instance === thisInstance()) {
+      return {
+        ok: false,
+        reason: `${instance} is this environment: reading its own output back would make it look like outside corroboration`,
+      };
+    }
   }
 
   db.prepare(
-    `INSERT INTO delegation_sources (id, system, location, enabled, declared_by)
-     VALUES (?, ?, ?, 1, ?)
+    `INSERT INTO delegation_sources (id, system, instance, location, enabled, declared_by)
+     VALUES (?, ?, ?, ?, 1, ?)
      ON CONFLICT(id) DO UPDATE SET system = excluded.system,
+                                   instance = excluded.instance,
                                    location = excluded.location,
                                    enabled = 1,
                                    declared_by = excluded.declared_by`
-  ).run(id, system, location, by);
+  ).run(id, system, instance, location, by);
   const source = delegationSources(db).find(entry => entry.id === id);
   return source ? { ok: true, source } : { ok: false, reason: 'the source did not persist' };
 }
@@ -845,12 +902,13 @@ export function forgetDelegationSource(db: Db, id: string): SourceResult {
 export function delegationSources(db: Db): DelegationSource[] {
   return db
     .prepare(
-      `SELECT id, system, location, enabled, declared_by, declared_at, last_pulled_at, last_outcome
+      `SELECT id, system, instance, location, enabled, declared_by, declared_at, last_pulled_at, last_outcome
        FROM delegation_sources ORDER BY id`
     )
     .all<{
       id: string;
       system: string;
+      instance: string;
       location: string;
       enabled: number;
       declared_by: string;
@@ -896,7 +954,8 @@ export function pullDelegationSources(db: Db, readFile: (path: string) => string
     let counts: { admitted?: number; unmatched?: number; rejected?: number } = {};
     try {
       const result = ingestForeignRecords(db, readFile(source.location));
-      const foreign = result.admitted.filter(entry => entry.system === source.system).length;
+      const expected = source.instance ? `${source.system}/${source.instance}` : source.system;
+      const foreign = result.admitted.filter(entry => entry.system === expected).length;
       const mismatched = result.admitted.length - foreign;
       summary.admitted += result.admitted.length;
       counts = {
@@ -906,7 +965,7 @@ export function pullDelegationSources(db: Db, readFile: (path: string) => string
       };
       outcome =
         mismatched > 0
-          ? `read ${result.read}, but ${mismatched} came from a system other than ${source.system}`
+          ? `read ${result.read}, but ${mismatched} came from somewhere other than ${expected}`
           : `read ${result.read}, admitted ${result.admitted.length}`;
     } catch (error) {
       outcome = `could not read ${source.location}: ${error instanceof Error ? error.message : String(error)}`;
