@@ -29,6 +29,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { getDb, type Db } from '../db.ts';
 import { migrate } from '../migrate.ts';
+import { ENGINE_DIR } from '../paths.ts';
 import { capture, captureAsync, runCommand } from '../cli.ts';
 
 /**
@@ -98,11 +99,49 @@ function seed(config: unknown, opts: { name?: string } = {}): Db {
 
 const rows = (db: Db, sql: string) => db.prepare(sql).all() as any[];
 
+/**
+ * The capability model these tests run against.
+ *
+ * The shipped tree is used verbatim except that every declared check becomes a
+ * local command that succeeds. A check in the real tree runs a real command,
+ * and `web-research` curls example.com — so `apply` verified the change,
+ * failed to reach the network, and rolled back, which turned eight tests of
+ * propose/approve/apply into tests of whether the machine had internet. They
+ * passed in CI and failed on any boxed runner, which reads as flakiness and
+ * is not.
+ *
+ * A test that wants a capability to be failing says so directly, with `learn`
+ * or by seeding a lifecycle. That is the difference this makes: what the graph
+ * believes is set by the test rather than inherited from the box it runs on.
+ */
+function writeTestTechTree(target: string): string {
+  const tree = JSON.parse(readFileSync(join(ENGINE_DIR, 'techtree.json'), 'utf8')) as {
+    nodes?: Array<Record<string, unknown>>;
+  };
+  for (const node of tree.nodes ?? []) {
+    if (node.verify) node.verify = { command: ['sh', '-c', 'exit 0'], timeout_seconds: 5 };
+    const contract = node.contract as { can?: unknown[] } | undefined;
+    for (const action of contract?.can ?? []) {
+      if (action && typeof action === 'object' && 'verify' in action) {
+        (action as { verify: unknown }).verify = {
+          command: ['sh', '-c', 'exit 0'],
+          timeout_seconds: 5,
+        };
+      }
+    }
+  }
+  const path = join(target, 'techtree.json');
+  writeFileSync(path, JSON.stringify(tree));
+  return path;
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'capgraph-'));
+  process.env.AMBIT_TECHTREE = writeTestTechTree(dir);
 });
 
 afterEach(() => {
+  delete process.env.AMBIT_TECHTREE;
   rmSync(dir, { recursive: true, force: true });
 });
 
