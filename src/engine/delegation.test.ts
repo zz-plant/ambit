@@ -26,6 +26,11 @@ import {
   answerObjection,
   unansweredObjections,
   ingestForeignRecords,
+  declareDelegationSource,
+  setDelegationSourceEnabled,
+  forgetDelegationSource,
+  delegationSources,
+  pullDelegationSources,
   type DelegationRecord,
 } from './delegation.ts';
 
@@ -538,5 +543,126 @@ describe("reading another system's records", () => {
     expect(again.admitted).toHaveLength(0);
     const count = db.prepare('SELECT COUNT(*) AS n FROM failure_signals').get<{ n: number }>()?.n;
     expect(count).toBe(1);
+  });
+});
+
+describe('declaring where foreign records arrive', () => {
+  const foreignStream = (subject: string) =>
+    JSON.stringify({
+      schema_version: '0.1.0',
+      record_id: `refract:discrepancy:${subject}`,
+      kind: 'discrepancy',
+      system: { id: 'refract' },
+      actor: { id: 'refract', kind: 'service' },
+      subject,
+      summary: 'The evidence for this claim moved.',
+      time: { as_of: '2026-09-07T00:00:00.000Z', recorded_at: '2026-09-07T00:00:00.000Z' },
+      content: { expected: 'stable evidence', observed: 'the cited source changed' },
+      visibility: 'internal',
+    });
+
+  function declared() {
+    const db = environment('verified');
+    const result = declareDelegationSource(db, {
+      id: 'refract-main',
+      system: 'refract',
+      location: '/tmp/refract-stream.ndjson',
+      by: 'kj',
+    });
+    if (!result.ok) throw new Error(result.reason);
+    return db;
+  }
+
+  it('records the declaration, and reports it as upstream', () => {
+    const db = declared();
+    const [source] = delegationSources(db);
+    expect(source.system).toBe('refract');
+    expect(source.enabled).toBe(true);
+    expect(source.last_pulled_at).toBeNull();
+    // The manifest's upstream array stops being empty exactly when a person
+    // says where records come from, and not before.
+    const manifest = delegationManifest(db) as { upstream: Array<{ system: string }> };
+    expect(manifest.upstream.map(entry => entry.system)).toEqual(['refract']);
+    expect(
+      (delegationManifest(environment('verified')) as { upstream: unknown[] }).upstream
+    ).toEqual([]);
+  });
+
+  it('needs a person, a system, and a path', () => {
+    const db = environment('verified');
+    const base = { id: 'x', system: 'refract', location: '/tmp/a', by: 'kj' };
+    expect(declareDelegationSource(db, { ...base, by: '' }).ok).toBe(false);
+    expect(declareDelegationSource(db, { ...base, system: '' }).ok).toBe(false);
+    expect(declareDelegationSource(db, { ...base, location: '' }).ok).toBe(false);
+  });
+
+  it('refuses to make this graph its own source', () => {
+    const db = environment('verified');
+    const result = declareDelegationSource(db, {
+      id: 'self',
+      system: 'ambit',
+      location: '/tmp/own.ndjson',
+      by: 'kj',
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('own source');
+  });
+
+  it('reads every enabled source and records when it did', () => {
+    const db = declared();
+    const summary = pullDelegationSources(db, () => foreignStream('credential:k8s'));
+    expect(summary.pulled).toBe(1);
+    expect(summary.admitted).toBe(1);
+    const [source] = delegationSources(db);
+    expect(source.last_pulled_at).toBeTruthy();
+    expect(source.last_outcome).toContain('admitted 1');
+  });
+
+  it('skips a disabled source without forgetting it', () => {
+    const db = declared();
+    setDelegationSourceEnabled(db, 'refract-main', false);
+    expect(pullDelegationSources(db, () => foreignStream('credential:k8s')).pulled).toBe(0);
+    expect(delegationSources(db)).toHaveLength(1);
+    setDelegationSourceEnabled(db, 'refract-main', true);
+    expect(pullDelegationSources(db, () => foreignStream('credential:k8s')).pulled).toBe(1);
+  });
+
+  it('records why a source could not be read, and does not throw', () => {
+    // An integration that took down verification when the other end went quiet
+    // would make the safe move "never declare a source".
+    const db = declared();
+    const summary = pullDelegationSources(db, () => {
+      throw new Error('ENOENT: no such file');
+    });
+    expect(summary.admitted).toBe(0);
+    expect(delegationSources(db)[0].last_outcome).toContain('could not read');
+  });
+
+  it('says so when a source sends records from a different system than declared', () => {
+    // Not fatal, and not silent: the declaration named who was trusted to be
+    // on the other end, and something else answered.
+    const db = declared();
+    const summary = pullDelegationSources(db, () =>
+      JSON.stringify({
+        ...JSON.parse(foreignStream('credential:k8s')),
+        record_id: 'elsewhere:discrepancy:1',
+        system: { id: 'elsewhere' },
+      })
+    );
+    expect(summary.sources[0].outcome).toContain('other than refract');
+  });
+
+  it('still cannot narrow a grant, however it arrived', () => {
+    const db = declared();
+    pullDelegationSources(db, () => foreignStream('credential:k8s'));
+    const decision = canExecute(db, { capability: 'combo:deploy' }) as { decision: string };
+    expect(decision.decision).toBe('ALLOW');
+  });
+
+  it('forgets a source on request', () => {
+    const db = declared();
+    expect(forgetDelegationSource(db, 'refract-main').ok).toBe(true);
+    expect(delegationSources(db)).toHaveLength(0);
+    expect(forgetDelegationSource(db, 'refract-main').ok).toBe(false);
   });
 });

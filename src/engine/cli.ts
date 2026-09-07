@@ -45,6 +45,11 @@ import {
   answerObjection,
   unansweredObjections,
   ingestForeignRecords,
+  declareDelegationSource,
+  setDelegationSourceEnabled,
+  forgetDelegationSource,
+  delegationSources,
+  pullDelegationSources,
   verifyChain,
 } from './delegation.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
@@ -333,6 +338,31 @@ async function runCommand(
       else if (arg === 'objections') emit(unansweredObjections(db));
       // Reading another system's stream. Foreign discrepancies land as evidence
       // attributed to the sender; they never move a lifecycle on their own.
+      // Where foreign records arrive from, declared once instead of typed each
+      // time. A full `ambit verify` reads every enabled one.
+      else if (arg === 'sources') emit(delegationSources(db));
+      else if (arg === 'source') {
+        const action = positional[1];
+        const id = positional[2] || value('id') || '';
+        if (action === 'add')
+          emit(
+            declareDelegationSource(db, {
+              id,
+              system: value('system') || '',
+              location: value('from') || '',
+              by: value('by') || '',
+            })
+          );
+        else if (action === 'disable') emit(setDelegationSourceEnabled(db, id, false));
+        else if (action === 'enable') emit(setDelegationSourceEnabled(db, id, true));
+        else if (action === 'forget') emit(forgetDelegationSource(db, id));
+        else
+          emit({
+            ok: false,
+            reason: 'ambit delegation source add|enable|disable|forget <id>',
+          });
+      } else if (arg === 'pull')
+        emit(pullDelegationSources(db, path => readFileSync(path, 'utf8')));
       else if (arg === 'ingest') {
         const path = positional[1] || value('file');
         if (!path) emit({ ok: false, reason: 'pass a file: ambit delegation ingest <path>' });

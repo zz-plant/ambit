@@ -469,3 +469,29 @@ CREATE TABLE IF NOT EXISTS delegation_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_delegation_kind ON delegation_records(kind);
+
+-- Where foreign records come from — §9b follow-up. Ambit can read another
+-- system's STD-07 stream (`ambit delegation ingest`), and until this it could
+-- only do so when a person typed the command. A declared source is that same
+-- act, made once and durable: a full verification run reads every enabled one.
+--
+-- A local path, deliberately. Ambit does not fetch: an outbound read on the
+-- verification path would put a remote host between this graph and its own
+-- evidence, and the loopback-only posture exists so nothing over a network
+-- decides anything here. What lands is still evidence, never authority — the
+-- ingest does not move a lifecycle, so a source cannot narrow a grant.
+--
+-- `last_pulled_at` is the point of the table as much as `location` is. A
+-- source that quietly stops producing looks exactly like a quiet week, and a
+-- check that stops running without saying so is worse than one that was never
+-- declared.
+CREATE TABLE IF NOT EXISTS delegation_sources (
+    id TEXT PRIMARY KEY,
+    system TEXT NOT NULL,
+    location TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    declared_by TEXT NOT NULL,
+    declared_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_pulled_at TEXT,
+    last_outcome TEXT
+);

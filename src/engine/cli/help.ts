@@ -108,6 +108,12 @@ govern — the reviewable path from proposal to applied change
   govern delegation ingest <file>   read another system's records. Foreign
                           discrepancies land as evidence attributed to the
                           sender; they never move a lifecycle here
+  govern delegation source add <id> --system= --from= --by=   declare where a
+                          system's records arrive, so a full ambit verify
+                          reads it instead of someone typing ingest each time
+  govern delegation sources / pull   what is declared and when each was last
+                          read, or read them all now. A source that goes quiet
+                          says so rather than looking like a quiet week
 
 report — what the system cost to operate
   report work [limit]     recent runs, each with what it cost

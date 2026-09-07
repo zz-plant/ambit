@@ -611,10 +611,23 @@ export function delegationManifest(db?: Db) {
     },
     consumes: {
       kinds: ['discrepancy'],
-      how: 'ambit delegation ingest <file>',
+      how: 'ambit delegation ingest <file>, or a declared source read on every full verification run',
       effect:
         'A foreign discrepancy about a capability this graph knows is recorded as evidence attributed to the sending system. It does not move a lifecycle, so no remote system can narrow a grant here by sending a file.',
     },
+    // Empty until a person declares a source. This array is the honest answer
+    // to "what is this wired to": it names systems whose records this graph
+    // actually reads, and stays empty while the answer is none.
+    upstream: db
+      ? delegationSources(db)
+          .filter(source => source.enabled)
+          .map(source => ({
+            system: source.system,
+            location: source.location,
+            last_pulled_at: source.last_pulled_at,
+            last_outcome: source.last_outcome,
+          }))
+      : [],
     enforced:
       'canExecute narrows an unattended grant whose hard prerequisite is failing, at every decision, whether or not these records have been written.',
     records: db ? verifyChain(db) : undefined,
@@ -752,5 +765,156 @@ export function ingestForeignRecords(db: Db, text: string): IngestSummary {
     });
   }
 
+  return summary;
+}
+
+export type DelegationSource = {
+  id: string;
+  system: string;
+  location: string;
+  enabled: boolean;
+  declared_by: string;
+  declared_at: string;
+  last_pulled_at: string | null;
+  last_outcome: string | null;
+};
+
+export type SourceResult = { ok: false; reason: string } | { ok: true; source: DelegationSource };
+
+/**
+ * Declaring where another system's records arrive.
+ *
+ * `ambit delegation ingest <file>` already reads a foreign stream, and until
+ * this it could only do so when a person typed the command — which makes the
+ * edge real but not repeatable, and an integration nobody runs twice is a
+ * demonstration rather than a connection. A declared source is the same act of
+ * judgment made once: this path carries records from that system, and a full
+ * verification run reads it from now on.
+ *
+ * The judgment does not move. Which changes count as discrepancies, and what
+ * capability each is about, are decided by whatever writes the stream. This
+ * says only where to look.
+ */
+export function declareDelegationSource(
+  db: Db,
+  input: { id: string; system: string; location: string; by: string }
+): SourceResult {
+  const id = input.id.trim();
+  const system = input.system.trim();
+  const location = input.location.trim();
+  const by = input.by.trim();
+  if (!id) return { ok: false, reason: 'a source needs an id' };
+  if (!system)
+    return { ok: false, reason: 'a source needs the system it comes from: pass --system' };
+  if (!location) return { ok: false, reason: 'a source needs a path: pass --from' };
+  if (!by) return { ok: false, reason: 'a source is a person’s declaration: pass --by' };
+  if (system === 'ambit') {
+    return {
+      ok: false,
+      reason:
+        'ambit cannot be its own source: reading its own output back would make it look like outside corroboration',
+    };
+  }
+
+  db.prepare(
+    `INSERT INTO delegation_sources (id, system, location, enabled, declared_by)
+     VALUES (?, ?, ?, 1, ?)
+     ON CONFLICT(id) DO UPDATE SET system = excluded.system,
+                                   location = excluded.location,
+                                   enabled = 1,
+                                   declared_by = excluded.declared_by`
+  ).run(id, system, location, by);
+  const source = delegationSources(db).find(entry => entry.id === id);
+  return source ? { ok: true, source } : { ok: false, reason: 'the source did not persist' };
+}
+
+export function setDelegationSourceEnabled(db: Db, id: string, enabled: boolean): SourceResult {
+  const existing = delegationSources(db).find(entry => entry.id === id);
+  if (!existing) return { ok: false, reason: `no source with id ${id}` };
+  db.prepare('UPDATE delegation_sources SET enabled = ? WHERE id = ?').run(enabled ? 1 : 0, id);
+  return { ok: true, source: { ...existing, enabled } };
+}
+
+export function forgetDelegationSource(db: Db, id: string): SourceResult {
+  const existing = delegationSources(db).find(entry => entry.id === id);
+  if (!existing) return { ok: false, reason: `no source with id ${id}` };
+  db.prepare('DELETE FROM delegation_sources WHERE id = ?').run(id);
+  return { ok: true, source: existing };
+}
+
+export function delegationSources(db: Db): DelegationSource[] {
+  return db
+    .prepare(
+      `SELECT id, system, location, enabled, declared_by, declared_at, last_pulled_at, last_outcome
+       FROM delegation_sources ORDER BY id`
+    )
+    .all<{
+      id: string;
+      system: string;
+      location: string;
+      enabled: number;
+      declared_by: string;
+      declared_at: string;
+      last_pulled_at: string | null;
+      last_outcome: string | null;
+    }>()
+    .map(row => ({ ...row, enabled: row.enabled === 1 }));
+}
+
+export type PullSummary = {
+  pulled: number;
+  admitted: number;
+  sources: Array<{
+    id: string;
+    system: string;
+    outcome: string;
+    admitted?: number;
+    unmatched?: number;
+    rejected?: number;
+  }>;
+};
+
+/**
+ * Reading every declared source.
+ *
+ * Called on a full verification run, which is the moment this graph's evidence
+ * changes anyway, and available on its own as `ambit delegation pull`.
+ *
+ * Nothing here throws. A source whose file is missing or unreadable records why
+ * and the run continues: an integration that took down verification when the
+ * other end went quiet would make the safe thing to do about a new source
+ * "don't declare one". The failure is written to `last_outcome`, where
+ * `ambit delegation sources` shows it, because a source that stopped producing
+ * and a quiet week look identical until something says which it was.
+ */
+export function pullDelegationSources(db: Db, readFile: (path: string) => string): PullSummary {
+  const summary: PullSummary = { pulled: 0, admitted: 0, sources: [] };
+  for (const source of delegationSources(db)) {
+    if (!source.enabled) continue;
+    summary.pulled += 1;
+    let outcome: string;
+    let counts: { admitted?: number; unmatched?: number; rejected?: number } = {};
+    try {
+      const result = ingestForeignRecords(db, readFile(source.location));
+      const foreign = result.admitted.filter(entry => entry.system === source.system).length;
+      const mismatched = result.admitted.length - foreign;
+      summary.admitted += result.admitted.length;
+      counts = {
+        admitted: result.admitted.length,
+        unmatched: result.unmatched.length,
+        rejected: result.rejected.length,
+      };
+      outcome =
+        mismatched > 0
+          ? `read ${result.read}, but ${mismatched} came from a system other than ${source.system}`
+          : `read ${result.read}, admitted ${result.admitted.length}`;
+    } catch (error) {
+      outcome = `could not read ${source.location}: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    db.prepare(
+      `UPDATE delegation_sources SET last_pulled_at = datetime('now'), last_outcome = ? WHERE id = ?`
+    ).run(outcome, source.id);
+    summary.sources.push({ id: source.id, system: source.system, outcome, ...counts });
+  }
   return summary;
 }
