@@ -1,4 +1,4 @@
-import { existsSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
 import { C, emit, emitRaw, emitText, setSink } from './cli/output.ts';
@@ -41,6 +41,10 @@ import {
   recordDelegationState,
   delegationRecords,
   delegationManifest,
+  recordObjection,
+  answerObjection,
+  unansweredObjections,
+  ingestForeignRecords,
   verifyChain,
 } from './delegation.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
@@ -300,7 +304,40 @@ async function runCommand(
           emitText(JSON.stringify(record));
         }
       } else if (arg === 'verify') emit(verifyChain(db));
-      else
+      // A person contesting a record Ambit wrote, and the answer they are owed.
+      // Neither widens authority: see recordObjection for why that is deliberate.
+      else if (arg === 'object')
+        emit(
+          recordObjection(db, {
+            record: positional[1] || value('record') || '',
+            by: value('by') || '',
+            basis: value('basis') || '',
+            requested:
+              value('requested') === 'reversal'
+                ? 'reversal'
+                : value('requested') === 'narrowing'
+                  ? 'narrowing'
+                  : 'reconsideration',
+            note: value('note'),
+          })
+        );
+      else if (arg === 'answer')
+        emit(
+          answerObjection(db, {
+            objection: positional[1] || value('objection') || '',
+            disposition: flags.has('--refuse') ? 'refused' : 'upheld',
+            because: value('because') || '',
+            by: value('by') || '',
+          })
+        );
+      else if (arg === 'objections') emit(unansweredObjections(db));
+      // Reading another system's stream. Foreign discrepancies land as evidence
+      // attributed to the sender; they never move a lifecycle on their own.
+      else if (arg === 'ingest') {
+        const path = positional[1] || value('file');
+        if (!path) emit({ ok: false, reason: 'pass a file: ambit delegation ingest <path>' });
+        else emit(ingestForeignRecords(db, readFileSync(path, 'utf8')));
+      } else
         emit({
           ...delegationManifest(db),
           recent: delegationRecords(db, Number(value('limit') || 10)).map(r => ({

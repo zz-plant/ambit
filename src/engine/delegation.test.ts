@@ -22,6 +22,10 @@ import {
   recordStateFor,
   recordModeFor,
   EMITTED_KINDS,
+  recordObjection,
+  answerObjection,
+  unansweredObjections,
+  ingestForeignRecords,
   type DelegationRecord,
 } from './delegation.ts';
 
@@ -122,7 +126,16 @@ describe('the record of that happening', () => {
     });
 
     const records = delegationRecords(db);
-    expect(records.map(r => r.kind)).toEqual([...EMITTED_KINDS]);
+    // The four Ambit writes on its own. `objection` is the fifth emitted kind
+    // and is deliberately absent here: it exists only when a person makes one,
+    // which is the whole distinction between a channel and a claim to have one.
+    expect(records.map(r => r.kind)).toEqual([
+      'capability',
+      'authorization',
+      'discrepancy',
+      'revision',
+    ]);
+    expect(EMITTED_KINDS).toContain('objection');
 
     const authorization = records.find(r => r.kind === 'authorization')!;
     const capability = records.find(r => r.kind === 'capability')!;
@@ -273,5 +286,257 @@ describe('what Ambit claims about its own records', () => {
     // The enforcement does not depend on the record having been written, and
     // the manifest has to keep saying so.
     expect(manifest.enforced).toContain('whether or not');
+  });
+});
+
+describe('standing to object', () => {
+  it('declares standing on every record, including the observations', () => {
+    // Two records used to carry none, and it was the only thing holding this
+    // stream below Level 3 in the published conformance checker.
+    const db = environment('broken');
+    learn(db, 'credential:k8s', 'failed');
+    recordDelegationState(db);
+    const records = delegationRecords(db, 50);
+    expect(records.length).toBeGreaterThan(0);
+    for (const record of records) {
+      expect(record.contest?.standing, `${record.record_id} declares no standing`).toBeTruthy();
+    }
+    // The two standings are different because the two claims are contested
+    // differently: an exercise of authority binds people, an observation is
+    // beaten by re-running the check.
+    const capability = records.find(r => r.kind === 'capability');
+    const authorization = records.find(r => r.kind === 'authorization');
+    expect(capability?.contest?.standing).toContain('run the declared check');
+    expect(authorization?.contest?.standing).toContain('holds or granted');
+  });
+});
+
+describe('objecting to a record', () => {
+  function narrowed() {
+    const db = environment('broken');
+    learn(db, 'credential:k8s', 'failed');
+    recordDelegationState(db);
+    const revision = delegationRecords(db, 50).find(r => r.kind === 'revision');
+    return { db, revision: revision! };
+  }
+
+  it('records a challenge against the narrowing, and answers it either way', () => {
+    const { db, revision } = narrowed();
+    const objection = recordObjection(db, {
+      record: revision.record_id,
+      by: 'kj',
+      basis: 'I granted this authority',
+      requested: 'reconsideration',
+    });
+    expect(objection.ok).toBe(true);
+    if (!objection.ok) return;
+    expect(objection.record.kind).toBe('objection');
+    expect(objection.record.depends_on).toEqual([revision.record_id]);
+    expect(unansweredObjections(db).map(o => o.record_id)).toEqual([objection.record.record_id]);
+
+    const answer = answerObjection(db, {
+      objection: objection.record.record_id,
+      disposition: 'refused',
+      because: 'the credential still does not pass its check',
+      by: 'kj',
+    });
+    expect(answer.ok).toBe(true);
+    expect(unansweredObjections(db)).toEqual([]);
+  });
+
+  it('does not widen authority, whichever way it is answered', () => {
+    // The point of the gate is that it cannot be talked past. An objection is
+    // evidence a person disagreed, not a route around a failing prerequisite.
+    const { db, revision } = narrowed();
+    const objection = recordObjection(db, {
+      record: revision.record_id,
+      by: 'kj',
+      basis: 'I granted this authority',
+      requested: 'reversal',
+    });
+    if (!objection.ok) throw new Error(objection.reason);
+    answerObjection(db, {
+      objection: objection.record.record_id,
+      disposition: 'upheld',
+      because: 'the narrowing was too broad',
+      by: 'kj',
+    });
+    const decision = canExecute(db, { capability: 'combo:deploy' }) as { decision: string };
+    expect(decision.decision).toBe('CONFIRM');
+  });
+
+  it('names what every revision supersedes, including an answer', () => {
+    // The published schema rejects a revision that supersedes nothing (§1.2),
+    // and the first answer record did exactly that — a defect invisible from
+    // inside this repo, since nothing here validates against that schema. The
+    // structural invariant it violated is checkable here, so it is checked.
+    const { db, revision } = narrowed();
+    const objection = recordObjection(db, {
+      record: revision.record_id,
+      by: 'kj',
+      basis: 'I granted this authority',
+      requested: 'reconsideration',
+    });
+    if (!objection.ok) throw new Error(objection.reason);
+    answerObjection(db, {
+      objection: objection.record.record_id,
+      disposition: 'refused',
+      because: 'the credential still does not pass',
+      by: 'kj',
+    });
+    for (const record of delegationRecords(db, 50)) {
+      if (record.kind !== 'revision') continue;
+      expect(record.supersedes, `${record.record_id} supersedes nothing`).toBeTruthy();
+    }
+    // An answer replaces the objection as the live account of the challenge.
+    // It must not claim to replace the record challenged: upholding an
+    // objection does not by itself change what that record said.
+    const answer = delegationRecords(db, 50).find(r =>
+      r.record_id.startsWith('ambit:revision:answer:')
+    )!;
+    expect(answer.supersedes).toBe(objection.record.record_id);
+  });
+
+  it('refuses an objection to a record that grants no standing', () => {
+    const { db, revision } = narrowed();
+    const stripped: DelegationRecord = { ...revision, contest: undefined };
+    // Simulate a record from an emitter that declares no standing.
+    db.prepare('UPDATE delegation_records SET body = ? WHERE record_id = ?').run(
+      JSON.stringify(stripped),
+      revision.record_id
+    );
+    const result = recordObjection(db, {
+      record: revision.record_id,
+      by: 'kj',
+      basis: 'I granted this',
+      requested: 'reversal',
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain('declares no standing');
+  });
+
+  it('needs an author and a basis, and answers a real objection only once', () => {
+    const { db, revision } = narrowed();
+    expect(
+      recordObjection(db, { record: revision.record_id, by: '', basis: 'x', requested: 'reversal' })
+        .ok
+    ).toBe(false);
+    expect(
+      recordObjection(db, {
+        record: revision.record_id,
+        by: 'kj',
+        basis: '',
+        requested: 'reversal',
+      }).ok
+    ).toBe(false);
+    expect(
+      recordObjection(db, { record: 'ambit:nope', by: 'kj', basis: 'x', requested: 'reversal' }).ok
+    ).toBe(false);
+
+    const objection = recordObjection(db, {
+      record: revision.record_id,
+      by: 'kj',
+      basis: 'I granted this',
+      requested: 'reversal',
+    });
+    if (!objection.ok) throw new Error(objection.reason);
+    const first = answerObjection(db, {
+      objection: objection.record.record_id,
+      disposition: 'refused',
+      because: 'stands',
+      by: 'kj',
+    });
+    expect(first.ok).toBe(true);
+    const second = answerObjection(db, {
+      objection: objection.record.record_id,
+      disposition: 'upheld',
+      because: 'changed my mind',
+      by: 'kj',
+    });
+    expect(second.ok).toBe(false);
+  });
+});
+
+describe("reading another system's records", () => {
+  const foreign = (overrides: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      schema_version: '0.1.0',
+      record_id: 'refract:discrepancy:1',
+      kind: 'discrepancy',
+      system: { id: 'refract' },
+      actor: { id: 'refract', kind: 'service' },
+      subject: 'credential:k8s',
+      summary: 'The evidence for this claim moved.',
+      time: { as_of: '2026-09-07T00:00:00.000Z', recorded_at: '2026-09-07T00:00:00.000Z' },
+      content: {
+        expected: 'stable evidence',
+        observed: 'the cited source changed',
+        source: 'refract',
+      },
+      visibility: 'internal',
+      ...overrides,
+    });
+
+  it('admits a foreign discrepancy about a capability it knows, as evidence', () => {
+    const db = environment('verified');
+    const summary = ingestForeignRecords(db, foreign());
+    expect(summary.read).toBe(1);
+    expect(summary.admitted).toHaveLength(1);
+    expect(summary.admitted[0].system).toBe('refract');
+    const signal = db
+      .prepare('SELECT source, capability_id FROM failure_signals')
+      .get<{ source: string; capability_id: string }>();
+    expect(signal?.source).toBe('std07:refract');
+    expect(signal?.capability_id).toBe('credential:k8s');
+  });
+
+  it('does not let a remote system narrow a grant by sending a file', () => {
+    // Evidence, not authority. If this ever flips to ALLOW -> CONFIRM on an
+    // ingest alone, anyone who can write JSON can revoke anyone's autonomy.
+    const db = environment('verified');
+    ingestForeignRecords(db, foreign());
+    const decision = canExecute(db, { capability: 'combo:deploy' }) as { decision: string };
+    expect(decision.decision).toBe('ALLOW');
+  });
+
+  it('ignores kinds that are not discrepancies, and says how many', () => {
+    const db = environment('verified');
+    const summary = ingestForeignRecords(
+      db,
+      [foreign({ kind: 'authorization', record_id: 'refract:authorization:1' }), foreign()].join(
+        '\n'
+      )
+    );
+    expect(summary.ignored.authorization).toBe(1);
+    expect(summary.admitted).toHaveLength(1);
+  });
+
+  it('reports a subject this graph has never heard of rather than dropping it', () => {
+    const db = environment('verified');
+    const summary = ingestForeignRecords(db, foreign({ subject: 'credential:nothing' }));
+    expect(summary.unmatched).toHaveLength(1);
+    expect(summary.admitted).toHaveLength(0);
+  });
+
+  it('refuses to ingest its own output', () => {
+    const db = environment('broken');
+    learn(db, 'credential:k8s', 'failed');
+    recordDelegationState(db);
+    const own = delegationRecords(db, 50)
+      .map(r => JSON.stringify(r))
+      .join('\n');
+    const summary = ingestForeignRecords(db, own);
+    expect(summary.read).toBe(0);
+    expect(summary.rejected.length).toBeGreaterThan(0);
+    expect(summary.rejected[0].reason).toContain('this graph emitted that record');
+  });
+
+  it('does not admit the same foreign record twice', () => {
+    const db = environment('verified');
+    ingestForeignRecords(db, foreign());
+    const again = ingestForeignRecords(db, foreign());
+    expect(again.admitted).toHaveLength(0);
+    const count = db.prepare('SELECT COUNT(*) AS n FROM failure_signals').get<{ n: number }>()?.n;
+    expect(count).toBe(1);
   });
 });

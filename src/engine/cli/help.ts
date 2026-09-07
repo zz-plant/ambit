@@ -99,6 +99,15 @@ govern — the reviewable path from proposal to applied change
   govern delegation [verify] [--record] [--export] [--limit=N]   grants that
                           narrowed themselves because what they rest on stopped
                           passing, written in the STD-07 record shape
+  govern delegation object <record> --by= --basis= [--requested=]   contest a
+                          record. Recorded, answerable, and it does not widen
+                          authority: fix the check or re-declare the grant
+  govern delegation answer <objection> --by= --because= [--refuse]   the answer
+                          an objection is owed, either way
+  govern delegation objections   objections nobody has answered yet
+  govern delegation ingest <file>   read another system's records. Foreign
+                          discrepancies land as evidence attributed to the
+                          sender; they never move a lifecycle here
 
 report — what the system cost to operate
   report work [limit]     recent runs, each with what it cost
