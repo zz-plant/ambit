@@ -349,6 +349,7 @@ async function runCommand(
             declareDelegationSource(db, {
               id,
               system: value('system') || '',
+              instance: value('instance'),
               location: value('from') || '',
               by: value('by') || '',
             })

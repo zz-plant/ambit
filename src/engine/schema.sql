@@ -488,6 +488,11 @@ CREATE INDEX IF NOT EXISTS idx_delegation_kind ON delegation_records(kind);
 CREATE TABLE IF NOT EXISTS delegation_sources (
     id TEXT PRIMARY KEY,
     system TEXT NOT NULL,
+    -- Which instance of that system, when the system is one that runs in more
+    -- than one place. Required for `ambit`, because two Ambit environments name
+    -- capabilities identically and "not me" is the only thing distinguishing a
+    -- peer's report from this graph's own output read back.
+    instance TEXT NOT NULL DEFAULT '',
     location TEXT NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1,
     declared_by TEXT NOT NULL,

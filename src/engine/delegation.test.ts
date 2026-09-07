@@ -31,6 +31,7 @@ import {
   forgetDelegationSource,
   delegationSources,
   pullDelegationSources,
+  thisInstance,
   type DelegationRecord,
 } from './delegation.ts';
 
@@ -597,15 +598,15 @@ describe('declaring where foreign records arrive', () => {
   });
 
   it('refuses to make this graph its own source', () => {
+    // This used to refuse any ambit source outright. It now refuses the ones
+    // that would actually be this graph — unnamed, or named as this
+    // environment — because a peer running the same tech tree is the one
+    // source whose capability ids line up with this graph's at all.
     const db = environment('verified');
-    const result = declareDelegationSource(db, {
-      id: 'self',
-      system: 'ambit',
-      location: '/tmp/own.ndjson',
-      by: 'kj',
-    });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toContain('own source');
+    const base = { id: 'self', system: 'ambit', location: '/tmp/own.ndjson', by: 'kj' };
+    expect(declareDelegationSource(db, base).ok).toBe(false);
+    expect(declareDelegationSource(db, { ...base, instance: thisInstance() }).ok).toBe(false);
+    expect(declareDelegationSource(db, { ...base, instance: 'somewhere-else' }).ok).toBe(true);
   });
 
   it('reads every enabled source and records when it did', () => {
@@ -664,5 +665,114 @@ describe('declaring where foreign records arrive', () => {
     expect(forgetDelegationSource(db, 'refract-main').ok).toBe(true);
     expect(delegationSources(db)).toHaveLength(0);
     expect(forgetDelegationSource(db, 'refract-main').ok).toBe(false);
+  });
+});
+
+describe('another environment as a source', () => {
+  /** A peer's stream: same tech tree, so the same capability ids, different instance. */
+  const peerStream = (instance: string, recordId = 'ambit:discrepancy:1:credential:k8s#1') =>
+    JSON.stringify({
+      schema_version: '0.1.0',
+      record_id: recordId,
+      kind: 'discrepancy',
+      system: { id: 'ambit', instance },
+      actor: { id: 'ambit', kind: 'service' },
+      subject: 'credential:k8s',
+      summary: 'Kubeconfig was expected to be passing and is broken.',
+      time: { as_of: '2026-09-07T00:00:00.000Z', recorded_at: '2026-09-07T00:00:00.000Z' },
+      content: { expected: 'Kubeconfig passing', observed: 'Kubeconfig is broken' },
+      visibility: 'internal',
+    });
+
+  it('stamps every emitted record with the environment that wrote it', () => {
+    const db = environment('broken');
+    learn(db, 'credential:k8s', 'failed');
+    recordDelegationState(db);
+    for (const record of delegationRecords(db, 50)) {
+      expect(record.system.instance, `${record.record_id} says which ambit wrote it`).toBeTruthy();
+    }
+  });
+
+  it('admits a peer environment, and still refuses its own output', () => {
+    // The first version of the guard refused every record whose system was
+    // `ambit`, which also refused the one pairing whose capability ids match
+    // this graph's — the reason a peer is worth reading at all.
+    const db = environment('verified');
+    expect(ingestForeignRecords(db, peerStream('laptop')).admitted).toHaveLength(1);
+
+    const own = environment('broken');
+    learn(own, 'credential:k8s', 'failed');
+    recordDelegationState(own);
+    const mine = delegationRecords(own, 50)
+      .filter(r => r.kind === 'discrepancy')
+      .map(r => JSON.stringify(r))
+      .join('\n');
+    const result = ingestForeignRecords(own, mine);
+    expect(result.admitted).toHaveLength(0);
+    expect(result.rejected[0].reason).toContain('this graph emitted that record');
+  });
+
+  it('refuses an ambit record that does not say which environment wrote it', () => {
+    const db = environment('verified');
+    const anonymous = JSON.parse(peerStream('laptop')) as { system: { instance?: string } };
+    delete anonymous.system.instance;
+    const result = ingestForeignRecords(db, JSON.stringify(anonymous));
+    expect(result.admitted).toHaveLength(0);
+    expect(result.rejected[0].reason).toContain('cannot be told apart');
+  });
+
+  it('keeps two environments reporting the same record id apart', () => {
+    // Same tech tree means the same record ids for the same capability, so a
+    // dedupe keyed on record_id alone would read the second environment's
+    // report as a repeat of the first's.
+    const db = environment('verified');
+    expect(ingestForeignRecords(db, peerStream('laptop')).admitted).toHaveLength(1);
+    expect(ingestForeignRecords(db, peerStream('desktop')).admitted).toHaveLength(1);
+    expect(ingestForeignRecords(db, peerStream('laptop')).admitted).toHaveLength(0);
+    const sources = db
+      .prepare(
+        "SELECT DISTINCT source FROM failure_signals WHERE source LIKE 'std07%' ORDER BY source"
+      )
+      .all<{ source: string }>()
+      .map(row => row.source);
+    expect(sources).toEqual(['std07:ambit/desktop', 'std07:ambit/laptop']);
+  });
+
+  it('does not narrow this graph on a peer’s report', () => {
+    // The property the whole ingest rests on, across environments: the laptop
+    // saying a capability is broken is evidence here, not a revocation.
+    const db = environment('verified');
+    ingestForeignRecords(db, peerStream('laptop'));
+    const decision = canExecute(db, { capability: 'combo:deploy' }) as { decision: string };
+    expect(decision.decision).toBe('ALLOW');
+  });
+
+  it('makes an ambit source name its environment, and refuses this one', () => {
+    const db = environment('verified');
+    const base = { id: 'peer', system: 'ambit', location: '/tmp/peer.ndjson', by: 'kj' };
+    const unnamed = declareDelegationSource(db, base);
+    expect(unnamed.ok).toBe(false);
+    if (!unnamed.ok) expect(unnamed.reason).toContain('must say which environment');
+
+    const itself = declareDelegationSource(db, { ...base, instance: thisInstance() });
+    expect(itself.ok).toBe(false);
+    if (!itself.ok) expect(itself.reason).toContain('this environment');
+
+    const peer = declareDelegationSource(db, { ...base, instance: 'laptop' });
+    expect(peer.ok).toBe(true);
+    if (peer.ok) expect(peer.source.instance).toBe('laptop');
+  });
+
+  it('says so when a peer source sends another environment’s records', () => {
+    const db = environment('verified');
+    declareDelegationSource(db, {
+      id: 'peer',
+      system: 'ambit',
+      instance: 'laptop',
+      location: '/tmp/peer.ndjson',
+      by: 'kj',
+    });
+    const summary = pullDelegationSources(db, () => peerStream('desktop'));
+    expect(summary.sources[0].outcome).toContain('other than ambit/laptop');
   });
 });
