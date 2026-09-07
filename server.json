@@ -43,22 +43,30 @@
           "capability",
           "authorization",
           "discrepancy",
-          "revision"
+          "revision",
+          "objection"
         ],
-        "note": "Level 2 is claimed for the four kinds listed and nothing else. Nothing reads these records yet.",
+        "note": "Level 2 for a stream from a graph nobody has objected in. Every record declares standing, so a stream containing an objection and its answer measures at Level 3.",
         "upstream": [],
         "downstream": [],
         "notEmitted": {
           "kinds": [
             "belief",
             "action",
-            "objection",
             "outcome"
           ],
           "why": "Ambit holds the capability and authorization steps. Its environment adapter is simulated, so an action record from here would attest to a fixture."
         },
         "enforced": "An unattended grant whose hard prerequisite is failing returns CONFIRM at every decision, whether or not any record has been written.",
-        "export": "ambit delegation --export"
+        "export": "ambit delegation --export",
+        "consumes": {
+          "kinds": [
+            "discrepancy"
+          ],
+          "how": "ambit delegation ingest <file>",
+          "effect": "A foreign discrepancy about a capability this graph knows is recorded as evidence attributed to the sending system. It does not move a lifecycle, so no remote system can narrow a grant here by sending a file."
+        },
+        "verifier": "https://ethotechnics.org/diagnostics/record-conformance"
       }
     }
   }

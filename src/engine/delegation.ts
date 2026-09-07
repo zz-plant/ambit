@@ -36,7 +36,13 @@ export const RECORD_SCHEMA_URL =
   'https://ethotechnics.org/api/schema/revisable-delegation-record.schema.json';
 
 /** The kinds Ambit emits. The other four belong to systems that hold those steps. */
-export const EMITTED_KINDS = ['capability', 'authorization', 'discrepancy', 'revision'] as const;
+export const EMITTED_KINDS = [
+  'capability',
+  'authorization',
+  'discrepancy',
+  'revision',
+  'objection',
+] as const;
 
 export type DelegationRecord = {
   schema_version: string;
@@ -193,8 +199,26 @@ function latestFailure(db: Db, capabilityId: string): { id: number; at: string }
   );
 }
 
+/**
+ * Who may contest what, and how long an answer has.
+ *
+ * Two standings, because the two claims are contested differently. A grant or a
+ * narrowing is an exercise of authority, and the people with standing are the
+ * ones it binds. A capability state or a discrepancy is an observation, and the
+ * way to contest an observation is to show the check reads otherwise — which
+ * anyone able to run it can do, whether or not they hold the grant.
+ *
+ * Every emitted record carries one of them. A record declaring no standing is a
+ * claim with no route to challenge it, which STD-07 reads as a log that cannot
+ * be argued with, and it was what held this stream below Level 3.
+ */
 const CONTEST = {
   standing: 'the person who holds or granted this authority',
+  reversal_clock: 'P1D',
+};
+
+const CONTEST_OBSERVATION = {
+  standing: 'anyone who can run the declared check and show it reads otherwise',
   reversal_clock: 'P1D',
 };
 
@@ -260,6 +284,7 @@ export function recordDelegationState(db: Db): {
           ambit_lifecycle: failing.lifecycle,
         },
         visibility: 'internal',
+        contest: CONTEST_OBSERVATION,
       };
       const capabilityWritten = append(db, capabilityRecord);
       if (capabilityWritten) written.push(capabilityWritten);
@@ -320,6 +345,7 @@ export function recordDelegationState(db: Db): {
         depends_on: [capabilityId],
         authority: { clauses: ['STD-07.3.3'] },
         visibility: 'internal',
+        contest: CONTEST_OBSERVATION,
       };
       const discrepancyWritten = append(db, discrepancyRecord);
       if (discrepancyWritten) written.push(discrepancyWritten);
@@ -363,6 +389,192 @@ export function recordDelegationState(db: Db): {
 }
 
 /** The records, newest last, as stored. */
+/** A record as it was stored, or null when nothing carries that id. */
+function storedRecord(db: Db, recordId: string): DelegationRecord | null {
+  const row = db
+    .prepare('SELECT body FROM delegation_records WHERE record_id = ?')
+    .get<{ body: string }>(recordId);
+  if (!row) return null;
+  return JSON.parse(row.body) as DelegationRecord;
+}
+
+export type ObjectionInput = {
+  /** The record being challenged. */
+  record: string;
+  /** The person objecting. An objection with no author has no standing to check. */
+  by: string;
+  /** Why they have standing, in their own words. */
+  basis: string;
+  requested: 'reconsideration' | 'reversal' | 'narrowing';
+  note?: string;
+};
+
+export type ObjectionResult =
+  | { ok: false; reason: string }
+  | { ok: true; record: DelegationRecord };
+
+/**
+ * A person contesting a record Ambit wrote.
+ *
+ * This is the half of Article IV that a machine cannot supply for itself. Ambit
+ * can declare who has standing on every record it emits, and does; whether
+ * anyone ever uses that standing is a fact about the institution, not about the
+ * code. So this is a channel, and the objection it writes is evidence that the
+ * channel was used.
+ *
+ * What it deliberately does not do is change the decision. An objection that
+ * restored an unattended grant would make the gate negotiable — anyone able to
+ * write a sentence could talk past a failing prerequisite, which is exactly the
+ * nominal safeguard the whole exercise exists to avoid. Widening authority
+ * still costs what it costs: fix the capability, or re-declare the grant.
+ */
+export function recordObjection(db: Db, input: ObjectionInput): ObjectionResult {
+  const by = input.by.trim();
+  const basis = input.basis.trim();
+  if (!by) return { ok: false, reason: 'an objection needs an author: pass --by' };
+  if (!basis) return { ok: false, reason: 'an objection needs a basis for standing: pass --basis' };
+
+  const challenged = storedRecord(db, input.record);
+  if (!challenged) {
+    return { ok: false, reason: `no record with id ${input.record}` };
+  }
+  if (!challenged.contest?.standing) {
+    // Not a technicality. A record granting no standing is one nobody was told
+    // they could argue with, and accepting an objection to it anyway would let
+    // this log look contestable while the record itself still says otherwise.
+    return {
+      ok: false,
+      reason: `${input.record} declares no standing to object, so there is nothing to object under`,
+    };
+  }
+
+  const existing =
+    db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM delegation_records WHERE kind = 'objection' AND subject = ?"
+      )
+      .get<{ n: number }>(input.record)?.n ?? 0;
+
+  const now = new Date().toISOString();
+  const record: DelegationRecord = {
+    schema_version: RECORD_SCHEMA_VERSION,
+    record_id: `ambit:objection:${input.record}#${existing + 1}`,
+    kind: 'objection',
+    system: { id: 'ambit' },
+    actor: { id: by, kind: 'human' },
+    subject: input.record,
+    summary: `${by} challenges ${input.record} and asks for ${input.requested}.`,
+    time: { as_of: now, recorded_at: now },
+    content: {
+      challenges: input.record,
+      standing_basis: basis,
+      standing_declared: challenged.contest.standing,
+      requested: input.requested,
+      ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+      changes_nothing_by_itself:
+        'Recording an objection does not widen authority. The narrowing stands until the capability passes its check again or the grant is re-declared.',
+    },
+    depends_on: [input.record],
+    authority: { clauses: ['STD-07.4.1', 'STD-07.4.2'] },
+    visibility: 'internal',
+    contest: CONTEST,
+  };
+
+  const written = append(db, record);
+  if (!written) return { ok: false, reason: 'that objection is already recorded' };
+  return { ok: true, record: written };
+}
+
+export type AnswerInput = {
+  objection: string;
+  disposition: 'upheld' | 'refused';
+  because: string;
+  by: string;
+};
+
+/**
+ * The answer an objection is owed.
+ *
+ * STD-07 asks that an objection be accepted *and answered*; an unanswered one
+ * is a channel that exists on paper. Either disposition is a real answer, and
+ * refusing with a reason is not a lesser outcome than upholding — a system
+ * where every objection succeeds is not being governed either.
+ *
+ * The answer supersedes the objection. §4.2 says an objection produces "a
+ * revision or a reasoned refusal, itself a record" without naming the kind a
+ * refusal takes, and the first version of this wrote a `revision` superseding
+ * nothing — which the published schema rejects, because §1.2 requires a
+ * revision to name what it replaces. Superseding the objection is the reading
+ * that is true either way: the challenge was the open item and this closes it.
+ * What it must not claim to supersede is the record challenged, since upholding
+ * an objection does not by itself change what that record said.
+ */
+export function answerObjection(db: Db, input: AnswerInput): ObjectionResult {
+  const because = input.because.trim();
+  const by = input.by.trim();
+  if (!by) return { ok: false, reason: 'an answer needs an author: pass --by' };
+  if (!because) return { ok: false, reason: 'an answer needs a reason: pass --because' };
+
+  const objection = storedRecord(db, input.objection);
+  if (!objection || objection.kind !== 'objection') {
+    return { ok: false, reason: `no objection with id ${input.objection}` };
+  }
+
+  const answered =
+    db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM delegation_records
+       WHERE kind = 'revision' AND body LIKE ?`
+      )
+      .get<{ n: number }>(`%"answers":"${input.objection}"%`)?.n ?? 0;
+  if (answered) return { ok: false, reason: `${input.objection} was already answered` };
+
+  const now = new Date().toISOString();
+  const record: DelegationRecord = {
+    schema_version: RECORD_SCHEMA_VERSION,
+    record_id: `ambit:revision:answer:${input.objection}`,
+    kind: 'revision',
+    system: { id: 'ambit' },
+    actor: { id: by, kind: 'human' },
+    subject: String(objection.content.challenges ?? objection.subject),
+    summary:
+      input.disposition === 'upheld'
+        ? `${by} upholds the objection to ${objection.subject}.`
+        : `${by} refuses the objection to ${objection.subject}, and the record stands.`,
+    time: { as_of: now, recorded_at: now },
+    content: {
+      answers: input.objection,
+      disposition: input.disposition,
+      reason: because,
+      triggered_by: [input.objection],
+      enforcement_unchanged:
+        'An answer records what a person decided about the record. It does not move any capability lifecycle, so the gate returns what the evidence supports either way.',
+    },
+    depends_on: [input.objection],
+    supersedes: input.objection,
+    authority: { clauses: ['STD-07.4.2'] },
+    visibility: 'internal',
+    contest: CONTEST,
+  };
+
+  const written = append(db, record);
+  if (!written) return { ok: false, reason: 'that answer is already recorded' };
+  return { ok: true, record: written };
+}
+
+/** Objections nobody has answered yet, oldest first. */
+export function unansweredObjections(db: Db): DelegationRecord[] {
+  return delegationRecords(db, 1000)
+    .filter(record => record.kind === 'objection')
+    .filter(objection => {
+      const answered =
+        db
+          .prepare('SELECT COUNT(*) AS n FROM delegation_records WHERE body LIKE ?')
+          .get<{ n: number }>(`%"answers":"${objection.record_id}"%`)?.n ?? 0;
+      return answered === 0;
+    });
+}
+
 export function delegationRecords(db: Db, limit = 50): DelegationRecord[] {
   return db
     .prepare('SELECT body FROM delegation_records ORDER BY seq DESC LIMIT ?')
@@ -383,14 +595,162 @@ export function delegationManifest(db?: Db) {
     standard: RECORD_STANDARD_URL,
     schema: RECORD_SCHEMA_URL,
     schema_version: RECORD_SCHEMA_VERSION,
+    // Declared at 2 rather than 3 on purpose. Every emitted record now carries
+    // standing, which is the first of the two things Level 3 asks for; the
+    // second is an objection actually made and answered, and no manifest can
+    // promise that in advance. A stream containing one has been measured at
+    // Level 3 by the published checker; a stream from a graph nobody has
+    // objected in earns 2, and that is the number worth publishing.
     conformance_level: 2,
+    level_3_when:
+      'the exported stream contains an objection and its answer. ambit delegation object / answer is the channel; whether anyone uses it is a fact about the institution, not the code.',
     kinds: [...EMITTED_KINDS],
     not_emitted: {
-      kinds: ['belief', 'action', 'objection', 'outcome'],
+      kinds: ['belief', 'action', 'outcome'],
       why: 'Ambit holds the capability and authorization steps. Its environment adapter is simulated, so an action record from here would attest to a fixture.',
+    },
+    consumes: {
+      kinds: ['discrepancy'],
+      how: 'ambit delegation ingest <file>',
+      effect:
+        'A foreign discrepancy about a capability this graph knows is recorded as evidence attributed to the sending system. It does not move a lifecycle, so no remote system can narrow a grant here by sending a file.',
     },
     enforced:
       'canExecute narrows an unattended grant whose hard prerequisite is failing, at every decision, whether or not these records have been written.',
     records: db ? verifyChain(db) : undefined,
   };
+}
+
+export type IngestSummary = {
+  read: number;
+  rejected: Array<{ at: string; reason: string }>;
+  /** Discrepancies about capabilities this graph knows, recorded as evidence. */
+  admitted: Array<{ record_id: string; system: string; capability: string; summary: string }>;
+  /** Discrepancies about subjects this graph has never heard of. */
+  unmatched: Array<{ record_id: string; subject: string }>;
+  ignored: Partial<Record<string, number>>;
+};
+
+/**
+ * Reading another system's records.
+ *
+ * Until this, every system in the loop emitted the shared shape and none
+ * consumed it, which makes a record format a documentation format. This is the
+ * consuming half: a stream from a system that detects mismatch — Refract over a
+ * claim's evidence, say — carrying discrepancies about things this graph has
+ * capabilities for.
+ *
+ * Three restrictions, each of which is the point rather than a limitation.
+ *
+ * A foreign discrepancy is admitted as *evidence*, into the same table an
+ * observed tool failure lands in, attributed to the system that sent it. It
+ * does not move a capability's lifecycle and so cannot narrow a grant by
+ * itself. A remote system that could flip this graph's state would be a way to
+ * revoke anyone's authority by sending a file, and the gate would then be
+ * enforcing a claim nobody here verified.
+ *
+ * Only `discrepancy` records are read. A foreign `authorization` is that
+ * system's account of its own grants and says nothing about what may run here;
+ * treating one as admissible would be importing authority rather than evidence.
+ *
+ * And a record whose subject names nothing in this graph is reported as
+ * unmatched rather than dropped, because "the sender and the receiver disagree
+ * about what exists" is the most useful thing a first integration can tell you.
+ */
+export function ingestForeignRecords(db: Db, text: string): IngestSummary {
+  const summary: IngestSummary = {
+    read: 0,
+    rejected: [],
+    admitted: [],
+    unmatched: [],
+    ignored: {},
+  };
+
+  const trimmed = text.trim();
+  if (!trimmed) return summary;
+
+  let entries: unknown[];
+  if (trimmed.startsWith('[')) {
+    try {
+      entries = JSON.parse(trimmed) as unknown[];
+    } catch {
+      summary.rejected.push({ at: 'the whole stream', reason: 'not valid JSON' });
+      return summary;
+    }
+  } else {
+    entries = [];
+    trimmed.split('\n').forEach((line, index) => {
+      if (!line.trim()) return;
+      try {
+        entries.push(JSON.parse(line));
+      } catch {
+        summary.rejected.push({ at: `line ${index + 1}`, reason: 'not valid JSON' });
+      }
+    });
+  }
+
+  for (const [index, entry] of entries.entries()) {
+    const at = `entry ${index + 1}`;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      summary.rejected.push({ at, reason: 'not a record object' });
+      continue;
+    }
+    const record = entry as Partial<DelegationRecord>;
+    if (!record.record_id || !record.kind || !record.subject) {
+      summary.rejected.push({ at, reason: 'missing record_id, kind or subject' });
+      continue;
+    }
+    const system = record.system?.id;
+    if (!system) {
+      summary.rejected.push({
+        at: record.record_id,
+        reason: 'no system.id: nothing to attribute it to',
+      });
+      continue;
+    }
+    if (system === 'ambit') {
+      summary.rejected.push({
+        at: record.record_id,
+        reason:
+          'this graph emitted that record; ingesting it would make its own output look like outside evidence',
+      });
+      continue;
+    }
+    summary.read += 1;
+
+    if (record.kind !== 'discrepancy') {
+      summary.ignored[record.kind] = (summary.ignored[record.kind] ?? 0) + 1;
+      continue;
+    }
+
+    const known = db
+      .prepare('SELECT id, name FROM capabilities WHERE id = ?')
+      .get<{ id: string; name: string }>(record.subject);
+    if (!known) {
+      summary.unmatched.push({ record_id: record.record_id, subject: record.subject });
+      continue;
+    }
+
+    const observed =
+      typeof record.content?.observed === 'string' ? record.content.observed : record.summary || '';
+    const already =
+      db
+        .prepare('SELECT COUNT(*) AS n FROM failure_signals WHERE detail LIKE ?')
+        .get<{ n: number }>(`%${record.record_id}%`)?.n ?? 0;
+    if (already) continue;
+
+    db.prepare(
+      `INSERT INTO failure_signals (source, session_id, tool, class, signal, capability_id, detail)
+       VALUES (?, NULL, NULL, 'reported', 'foreign-discrepancy', ?, ?)`
+    ).run(`std07:${system}`, known.id, `${record.record_id} — ${observed}`.slice(0, 300));
+
+    summary.admitted.push({
+      record_id: record.record_id,
+      system,
+      capability: known.name,
+      summary: record.summary || observed,
+    });
+  }
+
+  return summary;
 }
