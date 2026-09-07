@@ -10,16 +10,41 @@ import { readFileSync } from 'node:fs';
  */
 export const ENGINE_DIR = dirname(fileURLToPath(import.meta.url));
 
-let cachedTree: any = null;
+/**
+ * Which capability model to read.
+ *
+ * `AMBIT_TECHTREE` points the engine at another tree, the same way
+ * `OPENCODE_CONFIG` points it at another agent config. It exists for tests: a
+ * check in the shipped tree runs a real command, and one of them curls
+ * example.com, so eight end-to-end tests of propose/approve/apply were deciding
+ * whether they passed by whether the machine had internet. They passed in CI
+ * and failed on any boxed runner, which reads as flakiness and is not — the
+ * suite was answering a question about the network.
+ *
+ * Resolved per call rather than at import, and cached against the path it came
+ * from, for the reason the config note below gives: a constant is only correct
+ * for a process that reads the environment once and exits, and this module is
+ * also imported by the API server and by tests that set the environment per
+ * call.
+ */
+const treeCache = new Map<string, any>();
+
+export function techTreePath(): string {
+  return process.env.AMBIT_TECHTREE || join(ENGINE_DIR, 'techtree.json');
+}
+
 export function loadTechTree(): any {
-  if (!cachedTree) {
-    try {
-      cachedTree = JSON.parse(readFileSync(join(ENGINE_DIR, 'techtree.json'), 'utf8'));
-    } catch {
-      cachedTree = { nodes: [] };
-    }
+  const path = techTreePath();
+  const cached = treeCache.get(path);
+  if (cached) return cached;
+  let tree: any;
+  try {
+    tree = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    tree = { nodes: [] };
   }
-  return cachedTree;
+  treeCache.set(path, tree);
+  return tree;
 }
 
 /**
