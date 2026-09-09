@@ -24,24 +24,16 @@ CI also runs `./bootstrap.sh` against a machine with no agent config, because th
 
 ## What is worth contributing
 
-**Capability model.** The seven eras and their dependencies are curated, and they encode opinions that deserve argument — whether a capability is real, what it genuinely requires, which era it belongs to. Open a capability-model issue rather than a PR if the change is a judgement call.
+Three kinds of change are small, self-contained, and worth more than their size. Issues labelled [`good first issue`](https://github.com/zz-plant/ambit/labels/good%20first%20issue) are scoped to one of them, and a first pull request gets a reply that names what CI will run.
 
-**Runtime adapters.** Runtime readers map agent configuration onto the graph. Ambit discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop and Codex CLI directly — the last five through `src/engine/mcp-clients.ts` — plus `~/.agents/skills`; `scripts/adapters/` contains deeper runtime-specific adapters such as Hermes telemetry. Every additional runtime makes the shared model more useful and the single-runtime assumption weaker, which is the direction the project is going.
-
-**Detection that is honest about itself.** A capability inferred from a filename is weaker evidence than one with a declared check that passes. Contributions that turn the first kind into the second are the most valuable ones here.
-
-## A first contribution
-
-Three kinds of change are small, self-contained, and worth more than their size:
-
-- **A runtime reader.** If you use an agent client Ambit does not discover, the readers in `src/engine/mcp-clients.ts` are each about a screen long: find the config file, map its server entries onto the shape `seedFromConfig` accepts, and add a test beside the others. Every one makes the shared model more useful.
-- **A declared check.** Any capability in `src/engine/techtree.json` that is inferred from a filename but has no `verify` command is a candidate. A check that passes turns "configured" into "working" for everyone who has that tool.
+- **A runtime reader.** Ambit discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop and Codex CLI — the last five through `src/engine/mcp-clients.ts`, where each reader is about a screen long: find the config file, map its server entries onto the shape `seedFromConfig` accepts, add a test beside the others. Every one makes the shared model more useful and the single-runtime assumption weaker. Deeper adapters, such as Hermes telemetry, live in `scripts/adapters/`.
+- **A declared check.** Any capability in `src/engine/techtree.json` inferred from a filename but with no `verify` command is a candidate. A check that passes turns "configured" into "working" for everyone who has that tool, and turning the first kind of evidence into the second is the most valuable contribution here.
 - **A README block that drifted.** The console examples are captured by `npm run docs:examples`, and CI fails when they no longer match. If a command's output moved and the README did not, re-capture and send the diff.
 
-Issues labelled [`good first issue`](https://github.com/zz-plant/ambit/labels/good%20first%20issue) are scoped to one of these, and a first pull request gets a reply that names what CI will run. You can also open in [Codespaces](https://codespaces.new/zz-plant/ambit?quickstart=1); the devcontainer seeds a graph and starts the map, so nothing needs installing to read the code and the canvas side by side.
+The seven eras and their dependencies are curated and encode opinions that deserve argument — whether a capability is real, what it genuinely requires, which era it belongs to. Open a [capability-model issue](https://github.com/zz-plant/ambit/issues/new?template=capability-model.md) rather than a PR if the change is a judgement call.
+
+You can also open the repository in [Codespaces](https://codespaces.new/zz-plant/ambit?quickstart=1); the devcontainer seeds a graph and starts the map, so nothing needs installing to read the code and the canvas side by side.
 
 ## Things to keep true
 
-- `src/server/api.ts` binds loopback only, rejects non-local origins before routing, and cannot create configuration entries. An MCP entry carries a command the runtime executes, so creating one over HTTP would be remote code execution.
-- The engine, the MCP server, and the visualizer API all resolve `src/shared/db-path.ts`. Three components with three ideas of where the graph lives is a bug that has already shipped once.
-- Nothing phones home. There is no telemetry, and adding any would need to be argued in an issue first.
+The invariants a change must not break — loopback only, no entry creation over HTTP, one database path, nothing that travels may execute, and the rest — are listed once, in [AGENTS.md](./AGENTS.md). Read that before touching `src/server/api.ts`, `sync.ts`, or anything under `assure/`.

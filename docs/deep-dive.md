@@ -1,6 +1,6 @@
 # Ambit, in depth
 
-This is the long-form reference for how Ambit models capability. The [README](../README.md) covers getting started; this covers the model underneath — what a node is, how verification and authority work, the ledger, the economic loop, and the full CLI and MCP surface.
+This is the long-form reference for how Ambit models capability. The [README](../README.md) covers getting started and the three views; this covers the model underneath — what a node is, how verification and authority work, the ledger, the economic loop, the full CLI and MCP surface, and the delegation records it writes for other systems. The argument for building it is [why-ambit.md](./why-ambit.md); the theory under that is [the affordance frontier](./affordance-frontier.md).
 
 ## The core idea
 
@@ -292,36 +292,15 @@ $ ambit rollback prop-msrsqzij
 
 Approval and apply stay off the MCP surface — an agent may draft, preview, and ask, but never approve or apply. Proposing more capability and granting more authority are different acts, and the artifact is what keeps them apart.
 
-## The Interactive Visual Canvas & Decision Lenses
+## The map, and what it is allowed to do
 
-The Ambit frontend (`./bootstrap.sh web`) connects directly to the engine and `/api/events` to project graph theory and economics into an interactive operational surface:
+The web UI (`./bootstrap.sh web`) reads the same graph the CLI reads, over `/api/events`, and never writes to your configuration except through the two paths below. The README covers [the lenses and the simulations](../README.md#the-map); this is what sits underneath them.
 
-### 1. Multi-Hop Graph Simulation Engine
-The canvas provides real-time "what-if" modeling without touching host configuration:
-* **Outage & Blast Radius Simulation:** Traverses the full transitive downstream closure ($T \subseteq V$ where $v \in T$ if there exists a directed dependency path from root $R \to v$). Renders affected nodes in pulsing red and counts disabled downstream capabilities.
-* **Frontier Acquisition Simulation:** Evaluates all locked capabilities where the candidate node is a hard requisite. If all other hard requisites are satisfied, the node transitions into the simulated frontier in glowing emerald green.
+**Simulation is arithmetic on the graph, not on the host.** An outage walks the transitive downstream closure of the chosen node and counts what stops working; an unlock takes a locked node whose other hard prerequisites are already met and lights what becomes reachable. Neither reads a config file or writes one.
 
-### 2. Three Operational Decision Lenses
-The visualizer includes a sticky lens switcher to project different dimensions of the environment. Press <kbd>1</kbd>–<kbd>3</kbd> to switch.
-
-```mermaid
-flowchart TD
-    GRAPH["Unified SQLite Engine"] --> L1["1. Standard Tech Tree Lens\n(Chronological 7-Era Progression)"]
-    GRAPH --> L2["2. Attention Heatmap Lens\n(Intervention Frequency & Friction Cost)"]
-    GRAPH --> L3["3. Credential SPOF Lens\n(Shared Authentication & Blast Radius)"]
-```
-
-* **Standard Tree Lens:** Groups capabilities by their chronological evolutionary era (Foundation $\to$ Model Access $\to$ Tool Use $\to$ Memory $\to$ Autonomy $\to$ Assurance $\to$ Sovereignty).
-* **Attention Heatmap Lens:** Reads `/api/attention` and colors nodes by developer cognitive friction. Nodes requiring frequent human confirmations glow amber/crimson with cost badges (`42× ($/mo)`).
-* **Credential SPOF Lens:** Highlights shared authentication tokens where revoking a single secret risks cascading failures across independent MCP servers.
+**Three loopback endpoints carry governance.** `GET /api/proposals` lists drafts and their history. `POST /api/proposals/:id/approve` mints the same HMAC-signed approval artifact the terminal does, with an actor and a TTL, and never applies. `GET /api/attention` aggregates interventions per capability from the ledger. All three bind loopback and reject a non-local origin before routing, like every route.
 
 A fourth lens grouped capabilities by host machine. It was sunset with the 3D views: `GET /api/infrastructure/scan` still probes the manifest, and `ambit incidents` is where that reading now surfaces.
-
-### 3. Web Approval Broker API Contracts
-The local server provides loopback endpoints for web-based governance:
-* `GET /api/proposals`: Retrieves active and historical change proposals.
-* `POST /api/proposals/:id/approve`: Mints an HMAC-signed approval token with configurable actor and TTL.
-* `GET /api/attention`: Aggregates human-in-the-loop interventions per capability from `session_learning`.
 
 ## The ledger
 
@@ -457,19 +436,6 @@ GPU node
 
 A machine matters because of the actions it makes reachable.
 
-## From configured to demonstrated
-
-Detection is a first approximation. Today Ambit infers capability from configuration and naming patterns. The deeper model is empirical:
-
-```
-unknown → detected → configured → demonstrated
-        → repeatedly verified → degraded → unavailable
-```
-
-A capability should mean more than "something with the right name exists". It should mean the system has evidence the action can be performed under known conditions. That distinction matters more as agents gain authority.
-
-That lifecycle is a stored column rather than an aspiration — see [what a node is](#what-a-node-is) — and it **gates**. A capability whose lifecycle is `degraded` or `broken` stops reading as available wherever availability is decided: `ambit goal` refuses to route through it (and says "re-verify" rather than "add"), `ambit goal <cap> --simulate` reports it as `blocked_by_degraded`, `ambit authority` stops listing it as reachable, and `ambit status` reports it in a `failing` count. `ambit verify` changes the lifecycle immediately; a re-seed reconciles it from the recorded evidence, and nothing verifies on seed.
-
 ## Capability and authority are different things
 
 Being technically capable of an action should not imply permission to perform it.
@@ -489,201 +455,20 @@ Authority is recorded per action, and from two sources. The curated model says w
 
 Enforcement lands where it matters. `ambit can <cap> [--target X] [--spend N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. The one limit worth stating: enforcement is on Ambit's own apply path, not yet interposed between every runtime and every tool — the runtime adapters are the next boundary.
 
-## Exemplary Use Cases & Real-World Walkthroughs
+## Delegation records
 
-To understand how Ambit functions in day-to-day engineering workflows, here are five demonstrative, end-to-end scenarios:
+Ambit holds two steps of the revisable-delegation loop — capability and authorization — and writes what happens to them as [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record), so another system can read it without sharing Ambit's database.
 
----
+**The grant holds only while what it rests on does.** A capability whose hard prerequisite has started failing no longer runs unattended: `ambit can <capability>` returns CONFIRM instead of ALLOW and names what took it down. The declared grant is not rewritten — what a person wrote down stays written down — and the narrowing is a property of the decision, so it lifts by itself when the check passes again. A declared sandbox is exempt, because consequences are contained there.
 
-### Scenario 1: Blast Radius & Shared Credential SPOF Analysis
+**The export.** `ambit delegation --export` writes newline-delimited records. Four kinds are written automatically for every grant currently narrowed: the `capability` that broke, the `authorization` that rested on it with `depends_on` and `invalidated_by` populated, the `discrepancy`, and the `revision` superseding the authorization. The stream is append-only and hash-chained; `ambit delegation verify` recomputes it. Conformance level 2, declared in [`server.json`](../server.json) and measurable with the [record conformance checker](https://ethotechnics.org/diagnostics/record-conformance).
 
-**Context:** A developer is preparing to rotate a legacy GitHub Personal Access Token (`github-user-token`) that was created 6 months ago.
+**A record can be argued with.** Every record names who may contest it — an exercise of authority names the people it binds, an observation names anyone who can re-run the check. `ambit delegation object <record> --by --basis` writes the challenge as an `objection`; `ambit delegation answer <objection> --by --because [--refuse]` writes the answer it is owed; `ambit delegation objections` lists the unanswered. Neither widens authority: an objection that reopened an unattended grant would make the gate negotiable, so widening still costs what it costs — fix the capability, or re-declare the grant. A stream containing an objection and its answer measures at level 3.
 
-**The Problem Without Ambit:** The developer assumes the token is only used by a local git hook. In reality, two MCP servers (`mcp:github`, `mcp:linear-sync`) and an autonomous PR-review agent silently reuse that same credential. Revoking it immediately causes silent background failures across multiple projects.
+**Reading another system's records.** `ambit delegation ingest <file>` takes an STD-07 stream and records its `discrepancy` records about capabilities this graph knows, as evidence attributed to the sender. Three limits, each deliberate. It never moves a lifecycle, so no remote system can narrow a grant here by sending a file. Only `discrepancy` records are read, because a foreign `authorization` is that system's account of its own grants and importing it would be importing authority rather than evidence. A subject this graph has never heard of is reported as unmatched rather than dropped, since a sender and receiver disagreeing about what exists is the most useful thing a first integration can tell you.
 
-**With Ambit:**
-Before revoking the credential, the developer runs `ambit credentials` and `ambit impact`:
+**Sources are read without being asked.** `ambit delegation source add <id> --system --instance --from --by` declares where a system's records arrive, and a full `ambit verify` reads every enabled source from then on. A local path, deliberately: an outbound read on the verification path would put a remote host between this graph and its own evidence. A source that cannot be read records why and verification continues. `ambit delegation sources` shows when each was last read and what happened. The `upstream` array in `server.json` is derived from these declarations, so it is empty exactly while the honest answer is nothing.
 
-```console
-$ ambit credentials
+**The source that works is another Ambit.** A peer runs the same tech tree, so it names capabilities identically, which is the whole reason its discrepancies are legible here; nothing else in the loop shares the vocabulary. A source must say which environment it is (`--instance`), because two graphs on the same tree produce identical record ids, and declaring this environment as a source is refused. When the laptop reports `combo:shell-execution` broken, the server records that as evidence attributed to `std07:ambit/laptop` and its own grant on `act:shell-execution/read_output` still returns ALLOW; on the laptop, where the check actually failed, the same grant returns CONFIRM. A peer can tell this graph something. It cannot revoke anything in it.
 
-  github/user-token (GitHub User Token)
-    used by: mcp:github · mcp:linear-sync · tool:git
-    redundancy: 0 (Single Point of Failure)
-    status: active
-
-$ ambit impact credential:github/user-token
-
-  Impact of credential:github/user-token:
-    direct dependents: 3 providers
-    capabilities lost: 8
-      - Version Control (Push / PR Creation)
-      - Issue Synchronization (Linear <-> GitHub)
-      - Codebase CI Inspection
-      - Subagent PR Review Automation
-    cascade risk: CRITICAL
-    safe alternative: Mint scoped granular PATs for mcp:github before revoking.
-```
-
-**The Outcome:** The developer identifies the blast radius *before* making the change, creates scoped tokens for each service, and prevents an outage across their agent toolchain.
-
----
-
-### Scenario 2: Unlocking Emergent "Combos" (Zero-Cloud Offline Semantic Search)
-
-**Context:** A developer has a local Postgres database running and an Ollama instance with `llama3`. They want their AI agent to perform semantic search over a private 500,000-line codebase without sending proprietary code to third-party embedding APIs.
-
-**The Problem Without Ambit:** The developer struggles through manual configuration across multiple disparate tools, unsure which vector store extension, embedding model, and adapter are mutually compatible.
-
-**With Ambit:**
-The developer asks Ambit for reachable frontier capabilities:
-
-```console
-$ ambit graph combos
-
-  Near-Miss Combos (1-2 prerequisites away):
-    1. Offline Semantic Search (id: combo:offline-semantic-search)
-       missing: 1
-       missing_prereqs: pgvector extension (resource:postgres-pgvector)
-       already met: Local LLM (Ollama) · Local Embeddings (nomic-embed) · SQL Client
-       readiness: 75% met
-       action: Enable pgvector on existing Postgres instance (5m)
-
-$ ambit goal offline-semantic-search --simulate
-
-  Simulated Frontier Expansion:
-    frontier: 156 → 162 (+6 capabilities unlocked)
-    newly reachable:
-      - combo:offline-semantic-search
-      - capability:codebase-rag
-      - capability:private-symbol-retrieval
-      - capability:offline-refactor-agent
-    setup order:
-      1. Enable pgvector (`CREATE EXTENSION vector;`)
-      2. Configure mcp:postgres-vector endpoint
-    estimated setup time: 8 minutes
-```
-
-**The Outcome:** By making one 5-minute configuration change to an existing component, the developer unlocks 6 higher-order compound capabilities across their entire agent fleet.
-
----
-
-### Scenario 3: In-Session Agent Self-Introspection via MCP
-
-**Context:** An autonomous agent running in **Claude Code** or **OpenCode** receives a broad instruction from a user: *"Deploy the latest commit of the billing service to the staging cluster and run the smoke tests."*
-
-**The Problem Without Ambit:** The agent blindly executes shell commands (`kubectl apply -f ...`), hits an unauthenticated cluster error, attempts to guess credentials, writes invalid config files, wastes 15,000 context tokens in retry loops, and leaves the repository in a broken state.
-
-**With Ambit (Agent Flow over MCP):**
-1. The agent calls `ambit_authority` to check its execution permissions:
-   ```json
-   {
-     "name": "ambit_authority",
-     "arguments": { "capability": "act:continuous-delivery/deploy_staging" }
-   }
-   ```
-2. Ambit returns the exact authority gate:
-   ```json
-   {
-     "action": "act:continuous-delivery/deploy_staging",
-     "authority": "confirm",
-     "status": "blocked",
-     "missing_prerequisites": ["credential:k8s-staging-kubeconfig"],
-     "can_execute": false,
-     "resolution": "Request human approval with signed proposal"
-   }
-   ```
-3. The agent calls `ambit_propose` to generate a structured proposal:
-   ```json
-   {
-     "name": "ambit_propose",
-     "arguments": { "capability": "deploy-staging" }
-   }
-   ```
-4. Instead of hallucinating, the agent stops cleanly and outputs a concise message to the user:
-   > *"I have drafted proposal `prop-deploy-staging-42` to deploy the billing service. Staging deployment requires confirmation and a valid kubeconfig credential. Please run `ambit approve prop-deploy-staging-42` to authorize this deployment."*
-
----
-
-### Scenario 4: The Attention Ledger & ROI-Driven Tooling Investment
-
-**Context:** A solo developer or engineering team lead feels overwhelmed by constant interactive prompts from agents asking to run routine bash commands.
-
-**The Problem Without Ambit:** The developer does not know where their time is being lost or which specific permission boundaries are worth relaxing.
-
-**With Ambit:**
-Ambit’s background telemetry continuously tracks human-in-the-loop interventions:
-
-```console
-$ ambit attention 30
-
-  Attention Audit (Last 30 Days):
-    total human interventions: 84
-    hours spent in interruptions: 7.2 hours
-    estimated attention cost: $1,800 (at declared $250/hr rate)
-
-  Intervention Breakdown:
-    - 42× confirmation: `git status` / `git diff` (Clerical / Reducible)
-    - 28× confirmation: `npm test` / `pytest` (Clerical / Reducible)
-    - 14× confirmation: `git push origin main` (Judgment / Keep)
-
-$ ambit opportunities --by=roi
-
-  Top Recommended Capability Investments:
-    1. Read-Only Git & Test Execution Grant (id: grant:safe-dev-loop)
-       type: Authority Policy Adjustment
-       cost: $0 (0m setup)
-       attention saved: 5.8 hours/month (~$1,450/mo value)
-       payback period: Immediate (0 days)
-       confidence: High (Observed 70+ repetitive prompts)
-```
-
-**The Outcome:** The developer applies a bounded authority grant for read-only git and local testing, cutting interruptions by **83%** while keeping high-stakes actions (`git push origin main`) strictly gated behind manual confirmation.
-
----
-
-### Scenario 5: Multi-Host & Edge Infrastructure Resilience
-
-**Context:** An engineer works across three machines: an Apple Silicon MacBook (laptop), a Linux workstation with an RTX 4090 (local GPU server), and a Raspberry Pi (edge automation runner).
-
-**The Problem Without Ambit:** The agent runs on the laptop and assumes all tools and compute run locally. When the engineer takes the laptop to a cafe (disconnecting from the local LAN), agent workflows that rely on the RTX 4090 fail unpredictably.
-
-**With Ambit:**
-The engineer defines their physical topology in `~/.config/opencode/infrastructure.json`:
-
-```json
-{
-  "devices": {
-    "workstation-rtx4090": { "domain": "physical", "ip": "192.168.1.150" },
-    "laptop-m3": { "domain": "physical", "ip": "127.0.0.1" },
-    "pi-edge": { "domain": "physical", "ip": "192.168.1.200" }
-  },
-  "services": {
-    "svc:deepseek-r1-32b": { "runs_on": "device:workstation-rtx4090", "fallback": "svc:openrouter" },
-    "svc:cron-scheduler": { "runs_on": "device:pi-edge" }
-  }
-}
-```
-
-When disconnected from the LAN, Ambit’s synthetic probe marks `device:workstation-rtx4090` as `degraded`:
-
-```console
-$ ambit status
-
-  Infrastructure Health:
-    [!] device:workstation-rtx4090  OFFLINE (Host unreachable)
-        degraded: svc:deepseek-r1-32b (Local Heavy Inference)
-        active fallback: svc:openrouter (Cloud Provider)
-    [✓] device:laptop-m3            ONLINE  (Local Runtime)
-    [!] device:pi-edge              OFFLINE (Scheduled Tasks Paused)
-
-  Available Frontier: 142 capabilities (14 running on cloud fallbacks)
-```
-
-**The Outcome:** The agent seamlessly falls back to cloud providers for heavy reasoning without crashing, and alerts the developer that scheduled edge tasks are paused until LAN reconnection.
-
----
-
-## Why
-
-The argument for the tool — why capability should be distinct from authority, why effective agency grows faster than model intelligence, and what a system's action space should be accountable to — is made once, in [why-ambit.md](./why-ambit.md). The theory it rests on, with robotics and brain-computer interfaces as the cases that test it, is in [affordance-frontier.md](./affordance-frontier.md).
+**What is honestly not there.** `action` and `outcome` records: the environment adapter is simulated, so an action record from here would attest to a fixture. Nothing forces a runtime to consult the gate, so a runtime that never calls `ambit can` is unaffected by any of this. And no sibling yet consumes what Ambit emits; the reading edge runs one way.

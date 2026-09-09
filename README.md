@@ -9,7 +9,7 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
-[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [How it works](#how-it-works) · [FAQ](./docs/faq.md) · [Deep dive](./docs/deep-dive.md)
+[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Install](#install) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [How it works](#how-it-works) · [FAQ](./docs/faq.md) · [Deep dive](./docs/deep-dive.md)
 
 <br>
 
@@ -21,7 +21,7 @@
 
 ---
 
-## Try it in 30 seconds
+## Get started
 
 | | |
 | :--- | :--- |
@@ -63,24 +63,24 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 ---
 
-## Get started
+## Install
 
-The [hosted demo](https://zz-plant.github.io/ambit/?demo=1) runs on example data and installs nothing. Inspecting your own machine needs a local checkout.
+The hosted demo installs nothing. Inspecting your own machine needs one of these.
 
-<div align="center">
-<img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, drawn as nodes in domain columns" width="900">
-<br><sub>My Setup is the same map built from discovered config rather than the curated tree — every server, agent, and model found on the machine, placed in its domain</sub>
-</div>
+**Homebrew** installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux:
 
-### Option A — full install (CLI, engine, visualizer)
+```bash
+brew install zz-plant/tap/ambit
+ambit
+```
+
+**A checkout** adds the map. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and `~/.agents/skills`, builds a local SQLite graph, and reports your frontier; `./bootstrap.sh web` also starts the map. It links `ambit` into `~/.local/bin` when that is on your PATH and prints the `ln -s` line otherwise. `--dry-run` shows what it would do.
 
 ```bash
 git clone https://github.com/zz-plant/ambit.git
 cd ambit
 ./bootstrap.sh
 ```
-
-On first run Ambit discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and `~/.agents/skills`, initializes a local SQLite database, and reports your frontier.
 
 ```console
 First run — reading your agent config and building the graph…
@@ -94,36 +94,15 @@ First run — reading your agent config and building the graph…
     infra     26/28
 ```
 
-
-### Option B — visualizer only
-
-```bash
-git clone https://github.com/zz-plant/ambit.git
-cd ambit
-./bootstrap.sh web
-```
-
-`bootstrap.sh` also links the `ambit` command into `~/.local/bin` when that directory is on your PATH. If it is not, the script prints the `ln -s` line to run instead, and everything below works the same way with `/path/to/ambit/cli.js` in place of `ambit`.
-
-To see what the installer would do without running it: `./bootstrap.sh --dry-run`.
-
-### Option C — Homebrew (CLI and engine)
-
-```bash
-brew install zz-plant/tap/ambit
-ambit
-```
-
-The formula installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux. The map needs a checkout (Option B); `ambit web` says so and points there.
+**Codespaces** runs the checkout in a container: the devcontainer seeds a graph and starts the map on port 3000, so nothing touches your machine and the graph is the container's.
 
 > [!NOTE]
-> The npm package is built and ready but not yet published, so `npx ambit` will not work. Use Homebrew or the checkout paths above.
+> The npm package is built and ready but not yet published, so `npx ambit` will not work.
 
-### Option D — GitHub Codespaces
-
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1)
-
-The devcontainer installs dependencies, seeds a graph, and starts the map on port 3000. Nothing touches your machine, and the graph it draws is the container's, so it is the way to read the code and the canvas side by side before deciding to install.
+<div align="center">
+<img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, drawn as nodes in domain columns" width="900">
+<br><sub>My Setup is the same map built from discovered config rather than the curated tree — every server, agent, and model found on the machine, placed in its domain</sub>
+</div>
 
 ---
 
@@ -421,7 +400,7 @@ You are about to revoke a personal access token. Without a model of what depends
 
 `ambit impact credential:github/user-token` names the providers and capabilities standing on that one credential, which is the argument for provisioning granular tokens first.
 
-This one needs setup first. Ambit will not guess which providers share a secret, so the credential graph is read from a `credentials` block you write — the [deep dive](./docs/deep-dive.md) has the format. Until you do, `ambit credentials` reports that none are declared.
+Sharing is declared, never guessed: the `credentials` block is in [the deep dive](./docs/deep-dive.md#what-a-node-is). Until you write one, `ambit credentials` reports that none are declared.
 
 ---
 
@@ -443,17 +422,7 @@ Ambit sits above the protocol layer and below workflow orchestration. It neither
 
 ### Position in the revisable-delegation loop
 
-Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds two steps, **capability** (what the assembled human-plus-agent system can do, and whether that is configured or verified) and **authorization** (which of it has been delegated, to whom, under what ceiling). The shared record shape for the loop is [STD-07, the Revisable Delegation Record](https://ethotechnics.org/standards/std-07-revisable-delegation-record).
-
-- **The grant holds only while what it rests on does.** A capability whose hard prerequisite has started failing no longer runs unattended: `ambit can <capability>` returns CONFIRM instead of ALLOW and names what took it down. The declared grant is not rewritten — what a person wrote down stays written down, and the narrowing is a property of the decision, so it lifts by itself when the check passes again. A declared sandbox is exempt, because consequences are contained there.
-- **Canonical export**: `ambit delegation --export`, newline-delimited [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record). Four kinds are written automatically for every grant currently narrowed: the `capability` that broke, the `authorization` that rested on it with `depends_on` and `invalidated_by` populated, the `discrepancy`, and the `revision` superseding the authorization. Append-only and hash-chained; `ambit delegation verify` recomputes it. Conformance level 2, declared in [`server.json`](./server.json) and measurable with the [record conformance checker](https://ethotechnics.org/diagnostics/record-conformance).
-- **A record can be argued with.** Every emitted record now declares who may contest it — an exercise of authority names the people it binds, an observation names anyone who can re-run the check. `ambit delegation object <record> --by --basis` writes the challenge as an `objection` record; `ambit delegation answer <objection> --by --because [--refuse]` writes the answer it is owed, and `ambit delegation objections` lists the ones nobody has answered. **Neither widens authority**: an objection that reopened an unattended grant would make the gate negotiable, so widening still costs what it costs — fix the capability, or re-declare the grant. A stream containing an objection and its answer measures at conformance level 3.
-- **Ambit reads another system's records.** `ambit delegation ingest <file>` takes an STD-07 stream from a system that detects mismatch and records the `discrepancy` records about capabilities this graph knows, as evidence attributed to the sender, alongside observed tool failures. Three deliberate limits: it does not move a lifecycle, so no remote system can narrow a grant here by sending a file; only `discrepancy` records are read, because a foreign `authorization` is that system's account of its own grants and importing it would be importing authority rather than evidence; and a subject this graph has never heard of is reported as unmatched rather than dropped, since a sender and receiver disagreeing about what exists is the most useful thing a first integration can tell you.
-- **And reads them again without being asked.** `ambit delegation source add <id> --system --instance --from --by` declares where a system's records arrive, and a full `ambit verify` reads every enabled source from then on — an integration that only runs when someone types the command is a demonstration, not a connection. A local path, deliberately: Ambit does not fetch, because an outbound read on the verification path would put a remote host between this graph and its own evidence. A source that cannot be read records why and verification continues, since an integration that took down verification when the other end went quiet would make the safe move "never declare a source". `ambit delegation sources` shows when each was last read and what happened, because a source that stopped producing and a quiet week look identical until something says which. The `upstream` array in [`server.json`](./server.json) is derived from these declarations, so it is empty exactly while the honest answer is nothing.
-- **The source that actually works is another Ambit environment.** A peer runs the same tech tree, so it names capabilities identically — which is the whole reason its discrepancies are legible here. Nothing else in the loop shares this vocabulary: Refract's discrepancies are about claims in documents and name nothing this graph has, so pointing one at the other would be wiring that type-checks and means nothing. An ambit source must therefore say **which** environment it is (`--instance`), because two graphs running the same tree produce identical record ids, and "not me" is the only thing separating a peer's report from this graph's own output read back. Declaring this environment is refused; so is a record that does not say which Ambit wrote it.
-- **Hearing it is not the same as finding it.** When the laptop reports `combo:shell-execution` broken, the server records that as evidence attributed to `std07:ambit/laptop` and its own grant on `act:shell-execution/read_output` still returns ALLOW. On the laptop, where the check actually failed, the same grant returns CONFIRM. That difference is the invariant: a peer cannot revoke authority here by sending a file, it can only tell this graph something.
-- **What is honestly not there**: `action` and `outcome` records. The environment adapter is simulated, so an action record from here would attest to a fixture rather than to a deployment. Nothing forces a *runtime* to consult the gate either: a runtime that never calls `ambit can` is unaffected by any of this. And no sibling yet consumes what Ambit emits — the reading edge above runs in one direction only.
-- **Siblings**: [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), [Ethotechnics](https://ethotechnics.org) (the record shape and the vocabulary).
+Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds **capability** and **authorization**. A grant holds only while what it rests on does — a capability whose hard prerequisite has started failing no longer runs unattended, and the narrowing lifts by itself when the check passes again — and every narrowing is written as an append-only, hash-chained stream of [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record) that another Ambit environment can read as evidence. What a peer sends can inform this graph and never revoke anything in it. [The deep dive](./docs/deep-dive.md#delegation-records) has the record kinds, the objection path, and the limits; the siblings are [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), and [Ethotechnics](https://ethotechnics.org) (the record shape).
 
 ---
 

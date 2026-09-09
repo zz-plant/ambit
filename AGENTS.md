@@ -90,7 +90,8 @@ src/client/                React frontend
                            (the AG-UI state stream) · useGuide · useToast · useLatest
   components/
     AppDeck.tsx            The top bar: list toggle, view tabs, proposals, docs
-    WelcomeScreen.tsx      What an empty graph shows — the pitch and the ways in
+    WelcomeScreen.tsx      What an empty graph shows — the pitch, two real figures, and the ways in
+    figures.tsx            The sparkline, era strip and reach bar every surface draws the same way
     GettingStartedGuide.tsx  The first-run card
     Toast.tsx              A transient notice from the graph stream
     CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend
@@ -101,7 +102,7 @@ src/client/                React frontend
     CapabilityListPanel.tsx   Flat list of all capabilities
     ApprovalModal.tsx      The proposal diff, and the one-click approval receipt
     DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
-    DemoDashboard.tsx      The hosted demo's landing view
+    DemoDashboard.tsx      The hosted demo's Time & cost view — the work ledger, drawn on shared scales
   store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
   store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
   store/toolchainStore.ts  The store's former name, re-exported so old imports keep working
