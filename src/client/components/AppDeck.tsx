@@ -1,7 +1,10 @@
 import type { Source, View } from '../linkState';
+import { ReachBar } from './figures';
 
 interface AppDeckProps {
   reached: number;
+  /** Capabilities whose prerequisites are met and nothing yet provides. */
+  next: number;
   total: number;
   view: View;
   source: Source;
@@ -38,9 +41,14 @@ export default function AppDeck(p: AppDeckProps) {
         <div className="app-brand-group">
           <span className="app-brand">Ambit</span>
         </div>
-        <div className="app-status-pill" title="Capabilities something in this setup provides">
-          <span className="app-status-dot" />
-          <span>
+        {/* The same fraction the words state, drawn first. The green dot that
+            stood here encoded nothing; a bar on the graph's own total does. */}
+        <div
+          className="app-status-pill"
+          title={`${p.reached} reached, ${p.next} one step away, ${p.total - p.reached - p.next} blocked`}
+        >
+          <ReachBar reached={p.reached} next={p.next} total={p.total} />
+          <span className="app-status-n">
             {p.reached} of {p.total} reached
           </span>
         </div>

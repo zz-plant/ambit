@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import AppDeck from './components/AppDeck';
+import { isNext } from './components/civ/layout';
 import ApprovalModal from './components/ApprovalModal';
 import CapabilityListPanel from './components/CapabilityListPanel';
 import DemoDashboard from './components/DemoDashboard';
@@ -171,6 +172,7 @@ export default function App() {
     <div className="app">
       <AppDeck
         reached={items.filter(i => i.status === 'built').length}
+        next={items.filter(i => i.status !== 'built' && isNext(i)).length}
         total={items.length}
         view={view}
         source={source}

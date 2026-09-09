@@ -330,13 +330,13 @@ export default function CivTree({
                 x={x - 8}
                 y={START_Y - 45}
                 width={COL_W - 16}
-                height={32}
+                height={40}
                 fill="rgba(255, 255, 255, 0.02)"
                 rx={10}
               />
               <text
                 x={x + COL_W / 2 - 16}
-                y={START_Y - 24}
+                y={START_Y - 29}
                 textAnchor="middle"
                 fill="var(--text-primary)"
                 fontSize={12}
@@ -346,18 +346,59 @@ export default function CivTree({
               >
                 {columnLabel(d, cols[d] || [])}
               </text>
-              <text
-                x={x + COL_W / 2 - 16}
-                y={START_Y - 10}
-                textAnchor="middle"
-                fill="var(--text-muted)"
-                fontSize={10}
-                fontWeight={500}
-                letterSpacing={0.5}
-                style={{ fontFamily: 'var(--font-sans)' }}
-              >
-                {d.startsWith('era:') ? `Era ${d.slice(4)}` : (d || '').toLowerCase()}
-              </text>
+              {(() => {
+                // The count under the name, drawn as well as written. A column
+                // is a set with a size and a filled fraction; saying "Era 5"
+                // where "1 of 5" could stand was a label where a measurement
+                // belonged. One scale across all seven columns: the bar's
+                // full width is the largest era, so a short bar is a small era
+                // and not a poorly-filled one.
+                const list = cols[d] || [];
+                const reached = list.filter((i: Item) => i.status === 'built').length;
+                const next = list.filter((i: Item) => i.status !== 'built' && isNext(i)).length;
+                const largest = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
+                const barW = ((COL_W - 64) * list.length) / largest;
+                const unit = list.length ? barW / list.length : 0;
+                const bx = x + COL_W / 2 - 16 - barW / 2;
+                const by = START_Y - 11;
+                return (
+                  <g>
+                    <text
+                      x={x + COL_W / 2 - 16}
+                      y={START_Y - 16}
+                      textAnchor="middle"
+                      fill="var(--text-muted)"
+                      fontSize={9.5}
+                      fontWeight={500}
+                      style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {d.startsWith('era:') ? `Era ${d.slice(4)} · ` : ''}
+                      {reached} of {list.length}
+                    </text>
+                    <rect className="fig-eras-track" x={bx} y={by} width={barW} height={3} rx={1} />
+                    {reached > 0 && (
+                      <rect
+                        className="fig-eras-reached"
+                        x={bx}
+                        y={by}
+                        width={unit * reached}
+                        height={3}
+                        rx={1}
+                      />
+                    )}
+                    {next > 0 && (
+                      <rect
+                        className="fig-eras-next"
+                        x={bx + unit * reached}
+                        y={by}
+                        width={unit * next}
+                        height={3}
+                        rx={1}
+                      />
+                    )}
+                  </g>
+                );
+              })()}
             </g>
           );
         })}

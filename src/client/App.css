@@ -248,12 +248,13 @@ code, pre, .code, .sp-cli-cmd {
   gap: 6px;
 }
 
-.app-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ok);
-  display: inline-block;
+.app-status-n {
+  font-variant-numeric: tabular-nums;
+}
+
+.fig-reach {
+  display: block;
+  flex: none;
 }
 
 .app-deck-nav {
@@ -561,30 +562,47 @@ code, pre, .code, .sp-cli-cmd {
   margin-top: 2px;
 }
 
+/* A status is one fact with three values. A filled, bordered, coloured pill
+   spent three encodings on it and made a list of sixty items read as sixty
+   alerts. One mark and one word, in the recessive weight, and the reached
+   ones — the majority — are the quietest. */
 .tp-badge {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
   font-weight: 500;
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
-  text-transform: capitalize;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
-.tp-badge--built {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--ok);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+.tp-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.tp-badge--built::before {
+  background: var(--type-combo);
 }
 
 .tp-badge--specified {
-  background: rgba(245, 158, 11, 0.12);
-  color: var(--warn);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: var(--text-secondary);
+}
+
+.tp-badge--specified::before {
+  background: var(--bg-elevated);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
 .tp-badge--deprecated {
-  background: rgba(244, 63, 94, 0.12);
   color: var(--error);
-  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+.tp-badge--deprecated::before {
+  background: var(--error);
 }
 
 .tp-empty {
@@ -1001,7 +1019,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-welcome-hero {
-  max-width: 560px;
+  max-width: 760px;
   width: 100%;
   text-align: center;
   display: flex;
@@ -1024,8 +1042,58 @@ code, pre, .code, .sp-cli-cmd {
   max-width: 460px;
 }
 
-.app-welcome-diagram {
-  margin: 4px 0;
+/* Two figures side by side on the front door, on the dashboard's own tokens
+   so the landing and the loop view are one drawing hand. */
+.app-welcome-figures {
+  --fig-data: #818cf8;
+  --fig-data-soft: rgba(129, 140, 248, 0.32);
+  --fig-track: rgba(255, 255, 255, 0.07);
+  --fig-rule: rgba(255, 255, 255, 0.14);
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 28px;
+  width: 100%;
+  max-width: 760px;
+  margin: 6px 0 2px;
+  text-align: left;
+}
+
+.welcome-fig {
+  margin: 0;
+  min-width: 0;
+}
+
+.welcome-fig-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.welcome-fig-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.welcome-fig-note {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.welcome-fig .fig-spark,
+.welcome-fig .fig-eras {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+@media (max-width: 720px) {
+  .app-welcome-figures {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
 }
 
 .app-welcome-actions {
@@ -1582,6 +1650,45 @@ code, pre, .code, .sp-cli-cmd {
   font-variant-numeric: tabular-nums;
 }
 
+/* The name of the thing that landed, above the drop it explains. */
+.fig-spark-note {
+  fill: var(--text-secondary);
+  font-size: 9.5px;
+  font-weight: 500;
+}
+
+/* ── Small multiples: one bar per era, one scale ── */
+.fig-eras-label {
+  fill: var(--text-secondary);
+  font-size: 10px;
+}
+
+.fig-eras-track {
+  fill: var(--fig-track, rgba(255, 255, 255, 0.07));
+}
+
+.fig-eras-reached {
+  fill: var(--fig-data, #818cf8);
+}
+
+/* The frontier: outlined, because it is what could be reached, not what is. */
+.fig-eras-next {
+  fill: none;
+  stroke: var(--fig-data, #818cf8);
+  stroke-width: 1;
+}
+
+.fig-eras-n {
+  fill: var(--text-primary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.fig-eras-of {
+  fill: var(--text-muted);
+  font-weight: 400;
+}
+
 /* ── Two marks on one axis ── */
 .fig-pair {
   display: block;
@@ -1728,6 +1835,21 @@ code, pre, .code, .sp-cli-cmd {
   white-space: nowrap;
 }
 
+.fig-th-unit {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.fig-inline-unit {
+  fill: var(--text-muted);
+  font-weight: 500;
+}
+
 /* The axis is drawn once, in the header, because every row below shares it. */
 .fig-th-scale {
   display: flex;
@@ -1799,8 +1921,26 @@ code, pre, .code, .sp-cli-cmd {
   line-height: 1.5;
 }
 
-.fig-row-options span {
-  display: block;
+/* Money first and in a fixed-width column, so the dollar figures of two
+   alternatives sit under one another and the comparison is a glance. */
+.fig-row-options {
+  margin: 0;
+}
+
+.fig-row-option {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+}
+
+.fig-row-option dt {
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-align: right;
+}
+
+.fig-row-option dd {
+  margin: 0;
 }
 
 .fig-row-svg {

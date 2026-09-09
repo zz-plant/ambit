@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import type { DemoOpportunity, DemoSnapshot } from '../utils/demoSnapshot';
+import { HoursSparkline, NUM, money } from './figures';
 
 /**
  * The static demo's view of the work ledger: where human attention went, what
@@ -34,81 +35,6 @@ import type { DemoOpportunity, DemoSnapshot } from '../utils/demoSnapshot';
 interface DemoDashboardProps {
   /** Pixels covered by the capability list, so the page sits beside it. */
   leftInset?: number;
-}
-
-/** Figures line up in a column only if the digits are the same width. */
-const NUM = { fontVariantNumeric: 'tabular-nums' } as const;
-
-const money = (n: number) => `$${n.toLocaleString()}`;
-
-/**
- * Twelve months of human hours, with the headline drawn as the area it
- * actually is.
- *
- * The saving is a difference against January, so January is drawn — a line
- * across the top — and the band between the two is shaded. The number in the
- * stat above is the area of that band.
- */
-function HoursSparkline({ series }: { series: DemoSnapshot['roi']['monthly_hours'] }) {
-  const w = 260;
-  const h = 54;
-  const pad = { top: 6, right: 4, bottom: 12, left: 4 };
-  const baseline = series[0]?.hours ?? 0;
-  const max = Math.max(...series.map(p => p.hours));
-  const x = (i: number) =>
-    pad.left + (i * (w - pad.left - pad.right)) / Math.max(series.length - 1, 1);
-  const y = (v: number) => pad.top + (1 - v / max) * (h - pad.top - pad.bottom);
-
-  const line = series.map((p, i) => `${i ? 'L' : 'M'}${x(i)},${y(p.hours)}`).join(' ');
-  const band = `${line} L${x(series.length - 1)},${y(baseline)} L${x(0)},${y(baseline)} Z`;
-  const last = series[series.length - 1];
-
-  return (
-    <svg
-      className="fig-spark"
-      viewBox={`0 0 ${w} ${h}`}
-      role="img"
-      aria-label={`Hours a person spent in the loop, ${series[0].month} ${baseline}h down to ${last.month} ${last.hours}h`}
-    >
-      <title>{series.map(p => `${p.month} ${p.hours}h`).join(' · ')}</title>
-      {/* The band is the saving. Everything else is context for it. */}
-      <path className="fig-spark-band" d={band} />
-      <line
-        className="fig-spark-base"
-        x1={x(0)}
-        y1={y(baseline)}
-        x2={x(series.length - 1)}
-        y2={y(baseline)}
-      />
-      <path className="fig-spark-line" d={line} />
-      {series.map((p, i) =>
-        p.acquired ? (
-          <g key={p.month}>
-            <line
-              className="fig-spark-mark"
-              x1={x(i)}
-              y1={y(p.hours)}
-              x2={x(i)}
-              y2={h - pad.bottom}
-            />
-            <circle className="fig-spark-dot" cx={x(i)} cy={y(p.hours)} r={3} />
-          </g>
-        ) : null
-      )}
-      <circle
-        className="fig-spark-dot fig-spark-dot--last"
-        cx={x(series.length - 1)}
-        cy={y(last.hours)}
-        r={3.5}
-      />
-      <text className="fig-spark-label" x={x(0)} y={h - 2} textAnchor="start">
-        {series[0].month} {baseline}h
-      </text>
-      <text className="fig-spark-label" x={w - pad.right} y={h - 2} textAnchor="end">
-        {last.month} {last.hours}h
-      </text>
-    </svg>
-  );
 }
 
 /**
@@ -171,7 +97,10 @@ function AssuranceBar({ status }: { status: DemoSnapshot['status'] }) {
     <figure className="fig fig--assurance">
       <figcaption className="fig-caption">
         <span className="fig-caption-title">What the graph can prove</span>
-        <span className="fig-caption-note">{status.total} capabilities the model knows</span>
+        <span className="fig-caption-note" style={NUM}>
+          {status.verified} of {status.total} proved ·{' '}
+          {Math.round((status.verified / status.total) * 100)}%
+        </span>
       </figcaption>
       <div
         className="fig-stack"
@@ -275,6 +204,7 @@ function PaybackMark({ months }: { months: number }) {
       <circle className="fig-dot" cx={x(months)} cy={10} r={4} />
       <text className="fig-inline-label" x={x(months) + 7} y={13.5} style={NUM}>
         {months}
+        <tspan className="fig-inline-unit"> mo</tspan>
       </text>
     </svg>
   );
@@ -392,7 +322,8 @@ function OpportunityRows({ list }: { list: DemoOpportunity[] }) {
           <tr>
             <th scope="col">What to set up</th>
             <th scope="col" className="is-num">
-              A month
+              Interruptions
+              <span className="fig-th-unit">a month</span>
             </th>
             <th scope="col">
               Your hours a month
@@ -401,7 +332,13 @@ function OpportunityRows({ list }: { list: DemoOpportunity[] }) {
                 <span>{Math.round(maxHours)}h</span>
               </span>
             </th>
-            <th scope="col">Recovered a month</th>
+            <th scope="col">
+              Recovered a month
+              <span className="fig-th-scale">
+                <span>0</span>
+                <span>{money(maxSaved)}</span>
+              </span>
+            </th>
             <th scope="col">
               Pays back
               <span className="fig-th-scale">
@@ -423,17 +360,20 @@ function OpportunityRows({ list }: { list: DemoOpportunity[] }) {
                   {o.confidence} confidence
                 </span>
                 {o.acquisition_options && (
-                  <span className="fig-row-options">
+                  <dl className="fig-row-options">
                     {o.acquisition_options.map(a => (
-                      <span key={a.provider}>
-                        {a.kind} · {a.provider}
-                        {a.total_first_year_dollars != null
-                          ? ` · ${money(a.total_first_year_dollars)}/yr`
-                          : ''}{' '}
-                        · {a.privacy}
-                      </span>
+                      <div key={a.provider} className="fig-row-option">
+                        <dt style={NUM}>
+                          {a.total_first_year_dollars != null
+                            ? `${money(a.total_first_year_dollars)}/yr`
+                            : '—'}
+                        </dt>
+                        <dd>
+                          {a.kind} · {a.provider} · {a.privacy}
+                        </dd>
+                      </div>
                     ))}
-                  </span>
+                  </dl>
                 )}
               </th>
               <td className="is-num" style={NUM}>
@@ -514,7 +454,7 @@ export default function DemoDashboard({ leftInset = 0 }: DemoDashboardProps) {
               {roi.hours_per_year}h<span className="fig-kpi-unit"> saved</span>{' '}
               <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
             </div>
-            <HoursSparkline series={roi.monthly_hours} />
+            <HoursSparkline series={roi.monthly_hours} width={280} height={92} annotate />
           </figure>
 
           <figure className="fig fig--kpi">

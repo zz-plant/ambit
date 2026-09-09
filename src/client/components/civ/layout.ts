@@ -69,6 +69,41 @@ export const columnLabel = (key: string, items: Item[]): string => {
 /** Prerequisites met, nothing detected — the frontier you can take next. */
 export const isNext = (item: Item): boolean => item.meta?.next === true;
 
+/**
+ * How far along each era is: reached, one step away, and the total.
+ *
+ * The era columns on the map carried a name and nothing else, so "how much of
+ * Autonomy do I have" meant counting filled circles by eye. This is the count,
+ * in era order, for the strip under each header and for the landing page's
+ * small multiples. Pure, so the arithmetic is tested rather than trusted.
+ */
+export interface EraProgress {
+  key: string;
+  label: string;
+  reached: number;
+  next: number;
+  total: number;
+}
+
+export const eraProgress = (items: Item[]): EraProgress[] => {
+  const byEra = new Map<number, Item[]>();
+  for (const item of items) {
+    const era = eraOf(item);
+    if (era === undefined) continue;
+    if (!byEra.has(era)) byEra.set(era, []);
+    byEra.get(era)!.push(item);
+  }
+  return [...byEra.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([era, list]) => ({
+      key: `era:${era}`,
+      label: columnLabel(`era:${era}`, list),
+      reached: list.filter(i => i.status === 'built').length,
+      next: list.filter(i => i.status !== 'built' && isNext(i)).length,
+      total: list.length,
+    }));
+};
+
 export const costOf = (item: Item): string => {
   const s = item.meta?.setupSeconds as number | undefined;
   if (!s) return '';
