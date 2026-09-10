@@ -3,7 +3,7 @@
  * would produce from the fixture.
  *
  * This is the part that makes generating it worth anything. A generated file
- * that nobody re-generates is a hand-written file with a misleading header —
+ * that nobody re-generates is a hand-written file with a misleading header,
  * which is how the demo came to describe a machine sharing five ids with the
  * one beside it. The engine's model changes; this says so at the point the
  * model changes, rather than the next time somebody looks at a screenshot.

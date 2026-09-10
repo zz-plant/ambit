@@ -231,7 +231,7 @@ $ ambit attention 30
   reducible: deploy to production — grant bounded authority rather than approving each time
 ```
 
-`ambit notify <topic>` pushes that digest to [ntfy](https://ntfy.sh) — and only when a topic is given. Nothing leaves the machine otherwise; the push is a single HTTP POST of the digest text, no graph data.
+`ambit notify <topic>` pushes that digest to [ntfy](https://ntfy.sh), and only when a topic is given. Nothing leaves the machine otherwise; the push is a single HTTP POST of the digest text, no graph data.
 
 ## Work telemetry
 
@@ -327,7 +327,7 @@ $ ambit history since
   vocabulary: 12   act:shell-execution/run_command · act:file-editing/write_file · …
 ```
 
-Without it, upgrading Ambit would read as a dozen capabilities acquired on a machine where nothing happened — which is exactly what this table exists not to do.
+Without it, upgrading Ambit would read as a dozen capabilities acquired on a machine where nothing happened, which is exactly what this table exists not to do.
 
 ## The economic loop
 
@@ -410,7 +410,7 @@ runtime:hermes   — contributes 32 capabilities
 shared by both   — mcp:fetch · mcp:filesystem · mcp:git · mcp:sequential-thinking
 ```
 
-`ambit impact runtime:hermes` then answers what would be lost if that runtime went away — and the answer is smaller than its capability count, because the shared four survive.
+`ambit impact runtime:hermes` then answers what would be lost if that runtime went away, and the answer is smaller than its capability count, because the shared four survive.
 
 The adapter also reads what a config file cannot infer but the runtime states outright: Hermes reports `approvals: manual`, `cron_mode: deny`, eight messaging surfaces, a policy engine, and zero scheduled jobs — which is the difference between a capability that persists and one that lasts a session.
 

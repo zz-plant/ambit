@@ -105,7 +105,7 @@ No existing field studies this frontier directly. Its concepts are distributed:
 
 The security parallel is the closest structurally. Attack-graph analysis already asks *given this topology, what can this principal reach* — Ambit generalises the question from unauthorised attack paths to all productive capacity for action.
 
-The capability-approach parallel is the closest conceptually. Where Sen distinguishes possessing resources from possessing the effective freedom to achieve an outcome, Ambit distinguishes *tool installed* from *capability actually reachable* — and tries to make the conversion function computationally explicit:
+The capability-approach parallel is the closest conceptually. Where Sen distinguishes possessing resources from possessing the effective freedom to achieve an outcome, Ambit distinguishes *tool installed* from *capability actually reachable*, and tries to make the conversion function computationally explicit:
 
 ```
 resources + permissions + skills + connectivity + persistence + authority

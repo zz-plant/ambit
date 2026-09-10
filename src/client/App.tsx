@@ -87,7 +87,7 @@ export default function App() {
 
   const { connected } = useGraphStream({
     graphChanged: () => {
-      // Something rebuilt the graph — a seed, an adapter, another session. The
+      // Something rebuilt the graph: a seed, an adapter, another session. The
       // page reloads itself, and says so: a view that changes under the reader
       // with no explanation reads as a glitch.
       if (source === 'tree') loadTechTree();
@@ -122,12 +122,12 @@ export default function App() {
     },
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount only — the link is read once, and the store actions have stable identities. Re-running this on a re-render would re-seed the demo, which is exactly what it must not do.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount only. The link is read once, and the store actions have stable identities. Re-running this on a re-render would re-seed the demo, which is exactly what it must not do.
   useEffect(() => {
     // ?demo=1 seeds the graph before anything can fetch. loadConfig()'s
     // no-backend path would otherwise clobber the seeded data back to an
     // empty graph. The tree is a different dataset from the config view, so
-    // it is asked for explicitly rather than fetched — the demo must look the
+    // it is asked for explicitly instead of fetched. The demo must look the
     // same with an engine behind it as without one.
     if (link.demo) seedDemo();
     probeBackend();
@@ -143,21 +143,21 @@ export default function App() {
   }, []);
 
   // ?focus=<id> selects a node once the graph that contains it has loaded.
-  // The lookup happens outside the effect so its dependency is the found id —
-  // a string — rather than `items`, whose identity changes every render.
+  // The lookup happens outside the effect so its dependency is the found id, a
+  // string, and not `items`, whose identity changes every render.
   const focusTarget = link.focusId ? items.find(i => i.id === link.focusId)?.id : undefined;
   useEffect(() => {
     // `selectItem` toggles, because clicking the selected node clears it. A
-    // link is not a toggle: if this effect runs again with the same target —
-    // a remount, a hot reload — selecting it a second time would close the
-    // panel the link was for.
+    // link is not a toggle: if this effect runs again with the same target (a
+    // remount, a hot reload), selecting it a second time would close the panel
+    // the link was for.
     if (focusTarget && useAmbitStore.getState().selectedItem !== focusTarget) {
       selectItem(focusTarget);
     }
   }, [focusTarget, selectItem]);
 
   // In the demo the two views are the same invented setup seen twice, so
-  // switching tabs must not go to the network — locally that fetched the
+  // switching tabs must not go to the network. Locally that fetched the
   // developer's own machine into a page they asked to be a demo.
   const openTree = () => {
     setView('graph');
@@ -174,8 +174,8 @@ export default function App() {
    * Follow a priced opportunity to the node it is about.
    *
    * The Time & cost page's "Map" button selected the node and ran the unlock
-   * simulation while leaving you on the dashboard, where neither is visible —
-   * so the button appeared to do nothing at all.
+   * simulation while leaving you on the dashboard, where neither is visible, so
+   * the button appeared to do nothing at all.
    */
   const showOnMap = (id: string) => {
     openTree();
@@ -198,8 +198,8 @@ export default function App() {
   /**
    * Copy a link to what is on screen.
    *
-   * The URL already describes the view — useUrlSync keeps it that way — so
-   * sharing is a copy of the address bar rather than a second serializer.
+   * The URL already describes the view, and useUrlSync keeps it that way, so
+   * sharing is a copy of the address bar and not a second serializer.
    */
   const share = async () => {
     try {
@@ -219,8 +219,8 @@ export default function App() {
   const detailOpen = Boolean(showDetailPanel && selectedId);
   const listInset = leftOpen && !isNarrow ? PANEL_W : 0;
 
-  // No graph yet: the welcome page, on its own. The chrome around the map —
-  // a capability list reading "(0)", a status pill reading "0 / 0" — would
+  // No graph yet: the welcome page, on its own. The chrome around the map (a
+  // capability list reading "(0)", a status pill reading "0 / 0") would
   // otherwise be the first thing a visitor saw.
   if (!items.length && !loading && !error) {
     return (

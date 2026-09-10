@@ -96,7 +96,7 @@ I do not think AGI necessarily arrives as one monolithic model crossing a thresh
 
 It may arrive compositionally: models plus tools plus persistence plus credentials plus infrastructure plus humans, forming systems whose aggregate ability to act becomes the historically relevant thing.
 
-If that is roughly right, the unit we need to understand is no longer just the model. It is the agentic system — and model benchmarks describe only one input into the transition. The other dimension is the infrastructure through which intelligence becomes consequential.
+If that is roughly right, the unit we need to understand is no longer just the model. It is the agentic system, and model benchmarks describe only one input into the transition. The other dimension is the infrastructure through which intelligence becomes consequential.
 
 A mature version of this should be able to say: *this model did not change, but the system around it acquired twelve new reachable capabilities this month.* At some point descriptions like that stop looking like a chatbot's tool configuration and start looking like the operational anatomy of a persistent actor.
 

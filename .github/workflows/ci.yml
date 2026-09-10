@@ -50,6 +50,12 @@ jobs:
       - name: Check assets
         run: npm run assets:check
 
+      # Most of the prose here is machine-written, and a machine leans on the
+      # same few constructions until a reader can hear them. This is a ceiling
+      # on the corpus drifting further that way, not a rule about a sentence.
+      - name: Check prose
+        run: npm run prose:check
+
       # Same argument for the console blocks. One of them documented a cascade
       # for an id no graph contains, which is a claim a reader can only check
       # by installing the tool and finding out.
