@@ -190,6 +190,93 @@ export interface AttentionResponse {
   interventions: InterventionRow[];
 }
 
+// ── GET /api/loop ────────────────────────────────────────────────────────────
+
+/**
+ * One priced opportunity: the burden observed, what removing it would cost,
+ * and what it would return. The engine's own `OpportunityCase` is a superset —
+ * this is the part the dashboard draws.
+ */
+export interface LoopOpportunity {
+  id: string;
+  title: string;
+  capability: string;
+  /** The node the map selects when the row is shown there. */
+  capability_id?: string;
+  kind: string;
+  burden: {
+    interventions_month: number;
+    human_hours_month: number;
+    attention_dollars_month: number;
+  };
+  proposal: { action: string; setup_hours: number };
+  expected: { human_hours_month_after: number; savings_dollars_month: number };
+  /** Null when nothing is saved, so the setup never pays back. */
+  payback_months: number | null;
+  confidence: 'high' | 'medium' | 'low';
+  acquisition_options?: {
+    provider: string;
+    kind: string;
+    total_first_year_dollars?: number;
+    privacy: string;
+  }[];
+}
+
+/**
+ * The economic half of the product in one payload: what the graph can prove,
+ * where a person's time went, what to buy next, and whether the last purchase
+ * paid. The hosted demo builds the same shape by hand — see
+ * src/client/utils/demoSnapshot.ts — so one dashboard renders both.
+ */
+export interface LoopSnapshot {
+  status: {
+    reached: number;
+    total: number;
+    verified: number;
+    failing: number;
+    degraded: string[];
+    spofs: string[];
+    deficits: string[];
+    pending: { id: string; goal: string }[];
+  };
+  attention: {
+    interventions: number;
+    reducible: {
+      kind: string;
+      capability: string;
+      capability_id?: string;
+      times: number;
+      hours: number;
+      suggested_fix: string;
+    }[];
+    keepers: {
+      kind: string;
+      capability: string;
+      capability_id?: string;
+      times: number;
+      hours: number;
+    }[];
+  };
+  opportunities: LoopOpportunity[];
+  roi: {
+    hours_per_year: number;
+    dollars_per_year: number;
+    /** Observed ÷ predicted. Null until an applied proposal has been measured. */
+    accuracy: number | null;
+    verdict: string;
+    /** Hours a person spent in the loop, month by month, oldest first. */
+    monthly_hours: { month: string; hours: number; acquired?: string }[];
+    forecast: { predicted_hours: number; observed_hours: number } | null;
+  };
+}
+
+export interface LoopResponse extends LoopSnapshot {
+  /** Where the numbers came from: this machine's ledger, or the demo's illustration. */
+  source: 'ledger' | 'sample';
+  /** True when the ledger has recorded nothing yet, so the page explains itself. */
+  empty: boolean;
+}
+
 // ── GET /api/infrastructure/scan ─────────────────────────────────────────────
 
 export interface InfrastructureScanResponse {
@@ -234,6 +321,7 @@ export interface ApiRoutes {
   '/api/tech-tree': TechTreeResponse;
   '/api/proposals': ProposalsResponse;
   '/api/attention': AttentionResponse;
+  '/api/loop': LoopResponse;
   '/api/infrastructure/scan': InfrastructureScanResponse;
   '/api/repos/scan': RepoScanResponse;
 }

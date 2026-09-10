@@ -1,6 +1,13 @@
 // Plain-language names for the internal type/status vocabulary. The graph data
 // keeps its raw values (they are stable IDs and CSS keys); only what people
 // read goes through here.
+//
+// Every label that names a glossary concept is that concept's exact term —
+// `possibility` read as "Possibility" in the detail panel, "Combo" in the
+// legend and "Tech tree node" in the docs, which is three names for one circle.
+// src/client/vocabulary.test.ts holds these against src/shared/concepts.json.
+import { isNext } from '../components/civ/layout';
+import type { Item } from './configImporter';
 
 const TYPE_LABELS: Record<string, string> = {
   framework: 'Framework',
@@ -11,7 +18,7 @@ const TYPE_LABELS: Record<string, string> = {
   command: 'Command',
   skill: 'Skill',
   config: 'Configuration',
-  possibility: 'Possibility',
+  possibility: 'Combo',
   device: 'Device',
   service: 'Service',
   api: 'API',
@@ -23,9 +30,24 @@ const TYPE_LABELS: Record<string, string> = {
   action: 'Action',
 };
 
+/** What a status is called on the tech tree, where reaching things is the point. */
 const STATUS_LABELS: Record<string, string> = {
   built: 'Reached',
   specified: 'Not yet reached',
+  deprecated: 'Being retired',
+};
+
+/**
+ * What a status is called in My Setup, where it is not a journey but a switch.
+ *
+ * The same three values arrive from two graphs. On the tree, `built` means a
+ * capability has been reached. In the config view it means `enabled` is not
+ * false — so the panel said "Tool server · Reached" directly above a switch
+ * reading "Enabled", two words for one fact, disagreeing.
+ */
+const CONFIG_STATUS_LABELS: Record<string, string> = {
+  built: 'Enabled',
+  specified: 'Disabled',
   deprecated: 'Being retired',
 };
 
@@ -33,7 +55,25 @@ export function typeLabel(type: string): string {
   return TYPE_LABELS[type] ?? type;
 }
 
-export function statusLabel(status: string): string {
+/**
+ * An entry read out of the agent config, rather than a node of the curated
+ * tree. Tree nodes carry an era and a state; config entries carry neither.
+ */
+export function isConfigEntry(item: { meta?: Record<string, unknown> }): boolean {
+  return item.meta?.era === undefined && item.meta?.state === undefined;
+}
+
+/**
+ * What to call a node's status, in the words of the graph it came from.
+ *
+ * Without the item this is the tree's vocabulary, which is what the accessible
+ * announcement and any caller with only a status string want.
+ */
+export function statusLabel(status: string, item?: Item): string {
+  if (item && isConfigEntry(item)) return CONFIG_STATUS_LABELS[status] ?? status;
+  // On the tree, "not yet reached" is two different situations, and which one
+  // is the useful half of the answer: blocked means a prerequisite is missing.
+  if (item && status === 'specified') return isNext(item) ? 'Next step' : 'Blocked';
   return STATUS_LABELS[status] ?? status;
 }
 

@@ -1,5 +1,5 @@
 {
-  "$comment": "The vocabulary this tool uses, defined once and read by both the visualizer (DocsModal) and the CLI (`ambit help`), so the two can never drift apart. Every term here appears somewhere in the UI or command output; if a term is added there, add it here.",
+  "$comment": "The vocabulary this tool uses, defined once and read by both the visualiser (the Docs overlay and the Term popovers) and the CLI (`ambit help`), so the two can never drift apart. Ordered the way a reader meets them: everything on the map first, the terminal-only terms last. Every term here is the exact word the interface uses — src/client/vocabulary.test.ts fails if a surface starts calling one of them something else.",
   "concepts": [
     {
       "key": "capability",
@@ -17,17 +17,45 @@
     },
     {
       "key": "state",
-      "term": "Reached, next, blocked",
+      "term": "Reached, next step, blocked",
       "short": "Where you are on a tech tree node",
-      "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next: prerequisites are met but nothing was detected — this is the useful frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
-      "seen": "Solid nodes are reached; outlined nodes are not"
+      "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next step: prerequisites are met but nothing was detected — this is the useful frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
+      "seen": "The three keys in the map legend, and the count in the header"
     },
     {
       "key": "prerequisite",
-      "term": "Hard vs soft prerequisite",
-      "short": "Whether a dependency is required or merely helpful",
-      "long": "A hard prerequisite must be in place or the dependent capability cannot work — a model cannot run without its provider. A soft prerequisite strengthens something without gating it. Only hard prerequisites block a node from being reached; both are drawn, with soft ones fainter.",
-      "seen": "Solid vs dashed connection lines"
+      "term": "Required vs optional prerequisite",
+      "short": "Whether a dependency gates a capability, or only helps",
+      "long": "A required prerequisite must be in place or the dependent capability cannot work — a model cannot run without its provider. An optional one strengthens something without gating it. Only required prerequisites block a node from being reached; both are drawn, with optional ones fainter. The data model and the CLI call these hard and soft.",
+      "seen": "Solid vs dashed connection lines, keyed Required and Optional"
+    },
+    {
+      "key": "keystone",
+      "term": "Keystone",
+      "short": "A capability many others depend on",
+      "long": "Ranked by how many capabilities would be affected if it disappeared. High-leverage to invest in, and risky to leave unmaintained. `ambit impact <id>` shows exactly what falls over. The map marks a node with three or more dependants; `ambit status` reports the same idea under the heading bottlenecks, counting only the combos a capability unlocks, so the two lists overlap without being identical.",
+      "seen": "The dashed amber square on the map, and bottlenecks in ambit status"
+    },
+    {
+      "key": "combo",
+      "term": "Combo",
+      "short": "A capability several others unlock",
+      "long": "The tech tree nodes are combos, and you can define your own in a `combos` block for things specific to your work. A combo is a judgement about what composes into something new, which is why the tool never invents one from your config.",
+      "seen": "The ● nodes and the Combos filter, ambit graph combos, ambit goal"
+    },
+    {
+      "key": "tool-server",
+      "term": "Tool server",
+      "short": "A tool your agent can call",
+      "long": "An MCP server, which is the protocol agents use to reach tools. Everything the server exposes — reading a file, opening a page, querying a database — becomes something the agent can do, which is why one server switched off can take a row of capabilities with it.",
+      "seen": "The ◈ nodes, the Tool servers filter, and mcp entries in your config"
+    },
+    {
+      "key": "evidence",
+      "term": "Verified",
+      "short": "Proven to work, not just configured",
+      "long": "Detection proves a name appears in a config file. Verification runs a declared read-only check and records the result, so a capability can be said to work rather than to exist. Reliability is the share of recorded runs that passed, which is why the history is kept: one success is a weaker claim than forty-seven of fifty. Checks execute, so they live in the repository and run only when asked — never on seed.",
+      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one; a plain filled circle is configured but unproven"
     },
     {
       "key": "maturity",
@@ -37,32 +65,25 @@
       "seen": "The ring around each node, and Maturity in the detail panel"
     },
     {
-      "key": "decay",
-      "term": "Decay",
-      "short": "What you have stopped tending",
-      "long": "`ambit decay` ranks capabilities by how long since their configuration last changed. It tracks configuration decisions, not how often you invoke something — a server you use daily but never reconfigure will look static, which is intentional. The question it answers is 'what have I stopped tending', not 'what do I use least'.",
-      "seen": "ambit decay"
+      "key": "domain",
+      "term": "Domain",
+      "short": "The area of work a capability belongs to",
+      "long": "infra, devops, backend, frontend, ai-ml, quality, security, or meta. Inferred from the capability's name, which means a stack unlike the keyword table's assumptions will land more things in the meta fallback — that table is the first thing to edit.",
+      "seen": "Column grouping, and Domain in the detail panel"
     },
     {
-      "key": "bottleneck",
-      "term": "Bottleneck",
-      "short": "A capability many others depend on",
-      "long": "Ranked by how many capabilities would be affected if it disappeared. High-leverage to invest in, and risky to leave unmaintained. `ambit impact <id>` shows exactly what falls over.",
-      "seen": "ambit status, ambit impact"
+      "key": "attention",
+      "term": "Attention",
+      "short": "Time you spent stepping in so an agent could continue",
+      "long": "Every recorded moment where a person had to step in — approve, correct, copy something across — priced at what an hour of your time is worth. The Attention lens shades the map by how often each capability demanded it; Time & cost ranks what removing it would save. Judgment and knowledge are never counted as reducible, however often they recur.",
+      "seen": "The Attention lens, the Time & cost view, ambit attention"
     },
     {
-      "key": "combo",
-      "term": "Combo",
-      "short": "A capability several others unlock",
-      "long": "The tech tree nodes are combos, and you can define your own in a `combos` block for things specific to your work. A combo is a judgement about what composes into something new, which is why the tool never invents one from your config.",
-      "seen": "ambit graph combos, ambit goal"
-    },
-    {
-      "key": "evidence",
-      "term": "Verified",
-      "short": "Proven to work, not just configured",
-      "long": "Detection proves a name appears in a config file. Verification runs a declared read-only check and records the result, so a capability can be said to work rather than to exist. Reliability is the share of recorded runs that passed, which is why the history is kept: one success is a weaker claim than forty-seven of fifty. Checks execute, so they live in the repository and run only when asked — never on seed.",
-      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one; a plain filled circle is configured but unproven"
+      "key": "proposal",
+      "term": "Proposal",
+      "short": "A change to your setup, drafted for a person to approve",
+      "long": "An agent that finds a gap drafts a proposal rather than acting: the steps, their inverses, and what the frontier would look like afterwards. Approving it mints a signed artifact that expires; `ambit apply` verifies that signature before anything runs, and refuses if the proposal changed after approval.",
+      "seen": "The Proposals panel, ambit propose / approve / apply"
     },
     {
       "key": "authority",
@@ -79,11 +100,11 @@
       "seen": "ambit history, ambit history since"
     },
     {
-      "key": "domain",
-      "term": "Domain",
-      "short": "The area of work a capability belongs to",
-      "long": "infra, devops, backend, frontend, ai-ml, quality, security, or meta. Inferred from the capability's name, which means a stack unlike the keyword table's assumptions will land more things in the meta fallback — that table is the first thing to edit.",
-      "seen": "Column grouping, and Domain in the detail panel"
+      "key": "decay",
+      "term": "Decay",
+      "short": "What you have stopped tending",
+      "long": "`ambit decay` ranks capabilities by how long since their configuration last changed. It tracks configuration decisions, not how often you invoke something — a server you use daily but never reconfigure will look static, which is intentional. The question it answers is 'what have I stopped tending', not 'what do I use least'.",
+      "seen": "ambit decay"
     }
   ]
 }

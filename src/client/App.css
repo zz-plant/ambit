@@ -381,7 +381,7 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--on-accent);
 }
 
-/* On narrow screens the console is a sheet over the map; this is what a tap
+/* On narrow screens the panel is a sheet over the map; this is what a tap
    outside it lands on. */
 .app-drawer-backdrop {
   position: absolute;
@@ -1414,7 +1414,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* ─── TIME & COST DASHBOARD ─── */
-/* Fills the scene beside the console rather than under it: the left inset is
+/* Fills the scene beside the panel rather than under it: the left inset is
    set inline from the same state that positions the map. */
 .loop-dashboard {
   position: absolute;
@@ -2523,4 +2523,329 @@ code, pre, .code, .sp-cli-cmd {
    two scrollbars meet — most visible on the canvas, which scrolls both ways. */
 *::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* ─── LIVE STREAM INDICATOR ───
+   Shown only while the AG-UI stream is attached. The map redrawing itself is
+   a good surprise once and an unexplained one after that, so the state that
+   causes it is on screen. */
+.app-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.app-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* ─── LENS NOTE ───
+   A lens with nothing to colour, explaining itself where the colour would be. */
+.civ-lens-note {
+  position: sticky;
+  top: 52px;
+  left: 0;
+  z-index: 20;
+  height: 0;
+  padding-left: 12px;
+}
+
+.civ-lens-note p {
+  display: inline-block;
+  max-width: 520px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.civ-lens-note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+/* ─── CONFIG SWITCH ───
+   The one edit the browser makes to a real config file. It looks like a
+   switch because it is reversible by the same click. */
+.sp-toggle-row {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.sp-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sp-switch:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.sp-switch-knob {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: background 0.15s;
+}
+
+.sp-switch--on {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: var(--ok);
+}
+
+.sp-switch--on .sp-switch-knob {
+  background: var(--ok);
+}
+
+.sp-toggle-note {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* ─── ENVIRONMENT TABS (REPO DRIFT, INFRASTRUCTURE) ─── */
+.tp-tabs {
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+.tp-tab {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.tp-tab--active {
+  color: var(--text-primary);
+}
+
+.tp-item--static {
+  cursor: default;
+}
+
+.tp-note {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tp-finding {
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  border-left: 2px solid var(--border-bright);
+}
+
+.tp-finding--warn {
+  border-left-color: var(--warn);
+}
+
+.tp-finding--error {
+  border-left-color: var(--error);
+}
+
+.tp-empty--note {
+  text-align: left;
+  line-height: 1.55;
+}
+
+.tp-badge--online::before {
+  background: var(--ok);
+}
+
+.tp-badge--degraded::before {
+  background: var(--warn);
+}
+
+.tp-badge--offline::before {
+  background: var(--error);
+}
+
+.tp-badge--unknown::before {
+  background: var(--text-muted);
+}
+
+/* ─── DROP A CONFIG ───
+   Mapping a setup with nothing installed: the file is read in the tab. */
+.app-welcome-drop {
+  margin-top: 20px;
+  padding: 14px 18px;
+  border: 1px dashed var(--border-bright);
+  border-radius: var(--radius);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.app-welcome-drop.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.app-welcome-drop p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.app-welcome-drop code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.app-welcome-droperr {
+  margin-top: 8px !important;
+  color: var(--error) !important;
+}
+
+/* ─── LOOP PAGE: THE STATES THAT ARE NOT A FIGURE ─── */
+.loop-empty-steps {
+  margin: 20px 0 0;
+  padding-left: 20px;
+  max-width: 620px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.loop-empty-steps li + li {
+  margin-top: 10px;
+}
+
+.loop-empty-steps code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+
+.fig-note {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.fig-row-none {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+/* ─── A HOUSE WORD, DEFINED WHERE IT IS USED ───
+   The glossary was behind a button; the words were everywhere else. These
+   carry the definition with the word — dotted underline for the affordance,
+   a card on hover, focus or click. */
+.term-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.term {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--border-bright);
+}
+
+.term:hover,
+.term:focus-visible {
+  text-decoration-color: var(--accent);
+}
+
+.term-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: max-content;
+  max-width: 280px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-md);
+  text-align: left;
+  white-space: normal;
+  cursor: auto;
+}
+
+.term-pop-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.term-pop-short {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.term-pop-seen {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* ─── WHAT EACH FILTER ACTS ON ───
+   Two controls with the same five words sit a few pixels apart: one filters
+   the map, one filters the list. Each says which. */
+.civ-hud-label,
+.tp-filter-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  align-self: center;
+  padding: 0 2px;
 }

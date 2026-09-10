@@ -20,14 +20,14 @@
  *   Ink that encodes nothing is removed. No frames, no gridlines, no fill
  *   behind a value a position already carries.
  */
-import type { DemoSnapshot } from '../utils/demoSnapshot';
+import type { LoopSnapshot } from '../../shared/api';
 
 /** Figures line up in a column only if the digits are the same width. */
 export const NUM = { fontVariantNumeric: 'tabular-nums' } as const;
 
 export const money = (n: number) => `$${n.toLocaleString()}`;
 
-type Series = DemoSnapshot['roi']['monthly_hours'];
+type Series = LoopSnapshot['roi']['monthly_hours'];
 
 interface SparklineProps {
   series: Series;

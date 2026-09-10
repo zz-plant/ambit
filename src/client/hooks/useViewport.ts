@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 const NARROW = '(max-width: 768px)';
 
 /**
- * Whether the screen is narrow, and whether the left console is open.
+ * Whether the screen is narrow, and whether the capabilities panel is open.
  *
- * The console is 340px of absolutely-positioned overlay. On a phone that is
+ * The panel is 340px of absolutely-positioned overlay. On a phone that is
  * the whole screen: it covered the landing page, including the button that
  * loads the demo, so the published demo was unusable on the device most
  * people follow a link from. Narrow screens start with it closed, and it opens

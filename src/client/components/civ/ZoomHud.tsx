@@ -7,13 +7,22 @@
  * the map.
  */
 import type React from 'react';
-import type { ActiveLens } from '../../store/ambitStore';
+import { TREE_FILTERS, type ActiveLens, type TreeFilter } from '../../linkState';
 
 export const LENSES: readonly [ActiveLens, string, string][] = [
   ['default', 'Standard', '1'],
   ['attention', 'Attention', '2'],
   ['credentials', 'Shared credentials', '3'],
 ];
+
+/** What each filter is called on screen. The tree view has era columns instead. */
+const FILTER_LABELS: Record<TreeFilter, string> = {
+  all: 'All',
+  server: 'Tool servers',
+  agent: 'Agents',
+  skill: 'Skills',
+  combo: 'Combos',
+};
 
 interface ZoomHudProps {
   zoom: number;
@@ -24,6 +33,10 @@ interface ZoomHudProps {
   contentHeight: number;
   activeLens: ActiveLens;
   onSetLens: (lens: ActiveLens) => void;
+  /** The setup view's kind filter. The tree view draws eras and hides this. */
+  typeFilter: TreeFilter;
+  onSetTypeFilter: (filter: TreeFilter) => void;
+  showTypeFilter: boolean;
   /** Pixels the detail panel covers on the right. */
   rightInset?: number;
 }
@@ -36,6 +49,9 @@ export function ZoomHud({
   contentHeight,
   activeLens,
   onSetLens,
+  typeFilter,
+  onSetTypeFilter,
+  showTypeFilter,
   rightInset = 0,
 }: ZoomHudProps) {
   const fit = () => {
@@ -91,6 +107,27 @@ export function ZoomHud({
           Fit
         </button>
       </div>
+
+      {/* The kind filter was readable from `?treeFilter=` and settable from
+          nowhere: a control that existed as a URL parameter and a store action
+          with nothing on screen to call it. */}
+      {showTypeFilter && (
+        <div className="civ-lens-hud" role="toolbar" aria-label="Filter the map">
+          <span className="civ-hud-label">Map</span>
+          {TREE_FILTERS.map(filter => (
+            <button
+              key={filter}
+              type="button"
+              className={`app-deck-tab ${typeFilter === filter ? 'app-deck-tab--active' : ''}`}
+              aria-pressed={typeFilter === filter}
+              onClick={() => onSetTypeFilter(filter)}
+              title={filter === 'all' ? 'Every kind of node' : `Only ${FILTER_LABELS[filter]}`}
+            >
+              {FILTER_LABELS[filter]}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="civ-lens-hud" role="toolbar" aria-label="Lens">
         {LENSES.map(([lens, label, hotkey]) => (

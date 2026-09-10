@@ -31,3 +31,10 @@ test('the landing draws one bar per era on a shared scale, with the fraction bes
 test('both figures are labelled as example data', () => {
   expect(html).toContain('Both figures are example data');
 });
+
+test('the landing offers to map a config with nothing installed', () => {
+  // `loadFromJSON` sat in the store with no drop target and no picker, so the
+  // answer to "what does this look like for my setup" was "clone the repo".
+  expect(html).toContain('Map your own config');
+  expect(html).toContain('never uploaded');
+});

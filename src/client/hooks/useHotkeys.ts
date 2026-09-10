@@ -2,9 +2,9 @@ import { useEffect } from 'react';
 import { useLatest } from './useLatest';
 
 interface Hotkeys {
-  /** `/` — open the console and focus its search box. */
+  /** `/` — open the capabilities panel and focus its search box. */
   openSearch: () => void;
-  /** `\` — toggle the console. */
+  /** `\` — toggle the capabilities panel. */
   toggleSidebar: () => void;
   /** `?` — toggle the docs overlay. */
   toggleDocs: () => void;

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { currentSearch, readLinkState, type ActiveLens, type TreeFilter } from '../linkState';
 import type { Item, Connection } from '../utils/configImporter';
 import { importConfig } from '../utils/configImporter';
-import { demoSnapshot, type DemoSnapshot } from '../utils/demoSnapshot';
+import { demoSnapshot } from '../utils/demoSnapshot';
 import {
   DEMO_ATTENTION,
   demoApproval,
@@ -14,7 +15,10 @@ import {
   type ApiResult,
   type ApiRoutes,
   type ApproveResponse,
+  type InfrastructureScanResponse,
+  type LoopSnapshot,
   type ProposalRow,
+  type RepoScanResponse,
 } from '../../shared/api';
 
 /**
@@ -27,30 +31,17 @@ import {
 
 /** Matches the mobile breakpoint in App.css, where the panels become sheets. */
 function isNarrowViewport(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+  const w = (globalThis as { matchMedia?: (q: string) => { matches: boolean } }).matchMedia;
+  return typeof w === 'function' && w('(max-width: 768px)').matches;
 }
 
-export type TreeFilter = 'all' | 'server' | 'agent' | 'skill' | 'combo' | 'compact';
-export const TREE_FILTERS: readonly TreeFilter[] = [
-  'all',
-  'server',
-  'agent',
-  'skill',
-  'combo',
-  'compact',
-];
+// The URL is the one parser for view state; see ./linkState.ts. These are
+// re-exported because the store is where components already reach for them.
+export { TREE_FILTERS, LENSES } from '../linkState';
+export type { TreeFilter, ActiveLens } from '../linkState';
 
-/** The one place the filter's initial value comes from: URL param wins over a
- *  saved preference, both are validated, everything else is 'all'. */
-function readInitialTreeFilter(): TreeFilter {
-  if (typeof window === 'undefined') return 'all';
-  const candidate =
-    new URLSearchParams(window.location.search).get('treeFilter') ??
-    localStorage.getItem('ambit.treeFilter');
-  return candidate && (TREE_FILTERS as readonly string[]).includes(candidate)
-    ? (candidate as TreeFilter)
-    : 'all';
-}
+/** What the address bar asks for, read once at startup. */
+const initialLink = readLinkState(currentSearch());
 
 /**
  * A typed GET against the API. The store used to call `await res.json()` and
@@ -85,7 +76,15 @@ export function backendAvailable(): Promise<boolean> {
         .then((j: any) => j?.status === 'ok')
         .catch(() => false)
     )
-    .catch(() => false);
+    .catch(() => false)
+    // Remembered in the store as well as in the promise: a component that
+    // renders a control only a live engine can honour — the config toggle, the
+    // repo and infrastructure tabs — needs the answer synchronously, and
+    // awaiting a promise in a render is not an option.
+    .then(ok => {
+      useAmbitStore.setState({ backend: ok ? 'live' : 'static' });
+      return ok;
+    });
   return backendProbe;
 }
 
@@ -99,7 +98,6 @@ import { WEB_ACTOR } from '../utils/copy';
 
 export type { InfrastructureNode, InfrastructureLink, InfrastructureFinding, InfrastructureScan };
 
-export type ActiveLens = 'default' | 'attention' | 'credentials';
 export type SimulationMode = 'none' | 'outage' | 'acquisition';
 
 /** The approval UI's view of a proposal row, from the shared API contract. */
@@ -124,8 +122,19 @@ interface StoreState {
   attentionInterventions: Record<string, number>;
   loading: boolean;
   error: string | null;
-  /** The loop snapshot the static demo renders (null off-demo). */
-  demo: DemoSnapshot | null;
+  /** Whether the graph on screen is the bundled demo rather than this machine. */
+  demo: boolean;
+  /** Where the time went and what would buy it back — from the ledger, or the demo's sample. */
+  loop: LoopSnapshot | null;
+  loopSource: 'ledger' | 'sample' | null;
+  /** True when the ledger exists and has recorded nothing yet. */
+  loopEmpty: boolean;
+  /** Whether an engine is answering, as far as the health probe got. */
+  backend: 'unknown' | 'live' | 'static';
+  /** How each repository's agent config has drifted from the global one. */
+  repos: RepoScanResponse | null;
+  /** The device and service topology, probed from the manifest. */
+  infrastructure: InfrastructureScanResponse | null;
 
   seedDemo: () => void;
   seedDemoTree: () => void;
@@ -136,6 +145,10 @@ interface StoreState {
   startAcquisitionSimulation: (nodeId: string) => void;
   clearSimulation: () => void;
   loadProposals: () => Promise<void>;
+  loadLoop: () => Promise<void>;
+  loadRepos: () => Promise<void>;
+  loadInfrastructure: () => Promise<void>;
+  probeBackend: () => Promise<void>;
   approveProposal: (
     proposalId: string,
     actor?: string
@@ -171,16 +184,22 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   showDetailPanel: false,
   showStarPanel: false,
   showApprovalModal: false,
-  treeFilter: readInitialTreeFilter(),
-  activeLens: 'default',
+  treeFilter: initialLink.treeFilter,
+  activeLens: initialLink.lens,
   simulationMode: 'none',
   simulatedNodeId: null,
   simulatedCascadeIds: new Set<string>(),
   proposals: [],
-  attentionInterventions: DEMO_ATTENTION,
+  attentionInterventions: {},
   loading: false,
   error: null,
-  demo: null,
+  demo: false,
+  loop: null,
+  loopSource: null,
+  loopEmpty: false,
+  backend: 'unknown',
+  repos: null,
+  infrastructure: null,
 
   setItems: (items, connections) => set({ items, connections }),
 
@@ -311,6 +330,50 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     }
   },
 
+  probeBackend: async () => {
+    await backendAvailable();
+  },
+
+  /**
+   * The loop page's figures.
+   *
+   * The demo seeds a sample; a live engine answers with its own ledger, which
+   * on a new machine is empty. Empty is a state the page renders rather than a
+   * failure, because "no interventions recorded" and "your time costs nothing"
+   * are different claims.
+   */
+  loadLoop: async () => {
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/loop');
+      if (!data) return;
+      const { source, empty, ...snapshot } = data;
+      set({ loop: snapshot, loopSource: source, loopEmpty: empty });
+    } catch {
+      /* the page keeps whatever it had rather than blanking */
+    }
+  },
+
+  loadRepos: async () => {
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/repos/scan');
+      if (data) set({ repos: data });
+    } catch {
+      /* a scan that cannot run leaves the tab on its empty state */
+    }
+  },
+
+  loadInfrastructure: async () => {
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/infrastructure/scan');
+      if (data) set({ infrastructure: data });
+    } catch {
+      /* as above: no manifest is the common case, not an error */
+    }
+  },
+
   loadAttentionData: async () => {
     if (!(await backendAvailable())) return;
     try {
@@ -324,10 +387,27 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       /* ignore */
     }
   },
+  /**
+   * Draw a graph from JSON the browser was handed, with nothing installed.
+   *
+   * Two shapes arrive here. An agent config — the `opencode.json` a person can
+   * drop on the welcome screen — goes through the same importer the live
+   * `/api/config` path uses, so a visitor sees their own setup mapped without
+   * an engine. A `{ items, connections }` export (`ambit graph`) is drawn as
+   * it stands. Everything happens in the tab: nothing is uploaded, and the
+   * file is not kept.
+   */
   loadFromJSON: jsonStr => {
+    let data: any;
     try {
-      const data = JSON.parse(jsonStr);
-      const items: Item[] = (data.items || []).map((i: Partial<Item>) => ({
+      data = JSON.parse(jsonStr);
+    } catch {
+      return false;
+    }
+    if (!data || typeof data !== 'object') return false;
+
+    if (Array.isArray(data.items)) {
+      const items: Item[] = data.items.map((i: Partial<Item>) => ({
         ...i,
         status: i.status || 'built',
         position: i.position || { x: 0, y: 0, z: 0 },
@@ -337,11 +417,21 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         ...c,
         type: c.type || 'connects',
       }));
-      set({ items, connections, loading: false, error: null });
+      set({ items, connections, loading: false, error: null, demo: false });
       return true;
-    } catch {
-      return false;
     }
+
+    // An agent config: mcp, agent, provider, command, skills. A file with none
+    // of those is some other JSON, and drawing an empty graph from it would
+    // look like a bug in the reader rather than a mismatch in the file.
+    const looksLikeConfig = ['mcp', 'agent', 'provider', 'command', 'skills'].some(
+      k => data[k] && typeof data[k] === 'object'
+    );
+    if (!looksLikeConfig) return false;
+    const graph = importConfig(data);
+    if (!graph.items.length) return false;
+    set({ ...graph, loading: false, error: null, demo: false });
+    return true;
   },
 
   // Two demo seeds because the two views are different datasets: the tree is
@@ -349,18 +439,30 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   // list of discovered entries. Both mark the store as demo so a later health
   // probe cannot clobber them.
   seedDemoTree: () =>
-    set({ ...demoTreeGraph(), loading: false, error: null, demo: demoSnapshot() }),
+    set({
+      ...demoTreeGraph(),
+      loading: false,
+      error: null,
+      demo: true,
+      loop: demoSnapshot(),
+      loopSource: 'sample',
+      loopEmpty: false,
+      attentionInterventions: DEMO_ATTENTION,
+    }),
 
-  seedDemo: () => set({ ...demoConfigGraph(), loading: false, error: null, demo: demoSnapshot() }),
+  seedDemo: () =>
+    set({
+      ...demoConfigGraph(),
+      loading: false,
+      error: null,
+      demo: true,
+      loop: demoSnapshot(),
+      loopSource: 'sample',
+      loopEmpty: false,
+      attentionInterventions: DEMO_ATTENTION,
+    }),
 
-  setTreeFilter: treeFilter => {
-    set({ treeFilter });
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('ambit.treeFilter', treeFilter);
-    const url = new URL(window.location.href);
-    url.searchParams.set('treeFilter', treeFilter);
-    window.history.replaceState({}, document.title, url);
-  },
+  setTreeFilter: treeFilter => set({ treeFilter }),
 
   updateItem: (id, updates) =>
     set(state => ({
@@ -392,10 +494,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       // The health probe is async: if "Open the demo" was clicked (or ?demo=1 ran)
       // while this was in flight, don't clobber the seeded graph on resolve.
       if (get().demo) return;
-      set({ items: [], connections: [], loading: false, error: null, demo: null });
+      set({ items: [], connections: [], loading: false, error: null, demo: false });
       return;
     }
-    set({ loading: true, error: null, demo: null });
+    set({ loading: true, error: null, demo: false });
     try {
       const data = await getJson('/api/config');
       if (!data) {
@@ -445,7 +547,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       get().seedDemoTree();
       return true;
     }
-    set({ loading: true, error: null, demo: null });
+    set({ loading: true, error: null, demo: false });
     try {
       const data = await getJson('/api/tech-tree');
       if (!data) {
@@ -471,6 +573,6 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       showStarPanel: false,
       loading: false,
       error: null,
-      demo: null,
+      demo: false,
     }),
 }));

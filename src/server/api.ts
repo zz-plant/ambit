@@ -23,6 +23,7 @@ import {
   graphSummary,
   recentProposals,
   interventionHeatmap,
+  loopView,
 } from '../engine/views.ts';
 import { approveProposal } from '../engine/governance.ts';
 import {
@@ -54,6 +55,7 @@ import type {
   ApiError,
   ApproveResponse,
   AttentionResponse,
+  LoopResponse,
   ConfigApplyRequest,
   ConfigApplyResponse,
   ConfigResponse,
@@ -396,6 +398,16 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   if (pathname === '/api/attention' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) return json<AttentionResponse>({ interventions: [] });
     return json<AttentionResponse>({ interventions: withGraph(interventionHeatmap) as never });
+  }
+
+  // Where a person's time went, and what would buy it back. Every figure is a
+  // projection of a report the CLI already prints, so the page and the
+  // terminal cannot disagree about one ledger.
+  if (pathname === '/api/loop' && method === 'GET') {
+    if (!existsSync(GRAPH_DB_PATH)) {
+      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+    }
+    return json<LoopResponse>(withGraph(loopView));
   }
 
   // The browser approval broker. It approves and mints the signed artifact the

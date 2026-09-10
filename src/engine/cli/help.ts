@@ -12,7 +12,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
 
   seed              seed from the agent config
   briefing          what an agent should know before its first tool call
-  status            health · degraded · spofs · deficits · pending approvals
+  status            health · degraded · sole providers · deficits · waiting approvals
   next              the three capabilities worth reaching next, and why
   graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
   goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
@@ -35,7 +35,7 @@ Five groups. Every verb also works on its own — \`ambit impact x\` and
   briefing [--json] [--peek]   what an agent should know before its first tool
                     call — broken, waiting, blocked, next. --peek does not
                     move the "since last briefing" mark
-  status            health · degraded · spofs · deficits · pending approvals
+  status            health · degraded · sole providers · deficits · waiting approvals
 
 graph — the structure, and what it would cost to lose a piece
   graph [surface|combos|affordances]   the graph, or a runtime-owned view of it

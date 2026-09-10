@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { backendAvailable } from '../store/ambitStore';
 import { useLatest } from './useLatest';
 
@@ -18,9 +18,14 @@ interface StreamHandlers {
  * either one means the graph changed. The visualiser renders the graph, not
  * the counts, so the patch itself is not applied here. Only the state subset
  * of AG-UI is implemented; see the note on /api/events in src/server/api.ts.
+ *
+ * Returns whether the stream is connected, which the header shows: a map that
+ * silently redraws itself when a seed runs elsewhere is a good surprise the
+ * first time and an unexplained one every time after.
  */
-export function useGraphStream(handlers: StreamHandlers) {
+export function useGraphStream(handlers: StreamHandlers): { connected: boolean } {
   const latest = useLatest(handlers);
+  const [connected, setConnected] = useState(false);
   useEffect(() => {
     if (typeof EventSource === 'undefined') return;
     // A static site (the published demo) has no /api/events; opening the
@@ -32,6 +37,7 @@ export function useGraphStream(handlers: StreamHandlers) {
       if (!ok || cancelled) return;
       es = new EventSource('/api/events');
       let last = '';
+      es.onopen = () => setConnected(true);
       es.onmessage = e => {
         try {
           const event = JSON.parse(e.data);
@@ -51,13 +57,16 @@ export function useGraphStream(handlers: StreamHandlers) {
           /* a malformed frame should not take the view down */
         }
       };
-      // Deliberately no onerror handler that closes: EventSource reconnects on
-      // its own, and closing on the first transient error disabled live updates
-      // permanently for the rest of the session.
+      // The handler reports, and deliberately does not close: EventSource
+      // reconnects on its own, and closing on the first transient error
+      // disabled live updates permanently for the rest of the session.
+      es.onerror = () => setConnected(false);
     });
     return () => {
       cancelled = true;
+      setConnected(false);
       es?.close();
     };
   }, [latest]);
+  return { connected };
 }
