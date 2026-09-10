@@ -76,6 +76,14 @@ export function NodeDetailPanel() {
     .filter((i): i is NonNullable<typeof i> => Boolean(i));
   const isKeystone = downstreamEnables.length >= 3 || isRuntimeNode(item);
 
+  // Details lists only facts that exist. A local MCP server has no url, and a row
+  // reading "Url undefined" is noise. false and 0 are real values, so they stay.
+  const isStated = (v: unknown) =>
+    v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
+  const details = Object.entries(item.meta).filter(
+    ([k, v]) => k !== 'lifecycle' && k !== 'lastChecked' && isStated(v)
+  );
+
   return (
     <div className="star-panel">
       <div className="sp-hdr">
@@ -289,19 +297,17 @@ export function NodeDetailPanel() {
         </div>
       )}
 
-      {Object.keys(item.meta).length > 0 && (
+      {details.length > 0 && (
         <div className="sp-attrs" style={{ marginTop: '8px' }}>
           <div className="sp-section-label">Details</div>
-          {Object.entries(item.meta)
-            .filter(([k]) => k !== 'lifecycle' && k !== 'lastChecked')
-            .map(([k, v]) => (
-              <div key={k} className="sp-attr-row">
-                <span className="sp-attr-key">{metaKeyLabel(k)}</span>
-                <span className="sp-attr-val" title={String(v)}>
-                  {String(v)}
-                </span>
-              </div>
-            ))}
+          {details.map(([k, v]) => (
+            <div key={k} className="sp-attr-row">
+              <span className="sp-attr-key">{metaKeyLabel(k)}</span>
+              <span className="sp-attr-val" title={String(v)}>
+                {String(v)}
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </div>

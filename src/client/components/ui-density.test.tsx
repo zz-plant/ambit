@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { Item } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
+import { metaKeyLabel } from '../utils/labels';
 import App from '../App';
 import CapabilityListPanel from './CapabilityListPanel';
 import NodeDetailPanel from './NodeDetailPanel';
@@ -106,6 +107,38 @@ test('detail panel presents each relationship once', () => {
   expect(html).not.toContain('DEPENDENCY FLOW');
   expect(html).not.toContain('most connected');
   expect(html).not.toContain('>1<');
+});
+
+test('detail panel lists only the meta facts that exist', () => {
+  // A local MCP server: no url, no tags, no region.
+  const localServer: Item = {
+    ...capability,
+    meta: {
+      transport: 'stdio',
+      url: undefined,
+      tags: [],
+      region: '',
+      owner: null,
+      remote: false,
+      restarts: 0,
+    },
+  };
+  const serverState = useAmbitStore.getInitialState();
+  serverState.items.splice(0, serverState.items.length, localServer, dependency);
+  useAmbitStore.setState({ items: [localServer, dependency] });
+
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+
+  expect(html).not.toContain('undefined');
+  expect(html).not.toContain(metaKeyLabel('url'));
+  expect(html).not.toContain(metaKeyLabel('tags'));
+  expect(html).not.toContain(metaKeyLabel('region'));
+  expect(html).not.toContain(metaKeyLabel('owner'));
+
+  // false and 0 are answers, not blanks.
+  expect(html).toContain('title="stdio">stdio<');
+  expect(html).toContain('title="false">false<');
+  expect(html).toContain('title="0">0<');
 });
 
 test('application omits the footer that duplicates header status and documented shortcuts', () => {
