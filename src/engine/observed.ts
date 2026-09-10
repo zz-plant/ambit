@@ -14,7 +14,7 @@
  *
  * Nothing here decides anything on a person's behalf. It orders the alternatives
  * a proposal offers so the one most likely to be accepted is the one drafted,
- * and it says why — which makes the draft arguable rather than mysterious.
+ * and it says why, which makes the draft arguable rather than mysterious.
  */
 import type { Db } from './db.ts';
 

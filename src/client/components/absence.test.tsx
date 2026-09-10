@@ -1,22 +1,19 @@
 /**
  * Nothing on screen may state a fact that was never recorded.
  *
- * The rule is already written down, above `EmptyLedger`: figures that are all
- * zero read as "nothing costs you anything" rather than "nothing has been
- * recorded". Its loudest failure is the literal string `undefined` reaching a
- * person, and that has now happened twice in the same component. The Details
- * rows printed every key of a node's meta, so a local MCP server with no url
- * showed "Url  undefined". The evidence banner interpolated an interval that a
- * clock-skewed timestamp never produced, so a passing check read
- * "✓ Check passed undefined" — under the green tick, which is the one place
- * this product cannot afford to be wrong.
+ * The rule is written above `EmptyLedger`: figures that are all zero read as
+ * "nothing costs you anything" rather than "nothing has been recorded". It has
+ * failed twice in one component, both times as the literal string `undefined`
+ * reaching a person. The Details rows printed every key of a node's meta, so a
+ * local MCP server with no url showed "Url  undefined"; the evidence banner
+ * interpolated an interval a clock-skewed timestamp never produced, so a
+ * passing check read "✓ Check passed undefined".
  *
- * Types do not catch it. `era`, `eraName` and `lastChecked` are optional in the
- * API contract on purpose, because absence is a real answer about a machine;
- * what a type cannot say is what absence should *look* like. So the rule is
- * held here, the way vocabulary.test.ts holds the naming rule: render each
- * surface against a node and a ledger that state nothing, and fail on any
- * placeholder that reaches the markup.
+ * Types do not catch it: `era`, `eraName` and `lastChecked` are optional in the
+ * API contract on purpose, and what a type cannot say is what absence should
+ * *look* like. So the rule is held here, the way vocabulary.test.ts holds the
+ * naming rule — render each surface against a node and a ledger that state
+ * nothing, and fail on any placeholder that reaches the markup.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

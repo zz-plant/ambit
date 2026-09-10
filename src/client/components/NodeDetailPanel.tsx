@@ -42,10 +42,8 @@ export function NodeDetailPanel() {
     if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`;
     return `${Math.round(mins / (60 * 24))}d ago`;
   };
-  // Gate the clause on the label, not on the raw timestamp. A `lastChecked` the
-  // clock disagrees with — the machine that wrote the evidence running ahead of
-  // the browser reading it — is truthy and still names no interval, and a banner
-  // reading "last run undefined" claims less than one that says nothing.
+  // Gate on the label, not the timestamp: a `lastChecked` the writing and
+  // reading clocks disagree about is truthy and names no interval.
   const checkedAgo = agoLabel(lastChecked);
   const evidence =
     item.status !== 'built' || !lifecycle

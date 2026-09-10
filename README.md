@@ -45,7 +45,7 @@ Ambit reads those configs and builds one map out of them. Every tool, model, ski
 3. **What compound abilities emerge** when two independent tools are combined.
 4. **What is worth setting up next**, priced by the human attention it would save.
 
-You ask from the terminal. Your agents ask over MCP, mid-session, rather than finding the limit by running into it — Ambit is itself an MCP server, so the thing describing your MCP servers speaks the same protocol they do. (A *meta-MCP server*, if you want the term to search for.)
+You ask from the terminal. Your agents ask over MCP, mid-session, before they run into the limit — Ambit is itself an MCP server, so the thing describing your MCP servers speaks the same protocol they do. (A *meta-MCP server*, if you want the term to search for.)
 
 ### The words Ambit uses
 
@@ -101,7 +101,7 @@ First run — reading your agent config and building the graph…
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, drawn as nodes in domain columns" width="900">
-<br><sub>My Setup is the same map built from discovered config rather than the curated tree — every server, agent, and model found on the machine, placed in its domain</sub>
+<br><sub>My Setup is the same map built from discovered config, not the curated tree — every server, agent, and model found on the machine, placed in its domain</sub>
 </div>
 
 ---
@@ -122,7 +122,7 @@ First run — reading your agent config and building the graph…
 
 `ambit help` covers a first session; `ambit help --all` is the full surface, grouped by what you are trying to do, and `ambit help <term>` explains one concept.
 
-Everything above answers on a graph Ambit builds by itself. A second group — `attention`, `work`, `usage`, `opportunities`, `roi`, `audit` — prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need rather than returning a number, and they become useful after a few weeks of recorded runs, not on install.
+Everything above answers on a graph Ambit builds by itself. A second group — `attention`, `work`, `usage`, `opportunities`, `roi`, `audit` — prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need instead of returning a number, and they become useful after a few weeks of recorded runs, not on install.
 
 The three blocks below are captured from a run against a fixture graph by `npm run docs:examples`, and CI fails if they drift from what the commands actually print.
 
@@ -250,9 +250,9 @@ An agent can read the map, query what a goal is missing, and **propose** a confi
 > the capability. On `yes`, act. On `ask`, put it to the person. On `no`, it has
 > already recorded the deficit, so do not retry it under another name.
 
-It answers from the graph without probing anything, and a refusal files itself as a deficit — which is what makes the fourth occurrence show up as infrastructure that should exist rather than as a wall to work around again.
+It answers from the graph without probing anything, and a refusal files itself as a deficit, which is what makes the fourth occurrence show up as infrastructure that should exist instead of a wall to work around again.
 
-Here is the whole loop from a live run. `node --experimental-strip-types scripts/demo-agent-loop.ts` re-records it, and every frame is real engine output — a failing loop fails the recording rather than rendering a fiction.
+Here is the whole loop from a live run. `node --experimental-strip-types scripts/demo-agent-loop.ts` re-records it, and every frame is real engine output — a failing loop fails the recording instead of rendering a fiction.
 
 <div align="center">
 <img src="docs/assets/agent-loop-demo.gif" alt="An agent hits a missing capability, asks Ambit why over MCP, and drafts a proposal; a person approves and applies it; the frontier moves and Local Embeddings unlocks through composition" width="920">
@@ -283,7 +283,7 @@ sequenceDiagram
 <details>
 <summary><b>The full 60-tool MCP surface</b></summary>
 
-Sixty tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field rather than parsing a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
+Sixty tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field and never parses a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
 
 | Group | Tools | Purpose |
 | :--- | :--- | :--- |
@@ -302,11 +302,11 @@ Sixty tools, each advertised once. Each answers with MCP `structuredContent` —
 
 Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas. Discovery, verification, and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map's editor for entries that already exist, which cannot create one.
 
-Each client is read from its own standard config path, and every server stays attributed to the client that listed it. When two clients name the same server, that is one capability with two sources rather than two capabilities — which is what stops Ambit from counting a single binary twice and calling the result redundancy.
+Each client is read from its own standard config path, and every server stays attributed to the client that listed it. When two clients name the same server, that is one capability with two sources, not two capabilities, which is what stops Ambit from counting a single binary twice and calling the result redundancy.
 
 ### Seven eras, and what follows from them
 
-Discovered capabilities are placed into a curated tree that runs from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy**, and **Assurance** to **Sovereignty**. Because each capability records what it needs, Ambit works out what you can reach rather than taking a config file's word for it.
+Discovered capabilities are placed into a curated tree that runs from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy**, and **Assurance** to **Sovereignty**. Because each capability records what it needs, Ambit works out what you can reach without taking a config file's word for it.
 
 Two things follow from that:
 
@@ -328,7 +328,7 @@ Every availability decision gates on lifecycle, not state. A broken capability i
 
 - **Single points of failure** — capabilities with exactly one provider.
 - **Bottlenecks** — nodes ranked by how much sits downstream of them. The map marks the same idea on each node, as a keystone.
-- **Shared credentials** — providers presenting the same credential fail together, so three providers behind one token is not redundancy. This one is declared rather than inferred: name the sharers in a `credentials` block and `ambit impact credential:...` will show what revoking it would end.
+- **Shared credentials** — providers presenting the same credential fail together, so three providers behind one token is not redundancy. This one is declared, never inferred: name the sharers in a `credentials` block and `ambit impact credential:...` will show what revoking it would end.
 
 ---
 
@@ -363,7 +363,7 @@ When an agent proposes an environment change over MCP, the **Proposals** panel s
 
 ## The control plane
 
-Host-level agent tooling is a real attack surface, so execution goes through an interceptor rather than straight to the shell.
+Host-level agent tooling is a real attack surface, so execution goes through an interceptor, never straight to the shell.
 
 - **Interception.** Before a tool call reaches your machine, the proxy in `src/control_plane/proxy.ts` checks three things: are this capability's prerequisites in place, is it actually working, and is the caller allowed to do this. A call that fails any of them is refused — `AMBIT_BLOCKED_UNAUTHORIZED`, exit code `2` — and nothing on the machine has changed.
 - **Human-in-the-loop remediation.** A blocked execution drafts a structured proposal and an HMAC challenge. `ambit approve <proposal-id> <person>` mints a signed artifact that the executor verifies before any state changes. An artifact stops being valid if the proposal changed after approval, or if it has expired.
@@ -442,7 +442,7 @@ Ambit reads developer toolchains and writes to agent configs, so a few propertie
 * [FAQ](./docs/faq.md) — what needs installing, what leaves the machine, why the attention commands are empty on day one.
 * [Deep dive](./docs/deep-dive.md) — nodes, assurance checks, authority contracts, the work ledger, and every MCP tool in detail.
 * [Why Ambit](./docs/why-ambit.md) — what the tool is for and why it exists.
-* [The affordance frontier](./docs/affordance-frontier.md) — capability as a property of human-machine systems rather than of software.
+* [The affordance frontier](./docs/affordance-frontier.md) — capability as a property of human-machine systems, not of software.
 * [Roadmap](./docs/roadmap.md) — where the data model is heading. Direction, not description.
 * [Changelog](./CHANGELOG.md) — what changed per release, and why.
 * [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) — the rules above, in full.

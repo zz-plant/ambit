@@ -327,7 +327,7 @@ Do not model "Claude has tool X, Hermes has tool Y". Model what each runtime *pr
     connector  SMTP      MCP server
 ```
 
-The point is durability. You stop maintaining a setup for one assistant and start maintaining a capability fabric that different intelligences attach to — which matters more each time the model landscape shifts.
+The point is durability. You stop maintaining a setup for one assistant and start maintaining a capability fabric that different intelligences attach to, which matters more each time the model landscape shifts.
 
 ## 9. Authority as a first-class edge — built, and mediates one thing
 
