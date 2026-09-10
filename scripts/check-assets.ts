@@ -111,33 +111,63 @@ export function stalenessOf(behind: number, strict = false): Staleness {
   return 'drifting';
 }
 
-/** Commit epoch of the last change to `path`, or null outside a git checkout. */
-function lastCommit(path: string): number | null {
+/**
+ * The commit that last changed `path`, or null outside a git checkout — and
+ * likewise for a path git has never seen.
+ */
+function lastCommit(path: string, cwd: string = ROOT): string | null {
   try {
-    const out = execFileSync('git', ['log', '-1', '--format=%ct', '--', path], {
-      cwd: ROOT,
+    const out = execFileSync('git', ['log', '-1', '--format=%H', '--', path], {
+      cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim();
-    return out ? Number(out) * 1000 : null;
+    return out || null;
   } catch {
     return null;
   }
 }
 
-/** Commits touching `path` since `sinceIso`, newest first. */
-function commitsSince(path: string, sinceEpoch: number): string[] {
+/** Commits touching `path` that landed after `commit`, newest first. */
+function commitsSince(path: string, commit: string, cwd: string = ROOT): string[] {
   try {
-    return execFileSync(
-      'git',
-      ['log', '--format=%h %s', `--since=@${Math.floor(sinceEpoch / 1000)}`, '--', path],
-      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
-    )
+    return execFileSync('git', ['log', '--format=%h %s', `${commit}..HEAD`, '--', path], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
       .split('\n')
       .filter(Boolean);
   } catch {
     return [];
   }
+}
+
+/**
+ * Client commits an image is behind: commits to `clientPath` that landed after
+ * the commit that last touched `assetPath`. Null when the asset is not
+ * committed at all.
+ *
+ * The window is a commit range, and is exclusive of the asset's own commit by
+ * construction. The `--since=@<date>` form this replaced was not: git's
+ * `--since` keeps a commit whose date is exactly the bound, so a commit that
+ * touched both the image and the client — which is the normal way a re-recorded
+ * GIF lands — was counted against the image it was part of. One commit behind
+ * meant a default run warned by naming the asset's own commit, and a `--strict`
+ * run failed the release on an asset regenerated moments earlier.
+ *
+ * A +1s offset would have fixed that case and broken on two commits sharing a
+ * second. A range needs no timestamps at all, so it also survives a rebase
+ * rewriting the dates underneath it.
+ */
+export function commitsBehind(
+  assetPath: string,
+  clientPath: string,
+  cwd: string = ROOT
+): string[] | null {
+  const taken = lastCommit(assetPath, cwd);
+  if (taken === null) return null;
+  return commitsSince(clientPath, taken, cwd);
 }
 
 /**
@@ -160,13 +190,12 @@ function checkStaleness(errors: string[], warnings: string[], strict: boolean): 
     const rel = `docs/assets/${name}`;
     if (!readme.includes(rel)) continue; // not on the page a reader sees
 
-    const taken = lastCommit(rel);
-    if (taken === null) {
+    const behind = commitsBehind(rel, 'src/client');
+    if (behind === null) {
       errors.push(`${name}: referenced by README but not committed`);
       continue;
     }
 
-    const behind = commitsSince('src/client', taken);
     if (behind.length === 0) {
       console.log(`  ✅ ${name}  current with the client`);
       continue;
