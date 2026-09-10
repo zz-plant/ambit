@@ -31,15 +31,35 @@ const OUT_GIF = join(ROOT, 'docs', 'assets', 'capability-graph-demo.gif');
 const CHROME =
   process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
-// Wider than the GIF it produces. The capability list is a 340px overlay the
-// canvas draws underneath, so at 1280 "fit to view" put the last two era
-// columns behind it or off the edge — and collapsing the list does not help,
-// because collapsing only lets the canvas extend under it. Recording at 1600
-// and scaling down to GIF_WIDTH gives the tree room to be whole.
-const WIDTH = 1600;
-const HEIGHT = 900;
-const GIF_WIDTH = 1040;
+// This recorded at 1600 so that all seven era columns fit in frame. They fit,
+// and that is what made the hero unreadable: 1600 down to the 920px the README
+// displays is a factor of 0.58, so the 11.5px node labels arrived at about six
+// pixels and the first thing a reader saw was a dense grid they could not read.
+//
+// Seven columns of COL_W do not fit legibly inside 920px, so this stopped
+// trying. The GIF works one region of the map at a zoom where the labels can
+// be read, and the whole-tree overview is the still screenshot further down
+// the README, which can be looked at for as long as it takes.
+const WIDTH = 1280;
+const HEIGHT = 800;
+/** The README's `width="920"`, so a displayed pixel is a GIF pixel. */
+const GIF_WIDTH = 920;
 const FPS = 8;
+
+/** Canvas zoom for the map beats. Node labels are 11.5px at 1:1. */
+const SCENE_ZOOM = 1.4;
+
+/**
+ * The size a node label has to reach in the finished GIF.
+ *
+ * This is the number the rework exists to move, so it is asserted rather than
+ * hoped for. Ten is where the label stops being texture; the version this
+ * replaces shipped at roughly six.
+ */
+const MIN_LABEL_PX = 10;
+
+/** How many labelled nodes have to be in frame, so a beat is a map and not one node. */
+const MIN_NODES_IN_FRAME = 6;
 
 // The fixture the graph is built from. Broad enough to light every era column
 // and to give the frontier something to be one step away from; entirely
@@ -462,7 +482,7 @@ async function main() {
   // not part of the map, and it covers a third of the canvas.
   await cdp.eval(`try { localStorage.setItem('cg.seenGuide','1') } catch {}; true`);
 
-  // 1 — the whole tech tree, seven eras.
+  // 1 — the tech tree, at a zoom where its labels can be read.
   //
   // Reached by the URL the app already supports for exactly this, rather than
   // by clicking the tab: a click has to land after hydration and before any
@@ -486,43 +506,111 @@ async function main() {
     return combos.length;
   })()`);
   await sleep(600);
-  // The capability list costs ~280px of canvas, which is the difference
-  // between framing seven era columns and cutting off the last two. The tree
-  // is what this frame is of, so the list folds away for it and comes back
-  // for the steps that read from it.
-  // The canvas opens fitted to the window's width; Fit fits both axes, which
-  // is what a person presses to see the whole thing.
-  await cdp.clickWhere(`document.querySelector('[aria-label="Fit graph to view"]')`);
-  await sleep(1200);
 
-  // Framing is the whole point of this frame, so it is checked — and checked
-  // for what actually matters. Counting era labels in the DOM is not the same
-  // question: SVG text scrolled past the right edge is still in the document,
-  // so a presence check passes on a picture with two columns off-screen. This
-  // asks whether each one is inside the viewport, and zooms out until it is.
-  const erasInView = () =>
+  // The capability list is a 340px overlay the canvas draws underneath, so it
+  // hides the left of the map without changing what "fit to view" computes.
+  // At the zoom below that is a quarter of the frame spent on a list whose
+  // rows are unreadable anyway, so it folds away for the map beats.
+  await cdp.clickWhere(deckBtn('Capabilities'));
+  await sleep(700);
+  await cdp.eval(`(() => {
+    const b = [...document.querySelectorAll('.app-deck-btn')]
+      .find(e => /capabilit/i.test(e.textContent));
+    if (!b) throw new Error('no capability list toggle in the deck');
+    if (b.getAttribute('aria-pressed') !== 'false')
+      throw new Error('the capability list did not collapse');
+    return true;
+  })()`);
+
+  // Fit first, to land somewhere the fixture decides rather than somewhere
+  // hardcoded, then zoom in past it.
+  await cdp.clickWhere(`document.querySelector('[aria-label="Fit graph to view"]')`);
+  await sleep(1000);
+
+  /** The zoom badge, which renders `Math.round(zoom * 100)`. */
+  const zoomPercent = (): Promise<number> =>
     cdp.eval(`(() => {
-      const labels = [...document.querySelectorAll('text')]
-        .filter(e => /^Era \\d$/.test(e.textContent.trim()));
-      const inside = labels.filter(e => {
-        const r = e.getBoundingClientRect();
-        return r.left >= 0 && r.right <= window.innerWidth && r.width > 0;
-      });
-      return { total: labels.length, visible: inside.length };
+      const b = document.querySelector('.civ-zoom-badge');
+      if (!b) throw new Error('no zoom badge to read the canvas scale from');
+      return parseInt(b.textContent, 10);
     })()`);
 
-  for (let i = 0; i < 6; i++) {
-    const { total, visible } = await erasInView();
-    if (total > 0 && visible === total) break;
-    await cdp.clickWhere(`document.querySelector('[aria-label="Zoom out"]')`);
-    await sleep(500);
+  // Clicked, not set: the step is 0.2 from wherever Fit landed, and Fit
+  // depends on the fixture's extent, so the number of clicks is not known
+  // ahead of time.
+  for (let i = 0; i < 12 && (await zoomPercent()) < SCENE_ZOOM * 100; i++) {
+    await cdp.clickWhere(`document.querySelector('[aria-label="Zoom in"]')`);
+    await sleep(260);
   }
-  const eras = await erasInView();
-  if (!eras.total || eras.visible !== eras.total)
-    throw new Error(`${eras.visible}/${eras.total} era columns are inside the viewport`);
-  console.log(`  · ${eras.total} era columns framed`);
+  const zoom = await zoomPercent();
+  if (zoom < SCENE_ZOOM * 100)
+    throw new Error(`canvas stuck at ${zoom}%, below the ${SCENE_ZOOM * 100}% the labels need`);
+
+  /**
+   * How big a node label will be once ffmpeg has scaled the frame down.
+   *
+   * This is the check the era-framing assertion should have been. That one
+   * asked whether every column was inside the viewport, a question a picture
+   * of illegible text answers yes to, and it passed on every frame of the
+   * recording it was guarding.
+   *
+   * The scale is measured instead of assumed. The canvas applies zoom by
+   * scaling its container, so a text element's `font-size` attribute is still
+   * its unscaled value while its client rect is not; a node circle of known
+   * `r` converts between the two. Reading the label size from the DOM rather
+   * than repeating 11.5 here means the check follows CivTree if it restyles.
+   *
+   * The name is picked out by matching the group's own aria-label, which is
+   * the only handle that identifies it. Selecting on the font-family instead
+   * measured the 8.5px "Boost" chip, and the first run of this check failed a
+   * frame whose names were perfectly legible at 12.5px.
+   */
+  const labelSize = () =>
+    cdp.eval(`(() => {
+      const groups = [...document.querySelectorAll('g[role="button"][aria-label]')];
+      if (!groups.length) throw new Error('no capability nodes in the tree');
+
+      const circle = groups[0].querySelector('circle[r]');
+      if (!circle) throw new Error('no node circle to measure the canvas scale from');
+      const r = parseFloat(circle.getAttribute('r'));
+      const scale = circle.getBoundingClientRect().width / (2 * r);
+
+      // The name under each node: the label is the item's name, truncated with
+      // an ellipsis when it is long, so it is a prefix of the aria-label.
+      const names = [];
+      for (const g of groups) {
+        const want = (g.getAttribute('aria-label') || '').split(',')[0].trim();
+        const el = [...g.querySelectorAll('text')].find(t => {
+          const s = t.textContent.trim().replace(/…$/, '');
+          return s.length > 2 && want.startsWith(s);
+        });
+        if (el) names.push(el);
+      }
+      if (!names.length) throw new Error('matched no node name labels against their aria-labels');
+
+      const framed = names.filter(e => {
+        const b = e.getBoundingClientRect();
+        return b.width > 0 && b.left >= 0 && b.right <= window.innerWidth &&
+               b.top >= 0 && b.bottom <= window.innerHeight;
+      });
+      const size = Math.min(...names.map(e => parseFloat(e.getAttribute('font-size') || '0')));
+      return { scale, size, framed: framed.length };
+    })()`);
+
+  const label = await labelSize();
+  const shownPx = +(label.size * label.scale * (GIF_WIDTH / WIDTH)).toFixed(1);
+  if (shownPx < MIN_LABEL_PX)
+    throw new Error(
+      `node labels would render at ${shownPx}px in the GIF, under the ${MIN_LABEL_PX}px floor`
+    );
+  if (label.framed < MIN_NODES_IN_FRAME)
+    throw new Error(`only ${label.framed} labelled nodes are fully in frame`);
+  console.log(
+    `  · canvas at ${zoom}%, ${label.framed} nodes framed, labels ${shownPx}px in the GIF`
+  );
+
   await sleep(400);
-  await hold(2.2, 'the whole tree');
+  await hold(2.0, 'a region of the map');
 
   // 2 — one capability, and what hangs off it. Nodes carry role=button and an
   // aria-label of "<name>, <type>", which is a contract the keyboard path
