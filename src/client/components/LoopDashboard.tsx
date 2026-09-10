@@ -1,11 +1,11 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
-import type { DemoOpportunity, DemoSnapshot } from '../utils/demoSnapshot';
+import type { LoopOpportunity, LoopSnapshot } from '../../shared/api';
 import { HoursSparkline, NUM, money } from './figures';
 
 /**
- * The static demo's view of the work ledger: where human attention went, what
- * it cost, and what would pay back fastest.
+ * The work ledger's view of a month: where human attention went, what it cost,
+ * and what would pay back fastest.
  *
  * Everything here is quantity, so everything here is drawn rather than
  * narrated. The page used to say "Today: 43 interventions a month, 8.6h of
@@ -28,13 +28,16 @@ import { HoursSparkline, NUM, money } from './figures';
  *   Ink that encodes nothing is removed. No gridlines behind the bars, no
  *   frames, no fill under a value that a position already carries.
  *
- * Only the hosted demo renders this: a real ledger starts empty and is read
- * from the terminal (`ambit attention`, `ambit opportunities`, `ambit roi`).
+ * The same page renders the demo's sample and a real machine's ledger — one
+ * shape from `/api/loop`, labelled with where it came from. A ledger that has
+ * recorded nothing gets the empty state below rather than a page of zeroes.
  */
 
-interface DemoDashboardProps {
+interface LoopDashboardProps {
   /** Pixels covered by the capability list, so the page sits beside it. */
   leftInset?: number;
+  /** Show a capability on the map, with the unlock simulation running. */
+  onShowOnMap?: (capabilityId: string) => void;
 }
 
 /**
@@ -81,7 +84,7 @@ function ForecastPair({ predicted, observed }: { predicted: number; observed: nu
  * segment carries its own written label. Colour is the last thing doing the
  * work here, not the first.
  */
-function AssuranceBar({ status }: { status: DemoSnapshot['status'] }) {
+function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   const proven = status.verified;
   const unproven = Math.max(status.reached - status.verified - status.failing, 0);
   const failing = status.failing;
@@ -185,7 +188,10 @@ function SavingsBar({ saved, max }: { saved: number; max: number }) {
 }
 
 /** Payback against the month it has to beat. */
-function PaybackMark({ months }: { months: number }) {
+function PaybackMark({ months }: { months: number | null }) {
+  // Nothing saved means the setup never pays for itself. A bar drawn at the
+  // axis end would say "just over a month".
+  if (months == null) return <span className="fig-row-none">never</span>;
   const w = 116;
   const scale = 1; // one month, which is the comparison worth making
   const x = (v: number) => 2 + Math.min(v / scale, 1) * (w - 44);
@@ -219,7 +225,7 @@ function PaybackMark({ months }: { months: number }) {
  * compare across a gap. One scale, one sort, and the keeper drawn in the
  * recessive grey with a hatch, because it is the context and not the point.
  */
-function InterruptionChart({ attention }: { attention: DemoSnapshot['attention'] }) {
+function InterruptionChart({ attention }: { attention: LoopSnapshot['attention'] }) {
   const rows = [
     ...attention.reducible.map(r => ({
       capability: r.capability,
@@ -292,9 +298,13 @@ function InterruptionChart({ attention }: { attention: DemoSnapshot['attention']
   );
 }
 
-function OpportunityRows({ list }: { list: DemoOpportunity[] }) {
-  const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
-  const selectItem = useAmbitStore(s => s.selectItem);
+function OpportunityRows({
+  list,
+  onShowOnMap,
+}: {
+  list: LoopOpportunity[];
+  onShowOnMap?: (capabilityId: string) => void;
+}) {
   const items = useAmbitStore(s => s.items);
 
   // One scale per column, taken from the whole set rather than per row, so a
@@ -302,18 +312,13 @@ function OpportunityRows({ list }: { list: DemoOpportunity[] }) {
   const maxHours = Math.max(...list.map(o => o.burden.human_hours_month)) * 1.05;
   const maxSaved = Math.max(...list.map(o => o.expected.savings_dollars_month));
 
-  const show = (o: DemoOpportunity) => {
-    const targetNodeId = o.id.includes('deploy')
-      ? 'combo:deploy'
-      : o.id.includes('e2e')
-        ? 'combo:e2e'
-        : 'skill:wrangler';
-    const found = items.find(i => i.id === targetNodeId);
-    if (found) {
-      selectItem(found.id);
-      startAcquisition(found.id);
-    }
-  };
+  // Every row names the capability it prices, so "Map" selects that node and
+  // runs the unlock simulation on it. It used to match the row's *id* against
+  // three hardcoded strings, and all three rows fell through to the same
+  // fallback node: whichever opportunity you asked about, the map showed
+  // Wrangler.
+  const nodeFor = (o: LoopOpportunity) =>
+    o.capability_id && items.some(i => i.id === o.capability_id) ? o.capability_id : null;
 
   return (
     <div className="fig-table-wrap">
@@ -393,9 +398,16 @@ function OpportunityRows({ list }: { list: DemoOpportunity[] }) {
                 <PaybackMark months={o.payback_months} />
               </td>
               <td>
-                <button type="button" className="fig-row-btn" onClick={() => show(o)}>
-                  Map
-                </button>
+                {onShowOnMap && nodeFor(o) && (
+                  <button
+                    type="button"
+                    className="fig-row-btn"
+                    onClick={() => onShowOnMap(nodeFor(o) as string)}
+                    title={`Show ${o.capability} on the map and simulate unlocking it`}
+                  >
+                    Map
+                  </button>
+                )}
               </td>
             </tr>
           ))}
@@ -415,13 +427,57 @@ function OpportunityRows({ list }: { list: DemoOpportunity[] }) {
   );
 }
 
-export default function DemoDashboard({ leftInset = 0 }: DemoDashboardProps) {
-  const demo = useAmbitStore(s => s.demo);
+/**
+ * What the page says when the ledger is real and empty.
+ *
+ * A new machine has a graph but no recorded work, and the figures would all be
+ * zero — which reads as "nothing costs you anything" rather than "nothing has
+ * been recorded". The two bridges are the only way to fill it, so they are the
+ * page.
+ */
+function EmptyLedger({ leftInset }: { leftInset: number }) {
+  return (
+    <div className="loop-dashboard" style={{ left: leftInset }}>
+      <div className="loop-inner">
+        <h2 className="loop-title">Nothing recorded yet</h2>
+        <p className="loop-subtitle">
+          This page prices the time a person spends inside the loop. The graph knows what you can
+          do; the ledger is what says how often you had to step in, and nothing has written to it on
+          this machine.
+        </p>
+        <ol className="loop-empty-steps">
+          <li>
+            <strong>Record the work.</strong> Copy <code>plugins/ambit-telemetry.js</code> into{' '}
+            <code>~/.config/opencode/plugins/</code> — it writes each tool run and permission prompt
+            to the ledger.
+          </li>
+          <li>
+            <strong>Record the tending.</strong> Copy <code>plugins/ambit-tracker.js</code> beside
+            it for the configuration changes you make, which is what the attention lens colours.
+          </li>
+          <li>
+            <strong>Come back after a week of sessions.</strong> The same numbers are in the
+            terminal meanwhile: <code>ambit attention</code>, <code>ambit opportunities</code>,{' '}
+            <code>ambit roi</code>.
+          </li>
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashboardProps) {
+  const loop = useAmbitStore(s => s.loop);
+  const loopSource = useAmbitStore(s => s.loopSource);
+  const loopEmpty = useAmbitStore(s => s.loopEmpty);
   const [confidenceFilter, setConfidenceFilter] = React.useState<'all' | 'high' | 'medium'>('all');
 
-  if (!demo) return null;
+  // No snapshot at all means the same thing as an empty one: nothing has been
+  // recorded here. A blank page would read as a broken tab.
+  if (loopEmpty || !loop) return <EmptyLedger leftInset={leftInset} />;
 
-  const { status, attention, opportunities, roi } = demo;
+  const { status, attention, opportunities, roi } = loop;
+  const sample = loopSource === 'sample';
   const filtered = opportunities.filter(
     o => confidenceFilter === 'all' || o.confidence === confidenceFilter
   );
@@ -439,7 +495,8 @@ export default function DemoDashboard({ leftInset = 0 }: DemoDashboardProps) {
             <h2 className="loop-title">Where the time goes</h2>
             <p className="loop-subtitle">
               Every time a person had to step in, recorded against the capability that needed them.
-              Priced, and ranked by what would pay back fastest. Example data.
+              Priced, and ranked by what would pay back fastest.
+              {sample ? ' Sample data.' : ' Read from this machine\u2019s ledger.'}
             </p>
           </div>
         </div>
@@ -454,7 +511,11 @@ export default function DemoDashboard({ leftInset = 0 }: DemoDashboardProps) {
               {roi.hours_per_year}h<span className="fig-kpi-unit"> saved</span>{' '}
               <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
             </div>
-            <HoursSparkline series={roi.monthly_hours} width={280} height={92} annotate />
+            {roi.monthly_hours.length > 1 ? (
+              <HoursSparkline series={roi.monthly_hours} width={280} height={92} annotate />
+            ) : (
+              <p className="fig-note">A month-by-month line appears once there are two months.</p>
+            )}
           </figure>
 
           <figure className="fig fig--kpi">
@@ -462,13 +523,22 @@ export default function DemoDashboard({ leftInset = 0 }: DemoDashboardProps) {
               <span className="fig-caption-title">Forecast against what happened</span>
               <span className="fig-caption-note">{roi.verdict}</span>
             </figcaption>
-            <div className="fig-kpi-value" style={NUM}>
-              {roi.accuracy}×<span className="fig-kpi-unit"> of forecast</span>
-            </div>
-            <ForecastPair
-              predicted={roi.forecast.predicted_hours}
-              observed={roi.forecast.observed_hours}
-            />
+            {roi.forecast ? (
+              <>
+                <div className="fig-kpi-value" style={NUM}>
+                  {roi.accuracy ?? '—'}×<span className="fig-kpi-unit"> of forecast</span>
+                </div>
+                <ForecastPair
+                  predicted={roi.forecast.predicted_hours}
+                  observed={roi.forecast.observed_hours}
+                />
+              </>
+            ) : (
+              <p className="fig-note">
+                Nothing to compare yet. A proposal that is applied and then measured puts its
+                forecast beside what happened.
+              </p>
+            )}
           </figure>
 
           <AssuranceBar status={status} />
@@ -492,15 +562,24 @@ export default function DemoDashboard({ leftInset = 0 }: DemoDashboardProps) {
               ))}
             </div>
           </div>
-          <OpportunityRows list={filtered} />
+          {filtered.length ? (
+            <OpportunityRows list={filtered} onShowOnMap={onShowOnMap} />
+          ) : (
+            <p className="fig-note">
+              Nothing ranked at this confidence. An act has to recur before it can be priced.
+            </p>
+          )}
         </section>
 
-        <InterruptionChart attention={attention} />
+        {attention.reducible.length + attention.keepers.length > 0 && (
+          <InterruptionChart attention={attention} />
+        )}
 
         <p className="loop-foot">
-          On your own machine this comes from the work ledger: <code>ambit attention</code>,{' '}
-          <code>ambit opportunities</code> and <code>ambit roi</code>. It starts empty and fills as
-          runs are recorded.
+          {sample
+            ? 'On your own machine this comes from the work ledger, and starts empty: '
+            : 'The same figures in the terminal: '}
+          <code>ambit attention</code>, <code>ambit opportunities</code> and <code>ambit roi</code>.
         </p>
       </div>
     </div>

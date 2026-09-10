@@ -199,8 +199,14 @@ function explain(wanted: string): void {
   const { concepts } = JSON.parse(
     readFileSync(join(ENGINE_DIR, '..', 'shared', 'concepts.json'), 'utf8')
   );
+  // Matched against the whole entry, not just its name: a concept the CLI and
+  // the map call different things — keystone on the map, bottlenecks in
+  // `ambit status` — says so in its own text, and looking up either word
+  // should find it.
   const picked = wanted
-    ? concepts.filter((c: any) => c.key.includes(wanted) || c.term.toLowerCase().includes(wanted))
+    ? concepts.filter((c: any) =>
+        [c.key, c.term, c.short, c.long, c.seen].join(' ').toLowerCase().includes(wanted)
+      )
     : concepts;
   if (picked.length === 0) {
     console.log(`${C.yellow}No concept matching "${wanted}".${C.reset}`);

@@ -1,5 +1,6 @@
 import type { Source, View } from '../linkState';
 import { ReachBar } from './figures';
+import { Term } from './Term';
 
 interface AppDeckProps {
   reached: number;
@@ -8,11 +9,12 @@ interface AppDeckProps {
   total: number;
   view: View;
   source: Source;
-  /** Whether the store holds demo data; the time-and-cost tab only exists there. */
-  demo: boolean;
+  /** Whether the live-update stream is attached. */
+  connected: boolean;
   draftCount: number;
   leftOpen: boolean;
   onToggleSidebar: () => void;
+  onShare: () => void;
   onShowTree: () => void;
   onShowSetup: () => void;
   onShowLoop: () => void;
@@ -20,7 +22,7 @@ interface AppDeckProps {
   onShowDocs: () => void;
 }
 
-/** The top bar: list toggle, brand, reach count, the view tabs, proposals, docs. */
+/** The top bar: list toggle, brand, reach count, the view tabs, share, proposals, docs. */
 export default function AppDeck(p: AppDeckProps) {
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
   return (
@@ -31,12 +33,12 @@ export default function AppDeck(p: AppDeckProps) {
           className="app-deck-btn"
           onClick={p.onToggleSidebar}
           aria-pressed={p.leftOpen}
-          title="Show or hide the capability list (\\)"
+          title="Show or hide the capabilities panel (\\)"
         >
           <span aria-hidden="true" style={{ fontSize: '12px' }}>
             {p.leftOpen ? '◧' : '◫'}
           </span>
-          <span>List</span>
+          <span>Capabilities</span>
         </button>
         <div className="app-brand-group">
           <span className="app-brand">Ambit</span>
@@ -45,13 +47,22 @@ export default function AppDeck(p: AppDeckProps) {
             stood here encoded nothing; a bar on the graph's own total does. */}
         <div
           className="app-status-pill"
-          title={`${p.reached} reached, ${p.next} one step away, ${p.total - p.reached - p.next} blocked`}
+          title={`${p.reached} reached · ${p.next} next step · ${p.total - p.reached - p.next} blocked`}
         >
           <ReachBar reached={p.reached} next={p.next} total={p.total} />
           <span className="app-status-n">
-            {p.reached} of {p.total} reached
+            {p.reached} of {p.total} <Term name="state">reached</Term>
           </span>
         </div>
+        {p.connected && (
+          <span
+            className="app-live"
+            title="Live: this map redraws itself when the graph is rebuilt — a seed, an adapter, another session"
+          >
+            <span className="app-live-dot" aria-hidden="true" />
+            Live
+          </span>
+        )}
       </div>
 
       <div className="app-deck-center">
@@ -72,20 +83,26 @@ export default function AppDeck(p: AppDeckProps) {
           >
             My Setup
           </button>
-          {p.demo && (
-            <button
-              type="button"
-              className={tab(p.view === 'loop')}
-              onClick={p.onShowLoop}
-              title="Where human attention goes, and what would pay back fastest"
-            >
-              Time &amp; cost
-            </button>
-          )}
+          <button
+            type="button"
+            className={tab(p.view === 'loop')}
+            onClick={p.onShowLoop}
+            title="Where human attention goes, and what would pay back fastest"
+          >
+            Time &amp; cost
+          </button>
         </nav>
       </div>
 
       <div className="app-deck-right">
+        <button
+          type="button"
+          className="app-deck-btn"
+          onClick={p.onShare}
+          title="Copy a link that opens exactly this view — graph, node, lens and filter"
+        >
+          Share
+        </button>
         <button
           type="button"
           className={`app-deck-btn ${p.draftCount > 0 ? 'app-deck-btn--alert' : ''}`}

@@ -67,7 +67,9 @@ src/engine/audit.ts        The trail: who approved what, what ran, and whether i
 src/engine/incident.ts     The incident loop — a work run per offline declared service
 src/engine/federation.ts   Signed summaries a portfolio layer reads; receipts, no merging
 src/engine/portfolio.ts    What the imported environments look like taken together
-src/engine/views.ts        The projections the visualiser reads — the server writes no SQL
+src/engine/views.ts        The projections the visualiser reads — the server writes no SQL.
+                           `loopView` composes status, attention, opportunities and ROI into the
+                           one payload /api/loop serves, so the page and the CLI report one ledger
 src/engine/share.ts        The allow-listed, self-contained HTML snapshot of the map
 src/engine/cli.ts          Command dispatch; the five groups resolve to flat verbs
 src/engine/cli/            groups.ts (the five nouns) · help.ts · output.ts · reports.ts · seed.ts
@@ -85,13 +87,17 @@ src/mcp/protocol.ts        JSON-RPC over stdio: how a result or an error leaves 
 docs/incidents/            Forensic incident traces & asciinema terminal recordings
 src/client/                React frontend
   App.tsx                  The shell: which view is showing, and how the hooks and panels fit
-  linkState.ts             What a URL asks the app to open on — pure, tested without a window
+  linkState.ts             The URL in both directions — what it asks for, and how a view is written
+                           back to it. Pure, tested without a window
   hooks/                   useViewport (narrow screens, the console) · useHotkeys · useGraphStream
-                           (the AG-UI state stream) · useGuide · useToast · useLatest
+                           (the AG-UI state stream, and whether it is attached) · useUrlSync (the
+                           address bar follows the view) · useGuide · useToast · useLatest
   components/
-    AppDeck.tsx            The top bar: list toggle, view tabs, proposals, docs
+    AppDeck.tsx            The top bar: list toggle, view tabs, live indicator, share, proposals, docs
     WelcomeScreen.tsx      What an empty graph shows — the pitch, two real figures, and the ways in
     figures.tsx            The sparkline, era strip and reach bar every surface draws the same way
+    Term.tsx               A house word with its definition attached — one glossary, two renderings
+                           (a popover in HTML, a <title> in the SVG map)
     GettingStartedGuide.tsx  The first-run card
     Toast.tsx              A transient notice from the graph stream
     CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend
@@ -99,16 +105,18 @@ src/client/                React frontend
     civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
     NodeDetailPanel.tsx    Node detail panel
-    CapabilityListPanel.tsx   Flat list of all capabilities
+    CapabilityListPanel.tsx   Capabilities, repo drift and infrastructure — one panel, three tabs
+    EnvironmentPanels.tsx  What /api/repos/scan and /api/infrastructure/scan return, drawn
     ApprovalModal.tsx      The proposal diff, and the one-click approval receipt
     DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
-    DemoDashboard.tsx      The hosted demo's Time & cost view — the work ledger, drawn on shared scales
+    LoopDashboard.tsx      The Time & cost view — the work ledger on shared scales, from /api/loop
+                           on a real machine and from the fixture on the hosted demo
   store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
   store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
-  store/toolchainStore.ts  The store's former name, re-exported so old imports keep working
+  vocabulary.test.ts       One name per concept: fails if a surface uses a retired synonym
   utils/
     configImporter.ts      inferDomain, and mapping an imported config onto the graph
-    demoSnapshot.ts        The fixture the hosted demo renders
+    demoSnapshot.ts        The hosted demo's LoopSnapshot — the shape /api/loop returns
 ```
 
 ## Layout
@@ -140,6 +148,16 @@ worktree rather than sharing this one.
 0. **No entry creation** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups use `Object.hasOwnProperty` — a bare truth test accepts `__proto__` and pollutes every object in the process.
 1. **Loopback only** — `server.listen(API_PORT, '127.0.0.1')`. Never bind `0.0.0.0`; the LAN and Tailscale must not reach this.
 2. **Origin allowlist** — requests with a non-local `Origin` are rejected with 403 *before* routing. CORS response headers are not sufficient on their own: a simple request (`Content-Type: text/plain`) skips preflight and still reaches the handler, so the check must reject the request, not just omit the header.
+
+## One vocabulary
+
+`src/shared/concepts.json` is the glossary, read by the Docs overlay, the `Term` popovers and `ambit help <term>`. Two rules keep it honest, and `src/client/vocabulary.test.ts` enforces both: the word a surface shows is the concept's exact `term` — the ● circle was a Possibility in the detail panel, a Combo in the legend and a Tech tree node in the docs — and a term in the file is a term some surface actually uses. The entries are ordered the way a reader meets them, so the overlay reads as an introduction rather than a dictionary.
+
+Where the CLI and the map differ on purpose, the glossary says so rather than picking a winner: the map's keystone is `ambit status`'s bottlenecks, counted differently, and required/optional prerequisites are hard/soft in the data model.
+
+## The loop endpoint
+
+`GET /api/loop` is the Time & cost page's data on a real machine. It reports `source: 'ledger'` and, when nothing has been recorded, `empty: true` — the page then explains the two telemetry bridges rather than drawing a figure of zeroes. The hosted demo builds the same `LoopSnapshot` by hand in `src/client/utils/demoSnapshot.ts` and labels it as a sample.
 
 ## Infrastructure scan
 

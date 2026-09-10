@@ -1,6 +1,13 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
-import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
+import {
+  typeLabel,
+  statusLabel,
+  metaKeyLabel,
+  isConfigEntry,
+  isRuntimeNode,
+} from '../utils/labels';
+import { Term } from './Term';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 
 export function NodeDetailPanel() {
@@ -12,9 +19,13 @@ export function NodeDetailPanel() {
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   const clearSim = useAmbitStore(s => s.clearSimulation);
+  const backend = useAmbitStore(s => s.backend);
+  const toggleMcpEnabled = useAmbitStore(s => s.toggleMcpEnabled);
 
   const item = items.find(i => i.id === selectedId);
   const [copiedCmd, setCopiedCmd] = React.useState<string | null>(null);
+  const [toggling, setToggling] = React.useState(false);
+  const [toggleError, setToggleError] = React.useState<string | null>(null);
 
   if (!item) return null;
 
@@ -70,6 +81,9 @@ export function NodeDetailPanel() {
   if (neighbors.length === 0 && !isRuntimeNode(item))
     advisories.push({ icon: 'x', label: 'Nothing depends on this' });
 
+  // Only a config entry names something the config apply route can edit.
+  const enabled = item.status === 'built';
+
   const downstreamEnables = connections
     .filter(c => c.from === item.id)
     .map(c => items.find(i => i.id === c.to))
@@ -96,7 +110,7 @@ export function NodeDetailPanel() {
                       : 'var(--error)',
               }}
             >
-              {statusLabel(item.status)}
+              {statusLabel(item.status, item)}
             </span>
           </div>
         </div>
@@ -128,7 +142,10 @@ export function NodeDetailPanel() {
         >
           <span aria-hidden="true">★</span>
           <span>
-            <strong>Keystone.</strong> {downstreamEnables.length} other{' '}
+            <strong>
+              <Term name="keystone" />.
+            </strong>{' '}
+            {downstreamEnables.length} other{' '}
             {downstreamEnables.length === 1 ? 'capability depends' : 'capabilities depend'} on this
             one.
           </span>
@@ -149,6 +166,46 @@ export function NodeDetailPanel() {
           }}
         >
           {evidence.text}
+        </div>
+      )}
+
+      {/*
+        The one edit the browser may make to a real config, and only to an
+        entry that is already there: `enabled: true|false`. Creating an entry
+        stays a hand edit, because an MCP entry carries a command the runtime
+        executes — see the security posture in AGENTS.md. Offered only where it
+        means something: an entry read out of the config, with an engine behind
+        the page to write it back.
+      */}
+      {backend === 'live' && item.type === 'mcp-server' && isConfigEntry(item) && (
+        <div className="sp-toggle-row">
+          <div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={enabled}
+              className={`sp-switch ${enabled ? 'sp-switch--on' : ''}`}
+              disabled={toggling}
+              onClick={async () => {
+                setToggling(true);
+                setToggleError(null);
+                const ok = await toggleMcpEnabled(item.name, !enabled);
+                if (!ok) setToggleError('Could not write the config. Is it writable?');
+                setToggling(false);
+              }}
+            >
+              <span className="sp-switch-knob" aria-hidden="true" />
+              {/* The label names what the switch controls; the knob and
+                  aria-checked carry the state, which the header states once. */}
+              <span className="sp-switch-label">Enabled in your config</span>
+            </button>
+          </div>
+          <p className="sp-toggle-note">
+            {toggleError ??
+              (enabled
+                ? 'Switching this off writes enabled: false to your agent config. Restart the runtime for it to take effect.'
+                : 'Switched off in your agent config. Switch it back on here.')}
+          </p>
         </div>
       )}
 
@@ -296,7 +353,9 @@ export function NodeDetailPanel() {
             .filter(([k]) => k !== 'lifecycle' && k !== 'lastChecked')
             .map(([k, v]) => (
               <div key={k} className="sp-attr-row">
-                <span className="sp-attr-key">{metaKeyLabel(k)}</span>
+                <span className="sp-attr-key">
+                  {k === 'maturity' ? <Term name="maturity" /> : metaKeyLabel(k)}
+                </span>
                 <span className="sp-attr-val" title={String(v)}>
                   {String(v)}
                 </span>
