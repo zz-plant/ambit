@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+import { useAmbitStore } from '../store/ambitStore';
 import { demoTreeGraph } from '../store/demo';
 import { TAGLINE } from '../utils/copy';
 import { demoSnapshot } from '../utils/demoSnapshot';
@@ -9,6 +11,9 @@ interface WelcomeProps {
   onViewLoop: () => void;
   onShowDocs: () => void;
 }
+
+/** What a dropped file may be, and how big one of those ever is. */
+const MAX_CONFIG_BYTES = 2_000_000;
 
 /**
  * What an empty graph shows: the pitch, two real figures, and one way in.
@@ -26,6 +31,34 @@ interface WelcomeProps {
  * had seen anything.
  */
 export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }: WelcomeProps) {
+  const loadFromJSON = useAmbitStore(s => s.loadFromJSON);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [dropping, setDropping] = useState(false);
+  const [dropError, setDropError] = useState<string | null>(null);
+
+  /**
+   * Map a config the visitor hands over, in their own browser.
+   *
+   * The store could already draw a graph from JSON and nothing ever called it,
+   * so the answer to "what does this look like for *my* setup" was "clone the
+   * repository". Reading the file here needs no engine and no upload: it is
+   * parsed in the tab and never sent anywhere.
+   */
+  const readConfigFile = async (file: File | undefined) => {
+    if (!file) return;
+    setDropError(null);
+    if (file.size > MAX_CONFIG_BYTES) {
+      setDropError('That file is far larger than an agent config. Nothing was read.');
+      return;
+    }
+    const ok = loadFromJSON(await file.text());
+    if (!ok) {
+      setDropError(
+        'That is not an agent config or an `ambit graph` export — nothing in it to map.'
+      );
+    }
+  };
+
   const snapshot = demoSnapshot();
   const eras = eraProgress(demoTreeGraph().items);
   const reached = eras.reduce((n, e) => n + e.reached, 0);
@@ -56,7 +89,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
             <figcaption className="welcome-fig-caption">
               <span className="welcome-fig-title">How much of each era is reached</span>
               <span className="welcome-fig-note" style={NUM}>
-                {reached} of {total} on the tree · hollow is one step away
+                {reached} of {total} on the tree · hollow is a next step
               </span>
             </figcaption>
             <EraStrip eras={eras} />
@@ -82,10 +115,45 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
             GitHub
           </a>
         </div>
-        <p className="app-welcome-local">
-          Both figures are example data. To map your own machine, clone the repository and run{' '}
-          <code>./bootstrap.sh web</code>.
-        </p>
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop zone; the button inside it is the keyboard path */}
+        <div
+          className={`app-welcome-drop ${dropping ? 'is-over' : ''}`}
+          onDragOver={e => {
+            e.preventDefault();
+            setDropping(true);
+          }}
+          onDragLeave={() => setDropping(false)}
+          onDrop={e => {
+            e.preventDefault();
+            setDropping(false);
+            readConfigFile(e.dataTransfer.files[0]);
+          }}
+        >
+          <p>
+            Both figures are example data.{' '}
+            <button
+              type="button"
+              className="app-welcome-link"
+              onClick={() => fileInput.current?.click()}
+            >
+              Map your own config
+            </button>{' '}
+            — drop an <code>opencode.json</code> here, or any agent config. It is read in this tab
+            and never uploaded.
+          </p>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="application/json,.json"
+            className="visually-hidden"
+            onChange={e => readConfigFile(e.target.files?.[0])}
+          />
+          {dropError && <p className="app-welcome-droperr">{dropError}</p>}
+          <p className="app-welcome-local">
+            For the full picture — verification, proposals, the ledger — clone the repository and
+            run <code>./bootstrap.sh web</code>.
+          </p>
+        </div>
       </div>
     </main>
   );

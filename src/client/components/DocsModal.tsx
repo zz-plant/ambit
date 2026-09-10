@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import concepts from '../../shared/concepts.json';
+import { typeLabel } from '../utils/labels';
 import { typeColor } from '../utils/typeColors';
 
 interface DocsModalProps {
@@ -28,19 +29,16 @@ const HOTKEYS = [
   { key: 'ESC', desc: 'Clear the selection, or close whatever is open' },
 ];
 
+/** Drawn from the same label map the map and the panels read, so a rename
+ *  cannot leave the documentation describing a word nothing uses. */
 const NODE_TYPES = [
-  { type: 'framework', sym: '★', label: 'Runtime', desc: 'The agent runtime itself' },
-  { type: 'mcp-server', sym: '◈', label: 'Tool server', desc: 'A tool the agent can call' },
-  { type: 'agent', sym: '◆', label: 'Agent', desc: 'A subagent with its own prompt and model' },
-  { type: 'skill', sym: '◇', label: 'Skill', desc: 'A procedure loaded on demand' },
-  { type: 'provider', sym: '●', label: 'Provider or model', desc: 'Where inference happens' },
-  {
-    type: 'possibility',
-    sym: '●',
-    label: 'Tech tree node',
-    desc: 'A capability you reach by having others',
-  },
-];
+  { type: 'framework', sym: '★', desc: 'The agent runtime itself' },
+  { type: 'mcp-server', sym: '◈', desc: 'A tool the agent can call' },
+  { type: 'agent', sym: '◆', desc: 'A subagent with its own prompt and model' },
+  { type: 'skill', sym: '◇', desc: 'A procedure loaded on demand' },
+  { type: 'provider', sym: '●', desc: 'Where inference happens' },
+  { type: 'possibility', sym: '●', desc: 'A capability you reach by having others' },
+].map(n => ({ ...n, label: typeLabel(n.type) }));
 
 const ACTIONS = [
   {
@@ -118,7 +116,8 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
           {tab === 'concepts' && (
             <>
               <p className="docs-lede">
-                Nine terms carry all the meaning here. Everything the tool says is built from them.
+                {concepts.concepts.length} terms carry all the meaning here, in the order you meet
+                them. Everything the tool says is built from them.
               </p>
               {concepts.concepts.map(c => (
                 <div key={c.key} className="docs-concept">
@@ -160,16 +159,18 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
               <div className="docs-row">
                 <span className="docs-line-solid" />
                 <span>
-                  <strong>Hard prerequisite</strong> — required; without it the dependent capability
-                  cannot work
+                  <strong>Required</strong> — without it the dependent capability cannot work
                 </span>
               </div>
               <div className="docs-row">
                 <span className="docs-line-dashed" />
                 <span>
-                  <strong>Soft prerequisite</strong> — helps, but does not gate
+                  <strong>Optional</strong> — helps, but does not gate
                 </span>
               </div>
+              <p className="docs-p docs-muted">
+                The data model and the CLI call these hard and soft prerequisites.
+              </p>
 
               <h3 className="docs-h3">The states</h3>
               <p className="docs-p">
@@ -188,9 +189,42 @@ export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
 
           {tab === 'doing' && (
             <>
-              <p className="docs-lede">
-                Click any circle to see what depends on it. Everything below is also available in
-                the terminal, where the output is easier to keep.
+              <p className="docs-lede">On this page:</p>
+              <div className="docs-action">
+                <span className="docs-cmd">Click a node</span>
+                <span className="docs-answers">
+                  What depends on it, whether its check passes, and a simulation — an outage for a
+                  node you have, what it would unlock for one you do not
+                </span>
+              </div>
+              <div className="docs-action">
+                <span className="docs-cmd">Click a legend key</span>
+                <span className="docs-answers">
+                  Highlights only that kind — keystones, failing checks, combos. Esc clears it
+                </span>
+              </div>
+              <div className="docs-action">
+                <span className="docs-cmd">Lenses, filter</span>
+                <span className="docs-answers">
+                  Over the map: how it is coloured, and which kinds of node My Setup draws
+                </span>
+              </div>
+              <div className="docs-action">
+                <span className="docs-cmd">Share</span>
+                <span className="docs-answers">
+                  Copies a link to this exact view: graph, selected node, lens and filter
+                </span>
+              </div>
+              <div className="docs-action">
+                <span className="docs-cmd">Live</span>
+                <span className="docs-answers">
+                  Shown when an engine is attached: the map redraws itself when the graph is rebuilt
+                </span>
+              </div>
+
+              <h3 className="docs-h3">In the terminal</h3>
+              <p className="docs-p docs-muted">
+                Everything below is also on this page or under it, and the output is easier to keep.
               </p>
               {ACTIONS.map(a => (
                 <div key={a.cmd} className="docs-action">

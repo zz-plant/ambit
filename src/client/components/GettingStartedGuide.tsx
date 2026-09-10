@@ -19,16 +19,16 @@ export default function GettingStartedGuide({ style, onDismiss, onReadMore }: Gu
       </div>
       <ol className="app-guide-steps">
         <li>
-          <strong>Click a node</strong> to see what it depends on, what depends on it, and whether
-          its check passes.
+          <strong>Click a node</strong> for what depends on it, whether its check passes, and a
+          simulation: what stops working without it.
         </li>
         <li>
-          <strong>Outlined nodes</strong> are one step away: their prerequisites are met and nothing
-          provides them yet.
+          <strong>Click a faded one</strong> — those are not reached — and the simulation runs the
+          other way: everything it would unlock.
         </li>
         <li>
-          <strong>Tech Tree</strong> is the curated tree with your position on it.{' '}
-          <strong>My Setup</strong> is what was found on this machine.
+          <strong>Click a key in the legend</strong> to highlight just that kind.{' '}
+          <strong>Share</strong> copies a link that opens the view you are looking at.
         </li>
       </ol>
       <button type="button" className="app-guide-more" onClick={onReadMore}>

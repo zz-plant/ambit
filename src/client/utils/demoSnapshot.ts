@@ -3,75 +3,11 @@
  *
  * The published site runs with no backend, so the loop half of the product —
  * status, attention, opportunities, ROI — has nothing to render from. This
- * snapshot mirrors the shapes the engine's reports return, so the demo can
- * show the whole loop a visitor would otherwise never see. It is illustrative,
- * not fabricated-as-live: the demo mode labels it "sample data".
+ * snapshot is the shape `/api/loop` returns on a machine with a ledger, so the
+ * demo can show the whole loop a visitor would otherwise never see. It is
+ * illustrative, not fabricated-as-live: the page labels it sample data.
  */
-
-export interface DemoOpportunity {
-  id: string;
-  title: string;
-  capability: string;
-  kind: string;
-  burden: {
-    interventions_month: number;
-    human_hours_month: number;
-    attention_dollars_month: number;
-  };
-  proposal: { action: string; setup_hours: number };
-  expected: { human_hours_month_after: number; savings_dollars_month: number };
-  payback_months: number;
-  confidence: 'high' | 'medium' | 'low';
-  acquisition_options?: {
-    provider: string;
-    kind: string;
-    total_first_year_dollars?: number;
-    privacy: string;
-  }[];
-}
-
-export interface DemoSnapshot {
-  status: {
-    reached: number;
-    total: number;
-    verified: number;
-    failing: number;
-    degraded: string[];
-    spofs: string[];
-    deficits: string[];
-    pending: { id: string; goal: string }[];
-  };
-  attention: {
-    interventions: number;
-    reducible: {
-      kind: string;
-      capability: string;
-      times: number;
-      hours: number;
-      suggested_fix: string;
-    }[];
-    keepers: { kind: string; capability: string; times: number; hours: number }[];
-  };
-  opportunities: DemoOpportunity[];
-  roi: {
-    hours_per_year: number;
-    dollars_per_year: number;
-    accuracy: number;
-    verdict: string;
-    /**
-     * Hours a person spent inside the loop, month by month, oldest first.
-     *
-     * The headline number is a difference, and a difference is unreadable
-     * without the two things it sits between: the area between this line and
-     * the January figure *is* the 41 hours. Two months carry an annotation,
-     * because the drops are the point — a capability landed and the line
-     * stepped down.
-     */
-    monthly_hours: { month: string; hours: number; acquired?: string }[];
-    /** What the forecast said, against what the ledger later observed. */
-    forecast: { predicted_hours: number; observed_hours: number };
-  };
-}
+import type { LoopSnapshot } from '../../shared/api';
 
 /**
  * The illustrative snapshot a visitor sees in LOOP view.
@@ -85,7 +21,7 @@ export interface DemoSnapshot {
  * reading anything, so the numbers are chosen to tell the story the loop is
  * for, and are illustration rather than output.
  */
-export function demoSnapshot(): DemoSnapshot {
+export function demoSnapshot(): LoopSnapshot {
   return {
     status: {
       reached: 46,
@@ -103,6 +39,7 @@ export function demoSnapshot(): DemoSnapshot {
         {
           kind: 'clerical',
           capability: 'Manual data transfer',
+          capability_id: 'combo:data-access',
           times: 39,
           hours: 3.2,
           suggested_fix: 'the transfer is mechanical — automate it end to end',
@@ -110,6 +47,7 @@ export function demoSnapshot(): DemoSnapshot {
         {
           kind: 'authority',
           capability: 'Deploy to production',
+          capability_id: 'combo:continuous-delivery',
           times: 31,
           hours: 0.7,
           suggested_fix: 'grant bounded authority rather than approving each time',
@@ -117,18 +55,32 @@ export function demoSnapshot(): DemoSnapshot {
         {
           kind: 'exception',
           capability: 'Payment anomaly',
+          capability_id: 'combo:observability',
           times: 7,
           hours: 1.9,
           suggested_fix: 'the case recurs — encode the handling as a capability',
         },
       ],
-      keepers: [{ kind: 'judgment', capability: 'Architecture review', times: 12, hours: 2.4 }],
+      keepers: [
+        {
+          kind: 'judgment',
+          capability: 'Architecture review',
+          capability_id: 'combo:code-intelligence',
+          times: 12,
+          hours: 2.4,
+        },
+      ],
     },
     opportunities: [
       {
         id: 'opp-1',
         title: 'Automate invoice retrieval',
         capability: 'Invoice retrieval',
+        // Scheduled Work is what retrieving invoices on a timer *is*, and the
+        // series below already credits it with October's drop. Every row here
+        // names a node the demo graph holds, so "Map" lands on the thing the
+        // row is about rather than on whatever the id happened to match.
+        capability_id: 'combo:scheduled-work',
         kind: 'clerical',
         burden: { interventions_month: 43, human_hours_month: 8.6, attention_dollars_month: 2150 },
         proposal: { action: 'acquire combo:invoice-retrieval', setup_hours: 3.5 },
@@ -154,6 +106,7 @@ export function demoSnapshot(): DemoSnapshot {
         id: 'opp-2',
         title: 'Automate manual data transfer',
         capability: 'Data transfer',
+        capability_id: 'combo:data-access',
         kind: 'clerical',
         burden: { interventions_month: 39, human_hours_month: 3.2, attention_dollars_month: 800 },
         proposal: { action: 'acquire combo:automated-transfer', setup_hours: 2 },
@@ -165,6 +118,7 @@ export function demoSnapshot(): DemoSnapshot {
         id: 'opp-3',
         title: 'Acquire a vector store',
         capability: 'Vector store',
+        capability_id: 'combo:vector-store',
         kind: 'deficit',
         burden: { interventions_month: 4, human_hours_month: 1.1, attention_dollars_month: 275 },
         proposal: { action: 'acquire combo:vector-store', setup_hours: 0.5 },
@@ -197,164 +151,4 @@ export function demoSnapshot(): DemoSnapshot {
       forecast: { predicted_hours: 37, observed_hours: 41 },
     },
   };
-}
-
-/** The sample graph JSON a static visitor can PASTE — mirrors `ambit graph`. */
-export function demoGraphExport(): string {
-  return JSON.stringify(
-    {
-      items: [
-        {
-          id: 'runtime:opencode',
-          name: 'OpenCode',
-          type: 'framework',
-          status: 'built',
-          description: 'Main framework',
-          meta: { domain: 'meta' },
-        },
-        {
-          id: 'mcp:playwright',
-          name: 'Playwright',
-          type: 'mcp-server',
-          status: 'built',
-          description: 'Browser automation',
-          meta: { domain: 'quality' },
-        },
-        {
-          id: 'mcp:cloudflare',
-          name: 'Cloudflare',
-          type: 'mcp-server',
-          status: 'built',
-          description: 'Edge compute',
-          meta: { domain: 'backend' },
-        },
-        {
-          id: 'mcp:github',
-          name: 'GitHub',
-          type: 'mcp-server',
-          status: 'built',
-          description: 'CI + repos',
-          meta: { domain: 'devops' },
-        },
-        {
-          id: 'mcp:tailscale',
-          name: 'Tailscale',
-          type: 'mcp-server',
-          status: 'built',
-          description: 'Mesh VPN',
-          meta: { domain: 'infra' },
-        },
-        {
-          id: 'mcp:brew',
-          name: 'Homebrew',
-          type: 'mcp-server',
-          status: 'built',
-          description: 'Packages',
-          meta: { domain: 'devops' },
-        },
-        {
-          id: 'mcp:1password',
-          name: '1Password',
-          type: 'mcp-server',
-          status: 'built',
-          description: 'Secrets',
-          meta: { domain: 'security' },
-        },
-        {
-          id: 'agent:oracle',
-          name: 'Oracle',
-          type: 'agent',
-          status: 'built',
-          description: 'Debugging',
-          meta: { domain: 'meta' },
-        },
-        {
-          id: 'agent:steward',
-          name: 'Steward',
-          type: 'agent',
-          status: 'built',
-          description: 'Repos',
-          meta: { domain: 'devops' },
-        },
-        {
-          id: 'skill:cloudflare',
-          name: 'Cloudflare',
-          type: 'skill',
-          status: 'built',
-          description: 'Workers',
-          meta: { domain: 'backend' },
-        },
-        {
-          id: 'skill:wrangler',
-          name: 'Wrangler',
-          type: 'skill',
-          status: 'built',
-          description: 'CLI',
-          meta: { domain: 'backend' },
-        },
-        {
-          id: 'skill:vitest',
-          name: 'Vitest',
-          type: 'skill',
-          status: 'built',
-          description: 'Unit tests',
-          meta: { domain: 'quality' },
-        },
-        {
-          id: 'skill:durable-objects',
-          name: 'Durable Objects',
-          type: 'skill',
-          status: 'specified',
-          description: 'Stateful',
-          meta: { domain: 'backend' },
-        },
-        {
-          id: 'combo:e2e',
-          name: 'E2E on Edge',
-          type: 'possibility',
-          status: 'specified',
-          description: 'Deploy + verify at the edge',
-          meta: { domain: 'quality' },
-        },
-        {
-          id: 'combo:deploy',
-          name: 'Deploy Pipeline',
-          type: 'possibility',
-          status: 'specified',
-          description: 'Push → build → verify',
-          meta: { domain: 'devops' },
-        },
-        {
-          id: 'combo:local-ai',
-          name: 'Local Inference',
-          type: 'possibility',
-          status: 'built',
-          description: 'Quantized models on your own hardware',
-          meta: { domain: 'ai-ml' },
-        },
-        {
-          id: 'tool:bash',
-          name: 'Shell',
-          type: 'framework',
-          status: 'built',
-          description: 'Commands',
-          meta: { domain: 'infra' },
-        },
-      ],
-      connections: [
-        { from: 'runtime:opencode', to: 'mcp:playwright', type: 'connects' },
-        { from: 'runtime:opencode', to: 'mcp:cloudflare', type: 'connects' },
-        { from: 'runtime:opencode', to: 'mcp:github', type: 'connects' },
-        { from: 'runtime:opencode', to: 'agent:oracle', type: 'subagent' },
-        { from: 'skill:cloudflare', to: 'combo:e2e', type: 'hard-dep' },
-        { from: 'skill:vitest', to: 'combo:e2e', type: 'hard-dep' },
-        { from: 'skill:cloudflare', to: 'combo:deploy', type: 'hard-dep' },
-        { from: 'skill:wrangler', to: 'combo:deploy', type: 'hard-dep' },
-        { from: 'mcp:cloudflare', to: 'combo:e2e', type: 'soft-dep' },
-        { from: 'mcp:playwright', to: 'combo:e2e', type: 'soft-dep' },
-      ],
-    },
-    null,
-    2
-  );
 }

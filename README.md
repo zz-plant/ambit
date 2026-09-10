@@ -25,7 +25,7 @@
 
 | | |
 | :--- | :--- |
-| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1). Example data, nothing to install. |
+| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1). Example data, nothing to install — or drop your own `opencode.json` on the page and it is mapped in the tab, uploading nothing. |
 | **On your machine** | `brew install zz-plant/tap/ambit && ambit` reads your real agent config and prints where you stand. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab. |
 | **From your agent** | `claude mcp add ambit -- ambit mcp` and the agent can ask what it is able to do before it tries. |
@@ -53,12 +53,12 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 - **Capability** — one thing your setup can do. Every MCP server, agent, skill, provider, model, and command in your config becomes one, as does every node of the curated tree.
 - **Era** — how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
-- **Reached, next, blocked** — reached means something in your config provides it. Next means the prerequisites are met but nothing was detected: this is the frontier, and `ambit goal` lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.
-- **Hard vs soft prerequisite** — a hard prerequisite gates the capability; a soft one strengthens it without gating. Only hard prerequisites block a node. Both are drawn, soft ones fainter.
+- **Reached, next step, blocked** — reached means something in your config provides it. A next step is one whose prerequisites are met with nothing detected: this is the frontier, and `ambit goal` lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.
+- **Required vs optional prerequisite** — a required prerequisite gates the capability; an optional one strengthens it without gating. Only required ones block a node. Both are drawn, optional ones fainter. The data model and the CLI call these hard and soft.
 
 <div align="center">
 <img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
-<br><sub>Filled nodes are active · Outlined nodes are one step away on your frontier · Faded nodes have unmet prerequisites</sub>
+<br><sub>Filled nodes are reached · Outlined nodes are a next step · Faded nodes are blocked, with a prerequisite missing</sub>
 </div>
 
 ---
@@ -327,7 +327,7 @@ Every availability decision gates on lifecycle, not state. A broken capability i
 ### Fragility is computed, not guessed
 
 - **Single points of failure** — capabilities with exactly one provider.
-- **Bottlenecks** — nodes ranked by how much sits downstream of them.
+- **Bottlenecks** — nodes ranked by how much sits downstream of them. The map marks the same idea on each node, as a keystone.
 - **Shared credentials** — providers presenting the same credential fail together, so three providers behind one token is not redundancy. This one is declared rather than inferred: name the sharers in a `credentials` block and `ambit impact credential:...` will show what revoking it would end.
 
 ---

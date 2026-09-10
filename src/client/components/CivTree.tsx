@@ -23,6 +23,7 @@ import {
 } from './civ/layout.ts';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
+import { termTitle } from './Term.tsx';
 
 interface CivTreeProps {
   /** Pixels of the scene covered by the docked panel, so column one is visible. */
@@ -75,6 +76,7 @@ export default function CivTree({
 }: CivTreeProps) {
   // Owned by the store so the HUD can render the control; see App.tsx.
   const filter = useAmbitStore(s => s.treeFilter) as TypeFilter;
+  const setTreeFilter = useAmbitStore(s => s.setTreeFilter);
   const activeLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
   const simulationMode = useAmbitStore(s => s.simulationMode);
@@ -121,6 +123,22 @@ export default function CivTree({
   const lifecycleOf = (item: Item) => (item.meta?.lifecycle as string | undefined) ?? '';
   const keystone = (item: Item) =>
     (downstream.get(item.id) || []).length >= 3 || isRuntimeNode(item);
+  /** The glossary entry each legend key is a picture of. */
+  const LEGEND_CONCEPTS: Record<string, string> = {
+    Reached: 'state',
+    'Next step': 'state',
+    Blocked: 'state',
+    Keystone: 'keystone',
+    Combo: 'combo',
+    'Tool server': 'tool-server',
+    Agent: 'capability',
+    Skill: 'capability',
+    Passing: 'evidence',
+    Failing: 'evidence',
+    Required: 'prerequisite',
+    Optional: 'prerequisite',
+    'Interventions a month': 'attention',
+  };
   const SPOTLIGHTS: Record<string, (item: Item) => boolean> = {
     Reached: i => i.status === 'built',
     'Next step': i => i.status !== 'built' && isNext(i),
@@ -133,6 +151,58 @@ export default function CivTree({
     Passing: i => ['verified', 'reliable'].includes(lifecycleOf(i)),
     Failing: i => ['degraded', 'broken'].includes(lifecycleOf(i)),
   };
+
+  /**
+   * The legend for the lens in front of you. Hoisted out of the JSX because
+   * the row below it reports how many keys there are and whether any of them
+   * can be clicked.
+   */
+  const legend: any[] =
+    activeLens === 'attention'
+      ? [
+          // A scale with no unit is a row of coloured dots. Say what is
+          // being counted, once, at the head of the ramp.
+          { kind: 'label' as const, label: 'Interventions a month' },
+          ...heatBins(attentionMax).map((b, i) => ({
+            kind: 'node' as const,
+            color: `var(--heat-${i + 1})`,
+            label: b.label,
+          })),
+        ]
+      : activeLens === 'credentials'
+        ? [
+            {
+              kind: 'node' as const,
+              color: 'var(--plasma)',
+              label: 'Shares a credential',
+            },
+            { kind: 'faded' as const, label: 'Fails alone' },
+          ]
+        : isTreeView
+          ? [
+              { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
+              { kind: 'ring', label: 'Next step' },
+              { kind: 'faded', label: 'Blocked' },
+              { kind: 'square', label: 'Keystone' },
+              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+              { kind: 'line', label: 'Required' },
+              { kind: 'line', dashed: true, label: 'Optional' },
+            ]
+          : [
+              { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Tool server' },
+              { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
+              { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
+              { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
+              { kind: 'square', label: 'Keystone' },
+              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+              { kind: 'line', label: 'Required' },
+              { kind: 'line', dashed: true, label: 'Optional' },
+            ];
+  const legendCount = legend.length;
+  const hasSpotlights = legend.some((l: any) => Boolean(SPOTLIGHTS[l.label]));
+
   const hoverTarget = hoverItem || hoveredId;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
@@ -281,6 +351,9 @@ export default function CivTree({
         contentHeight={contentHeight}
         activeLens={activeLens}
         onSetLens={setActiveLens}
+        typeFilter={filter}
+        onSetTypeFilter={setTreeFilter}
+        showTypeFilter={!isTreeView}
         rightInset={rightInset}
       />
 
@@ -292,6 +365,18 @@ export default function CivTree({
         clearSimulation={clearSimulation}
         rightInset={rightInset}
       />
+
+      {/* A lens with no data is a map that has gone grey for no stated reason.
+          Say what fills it. */}
+      {activeLens === 'attention' && attentionMax === 0 && (
+        <div className="civ-lens-note" style={{ paddingRight: 12 + rightInset }} role="status">
+          <p>
+            Nothing recorded yet. This lens shades each capability by how often you had to step in —
+            copy <code>plugins/ambit-tracker.js</code> into <code>~/.config/opencode/plugins/</code>{' '}
+            and it fills from your own sessions.
+          </p>
+        </div>
+      )}
       {/* Main SVG Vector Canvas */}
       <svg
         viewBox={`0 0 ${contentWidth} ${contentHeight}`}
@@ -344,6 +429,7 @@ export default function CivTree({
                 letterSpacing={0.5}
                 style={{ fontFamily: 'var(--font-sans)' }}
               >
+                <title>{termTitle(isTreeView ? 'era' : 'domain')}</title>
                 {columnLabel(d, cols[d] || [])}
               </text>
               {(() => {
@@ -793,7 +879,15 @@ export default function CivTree({
             const keyH = isKey ? 18 : 0;
             const descH = lines.length * 15;
             const enablesH = enables.length ? 20 + enables.length * 15 : 0;
-            const boxH = headH + keyH + descH + enablesH + 12;
+            // The simulations are the thing people do not find. An outage is
+            // offered on a node you have; on one you do not, the same click
+            // asks the other question — and a faded circle reads as scenery
+            // until something says otherwise.
+            const hint = unreached
+              ? 'Click: what unlocking this would reach'
+              : 'Click: what stops working without it';
+            const hintH = 17;
+            const boxH = headH + keyH + descH + enablesH + hintH + 12;
 
             const tx = START_X + di * COL_W + COL_W / 2 - 16 + NODE_R + 10;
             const ty = START_Y + ai * ROW_H + NODE_R - 10;
@@ -879,7 +973,7 @@ export default function CivTree({
                 {hoverDownstream.length > 4 && (
                   <text
                     x={14}
-                    y={boxH - 6}
+                    y={boxH - hintH - 6}
                     fill="var(--text-muted)"
                     fontSize={10}
                     fontFamily="var(--font-sans)"
@@ -887,6 +981,15 @@ export default function CivTree({
                     +{hoverDownstream.length - 4} more
                   </text>
                 )}
+                <text
+                  x={12}
+                  y={boxH - 7}
+                  fill="var(--accent)"
+                  fontSize={10}
+                  fontFamily="var(--font-sans)"
+                >
+                  {hint}
+                </text>
               </g>
             );
           })()}
@@ -901,49 +1004,7 @@ export default function CivTree({
             stroke="var(--border)"
             strokeWidth={1}
           />
-          {(activeLens === 'attention'
-            ? [
-                // A scale with no unit is a row of coloured dots. Say what is
-                // being counted, once, at the head of the ramp.
-                { kind: 'label' as const, label: 'Interventions a month' },
-                ...heatBins(attentionMax).map((b, i) => ({
-                  kind: 'node' as const,
-                  color: `var(--heat-${i + 1})`,
-                  label: b.label,
-                })),
-              ]
-            : activeLens === 'credentials'
-              ? [
-                  {
-                    kind: 'node' as const,
-                    color: 'var(--plasma)',
-                    label: 'Shares a credential',
-                  },
-                  { kind: 'faded' as const, label: 'Fails alone' },
-                ]
-              : isTreeView
-                ? [
-                    { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
-                    { kind: 'ring', label: 'Next step' },
-                    { kind: 'faded', label: 'Blocked' },
-                    { kind: 'square', label: 'Keystone' },
-                    { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-                    { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-                    { kind: 'line', label: 'Required' },
-                    { kind: 'line', dashed: true, label: 'Optional' },
-                  ]
-                : [
-                    { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Server' },
-                    { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
-                    { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
-                    { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
-                    { kind: 'square', label: 'Keystone' },
-                    { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-                    { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-                    { kind: 'line', label: 'Required' },
-                    { kind: 'line', dashed: true, label: 'Optional' },
-                  ]
-          ).map((l: any, i: number) => {
+          {legend.map((l: any, i: number) => {
             // The heat scale is a ramp, so its swatches sit close together and
             // read as one object rather than as five separate keys.
             const lx =
@@ -956,7 +1017,13 @@ export default function CivTree({
                 key={l.label}
                 role={clickable ? 'button' : undefined}
                 tabIndex={clickable ? 0 : undefined}
-                aria-label={clickable ? `Highlight ${l.label}` : undefined}
+                aria-label={
+                  clickable
+                    ? isLegendActive
+                      ? 'Show every node again'
+                      : `Highlight ${l.label}`
+                    : undefined
+                }
                 onKeyDown={e => {
                   if (clickable && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault();
@@ -972,6 +1039,18 @@ export default function CivTree({
                   if (clickable) setSpotlightGroup(curr => (curr === l.label ? null : l.label));
                 }}
               >
+                {(clickable || LEGEND_CONCEPTS[l.label]) && (
+                  <title>
+                    {termTitle(
+                      LEGEND_CONCEPTS[l.label] ?? '',
+                      clickable
+                        ? isLegendActive
+                          ? 'Click to show everything again'
+                          : `Click to highlight ${l.label}`
+                        : undefined
+                    )}
+                  </title>
+                )}
                 {l.kind === 'node' && (
                   <>
                     <circle
@@ -1038,12 +1117,47 @@ export default function CivTree({
                   fontSize={10.5}
                   fontWeight={isLegendActive ? 600 : 400}
                   fontFamily="var(--font-sans)"
+                  // Dotted, not solid: it marks the key as operable without
+                  // claiming to be a hyperlink to somewhere else.
+                  textDecoration={clickable ? 'underline dotted' : undefined}
                 >
                   {l.label}
                 </text>
               </g>
             );
           })}
+          {spotlightGroup ? (
+            // biome-ignore lint/a11y/useSemanticElements: an HTML button cannot live inside an SVG; role, tabIndex and a key handler are on the group
+            <g
+              role="button"
+              tabIndex={0}
+              transform={`translate(${10 + legendCount * 112}, 8)`}
+              style={{ cursor: 'pointer' }}
+              aria-label="Show every node again"
+              onClick={() => setSpotlightGroup(null)}
+              onKeyDown={e => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                setSpotlightGroup(null);
+              }}
+            >
+              <text y={3.5} fill="var(--accent)" fontSize={10.5} fontFamily="var(--font-sans)">
+                {spotlightGroup} only — show all (Esc)
+              </text>
+            </g>
+          ) : (
+            hasSpotlights && (
+              <text
+                transform={`translate(${10 + legendCount * 112}, 8)`}
+                y={3.5}
+                fill="var(--text-muted)"
+                fontSize={10.5}
+                fontFamily="var(--font-sans)"
+              >
+                click a key to highlight
+              </text>
+            )
+          )}
         </g>
       </svg>
     </div>
