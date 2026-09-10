@@ -101,8 +101,8 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
       <figcaption className="fig-caption">
         <span className="fig-caption-title">What the graph can prove</span>
         <span className="fig-caption-note" style={NUM}>
-          {status.verified} of {status.total} proved ·{' '}
-          {Math.round((status.verified / status.total) * 100)}%
+          {status.verified} of {status.total} proved
+          {status.total > 0 ? ` · ${Math.round((status.verified / status.total) * 100)}%` : ''}
         </span>
       </figcaption>
       <div
@@ -127,6 +127,53 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
               {s.n}
             </span>
             <span className="fig-key-label">{s.label}</span>
+          </li>
+        ))}
+      </ul>
+    </figure>
+  );
+}
+
+/**
+ * The three fragilities the payload already carried and no surface drew.
+ *
+ * `degraded`, `spofs` and `deficits` arrive on every `/api/loop` response and
+ * were read by nothing. A machine could be one revoked token away from losing a
+ * capability, and the page would say only how many checks had passed. They are
+ * graph facts, so they answer on a machine whose ledger is still empty, which
+ * is the state this page spent its first week in.
+ *
+ * A row with nothing in it is dropped rather than drawn as a zero: an empty
+ * list here is good news, and good news that looks like a finding is noise.
+ */
+function Fragility({ status }: { status: LoopSnapshot['status'] }) {
+  const rows = [
+    { key: 'degraded', names: status.degraded, label: 'configured, not working' },
+    { key: 'spofs', names: status.spofs, label: 'one provider away from lost' },
+    { key: 'deficits', names: status.deficits, label: 'asked for, never there' },
+  ].filter(r => r.names?.length);
+
+  if (!rows.length) return null;
+
+  return (
+    <figure className="fig fig--assurance">
+      <figcaption className="fig-caption">
+        <span className="fig-caption-title">What could break</span>
+        <span className="fig-caption-note">from the graph, not the ledger</span>
+      </figcaption>
+      <ul className="fig-key">
+        {rows.map(r => (
+          <li key={r.key} className="fig-key-item" title={r.names.join(', ')}>
+            <span className={`fig-key-swatch fig-key-swatch--${r.key}`} aria-hidden="true" />
+            <span className="fig-key-n" style={NUM}>
+              {r.names.length}
+            </span>
+            <span className="fig-key-label">
+              {r.label}
+              {': '}
+              {r.names.slice(0, 3).join(', ')}
+              {r.names.length > 3 ? ` and ${r.names.length - 3} more` : ''}
+            </span>
           </li>
         ))}
       </ul>
@@ -435,7 +482,13 @@ function OpportunityRows({
  * been recorded". The two bridges are the only way to fill it, so they are the
  * page.
  */
-function EmptyLedger({ leftInset }: { leftInset: number }) {
+function EmptyLedger({
+  leftInset,
+  status,
+}: {
+  leftInset: number;
+  status?: LoopSnapshot['status'];
+}) {
   return (
     <div className="loop-dashboard" style={{ left: leftInset }}>
       <div className="loop-inner">
@@ -445,6 +498,21 @@ function EmptyLedger({ leftInset }: { leftInset: number }) {
           do; the ledger is what says how often you had to step in, and nothing has written to it on
           this machine.
         </p>
+
+        {/*
+          The half that does not wait for a week of sessions. Assurance and
+          fragility are read off the graph, so they are true on the machine's
+          first day, and the page used to withhold them until the other half
+          arrived.
+        */}
+        {status && status.total > 0 && (
+          <div className="fig-kpis">
+            <AssuranceBar status={status} />
+            <Fragility status={status} />
+          </div>
+        )}
+
+        <p className="loop-subtitle">Two bridges fill the rest.</p>
         <ol className="loop-empty-steps">
           <li>
             <strong>Record the work.</strong> Copy <code>plugins/ambit-telemetry.js</code> into{' '}
@@ -473,8 +541,10 @@ export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashbo
   const [confidenceFilter, setConfidenceFilter] = React.useState<'all' | 'high' | 'medium'>('all');
 
   // No snapshot at all means the same thing as an empty one: nothing has been
-  // recorded here. A blank page would read as a broken tab.
-  if (loopEmpty || !loop) return <EmptyLedger leftInset={leftInset} />;
+  // recorded here. A blank page would read as a broken tab. An empty snapshot
+  // still carries the graph half, so it is handed over.
+  if (!loop) return <EmptyLedger leftInset={leftInset} />;
+  if (loopEmpty) return <EmptyLedger leftInset={leftInset} status={loop.status} />;
 
   const { status, attention, opportunities, roi } = loop;
   const sample = loopSource === 'sample';
@@ -542,6 +612,7 @@ export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashbo
           </figure>
 
           <AssuranceBar status={status} />
+          <Fragility status={status} />
         </div>
 
         <section>

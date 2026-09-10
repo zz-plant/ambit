@@ -1799,6 +1799,21 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--fig-track);
 }
 
+/* The three fragilities, in the same three inks the assurance bar uses: a thing
+   that is failing now, a thing one revocation from failing, a thing that was
+   never there. Severity descends, and no new hue is introduced for it. */
+.fig-key-swatch--degraded {
+  background: var(--fig-bad);
+}
+
+.fig-key-swatch--spofs {
+  background: var(--fig-context);
+}
+
+.fig-key-swatch--deficits {
+  background: var(--fig-track);
+}
+
 .fig-key-n {
   text-align: right;
   color: var(--text-primary);

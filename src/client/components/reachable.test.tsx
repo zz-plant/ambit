@@ -94,6 +94,64 @@ test('a real ledger with nothing in it says so instead of drawing zeroes', () =>
   expect(html).toContain('ambit-telemetry.js');
 });
 
+/** Read off the graph, so it answers on a machine whose ledger is empty. */
+const GRAPH_STATUS = {
+  reached: 12,
+  total: 19,
+  verified: 8,
+  failing: 1,
+  degraded: ['postgres'],
+  spofs: ['anthropic', 'github'],
+  deficits: ['a browser worker'],
+  pending: [],
+};
+
+test('a ledger with nothing in it still says what the graph proves', () => {
+  // The page withheld all of itself until telemetry arrived, though assurance
+  // and fragility never needed it. On a real machine that was the first week.
+  seed({
+    loop: { ...demoSnapshot(), status: GRAPH_STATUS },
+    loopSource: 'ledger',
+    loopEmpty: true,
+  });
+  const html = renderToStaticMarkup(<LoopDashboard />);
+
+  expect(html).toContain('What the graph can prove');
+  expect(html).toContain('8 of 19 proved');
+  // and still asks for the half that is missing
+  expect(html).toContain('ambit-telemetry.js');
+});
+
+test('the fragilities the payload already carried reach the page', () => {
+  // degraded, spofs and deficits arrived on every /api/loop response and were
+  // read by nothing, so a machine one revoked token from losing a capability
+  // was told only how many checks had passed.
+  seed({
+    loop: { ...demoSnapshot(), status: GRAPH_STATUS },
+    loopSource: 'ledger',
+    loopEmpty: false,
+  });
+  const html = renderToStaticMarkup(<LoopDashboard />);
+
+  expect(html).toContain('What could break');
+  expect(html).toContain('postgres');
+  expect(html).toContain('anthropic');
+  expect(html).toContain('a browser worker');
+});
+
+test('nothing fragile draws no finding', () => {
+  seed({
+    loop: {
+      ...demoSnapshot(),
+      status: { ...GRAPH_STATUS, degraded: [], spofs: [], deficits: [] },
+    },
+    loopSource: 'ledger',
+    loopEmpty: false,
+  });
+
+  expect(renderToStaticMarkup(<LoopDashboard />)).not.toContain('What could break');
+});
+
 test("a machine's own figures are not labelled as samples", () => {
   seed({ loop: demoSnapshot(), loopSource: 'ledger', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
