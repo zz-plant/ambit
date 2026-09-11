@@ -1,17 +1,20 @@
 ---
 name: Feature request
-about: Suggest a new feature, CLI command, runtime integration, or capability inspection
+about: A question Ambit should be able to answer about your setup, and cannot
 labels: enhancement
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what problem or missing insight you are experiencing (e.g. "I want to track token budgets per subagent...").
+### What you were trying to find out, and what you did instead
+The workaround is the argument: a question worth a command is one you have answered by hand more than once.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen, how the CLI / MCP tool / UI should present the data.
+### Where the answer would live
 
-**Describe alternatives you've considered**
-Any alternative solutions or workarounds you've looked into.
+A CLI verb, an MCP tool, a view on the map, or a column in something that already prints. Extending a surface costs less than adding one, so name the existing output that comes closest.
 
-**Additional context**
-Add any other context, screenshots, or mockup commands.
+### What it would have to read
+
+Agent config, the graph, the work ledger, something on disk Ambit does not look at yet, or something no local file records at all. The last case is the interesting one; say so if that is what you mean.
+
+### What you would do differently once you had it
+
+The decision the answer changes. A number nobody acts on is a number worth not computing.

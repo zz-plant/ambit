@@ -9,26 +9,17 @@
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
-[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Install](#install) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [How it works](#how-it-works) · [FAQ](./docs/faq.md) · [Deep dive](./docs/deep-dive.md)
+[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [What it is](#what-ambit-is) · [Get started](#get-started) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [The map](#the-map) · [In practice](#in-practice) · [How it works](#how-it-works) · [FAQ](./docs/faq.md) · [Deep dive](./docs/deep-dive.md)
 
 <br>
 
-<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: a tool is selected and its dependents listed, switching it off turns fourteen downstream capabilities red, a second view colours the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
+<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: a tool is selected and its dependents listed, switching it off turns fourteen downstream capabilities red, a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
 
 <sub>One setup, mapped. Pick a tool and Ambit shows what depends on it; switch it off and it shows the fourteen things that stop working with it. Then which tools interrupt you most, and a change waiting on your approval.</sub>
 
+`brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
+
 </div>
-
----
-
-## Get started
-
-| | |
-| :--- | :--- |
-| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1). Example data, nothing to install — or drop your own `opencode.json` on the page and it is mapped in the tab, uploading nothing. |
-| **On your machine** | `brew install zz-plant/tap/ambit && ambit` reads your real agent config and prints where you stand. |
-| **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab. |
-| **From your agent** | `claude mcp add ambit -- ambit mcp` and the agent can ask what it is able to do before it tries. |
 
 ---
 
@@ -63,9 +54,17 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 ---
 
-## Install
+## Get started
 
-The hosted demo installs nothing. Inspecting your own machine needs one of these.
+| Way in | What it gives you |
+| :--- | :--- |
+| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and read an example setup, or drop your own `opencode.json` on the page and it is mapped in the tab, uploading nothing. |
+| **On your machine** | `brew install zz-plant/tap/ambit && ambit` reads your real agent config and prints where you stand. |
+| **With the map** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the canvas the figures on this page show. |
+| **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab. |
+| **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet for each client. |
+
+Homebrew, a checkout, and Codespaces, in full.
 
 **Homebrew** installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux:
 
@@ -74,7 +73,7 @@ brew install zz-plant/tap/ambit
 ambit
 ```
 
-**A checkout** adds the map. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and `~/.agents/skills`, builds a local SQLite graph, and reports your frontier; `./bootstrap.sh web` also starts the map. It links `ambit` into `~/.local/bin` when that is on your PATH and prints the `ln -s` line otherwise. `--dry-run` shows what it would do.
+**A checkout** adds the map. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and the skill directories `~/.agents/skills` and `~/.opencode/skills`, builds a local SQLite graph, and reports your frontier; `./bootstrap.sh web` also starts the map. The report it prints when it finishes is `ambit status` itself, not a separate first-run format: [Ask from the terminal](#ask-from-the-terminal) shows that command against a fixture graph. It links `ambit` into `~/.local/bin` when that is on your PATH and prints the `ln -s` line otherwise. `--dry-run` shows what it would do.
 
 ```bash
 git clone https://github.com/zz-plant/ambit.git
@@ -82,22 +81,10 @@ cd ambit
 ./bootstrap.sh
 ```
 
-```console
-First run — reading your agent config and building the graph…
-✓ 168 capabilities discovered
-
-  reached: 156
-  total: 168
-  domains:
-    ai-ml     22/26
-    backend   6/8
-    infra     26/28
-```
-
 **Codespaces** runs the checkout in a container: the devcontainer seeds a graph and starts the map on port 3000, so nothing touches your machine and the graph is the container's.
 
 > [!NOTE]
-> The npm package is built and ready but not yet published, so `npx ambit` will not work.
+> The npm package is built and ready but not yet published, so there is no `npx` path yet.
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, drawn as nodes in domain columns" width="900">
@@ -109,12 +96,11 @@ First run — reading your agent config and building the graph…
 ## Ask from the terminal
 
 | Command | What it answers |
-|---|---|
-| `ambit status` | Environment health — active, degraded, and fragile nodes, plus pending approvals |
+| :--- | :--- |
+| `ambit status` | Environment health — what is reached, what is failing its declared check, what has a single provider, plus pending approvals |
 | `ambit goal <name>` | The path to unlock a capability, in order, with setup estimates |
 | `ambit impact <id>` | Blast radius: what breaks if this tool, model, or credential goes down |
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
-| `ambit opportunities` | What to set up next, ranked by the attention time it would save |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
 | `ambit verify [id]` | Run a capability's declared check and record whether it actually works |
 | `ambit history [since]` | How the frontier moved, separating what you acquired from what emerged |
@@ -122,11 +108,11 @@ First run — reading your agent config and building the graph…
 
 `ambit help` covers a first session; `ambit help --all` is the full surface, grouped by what you are trying to do, and `ambit help <term>` explains one concept.
 
-Everything above answers on a graph Ambit builds by itself. A second group — `attention`, `work`, `usage`, `opportunities`, `roi`, `audit` — prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need instead of returning a number, and they become useful after a few weeks of recorded runs, not on install.
+Everything above answers on a graph Ambit builds by itself. A second group (`attention`, `work`, `usage`, `opportunities`, `roi`, `audit`) prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need instead of returning a number, and they become useful after a few weeks of recorded runs, not on install. [The FAQ](./docs/faq.md#i-ran-ambit-attention-and-it-says-nothing-is-recorded-is-it-broken) says how to start recording them.
 
-The three blocks below are captured from a run against a fixture graph by `npm run docs:examples`, and CI fails if they drift from what the commands actually print.
+The three console blocks below are captured from a run against a fixture graph by `npm run docs:examples`, and CI fails if they drift from what the commands actually print.
 
-### Where the environment stands
+### ambit status — where the environment stands
 
 <!-- example: ambit status -->
 ```console
@@ -150,7 +136,7 @@ $ ambit status
 ```
 <!-- /example -->
 
-### What it would take to reach something
+### ambit goal — what it would take to reach something
 
 <!-- example: ambit goal local-embeddings -->
 ```console
@@ -174,7 +160,7 @@ $ ambit goal local-embeddings
 ```
 <!-- /example -->
 
-### What breaks if this goes away
+### ambit impact — what breaks if this goes away
 
 <!-- example: ambit impact combo:local-runtime -->
 ```console
@@ -198,13 +184,17 @@ $ ambit impact combo:local-runtime
 ```
 <!-- /example -->
 
-`ambit share` builds its HTML from an allow-list — name, kind, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as "a person", and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.
+### ambit share — what may leave the graph, and what may not
+
+`ambit share` builds its HTML from an allow-list — name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as "a person", and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.
 
 ---
 
 ## Connect it to your agent
 
 Registering Ambit as an MCP server lets an agent inspect its own toolchain and plan around what is missing.
+
+Sixty tools, each advertised once, each answering with MCP `structuredContent` alongside the text block so an agent reads a field and never parses a string. A legacy `tt_` prefix is still accepted for configs written before the rename but is no longer listed: advertising both would double `tools/list` to 120 entries and spend about 4,900 tokens of every agent's context on duplicates. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names all sixty, grouped.
 
 ### Claude Code
 
@@ -240,17 +230,19 @@ every session yourself, add a hook to `~/.claude/settings.json`:
 }
 ```
 
-Both assume `bootstrap.sh` linked `ambit` onto your PATH. If it did not, use the absolute path to `cli.js` instead.
+Both assume `ambit` is on your PATH. Homebrew puts it there; from a checkout, `bootstrap.sh` links it into `~/.local/bin` and prints the `ln -s` line if that directory is not on your PATH. Failing both, use the absolute path to `cli.js`.
 
 An agent can read the map, query what a goal is missing, and **propose** a configuration change. Applying one always requires your approval.
 
-**One line for the agent's own instructions.** The habit worth teaching is a single question before an unfamiliar tool, because the alternative is the retry loop that spends your attention:
+### The one line for your agent's instructions
+
+The habit worth teaching is a single question before an unfamiliar tool, because the alternative is the retry loop that spends your attention:
 
 > Before running a tool you have not used this session, call `ambit_can` with
 > the capability. On `yes`, act. On `ask`, put it to the person. On `no`, it has
 > already recorded the deficit, so do not retry it under another name.
 
-It answers from the graph without probing anything, and a refusal files itself as a deficit, which is what makes the fourth occurrence show up as infrastructure that should exist instead of a wall to work around again.
+It answers from the graph without probing anything, and a refusal files itself as a deficit, which is what makes the third occurrence show up as infrastructure that should exist instead of a wall to work around again.
 
 Here is the whole loop from a live run. `node --experimental-strip-types scripts/demo-agent-loop.ts` re-records it, and every frame is real engine output — a failing loop fails the recording instead of rendering a fiction.
 
@@ -279,56 +271,6 @@ sequenceDiagram
     Developer->>Ambit: ambit approve prop-staging-42 (mints a signed artifact)
     Developer->>Host: ambit apply prop-staging-42 (applies and verifies)
 ```
-
-<details>
-<summary><b>The full 60-tool MCP surface</b></summary>
-
-Sixty tools, each advertised once. Each answers with MCP `structuredContent` — the result as data — alongside the text block, so an agent reads a field and never parses a string. A legacy `tt_` prefix is still accepted for configs written before the rename, but is no longer listed: advertising both doubled `tools/list` to 96 entries and spent about 3,600 tokens of every agent's context on duplicates.
-
-| Group | Tools | Purpose |
-| :--- | :--- | :--- |
-| **Graph & topology** | `stats`, `context`, `cap`, `combos`, `diff`, `health`, `decay`, `near`, `bottlenecks`, `spof`, `impact`, `credentials` | Query structure, single points of failure, combo prerequisites, and blast radius. |
-| **Lifecycle & assurance** | `verify`, `evidence`, `authority`, `actions`, `plan`, `goal`, `paths`, `preferences`, `scope`, `affordances`, `since`, `ledger` | Inspect health, run verification contracts, resolve authority scope, compute prerequisite paths. |
-| **Work & economics** | `work`, `usage`, `run_begin`, `run_end`, `work_event`, `digest`, `economics`, `goal_value`, `opportunities`, `opportunity`, `catalog`, `roi`, `roi_summary`, `audit`, `incidents`, `incident_resolve`, `portfolio`, `can` | Record telemetry, price attention, rank opportunities, and check permission before acting. |
-| **Governance & planning** | `blocked`, `deficits`, `simulate`, `propose`, `proposals`, `proposal` | Record deficits, simulate future frontier states, and draft reviewable patches. |
-| **The long-running agent** | `briefing`, `next`, `record_failure`, `signals`, `register_skill`, `skills`, `promotions` | Know the environment before touching it, see what is worth reaching next, report a failure the runtime already noticed, and put a skill you wrote on the map with the check that proves it. |
-| **Expanding what is permitted** | `objects`, `budgets`, `reversible`, `preferences_observed`, `pending` | What may be done to a particular target and what is proved there, what may be spent without asking, what would have to be written for an acquisition to need no person, and what is waiting on one right now. |
-
-</details>
-
----
-
-## How it works
-
-Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas. Discovery, verification, and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map's editor for entries that already exist, which cannot create one.
-
-Each client is read from its own standard config path, and every server stays attributed to the client that listed it. When two clients name the same server, that is one capability with two sources, not two capabilities, which is what stops Ambit from counting a single binary twice and calling the result redundancy.
-
-### Seven eras, and what follows from them
-
-Discovered capabilities are placed into a curated tree that runs from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy**, and **Assurance** to **Sovereignty**. Because each capability records what it needs, Ambit works out what you can reach without taking a config file's word for it.
-
-Two things follow from that:
-
-- **Combos.** Higher-order abilities appear from tools that were configured separately — a vector store plus local embeddings becomes semantic retrieval, which neither config mentions.
-- **Near misses.** When you are one or two prerequisites from a capability that unlocks several others, that gap is worth naming. `ambit graph combos` lists them.
-
-### Configured is not working
-
-Ambit keeps two properties apart, and the distinction is load-bearing:
-
-- `state` is **structural** — is this thing configured, and what does it depend on. This is what the frontier ledger records.
-- `lifecycle` is **health** — did its declared verification command actually pass. A capability can be fully configured and still `degraded` or `broken`.
-
-Every availability decision gates on lifecycle, not state. A broken capability is excluded from plans, simulations, goals, authority checks, and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan.
-
-`ambit status` reports proven, unproven, and failing counts. The map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured-but-never-verified.
-
-### Fragility is computed, not guessed
-
-- **Single points of failure** — capabilities with exactly one provider.
-- **Bottlenecks** — nodes ranked by how much sits downstream of them. The map marks the same idea on each node, as a keystone.
-- **Shared credentials** — providers presenting the same credential fail together, so three providers behind one token is not redundancy. This one is declared, never inferred: name the sharers in a `credentials` block and `ambit impact credential:...` will show what revoking it would end.
 
 ---
 
@@ -361,25 +303,6 @@ When an agent proposes an environment change over MCP, the **Proposals** panel s
 
 ---
 
-## The control plane
-
-Host-level agent tooling is a real attack surface, so execution goes through an interceptor, never straight to the shell.
-
-- **Interception.** Before a tool call reaches your machine, the proxy in `src/control_plane/proxy.ts` checks three things: are this capability's prerequisites in place, is it actually working, and is the caller allowed to do this. A call that fails any of them is refused — `AMBIT_BLOCKED_UNAUTHORIZED`, exit code `2` — and nothing on the machine has changed.
-- **Human-in-the-loop remediation.** A blocked execution drafts a structured proposal and an HMAC challenge. `ambit approve <proposal-id> <person>` mints a signed artifact that the executor verifies before any state changes. An artifact stops being valid if the proposal changed after approval, or if it has expired.
-- **Tracing.** Spans and structured events record DAG evaluations, missing authorizations, challenges, and verification receipts.
-- **The environment is simulated.** The decision is real — the DAG check, the authority evaluation, the approval artifact and the audit trail all run against your actual graph. What sits on the other side of the gate is a fixture: `simulatedAdapter` in `src/control_plane/proxy.ts` keeps its state in a JSON file. Ambit ships no deployment integration. A real one implements the three-method `EnvironmentAdapter` in that file, and nothing above the gate changes.
-
-A worked example — an autonomous deploy agent blocked mid-flight, then remediated — is written up in [`docs/incidents/INCIDENT_TRACE_001.md`](./docs/incidents/INCIDENT_TRACE_001.md).
-
-```bash
-npm test                                                  # the suite behind the walkthrough
-npm run demo:incident                                     # the 90-second terminal walkthrough
-asciinema play docs/incidents/demo_intervention_trace.cast # replay the recording
-```
-
----
-
 ## In practice
 
 ### The combo you already almost have
@@ -400,7 +323,59 @@ You are about to revoke a personal access token. Without a model of what depends
 
 `ambit impact credential:github/user-token` names the providers and capabilities standing on that one credential, which is the argument for provisioning granular tokens first.
 
-Sharing is declared, never guessed: the `credentials` block is in [the deep dive](./docs/deep-dive.md#what-a-node-is). Until you write one, `ambit credentials` reports that none are declared.
+The `credentials` block that declares the sharing is in [the deep dive](./docs/deep-dive.md#what-a-node-is). Until you write one, `ambit credentials` reports that none are declared.
+
+---
+
+## How it works
+
+Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas. Discovery, verification, and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map's editor for entries that already exist, which cannot create one.
+
+Each client is read from its own standard config path, and every server stays attributed to the client that listed it. When two clients name the same server, that is one capability with two providers, not two capabilities, which is what stops Ambit from counting a single binary twice and calling the result redundancy.
+
+### Seven eras, and what follows from them
+
+Discovered capabilities are placed into a curated tree that runs from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy**, and **Assurance** to **Sovereignty**. Because each capability records what it needs, Ambit works out what you can reach without taking a config file's word for it.
+
+Two things follow from that:
+
+- **Combos.** Higher-order abilities appear from tools that were configured separately — a vector store plus local embeddings becomes semantic retrieval, which neither config mentions.
+- **Near misses.** When you are one or two prerequisites from a capability that unlocks several others, that gap is worth naming. `ambit graph combos` lists them.
+
+### Configured is not working
+
+Ambit keeps two properties apart, and the distinction is load-bearing:
+
+- `state` is **structural** — is this thing configured, and what does it depend on. This is what the frontier ledger records.
+- `lifecycle` is **health** — did its declared verification command actually pass. A capability can be fully configured and still `degraded` or `broken`.
+
+Every availability decision gates on lifecycle, not state. A broken capability is excluded from plans, simulations, goals, authority checks, and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan.
+
+`ambit status` reports proven, unproven, and failing counts. The map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured-but-never-verified.
+
+### Fragility is computed, not guessed
+
+- **Single points of failure** — capabilities with exactly one provider.
+- **Bottlenecks** — nodes ranked by how much sits downstream of them. The map marks the same idea on each node, as a keystone.
+- **Shared credentials** — providers presenting the same credential fail together, so three providers behind one token is not redundancy. This one is declared, never inferred: name the sharers in a `credentials` block and `ambit impact credential:...` will show what revoking it would end.
+
+---
+
+## The control plane
+
+Host-level agent tooling is a real attack surface, so execution goes through an interceptor and never straight to the shell. The decision is real: the DAG check, the authority evaluation, the approval artifact and the audit trail all run against your actual graph. What sits on the other side of the gate is a fixture: `simulatedAdapter` in `src/control_plane/proxy.ts` keeps its state in a JSON file, and Ambit ships no deployment integration. A real one implements the three-method `EnvironmentAdapter` in that file, and nothing above the gate changes.
+
+- **Interception.** Before a tool call reaches your machine, the proxy in `src/control_plane/proxy.ts` checks three things: are this capability's prerequisites in place, is it actually working, and is the caller allowed to do this. A call that fails any of them is refused — `AMBIT_BLOCKED_UNAUTHORIZED`, exit code `2` — and nothing on the machine has changed.
+- **Human-in-the-loop remediation.** A blocked execution drafts a structured proposal and an HMAC challenge. `ambit approve <proposal-id> <person>` mints a signed artifact that the executor verifies before any state changes. An artifact stops being valid if the proposal changed after approval, or if it has expired.
+- **Tracing.** Spans and structured events record DAG evaluations, missing authorizations, challenges, and verification receipts.
+
+A worked example — an autonomous deploy agent blocked mid-flight, then remediated — is written up in [`docs/incidents/INCIDENT_TRACE_001.md`](./docs/incidents/INCIDENT_TRACE_001.md).
+
+```bash
+npm test                                                  # the suite behind the walkthrough
+npm run demo:incident                                     # the 90-second terminal walkthrough
+asciinema play docs/incidents/demo_intervention_trace.cast # replay the recording
+```
 
 ---
 
@@ -408,7 +383,7 @@ Sharing is declared, never guessed: the `credentials` block is in [the deep dive
 
 Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.
 
-| | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
+| System | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
 | :--- | :---: | :---: | :---: | :---: | :---: |
 | Vector tool-RAG | by similarity | – | – | – | – |
 | Workflow state machines (LangGraph) | – | within one task | – | – | within one task |
@@ -420,34 +395,36 @@ Ambit sits above the protocol layer and below workflow orchestration. It neither
 - **Against workflow state machines.** LangGraph models control flow within one task. Ambit models what the host environment is capable of executing at all.
 - **Against package managers.** Nix and Homebrew install binaries. Ambit models the affordance those binaries add up to, and what it costs a person to keep them working.
 
-### Position in the revisable-delegation loop
+---
 
-Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds **capability** and **authorization**. A grant holds only while what it rests on does — a capability whose hard prerequisite has started failing no longer runs unattended, and the narrowing lifts by itself when the check passes again — and every narrowing is written as an append-only, hash-chained stream of [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record) that another Ambit environment can read as evidence. What a peer sends can inform this graph and never revoke anything in it. [The deep dive](./docs/deep-dive.md#delegation-records) has the record kinds, the objection path, and the limits; the siblings are [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), and [Ethotechnics](https://ethotechnics.org) (the record shape).
+## Position in the revisable-delegation loop
+
+Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds **capability** and **authorization**.
+
+A grant holds only while what it rests on does — a capability whose hard prerequisite has started failing no longer runs unattended, and the narrowing lifts by itself when the check passes again — and every narrowing is written as an append-only, hash-chained stream of [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record) that another Ambit environment can read as evidence. What a peer sends can inform this graph and never revoke anything in it.
+
+[The deep dive](./docs/deep-dive.md#delegation-records) has the record kinds, the objection path, and the limits; the siblings are [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), and [Ethotechnics](https://ethotechnics.org) (the record shape).
 
 ---
 
 ## Security invariants
 
-Ambit reads developer toolchains and writes to agent configs, so a few properties are fixed and cannot be relaxed. [`AGENTS.md`](./AGENTS.md) and [`SECURITY.md`](./SECURITY.md) carry the full posture.
+Ambit reads developer toolchains and writes to agent configs, so a few properties are fixed and cannot be relaxed. [`SECURITY.md`](./SECURITY.md) states each in full, with what is in scope and what is not; [`AGENTS.md`](./AGENTS.md) says where each is enforced.
 
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
 2. **Origin allowlist.** A request with a non-local `Origin` is rejected with 403 *before* routing. Response headers alone are not sufficient — a simple request skips preflight and would otherwise reach the handler.
-3. **No entry creation over HTTP.** The HTTP layer can edit fields on existing MCP entries and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution. Adding a server returns a snippet for you to paste.
-4. **Local data only.** Everything lives in an embedded SQLite database on your machine. No telemetry, no credentials leaving the host.
+3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else: it toggles an MCP server's `enabled`, and edits an agent's `description` or `model` and a command's `description`. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution. Adding a server returns a snippet for you to paste.
+4. **No egress you did not type.** Everything lives in an embedded SQLite database on your machine. There is no telemetry and no credential leaves the host. Three commands open a socket at all: `ambit notify` and `ambit notify-approvals`, each pushing text to an ntfy topic you name, and `ambit incidents`, which sends an empty GET to the hosts your own infrastructure manifest lists. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
 
 ---
 
 ## Documentation
 
-* [FAQ](./docs/faq.md) — what needs installing, what leaves the machine, why the attention commands are empty on day one.
-* [Deep dive](./docs/deep-dive.md) — nodes, assurance checks, authority contracts, the work ledger, and every MCP tool in detail.
-* [Why Ambit](./docs/why-ambit.md) — what the tool is for and why it exists.
-* [The affordance frontier](./docs/affordance-frontier.md) — capability as a property of human-machine systems, not of software.
-* [Roadmap](./docs/roadmap.md) — where the data model is heading. Direction, not description.
-* [Changelog](./CHANGELOG.md) — what changed per release, and why.
-* [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) — the rules above, in full.
-* [Support](./SUPPORT.md) — where each kind of question goes.
-* [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) — the project in one page, for an agent that is deciding whether to recommend it.
+- [FAQ](./docs/faq.md) — what needs installing, what leaves the machine, why the attention commands are empty on day one.
+- [Deep dive](./docs/deep-dive.md) — the reference for the model under everything above.
+- [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) · [Support](./SUPPORT.md) · [Contributing](./CONTRIBUTING.md) — the invariants above in full, where each is enforced, where each kind of question goes, and how to send a change.
+- [Everything else](./docs/) — the argument, the theory, the design notes, the changelog, the incident traces.
+- [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) — the project in one page, for an agent that is deciding whether to recommend it.
 
 ---
 
@@ -455,11 +432,7 @@ Ambit reads developer toolchains and writes to agent configs, so a few propertie
 
 New capability models, runtime adapters, visualization work, and edge-case reports are all welcome.
 
-- [CONTRIBUTING.md](./CONTRIBUTING.md) — development workflow and PR guidelines.
-- [AGENTS.md](./AGENTS.md) — the invariants a change must not break.
-- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — community standards.
-
-`npm run lint && npm run typecheck && npm test` is the gate. Both halves of the repo typecheck under `strict`, and the suite runs against real SQLite.
+Both halves of the repo typecheck under `strict`, and the suite runs against real SQLite. [CONTRIBUTING.md](./CONTRIBUTING.md#the-checks-ci-runs) lists every check CI runs, documentation included: the console blocks above are checked against a fresh run, and the prose against a corpus ceiling on the two constructions a machine overuses ([AGENTS.md rule 17](./AGENTS.md#rules)).
 
 ---
 
@@ -478,4 +451,4 @@ Ambit is a personal project. If it answered a question your config files could n
 
 ## License
 
-[MIT](./LICENSE) © Ambit Contributors
+[MIT](./LICENSE) © Kanav Jain
