@@ -1,21 +1,20 @@
 # Why Ambit
 
+> This is the argument, not the reference. It runs ahead of the software deliberately. The [README](../README.md) describes what runs today; [the roadmap](./roadmap.md) says, section by section, what is built and what remains.
+
 I built Ambit because my agent stack crossed the point where neither I nor the agents could reliably keep the whole thing in our heads.
 
 Multiple models. MCP servers. Skills. Subagents. Local machines. Hosted services. Credentials. Scheduled jobs. A homelab.
 
 Every component had configuration. Nothing had a model of what the whole system could actually do.
 
-Ambit is a capability graph for agent stacks. It discovers capabilities from your configuration, models their dependencies and maturity, and lets both you and your agents ask:
+Ambit is a capability graph for agent stacks. What I wanted from it was the questions no config file answers:
 
-- What am I one dependency away from?
 - What does this provider actually support?
-- What breaks if I remove it?
-- Which missing primitive unlocks the most?
 - Which parts of the stack are decaying?
 - Are three different failures actually the same structural deficit?
 
-The graph is exposed over MCP, so this is not only a visualisation for humans. An agent can use Ambit as an external model of the environment it operates inside, instead of reconstructing that environment from context every session.
+The graph is exposed over MCP, so this is not only a visualization for humans. An agent can use Ambit as an external model of the environment it operates inside, instead of reconstructing that environment from context every session.
 
 ## Composition is the part that got interesting
 
@@ -34,16 +33,16 @@ So the direction is to move from *what tools exist?* to *what actions are actual
 That means distinguishing:
 
 ```
-installed ≠ callable ≠ working ≠ reliable ≠ authorized
+installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate
 ```
 
-## A different relationship between an agent and its environment
+## What an agent could notice
 
-It also changes what an agent can notice. Eventually one should be able to say:
+Eventually an agent should be able to say:
 
 > We have hit this same environmental limitation four times. This is not a reasoning failure. We are missing a reusable capability.
 
-Then show the user the capability delta, compare ways to close it, help build the chosen path, verify that it works, and leave that new capability available to every future agent.
+Then close it: show the capability delta, build the chosen path, verify it, and leave the result on the map.
 
 The result is a different kind of compounding:
 
@@ -57,14 +56,13 @@ flowchart LR
     S -.->|"Compounds Future Productivity"| W
 ```
 
-> [!TIP]
-> This cycle shifts the dynamic from *repeated manual workarounds* to *durable infrastructure accumulation*. Every resolved deficit permanently expands the agent's autonomous frontier.
+A workaround gets you through today. A capability that has been verified and left on the map is there for every session after this one, until it decays and the graph says so.
 
 ## Accounting, and then a ledger
 
 What Ambit is doing is closest to accounting. Partly a dependency graph, partly IAM, partly a CMDB, partly an audit ledger — but with *capacity for action* as the thing being accounted for.
 
-Ordinary tool registries collapse seven different things into one. Something can be **available** without being **authorized**; **authorized** without being **reachable**; reachable without being **verified**; and a **composed** capability can exist that no component declares. Add **delegated** — a human or another agent supplies a missing step — and **persistent** — it survives the current interaction — and you have most of what determines whether a system can actually cause something to happen.
+The ≠ chain above is the short form. Ordinary tool registries collapse seven different things into one. Something can be **available** without being **authorized**; **authorized** without being **reachable**; reachable without being **verified**; and a **composed** capability can exist that no component declares. Two more decide whether it holds. **Delegated**, where a human or another agent supplies a missing step. **Persistent**, where it survives the current interaction. Together those seven are most of what determines whether a system can actually cause something to happen.
 
 The version of this I find most interesting is longitudinal. Instead of describing only today, record what the system could do at time T, and what changed. A system gains a machine, then network access, then credentials, then a scheduler, then memory, then deploy authority, then the ability to create further agents. Each is an infrastructure change *and* a change in the reachable frontier.
 
@@ -72,7 +70,7 @@ That is a balance sheet for agency. And it makes visible the entries no changelo
 
 > The system acquired autonomous incident-recovery capability yesterday, although no component added yesterday was itself an incident-recovery system.
 
-## The safety argument
+## Effective agency as a governed object
 
 I think this also points at a problem that gets less attention than model alignment.
 
@@ -80,7 +78,7 @@ I think this also points at a problem that gets less attention than model alignm
 
 Give the same model shell access, persistent execution, credentials, browser control, local machines, memory, schedulers, and delegation, and you have created a radically more consequential system without changing a single model weight.
 
-Those capabilities currently accumulate across JSON files, OAuth scopes, shell scripts, prompts, containers, machines, and human memory. No single artefact represents the total.
+Those capabilities currently accumulate across JSON files, OAuth scopes, shell scripts, prompts, containers, machines, and human memory. No single artifact represents the total.
 
 Ambit's longer-term thesis is: **make effective agency a governed object.**
 
@@ -90,22 +88,6 @@ The design norm:
 
 > **No increase in effective capability without a corresponding increase in legibility, verification, and governability.**
 
-## Why the unit might be the system
-
-I do not think AGI necessarily arrives as one monolithic model crossing a threshold.
-
-It may arrive compositionally: models plus tools plus persistence plus credentials plus infrastructure plus humans, forming systems whose aggregate ability to act becomes the historically relevant thing.
-
-If that is roughly right, the unit we need to understand is no longer just the model. It is the agentic system, and model benchmarks describe only one input into the transition. The other dimension is the infrastructure through which intelligence becomes consequential.
-
-A mature version of this should be able to say: *this model did not change, but the system around it acquired twelve new reachable capabilities this month.* At some point descriptions like that stop looking like a chatbot's tool configuration and start looking like the operational anatomy of a persistent actor.
-
 Ambit does not measure how intelligent the AI is. It tries to measure what intelligence has acquired the means to do.
 
-The same argument extends past software — robots add physical actuation, and brain-computer interfaces erode the boundary between human and machine capability entirely. Those cases are where the abstraction is tested rather than merely asserted, and they are worked through in [the affordance frontier](./affordance-frontier.md).
-
----
-
-The argument above runs ahead of the software, deliberately. The [README](../README.md) describes only what runs; [the deep dive](./deep-dive.md) is the reference for it; [the roadmap](./roadmap.md) says, section by section, what is built and what remains.
-
-Repo: [`zz-plant/ambit`](https://github.com/zz-plant/ambit)
+The abstraction is tested where it stops being software: robots add physical actuation, and brain-computer interfaces erode the boundary between human and machine capability. [The affordance frontier](./affordance-frontier.md) works those cases through, and takes the argument to its end.

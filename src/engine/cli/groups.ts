@@ -1,16 +1,11 @@
 /**
  * The five nouns the commands group under, and the verbs each one owns.
- */
-
-/**
- * The five nouns the commands group under, and the verbs each one owns.
  *
- * There are thirty-five commands. They used to sit in one flat list, which
- * meant `help --all` was the only way to find anything and the list itself
- * taught nothing about how the parts relate. Grouping is presentation, not a
- * rename: every flat name still dispatches, so nothing anyone has typed or
- * scripted stops working — `ambit impact x` and `ambit graph impact x` are the
- * same command.
+ * The verbs below used to sit in one flat list, which meant `help --all` was
+ * the only way to find anything and the list itself taught nothing about how
+ * the parts relate. Grouping is presentation, not a rename: every flat name
+ * still dispatches, so nothing anyone has typed or scripted stops working, and
+ * `ambit impact x` and `ambit graph impact x` are the same command.
  */
 const GROUPS: Record<string, string[]> = {
   graph: ['impact', 'where', 'share', 'catalog', 'skills', 'sync', 'objects'],

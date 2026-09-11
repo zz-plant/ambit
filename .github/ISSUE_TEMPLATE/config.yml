@@ -1,11 +1,14 @@
 blank_issues_enabled: false
 contact_links:
-  - name: FAQ and support
-    url: https://github.com/zz-plant/ambit/blob/main/docs/faq.md
-    about: What needs installing, what leaves the machine, why the attention commands are empty on day one.
+  - name: Where to ask, and what to include
+    url: https://github.com/zz-plant/ambit/blob/main/SUPPORT.md
+    about: Which of these to open, what to attach, and how to redact it first.
   - name: Security Advisories
     url: https://github.com/zz-plant/ambit/security/advisories/new
     about: Please report security vulnerabilities privately here.
   - name: Interactive Demo
     url: https://zz-plant.github.io/ambit/?demo=1
     about: Try the zero-install web visualizer demo before filing an issue.
+  - name: Code of Conduct
+    url: https://github.com/zz-plant/ambit/blob/main/CODE_OF_CONDUCT.md
+    about: What is expected here. Report harassment through the private advisory form, never a public issue.

@@ -4,16 +4,19 @@
  *
  * The prose here is largely machine-written, and a machine writing English
  * leans on the same few moves. Measured across every comment and document that
- * ships: the em dash at 10.6 per thousand words against roughly 1-3 in edited
- * prose, and "rather than" at 3.8 against roughly 0.3.
+ * ships, the em dash runs several times the 1 to 3 per thousand words of edited
+ * prose, and "rather than" an order of magnitude above the 0.3 it runs there.
  *
  * The two are not the same problem. Auditing the dashes found that almost all
  * of them sit in sentences already carrying two or more commas, where the dash
- * outranks the commas and is doing real work; of 805, ten could be swapped for
+ * outranks the commas and is doing real work; ten could have been swapped for
  * a comma without loss. Purging the rest would flatten the hierarchy and read
- * worse. "rather than" has no such defence: it is one phrase repeated where
+ * worse. "rather than" has no such defense: it is one phrase repeated where
  * "instead of", "not", "never", or a rewritten clause would each serve, and the
  * repetition is what a reader hears.
+ *
+ * The numbers here are deliberately not written down. They moved once already
+ * and the copies went stale; `npm run prose:check` prints the current pair.
  *
  * So this is a ceiling on drift, not a rule about a sentence. One comment that
  * wants three dashes is free to have them. Both numbers are higher than they
@@ -29,7 +32,7 @@ const ROOT = join(import.meta.dirname ?? __dirname, '..');
  * Per thousand words, over the whole corpus. Set just above where the prose
  * stands, so the next drift up fails and every improvement can lower them.
  */
-const CEILING = { dash: 10.8, ratherThan: 3.9 };
+const CEILING = { dash: 9.6, ratherThan: 3.2 };
 
 /** A changelog is a record of what was said at the time, so it is not edited. */
 const NOT_PROSE = /^CHANGELOG\.md$|^docs\/incidents\//;
