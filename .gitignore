@@ -12,6 +12,10 @@ dist-cli/
 # Secrets
 .env
 
+# `ambit share` writes its snapshot here by default (--out= overrides). Running
+# it inside a checkout is normal; committing the result is not.
+ambit-map.html
+
 # Build and test output
 output/
 coverage/

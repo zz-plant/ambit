@@ -40,6 +40,6 @@ jobs:
           pr_message: |
             Thanks for your first pull request.
 
-            CI runs `npm run lint && npm run typecheck && npm test && npm run build`, then bootstraps on a machine with no agent config; running the first line locally is faster than a round trip. If the change touches `src/server/api.ts`, the checklist in the PR template names the three invariants it must keep: loopback only, non-local origins rejected before routing, no entry creation over HTTP.
+            CI runs the checks listed under [The checks CI runs](https://github.com/zz-plant/ambit/blob/main/CONTRIBUTING.md#the-checks-ci-runs), then bootstraps on a machine with no agent config; running them locally first is faster than a round trip. The PR template's checklist is conditional, so most changes tick nothing: it asks only when the change touches the API server, where the graph is stored, the curated tree, or the runtime readers.
 
             Ambit is a personal project, so review may take a few days.

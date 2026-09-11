@@ -1,5 +1,5 @@
 /**
- * Command grouping. The five nouns are presentation over the same thirty-five
+ * Command grouping. The five nouns are presentation over the same flat
  * verbs, so the test that matters is that both spellings dispatch identically
  * and that nothing anyone has already typed stops working.
  */
