@@ -162,8 +162,12 @@ export function CapabilityListPanel() {
             })}
             {filtered.length === 0 && (
               <div className="tp-empty">
-                <div>Nothing matches that search</div>
-                {searchQuery && (
+                <div>
+                  {searchQuery
+                    ? 'No capabilities match your search'
+                    : 'No capabilities match this filter'}
+                </div>
+                {(searchQuery || typeFilter !== 'all') && (
                   <button
                     type="button"
                     className="tp-btn-sm"
@@ -173,7 +177,7 @@ export function CapabilityListPanel() {
                       setTypeFilter('all');
                     }}
                   >
-                    Reset Filters
+                    Reset filters
                   </button>
                 )}
               </div>

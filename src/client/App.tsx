@@ -4,7 +4,7 @@ import { isNext } from './components/civ/layout';
 import ApprovalModal from './components/ApprovalModal';
 import CapabilityListPanel from './components/CapabilityListPanel';
 import LoopDashboard from './components/LoopDashboard';
-import DocsModal from './components/DocsModal';
+import DocsModal, { type DocsTab } from './components/DocsModal';
 import GettingStartedGuide from './components/GettingStartedGuide';
 import NodeDetailPanel from './components/NodeDetailPanel';
 import Toast from './components/Toast';
@@ -70,6 +70,12 @@ export default function App() {
   const [source, setSource] = useState(link.source);
   const [view, setView] = useState(link.view);
   const [showDocs, setShowDocs] = useState(link.docsOpen);
+  const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
+
+  const openDocs = (tab?: DocsTab) => {
+    setDocsTab(tab);
+    setShowDocs(true);
+  };
 
   useUrlSync({
     source,
@@ -231,9 +237,16 @@ export default function App() {
             seedDemo();
             setView('loop');
           }}
-          onShowDocs={() => setShowDocs(true)}
+          onShowDocs={tab => openDocs(tab)}
         />
-        <DocsModal isOpen={showDocs} onClose={() => setShowDocs(false)} />
+        <DocsModal
+          isOpen={showDocs}
+          initialTab={docsTab}
+          onClose={() => {
+            setShowDocs(false);
+            setDocsTab(undefined);
+          }}
+        />
       </div>
     );
   }
@@ -255,7 +268,7 @@ export default function App() {
         onShowSetup={showSetup}
         onShowLoop={showLoop}
         onShowProposals={showProposals}
-        onShowDocs={() => setShowDocs(true)}
+        onShowDocs={() => openDocs()}
       />
 
       <div className="app-scene">
@@ -289,7 +302,7 @@ export default function App() {
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
             onDismiss={dismissGuide}
             onReadMore={() => {
-              setShowDocs(true);
+              openDocs('reading');
               dismissGuide();
             }}
           />
@@ -317,7 +330,14 @@ export default function App() {
       )}
 
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
-      <DocsModal isOpen={showDocs} onClose={() => setShowDocs(false)} />
+      <DocsModal
+        isOpen={showDocs}
+        initialTab={docsTab}
+        onClose={() => {
+          setShowDocs(false);
+          setDocsTab(undefined);
+        }}
+      />
 
       {toast && (
         <Toast

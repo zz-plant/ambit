@@ -56,7 +56,7 @@ export function NodeDetailPanel() {
         : lifecycle === 'verified'
           ? {
               color: 'var(--ok)',
-              text: `✓ Check passed${checkedAgo ? ` ${checkedAgo}` : ''}`,
+              text: `✓ Check passed${checkedAgo ? ` · last run ${checkedAgo}` : ''}`,
             }
           : lifecycle === 'degraded' || lifecycle === 'broken'
             ? {
@@ -136,21 +136,7 @@ export function NodeDetailPanel() {
       </div>
 
       {isKeystone && (
-        <div
-          style={{
-            padding: '8px 12px',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            background: 'rgba(245, 158, 11, 0.08)',
-            borderRadius: 'var(--radius)',
-            marginTop: '4px',
-            marginBottom: '8px',
-            fontSize: '11.5px',
-            color: 'var(--warn)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
+        <div className="sp-keystone-banner">
           <span aria-hidden="true">★</span>
           <span>
             <strong>
@@ -164,18 +150,7 @@ export function NodeDetailPanel() {
       )}
 
       {evidence && (
-        <div
-          style={{
-            padding: '8px 10px',
-            border: '1px solid var(--border)',
-            background: 'var(--bg-elevated)',
-            borderRadius: 'var(--radius)',
-            marginTop: '4px',
-            marginBottom: '8px',
-            fontSize: '11.5px',
-            color: evidence.color,
-          }}
-        >
+        <div className="sp-evidence-banner" style={{ color: evidence.color }}>
           {evidence.text}
         </div>
       )}
@@ -225,31 +200,15 @@ export function NodeDetailPanel() {
         const isSimulated = simulatedNodeId === item.id;
 
         return (
-          <div style={{ margin: '8px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div className="sp-sim-group">
             {isSimulated ? (
-              <button
-                type="button"
-                className="sp-action-btn"
-                style={{
-                  width: '100%',
-                  background: 'var(--accent)',
-                  color: 'var(--on-accent)',
-                  fontWeight: 600,
-                }}
-                onClick={clearSim}
-              >
+              <button type="button" className="sp-action-btn sp-action-btn--sim" onClick={clearSim}>
                 Exit simulation
               </button>
             ) : item.status === 'built' ? (
               <button
                 type="button"
-                className="sp-action-btn"
-                style={{
-                  width: '100%',
-                  border: '1px solid var(--error)',
-                  color: 'var(--error)',
-                  fontSize: '11.5px',
-                }}
+                className="sp-action-btn sp-action-btn--outage"
                 onClick={() => startOutage(item.id)}
               >
                 Simulate an outage
@@ -257,13 +216,7 @@ export function NodeDetailPanel() {
             ) : (
               <button
                 type="button"
-                className="sp-action-btn"
-                style={{
-                  width: '100%',
-                  border: '1px solid var(--ok)',
-                  color: 'var(--ok)',
-                  fontSize: '11.5px',
-                }}
+                className="sp-action-btn sp-action-btn--unlock"
                 onClick={() => startAcquisition(item.id)}
               >
                 Simulate unlocking this
@@ -295,39 +248,35 @@ export function NodeDetailPanel() {
 
       {/* The same questions from the terminal, one click to copy. */}
       <div className="sp-cli-actions">
-        <div
-          className="sp-section-label"
-          style={{ display: 'flex', justifyContent: 'space-between' }}
-        >
-          <span>Commands</span>
-          {copiedCmd && <span style={{ color: 'var(--ok)', textTransform: 'none' }}>Copied</span>}
-        </div>
+        <div className="sp-section-label">Commands</div>
         <div className="sp-cli-row">
           <code className="sp-cli-cmd">ambit impact {item.id}</code>
           <button
             type="button"
-            className="sp-cli-copy-btn"
+            className={`sp-cli-copy-btn ${copiedCmd === 'impact' ? 'sp-cli-copy-btn--copied' : ''}`}
             onClick={() => {
               navigator.clipboard?.writeText(`ambit impact ${item.id}`);
               setCopiedCmd('impact');
               setTimeout(() => setCopiedCmd(null), 2000);
             }}
+            aria-label={`Copy command ambit impact ${item.id}`}
           >
-            Copy
+            {copiedCmd === 'impact' ? 'Copied ✓' : 'Copy'}
           </button>
         </div>
         <div className="sp-cli-row">
           <code className="sp-cli-cmd">ambit verify {item.id}</code>
           <button
             type="button"
-            className="sp-cli-copy-btn"
+            className={`sp-cli-copy-btn ${copiedCmd === 'verify' ? 'sp-cli-copy-btn--copied' : ''}`}
             onClick={() => {
               navigator.clipboard?.writeText(`ambit verify ${item.id}`);
               setCopiedCmd('verify');
               setTimeout(() => setCopiedCmd(null), 2000);
             }}
+            aria-label={`Copy command ambit verify ${item.id}`}
           >
-            Copy
+            {copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}
           </button>
         </div>
       </div>

@@ -68,7 +68,9 @@ export function Term({ name, children }: TermProps) {
         <span className="term-pop" role="tooltip" id={id}>
           <span className="term-pop-title">{concept.term}</span>
           <span className="term-pop-short">{concept.short}.</span>
-          <span className="term-pop-seen">Where you see it: {concept.seen}</span>
+          <span className="term-pop-seen">
+            <span className="term-pop-seen-label">Where you see it:</span> {concept.seen}
+          </span>
         </span>
       )}
     </span>

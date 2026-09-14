@@ -3,12 +3,15 @@ import concepts from '../../shared/concepts.json';
 import { typeLabel } from '../utils/labels';
 import { typeColor } from '../utils/typeColors';
 
+export type DocsTab = 'concepts' | 'reading' | 'doing' | 'hotkeys';
+
 interface DocsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: DocsTab;
 }
 
-type Tab = 'concepts' | 'reading' | 'doing' | 'hotkeys';
+type Tab = DocsTab;
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'concepts', label: 'Concepts' },
@@ -63,8 +66,12 @@ const ACTIONS = [
   { cmd: 'ambit approve / apply', answers: 'Human-gated execution with signed approval receipts' },
 ];
 
-export default function DocsModal({ isOpen, onClose }: DocsModalProps) {
-  const [tab, setTab] = useState<Tab>('concepts');
+export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProps) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'concepts');
+
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
   // Escape closes it. Dismissal used to be a click on the backdrop and nothing
   // else, which is unreachable without a pointer.
   useEffect(() => {

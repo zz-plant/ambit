@@ -113,7 +113,9 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
           <div className="gov-empty">
             {proposals.length === 0
               ? 'Nothing waiting. When an agent needs a change to your setup, it appears here for you to approve.'
-              : 'No proposals match that filter.'}
+              : query
+                ? `No proposals match "${query}".`
+                : 'No proposals match that filter.'}
           </div>
         ) : (
           <div className="gov-list">

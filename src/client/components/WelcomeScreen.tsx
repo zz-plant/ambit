@@ -9,7 +9,7 @@ import { EraStrip, HoursSparkline, NUM } from './figures';
 interface WelcomeProps {
   onExploreDemo: () => void;
   onViewLoop: () => void;
-  onShowDocs: () => void;
+  onShowDocs: (tab?: 'concepts' | 'reading' | 'doing' | 'hotkeys') => void;
 }
 
 /** What a dropped file may be, and how big one of those ever is. */
@@ -100,10 +100,20 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
           <button type="button" className="app-welcome-btn" onClick={onExploreDemo}>
             Open the demo
           </button>
-          <button type="button" className="app-welcome-link" onClick={onViewLoop}>
-            Where the time goes
+          <button
+            type="button"
+            className="app-welcome-link"
+            onClick={onViewLoop}
+            title="Time & cost: where human attention goes, and what would pay back fastest"
+          >
+            Time &amp; cost
           </button>
-          <button type="button" className="app-welcome-link" onClick={onShowDocs}>
+          <button
+            type="button"
+            className="app-welcome-link"
+            onClick={() => onShowDocs('reading')}
+            title="How to read the map: eras, circles, and prerequisites"
+          >
             How to read the map
           </button>
           <a
