@@ -15,6 +15,7 @@ import { useAmbitStore } from '../store/ambitStore';
 import { demoProposals } from '../store/demo';
 import AppDeck from './AppDeck';
 import ApprovalModal from './ApprovalModal';
+import { RepoDriftPanel } from './EnvironmentPanels';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 
@@ -122,11 +123,24 @@ test('a ledger with nothing in it still says what the graph proves', () => {
 });
 
 test('the fragilities the payload already carried reach the page', () => {
-  // degraded, spofs and deficits arrived on every /api/loop response and were
-  // read by nothing, so a machine one revoked token from losing a capability
-  // was told only how many checks had passed.
+  // degraded and spofs arrived on every /api/loop response and were read by
+  // nothing, so a machine one revoked token from losing a capability was told
+  // only how many checks had passed. Deficits moved: they are demand, and
+  // head the queue of what to reach.
   seed({
-    loop: { ...demoSnapshot(), status: GRAPH_STATUS },
+    loop: {
+      ...demoSnapshot(),
+      status: GRAPH_STATUS,
+      demand: [
+        {
+          id: 'combo:browser',
+          name: 'a browser worker',
+          times: 3,
+          structural: true,
+          failing: false,
+        },
+      ],
+    },
     loopSource: 'ledger',
     loopEmpty: false,
   });
@@ -135,7 +149,9 @@ test('the fragilities the payload already carried reach the page', () => {
   expect(html).toContain('What could break');
   expect(html).toContain('postgres');
   expect(html).toContain('anthropic');
+  expect(html).toContain('Asked for and never there');
   expect(html).toContain('a browser worker');
+  expect(html).toContain('stopped work 3×');
 });
 
 test('nothing fragile draws no finding', () => {
@@ -327,4 +343,80 @@ test('an outage tells what stops from what only loses a provider', () => {
   expect(html).toContain(
     'Nothing else would stop working without it, but 1 capability would lose a provider'
   );
+});
+
+test('a proposal can be turned down from the panel, with the reason the next draft learns from', () => {
+  // Refusal was recordable from the terminal and not from the panel that asks
+  // for the decision, so a no made in the browser vanished.
+  seed({ proposals: demoProposals() });
+  const html = renderToStaticMarkup(<ApprovalModal isOpen onClose={() => {}} />);
+  expect(html).toContain('Turn down');
+  expect(html).toContain('Approve and sign');
+});
+
+test('the ways to acquire a capability are compared, with the record\u2019s leaning marked', () => {
+  seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
+  const html = renderToStaticMarkup(<LoopDashboard />);
+  expect(html).toContain('Ways to acquire it');
+  expect(html).toContain('your record favours this');
+  // Cheapest first, so the first option drawn is the cheaper of the two.
+  expect(html.indexOf('$4,560/yr')).toBeLessThan(html.indexOf('$5,880/yr'));
+});
+
+test('the panel lists what a capability may do, per action', () => {
+  const shell: Item = {
+    id: 'combo:shell',
+    name: 'Shell Execution',
+    type: 'possibility',
+    status: 'built',
+    description: '',
+    position: { x: 0, y: 0, z: 0 },
+    meta: {
+      era: 1,
+      state: 'unlocked',
+      next: false,
+      authority: { execute: 'confirm' },
+      actions: [
+        { id: 'act:shell/read_output', name: 'read_output', mode: 'autonomous' },
+        { id: 'act:shell/run_command', name: 'run_command', mode: 'confirm' },
+      ],
+      daysSinceChange: 41,
+    },
+  };
+  seed({ items: [shell], selectedItem: shell.id, showDetailPanel: true });
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+  expect(html).toContain('Asks before acting');
+  expect(html).toContain('read output');
+  expect(html).toContain('without asking');
+  expect(html).toContain('Config unchanged');
+  expect(html).toContain('41 days');
+});
+
+test('a repository missing a server the global config has is handed the entry', () => {
+  // The endpoint that composes a paste-ready entry existed for exactly this
+  // and nothing on screen reached it. A name the global config does not know
+  // stays a name: there is no entry to hand over.
+  seed({ configMcp: { git: { type: 'local', command: ['git-mcp'] } } });
+  const html = renderToStaticMarkup(
+    <RepoDriftPanel
+      scan={{
+        globalStats: { mcps: 1, agents: 0, commands: 0, providers: 0, totalRepos: 1 },
+        repos: [
+          {
+            name: 'acme/site',
+            drift: 50,
+            driftItems: 2,
+            uniqueMcps: [],
+            missingMcps: ['git', 'nonesuch'],
+            uniqueAgents: [],
+            uniqueCommands: [],
+            defaultAgent: null,
+          },
+        ],
+      }}
+    />
+  );
+  expect(html).toContain('copy entry');
+  expect(html.match(/tp-inline-btn/g)?.length).toBe(1);
+  expect(html).toContain('nonesuch');
 });

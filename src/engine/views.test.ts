@@ -245,3 +245,59 @@ test('a proposal row carries what deciding on it needs', () => {
     confidence: 'high',
   });
 });
+
+test('a node lists the actions it confers, each with its own mode', () => {
+  // Authority is per action. The panel said "asks before acting" for the
+  // capability, which is the narrowest of these; what the agent may actually
+  // do is read the output without asking and run a command with.
+  const db = makeGraph({
+    capabilities: [
+      {
+        id: 'combo:shell',
+        name: 'Shell',
+        category: 'combo',
+        kind: 'capability',
+        state: 'unlocked',
+        updatedAt: '2026-08-01 00:00:00',
+      },
+      { id: 'act:shell/run', name: 'run', category: 'action', kind: 'action', state: 'unlocked' },
+      { id: 'act:shell/read', name: 'read', category: 'action', kind: 'action', state: 'unlocked' },
+    ],
+    dependencies: [
+      { from: 'combo:shell', to: 'act:shell/run', kind: 'provides', hard: true },
+      { from: 'combo:shell', to: 'act:shell/read', kind: 'provides', hard: true },
+    ],
+    authority: [{ capability: 'act:shell/run', action: 'execute', mode: 'confirm' }],
+  });
+  const shell = techTreeView(db).items.find(i => i.id === 'combo:shell')!;
+  db.close();
+  expect(shell.meta.actions).toEqual([
+    { id: 'act:shell/read', name: 'read', mode: 'autonomous' },
+    { id: 'act:shell/run', name: 'run', mode: 'confirm' },
+  ]);
+  // Days since the row last changed: what has stopped being tended.
+  expect(shell.meta.daysSinceChange).toBeGreaterThan(30);
+});
+
+test('what work asked for and never had heads the loop payload', () => {
+  const db = makeGraph({
+    capabilities: [
+      {
+        id: 'combo:vector',
+        name: 'Vector Store',
+        category: 'combo',
+        kind: 'capability',
+        state: 'locked',
+      },
+    ],
+  });
+  const learn = db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score) VALUES ('t', ?, ?, 0)"
+  );
+  for (let i = 0; i < 4; i++) learn.run('combo:vector', 'blocked:tool');
+  const loop = loopView(db);
+  db.close();
+  expect(loop.demand).toEqual([
+    { id: 'combo:vector', name: 'Vector Store', times: 4, structural: true, failing: false },
+  ]);
+});

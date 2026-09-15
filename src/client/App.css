@@ -3580,3 +3580,209 @@ code, pre, .code, .sp-cli-cmd {
     gap: 4px;
   }
 }
+
+/* ─── THE OTHER HALF OF A DECISION ─── */
+.gov-card--rejected::before {
+  background: var(--text-muted);
+}
+
+.gov-status--rejected {
+  color: var(--text-muted);
+  border-color: var(--border-bright);
+}
+
+.gov-decline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gov-decline-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.gov-decline-input {
+  height: 30px;
+}
+
+.gov-error {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--error);
+}
+
+.gov-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ─── WHAT A NODE MAY DO, PER ACTION ─── */
+.sp-actions {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-action {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.sp-action-name {
+  color: var(--text-secondary);
+}
+
+.sp-action-mode {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sp-action--autonomous .sp-action-mode {
+  color: var(--ok);
+}
+
+.sp-action--forbidden .sp-action-mode {
+  color: var(--error);
+}
+
+/* ─── ASKED FOR AND NEVER THERE ─── */
+.fig-demand {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fig-demand-item {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 1.6fr) auto;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.fig-demand-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fig-demand-why {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ─── WAYS TO ACQUIRE IT, COMPARED ─── */
+.fig-options {
+  list-style: none;
+  margin: 5px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.fig-option {
+  display: grid;
+  grid-template-columns: 64px 70px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.fig-option-cost {
+  text-align: right;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.fig-option-track {
+  height: 6px;
+  display: flex;
+  align-items: center;
+}
+
+.fig-option-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fig-context);
+}
+
+.fig-option.is-favoured .fig-option-bar {
+  background: var(--fig-data);
+}
+
+.fig-option-what {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fig-tag--local {
+  color: var(--fig-data);
+  border-color: var(--fig-data);
+}
+
+.fig-option-favoured {
+  margin-left: 7px;
+  color: var(--fig-data);
+  font-weight: 500;
+}
+
+/* ─── A MISSING SERVER, WITH ITS ENTRY READY ─── */
+.tp-inline-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.tp-inline-btn:hover {
+  color: var(--text-primary);
+}
+
+.tp-inline-hint {
+  font-size: 10px;
+  color: var(--accent);
+}
+
+/* ─── THE BRIEFING, READ BY THE PERSON ─── */
+.setup-briefing-text {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 860px) {
+  .fig-demand-item {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

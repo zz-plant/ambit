@@ -25,7 +25,8 @@ import {
   interventionHeatmap,
   loopView,
 } from '../engine/views.ts';
-import { approveProposal } from '../engine/governance.ts';
+import { approveProposal, ensureActor, rejectProposal } from '../engine/governance.ts';
+import { briefingText, TOKEN_BUDGET } from '../engine/briefing.ts';
 import {
   beginRun,
   endRun,
@@ -55,6 +56,7 @@ import type {
   ApiError,
   ApproveResponse,
   AttentionResponse,
+  BriefingResponse,
   LoopResponse,
   ConfigApplyRequest,
   ConfigApplyResponse,
@@ -62,8 +64,19 @@ import type {
   HealthResponse,
   McpSnippetResponse,
   ProposalsResponse,
+  RejectRequest,
+  RejectResponse,
   TechTreeResponse,
 } from '../shared/api.ts';
+
+/**
+ * Who a browser decision is recorded as. The client's copy.ts carries the same
+ * id; the panel shows it as "you".
+ */
+const WEB_ACTOR = 'human:web';
+const WEB_ACTOR_NAME = 'you, at the browser';
+const WEB_ACTOR_ROLE =
+  'The person at this machine, deciding from the web view over the loopback API';
 
 const API_PORT = Number(process.env.AMBIT_API_PORT || 3001);
 const GRAPH_DB_PATH = resolveDbPath();
@@ -415,11 +428,19 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // anything an agent could spend without the executor's checks. Approving more
   // capability and granting more authority stay separate acts, and `apply`
   // (CLI-only) is the only thing that can spend the artifact.
+  //
+  // The web actor is declared on the way in. The engine refuses a decision
+  // from a person the graph does not know, and the browser's person is the
+  // one at this machine's loopback port, whom no config had declared, so the
+  // one-click approval failed on every machine that had not typed them in.
   const approve = pathname.match(/^\/api\/proposals\/([^/]+)\/approve$/);
   if (approve && method === 'POST') {
     const body = await readJsonBody(req).catch(() => ({}));
-    const actor = typeof body?.actor === 'string' && body.actor ? body.actor : 'human:web';
-    const result = withGraph(db => approveProposal(db, approve[1], actor)) as any;
+    const actor = typeof body?.actor === 'string' && body.actor ? body.actor : WEB_ACTOR;
+    const result = withGraph(db => {
+      if (actor === WEB_ACTOR) ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
+      return approveProposal(db, approve[1], actor);
+    }) as any;
     if (result.error) {
       return json(result, /already approved/.test(result.error) ? 409 : 400);
     }
@@ -428,6 +449,41 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
       proposal: approve[1],
       approved_by: actor,
       artifact: result.artifact,
+    });
+  }
+
+  // The other half of every decision. Refusal was recordable from the
+  // terminal and not from the panel that asks for the decision, so a no made
+  // in the browser vanished, and the record the next draft learns from was
+  // one-sided. The reason is optional and is the most valuable part of the row.
+  const reject = pathname.match(/^\/api\/proposals\/([^/]+)\/reject$/);
+  if (reject && method === 'POST') {
+    const body = (await readJsonBody(req).catch(() => ({}))) as RejectRequest;
+    const actor = typeof body?.actor === 'string' && body.actor ? body.actor : WEB_ACTOR;
+    const reason =
+      typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim() : undefined;
+    const result = withGraph(db => {
+      if (actor === WEB_ACTOR) ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
+      return rejectProposal(db, reject[1], actor, reason);
+    }) as any;
+    if (result.error) return json(result, /already been applied/.test(result.error) ? 409 : 400);
+    broadcast({ type: 'ProposalRejected', proposalId: reject[1], actor });
+    return json<RejectResponse>({ proposal: reject[1], rejected_by: actor, reason });
+  }
+
+  // What an agent is told at connect, shown to the person it describes the
+  // machine to. Reading it applies any authority threshold the evidence now
+  // supports, as the MCP resource and `ambit briefing` do, since asking what
+  // the environment is like is the moment a promotion someone already
+  // authorised should take effect. It does not mark the environment briefed:
+  // the person reading it is not the agent.
+  if (pathname === '/api/briefing' && method === 'GET') {
+    if (!existsSync(GRAPH_DB_PATH)) {
+      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+    }
+    return json<BriefingResponse>({
+      text: withGraph(db => briefingText(db, { mark: false })),
+      budget: TOKEN_BUDGET,
     });
   }
 

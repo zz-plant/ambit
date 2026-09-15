@@ -16,9 +16,11 @@ import {
   type ApiResult,
   type ApiRoutes,
   type ApproveResponse,
+  type BriefingResponse,
   type InfrastructureScanResponse,
   type LoopSnapshot,
   type ProposalRow,
+  type RejectResponse,
   type RepoScanResponse,
 } from '../../shared/api';
 
@@ -169,6 +171,10 @@ interface StoreState {
   repos: RepoScanResponse | null;
   /** The device and service topology, probed from the manifest. */
   infrastructure: InfrastructureScanResponse | null;
+  /** What an agent is told at connect, for the person to read. */
+  briefing: BriefingResponse | null;
+  /** The global config's MCP entries by name, so a repo missing one can be handed the entry. */
+  configMcp: Record<string, Record<string, unknown>>;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
@@ -188,6 +194,10 @@ interface StoreState {
     proposalId: string,
     actor?: string
   ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
+  rejectProposal: (proposalId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>;
+  loadBriefing: () => Promise<void>;
+  /** The paste-ready entry for one MCP server, from the endpoint that composes it. */
+  snippetFor: (name: string) => Promise<string | null>;
   loadAttentionData: () => Promise<void>;
   setItems: (items: Item[], connections: Connection[]) => void;
   selectItem: (id: string | null) => void;
@@ -232,6 +242,8 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   backend: 'unknown',
   repos: null,
   infrastructure: null,
+  briefing: null,
+  configMcp: {},
 
   setItems: (items, connections) => set({ items, connections }),
 
@@ -283,8 +295,11 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       simulatedWeakenedIds: new Set<string>(),
     }),
 
+  // The demo's proposals are the demo's, whether or not an engine is behind
+  // the page: with one, the panel used to fetch this machine's proposals into
+  // a page the reader had asked to be a demo, and decide on them for real.
   loadProposals: async () => {
-    if (!(await backendAvailable())) {
+    if (get().demo || !(await backendAvailable())) {
       set({ proposals: demoProposals() });
       return;
     }
@@ -297,7 +312,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   },
 
   approveProposal: async (proposalId: string, actor = WEB_ACTOR) => {
-    if (!(await backendAvailable())) {
+    if (get().demo || !(await backendAvailable())) {
       // Demo mode approval simulation
       set(state => ({
         proposals: state.proposals.map(p =>
@@ -328,6 +343,65 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: false, error: err?.error || 'Approval failed' };
     } catch (e: any) {
       return { ok: false, error: e?.message || 'Network error' };
+    }
+  },
+
+  /**
+   * The other half of every decision. In the demo the card is marked locally;
+   * live, the engine records who turned it down and why, which is what the
+   * next draft learns from.
+   */
+  rejectProposal: async (proposalId: string, reason?: string) => {
+    if (get().demo || !(await backendAvailable())) {
+      set(state => ({
+        proposals: state.proposals.map(p =>
+          p.id === proposalId ? { ...p, status: 'rejected' as const } : p
+        ),
+      }));
+      return { ok: true };
+    }
+    try {
+      const res = await fetch(`/api/proposals/${proposalId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actor: WEB_ACTOR, reason }),
+      });
+      if (res.ok) {
+        (await res.json()) as RejectResponse;
+        await get().loadProposals();
+        return { ok: true };
+      }
+      const err = (await res.json()) as { error?: string };
+      return { ok: false, error: err?.error || 'Could not record the decision' };
+    } catch (e: any) {
+      return { ok: false, error: e?.message || 'Network error' };
+    }
+  },
+
+  loadBriefing: async () => {
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/briefing');
+      if (data) set({ briefing: data });
+    } catch {
+      /* the tab keeps its empty state */
+    }
+  },
+
+  snippetFor: async (name: string) => {
+    const entry = get().configMcp[name];
+    if (!entry || !(await backendAvailable())) return null;
+    try {
+      const res = await fetch('/api/config/mcp-snippet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, config: entry }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { snippet?: string };
+      return data.snippet ?? null;
+    } catch {
+      return null;
     }
   },
 
@@ -496,6 +570,8 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       const [tree, config] = await Promise.all([getJson('/api/tech-tree'), getJson('/api/config')]);
       const treeGraph = tree ? { items: tree.items, connections: tree.connections } : null;
       const configGraph = config ? importConfig(config.config) : null;
+      const mcp = (config?.config as { mcp?: Record<string, Record<string, unknown>> })?.mcp;
+      set({ configMcp: mcp && typeof mcp === 'object' ? mcp : {} });
       if (!treeGraph && !configGraph) {
         set({ error: 'No graph yet. Run ./bootstrap.sh to seed one.', loading: false });
         return;

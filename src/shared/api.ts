@@ -101,6 +101,15 @@ export interface TreeItemMeta {
   authority?: { execute: AuthorityMode; observe?: AuthorityMode };
   /** What the runtime reported failing here in the last thirty days. */
   failures?: FailureCount[];
+  /**
+   * The concrete actions this capability confers, each with whether it may be
+   * performed without asking. Authority is per action, so "asks before acting"
+   * on the capability is the narrowest of these, and the finer answer is the
+   * one an agent acts on.
+   */
+  actions?: { id: string; name: string; mode: AuthorityMode }[];
+  /** Days since this capability's configuration last changed: what has stopped being tended. */
+  daysSinceChange?: number;
 }
 
 /**
@@ -233,6 +242,26 @@ export interface ApproveResponse {
   artifact?: ApprovalArtifact;
 }
 
+export interface RejectRequest {
+  actor?: string;
+  reason?: string;
+}
+
+export interface RejectResponse {
+  proposal: string;
+  rejected_by: string;
+  reason?: string;
+}
+
+// ── GET /api/briefing ────────────────────────────────────────────────────────
+
+/** What an agent is told at connect, shown to the person it describes the machine to. */
+export interface BriefingResponse {
+  text: string;
+  /** How many tokens the prose is allowed, so the person knows what was trimmed against. */
+  budget: number;
+}
+
 // ── GET /api/attention ───────────────────────────────────────────────────────
 
 export interface InterventionRow {
@@ -274,7 +303,20 @@ export interface LoopOpportunity {
     kind: string;
     total_first_year_dollars?: number;
     privacy: string;
+    /** The one the record of this person's decisions favours, where it leans. */
+    favoured?: boolean;
   }[];
+}
+
+/** A capability work has asked for and never had. */
+export interface LoopDemand {
+  id: string;
+  name: string;
+  times: number;
+  /** The same cause recurs: an acquisition, not an incident. */
+  structural: boolean;
+  /** Configured but failing its check: repair it, do not re-add it. */
+  failing: boolean;
 }
 
 /**
@@ -375,6 +417,8 @@ export interface LoopSnapshot {
   authority: LoopAuthority;
   next: LoopNext[];
   since: LoopSince | null;
+  /** Asked for and never there, worst first. Heads the queue of what to reach. */
+  demand: LoopDemand[];
 }
 
 export interface LoopResponse extends LoopSnapshot {
@@ -426,6 +470,7 @@ export interface ApiRoutes {
   '/api/config/apply': ConfigApplyResponse;
   '/api/config/mcp-snippet': McpSnippetResponse;
   '/api/tech-tree': TechTreeResponse;
+  '/api/briefing': BriefingResponse;
   '/api/proposals': ProposalsResponse;
   '/api/attention': AttentionResponse;
   '/api/loop': LoopResponse;

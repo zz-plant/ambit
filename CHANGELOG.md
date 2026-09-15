@@ -6,6 +6,14 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.4.1...main)
 
+### The decision, both ways, and what an agent may do
+
+The README promised approval in one click, and on every machine that had not declared a `web` actor by hand the click failed: the engine refuses a decision from a person the graph does not know, and nothing had declared the person at the browser. The API declares them on the way in now, once, as the person at this machine's loopback port. Refusal had no route at all, so a no made in the browser vanished and the record the next draft learns from was one-sided; the card has a Turn down button, an optional reason, and a Turned down tab, and the engine records who and why. Steps drafted by the engine, which are shaped `{id, name, chosen}`, printed as their own JSON on the card; they read as a name and what supplies it.
+
+Authority is per action, and the panel said only the capability's own mode. It lists what the capability may do now, each action with whether it asks: read the output without asking, run a command with. What work asked for and never had, which reached the page as a fragility footnote, heads the queue of what to reach, with how many times it stopped work and whether the same cause recurred, since a capability that stopped work four times this week outranks one that would be neat to have. The ways to acquire a capability were a list; they are compared, cheapest first, cost as length on one scale, privacy as a tag, and the one the record of this person's decisions favours is marked, which is the same choice `ambit propose` would draft.
+
+Two smaller things. A repository missing a server the global config has offers the entry ready to paste, composed by the endpoint that exists for exactly that; the entry still crosses into the config by the person's own hand. And the briefing an agent is given at connect, the MCP resource `ambit://briefing`, is a tab in My Setup, so what the agent believes about the machine can be read by the person it believes it about. Reading it applies any authority threshold the evidence now supports, as the resource and `ambit briefing` do, and does not mark the environment briefed. The detail panel says how long a capability's configuration has gone unchanged, once it is two weeks, which is the glossary's decay with its name on it.
+
 ### Every state carries its reason and its next move
 
 An audit of the web app for what a person could decide from it found the screens strong on state and weak on why and so what. Reached, next step, blocked, passing and failing were all drawn; what stood behind each, and what to do about it, mostly lived in the terminal. Most of it was already computed.

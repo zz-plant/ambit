@@ -2,6 +2,7 @@ import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import type {
   LoopAuthority,
+  LoopDemand,
   LoopNext,
   LoopOpportunity,
   LoopSince,
@@ -163,10 +164,11 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
  * list here is good news, and good news that looks like a finding is noise.
  */
 function Fragility({ status }: { status: LoopSnapshot['status'] }) {
+  // Deficits used to be a third row here. They are demand, not fragility, and
+  // head the queue of what to reach instead.
   const rows = [
     { key: 'degraded', names: status.degraded, label: 'configured, not working' },
     { key: 'spofs', names: status.spofs, label: 'one provider away from lost' },
-    { key: 'deficits', names: status.deficits, label: 'asked for, never there' },
   ].filter(r => r.names?.length);
 
   if (!rows.length) return null;
@@ -519,24 +521,62 @@ function AuthorityFigure({
  */
 function NextFigure({
   next,
+  demand = [],
   onShowOnMap,
 }: {
   next: LoopNext[];
+  demand?: LoopDemand[];
   onShowOnMap?: (id: string) => void;
 }) {
   const items = useAmbitStore(s => s.items);
-  if (!next.length) return null;
-  const observed = next[0].basis === 'observed';
+  if (!next.length && !demand.length) return null;
+  const observed = next[0]?.basis === 'observed';
+  // What was asked for and never there heads the queue: a thing that stopped
+  // work four times this week outranks a thing that would be neat to have.
+  const ranked = new Set(next.map(n => n.id));
+  const demanded = demand.filter(d => !ranked.has(d.id));
   return (
     <figure className="fig">
       <figcaption className="fig-caption">
         <span className="fig-caption-title">What to reach next</span>
         <span className="fig-caption-note">
-          {observed
+          {observed || demanded.length
             ? 'ranked by what has blocked work, then by leverage'
             : 'ranked by what each unblocks per hour of setup; nothing has blocked work yet'}
         </span>
       </figcaption>
+      {demanded.length > 0 && (
+        <ul className="fig-demand" aria-label="Asked for and never there">
+          {demanded.map(d => (
+            <li key={d.id} className="fig-demand-item">
+              <span className="fig-demand-name">
+                {d.name}
+                <span className="fig-tag">
+                  {d.failing ? 'failing its check' : d.structural ? 'structural' : 'asked for'}
+                </span>
+              </span>
+              <span className="fig-demand-why" style={NUM}>
+                stopped work {d.times}× ·{' '}
+                {d.failing
+                  ? 'configured and failing: re-verify it, do not re-add it'
+                  : d.structural
+                    ? 'the same cause every time: this is an acquisition'
+                    : 'not yet recurring'}
+              </span>
+              {onShowOnMap && items.some(i => i.id === d.id) && (
+                <button
+                  type="button"
+                  className="fig-row-btn"
+                  onClick={() => onShowOnMap(d.id)}
+                  title={`Show ${d.name} on the map and simulate unlocking it`}
+                >
+                  Map
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       <ol className="fig-next">
         {next.map((n, i) => (
           <li key={n.id} className="fig-next-item">
@@ -608,6 +648,56 @@ function SinceStrip({ since }: { since: LoopSince | null }) {
   );
 }
 
+/**
+ * The ways to acquire one capability, as a comparison rather than a list.
+ *
+ * Cost is drawn as length on one scale across the options, cheapest first,
+ * so the trade is visible before the numbers are read; privacy is a tag,
+ * since it is the other axis a person tends to decide on; and the option the
+ * record of their own decisions favours is marked, which is the same choice
+ * `ambit propose` would draft.
+ */
+function OptionCompare({
+  options,
+}: {
+  options: NonNullable<LoopOpportunity['acquisition_options']>;
+}) {
+  const priced = options.filter(o => o.total_first_year_dollars != null);
+  const max = Math.max(...priced.map(o => o.total_first_year_dollars as number), 1);
+  const sorted = [...options].sort(
+    (a, b) => (a.total_first_year_dollars ?? Infinity) - (b.total_first_year_dollars ?? Infinity)
+  );
+  return (
+    <ul className="fig-options" aria-label="Ways to acquire it">
+      {sorted.map(a => (
+        <li
+          key={`${a.provider}/${a.kind}`}
+          className={`fig-option ${a.favoured ? 'is-favoured' : ''}`}
+        >
+          <span className="fig-option-cost" style={NUM}>
+            {a.total_first_year_dollars != null ? `${money(a.total_first_year_dollars)}/yr` : '—'}
+          </span>
+          <span className="fig-option-track">
+            {a.total_first_year_dollars != null && (
+              <span
+                className="fig-option-bar"
+                style={{ width: `${Math.max((a.total_first_year_dollars / max) * 100, 2)}%` }}
+              />
+            )}
+          </span>
+          <span className="fig-option-what">
+            {a.kind} · {a.provider}
+            <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
+              {a.privacy}
+            </span>
+            {a.favoured && <span className="fig-option-favoured">your record favours this</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function OpportunityRows({
   list,
   onShowOnMap,
@@ -674,22 +764,7 @@ function OpportunityRows({
                 <span className={`fig-conf fig-conf--${o.confidence}`}>
                   {o.confidence} confidence
                 </span>
-                {o.acquisition_options && (
-                  <dl className="fig-row-options">
-                    {o.acquisition_options.map(a => (
-                      <div key={a.provider} className="fig-row-option">
-                        <dt style={NUM}>
-                          {a.total_first_year_dollars != null
-                            ? `${money(a.total_first_year_dollars)}/yr`
-                            : '—'}
-                        </dt>
-                        <dd>
-                          {a.kind} · {a.provider} · {a.privacy}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
+                {o.acquisition_options && <OptionCompare options={o.acquisition_options} />}
               </th>
               <td className="is-num" style={NUM}>
                 {o.burden.interventions_month}×
@@ -779,7 +854,9 @@ function EmptyLedger({
           </div>
         )}
         {loop && <AuthorityFigure authority={loop.authority ?? NO_AUTHORITY} onShow={onShow} />}
-        {loop && <NextFigure next={loop.next ?? []} onShowOnMap={onShowOnMap} />}
+        {loop && (
+          <NextFigure next={loop.next ?? []} demand={loop.demand ?? []} onShowOnMap={onShowOnMap} />
+        )}
 
         <p className="loop-subtitle">Two bridges fill the rest.</p>
         <ol className="loop-empty-steps">
@@ -905,7 +982,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
         <AuthorityFigure authority={authority} onShow={onShow} />
 
-        <NextFigure next={next} onShowOnMap={onShowOnMap} />
+        <NextFigure next={next} demand={loop.demand ?? []} onShowOnMap={onShowOnMap} />
 
         <section>
           <div className="loop-section-head">

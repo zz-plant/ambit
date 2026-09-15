@@ -648,7 +648,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -670,7 +671,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -692,7 +694,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -716,7 +719,8 @@
           "lifecycle": "configured",
           "providers": [
             "mcp:playwright"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -744,7 +748,25 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:browser-automation/navigate",
+              "name": "navigate",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:browser-automation/read_page",
+              "name": "read_page",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:browser-automation/submit_form",
+              "name": "submit_form",
+              "mode": "confirm"
+            }
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -768,7 +790,8 @@
           "lifecycle": "configured",
           "providers": [
             "tool:lsp"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -818,7 +841,8 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "daysSinceChange": 0
         }
       },
       {
@@ -847,7 +871,25 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:data-access/drop_table",
+              "name": "drop_table",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:data-access/query",
+              "name": "query",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:data-access/write_row",
+              "name": "write_row",
+              "mode": "confirm"
+            }
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -942,7 +984,25 @@
           "authority": {
             "execute": "autonomous",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:file-editing/delete_file",
+              "name": "delete_file",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:file-editing/read_file",
+              "name": "read_file",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:file-editing/write_file",
+              "name": "write_file",
+              "mode": "autonomous"
+            }
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -967,7 +1027,8 @@
           "providers": [
             "provider:anthropic",
             "provider:ollama"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1012,7 +1073,8 @@
           "lifecycle": "configured",
           "providers": [
             "provider:ollama"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1082,7 +1144,14 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:notifications/send_notification",
+              "name": "send_notification",
+              "mode": "autonomous"
+            }
+          ]
         }
       },
       {
@@ -1106,7 +1175,8 @@
           "lifecycle": "configured",
           "providers": [
             "mcp:sentry"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1176,7 +1246,8 @@
           "lifecycle": "configured",
           "providers": [
             "mcp:memory"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1226,7 +1297,24 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:retrieval/forget_document",
+              "name": "forget_document",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:retrieval/index_document",
+              "name": "index_document",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:retrieval/search_documents",
+              "name": "search_documents",
+              "mode": "autonomous"
+            }
+          ]
         }
       },
       {
@@ -1275,7 +1363,24 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:scheduled-work/create_job",
+              "name": "create_job",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:scheduled-work/delete_job",
+              "name": "delete_job",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:scheduled-work/list_jobs",
+              "name": "list_jobs",
+              "mode": "autonomous"
+            }
+          ]
         }
       },
       {
@@ -1303,7 +1408,25 @@
           "authority": {
             "execute": "forbidden",
             "observe": "confirm"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:secret-management/list_secret_names",
+              "name": "list_secret_names",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:secret-management/read_secret",
+              "name": "read_secret",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:secret-management/write_secret",
+              "name": "write_secret",
+              "mode": "forbidden"
+            }
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1356,7 +1479,25 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:shell-execution/install_package",
+              "name": "install_package",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:shell-execution/read_output",
+              "name": "read_output",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:shell-execution/run_command",
+              "name": "run_command",
+              "mode": "confirm"
+            }
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1432,7 +1573,8 @@
             "mcp:playwright",
             "mcp:sqlite",
             "mcp:fetch"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1482,7 +1624,30 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:version-control/commit_changes",
+              "name": "commit_changes",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:version-control/merge_to_default",
+              "name": "merge_to_default",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:version-control/push_branch",
+              "name": "push_branch",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:version-control/read_repository",
+              "name": "read_repository",
+              "mode": "autonomous"
+            }
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1511,7 +1676,20 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "actions": [
+            {
+              "id": "act:web-research/fetch_page",
+              "name": "fetch_page",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:web-research/search",
+              "name": "search",
+              "mode": "autonomous"
+            }
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1530,7 +1708,8 @@
           "state": "active",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "daysSinceChange": 0
         }
       },
       {
@@ -1552,7 +1731,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1574,7 +1754,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1596,7 +1777,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1618,7 +1800,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1640,7 +1823,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1662,7 +1846,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1684,7 +1869,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1706,7 +1892,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1728,7 +1915,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1750,7 +1938,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1772,7 +1961,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1794,7 +1984,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1816,7 +2007,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1838,7 +2030,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1860,7 +2053,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1882,7 +2076,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1901,7 +2096,8 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "daysSinceChange": 0
         }
       },
       {
@@ -1920,7 +2116,8 @@
           "state": "active",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "daysSinceChange": 0
         }
       },
       {
@@ -1942,7 +2139,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1964,7 +2162,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       },
       {
@@ -1983,7 +2182,8 @@
           "state": "active",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "daysSinceChange": 0
         }
       },
       {
@@ -2002,7 +2202,8 @@
           "state": "active",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "daysSinceChange": 0
         }
       },
       {
@@ -2024,7 +2225,8 @@
           "lifecycle": "unknown",
           "providers": [
             "runtime:opencode"
-          ]
+          ],
+          "daysSinceChange": 0
         }
       }
     ],
