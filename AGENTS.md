@@ -127,8 +127,10 @@ src/engine/plan/           deficits.ts (what keeps stopping work, and whether it
                            route.ts (the order of the missing steps, and who each inconveniences)
 src/engine/goals.ts        Routing a free-form goal into the graph, and comparing its paths
 src/engine/views.ts        The projections the visualizer reads — the server writes no SQL.
-                           `loopView` composes status, attention, opportunities and ROI into the
-                           one payload /api/loop serves, so the page and the CLI report one ledger
+                           `loopView` composes status, attention, opportunities, ROI, authority,
+                           what to reach next and the week's movement into the one payload
+                           /api/loop serves, so the page and the CLI report one ledger; the tree
+                           carries each node's providers, authority, reliability and failures
 src/engine/share.ts        The allow-listed, self-contained HTML snapshot of the map
 src/engine/cli.ts          Command dispatch; the five groups resolve to flat verbs
 src/engine/cli/            groups.ts (the five nouns) · help.ts · output.ts · reports.ts · seed.ts
@@ -154,35 +156,41 @@ src/control_plane/cli.ts   Control plane CLI execution wrapper
 
 ### Client
 
-One renderer: `CivTree.tsx` (SVG), era columns as filter metadata — the 3D modes and their Three.js bundle were sunset. The client is a view over the graph, and `/api/events` (AG-UI state + work/proposal events) keeps it live.
+One renderer: `CivTree.tsx` (SVG), the curated tree in era columns — the 3D modes and their Three.js bundle were sunset, and so was the second map that drew the machine's entries in domain columns; those are the rows of My Setup. The store holds one list, the engine's tree merged with the config read-out by id, so every view counts and lists the same things. The client is a view over the graph, and `/api/events` (AG-UI state + work/proposal events) keeps it live.
 
 ```
 src/client/                React frontend
   App.tsx                  The shell: which view is showing, and how the hooks and panels fit
-  linkState.ts             The URL in both directions — what it asks for, and how a view is written
-                           back to it. Pure, tested without a window
-  hooks/                   useViewport (narrow screens, the console) · useHotkeys · useGraphStream
-                           (the AG-UI state stream, and whether it is attached) · useUrlSync (the
-                           address bar follows the view) · useGuide · useToast · useLatest
+  linkState.ts             The URL in both directions — which view, node and lens it asks for, and
+                           how a view is written back to it. Pure, tested without a window
+  hooks/                   useViewport (narrow screens) · useHotkeys · useGraphStream (the AG-UI
+                           state stream, and whether it is attached) · useUrlSync (the address bar
+                           follows the view) · useGuide · useToast · useLatest
   components/
-    AppDeck.tsx            The top bar: list toggle, view tabs, live indicator, share, proposals, docs
+    AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
+                           share, proposals, docs
+    Finder.tsx             Search by name; a node opens on the map, an entry in My Setup
+    SetupView.tsx          My Setup: one row per entry, with its evidence and the nodes it provides;
+                           repo drift and infrastructure as its other tabs
     WelcomeScreen.tsx      What an empty graph shows — the pitch, two real figures, and the ways in
     figures.tsx            The sparkline, era strip and reach bar every surface draws the same way
     Term.tsx               A house word with its definition attached — one glossary, two renderings
                            (a popover in HTML, a <title> in the SVG map)
     GettingStartedGuide.tsx  The first-run card
     Toast.tsx              A transient notice from the graph stream
-    CivTree.tsx            ERAS-era SVG tech tree with hover tooltips, prereq highlighting, tree filter, inline legend
-    civ/layout.ts          ERAS column positioning — pure, and tested apart from the renderer
+    CivTree.tsx            The SVG map: era columns, one-hop highlighting of what a node needs and
+                           enables, the two simulations, an inline legend
+    civ/layout.ts          Column and row placement, the two cascade walks, label wrapping — pure,
+                           and tested apart from the renderer
     civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
-    NodeDetailPanel.tsx    Node detail panel
-    CapabilityListPanel.tsx   Capabilities, repo drift and infrastructure — one panel, three tabs
+    NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, needs and enables
     EnvironmentPanels.tsx  What /api/repos/scan and /api/infrastructure/scan return, drawn
     ApprovalModal.tsx      The proposal diff, and the one-click approval receipt
     DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
-    LoopDashboard.tsx      The Time & cost view — the work ledger on shared scales, from /api/loop
-                           on a real machine and from the fixture on the hosted demo
+    LoopDashboard.tsx      The Time & cost view — the work ledger on shared scales, what may act
+                           without asking, what to reach next, and the week's movement, from
+                           /api/loop on a real machine and from the fixture on the hosted demo
   store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
   store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
   vocabulary.test.ts       One name per concept: fails if a surface uses a retired synonym

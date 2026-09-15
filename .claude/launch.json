@@ -21,6 +21,31 @@
         "--strictPort"
       ],
       "port": 4187
+    },
+    {
+      "name": "ambit-web",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "AMBIT_API_PORT=3011",
+        "npx",
+        "vite",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
+    },
+    {
+      "name": "ambit-api",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "AMBIT_API_PORT=3011",
+        "node",
+        "--experimental-sqlite",
+        "--disable-warning=ExperimentalWarning",
+        "src/server/api.ts"
+      ],
+      "port": 3011
     }
   ]
 }

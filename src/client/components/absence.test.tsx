@@ -22,10 +22,10 @@ import { afterEach, beforeAll, expect, test } from 'vitest';
 import type { LoopSnapshot } from '../../shared/api';
 import type { Item } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
-import CapabilityListPanel from './CapabilityListPanel';
 import CivTree from './CivTree';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
+import SetupView from './SetupView';
 
 /** What a value looks like once a renderer has stringified something absent. */
 const PLACEHOLDERS = ['undefined', 'NaN', 'Invalid Date', '[object Object]'];
@@ -75,6 +75,10 @@ const unstatedNode: Item = {
     tags: [],
     region: '',
     owner: null,
+    providers: undefined,
+    reliability: undefined,
+    authority: undefined,
+    failures: undefined,
   },
 };
 
@@ -137,6 +141,17 @@ const unstatedLoop: LoopSnapshot = {
     monthly_hours: [{ month: '2026-08', hours: 0.5 }],
     forecast: null,
   },
+  // The governance half, on a machine that has declared and decided nothing.
+  authority: {
+    autonomous: 0,
+    confirm: 0,
+    forbidden: 0,
+    promotable: [],
+    budgets: [],
+    sandboxes: [],
+  },
+  next: [],
+  since: null,
 };
 
 beforeAll(() => {
@@ -176,10 +191,10 @@ test('the detail panel states nothing about a node that recorded nothing', () =>
   expectNothingUnstated(renderToStaticMarkup(<NodeDetailPanel />), 'NodeDetailPanel');
 });
 
-test('the capability list states nothing about a node that recorded nothing', () => {
+test('my setup states nothing about an entry that recorded nothing', () => {
   seed({ items: [unstatedNode, neighbour], selectedItem: null, searchQuery: '' });
 
-  expectNothingUnstated(renderToStaticMarkup(<CapabilityListPanel />), 'CapabilityListPanel');
+  expectNothingUnstated(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'SetupView');
 });
 
 test('the map states nothing about a node that recorded nothing', () => {
@@ -245,7 +260,7 @@ test('a check whose timestamp cannot be read drops the interval, not prints it',
  * fails here until it is either rendered above or argued out of the list.
  */
 test('every surface that reads a node’s metadata is swept above', () => {
-  const swept = ['CivTree', 'NodeDetailPanel'];
+  const swept = ['CivTree', 'NodeDetailPanel', 'SetupView'];
 
   // `.meta` on anything but `import`, which is Vite's and not a node's.
   const readsMeta = /(?<!import)\.meta\b/;

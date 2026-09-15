@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { currentSearch, readLinkState, type ActiveLens, type TreeFilter } from '../linkState';
+import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
+import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
 import type { Item, Connection } from '../utils/configImporter';
 import { importConfig } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
@@ -29,16 +30,47 @@ import {
  * ./demo.ts so this file reads as the product's state rather than its fixture.
  */
 
-/** Matches the mobile breakpoint in App.css, where the panels become sheets. */
-function isNarrowViewport(): boolean {
-  const w = (globalThis as { matchMedia?: (q: string) => { matches: boolean } }).matchMedia;
-  return typeof w === 'function' && w('(max-width: 768px)').matches;
-}
-
 // The URL is the one parser for view state; see ./linkState.ts. These are
 // re-exported because the store is where components already reach for them.
-export { TREE_FILTERS, LENSES } from '../linkState';
-export type { TreeFilter, ActiveLens } from '../linkState';
+export { LENSES } from '../linkState';
+export type { ActiveLens } from '../linkState';
+
+export interface Graph {
+  items: Item[];
+  connections: Connection[];
+}
+
+/**
+ * One list for both views.
+ *
+ * The engine's tree carries the curated nodes, the machine's own entries, and
+ * the edges between them: which entry proves which node. The config read-out
+ * carries the facts only a config file has: a url, a command, whether an entry
+ * is switched on. They used to be two graphs the store swapped between when
+ * the tab changed, so the header counted one and the list showed the other.
+ * Merged by id, an entry keeps the config's facts and gains the engine's
+ * evidence, and the map and My Setup read one list.
+ */
+export function mergeGraphs(tree: Graph | null, config: Graph | null): Graph {
+  if (!tree) return config ?? { items: [], connections: [] };
+  if (!config) return tree;
+  const fromConfig = new Map(config.items.map(i => [i.id, i]));
+  const items: Item[] = tree.items.map(node => {
+    const entry = fromConfig.get(node.id);
+    if (!entry) return node;
+    return {
+      ...entry,
+      description: entry.description || node.description,
+      meta: { ...entry.meta, ...node.meta },
+    };
+  });
+  const known = new Set(tree.items.map(i => i.id));
+  for (const entry of config.items) if (!known.has(entry.id)) items.push(entry);
+  // The tree's edges carry the meaning; the config's are the runtime's star,
+  // kept only for an entry the engine has not seen.
+  const extra = config.connections.filter(c => !known.has(c.from) || !known.has(c.to));
+  return { items, connections: [...tree.connections, ...extra] };
+}
 
 /** What the address bar asks for, read once at startup. */
 const initialLink = readLinkState(currentSearch());
@@ -98,7 +130,8 @@ import { WEB_ACTOR } from '../utils/copy';
 
 export type { InfrastructureNode, InfrastructureLink, InfrastructureFinding, InfrastructureScan };
 
-export type SimulationMode = 'none' | 'outage' | 'acquisition';
+/** An outage, an unlock, or the gap: what must be reached before a node can be. */
+export type SimulationMode = 'none' | 'outage' | 'acquisition' | 'gap';
 
 /** The approval UI's view of a proposal row, from the shared API contract. */
 export type ProposalItem = ProposalRow;
@@ -110,14 +143,15 @@ interface StoreState {
   hoveredItem: string | null;
   searchQuery: string;
   showDetailPanel: boolean;
-  /** Backwards compatibility alias for showDetailPanel. */
-  showStarPanel: boolean;
   showApprovalModal: boolean;
-  treeFilter: TreeFilter;
   activeLens: ActiveLens;
+  /** A legend key or a header segment, lit on its own: the one way to see a subset of the map. */
+  spotlight: string | null;
   simulationMode: SimulationMode;
   simulatedNodeId: string | null;
   simulatedCascadeIds: Set<string>;
+  /** In an outage, what keeps another provider and only loses one. */
+  simulatedWeakenedIds: Set<string>;
   proposals: ProposalItem[];
   attentionInterventions: Record<string, number>;
   loading: boolean;
@@ -137,12 +171,13 @@ interface StoreState {
   infrastructure: InfrastructureScanResponse | null;
 
   seedDemo: () => void;
-  seedDemoTree: () => void;
   loadFromJSON: (json: string) => boolean;
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
+  setSpotlight: (group: string | null) => void;
   startOutageSimulation: (nodeId: string) => void;
   startAcquisitionSimulation: (nodeId: string) => void;
+  startGapSimulation: (nodeId: string) => void;
   clearSimulation: () => void;
   loadProposals: () => Promise<void>;
   loadLoop: () => Promise<void>;
@@ -159,18 +194,15 @@ interface StoreState {
   hoverItem: (id: string | null) => void;
   setSearch: (q: string) => void;
   toggleDetailPanel: () => void;
-  /** Backwards compatibility alias for toggleDetailPanel. */
-  toggleStarPanel: () => void;
-  setTreeFilter: (f: TreeFilter) => void;
 
   updateItem: (id: string, updates: Partial<Item>) => void;
   deleteItem: (id: string) => void;
   addConnection: (from: string, to: string, type: string) => void;
   removeConnection: (from: string, to: string) => void;
 
-  loadConfig: () => Promise<void>;
+  /** The tree and the config read-out, fetched together and merged. */
+  loadGraph: () => Promise<void>;
   toggleMcpEnabled: (name: string, enabled: boolean) => Promise<boolean>;
-  loadTechTree: () => Promise<boolean>;
 
   reset: () => void;
 }
@@ -182,13 +214,13 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   hoveredItem: null,
   searchQuery: '',
   showDetailPanel: false,
-  showStarPanel: false,
   showApprovalModal: false,
-  treeFilter: initialLink.treeFilter,
   activeLens: initialLink.lens,
+  spotlight: null,
   simulationMode: 'none',
   simulatedNodeId: null,
   simulatedCascadeIds: new Set<string>(),
+  simulatedWeakenedIds: new Set<string>(),
   proposals: [],
   attentionInterventions: {},
   loading: false,
@@ -206,80 +238,49 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   selectItem: id => {
     const s = get();
     const next = s.selectedItem === id ? null : id;
-    set({ selectedItem: next, showDetailPanel: next !== null, showStarPanel: next !== null });
+    set({ selectedItem: next, showDetailPanel: next !== null });
   },
   hoverItem: id => set({ hoveredItem: id }),
   setSearch: q => set({ searchQuery: q }),
-  toggleDetailPanel: () =>
-    set(s => ({ showDetailPanel: !s.showDetailPanel, showStarPanel: !s.showDetailPanel })),
-  toggleStarPanel: () =>
-    set(s => ({ showDetailPanel: !s.showStarPanel, showStarPanel: !s.showStarPanel })),
+  toggleDetailPanel: () => set(s => ({ showDetailPanel: !s.showDetailPanel })),
   setShowApprovalModal: show => set({ showApprovalModal: show }),
   setActiveLens: lens => set({ activeLens: lens }),
+  setSpotlight: group => set({ spotlight: group }),
 
+  // The walks live in civ/layout.ts, where the detail panel reads the same
+  // ones to state their size before any simulation is run.
   startOutageSimulation: (nodeId: string) => {
-    const { connections } = get();
-    const downstream = new Map<string, string[]>();
-    for (const c of connections) {
-      if (!downstream.has(c.from)) downstream.set(c.from, []);
-      downstream.get(c.from)!.push(c.to);
-    }
-    const cascade = new Set<string>();
-    const q = [nodeId];
-    while (q.length) {
-      const curr = q.shift()!;
-      for (const next of downstream.get(curr) || []) {
-        if (!cascade.has(next)) {
-          cascade.add(next);
-          q.push(next);
-        }
-      }
-    }
+    const { stops, weakened } = outageSplit(get().items, get().connections, nodeId);
     set({
       simulationMode: 'outage',
       simulatedNodeId: nodeId,
-      simulatedCascadeIds: cascade,
+      simulatedCascadeIds: stops,
+      simulatedWeakenedIds: weakened,
     });
   },
 
-  startAcquisitionSimulation: (nodeId: string) => {
-    const { items, connections } = get();
-    const hardReqs = new Map<string, string[]>();
-    for (const c of connections) {
-      if (c.type === 'hard-dep') {
-        if (!hardReqs.has(c.to)) hardReqs.set(c.to, []);
-        hardReqs.get(c.to)!.push(c.from);
-      }
-    }
-    const itemState = new Map(items.map(i => [i.id, i.status]));
-    itemState.set(nodeId, 'built'); // simulate acquired
-
-    const unlocked = new Set<string>();
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const [targetId, prereqs] of hardReqs.entries()) {
-        if (itemState.get(targetId) !== 'built' && !unlocked.has(targetId)) {
-          const allMet = prereqs.every(p => itemState.get(p) === 'built' || unlocked.has(p));
-          if (allMet) {
-            unlocked.add(targetId);
-            changed = true;
-          }
-        }
-      }
-    }
+  startAcquisitionSimulation: (nodeId: string) =>
     set({
       simulationMode: 'acquisition',
       simulatedNodeId: nodeId,
-      simulatedCascadeIds: unlocked,
-    });
-  },
+      simulatedCascadeIds: unlockCascade(get().items, get().connections, nodeId),
+      simulatedWeakenedIds: new Set<string>(),
+    }),
+
+  startGapSimulation: (nodeId: string) =>
+    set({
+      simulationMode: 'gap',
+      simulatedNodeId: nodeId,
+      simulatedCascadeIds: gapOf(get().items, get().connections, nodeId).missing,
+      simulatedWeakenedIds: new Set<string>(),
+    }),
 
   clearSimulation: () =>
     set({
       simulationMode: 'none',
       simulatedNodeId: null,
       simulatedCascadeIds: new Set<string>(),
+      simulatedWeakenedIds: new Set<string>(),
     }),
 
   loadProposals: async () => {
@@ -434,25 +435,12 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     return true;
   },
 
-  // Two demo seeds because the two views are different datasets: the tree is
-  // the curated eras the README's hero image shows, the config view is a flat
-  // list of discovered entries. Both mark the store as demo so a later health
-  // probe cannot clobber them.
-  seedDemoTree: () =>
-    set({
-      ...demoTreeGraph(),
-      loading: false,
-      error: null,
-      demo: true,
-      loop: demoSnapshot(),
-      loopSource: 'sample',
-      loopEmpty: false,
-      attentionInterventions: DEMO_ATTENTION,
-    }),
-
+  // One seed: the curated eras the README's hero image shows, and the config
+  // entries that prove them, merged the way a live machine's are. Marked as
+  // demo so a later health probe cannot clobber it.
   seedDemo: () =>
     set({
-      ...demoConfigGraph(),
+      ...mergeGraphs(demoTreeGraph(), demoConfigGraph()),
       loading: false,
       error: null,
       demo: true,
@@ -461,8 +449,6 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       loopEmpty: false,
       attentionInterventions: DEMO_ATTENTION,
     }),
-
-  setTreeFilter: treeFilter => set({ treeFilter }),
 
   updateItem: (id, updates) =>
     set(state => ({
@@ -487,26 +473,35 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       connections: state.connections.filter(c => !(c.from === from && c.to === to)),
     })),
 
-  loadConfig: async () => {
+  /**
+   * The graph, from the engine and the config file together.
+   *
+   * The tree and the config read-out are asked for at once and merged, so
+   * switching views never goes to the network and never swaps the list under
+   * the header. Locked nodes arrive as 'specified', which the renderers draw
+   * as not yet reached.
+   */
+  loadGraph: async () => {
     // No live backend means the published demo: an empty graph and the
     // welcome screen, not an error. "Open the demo" is the entry there.
     if (!(await backendAvailable())) {
-      // The health probe is async: if "Open the demo" was clicked (or ?demo=1 ran)
-      // while this was in flight, don't clobber the seeded graph on resolve.
+      // The health probe is async: if "Open the demo" was clicked (or ?demo=1
+      // ran) while this was in flight, don't clobber the seeded graph.
       if (get().demo) return;
       set({ items: [], connections: [], loading: false, error: null, demo: false });
       return;
     }
     set({ loading: true, error: null, demo: false });
     try {
-      const data = await getJson('/api/config');
-      if (!data) {
-        set({ error: 'Cannot reach the API. Start it with `npm run server`.', loading: false });
+      const [tree, config] = await Promise.all([getJson('/api/tech-tree'), getJson('/api/config')]);
+      const treeGraph = tree ? { items: tree.items, connections: tree.connections } : null;
+      const configGraph = config ? importConfig(config.config) : null;
+      if (!treeGraph && !configGraph) {
+        set({ error: 'No graph yet. Run ./bootstrap.sh to seed one.', loading: false });
         return;
       }
-      const base = importConfig(data.config);
-      set({ items: base.items, connections: base.connections, loading: false });
-      if (!isNarrowViewport()) get().selectItem('mcp:cloudflare');
+      const merged = mergeGraphs(treeGraph, configGraph);
+      set({ items: merged.items, connections: merged.connections, loading: false, error: null });
     } catch (e) {
       set({ error: 'Could not load: ' + (e as Error).message, loading: false });
     }
@@ -523,43 +518,13 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         }),
       });
       if (res.ok) {
-        await get().loadConfig();
+        await get().loadGraph();
         return true;
       }
     } catch (e) {
       console.error(e);
     }
     return false;
-  },
-
-  // Loads the engine's graph — the curated tech tree plus the user's own
-  // capabilities — instead of the config-derived view. Locked nodes arrive as
-  // 'specified', which the renderers already draw as not-yet-built.
-  loadTechTree: async () => {
-    // No engine to serve a tree: render the snapshot that ships with the
-    // bundle. This is the published demo's path, and it used to `return false`
-    // and change nothing at all — so on the page the README sends every
-    // visitor to first, clicking the tab named after the product did nothing,
-    // with no message and no failed request to notice. A view that cannot load
-    // has to say so or show something; silence is the one option that reads as
-    // a broken build.
-    if (!(await backendAvailable())) {
-      get().seedDemoTree();
-      return true;
-    }
-    set({ loading: true, error: null, demo: false });
-    try {
-      const data = await getJson('/api/tech-tree');
-      if (!data) {
-        set({ error: 'No graph yet. Run ./bootstrap.sh to seed one.', loading: false });
-        return false;
-      }
-      set({ items: data.items, connections: data.connections, loading: false, error: null });
-      return true;
-    } catch (e) {
-      set({ error: 'Tech tree unavailable: ' + (e as Error).message, loading: false });
-      return false;
-    }
   },
 
   reset: () =>
@@ -570,7 +535,6 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       hoveredItem: null,
       searchQuery: '',
       showDetailPanel: false,
-      showStarPanel: false,
       loading: false,
       error: null,
       demo: false,

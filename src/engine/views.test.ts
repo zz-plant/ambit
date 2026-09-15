@@ -14,7 +14,13 @@
 import { expect, test } from 'vitest';
 import { NODE_TYPES } from '../shared/api.ts';
 import { makeGraph } from './testing/graph.ts';
-import { graphSummary, interventionHeatmap, recentProposals, techTreeView } from './views.ts';
+import {
+  graphSummary,
+  interventionHeatmap,
+  loopView,
+  recentProposals,
+  techTreeView,
+} from './views.ts';
 
 /** Every `category` the engine writes, across seeding and the curated model. */
 const STORED_CATEGORIES = [
@@ -111,4 +117,131 @@ test('the reading surfaces answer on a graph with nothing in it', () => {
   expect(interventionHeatmap(db)).toEqual([]);
   expect(techTreeView(db).items).toEqual([]);
   db.close();
+});
+
+// ── What the surfaces need to decide, not only to see ────────────────────────
+
+test('a node carries who supplies it, its authority, and how its checks fared', () => {
+  // Every one of these existed in the engine and reached no screen: the map
+  // painted every downstream node red whether or not another provider stood,
+  // the panel said "passed" for one run and for forty, and nothing on the web
+  // said whether a capability may act without asking.
+  const db = makeGraph({
+    capabilities: [
+      { id: 'mcp:git', category: 'mcp', kind: 'provider', state: 'unlocked' },
+      { id: 'mcp:github', category: 'mcp', kind: 'provider', state: 'unlocked' },
+      {
+        id: 'combo:version-control',
+        name: 'Version Control',
+        category: 'combo',
+        kind: 'capability',
+        state: 'unlocked',
+        lifecycle: 'verified',
+      },
+    ],
+    dependencies: [
+      { from: 'mcp:git', to: 'combo:version-control', kind: 'provides', hard: true },
+      { from: 'mcp:github', to: 'combo:version-control', kind: 'provides', hard: true },
+    ],
+    authority: [{ capability: 'combo:version-control', action: 'execute', mode: 'confirm' }],
+  });
+  const learn = db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score) VALUES ('t', ?, ?, ?)"
+  );
+  learn.run('combo:version-control', 'verified', 1);
+  learn.run('combo:version-control', 'verified', 1);
+  learn.run('combo:version-control', 'failed', 0);
+
+  const tree = techTreeView(db);
+  db.close();
+  const vc = tree.items.find(i => i.id === 'combo:version-control')!;
+  expect([...(vc.meta.providers || [])].sort()).toEqual(['mcp:git', 'mcp:github']);
+  expect(vc.meta.authority?.execute).toBe('confirm');
+  expect(vc.meta.reliability).toEqual({ passed: 2, total: 3 });
+  expect(tree.connections.every(c => c.kind === 'provides')).toBe(true);
+});
+
+test("the loop view carries authority, what to reach next, and the week's movement", () => {
+  const db = makeGraph({
+    capabilities: [
+      {
+        id: 'combo:have',
+        name: 'Have',
+        category: 'combo',
+        kind: 'capability',
+        state: 'unlocked',
+        lifecycle: 'verified',
+      },
+      {
+        id: 'combo:next',
+        name: 'Next',
+        category: 'combo',
+        kind: 'capability',
+        state: 'locked',
+        setupSeconds: 600,
+      },
+      { id: 'mcp:git', category: 'mcp', kind: 'provider', state: 'unlocked' },
+    ],
+    dependencies: [
+      { from: 'combo:have', to: 'combo:next', kind: 'requires', hard: true },
+      { from: 'mcp:git', to: 'combo:have', kind: 'provides', hard: true },
+    ],
+    authority: [{ capability: 'combo:have', action: 'execute', mode: 'autonomous' }],
+  });
+  const loop = loopView(db);
+  db.close();
+
+  expect(loop.authority.autonomous).toBe(1);
+  expect(loop.authority.confirm).toBe(0);
+  expect(loop.authority.promotable).toEqual([]);
+  expect(loop.next.map(n => n.id)).toContain('combo:next');
+  expect(loop.next[0].basis).toBe('structural');
+  // No second observation yet, so there is no movement to report, and the
+  // page says nothing rather than drawing an empty week.
+  expect(loop.since).toBeNull();
+});
+
+test('a proposal row carries what deciding on it needs', () => {
+  const db = makeGraph({});
+  db.prepare(
+    "INSERT INTO proposals (id, goal, status, steps, simulated, economic_case) VALUES (?, ?, 'draft', ?, ?, ?)"
+  ).run(
+    'prop-1',
+    'reach x',
+    JSON.stringify([
+      {
+        id: 'combo:x',
+        name: 'X',
+        setup_seconds: 1800,
+        privacy: 'local',
+        recurring_cost: 'none',
+        inverse: { op: 'remove' },
+      },
+    ]),
+    JSON.stringify({
+      acquired: [{ id: 'combo:x', name: 'X' }],
+      unblocked: [{ id: 'combo:y', name: 'Y' }],
+    }),
+    JSON.stringify({
+      observed: { human_hours_month: 2 },
+      predicted: { human_hours_month_after: 0.5, savings_dollars_month: 300 },
+      confidence: 'high',
+    })
+  );
+  const [row] = recentProposals(db);
+  db.close();
+
+  expect(row.decision).toMatchObject({
+    setup_hours: 0.5,
+    reversible: true,
+    requires_person: false,
+    privacy: 'local',
+    unlocks: ['X', 'Y'],
+  });
+  expect(row.decision?.forecast).toMatchObject({
+    hours_month_now: 2,
+    hours_month_after: 0.5,
+    savings_dollars_month: 300,
+    confidence: 'high',
+  });
 });

@@ -219,6 +219,19 @@ test('the tree does not detect itself on a re-seed', () => {
   );
 });
 
+test('the runtime that contributed an entry is not its single point of failure', () => {
+  // Every entry read out of a config has the runtime as its one provider by
+  // construction, so a report that listed them said most of the machine was
+  // one provider from lost. That is a fact about the runtime, which `ambit
+  // impact runtime:opencode` already answers, and noise about everything else.
+  seed({ mcp: { git: { type: 'local' }, github: { type: 'remote' } } }).close();
+
+  const spof = cli('status').spofs;
+  const listed = Array.isArray(spof) ? spof : [];
+  expect(listed.some((s: any) => s.provider_id === 'runtime:opencode')).toBe(false);
+  expect(listed.some((s: any) => s.id === 'mcp:git')).toBe(false);
+});
+
 test('an action a person supplies is still a single point of failure', () => {
   // One provider is definitional for a conferred action and a real finding for
   // a supplied one: only that person can do it.

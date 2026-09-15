@@ -437,7 +437,7 @@ Ambit implements the state and run subset of [AG-UI](https://docs.ag-ui.com), th
 The visual negotiating surface is shipping:
 1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* lights what becomes reachable in green. Neither writes anything.
 2. **Approval in one click.** The Proposals panel shows what an agent drafted, whether every step has an inverse, and signs a receipt; applying stays a command the person runs.
-3. **Three lenses**, switched on the map itself: Standard, Attention (nodes warmed by how often a person had to step in) and Shared credentials. The host-cluster lens was sunset with the 3D views.
+3. **Two lenses**, switched on the map itself: Standard, and Attention (nodes shaded by how often a person had to step in), offered once the ledger has recorded any. The host-cluster lens was sunset with the 3D views. The shared-credentials lens was withdrawn when it turned out to colour nodes by a substring of their id; credentials are the engine's report, `ambit credentials`.
 
 Not implemented: tool calls and reasoning events. Ambit does not execute agent steps — it models the environment those steps would run in — so fabricating a tool-call or reasoning stream would be noise in the protocol's own vocabulary. Calling Ambit "AG-UI compatible" would still overstate it; it implements the state and run subset deliberately.
 

@@ -21,10 +21,9 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const HOTKEYS = [
-  { key: '/', desc: 'Search capabilities in the sidebar' },
-  { key: '\\', desc: 'Toggle capabilities sidebar' },
-  { key: 'J / K', desc: 'Navigate up / down through capabilities' },
-  { key: '1 - 3', desc: 'Switch lens (1: Standard, 2: Attention, 3: Shared credentials)' },
+  { key: '/', desc: 'Find a capability, on the map or in your setup' },
+  { key: 'J / K', desc: 'Step through the nodes on the map' },
+  { key: '1 - 2', desc: 'Switch lens (1: Standard, 2: Attention)' },
   { key: '+ / -', desc: 'Zoom in / out on the map' },
   { key: '0', desc: 'Back to actual size' },
   { key: 'G', desc: 'Open proposals' },
@@ -145,51 +144,60 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 Columns are areas of work. Height is roughly how far up the tree something sits.
               </p>
               <h3 className="docs-h3">The circles</h3>
-              {NODE_TYPES.map(n => (
-                <div key={n.label} className="docs-row">
-                  <span className="docs-swatch" style={{ background: typeColor(n.type) }}>
-                    {n.sym}
-                  </span>
-                  <span>
-                    <strong>{n.label}</strong> — {n.desc}
-                  </span>
-                </div>
-              ))}
+              <div className="docs-list">
+                {NODE_TYPES.map(n => (
+                  <div key={n.label} className="docs-row">
+                    <span className="docs-swatch" style={{ background: typeColor(n.type) }}>
+                      {n.sym}
+                    </span>
+                    <span>
+                      <strong>{n.label}</strong> — {n.desc}
+                    </span>
+                  </div>
+                ))}
+              </div>
 
-              <h3 className="docs-h3">Solid vs outlined</h3>
+              {/* One section for the three states, in the legend's order. It
+                  was two: "Solid vs outlined" and, further down, "The states",
+                  saying the same thing about the same circles. */}
+              <h3 className="docs-h3">Solid, outlined, faded</h3>
               <p className="docs-p">
-                A solid circle is something you have. An outlined one is a capability you have not
-                reached — its description tells you what is missing or what to add.
+                A solid circle is reached. An outlined one is a next step: its prerequisites are
+                met, and its setup cost sits beside it. A faded one is blocked, with a prerequisite
+                missing.
               </p>
 
               <h3 className="docs-h3">The lines</h3>
-              <div className="docs-row">
-                <span className="docs-line-solid" />
-                <span>
-                  <strong>Required</strong> — without it the dependent capability cannot work
-                </span>
-              </div>
-              <div className="docs-row">
-                <span className="docs-line-dashed" />
-                <span>
-                  <strong>Optional</strong> — helps, but does not gate
-                </span>
+              <div className="docs-list">
+                <div className="docs-row">
+                  <span className="docs-line-solid" />
+                  <span>
+                    <strong>Required</strong> — without it the dependent capability cannot work
+                  </span>
+                </div>
+                <div className="docs-row">
+                  <span className="docs-line-dashed" />
+                  <span>
+                    <strong>Optional</strong> — helps, but does not gate
+                  </span>
+                </div>
               </div>
               <p className="docs-p docs-muted">
                 The data model and the CLI call these hard and soft prerequisites.
               </p>
 
-              <h3 className="docs-h3">The states</h3>
+              <h3 className="docs-h3">Which way an edge runs</h3>
               <p className="docs-p">
-                Filled circles are reached capabilities. Outlined circles are not yet reached; the
-                halo marks what you could take next, with its setup cost beside it.
+                Select a node and its edges are drawn apart: what it needs in teal, what it enables
+                in indigo, one hop each way. The simulations follow the edges all the way.
               </p>
 
-              <h3 className="docs-h3">Two sources</h3>
+              <h3 className="docs-h3">The map and My Setup</h3>
               <p className="docs-p">
-                <strong>My Setup</strong> shows what was found in your agent configs as a graph.{' '}
-                <strong>Tech Tree</strong> shows the curated capability tree with your position on
-                it. Same renderer, different question.
+                <strong>The map</strong> is the curated tree with your position on it.{' '}
+                <strong>My Setup</strong> is what was found in your agent configs, one row per
+                entry, each with the nodes on the map it provides. Rows in a column are ordered so a
+                node sits near what it connects to; height on its own means nothing.
               </p>
             </>
           )}
@@ -197,48 +205,62 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
           {tab === 'doing' && (
             <>
               <p className="docs-lede">On this page:</p>
-              <div className="docs-action">
-                <span className="docs-cmd">Click a node</span>
-                <span className="docs-answers">
-                  What depends on it, whether its check passes, and a simulation — an outage for a
-                  node you have, what it would unlock for one you do not
-                </span>
-              </div>
-              <div className="docs-action">
-                <span className="docs-cmd">Click a legend key</span>
-                <span className="docs-answers">
-                  Highlights only that kind — keystones, failing checks, combos. Esc clears it
-                </span>
-              </div>
-              <div className="docs-action">
-                <span className="docs-cmd">Lenses, filter</span>
-                <span className="docs-answers">
-                  Over the map: how it is coloured, and which kinds of node My Setup draws
-                </span>
-              </div>
-              <div className="docs-action">
-                <span className="docs-cmd">Share</span>
-                <span className="docs-answers">
-                  Copies a link to this exact view: graph, selected node, lens and filter
-                </span>
-              </div>
-              <div className="docs-action">
-                <span className="docs-cmd">Live</span>
-                <span className="docs-answers">
-                  Shown when an engine is attached: the map redraws itself when the graph is rebuilt
-                </span>
+              <div className="docs-list">
+                <div className="docs-action">
+                  <span className="docs-cmd">Click a node</span>
+                  <span className="docs-answers">
+                    What depends on it, whether its check passes, and a simulation — an outage for a
+                    node you have, what it would unlock for one you do not
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Click a legend key</span>
+                  <span className="docs-answers">
+                    Highlights only that kind — keystones, failing checks, next steps. The three
+                    counts in the header do the same. Esc clears it
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Search</span>
+                  <span className="docs-answers">
+                    Finds a capability by name and opens it where it lives: the map for a node of
+                    the tree, My Setup for an entry of this machine
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Lenses</span>
+                  <span className="docs-answers">
+                    Over the map: how it is coloured. Attention is offered once the ledger has
+                    recorded something to colour
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Share</span>
+                  <span className="docs-answers">
+                    Copies a link to this exact view: graph, selected node, lens and filter
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Live</span>
+                  <span className="docs-answers">
+                    Shown when an engine is attached: the map redraws itself when the graph is
+                    rebuilt
+                  </span>
+                </div>
               </div>
 
               <h3 className="docs-h3">In the terminal</h3>
               <p className="docs-p docs-muted">
                 Everything below is also on this page or under it, and the output is easier to keep.
               </p>
-              {ACTIONS.map(a => (
-                <div key={a.cmd} className="docs-action">
-                  <code className="docs-cmd">{a.cmd}</code>
-                  <span className="docs-answers">{a.answers}</span>
-                </div>
-              ))}
+              <div className="docs-list">
+                {ACTIONS.map(a => (
+                  <div key={a.cmd} className="docs-action">
+                    <code className="docs-cmd">{a.cmd}</code>
+                    <span className="docs-answers">{a.answers}</span>
+                  </div>
+                ))}
+              </div>
               <h3 className="docs-h3">Start here</h3>
               <p className="docs-p">
                 If you only run one, run <code className="docs-cmd-inline">ambit status</code>. It
@@ -255,30 +277,11 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
           {tab === 'hotkeys' && (
             <>
               <p className="docs-lede">Everything on the map has a key.</p>
-              <div
-                style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}
-              >
+              <div className="docs-list">
                 {HOTKEYS.map(h => (
-                  <div key={h.key} className="docs-action" style={{ alignItems: 'center' }}>
-                    <kbd
-                      style={{
-                        fontFamily: 'var(--font)',
-                        fontWeight: 800,
-                        color: 'var(--accent)',
-                        background: 'var(--bg-deep)',
-                        border: '1px solid var(--border-bright)',
-                        borderRadius: 'var(--radius-xs)',
-                        padding: '3px 8px',
-                        fontSize: '11px',
-                        minWidth: '60px',
-                        textAlign: 'center',
-                      }}
-                    >
-                      {h.key}
-                    </kbd>
-                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      {h.desc}
-                    </span>
+                  <div key={h.key} className="docs-action">
+                    <kbd className="docs-kbd">{h.key}</kbd>
+                    <span className="docs-answers">{h.desc}</span>
                   </div>
                 ))}
               </div>

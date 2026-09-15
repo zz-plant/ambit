@@ -56,11 +56,12 @@ export function typeLabel(type: string): string {
 }
 
 /**
- * An entry read out of the agent config, rather than a node of the curated
- * tree. Tree nodes carry an era and a state; config entries carry neither.
+ * An entry of the machine's setup, rather than a node of the curated tree.
+ * Tree nodes carry an era; entries never do, whichever half of the product
+ * read them: the config file, the engine, or both merged.
  */
 export function isConfigEntry(item: { meta?: Record<string, unknown> }): boolean {
-  return item.meta?.era === undefined && item.meta?.state === undefined;
+  return item.meta?.era === undefined;
 }
 
 /**

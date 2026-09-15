@@ -1,6 +1,12 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
-import type { LoopOpportunity, LoopSnapshot } from '../../shared/api';
+import type {
+  LoopAuthority,
+  LoopNext,
+  LoopOpportunity,
+  LoopSince,
+  LoopSnapshot,
+} from '../../shared/api';
 import { HoursSparkline, NUM, money } from './figures';
 
 /**
@@ -34,11 +40,21 @@ import { HoursSparkline, NUM, money } from './figures';
  */
 
 interface LoopDashboardProps {
-  /** Pixels covered by the capability list, so the page sits beside it. */
-  leftInset?: number;
   /** Show a capability on the map, with the unlock simulation running. */
   onShowOnMap?: (capabilityId: string) => void;
+  /** Show a capability where it lives, with nothing running. */
+  onShow?: (capabilityId: string) => void;
 }
+
+/** What an older API server, or a fixture written before it, leaves out. */
+const NO_AUTHORITY: LoopAuthority = {
+  autonomous: 0,
+  confirm: 0,
+  forbidden: 0,
+  promotable: [],
+  budgets: [],
+  sandboxes: [],
+};
 
 /**
  * What was forecast against what happened, on one axis.
@@ -345,6 +361,253 @@ function InterruptionChart({ attention }: { attention: LoopSnapshot['attention']
   );
 }
 
+/**
+ * What may act without asking, what could, and what is spent.
+ *
+ * The governance half of the product had no web surface at all: whether a
+ * capability runs unattended, needs confirmation or is forbidden was terminal
+ * only, and so was the engine's own suggestion that a grant confirmed by hand
+ * twenty times with nothing failing has earned a threshold. That suggestion is
+ * the most decision-shaped thing the engine knows, and it sits here beside the
+ * interruptions it would end. Promotion still needs a person, so the figure
+ * hands over the command and never runs it.
+ */
+function AuthorityFigure({
+  authority,
+  onShow,
+}: {
+  authority: LoopAuthority;
+  onShow?: (id: string) => void;
+}) {
+  const items = useAmbitStore(s => s.items);
+  const [copied, setCopied] = React.useState<string | null>(null);
+  const total = authority.autonomous + authority.confirm + authority.forbidden;
+  const segments = [
+    { key: 'autonomous', n: authority.autonomous, label: 'run unattended' },
+    { key: 'confirm', n: authority.confirm, label: 'ask first' },
+    { key: 'forbidden', n: authority.forbidden, label: 'forbidden' },
+  ].filter(s => s.n > 0);
+  const onMap = (id: string) => items.some(i => i.id === id);
+
+  return (
+    <figure className="fig fig--authority">
+      <figcaption className="fig-caption">
+        <span className="fig-caption-title">What may act without asking</span>
+        <span className="fig-caption-note" style={NUM}>
+          {total
+            ? `${authority.autonomous} of ${total} reached capabilities run unattended`
+            : 'no authority declared yet'}
+        </span>
+      </figcaption>
+      {segments.length > 0 && (
+        <>
+          <div
+            className="fig-stack"
+            role="img"
+            aria-label={segments.map(s => `${s.n} ${s.label}`).join(', ')}
+          >
+            {segments.map(s => (
+              <div
+                key={s.key}
+                className={`fig-stack-seg fig-stack-seg--${s.key}`}
+                style={{ flexGrow: s.n }}
+                title={`${s.n} ${s.label}`}
+              />
+            ))}
+          </div>
+          <ul className="fig-key">
+            {segments.map(s => (
+              <li key={s.key} className="fig-key-item">
+                <span className={`fig-key-swatch fig-key-swatch--${s.key}`} aria-hidden="true" />
+                <span className="fig-key-n" style={NUM}>
+                  {s.n}
+                </span>
+                <span className="fig-key-label">{s.label}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {authority.promotable.length > 0 && (
+        <div className="fig-block">
+          <h4 className="fig-subtitle">Earned a threshold nobody set</h4>
+          <ul className="fig-promote">
+            {authority.promotable.map(p => (
+              <li key={`${p.id}/${p.action}`} className="fig-promote-item">
+                <span className="fig-promote-what">
+                  {onShow && onMap(p.id) ? (
+                    <button type="button" className="fig-link" onClick={() => onShow(p.id)}>
+                      {p.capability}
+                    </button>
+                  ) : (
+                    p.capability
+                  )}
+                  <span className="fig-tag">{p.action}</span>
+                </span>
+                <span className="fig-promote-why" style={NUM}>
+                  asked {p.asked}× in 30 days · {p.evidence}
+                </span>
+                <button
+                  type="button"
+                  className="tp-btn-sm"
+                  title={p.command}
+                  onClick={() => {
+                    navigator.clipboard?.writeText(p.command);
+                    setCopied(`${p.id}/${p.action}`);
+                    setTimeout(() => setCopied(null), 2000);
+                  }}
+                >
+                  {copied === `${p.id}/${p.action}` ? 'Copied' : 'Copy the command that sets one'}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="fig-note">
+            A threshold is a person saying "stop asking me once this has proved itself". The grant
+            widens when the evidence holds and narrows again on one failing check.
+          </p>
+        </div>
+      )}
+
+      {authority.budgets.length > 0 && (
+        <div className="fig-block">
+          <h4 className="fig-subtitle">Spend delegated in advance</h4>
+          <ul className="fig-bars">
+            {authority.budgets.map(b => (
+              <li key={`${b.capability}/${b.action}`} className="fig-bar-row">
+                <span className="fig-bar-name">
+                  {b.capability}
+                  <span className="fig-tag">{b.action}</span>
+                </span>
+                <span className="fig-bar-track">
+                  <span
+                    className="fig-bar-fill"
+                    style={{
+                      width: `${Math.min(100, (b.spent_dollars / b.ceiling_dollars) * 100)}%`,
+                    }}
+                    title={`${money(b.spent_dollars)} spent of ${money(b.ceiling_dollars)}`}
+                  />
+                  <span className="fig-bar-value" style={NUM}>
+                    {money(b.spent_dollars)} of {money(b.ceiling_dollars)}
+                  </span>
+                </span>
+                <span className="fig-bar-count">a {b.period}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {authority.sandboxes.length > 0 && (
+        <p className="fig-note">
+          Unattended inside {authority.sandboxes.join(', ')}. A sandbox relaxes confirmation there
+          and never a refusal.
+        </p>
+      )}
+    </figure>
+  );
+}
+
+/**
+ * The three capabilities worth reaching next, each with its reason and price.
+ *
+ * The frontier was a set of outlined circles with a setup cost. `ambit next`
+ * ranks them by what has actually blocked work, then by leverage per hour of
+ * setup, and says which basis it used; this is that list, with the map one
+ * click away.
+ */
+function NextFigure({
+  next,
+  onShowOnMap,
+}: {
+  next: LoopNext[];
+  onShowOnMap?: (id: string) => void;
+}) {
+  const items = useAmbitStore(s => s.items);
+  if (!next.length) return null;
+  const observed = next[0].basis === 'observed';
+  return (
+    <figure className="fig">
+      <figcaption className="fig-caption">
+        <span className="fig-caption-title">What to reach next</span>
+        <span className="fig-caption-note">
+          {observed
+            ? 'ranked by what has blocked work, then by leverage'
+            : 'ranked by what each unblocks per hour of setup; nothing has blocked work yet'}
+        </span>
+      </figcaption>
+      <ol className="fig-next">
+        {next.map((n, i) => (
+          <li key={n.id} className="fig-next-item">
+            <span className="fig-next-rank" aria-hidden="true">
+              {i + 1}
+            </span>
+            <span className="fig-next-body">
+              <span className="fig-next-name">
+                {n.capability}
+                {n.cost && (
+                  <span className="fig-next-cost" style={NUM}>
+                    {n.cost}
+                  </span>
+                )}
+              </span>
+              <span className="fig-next-why">
+                {n.why}
+                {n.missing?.length ? ` Needs ${n.missing.join(' and ')} first.` : ''}
+              </span>
+            </span>
+            {onShowOnMap && items.some(i => i.id === n.id) && (
+              <button
+                type="button"
+                className="fig-row-btn"
+                onClick={() => onShowOnMap(n.id)}
+                title={`Show ${n.capability} on the map and simulate unlocking it`}
+              >
+                Map
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
+    </figure>
+  );
+}
+
+/**
+ * How the frontier moved this week. The entry worth the strip is emergent: a
+ * capability reached without anything new providing it, which no changelog
+ * of components can show, since no single change explains one.
+ */
+function SinceStrip({ since }: { since: LoopSince | null }) {
+  if (!since) return null;
+  const parts = [
+    { key: 'gained', names: since.gained, tone: 'good' },
+    { key: 'emergent', names: since.emergent, tone: 'data' },
+    { key: 'lost', names: since.lost, tone: 'bad' },
+    { key: 'diminished', names: since.diminished, tone: 'bad' },
+  ].filter(p => p.names.length);
+  const from = since.from.slice(0, 10);
+  return (
+    <p className="loop-since">
+      <span className="loop-since-from">Since {from}:</span>
+      {parts.length === 0 && <span className="loop-since-part">nothing moved</span>}
+      {parts.map(p => (
+        <span key={p.key} className={`loop-since-part is-${p.tone}`}>
+          <span className="loop-since-n" style={NUM}>
+            {p.names.length}
+          </span>{' '}
+          {p.key} · {p.names.slice(0, 3).join(', ')}
+          {p.names.length > 3 ? ` and ${p.names.length - 3} more` : ''}
+        </span>
+      ))}
+      {since.emergent.length > 0 && (
+        <span className="loop-since-note">emergent: reached without anything new providing it</span>
+      )}
+    </p>
+  );
+}
+
 function OpportunityRows({
   list,
   onShowOnMap,
@@ -483,14 +746,17 @@ function OpportunityRows({
  * page.
  */
 function EmptyLedger({
-  leftInset,
-  status,
+  loop,
+  onShow,
+  onShowOnMap,
 }: {
-  leftInset: number;
-  status?: LoopSnapshot['status'];
+  loop?: LoopSnapshot;
+  onShow?: (id: string) => void;
+  onShowOnMap?: (id: string) => void;
 }) {
+  const status = loop?.status;
   return (
-    <div className="loop-dashboard" style={{ left: leftInset }}>
+    <div className="loop-dashboard">
       <div className="loop-inner">
         <h2 className="loop-title">Nothing recorded yet</h2>
         <p className="loop-subtitle">
@@ -498,12 +764,13 @@ function EmptyLedger({
           do; the ledger is what says how often you had to step in, and nothing has written to it on
           this machine.
         </p>
+        {loop && <SinceStrip since={loop.since ?? null} />}
 
         {/*
-          The half that does not wait for a week of sessions. Assurance and
-          fragility are read off the graph, so they are true on the machine's
-          first day, and the page used to withhold them until the other half
-          arrived.
+          The half that does not wait for a week of sessions. Assurance,
+          fragility, authority and what to reach next are read off the graph,
+          so they are true on the machine's first day, and the page used to
+          withhold them until the other half arrived.
         */}
         {status && status.total > 0 && (
           <div className="fig-kpis">
@@ -511,6 +778,8 @@ function EmptyLedger({
             <Fragility status={status} />
           </div>
         )}
+        {loop && <AuthorityFigure authority={loop.authority ?? NO_AUTHORITY} onShow={onShow} />}
+        {loop && <NextFigure next={loop.next ?? []} onShowOnMap={onShowOnMap} />}
 
         <p className="loop-subtitle">Two bridges fill the rest.</p>
         <ol className="loop-empty-steps">
@@ -534,7 +803,7 @@ function EmptyLedger({
   );
 }
 
-export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashboardProps) {
+export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProps) {
   const loop = useAmbitStore(s => s.loop);
   const loopSource = useAmbitStore(s => s.loopSource);
   const loopEmpty = useAmbitStore(s => s.loopEmpty);
@@ -543,10 +812,13 @@ export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashbo
   // No snapshot at all means the same thing as an empty one: nothing has been
   // recorded here. A blank page would read as a broken tab. An empty snapshot
   // still carries the graph half, so it is handed over.
-  if (!loop) return <EmptyLedger leftInset={leftInset} />;
-  if (loopEmpty) return <EmptyLedger leftInset={leftInset} status={loop.status} />;
+  if (!loop) return <EmptyLedger />;
+  if (loopEmpty) return <EmptyLedger loop={loop} onShow={onShow} onShowOnMap={onShowOnMap} />;
 
   const { status, attention, opportunities, roi } = loop;
+  const authority = loop.authority ?? NO_AUTHORITY;
+  const next = loop.next ?? [];
+  const since = loop.since ?? null;
   const sample = loopSource === 'sample';
   const filtered = opportunities.filter(
     o => confidenceFilter === 'all' || o.confidence === confidenceFilter
@@ -558,7 +830,7 @@ export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashbo
   ];
 
   return (
-    <div className="loop-dashboard" style={{ left: leftInset }}>
+    <div className="loop-dashboard">
       <div className="loop-inner">
         <div className="loop-hero">
           <div>
@@ -568,6 +840,7 @@ export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashbo
               Priced, and ranked by what would pay back fastest.
               {sample ? ' Sample data.' : ' Read from this machine\u2019s ledger.'}
             </p>
+            <SinceStrip since={since} />
           </div>
         </div>
 
@@ -577,14 +850,29 @@ export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashbo
               <span className="fig-caption-title">Hours a person spent in the loop</span>
               <span className="fig-caption-note">the shaded band is the saving</span>
             </figcaption>
-            <div className="fig-kpi-value" style={NUM}>
-              {roi.hours_per_year}h<span className="fig-kpi-unit"> saved</span>{' '}
-              <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
-            </div>
-            {roi.monthly_hours.length > 1 ? (
-              <HoursSparkline series={roi.monthly_hours} width={280} height={92} annotate />
+            {/* A ledger with runs and no interventions drew "0h saved, $0 a
+                year", which reads as a measurement of a machine that costs
+                nothing. A saving is a difference between months; until an
+                intervention or a second month exists there is no figure. */}
+            {attention.interventions === 0 && roi.monthly_hours.length < 2 ? (
+              <p className="fig-note">
+                No interventions recorded in the window yet, so there is nothing to price. The
+                figure appears with the first one.
+              </p>
             ) : (
-              <p className="fig-note">A month-by-month line appears once there are two months.</p>
+              <>
+                <div className="fig-kpi-value" style={NUM}>
+                  {roi.hours_per_year}h<span className="fig-kpi-unit"> saved</span>{' '}
+                  <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
+                </div>
+                {roi.monthly_hours.length > 1 ? (
+                  <HoursSparkline series={roi.monthly_hours} width={280} height={92} annotate />
+                ) : (
+                  <p className="fig-note">
+                    A month-by-month line appears once there are two months.
+                  </p>
+                )}
+              </>
             )}
           </figure>
 
@@ -615,9 +903,13 @@ export default function LoopDashboard({ leftInset = 0, onShowOnMap }: LoopDashbo
           <Fragility status={status} />
         </div>
 
+        <AuthorityFigure authority={authority} onShow={onShow} />
+
+        <NextFigure next={next} onShowOnMap={onShowOnMap} />
+
         <section>
           <div className="loop-section-head">
-            <h3 className="loop-section-title">What to set up next</h3>
+            <h3 className="loop-section-title">What would pay back</h3>
             <div className="loop-filter-tabs" role="tablist" aria-label="Filter by confidence">
               {filters.map(([key, label]) => (
                 <button

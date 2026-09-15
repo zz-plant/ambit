@@ -9,7 +9,8 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': 'http://localhost:3001',
+      // The API server reads the same variable, so the two can move together.
+      '/api': `http://localhost:${process.env.AMBIT_API_PORT || 3001}`,
     },
   },
   build: {

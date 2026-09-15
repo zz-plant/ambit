@@ -10,16 +10,18 @@ import {
   columnLabel,
   columnOf,
   costOf,
+  edgePath,
   eraOf,
   isNext,
   layoutNodes,
   NODE_R,
+  readableSeconds,
   ROW_H,
   sceneSize,
   START_X,
   START_Y,
-  type TypeFilter,
   visibleItems,
+  wrapLabel,
 } from './civ/layout.ts';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
@@ -74,15 +76,27 @@ export default function CivTree({
   leftInset = 0,
   rightInset = 0,
 }: CivTreeProps) {
-  // Owned by the store so the HUD can render the control; see App.tsx.
-  const filter = useAmbitStore(s => s.treeFilter) as TypeFilter;
-  const setTreeFilter = useAmbitStore(s => s.setTreeFilter);
-  const activeLens = useAmbitStore(s => s.activeLens);
+  const requestedLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
+  // Owned by the store so the header's segments light the same keys the
+  // legend does; see AppDeck.tsx.
+  const spotlight = useAmbitStore(s => s.spotlight);
+  const setSpotlight = useAmbitStore(s => s.setSpotlight);
   const simulationMode = useAmbitStore(s => s.simulationMode);
   const simulatedNodeId = useAmbitStore(s => s.simulatedNodeId);
   const simulatedCascadeIds = useAmbitStore(s => s.simulatedCascadeIds);
+  const simulatedWeakenedIds = useAmbitStore(s => s.simulatedWeakenedIds);
   const clearSimulation = useAmbitStore(s => s.clearSimulation);
+  // Everything a simulation touches, so an edge is lit when both ends are.
+  const simSet = useMemo(
+    () =>
+      new Set([
+        ...(simulatedNodeId ? [simulatedNodeId] : []),
+        ...simulatedCascadeIds,
+        ...simulatedWeakenedIds,
+      ]),
+    [simulatedNodeId, simulatedCascadeIds, simulatedWeakenedIds]
+  );
   const attentionInterventions = useAmbitStore(s => s.attentionInterventions);
   // The top of the scale the lens is drawn against, and the number its legend
   // prints. Taken from the data so the ramp spans what is actually there.
@@ -90,15 +104,18 @@ export default function CivTree({
     () => Math.max(0, ...Object.values(attentionInterventions ?? {}).map(Number)),
     [attentionInterventions]
   );
+  // A lens with no data to colour falls back to the standard map, and the
+  // HUD offers it disabled with the reason. The map used to go grey with a
+  // note over it.
+  const attentionAvailable = attentionMax > 0;
+  const activeLens =
+    requestedLens === 'attention' && !attentionAvailable ? 'default' : requestedLens;
 
   const simulatedItem = items.find(i => i.id === simulatedNodeId);
 
-  const { downstream, upstream, chainIds } = useMemo(
-    () => buildAdjacency(connections, selectedId),
-    [connections, selectedId]
-  );
+  const { downstream, upstream } = useMemo(() => buildAdjacency(connections, null), [connections]);
 
-  const filtered = useMemo(() => visibleItems(items, filter), [items, filter]);
+  const filtered = useMemo(() => visibleItems(items), [items]);
 
   const [hoverItem, setHoverItem] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -109,13 +126,37 @@ export default function CivTree({
     mouseX: number;
     mouseY: number;
   } | null>(null);
-  const [spotlightGroup, setSpotlightGroup] = useState<string | null>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const { cols, colOrder } = useMemo(() => buildColumns(filtered), [filtered]);
+  const { cols, colOrder } = useMemo(
+    () => buildColumns(filtered, connections),
+    [filtered, connections]
+  );
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
+
+  // One hop, both ways, from the node in focus: the selection, or failing
+  // that whatever the pointer is over. Selecting used to light the whole
+  // connected component in both directions, transitively, so a keystone lit
+  // most of the map and the two directions read the same. What a node needs
+  // and what it enables are drawn apart now, and the transitive answer is
+  // the simulation, one click away in the panel.
+  const hovered = hoverItem || hoveredId;
+  const focusId =
+    selectedId && nodePositionMap.has(selectedId)
+      ? selectedId
+      : hovered && nodePositionMap.has(hovered)
+        ? hovered
+        : null;
+  const needs = useMemo(
+    () => new Set(focusId ? upstream.get(focusId) || [] : []),
+    [focusId, upstream]
+  );
+  const enables = useMemo(
+    () => new Set(focusId ? downstream.get(focusId) || [] : []),
+    [focusId, downstream]
+  );
 
   // The tree view is one kind of node in era columns; the setup view is many
   // kinds in domain columns. The legend and the spotlights follow.
@@ -157,6 +198,15 @@ export default function CivTree({
    * the row below it reports how many keys there are and whether any of them
    * can be clicked.
    */
+  // While a node is selected the legend also keys the two directions its
+  // edges are drawn in.
+  const directionKeys =
+    selectedId && focusId === selectedId
+      ? [
+          { kind: 'line', color: 'var(--edge-needs)', label: 'Needs' },
+          { kind: 'line', color: 'var(--accent)', label: 'Enables' },
+        ]
+      : [];
   const legend: any[] =
     activeLens === 'attention'
       ? [
@@ -169,41 +219,37 @@ export default function CivTree({
             label: b.label,
           })),
         ]
-      : activeLens === 'credentials'
+      : isTreeView
         ? [
-            {
-              kind: 'node' as const,
-              color: 'var(--plasma)',
-              label: 'Shares a credential',
-            },
-            { kind: 'faded' as const, label: 'Fails alone' },
+            { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
+            { kind: 'ring', label: 'Next step' },
+            { kind: 'faded', label: 'Blocked' },
+            { kind: 'square', label: 'Keystone' },
+            { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+            { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+            { kind: 'line', label: 'Required' },
+            { kind: 'line', dashed: true, label: 'Optional' },
+            ...directionKeys,
           ]
-        : isTreeView
-          ? [
-              { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
-              { kind: 'ring', label: 'Next step' },
-              { kind: 'faded', label: 'Blocked' },
-              { kind: 'square', label: 'Keystone' },
-              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-              { kind: 'line', label: 'Required' },
-              { kind: 'line', dashed: true, label: 'Optional' },
-            ]
-          : [
-              { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Tool server' },
-              { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
-              { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
-              { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
-              { kind: 'square', label: 'Keystone' },
-              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-              { kind: 'line', label: 'Required' },
-              { kind: 'line', dashed: true, label: 'Optional' },
-            ];
+        : [
+            { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Tool server' },
+            { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
+            { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
+            { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
+            { kind: 'square', label: 'Keystone' },
+            { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+            { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+            { kind: 'line', label: 'Required' },
+            { kind: 'line', dashed: true, label: 'Optional' },
+            ...directionKeys,
+          ];
   const legendCount = legend.length;
   const hasSpotlights = legend.some((l: any) => Boolean(SPOTLIGHTS[l.label]));
 
-  const hoverTarget = hoverItem || hoveredId;
+  // The selected node has the detail panel open beside it, which says
+  // everything the tooltip would, so the tooltip is for the others.
+  const hoverTarget =
+    hovered && hovered !== selectedId && nodePositionMap.has(hovered) ? hovered : null;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
   React.useEffect(() => {
@@ -218,9 +264,7 @@ export default function CivTree({
       if (e.key === '1') {
         setActiveLens('default');
       } else if (e.key === '2') {
-        setActiveLens('attention');
-      } else if (e.key === '3') {
-        setActiveLens('credentials');
+        if (attentionAvailable) setActiveLens('attention');
       } else if (e.key === '0') {
         e.preventDefault();
         setZoom(1);
@@ -232,23 +276,33 @@ export default function CivTree({
         setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
       } else if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
         e.preventDefault();
-        const idx = items.findIndex(i => i.id === selectedId);
-        const nextIdx = idx < 0 ? 0 : (idx + 1) % items.length;
-        onSelect(items[nextIdx].id);
+        const idx = filtered.findIndex(i => i.id === selectedId);
+        const nextIdx = idx < 0 ? 0 : (idx + 1) % filtered.length;
+        onSelect(filtered[nextIdx].id);
       } else if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp') {
         e.preventDefault();
-        const idx = items.findIndex(i => i.id === selectedId);
-        const prevIdx = idx <= 0 ? items.length - 1 : idx - 1;
-        onSelect(items[prevIdx].id);
+        const idx = filtered.findIndex(i => i.id === selectedId);
+        const prevIdx = idx <= 0 ? filtered.length - 1 : idx - 1;
+        onSelect(filtered[prevIdx].id);
       } else if (e.key === 'Escape') {
-        if (spotlightGroup) setSpotlightGroup(null);
+        if (spotlight) setSpotlight(null);
         else if (simulationMode !== 'none') clearSimulation();
         else if (selectedId) onSelect(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setActiveLens, clearSimulation, simulationMode, selectedId, onSelect, items, spotlightGroup]);
+  }, [
+    setActiveLens,
+    attentionAvailable,
+    clearSimulation,
+    simulationMode,
+    selectedId,
+    onSelect,
+    filtered,
+    spotlight,
+    setSpotlight,
+  ]);
 
   // Center node in view when selected
   React.useEffect(() => {
@@ -320,29 +374,13 @@ export default function CivTree({
     }
   };
 
+  // The controls sit over the scroller, not inside it. Inside, they were
+  // sticky, which holds vertically and, with a left inset, horizontally too;
+  // but Chrome measures that inset from the scroller's padding edge and other
+  // engines from its border edge, so centring a node pushed the zoom controls
+  // 340px to the right in one and under the capability list in the other.
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: Dragging to pan is a pointer affordance layered over the canvas. Content inside is keyboard operable.
-    <div
-      ref={containerRef}
-      // Dragging to pan is a pointer affordance layered over the canvas. The
-      // a11y warning on this element is expected and left visible: every node
-      // inside carries role="button", tabIndex and a key handler, so the
-      // content is reachable and operable without a pointer.
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onWheel={handleWheel}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        overflow: 'auto',
-        paddingLeft: leftInset,
-        cursor: isDragging ? 'grabbing' : 'default',
-        userSelect: isDragging ? 'none' : 'auto',
-      }}
-    >
+    <div className="civ-tree">
       <ZoomHud
         zoom={zoom}
         setZoom={setZoom}
@@ -351,9 +389,8 @@ export default function CivTree({
         contentHeight={contentHeight}
         activeLens={activeLens}
         onSetLens={setActiveLens}
-        typeFilter={filter}
-        onSetTypeFilter={setTreeFilter}
-        showTypeFilter={!isTreeView}
+        attentionAvailable={attentionAvailable}
+        leftInset={leftInset}
         rightInset={rightInset}
       />
 
@@ -362,804 +399,806 @@ export default function CivTree({
         simulatedNodeId={simulatedNodeId}
         simulatedItem={simulatedItem}
         simulatedCascadeIds={simulatedCascadeIds}
+        simulatedWeakenedIds={simulatedWeakenedIds}
+        items={items}
         clearSimulation={clearSimulation}
+        leftInset={leftInset}
         rightInset={rightInset}
       />
 
-      {/* A lens with no data is a map that has gone grey for no stated reason.
-          Say what fills it. */}
-      {activeLens === 'attention' && attentionMax === 0 && (
-        <div className="civ-lens-note" style={{ paddingRight: 12 + rightInset }} role="status">
-          <p>
-            Nothing recorded yet. This lens shades each capability by how often you had to step in —
-            copy <code>plugins/ambit-tracker.js</code> into <code>~/.config/opencode/plugins/</code>{' '}
-            and it fills from your own sessions.
-          </p>
-        </div>
-      )}
-      {/* Main SVG Vector Canvas */}
-      <svg
-        viewBox={`0 0 ${contentWidth} ${contentHeight}`}
-        className="civ-tree-svg"
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: Dragging to pan is a pointer affordance layered over the canvas. Content inside is keyboard operable. */}
+      <div
+        ref={containerRef}
+        className="civ-scroll"
+        // Dragging to pan is a pointer affordance layered over the canvas. The
+        // a11y warning on this element is expected and left visible: every node
+        // inside carries role="button", tabIndex and a key handler, so the
+        // content is reachable and operable without a pointer.
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
         style={{
-          background: 'var(--bg-canvas)',
-          width: `${contentWidth * zoom}px`,
-          height: `${contentHeight * zoom}px`,
-          minWidth: `${contentWidth * zoom}px`,
+          paddingLeft: leftInset,
+          cursor: isDragging ? 'grabbing' : 'default',
+          userSelect: isDragging ? 'none' : 'auto',
         }}
       >
-        <title>Capability tree: what this setup can do, by era</title>
-        <defs>
-          <linearGradient id="columnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.03)" />
-            <stop offset="100%" stopColor="rgba(255, 255, 255, 0.005)" />
-          </linearGradient>
-        </defs>
+        {/* Main SVG Vector Canvas */}
+        <svg
+          viewBox={`0 0 ${contentWidth} ${contentHeight}`}
+          className="civ-tree-svg"
+          style={{
+            background: 'var(--bg-canvas)',
+            width: `${contentWidth * zoom}px`,
+            height: `${contentHeight * zoom}px`,
+            minWidth: `${contentWidth * zoom}px`,
+          }}
+        >
+          <title>Capability tree: what this setup can do, by era</title>
+          <defs>
+            <linearGradient id="columnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.03)" />
+              <stop offset="100%" stopColor="rgba(255, 255, 255, 0.005)" />
+            </linearGradient>
+          </defs>
 
-        {/* Era column bands with clean headers */}
-        {colOrder.map((d, i) => {
-          const x = START_X + i * COL_W;
-          return (
-            <g key={`band-${d}`}>
-              <rect
-                x={x - 8}
-                y={START_Y - 45}
-                width={COL_W - 16}
-                height={contentHeight - START_Y + 20}
-                fill="url(#columnGrad)"
-                stroke="var(--border)"
-                strokeWidth={1}
-                rx={10}
-              />
-              <rect
-                x={x - 8}
-                y={START_Y - 45}
-                width={COL_W - 16}
-                height={40}
-                fill="rgba(255, 255, 255, 0.02)"
-                rx={10}
-              />
-              <text
-                x={x + COL_W / 2 - 16}
-                y={START_Y - 29}
-                textAnchor="middle"
-                fill="var(--text-primary)"
-                fontSize={12}
-                fontWeight={600}
-                letterSpacing={0.5}
-                style={{ fontFamily: 'var(--font-sans)' }}
-              >
-                <title>{termTitle(isTreeView ? 'era' : 'domain')}</title>
-                {columnLabel(d, cols[d] || [])}
-              </text>
-              {(() => {
-                // The count under the name, drawn as well as written. A column
-                // is a set with a size and a filled fraction; saying "Era 5"
-                // where "1 of 5" could stand was a label where a measurement
-                // belonged. One scale across all seven columns: the bar's
-                // full width is the largest era, so a short bar is a small era
-                // and not a poorly-filled one.
-                const list = cols[d] || [];
-                const reached = list.filter((i: Item) => i.status === 'built').length;
-                const next = list.filter((i: Item) => i.status !== 'built' && isNext(i)).length;
-                const largest = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
-                const barW = ((COL_W - 64) * list.length) / largest;
-                const unit = list.length ? barW / list.length : 0;
-                const bx = x + COL_W / 2 - 16 - barW / 2;
-                const by = START_Y - 11;
-                return (
-                  <g>
-                    <text
-                      x={x + COL_W / 2 - 16}
-                      y={START_Y - 16}
-                      textAnchor="middle"
-                      fill="var(--text-muted)"
-                      fontSize={9.5}
-                      fontWeight={500}
-                      style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {d.startsWith('era:') ? `Era ${d.slice(4)} · ` : ''}
-                      {reached} of {list.length}
-                    </text>
-                    <rect className="fig-eras-track" x={bx} y={by} width={barW} height={3} rx={1} />
-                    {reached > 0 && (
+          {/* Era column bands with clean headers */}
+          {colOrder.map((d, i) => {
+            const x = START_X + i * COL_W;
+            return (
+              <g key={`band-${d}`}>
+                <rect
+                  x={x - 8}
+                  y={START_Y - 45}
+                  width={COL_W - 16}
+                  height={contentHeight - START_Y + 20}
+                  fill="url(#columnGrad)"
+                  stroke="var(--border)"
+                  strokeWidth={1}
+                  rx={10}
+                />
+                <rect
+                  x={x - 8}
+                  y={START_Y - 45}
+                  width={COL_W - 16}
+                  height={40}
+                  fill="rgba(255, 255, 255, 0.02)"
+                  rx={10}
+                />
+                <text
+                  x={x + COL_W / 2 - 16}
+                  y={START_Y - 29}
+                  textAnchor="middle"
+                  fill="var(--text-primary)"
+                  fontSize={12}
+                  fontWeight={600}
+                  letterSpacing={0.5}
+                  style={{ fontFamily: 'var(--font-sans)' }}
+                >
+                  <title>{termTitle(isTreeView ? 'era' : 'domain')}</title>
+                  {columnLabel(d, cols[d] || [])}
+                </text>
+                {(() => {
+                  // The count under the name, drawn as well as written. A column
+                  // is a set with a size and a filled fraction; saying "Era 5"
+                  // where "1 of 5" could stand was a label where a measurement
+                  // belonged. One scale across all seven columns: the bar's
+                  // full width is the largest era, so a short bar is a small era
+                  // and not a poorly-filled one.
+                  const list = cols[d] || [];
+                  const reached = list.filter((i: Item) => i.status === 'built').length;
+                  const next = list.filter((i: Item) => i.status !== 'built' && isNext(i)).length;
+                  // What finishing the column would cost in setup time: a
+                  // planning number beside the count.
+                  const left = readableSeconds(
+                    list
+                      .filter((i: Item) => i.status !== 'built')
+                      .reduce((t: number, i: Item) => t + (Number(i.meta?.setupSeconds) || 0), 0)
+                  );
+                  const largest = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
+                  const barW = ((COL_W - 64) * list.length) / largest;
+                  const unit = list.length ? barW / list.length : 0;
+                  const bx = x + COL_W / 2 - 16 - barW / 2;
+                  const by = START_Y - 11;
+                  return (
+                    <g>
+                      <text
+                        x={x + COL_W / 2 - 16}
+                        y={START_Y - 16}
+                        textAnchor="middle"
+                        fill="var(--text-muted)"
+                        fontSize={9.5}
+                        fontWeight={500}
+                        style={{
+                          fontFamily: 'var(--font-sans)',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        {d.startsWith('era:') ? `Era ${d.slice(4)} · ` : ''}
+                        {reached} of {list.length}
+                        {left ? ` · ${left} left` : ''}
+                      </text>
                       <rect
-                        className="fig-eras-reached"
+                        className="fig-eras-track"
                         x={bx}
                         y={by}
-                        width={unit * reached}
+                        width={barW}
                         height={3}
                         rx={1}
                       />
-                    )}
-                    {next > 0 && (
-                      <rect
-                        className="fig-eras-next"
-                        x={bx + unit * reached}
-                        y={by}
-                        width={unit * next}
-                        height={3}
-                        rx={1}
-                      />
-                    )}
-                  </g>
-                );
-              })()}
-            </g>
-          );
-        })}
+                      {reached > 0 && (
+                        <rect
+                          className="fig-eras-reached"
+                          x={bx}
+                          y={by}
+                          width={unit * reached}
+                          height={3}
+                          rx={1}
+                        />
+                      )}
+                      {next > 0 && (
+                        <rect
+                          className="fig-eras-next"
+                          x={bx + unit * reached}
+                          y={by}
+                          width={unit * next}
+                          height={3}
+                          rx={1}
+                        />
+                      )}
+                    </g>
+                  );
+                })()}
+              </g>
+            );
+          })}
 
-        {/* Connection lines — rendered behind nodes */}
-        {connections.map((conn, i) => {
-          const fromPos = nodePositionMap.get(conn.from);
-          const toPos = nodePositionMap.get(conn.to);
-          if (!fromPos || !toPos) return null;
-          const x1 = fromPos.x;
-          const y1 = fromPos.y;
-          const x2 = toPos.x;
-          const y2 = toPos.y;
-          const isHard = conn.type === 'hard-dep';
-          const isSoft = conn.type === 'soft-dep';
-          const inChain = chainIds.size > 0 && chainIds.has(conn.from) && chainIds.has(conn.to);
-          const isSimLine =
-            simulationMode !== 'none' &&
-            ((simulatedNodeId === conn.from && simulatedCascadeIds.has(conn.to)) ||
-              (simulatedCascadeIds.has(conn.from) && simulatedCascadeIds.has(conn.to)));
-          const op = isSimLine
-            ? 1
-            : simulationMode !== 'none'
-              ? 0.08
-              : chainIds.size > 0
-                ? inChain
-                  ? 0.95
-                  : 0.08
-                : 0.35;
-          const strokeColor = isSimLine
-            ? simulationMode === 'outage'
-              ? 'var(--error)'
-              : 'var(--ok)'
-            : inChain
-              ? 'var(--accent)'
-              : isHard
-                ? 'rgba(99, 102, 241, 0.6)'
-                : isSoft
-                  ? 'rgba(148, 163, 184, 0.4)'
-                  : 'var(--warn)';
+          {/* Edges, behind the nodes. Curved, so a bundle into one node fans
+              instead of converging through everything between. Into the focus
+              in one colour, out of it in another. */}
+          {connections.map((conn, i) => {
+            const fromPos = nodePositionMap.get(conn.from);
+            const toPos = nodePositionMap.get(conn.to);
+            if (!fromPos || !toPos) return null;
+            const isHard = conn.type === 'hard-dep';
+            const isSoft = conn.type === 'soft-dep';
+            const isSimLine =
+              simulationMode !== 'none' && simSet.has(conn.from) && simSet.has(conn.to);
+            const intoFocus = focusId !== null && conn.to === focusId;
+            const outOfFocus = focusId !== null && conn.from === focusId;
+            const op = isSimLine
+              ? 1
+              : simulationMode !== 'none'
+                ? 0.08
+                : focusId
+                  ? intoFocus || outOfFocus
+                    ? 0.95
+                    : 0.06
+                  : 0.35;
+            const strokeColor = isSimLine
+              ? simulationMode === 'outage'
+                ? 'var(--error)'
+                : simulationMode === 'gap'
+                  ? 'var(--warn)'
+                  : 'var(--ok)'
+              : intoFocus
+                ? 'var(--edge-needs)'
+                : outOfFocus
+                  ? 'var(--accent)'
+                  : isHard
+                    ? 'rgba(99, 102, 241, 0.6)'
+                    : isSoft
+                      ? 'rgba(148, 163, 184, 0.4)'
+                      : 'var(--warn)';
 
-          return (
-            <line
-              key={`c-${i}`}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              stroke={strokeColor}
-              strokeWidth={isSimLine ? 2.5 : inChain ? 2 : isHard ? 1.5 : 1}
-              strokeDasharray={isHard ? 'none' : isSoft ? '4,4' : '3,3'}
-              strokeLinecap="round"
-              opacity={op}
-            />
-          );
-        })}
+            return (
+              <path
+                key={`c-${i}`}
+                d={edgePath(fromPos.x, fromPos.y, toPos.x, toPos.y)}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth={isSimLine ? 2.5 : intoFocus || outOfFocus ? 2 : isHard ? 1.5 : 1}
+                strokeDasharray={isHard ? 'none' : isSoft ? '4,4' : '3,3'}
+                strokeLinecap="round"
+                opacity={op}
+              />
+            );
+          })}
 
-        {/* Nodes */}
-        {colOrder.map((domain, ci) => {
-          const caps = cols[domain] || [];
-          const cx = START_X + ci * COL_W + COL_W / 2 - 16;
-          return (
-            <g key={domain}>
-              {caps.map((item, ri) => {
-                const cy = START_Y + ri * ROW_H + NODE_R;
-                const defaultColor = typeColor(item.type);
-                const inChain = chainIds.has(item.id);
-                const selected = item.id === selectedId;
+          {/* Nodes */}
+          {colOrder.map((domain, ci) => {
+            const caps = cols[domain] || [];
+            const cx = START_X + ci * COL_W + COL_W / 2 - 16;
+            return (
+              <g key={domain}>
+                {caps.map((item, ri) => {
+                  const cy = START_Y + ri * ROW_H + NODE_R;
+                  const defaultColor = typeColor(item.type);
+                  const selected = item.id === selectedId;
+                  const isFocus = item.id === focusId;
+                  const inNeeds = needs.has(item.id);
+                  const inEnables = enables.has(item.id);
+                  const nearFocus = isFocus || inNeeds || inEnables;
 
-                const isSimRoot = simulationMode !== 'none' && simulatedNodeId === item.id;
-                const isSimAffected = simulationMode !== 'none' && simulatedCascadeIds.has(item.id);
-                const isSimDimmed = simulationMode !== 'none' && !isSimRoot && !isSimAffected;
+                  const isSimRoot = simulationMode !== 'none' && simulatedNodeId === item.id;
+                  const isSimWeak = simulationMode !== 'none' && simulatedWeakenedIds.has(item.id);
+                  const isSimAffected =
+                    simulationMode !== 'none' && (simulatedCascadeIds.has(item.id) || isSimWeak);
+                  const isSimDimmed = simulationMode !== 'none' && !isSimRoot && !isSimAffected;
 
-                const interventionCount = attentionInterventions[item.id] || 0;
-                const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
-                const heat = heatStep(interventionCount, attentionMax);
-                const isSpofHot =
-                  activeLens === 'credentials' &&
-                  (item.id.includes('github') ||
-                    item.id.includes('docker') ||
-                    item.id.includes('1password') ||
-                    item.id.includes('credential'));
+                  const interventionCount = attentionInterventions[item.id] || 0;
+                  const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
+                  const heat = heatStep(interventionCount, attentionMax);
 
-                const isKeystone = keystone(item);
+                  const isKeystone = keystone(item);
 
-                const next = isNext(item);
-                const reached = item.status === 'built';
-                const upList = upstream.get(item.id) || [];
-                const builtPrereqs = upList.filter(
-                  id => items.find(i => i.id === id)?.status === 'built'
-                ).length;
-                const totalPrereqs = upList.length;
-                const readinessPct = totalPrereqs > 0 ? builtPrereqs / totalPrereqs : 1;
-                const hasEureka = next && builtPrereqs > 0 && totalPrereqs > 1;
+                  const next = isNext(item);
+                  const reached = item.status === 'built';
 
-                const isSpotlit = !spotlightGroup || (SPOTLIGHTS[spotlightGroup]?.(item) ?? true);
+                  const isSpotlit = !spotlight || (SPOTLIGHTS[spotlight]?.(item) ?? true);
 
-                const dimmed = (chainIds.size > 0 && !inChain) || isSimDimmed || !isSpotlit;
-                const baseOpacity =
-                  isSimRoot || isSimAffected
-                    ? 1
-                    : !isSpotlit
-                      ? 0.15
-                      : dimmed
-                        ? 0.2
-                        : reached
-                          ? 1
-                          : next
-                            ? 0.95
-                            : 0.4;
+                  const dimmed = (focusId !== null && !nearFocus) || isSimDimmed || !isSpotlit;
+                  const baseOpacity =
+                    isSimRoot || isSimAffected
+                      ? 1
+                      : !isSpotlit
+                        ? 0.15
+                        : dimmed
+                          ? 0.25
+                          : reached
+                            ? 1
+                            : next
+                              ? 0.95
+                              : 0.4;
 
-                let nodeFill = reached ? defaultColor : 'var(--bg-elevated)';
-                let sc =
-                  inChain && !selected
-                    ? 'var(--accent)'
-                    : selected
-                      ? 'var(--on-accent)'
-                      : reached
-                        ? defaultColor
-                        : 'var(--border-subtle)';
-                let sw = inChain ? 2.5 : selected ? 2.5 : reached ? 1.5 : 1;
+                  let nodeFill = reached ? defaultColor : 'var(--bg-elevated)';
+                  let sc = selected
+                    ? 'var(--on-accent)'
+                    : inNeeds
+                      ? 'var(--edge-needs)'
+                      : inEnables
+                        ? 'var(--accent)'
+                        : next
+                          ? 'var(--accent)'
+                          : reached
+                            ? defaultColor
+                            : 'var(--border-subtle)';
+                  let sw = selected || inNeeds || inEnables ? 2.5 : next ? 2 : reached ? 1.5 : 1;
 
-                if (simulationMode === 'outage') {
-                  if (isSimRoot) {
-                    nodeFill = 'var(--error)';
-                    sc = 'var(--on-accent)';
-                    sw = 2.5;
-                  } else if (isSimAffected) {
-                    nodeFill = 'var(--error-deep)';
+                  if (simulationMode === 'outage') {
+                    if (isSimRoot) {
+                      nodeFill = 'var(--error)';
+                      sc = 'var(--on-accent)';
+                      sw = 2.5;
+                    } else if (isSimAffected) {
+                      // Red for what stops; amber for what keeps another
+                      // provider and only loses one. It was all red.
+                      nodeFill = isSimWeak ? 'var(--warn)' : 'var(--error-deep)';
+                      sc = 'var(--on-accent)';
+                      sw = 2;
+                    }
+                  } else if (simulationMode === 'gap') {
+                    if (isSimRoot) {
+                      nodeFill = 'var(--accent)';
+                      sc = 'var(--on-accent)';
+                      sw = 2.5;
+                    } else if (isSimAffected) {
+                      nodeFill = 'var(--warn)';
+                      sc = 'var(--on-accent)';
+                      sw = 2;
+                    }
+                  } else if (simulationMode === 'acquisition') {
+                    if (isSimRoot) {
+                      nodeFill = 'var(--accent)';
+                      sc = 'var(--on-accent)';
+                      sw = 2.5;
+                    } else if (isSimAffected) {
+                      nodeFill = 'var(--ok)';
+                      sc = 'var(--on-accent)';
+                      sw = 2;
+                    }
+                  } else if (isAttentionHot) {
+                    // One hue, four steps, brighter with more — a quantity read
+                    // as a quantity. It used to be two colours split at twenty:
+                    // red above, amber below, a threshold nothing stated and a
+                    // second hue that made a magnitude look like a category.
+                    nodeFill = `var(--heat-${heat})`;
                     sc = 'var(--on-accent)';
                     sw = 2;
                   }
-                } else if (simulationMode === 'acquisition') {
-                  if (isSimRoot) {
-                    nodeFill = 'var(--accent)';
-                    sc = 'var(--on-accent)';
-                    sw = 2.5;
-                  } else if (isSimAffected) {
-                    nodeFill = 'var(--ok)';
-                    sc = 'var(--on-accent)';
-                    sw = 2;
-                  }
-                } else if (isAttentionHot) {
-                  // One hue, four steps, brighter with more — a quantity read
-                  // as a quantity. It used to be two colours split at twenty:
-                  // red above, amber below, a threshold nothing stated and a
-                  // second hue that made a magnitude look like a category.
-                  nodeFill = `var(--heat-${heat})`;
-                  sc = 'var(--on-accent)';
-                  sw = 2;
-                } else if (isSpofHot) {
-                  nodeFill = 'var(--plasma)';
-                  sc = 'var(--warn)';
-                  sw = 2;
-                }
 
-                const sym = typeSymbol(item.type);
-                const label = item.name.length > 20 ? item.name.slice(0, 18) + '…' : item.name;
-                const dialRadius = NODE_R + 6;
-                const dialCircumference = 2 * Math.PI * dialRadius;
+                  const sym = typeSymbol(item.type);
+                  const lines = wrapLabel(item.name);
 
-                return (
-                  // biome-ignore lint/a11y/useSemanticElements: SVG element groups cannot be HTML buttons
-                  <g
-                    key={item.id}
-                    transform={`translate(${cx}, ${cy})`}
-                    opacity={baseOpacity}
-                    tabIndex={0}
-                    role="button"
-                    aria-pressed={selected}
-                    aria-label={`${item.name}, ${item.type}`}
-                    onClick={() => onSelect(selected ? null : item.id)}
-                    onKeyDown={e => {
-                      if (e.key !== 'Enter' && e.key !== ' ') return;
-                      e.preventDefault();
-                      onSelect(selected ? null : item.id);
-                    }}
-                    onFocus={() => {
-                      onHover?.(item.id);
-                      setHoverItem(item.id);
-                    }}
-                    onBlur={() => {
-                      onHover?.(null);
-                      setHoverItem(null);
-                    }}
-                    onMouseEnter={() => {
-                      onHover?.(item.id);
-                      setHoverItem(item.id);
-                    }}
-                    onMouseLeave={() => {
-                      onHover?.(null);
-                      setHoverItem(null);
-                    }}
-                    style={{ cursor: 'pointer', transition: 'opacity .15s' }}
-                  >
-                    {isKeystone && !dimmed && (
-                      <rect
-                        x={-NODE_R - 4}
-                        y={-NODE_R - 4}
-                        width={(NODE_R + 4) * 2}
-                        height={(NODE_R + 4) * 2}
-                        rx={8}
-                        fill="none"
-                        stroke="rgba(245, 158, 11, 0.4)"
-                        strokeWidth={1.5}
-                        strokeDasharray="4,3"
-                      />
-                    )}
+                  return (
+                    // biome-ignore lint/a11y/useSemanticElements: SVG element groups cannot be HTML buttons
+                    <g
+                      key={item.id}
+                      transform={`translate(${cx}, ${cy})`}
+                      opacity={baseOpacity}
+                      tabIndex={0}
+                      role="button"
+                      aria-pressed={selected}
+                      aria-label={`${item.name}, ${item.type}`}
+                      onClick={() => onSelect(selected ? null : item.id)}
+                      onKeyDown={e => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        onSelect(selected ? null : item.id);
+                      }}
+                      onFocus={() => {
+                        onHover?.(item.id);
+                        setHoverItem(item.id);
+                      }}
+                      onBlur={() => {
+                        onHover?.(null);
+                        setHoverItem(null);
+                      }}
+                      onMouseEnter={() => {
+                        onHover?.(item.id);
+                        setHoverItem(item.id);
+                      }}
+                      onMouseLeave={() => {
+                        onHover?.(null);
+                        setHoverItem(null);
+                      }}
+                      style={{ cursor: 'pointer', transition: 'opacity .15s' }}
+                    >
+                      {isKeystone && !dimmed && (
+                        <rect
+                          x={-NODE_R - 4}
+                          y={-NODE_R - 4}
+                          width={(NODE_R + 4) * 2}
+                          height={(NODE_R + 4) * 2}
+                          rx={8}
+                          fill="none"
+                          stroke="rgba(245, 158, 11, 0.4)"
+                          strokeWidth={1.5}
+                          strokeDasharray="4,3"
+                        />
+                      )}
 
-                    {selected && (
+                      {selected && (
+                        <circle
+                          r={NODE_R + 7}
+                          fill="none"
+                          stroke="var(--accent)"
+                          strokeWidth={2}
+                          opacity={0.8}
+                        />
+                      )}
+
+                      {/* A next step is the outlined circle the legend draws, with
+                        its setup cost beside it. It used to carry a second ring
+                        outside that one and an amber "Boost" tag that no legend,
+                        glossary or document explained. */}
+                      {next && !dimmed && !isSimAffected && costOf(item) && (
+                        <text
+                          x={NODE_R + 6}
+                          y={-NODE_R + 4}
+                          textAnchor="start"
+                          fill="var(--text-muted)"
+                          fontSize={10}
+                          fontWeight={600}
+                          fontFamily="var(--font-sans)"
+                        >
+                          {costOf(item)}
+                        </text>
+                      )}
+
                       <circle
-                        r={NODE_R + 7}
-                        fill="none"
-                        stroke="var(--accent)"
-                        strokeWidth={2}
-                        opacity={0.8}
+                        r={NODE_R}
+                        fill={nodeFill}
+                        stroke={sc}
+                        strokeWidth={sw}
+                        opacity={0.95}
                       />
-                    )}
+                      <text
+                        y={4}
+                        textAnchor="middle"
+                        fill={
+                          reached
+                            ? 'var(--on-accent)'
+                            : dimmed
+                              ? 'var(--text-muted)'
+                              : 'var(--on-accent)'
+                        }
+                        fontSize={14}
+                        fontWeight={700}
+                      >
+                        {sym}
+                      </text>
 
-                    {next && !dimmed && !isSimAffected && (
-                      <>
-                        <circle
-                          r={dialRadius}
-                          fill="none"
-                          stroke="rgba(255, 255, 255, 0.1)"
-                          strokeWidth={2.5}
-                        />
-                        <circle
-                          r={dialRadius}
-                          fill="none"
-                          stroke={readinessPct >= 1 ? 'var(--ok)' : 'var(--accent)'}
-                          strokeWidth={2.5}
-                          strokeDasharray={`${dialCircumference * readinessPct} ${dialCircumference}`}
-                          strokeDashoffset={0}
-                          transform="rotate(-90)"
-                          strokeLinecap="round"
-                        />
-                        {costOf(item) && (
-                          <text
-                            x={NODE_R + 6}
-                            y={-NODE_R + 4}
-                            textAnchor="start"
-                            fill="var(--text-muted)"
-                            fontSize={10}
-                            fontWeight={600}
-                            fontFamily="var(--font-sans)"
-                          >
-                            {costOf(item)}
-                          </text>
-                        )}
-                        {hasEureka && (
-                          <g transform={`translate(0, ${-NODE_R - 12})`}>
-                            <rect
-                              x={-20}
-                              y={-7}
-                              width={40}
-                              height={14}
-                              rx={4}
-                              fill="rgba(245, 158, 11, 0.15)"
-                              stroke="var(--warn)"
-                              strokeWidth={1}
+                      {reached &&
+                        !dimmed &&
+                        ['verified', 'reliable'].includes(item.meta?.lifecycle as string) && (
+                          <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                            <circle
+                              r={6}
+                              fill="var(--ok)"
+                              stroke="var(--bg-canvas)"
+                              strokeWidth={1.5}
                             />
                             <text
                               y={3}
                               textAnchor="middle"
-                              fill="var(--warn)"
-                              fontSize={8.5}
-                              fontWeight={700}
-                              fontFamily="var(--font-sans)"
+                              fill="var(--on-accent)"
+                              fontSize={9}
+                              fontWeight={800}
                             >
-                              Boost
+                              ✓
                             </text>
                           </g>
                         )}
-                      </>
-                    )}
-
-                    <circle
-                      r={NODE_R}
-                      fill={nodeFill}
-                      stroke={next ? 'var(--accent)' : sc}
-                      strokeWidth={next ? 2 : sw}
-                      opacity={0.95}
-                    />
-                    <text
-                      y={4}
-                      textAnchor="middle"
-                      fill={
-                        reached
-                          ? 'var(--on-accent)'
-                          : dimmed
-                            ? 'var(--text-muted)'
-                            : 'var(--on-accent)'
-                      }
-                      fontSize={14}
-                      fontWeight={700}
-                    >
-                      {sym}
-                    </text>
-
-                    {reached &&
-                      !dimmed &&
-                      ['verified', 'reliable'].includes(item.meta?.lifecycle as string) && (
-                        <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
-                          <circle
-                            r={6}
-                            fill="var(--ok)"
-                            stroke="var(--bg-canvas)"
-                            strokeWidth={1.5}
-                          />
-                          <text
-                            y={3}
-                            textAnchor="middle"
-                            fill="var(--on-accent)"
-                            fontSize={9}
-                            fontWeight={800}
-                          >
-                            ✓
-                          </text>
-                        </g>
-                      )}
-                    {reached &&
-                      !dimmed &&
-                      ['degraded', 'broken'].includes(item.meta?.lifecycle as string) && (
-                        <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
-                          <circle
-                            r={6}
-                            fill="var(--error)"
-                            stroke="var(--bg-canvas)"
-                            strokeWidth={1.5}
-                          />
-                          <text
-                            y={3}
-                            textAnchor="middle"
-                            fill="var(--on-accent)"
-                            fontSize={9}
-                            fontWeight={800}
-                          >
-                            !
-                          </text>
-                        </g>
-                      )}
-                    <text
-                      y={NODE_R + 16}
-                      textAnchor="middle"
-                      fill={dimmed ? 'var(--text-muted)' : 'var(--text-primary)'}
-                      fontSize={11.5}
-                      fontWeight={500}
-                      fontFamily="var(--font-sans)"
-                    >
-                      {label}
-                    </text>
-                  </g>
-                );
-              })}
-            </g>
-          );
-        })}
-
-        {/* Hover tooltip */}
-        {hoverTarget &&
-          (() => {
-            const ni = items.find(i => i.id === hoverTarget);
-            if (!ni) return null;
-            const di = colOrder.indexOf(columnOf(ni));
-            const ai = (cols[columnOf(ni)] || []).findIndex((i: Item) => i.id === hoverTarget);
-            if (di < 0 || ai < 0) return null;
-
-            const wrap = (text: string, perLine = 28, max = 4) => {
-              const out: string[] = [];
-              let line = '';
-              for (const word of text.split(' ')) {
-                if ((line + word).length > perLine) {
-                  out.push(line.trim());
-                  line = '';
-                }
-                if (out.length === max) return [...out.slice(0, max - 1), out[max - 1] + '…'];
-                line += word + ' ';
-              }
-              if (line.trim()) out.push(line.trim());
-              return out;
-            };
-
-            const unreached = ni.status !== 'built';
-            const lines = unreached && ni.description ? wrap(ni.description) : [];
-            const enables = hoverDownstream.slice(0, 4);
-            const downCount = (downstream.get(ni.id) || []).length;
-            const isKey = downCount >= 3 || isRuntimeNode(ni);
-
-            const W = 220;
-            const headH = 22;
-            const keyH = isKey ? 18 : 0;
-            const descH = lines.length * 15;
-            const enablesH = enables.length ? 20 + enables.length * 15 : 0;
-            // The simulations are the thing people do not find. An outage is
-            // offered on a node you have; on one you do not, the same click
-            // asks the other question — and a faded circle reads as scenery
-            // until something says otherwise.
-            const hint = unreached
-              ? 'Click: what unlocking this would reach'
-              : 'Click: what stops working without it';
-            const hintH = 17;
-            const boxH = headH + keyH + descH + enablesH + hintH + 12;
-
-            const tx = START_X + di * COL_W + COL_W / 2 - 16 + NODE_R + 10;
-            const ty = START_Y + ai * ROW_H + NODE_R - 10;
-
-            return (
-              <g transform={`translate(${tx}, ${ty})`} pointerEvents="none">
-                <rect
-                  x={0}
-                  y={0}
-                  width={W}
-                  height={boxH}
-                  rx={8}
-                  fill="var(--bg-surface)"
-                  stroke="var(--border)"
-                  strokeWidth={1}
-                />
-                <text
-                  x={12}
-                  y={16}
-                  fill="var(--text-primary)"
-                  fontSize={12}
-                  fontWeight={600}
-                  fontFamily="var(--font-sans)"
-                >
-                  {unreached ? 'Not reached yet' : ni.name}
-                </text>
-                {isKey && (
-                  <text
-                    x={12}
-                    y={headH + 12}
-                    fill="var(--warn)"
-                    fontSize={10}
-                    fontWeight={600}
-                    fontFamily="var(--font-sans)"
-                  >
-                    ★ Keystone ({downCount} enables)
-                  </text>
-                )}
-                {lines.map((line, i) => (
-                  <text
-                    key={i}
-                    x={12}
-                    y={headH + keyH + 12 + i * 15}
-                    fill="var(--text-secondary)"
-                    fontSize={11}
-                    fontFamily="var(--font-sans)"
-                  >
-                    {line}
-                  </text>
-                ))}
-                {enables.length > 0 && (
-                  <text
-                    x={12}
-                    y={headH + keyH + descH + 15}
-                    fill="var(--text-muted)"
-                    fontSize={10.5}
-                    fontWeight={600}
-                    fontFamily="var(--font-sans)"
-                  >
-                    Enables
-                  </text>
-                )}
-                {enables.map((did, i) => {
-                  const dep = items.find(it => it.id === did);
-                  const label = dep
-                    ? dep.name.length > 22
-                      ? dep.name.slice(0, 20) + '…'
-                      : dep.name
-                    : did;
-                  return (
-                    <text
-                      key={did}
-                      x={14}
-                      y={headH + keyH + descH + 30 + i * 15}
-                      fill="var(--text-primary)"
-                      fontSize={11}
-                      fontFamily="var(--font-sans)"
-                    >
-                      {label}
-                    </text>
+                      {reached &&
+                        !dimmed &&
+                        ['degraded', 'broken'].includes(item.meta?.lifecycle as string) && (
+                          <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                            <circle
+                              r={6}
+                              fill="var(--error)"
+                              stroke="var(--bg-canvas)"
+                              strokeWidth={1.5}
+                            />
+                            <text
+                              y={3}
+                              textAnchor="middle"
+                              fill="var(--on-accent)"
+                              fontSize={9}
+                              fontWeight={800}
+                            >
+                              !
+                            </text>
+                          </g>
+                        )}
+                      {/* Two lines where the name needs them. A trailing space
+                          on the first keeps the element's text the whole name,
+                          which the recorder matches against the aria-label. */}
+                      <text
+                        y={NODE_R + 16}
+                        textAnchor="middle"
+                        fill={dimmed ? 'var(--text-muted)' : 'var(--text-primary)'}
+                        fontSize={11.5}
+                        fontWeight={500}
+                        fontFamily="var(--font-sans)"
+                      >
+                        {lines.map((line, li) => (
+                          <tspan key={line} x={0} dy={li === 0 ? 0 : 12}>
+                            {li < lines.length - 1 ? `${line} ` : line}
+                          </tspan>
+                        ))}
+                      </text>
+                    </g>
                   );
                 })}
-                {hoverDownstream.length > 4 && (
-                  <text
-                    x={14}
-                    y={boxH - hintH - 6}
-                    fill="var(--text-muted)"
-                    fontSize={10}
-                    fontFamily="var(--font-sans)"
-                  >
-                    +{hoverDownstream.length - 4} more
-                  </text>
-                )}
-                <text
-                  x={12}
-                  y={boxH - 7}
-                  fill="var(--accent)"
-                  fontSize={10}
-                  fontFamily="var(--font-sans)"
-                >
-                  {hint}
-                </text>
-              </g>
-            );
-          })()}
-
-        {/* Legend. Clicking an entry spotlights the nodes it describes. */}
-        <g transform={`translate(${START_X}, ${contentHeight - 35})`}>
-          <line
-            x1={0}
-            y1={-8}
-            x2={colOrder.length * COL_W - 40}
-            y2={-8}
-            stroke="var(--border)"
-            strokeWidth={1}
-          />
-          {legend.map((l: any, i: number) => {
-            // The heat scale is a ramp, so its swatches sit close together and
-            // read as one object rather than as five separate keys.
-            const lx =
-              activeLens === 'attention' ? (i === 0 ? 10 : 150 + (i - 1) * 62) : 10 + i * 112;
-            const clickable = Boolean(SPOTLIGHTS[l.label]);
-            const isLegendActive = spotlightGroup === l.label;
-            return (
-              // biome-ignore lint/a11y/noStaticElementInteractions: Legend items trigger interactive filtering
-              <g
-                key={l.label}
-                role={clickable ? 'button' : undefined}
-                tabIndex={clickable ? 0 : undefined}
-                aria-label={
-                  clickable
-                    ? isLegendActive
-                      ? 'Show every node again'
-                      : `Highlight ${l.label}`
-                    : undefined
-                }
-                onKeyDown={e => {
-                  if (clickable && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    setSpotlightGroup(curr => (curr === l.label ? null : l.label));
-                  }
-                }}
-                transform={`translate(${lx}, 8)`}
-                style={{
-                  cursor: clickable ? 'pointer' : 'default',
-                  opacity: spotlightGroup && !isLegendActive ? 0.45 : 1,
-                }}
-                onClick={() => {
-                  if (clickable) setSpotlightGroup(curr => (curr === l.label ? null : l.label));
-                }}
-              >
-                {(clickable || LEGEND_CONCEPTS[l.label]) && (
-                  <title>
-                    {termTitle(
-                      LEGEND_CONCEPTS[l.label] ?? '',
-                      clickable
-                        ? isLegendActive
-                          ? 'Click to show everything again'
-                          : `Click to highlight ${l.label}`
-                        : undefined
-                    )}
-                  </title>
-                )}
-                {l.kind === 'node' && (
-                  <>
-                    <circle
-                      r={7}
-                      fill={l.color}
-                      opacity={0.9}
-                      stroke={isLegendActive ? 'var(--on-accent)' : 'none'}
-                      strokeWidth={isLegendActive ? 2 : 0}
-                    />
-                    {l.sym && (
-                      <text
-                        y={3}
-                        textAnchor="middle"
-                        fill="var(--on-accent)"
-                        fontSize={9.5}
-                        fontWeight={700}
-                      >
-                        {l.sym}
-                      </text>
-                    )}
-                  </>
-                )}
-                {l.kind === 'ring' && (
-                  <circle r={7} fill="var(--bg-elevated)" stroke="var(--accent)" strokeWidth={2} />
-                )}
-                {l.kind === 'faded' && (
-                  <circle
-                    r={7}
-                    fill="var(--bg-elevated)"
-                    stroke="var(--border-bright)"
-                    strokeWidth={1}
-                    opacity={0.7}
-                  />
-                )}
-                {l.kind === 'square' && (
-                  <rect
-                    x={-8}
-                    y={-8}
-                    width={16}
-                    height={16}
-                    rx={3}
-                    fill="none"
-                    stroke="rgba(245, 158, 11, 0.7)"
-                    strokeWidth={1.5}
-                    strokeDasharray="3,2"
-                  />
-                )}
-                {l.kind === 'label' && null}
-                {l.kind === 'line' && (
-                  <line
-                    x1={-10}
-                    y1={0}
-                    x2={10}
-                    y2={0}
-                    stroke={l.dashed ? 'var(--text-muted)' : 'var(--accent)'}
-                    strokeWidth={1.5}
-                    strokeDasharray={l.dashed ? '4,3' : 'none'}
-                  />
-                )}
-                <text
-                  x={l.kind === 'label' ? 0 : 12}
-                  y={3.5}
-                  fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
-                  fontSize={10.5}
-                  fontWeight={isLegendActive ? 600 : 400}
-                  fontFamily="var(--font-sans)"
-                  // Dotted, not solid: it marks the key as operable without
-                  // claiming to be a hyperlink to somewhere else.
-                  textDecoration={clickable ? 'underline dotted' : undefined}
-                >
-                  {l.label}
-                </text>
               </g>
             );
           })}
-          {spotlightGroup ? (
-            // biome-ignore lint/a11y/useSemanticElements: an HTML button cannot live inside an SVG; role, tabIndex and a key handler are on the group
-            <g
-              role="button"
-              tabIndex={0}
-              transform={`translate(${10 + legendCount * 112}, 8)`}
-              style={{ cursor: 'pointer' }}
-              aria-label="Show every node again"
-              onClick={() => setSpotlightGroup(null)}
-              onKeyDown={e => {
-                if (e.key !== 'Enter' && e.key !== ' ') return;
-                e.preventDefault();
-                setSpotlightGroup(null);
-              }}
-            >
-              <text y={3.5} fill="var(--accent)" fontSize={10.5} fontFamily="var(--font-sans)">
-                {spotlightGroup} only — show all (Esc)
-              </text>
-            </g>
-          ) : (
-            hasSpotlights && (
-              <text
+
+          {/* Hover tooltip */}
+          {hoverTarget &&
+            (() => {
+              const ni = items.find(i => i.id === hoverTarget);
+              if (!ni) return null;
+              const di = colOrder.indexOf(columnOf(ni));
+              const ai = (cols[columnOf(ni)] || []).findIndex((i: Item) => i.id === hoverTarget);
+              if (di < 0 || ai < 0) return null;
+
+              const wrap = (text: string, perLine = 28, max = 4) => {
+                const out: string[] = [];
+                let line = '';
+                for (const word of text.split(' ')) {
+                  if ((line + word).length > perLine) {
+                    out.push(line.trim());
+                    line = '';
+                  }
+                  if (out.length === max) return [...out.slice(0, max - 1), out[max - 1] + '…'];
+                  line += word + ' ';
+                }
+                if (line.trim()) out.push(line.trim());
+                return out;
+              };
+
+              const unreached = ni.status !== 'built';
+              const lines = unreached && ni.description ? wrap(ni.description) : [];
+              const enables = hoverDownstream.slice(0, 4);
+              const downCount = (downstream.get(ni.id) || []).length;
+              const isKey = downCount >= 3 || isRuntimeNode(ni);
+
+              const W = 220;
+              const headH = 22;
+              const keyH = isKey ? 18 : 0;
+              const descH = lines.length * 15;
+              const enablesH = enables.length ? 20 + enables.length * 15 : 0;
+              // The simulations are the thing people do not find, and a faded
+              // circle reads as scenery until something says otherwise. A click
+              // opens the panel that offers the one this node can run: an outage
+              // on a node you have, an unlock on one you do not.
+              const hint = unreached
+                ? 'Click: details, and simulate unlocking it'
+                : 'Click: details, and simulate an outage';
+              const hintH = 17;
+              const boxH = headH + keyH + descH + enablesH + hintH + 12;
+
+              const tx = START_X + di * COL_W + COL_W / 2 - 16 + NODE_R + 10;
+              const ty = START_Y + ai * ROW_H + NODE_R - 10;
+
+              return (
+                <g transform={`translate(${tx}, ${ty})`} pointerEvents="none">
+                  <rect
+                    x={0}
+                    y={0}
+                    width={W}
+                    height={boxH}
+                    rx={8}
+                    fill="var(--bg-surface)"
+                    stroke="var(--border)"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={12}
+                    y={16}
+                    fill="var(--text-primary)"
+                    fontSize={12}
+                    fontWeight={600}
+                    fontFamily="var(--font-sans)"
+                  >
+                    {unreached ? 'Not reached yet' : ni.name}
+                  </text>
+                  {isKey && (
+                    <text
+                      x={12}
+                      y={headH + 12}
+                      fill="var(--warn)"
+                      fontSize={10}
+                      fontWeight={600}
+                      fontFamily="var(--font-sans)"
+                    >
+                      ★ Keystone ({downCount} enables)
+                    </text>
+                  )}
+                  {lines.map((line, i) => (
+                    <text
+                      key={i}
+                      x={12}
+                      y={headH + keyH + 12 + i * 15}
+                      fill="var(--text-secondary)"
+                      fontSize={11}
+                      fontFamily="var(--font-sans)"
+                    >
+                      {line}
+                    </text>
+                  ))}
+                  {enables.length > 0 && (
+                    <text
+                      x={12}
+                      y={headH + keyH + descH + 15}
+                      fill="var(--text-muted)"
+                      fontSize={10.5}
+                      fontWeight={600}
+                      fontFamily="var(--font-sans)"
+                    >
+                      Enables
+                    </text>
+                  )}
+                  {enables.map((did, i) => {
+                    const dep = items.find(it => it.id === did);
+                    const label = dep
+                      ? dep.name.length > 22
+                        ? dep.name.slice(0, 20) + '…'
+                        : dep.name
+                      : did;
+                    return (
+                      <text
+                        key={did}
+                        x={14}
+                        y={headH + keyH + descH + 30 + i * 15}
+                        fill="var(--text-primary)"
+                        fontSize={11}
+                        fontFamily="var(--font-sans)"
+                      >
+                        {label}
+                      </text>
+                    );
+                  })}
+                  {hoverDownstream.length > 4 && (
+                    <text
+                      x={14}
+                      y={boxH - hintH - 6}
+                      fill="var(--text-muted)"
+                      fontSize={10}
+                      fontFamily="var(--font-sans)"
+                    >
+                      +{hoverDownstream.length - 4} more
+                    </text>
+                  )}
+                  <text
+                    x={12}
+                    y={boxH - 7}
+                    fill="var(--accent)"
+                    fontSize={10}
+                    fontFamily="var(--font-sans)"
+                  >
+                    {hint}
+                  </text>
+                </g>
+              );
+            })()}
+
+          {/* Legend. Clicking an entry spotlights the nodes it describes. */}
+          <g transform={`translate(${START_X}, ${contentHeight - 35})`}>
+            <line
+              x1={0}
+              y1={-8}
+              x2={colOrder.length * COL_W - 40}
+              y2={-8}
+              stroke="var(--border)"
+              strokeWidth={1}
+            />
+            {legend.map((l: any, i: number) => {
+              // The heat scale is a ramp, so its swatches sit close together and
+              // read as one object rather than as five separate keys.
+              const lx =
+                activeLens === 'attention' ? (i === 0 ? 10 : 150 + (i - 1) * 62) : 10 + i * 112;
+              const clickable = Boolean(SPOTLIGHTS[l.label]);
+              const isLegendActive = spotlight === l.label;
+              return (
+                // biome-ignore lint/a11y/noStaticElementInteractions: Legend items trigger interactive filtering
+                <g
+                  key={l.label}
+                  role={clickable ? 'button' : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  aria-label={
+                    clickable
+                      ? isLegendActive
+                        ? 'Show every node again'
+                        : `Highlight ${l.label}`
+                      : undefined
+                  }
+                  onKeyDown={e => {
+                    if (clickable && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      setSpotlight(spotlight === l.label ? null : l.label);
+                    }
+                  }}
+                  transform={`translate(${lx}, 8)`}
+                  style={{
+                    cursor: clickable ? 'pointer' : 'default',
+                    opacity: spotlight && !isLegendActive ? 0.45 : 1,
+                  }}
+                  onClick={() => {
+                    if (clickable) setSpotlight(spotlight === l.label ? null : l.label);
+                  }}
+                >
+                  {(clickable || LEGEND_CONCEPTS[l.label]) && (
+                    <title>
+                      {termTitle(
+                        LEGEND_CONCEPTS[l.label] ?? '',
+                        clickable
+                          ? isLegendActive
+                            ? 'Click to show everything again'
+                            : `Click to highlight ${l.label}`
+                          : undefined
+                      )}
+                    </title>
+                  )}
+                  {l.kind === 'node' && (
+                    <>
+                      <circle
+                        r={7}
+                        fill={l.color}
+                        opacity={0.9}
+                        stroke={isLegendActive ? 'var(--on-accent)' : 'none'}
+                        strokeWidth={isLegendActive ? 2 : 0}
+                      />
+                      {l.sym && (
+                        <text
+                          y={3}
+                          textAnchor="middle"
+                          fill="var(--on-accent)"
+                          fontSize={9.5}
+                          fontWeight={700}
+                        >
+                          {l.sym}
+                        </text>
+                      )}
+                    </>
+                  )}
+                  {l.kind === 'ring' && (
+                    <circle
+                      r={7}
+                      fill="var(--bg-elevated)"
+                      stroke="var(--accent)"
+                      strokeWidth={2}
+                    />
+                  )}
+                  {l.kind === 'faded' && (
+                    <circle
+                      r={7}
+                      fill="var(--bg-elevated)"
+                      stroke="var(--border-bright)"
+                      strokeWidth={1}
+                      opacity={0.7}
+                    />
+                  )}
+                  {l.kind === 'square' && (
+                    <rect
+                      x={-8}
+                      y={-8}
+                      width={16}
+                      height={16}
+                      rx={3}
+                      fill="none"
+                      stroke="rgba(245, 158, 11, 0.7)"
+                      strokeWidth={1.5}
+                      strokeDasharray="3,2"
+                    />
+                  )}
+                  {l.kind === 'label' && null}
+                  {l.kind === 'line' && (
+                    <line
+                      x1={-10}
+                      y1={0}
+                      x2={10}
+                      y2={0}
+                      stroke={l.color ?? (l.dashed ? 'var(--text-muted)' : 'var(--accent)')}
+                      strokeWidth={1.5}
+                      strokeDasharray={l.dashed ? '4,3' : 'none'}
+                    />
+                  )}
+                  <text
+                    x={l.kind === 'label' ? 0 : 12}
+                    y={3.5}
+                    fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
+                    fontSize={10.5}
+                    fontWeight={isLegendActive ? 600 : 400}
+                    fontFamily="var(--font-sans)"
+                    // Dotted, not solid: it marks the key as operable without
+                    // claiming to be a hyperlink to somewhere else.
+                    textDecoration={clickable ? 'underline dotted' : undefined}
+                  >
+                    {l.label}
+                  </text>
+                </g>
+              );
+            })}
+            {spotlight ? (
+              // biome-ignore lint/a11y/useSemanticElements: an HTML button cannot live inside an SVG; role, tabIndex and a key handler are on the group
+              <g
+                role="button"
+                tabIndex={0}
                 transform={`translate(${10 + legendCount * 112}, 8)`}
-                y={3.5}
-                fill="var(--text-muted)"
-                fontSize={10.5}
-                fontFamily="var(--font-sans)"
+                style={{ cursor: 'pointer' }}
+                aria-label="Show every node again"
+                onClick={() => setSpotlight(null)}
+                onKeyDown={e => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return;
+                  e.preventDefault();
+                  setSpotlight(null);
+                }}
               >
-                click a key to highlight
-              </text>
-            )
-          )}
-        </g>
-      </svg>
+                <text y={3.5} fill="var(--accent)" fontSize={10.5} fontFamily="var(--font-sans)">
+                  {spotlight} only — show all (Esc)
+                </text>
+              </g>
+            ) : (
+              hasSpotlights && (
+                <text
+                  transform={`translate(${10 + legendCount * 112}, 8)`}
+                  y={3.5}
+                  fill="var(--text-muted)"
+                  fontSize={10.5}
+                  fontFamily="var(--font-sans)"
+                >
+                  click a key to highlight
+                </text>
+              )
+            )}
+          </g>
+        </svg>
+      </div>
     </div>
   );
 }

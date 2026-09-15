@@ -81,6 +81,23 @@ export function demoProposals(): ProposalRow[] {
         { action: 'apply_k8s_manifest', provider: 'tool:kubectl', status: 'pending' },
         { action: 'run_smoke_tests', provider: 'skill:vitest', status: 'pending' },
       ]),
+      // The decision context a live row gets from its stored steps, simulation
+      // and economic case, written by hand here like the rest of the demo.
+      decision: {
+        setup_hours: 0.5,
+        reversible: false,
+        requires_person: true,
+        recurring: 'none',
+        privacy: 'local',
+        forecast: {
+          hours_month_now: 0.7,
+          hours_month_after: 0.1,
+          savings_dollars_month: 150,
+          confidence: 'medium',
+        },
+        unlocks: [],
+        precedent: [{ trait: 'privacy:local', leans: 'accepted', approved: 4, rejected: 0 }],
+      },
     },
     {
       id: 'prop-offline-semantic-search',
@@ -92,6 +109,24 @@ export function demoProposals(): ProposalRow[] {
       ]),
       approved_by: WEB_ACTOR,
       approved_at: new Date(Date.now() - 72000000).toISOString(),
+      decision: {
+        setup_hours: 0.5,
+        reversible: true,
+        requires_person: false,
+        recurring: 'none',
+        privacy: 'local',
+        forecast: {
+          hours_month_now: 1.1,
+          hours_month_after: 0.1,
+          savings_dollars_month: 248,
+          confidence: 'medium',
+        },
+        unlocks: ['Vector Store', 'Local Embeddings'],
+        precedent: [
+          { trait: 'privacy:local', leans: 'accepted', approved: 4, rejected: 0 },
+          { trait: 'cost:recurring', leans: 'refused', approved: 0, rejected: 3 },
+        ],
+      },
     },
   ];
 }

@@ -4,8 +4,8 @@ import type { Item } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
 import { metaKeyLabel } from '../utils/labels';
 import App from '../App';
-import CapabilityListPanel from './CapabilityListPanel';
 import NodeDetailPanel from './NodeDetailPanel';
+import SetupView from './SetupView';
 
 const capability: Item = {
   id: 'core',
@@ -92,21 +92,33 @@ afterAll(() => {
   });
 });
 
-test('capability list omits redundant status chrome when no filter is active', () => {
-  const html = renderToStaticMarkup(<CapabilityListPanel />);
+test('my setup lists each entry once and omits status chrome when nothing is filtered', () => {
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
 
+  expect(html).toContain('Core');
+  expect(html).toContain('Tool');
   expect(html).not.toContain('NAV:');
   expect(html).not.toContain('Showing 2 of 2');
   expect(html).not.toContain('Integrity:');
 });
 
-test('detail panel presents each relationship once', () => {
+test('detail panel presents each relationship once, in its direction', () => {
   const html = renderToStaticMarkup(<NodeDetailPanel />);
 
-  expect(html).toContain('Connected to (1)');
+  expect(html).toContain('Enables (1)');
+  expect(html).not.toContain('Needs (');
   expect(html).not.toContain('DEPENDENCY FLOW');
   expect(html).not.toContain('most connected');
   expect(html).not.toContain('>1<');
+});
+
+test('detail panel states the impact instead of offering a command to copy', () => {
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+
+  expect(html).toContain('1 other capability would stop working');
+  expect(html).not.toContain('ambit impact');
+  // A check executes, so that one stays a command.
+  expect(html).toContain('ambit verify core');
 });
 
 test('detail panel lists only the meta facts that exist', () => {
@@ -146,4 +158,12 @@ test('application omits the footer that duplicates header status and documented 
 
   expect(html).not.toContain('app-footer');
   expect(html).not.toContain('KEYS:');
+});
+
+test('the application has no docked list; search is a control and My Setup is a view', () => {
+  const html = renderToStaticMarkup(<App />);
+
+  expect(html).not.toContain('toolchain-panel');
+  expect(html).toContain('Search');
+  expect(html).toContain('My Setup');
 });

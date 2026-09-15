@@ -20,7 +20,7 @@
       "term": "Reached, next step, blocked",
       "short": "Where you are on a tech tree node",
       "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next step: prerequisites are met but nothing was detected — this is the useful frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
-      "seen": "The three keys in the map legend, and the count in the header"
+      "seen": "The three keys in the map legend, and the three counts in the header"
     },
     {
       "key": "prerequisite",
@@ -41,35 +41,35 @@
       "term": "Combo",
       "short": "A capability several others unlock",
       "long": "The tech tree nodes are combos, and you can define your own in a `combos` block for things specific to your work. A combo is a judgement about what composes into something new, which is why the tool never invents one from your config.",
-      "seen": "The ● nodes and the Combos filter, ambit graph combos, ambit goal"
+      "seen": "Every node on the map, ambit graph combos, ambit goal"
     },
     {
       "key": "tool-server",
       "term": "Tool server",
       "short": "A tool your agent can call",
       "long": "An MCP server, which is the protocol agents use to reach tools. Everything the server exposes — reading a file, opening a page, querying a database — becomes something the agent can do, which is why one server switched off can take a row of capabilities with it.",
-      "seen": "The ◈ nodes, the Tool servers filter, and mcp entries in your config"
+      "seen": "The ◈ glyph and the Tool servers rows in My Setup, and mcp entries in your config"
     },
     {
       "key": "evidence",
       "term": "Verified",
       "short": "Proven to work, not just configured",
       "long": "Detection proves a name appears in a config file. Verification runs a declared read-only check and records the result, so a capability can be said to work rather than to exist. Reliability is the share of recorded runs that passed, which is why the history is kept: one success is a weaker claim than forty-seven of fifty. Checks execute, so they live in the repository and run only when asked — never on seed.",
-      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one; a plain filled circle is configured but unproven"
+      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one; a plain filled circle is configured but unproven. The detail panel adds how many runs the verdict rests on"
     },
     {
       "key": "maturity",
       "term": "Maturity",
       "short": "A 0-1 estimate of how established a capability is",
       "long": "Seeded from what kind of thing it is and whether it is enabled, then adjusted as your config changes. It is a rough ordering signal, not a measurement — treat a 0.8 as 'more settled than a 0.5', not as a score that means anything on its own.",
-      "seen": "The ring around each node, and Maturity in the detail panel"
+      "seen": "Maturity in the detail panel"
     },
     {
       "key": "domain",
       "term": "Domain",
       "short": "The area of work a capability belongs to",
       "long": "infra, devops, backend, frontend, ai-ml, quality, security, or meta. Inferred from the capability's name, which means a stack unlike the keyword table's assumptions will land more things in the meta fallback — that table is the first thing to edit.",
-      "seen": "Column grouping, and Domain in the detail panel"
+      "seen": "Domain in the detail panel"
     },
     {
       "key": "attention",
@@ -83,21 +83,21 @@
       "term": "Proposal",
       "short": "A change to your setup, drafted for a person to approve",
       "long": "An agent that finds a gap drafts a proposal rather than acting: the steps, their inverses, and what the frontier would look like afterwards. Approving it mints a signed artifact that expires; `ambit apply` verifies that signature before anything runs, and refuses if the proposal changed after approval.",
-      "seen": "The Proposals panel, ambit propose / approve / apply"
+      "seen": "The Proposals panel, with what each would save, cost, undo and unlock; ambit propose / approve / apply"
     },
     {
       "key": "authority",
       "term": "Authority",
       "short": "Whether it may run, not whether it can",
       "long": "Being technically able to perform an action is not permission to perform it. Authority is tracked separately per capability — observe and execute, each autonomous, confirm, or forbidden — so a reached capability can still require approval. This is what lets a larger technical surface stay governable: the limits are explicit rather than implied.",
-      "seen": "ambit authority"
+      "seen": "The Authority figure on Time & cost, the mode line in the detail panel, and ambit authority"
     },
     {
       "key": "frontier",
       "term": "Frontier",
       "short": "What the system can do, as of a moment",
       "long": "Every seed records the state of every capability, so the graph can answer what was reachable at a past date rather than only now. `ambit history since` compares two of those observations. Its useful column is the emergent one: capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
-      "seen": "ambit history, ambit history since"
+      "seen": "The Since strip on Time & cost, ambit history, ambit history since"
     },
     {
       "key": "decay",

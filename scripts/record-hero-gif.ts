@@ -1,5 +1,6 @@
 /**
- * record-hero-gif.ts — records docs/assets/capability-graph-demo.gif.
+ * record-hero-gif.ts — records docs/assets/capability-graph-demo.gif, and the
+ * two stills beside it, screenshot-tree.png and screenshot-config.png.
  *
  * The hero image had drifted two UI generations behind: it showed a light
  * theme and a tab layout that no longer exist, so the first thing a reader
@@ -28,6 +29,9 @@ import { extname, normalize } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_GIF = join(ROOT, 'docs', 'assets', 'capability-graph-demo.gif');
+/** The README's two stills: the whole tree fitted, and My Setup. */
+const OUT_TREE_PNG = join(ROOT, 'docs', 'assets', 'screenshot-tree.png');
+const OUT_CONFIG_PNG = join(ROOT, 'docs', 'assets', 'screenshot-config.png');
 const CHROME =
   process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
@@ -497,35 +501,24 @@ async function main() {
   // something other than what this GIF claims to show.
   await cdp.eval(`(() => {
     const active = document.querySelector('.app-deck-tab--active');
-    if (!active || !active.textContent.trim().toLowerCase().startsWith('tech tree'))
-      throw new Error('Tech Tree is not the active tab; active: ' + (active && active.textContent.trim()));
+    if (!active || !active.textContent.trim().toLowerCase().startsWith('map'))
+      throw new Error('Map is not the active tab; active: ' + (active && active.textContent.trim()));
     const combos = [...document.querySelectorAll('g[role="button"][aria-label]')]
       .filter(n => /possibility|combo/i.test(n.getAttribute('aria-label')));
     if (!combos.length)
-      throw new Error('the tree rendered no compound capabilities — this is the config view');
+      throw new Error('the tree rendered no compound capabilities');
     return combos.length;
   })()`);
   await sleep(600);
 
-  // The capability list is a 340px overlay the canvas draws underneath, so it
-  // hides the left of the map without changing what "fit to view" computes.
-  // At the zoom below that is a quarter of the frame spent on a list whose
-  // rows are unreadable anyway, so it folds away for the map beats.
-  await cdp.clickWhere(deckBtn('Capabilities'));
-  await sleep(700);
-  await cdp.eval(`(() => {
-    const b = [...document.querySelectorAll('.app-deck-btn')]
-      .find(e => /capabilit/i.test(e.textContent));
-    if (!b) throw new Error('no capability list toggle in the deck');
-    if (b.getAttribute('aria-pressed') !== 'false')
-      throw new Error('the capability list did not collapse');
-    return true;
-  })()`);
-
   // Fit first, to land somewhere the fixture decides rather than somewhere
-  // hardcoded, then zoom in past it.
+  // hardcoded. The fitted frame is the README's still of the whole tree.
   await cdp.clickWhere(`document.querySelector('[aria-label="Fit graph to view"]')`);
   await sleep(1000);
+  writeFileSync(OUT_TREE_PNG, await cdp.shot());
+  console.log(`  wrote ${OUT_TREE_PNG}`);
+
+  // Then zoom in past it.
 
   /** The zoom badge, which renders `Math.round(zoom * 100)`. */
   const zoomPercent = (): Promise<number> =>
@@ -575,13 +568,14 @@ async function main() {
       const r = parseFloat(circle.getAttribute('r'));
       const scale = circle.getBoundingClientRect().width / (2 * r);
 
-      // The name under each node: the label is the item's name, truncated with
-      // an ellipsis when it is long, so it is a prefix of the aria-label.
+      // The name under each node: the label is the item's name, wrapped onto
+      // two lines and cut with an ellipsis only past the second, so its text
+      // is a prefix of the aria-label once the wrap's spacing is folded.
       const names = [];
       for (const g of groups) {
         const want = (g.getAttribute('aria-label') || '').split(',')[0].trim();
         const el = [...g.querySelectorAll('text')].find(t => {
-          const s = t.textContent.trim().replace(/…$/, '');
+          const s = t.textContent.replace(/ +/g, ' ').trim().replace(/…$/, '');
           return s.length > 2 && want.startsWith(s);
         });
         if (el) names.push(el);
@@ -652,14 +646,8 @@ async function main() {
   })()`);
   await sleep(900);
 
-  // 5 — where the human time goes.
-  //
-  // Only this lens. The SPOF lens decides what to highlight with a substring
-  // test on the node id (github / docker / 1password / credential), which the
-  // curated tech-tree nodes never match, so on this view it renders exactly
-  // like Standard. Recording a beat that shows a tab changing and nothing else
-  // is worse than not recording it, and dressing the fixture up to satisfy a
-  // string match would be advertising a check the code does not do.
+  // 5 — where the human time goes. The scenario rows above are what give the
+  // lens something to colour; without them it is offered disabled.
   console.log('  · attention lens');
   await cdp.clickWhere(deckTab('Attention'));
   await sleep(1300);
@@ -672,6 +660,18 @@ async function main() {
   await cdp.clickWhere(deckBtn('Proposals'));
   await sleep(1400);
   await hold(2.4);
+
+  // 7 — My Setup, for the README's second still. Not a beat of the GIF: a
+  // list holds still for as long as a reader wants, which a frame cannot.
+  await cdp.send('Page.navigate', { url: `http://127.0.0.1:${webPort}/ambit/?view=config` });
+  await sleep(3000);
+  await cdp.eval(`(() => {
+    const rows = document.querySelectorAll('.setup-row');
+    if (rows.length < 10) throw new Error('My Setup rendered ' + rows.length + ' rows');
+    return rows.length;
+  })()`);
+  writeFileSync(OUT_CONFIG_PNG, await cdp.shot());
+  console.log(`  wrote ${OUT_CONFIG_PNG}`);
 
   console.log(`Assembling ${n} frames…`);
   execSync(

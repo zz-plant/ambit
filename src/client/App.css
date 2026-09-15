@@ -12,10 +12,8 @@
   --bg-deep: #090d16;
   --bg-surface: #111827;
   --bg-elevated: #1e293b;
-  --bg-subtle: #273549;
   --bg-glass: rgba(17, 24, 39, 0.88);
   --bg-hover: rgba(255, 255, 255, 0.04);
-  --bg-active: rgba(255, 255, 255, 0.08);
 
   /* Primary Accent — Indigo & Electric Blue */
   --accent: #6366f1;
@@ -23,19 +21,17 @@
   --accent-soft: rgba(99, 102, 241, 0.12);
   --on-accent: #ffffff;
 
-  /* Accent Spectrum */
-  --copper-1: #ef4444;
-  --copper-2: #f97316;
-  --copper-3: #f59e0b;
-  --copper-4: #fbbf24;
-
   /* Semantic Status Colors */
   --ok: #10b981;
   --warn: #f59e0b;
   --error: #f43f5e;
   --error-deep: #e11d48;
-  --info: #0284c7;
-  --plasma: #8b5cf6;
+
+  /* The two directions an edge runs from the node in focus. What it needs is
+     drawn in teal, what it enables in the accent; the detail panel keys its
+     two lists with the same pair. Teal is otherwise the device kind, which
+     the map rarely draws. */
+  --edge-needs: #14b8a6;
 
   /* The attention lens: one hue, four steps, brighter with more. A magnitude
      wants a sequential ramp, not two colours split at a threshold — and on a
@@ -67,43 +63,26 @@
   --border-subtle: rgba(255, 255, 255, 0.05);
   --border-bright: rgba(255, 255, 255, 0.14);
   --border-hover: rgba(255, 255, 255, 0.2);
-  --border-neon: rgba(99, 102, 241, 0.4);
-  --border-copper: rgba(245, 158, 11, 0.4);
-  --border-soft: rgba(255, 255, 255, 0.07);
 
   /* Typography. Muted text sits on the darkest ground at 5.3:1; the previous
      value was 4.1:1, under the AA floor for the 10–11px labels it is used on. */
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #7b8799;
-  --text-copper: #fbbf24;
 
-  --muted-bg: #0f172a;
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 8px;
   --radius-md: 10px;
   --radius-lg: 12px;
-  --radius-xl: 16px;
   --radius-full: 9999px;
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Menlo', Consolas, monospace;
   --font: var(--font-sans);
 
-  --fs-micro: 10px;
-  --fs-xs: 11px;
-  --fs-sm: 12px;
   --fs-base: 13.5px;
-  --fs-md: 15px;
-  --fs-lg: 18px;
-  --fs-xl: 22px;
-  --fs-display: 28px;
-
-  --lh-tight: 1.25;
-  --lh-snug: 1.35;
   --lh-body: 1.5;
-  --lh-loose: 1.65;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.25);
@@ -223,6 +202,17 @@ code, pre, .code, .sp-cli-cmd {
   gap: 6px;
 }
 
+/* The key beside the Search button, in the same grey as the tooltips. */
+.app-deck-key {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 0 4px;
+  line-height: 15px;
+}
+
 .app-deck-count {
   min-width: 18px;
   padding: 0 5px;
@@ -257,6 +247,43 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-status-n {
   font-variant-numeric: tabular-nums;
+}
+
+/* The three states as three buttons, each the same control as its legend
+   key. Pressed, a segment lights its nodes and dims the rest. */
+.app-status-seg {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  transition: color 0.12s ease;
+}
+
+.app-status-seg .app-status-n {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.app-status-seg + .app-status-seg::before {
+  content: '·';
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.app-status-seg:hover {
+  color: var(--text-primary);
+}
+
+.app-status-seg.is-active,
+.app-status-seg.is-active .app-status-n {
+  color: var(--accent);
 }
 
 .fig-reach {
@@ -390,48 +417,214 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--on-accent);
 }
 
-/* On narrow screens the panel is a sheet over the map; this is what a tap
-   outside it lands on. */
-.app-drawer-backdrop {
+/* ─── MY SETUP ─── */
+/* A view, not a panel. The machine's entries were a 340px list docked over
+   the map, open by default, listing what the map already drew; and a second
+   map of the same entries in domain columns, with nearly every edge running
+   to the runtime. This is the list they both were, with room for the facts. */
+.setup {
   position: absolute;
-  inset: 50px 0 0 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 29;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 28px 40px;
+  background: var(--bg-deep);
 }
 
-/* ─── SIDEBAR & CAPABILITY LIST PANEL ─── */
-.toolchain-panel {
-  position: absolute;
-  top: 50px;
-  bottom: 0;
-  left: 0;
-  width: 340px;
-  background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-right: 1px solid var(--border);
+.setup-inner {
+  max-width: 1040px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  z-index: 30;
-  box-shadow: var(--shadow-md);
+  gap: 18px;
 }
 
-.tp-tabs {
-  padding: 12px 14px 8px;
+.setup-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.setup-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+.setup-subtitle {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 560px;
+}
+
+.setup-tabs {
+  display: flex;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  padding: 3px;
+  border-radius: var(--radius-md);
+}
+
+.setup-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.setup-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.setup-tab--active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-bright);
+  font-weight: 600;
+}
+
+.setup-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-.tp-tab {
+.setup-controls .tp-search-wrap {
+  width: 260px;
+}
+
+.setup-group-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.tp-toolbar {
-  padding: 10px 14px;
+.setup-group-n {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.setup-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/* One entry: name, whether it is on, what a check said, what it provides. */
+.setup-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.3fr) 90px 110px minmax(0, 2fr);
+  align-items: center;
+  gap: 14px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  border-bottom-color: var(--border-subtle);
+}
+
+.setup-row:hover {
+  background: var(--bg-hover);
+}
+
+.setup-row--sel {
+  background: var(--bg-elevated);
+  border-color: var(--border-bright);
+}
+
+.setup-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.setup-row-name > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setup-row-glyph {
+  flex: none;
+  font-size: 13px;
+}
+
+.setup-row-kind {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.setup-row-evidence {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.setup-row-evidence.is-ok {
+  color: var(--ok);
+}
+
+.setup-row-evidence.is-error {
+  color: var(--error);
+}
+
+.setup-row-evidence.is-muted {
+  color: var(--text-muted);
+}
+
+.setup-row-provides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* A node this entry provides, as a link onto the map. */
+.setup-chip {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 1px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.setup-chip:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 
 .tp-search-wrap {
@@ -483,17 +676,13 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
 }
 
+/* The kind chips wrap: a row that scrolls hides whichever filters are off
+   screen, the one thing a filter row must not do. */
 .tp-filter-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 0 14px 8px;
 }
-
-/* These are six filter pills in a 29px row. Scrolling them horizontally put a
-   full-width scrollbar track across the sidebar, which read as a divider in
-   the wrong place and hid whichever filters were off-screen — the one thing a
-   filter row must not do. They wrap instead. */
 
 .tp-filter-chip {
   padding: 3px 9px;
@@ -522,15 +711,12 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .tp-match-count {
-  padding: 4px 14px;
+  margin: -8px 0 0;
   font-size: 11px;
   color: var(--text-muted);
 }
 
 .tp-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -626,7 +812,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .tp-empty {
-  padding: 24px 14px;
+  padding: 24px 0;
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
@@ -695,28 +881,57 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
 }
 
-.sp-keystone-banner {
-  padding: 8px 12px;
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.08);
-  border-radius: var(--radius);
-  margin: 4px 0 8px;
-  font-size: 11.5px;
-  color: var(--warn);
+/* The two facts under the header are lines, not boxes. Each used to sit in
+   its own bordered, tinted banner above a third box for the config switch,
+   so a keystone with a passing check opened on three frames before a word of
+   description. */
+.sp-keystone {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--warn);
+}
+
+.sp-evidence {
+  margin: 0 0 4px;
+  font-size: 11.5px;
   line-height: 1.4;
 }
 
-.sp-evidence-banner {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  border-radius: var(--radius);
-  margin: 4px 0 8px;
+.sp-note {
+  margin: 8px 0 0;
   font-size: 11.5px;
   line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* The transitive answer, stated above the button that draws it. */
+.sp-impact {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* The two lists are keyed with the colours the map draws their edges in. */
+.sp-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-edge-dot {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.sp-edge-dot--needs {
+  background: var(--edge-needs);
 }
 
 .sp-desc {
@@ -796,15 +1011,13 @@ code, pre, .code, .sp-cli-cmd {
   border-top: 1px solid var(--border-subtle);
 }
 
+/* A command is a line of code with a copy control at its end. The bordered,
+   filled row each one had was a box inside a box, twice, on every node. */
 .sp-cli-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  margin-top: 6px;
+  padding: 3px 0;
   gap: 8px;
 }
 
@@ -817,10 +1030,11 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-cli-copy-btn {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--radius-xs);
-  color: var(--text-secondary);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
   font-size: 10.5px;
   padding: 2px 8px;
   cursor: pointer;
@@ -831,7 +1045,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-cli-copy-btn:hover {
   color: var(--text-primary);
-  border-color: var(--border-bright);
+  border-color: var(--border);
 }
 
 .sp-cli-copy-btn--copied {
@@ -839,26 +1053,6 @@ code, pre, .code, .sp-cli-cmd {
   border-color: rgba(16, 185, 129, 0.4);
   background: rgba(16, 185, 129, 0.1);
   font-weight: 600;
-}
-
-.sp-adv {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.sp-adv-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sp-adv-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  color: var(--text-secondary);
 }
 
 /* Two blocks of the detail panel referenced classes that were never defined, so
@@ -939,17 +1133,31 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* ─── CANVAS HUD & CONTROLS ─── */
-/* The canvas scrolls; the HUD is pinned to the viewport above it. The zoom
-   controls sit left, the lenses right, so neither covers a column header. */
+/* The canvas scrolls inside .civ-scroll; the controls are laid over it and
+   never move. The zoom controls sit left, the lenses right, so neither covers
+   a column header. Insets for the two side panels are set inline. */
+.civ-tree {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.civ-scroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
 .civ-hud {
-  position: sticky;
+  position: absolute;
   top: 12px;
+  left: 0;
+  right: 0;
   z-index: 20;
   height: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 0 12px;
   pointer-events: none;
 }
 
@@ -1000,21 +1208,26 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
 }
 
+/* The zoom reading is also the reset to actual size, so it is a button. */
 .civ-zoom-badge {
-  min-width: 40px;
-  text-align: center;
+  min-width: 44px;
+  height: 26px;
+  padding: 0 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  user-select: none;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
-.civ-zoom-divider {
-  width: 1px;
-  height: 16px;
-  margin: 0 3px;
-  background: var(--border);
+.civ-zoom-badge:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .civ-lens-hud .app-deck-tab {
@@ -1022,21 +1235,15 @@ code, pre, .code, .sp-cli-cmd {
   font-size: 11.5px;
 }
 
-.civ-lens-key {
-  margin-left: 5px;
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-/* Pinned under the HUD like the HUD itself: a zero-height sticky strip, so
-   the banner appearing does not push the map down. */
+/* Laid under the HUD like the HUD itself: a zero-height strip, so the banner
+   appearing does not push the map down. */
 .civ-sim-wrap {
-  position: sticky;
+  position: absolute;
   top: 52px;
   left: 0;
+  right: 0;
   z-index: 20;
   height: 0;
-  padding-left: 12px;
 }
 
 .civ-sim-banner {
@@ -1300,6 +1507,7 @@ code, pre, .code, .sp-cli-cmd {
 .gov-tabs {
   display: flex;
   gap: 4px;
+  margin-top: 4px;
 }
 
 .gov-tab {
@@ -1323,21 +1531,6 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-elevated);
   color: var(--text-primary);
   border-color: var(--border);
-}
-
-.gov-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
-.gov-search {
-  width: 180px;
-  height: 28px;
-  font-size: 11.5px;
 }
 
 .gov-empty {
@@ -2097,11 +2290,6 @@ code, pre, .code, .sp-cli-cmd {
   font-weight: 500;
 }
 
-.fig-leader {
-  stroke: var(--fig-rule);
-  stroke-width: 1;
-}
-
 .fig-axis-line {
   stroke: var(--fig-track);
   stroke-width: 1;
@@ -2496,64 +2684,124 @@ code, pre, .code, .sp-cli-cmd {
   margin-top: 4px;
 }
 
-.docs-hotkey-table,
-.docs-action-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.docs-hotkey-table th,
-.docs-hotkey-table td,
-.docs-action-table th,
-.docs-action-table td {
-  padding: 8px 10px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.docs-hotkey-table th,
-.docs-action-table th {
-  color: var(--text-muted);
+/* The three reference tabs. Eleven of these class names had no rule at all,
+   so "Click a node" ran straight into its explanation, the line samples were
+   empty spans, and the shortcut keys were styled inline. The rules that did
+   exist were for two tables nothing rendered. */
+.docs-h3 {
+  font-size: 12.5px;
   font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.docs-hotkey-table kbd {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 2px 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
   color: var(--text-primary);
+  margin-top: 4px;
 }
 
-.docs-action-table code {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 2px 6px;
+.docs-p {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.docs-muted {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.docs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docs-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.docs-row strong,
+.docs-action .docs-cmd {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.docs-swatch {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.docs-line-solid,
+.docs-line-dashed {
+  flex: none;
+  width: 22px;
+  height: 0;
+  border-top: 2px solid var(--accent);
+}
+
+.docs-line-dashed {
+  border-top: 2px dashed var(--text-muted);
+}
+
+.docs-action {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.docs-action code.docs-cmd {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.docs-cmd-inline {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--accent);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 1px 5px;
+}
+
+.docs-kbd {
+  justify-self: start;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 2px 7px;
+  min-width: 56px;
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  .docs-action {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }
 
 /* ─── RESPONSIVE RULES ─── */
 @media (max-width: 768px) {
-  .toolchain-panel {
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: 50%;
-    border-right: none;
-    border-top: 1px solid var(--border);
-  }
-
   .star-panel {
     top: auto;
     bottom: 0;
@@ -2601,13 +2849,35 @@ code, pre, .code, .sp-cli-cmd {
     display: none;
   }
 
-  .loop-dashboard {
-    left: 0 !important;
+  .loop-dashboard,
+  .setup {
     padding: 16px 16px 40px;
   }
 
   .loop-hero {
     align-items: flex-start;
+  }
+
+  .setup-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'name status' 'evidence evidence' 'provides provides';
+    gap: 4px 10px;
+  }
+
+  .setup-row-name {
+    grid-area: name;
+  }
+
+  .setup-row .tp-badge {
+    grid-area: status;
+  }
+
+  .setup-row-evidence {
+    grid-area: evidence;
+  }
+
+  .setup-row-provides {
+    grid-area: provides;
   }
 }
 
@@ -2679,36 +2949,11 @@ code, pre, .code, .sp-cli-cmd {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
 }
 
-/* ─── LENS NOTE ───
-   A lens with nothing to colour, explaining itself where the colour would be. */
-.civ-lens-note {
-  position: sticky;
-  top: 52px;
-  left: 0;
-  z-index: 20;
-  height: 0;
-  padding-left: 12px;
-}
-
-.civ-lens-note p {
-  display: inline-block;
-  max-width: 520px;
-  margin: 0;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--shadow-md);
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.civ-lens-note code {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-primary);
+/* A lens the ledger has nothing for is offered, disabled, with the reason
+   in its tooltip. */
+.civ-lens-hud .app-deck-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ─── CONFIG SWITCH ───
@@ -2765,31 +3010,14 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-muted);
 }
 
-/* ─── ENVIRONMENT TABS (REPO DRIFT, INFRASTRUCTURE) ─── */
-.tp-tabs {
-  gap: 12px;
-  justify-content: flex-start;
-}
-
-.tp-tab {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: var(--text-muted);
-}
-
-.tp-tab--active {
-  color: var(--text-primary);
-}
-
+/* ─── REPO DRIFT AND INFRASTRUCTURE, IN MY SETUP ─── */
 .tp-item--static {
   cursor: default;
 }
 
 .tp-note {
   margin: 0;
-  padding: 10px 14px;
+  padding: 0 0 10px;
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--text-muted);
@@ -2984,16 +3212,371 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-muted);
 }
 
-/* ─── WHAT EACH FILTER ACTS ON ───
-   Two controls with the same five words sit a few pixels apart: one filters
-   the map, one filters the list. Each says which. */
-.civ-hud-label,
-.tp-filter-label {
+/* ─── THE FINDER ───
+   Search that appears when asked and goes when done: a box over the view,
+   results split by where a match lives. */
+.finder-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 20px 20px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.finder {
+  width: 560px;
+  max-width: 100%;
+  max-height: 64vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+
+.finder-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+.finder-input:focus,
+.finder-input:focus-visible {
+  outline: none;
+}
+
+.finder-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+}
+
+.finder-group {
+  padding: 8px 10px 4px;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
-  align-self: center;
-  padding: 0 2px;
+}
+
+.finder-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.finder-item.is-active {
+  background: var(--bg-elevated);
+}
+
+.finder-item-glyph {
+  text-align: center;
+  font-size: 13px;
+}
+
+.finder-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finder-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.finder-empty {
+  padding: 18px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ─── THE MAP WITHOUT AN ENGINE ───
+   A config read in the browser has entries and no tree to place them on. */
+.app-map-empty {
+  max-width: 480px;
+  margin: 18vh auto 0;
+  padding: 0 24px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-map-empty code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+}
+
+/* ─── THE GOVERNANCE HALF, ON TIME & COST ───
+   What may act without asking, what has earned a threshold, what is spent,
+   what to reach next, and how the frontier moved. None of it had a web
+   surface; all of it was a report the terminal already printed. */
+.fig-stack-seg--autonomous,
+.fig-key-swatch--autonomous {
+  background: var(--fig-good);
+}
+
+.fig-stack-seg--confirm,
+.fig-key-swatch--confirm {
+  background: var(--fig-context);
+}
+
+.fig-stack-seg--forbidden,
+.fig-key-swatch--forbidden {
+  background: var(--fig-bad);
+}
+
+.fig-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.fig-subtitle {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fig-promote {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fig-promote-item {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 1.4fr) auto;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.fig-promote-what {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.fig-promote-why {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* A name that opens the thing it names, styled as the house words are. */
+.fig-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text-primary);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.fig-link:hover {
+  color: var(--accent);
+}
+
+.fig-next {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fig-next-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.fig-next-item:last-child {
+  border-bottom: none;
+}
+
+.fig-next-rank {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fig-next-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fig-next-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fig-next-cost {
+  margin-left: 8px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.fig-next-why {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.loop-since {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.loop-since-from {
+  color: var(--text-muted);
+}
+
+.loop-since-n {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.loop-since-part.is-good .loop-since-n {
+  color: var(--ok);
+}
+
+.loop-since-part.is-bad .loop-since-n {
+  color: var(--error);
+}
+
+.loop-since-part.is-data .loop-since-n {
+  color: var(--fig-data, #818cf8);
+}
+
+.loop-since-note {
+  width: 100%;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* ─── WHAT DECIDING ON A PROPOSAL NEEDS ─── */
+.gov-decision {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 11.5px;
+}
+
+.gov-decision-row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+}
+
+.gov-decision dt {
+  padding-top: 1px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gov-decision dd {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* ─── THE PANEL'S REASONS AND MOVES ─── */
+.sp-authority {
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.sp-failures {
+  margin-top: 10px;
+}
+
+.sp-failure {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--error);
+}
+
+.sp-action-btn--gap {
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: 11.5px;
+}
+
+.sp-action-btn--gap:hover {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.civ-sim-banner--gap {
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: var(--warn);
+}
+
+@media (max-width: 860px) {
+  .fig-promote-item {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }

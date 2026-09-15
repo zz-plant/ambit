@@ -83,6 +83,8 @@ function readPngInfo(filePath: string): PngInfo {
  */
 const UI_ASSETS: Record<string, string> = {
   'capability-graph-demo.gif': 'npm run assets:hero',
+  'screenshot-tree.png': 'npm run assets:hero',
+  'screenshot-config.png': 'npm run assets:hero',
 };
 
 /**

@@ -2,10 +2,8 @@ import { useEffect } from 'react';
 import { useLatest } from './useLatest';
 
 interface Hotkeys {
-  /** `/` — open the capabilities panel and focus its search box. */
+  /** `/` — open the finder. */
   openSearch: () => void;
-  /** `\` — toggle the capabilities panel. */
-  toggleSidebar: () => void;
   /** `?` — toggle the docs overlay. */
   toggleDocs: () => void;
   /** `g` — toggle the proposals panel. */
@@ -34,9 +32,6 @@ export function useHotkeys(keys: Hotkeys) {
       if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
         e.preventDefault();
         k.openSearch();
-      } else if (e.key === '\\') {
-        e.preventDefault();
-        k.toggleSidebar();
       } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         k.toggleDocs();

@@ -14,10 +14,10 @@
  */
 import type { Connection, Item } from '../../utils/configImporter';
 
-export const TYPE_FILTERS = ['all', 'server', 'agent', 'skill', 'combo'] as const;
-export type TypeFilter = (typeof TYPE_FILTERS)[number];
-
-/** Column order for the config view, where columns are domains rather than eras. */
+/**
+ * Column order for a graph with no eras, where columns are domains. The map is
+ * the tree; this is what a graph export that carries no era falls back to.
+ */
 export const DOMAIN_ORDER = [
   'infra',
   'devops',
@@ -28,18 +28,6 @@ export const DOMAIN_ORDER = [
   'meta',
   'security',
 ];
-
-export const ERA_LABELS: Record<string, string> = {
-  physical: 'Physical',
-  infra: 'Foundation',
-  devops: 'Pipeline',
-  backend: 'Services',
-  frontend: 'Interface',
-  'ai-ml': 'Intelligence',
-  quality: 'Guard',
-  meta: 'Orchestration',
-  security: 'Fortress',
-};
 
 /** Geometry. The node radius and the column and row pitch, in scene units. */
 export const NODE_R = 28;
@@ -60,8 +48,15 @@ export const columnOf = (item: Item): string => {
   return era === undefined ? domainOf(item) : `era:${era}`;
 };
 
+/**
+ * A column's name. An era is named by the tree; a domain is named by the
+ * glossary's own word for it, which is the word the detail panel uses too. The
+ * domain columns used to read Foundation, Pipeline, Guard and Fortress, none
+ * of which is a word the glossary or the panel ever says, and Foundation is
+ * also the tree's first era.
+ */
 export const columnLabel = (key: string, items: Item[]): string => {
-  if (!key.startsWith('era:')) return ERA_LABELS[key] || key;
+  if (!key.startsWith('era:')) return key;
   const named = items.find(i => i.meta?.eraName);
   return (named?.meta?.eraName as string) || `Era ${key.slice(4)}`;
 };
@@ -142,22 +137,203 @@ export function buildAdjacency(connections: Connection[], selectedId: string | n
 }
 
 /**
- * The items a filter admits.
+ * The items the map draws.
  *
- * If anything carries an era we are looking at the tech tree; show that alone,
- * so the columns mean one thing and prerequisites read left to right.
+ * If anything carries an era we are looking at the tree; show that alone, so
+ * the columns mean one thing and prerequisites read left to right. The
+ * machine's own entries are in the same list, and they are what My Setup
+ * shows; on the map they appear as the evidence behind a node, not as nodes.
+ * A graph with no eras at all, an export that carries none, is drawn as it
+ * stands.
  */
-export function visibleItems(items: Item[], filter: TypeFilter): Item[] {
+export function visibleItems(items: Item[]): Item[] {
   const eraItems = items.filter(i => eraOf(i) !== undefined);
-  if (eraItems.length > 0) return eraItems;
-  if (filter === 'all') return items;
-  const byFilter: Record<string, string> = {
-    server: 'mcp-server',
-    agent: 'agent',
-    skill: 'skill',
-    combo: 'possibility',
-  };
-  return items.filter(i => i.type === byFilter[filter] || i.type === 'framework');
+  return eraItems.length > 0 ? eraItems : items;
+}
+
+/** The machine's own entries: everything that is not a node of the tree. */
+export const isEntry = (item: Item): boolean => eraOf(item) === undefined;
+
+/** Where a node stands, for ordering: reached first, then the frontier, then blocked. */
+const stateRank = (item: Item): number => (item.status === 'built' ? 0 : isNext(item) ? 1 : 2);
+
+/**
+ * Wrap a name onto at most two lines of roughly `perLine` characters.
+ *
+ * A long name used to be cut at eighteen characters with an ellipsis, so the
+ * map read "Private Data Handli…" under a column wide enough for the whole
+ * name on two lines. A third line would collide with the next row, so what
+ * does not fit on two is still cut, and only then.
+ */
+export function wrapLabel(name: string, perLine = 16): string[] {
+  const words = name.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    if (!line) line = word;
+    else if ((line + ' ' + word).length <= perLine) line += ' ' + word;
+    else {
+      lines.push(line);
+      line = word;
+    }
+  }
+  if (line) lines.push(line);
+  if (lines.length <= 2) return lines;
+  const second = lines.slice(1).join(' ');
+  return [lines[0], second.length > perLine ? second.slice(0, perLine - 1) + '…' : second];
+}
+
+/**
+ * What stops if `id` went down: everything reachable along dependency edges,
+ * any number of hops. The outage simulation draws this set, and the detail
+ * panel states its size, so the two are one walk.
+ */
+export function outageCascade(connections: Connection[], id: string): Set<string> {
+  const { downstream } = buildAdjacency(connections, null);
+  const cascade = new Set<string>();
+  const queue = [id];
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const next of downstream.get(current) || []) {
+      if (!cascade.has(next)) {
+        cascade.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return cascade;
+}
+
+/** The edge kinds that mean "supplies", as the engine names them. */
+const PROVISION_KINDS = new Set(['provides', 'contributes']);
+
+/**
+ * What an outage of `id` does, in two sets: what stops, and what only loses a
+ * provider. The cascade used to paint everything downstream red, so losing
+ * one of two providers read the same as losing the only one. A node stops
+ * when a required prerequisite stops, or when every one of its providers has;
+ * it is weakened when it keeps another provider, or when the edge was optional.
+ * Edges without a kind, from data older than the kind, count as requirements,
+ * which is the old answer.
+ */
+export function outageSplit(
+  items: Item[],
+  connections: Connection[],
+  id: string
+): { stops: Set<string>; weakened: Set<string> } {
+  const byId = new Map(items.map(i => [i.id, i]));
+  const out = new Map<string, Connection[]>();
+  for (const c of connections) {
+    if (!out.has(c.from)) out.set(c.from, []);
+    out.get(c.from)!.push(c);
+  }
+  const gone = new Set<string>([id]);
+  const weakened = new Set<string>();
+  const queue = [id];
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const edge of out.get(current) || []) {
+      const node = byId.get(edge.to);
+      if (!node || gone.has(edge.to)) continue;
+      let stops: boolean;
+      if (edge.kind && PROVISION_KINDS.has(edge.kind)) {
+        const providers = (node.meta?.providers as string[] | undefined) ?? [edge.from];
+        stops = providers.every(p => gone.has(p));
+      } else {
+        stops = edge.type === 'hard-dep';
+      }
+      if (stops) {
+        gone.add(edge.to);
+        weakened.delete(edge.to);
+        queue.push(edge.to);
+      } else {
+        weakened.add(edge.to);
+      }
+    }
+  }
+  gone.delete(id);
+  return { stops: gone, weakened };
+}
+
+/**
+ * What stands between a node and being reached: every required prerequisite
+ * that is not reached, any number of hops up, and the setup time they add up
+ * to. Blocked is the glossary's most informative state and the map drew it as
+ * a faded circle; this is the sentence the panel says instead.
+ */
+export function gapOf(
+  items: Item[],
+  connections: Connection[],
+  id: string
+): { missing: Set<string>; seconds: number } {
+  const byId = new Map(items.map(i => [i.id, i]));
+  const required = new Map<string, string[]>();
+  for (const c of connections) {
+    if (c.type !== 'hard-dep') continue;
+    if (!required.has(c.to)) required.set(c.to, []);
+    required.get(c.to)!.push(c.from);
+  }
+  const missing = new Set<string>();
+  const queue = [id];
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const p of required.get(current) || []) {
+      const node = byId.get(p);
+      if (!node || node.status === 'built' || missing.has(p)) continue;
+      missing.add(p);
+      queue.push(p);
+    }
+  }
+  let seconds = 0;
+  for (const m of missing) seconds += Number(byId.get(m)?.meta?.setupSeconds) || 0;
+  return { missing, seconds };
+}
+
+/** Seconds as the map writes them: minutes under an hour, hours above. */
+export const readableSeconds = (s: number): string =>
+  !s ? '' : s >= 3600 ? `${Math.round((s / 3600) * 10) / 10}h` : `${Math.round(s / 60)}m`;
+
+/**
+ * What becomes reachable if `id` were reached: every node whose required
+ * prerequisites are then all met, closed over itself. The unlock simulation
+ * draws this set and the detail panel states its size.
+ */
+export function unlockCascade(items: Item[], connections: Connection[], id: string): Set<string> {
+  const required = new Map<string, string[]>();
+  for (const c of connections) {
+    if (c.type !== 'hard-dep') continue;
+    if (!required.has(c.to)) required.set(c.to, []);
+    required.get(c.to)!.push(c.from);
+  }
+  const reached = new Set(items.filter(i => i.status === 'built').map(i => i.id));
+  reached.add(id);
+  const unlocked = new Set<string>();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [target, prereqs] of required) {
+      if (reached.has(target) || unlocked.has(target)) continue;
+      if (prereqs.every(p => reached.has(p) || unlocked.has(p))) {
+        unlocked.add(target);
+        changed = true;
+      }
+    }
+  }
+  return unlocked;
+}
+
+/**
+ * The path an edge takes: a curve that leaves and arrives horizontally, so a
+ * bundle of edges into one node fans instead of converging as straight lines
+ * through everything between. An edge inside one column bows out to the right.
+ */
+export function edgePath(x1: number, y1: number, x2: number, y2: number): string {
+  if (Math.abs(x2 - x1) < 1) {
+    const bulge = 40;
+    return `M${x1},${y1} C${x1 + bulge},${y1} ${x2 + bulge},${y2} ${x2},${y2}`;
+  }
+  const mx = (x1 + x2) / 2;
+  return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
 }
 
 export interface Columns {
@@ -165,8 +341,18 @@ export interface Columns {
   colOrder: string[];
 }
 
-/** Groups items into columns and decides the order those columns appear in. */
-export function buildColumns(items: Item[]): Columns {
+/**
+ * Groups items into columns, decides the order those columns appear in, and
+ * orders the rows inside each so that a node sits near what it connects to.
+ *
+ * Rows used to follow insertion order, so height on the map meant nothing
+ * while the Docs claimed it showed how far up the tree something sat. Now
+ * each column starts in state order, reached first, and a few barycenter
+ * sweeps pull every node toward the mean row of its neighbours. The heuristic
+ * is the standard one for layered graphs; it does not promise no crossings,
+ * only fewer, and the same input always gives the same order.
+ */
+export function buildColumns(items: Item[], connections: Connection[] = []): Columns {
   const cols: Record<string, Item[]> = {};
   for (const item of items) {
     const key = columnOf(item);
@@ -179,7 +365,65 @@ export function buildColumns(items: Item[]): Columns {
     .sort((a, b) => Number(a.slice(4)) - Number(b.slice(4)));
   const colOrder = [...eras, ...DOMAIN_ORDER.filter(d => cols[d]?.length)];
   for (const key of Object.keys(cols)) if (!colOrder.includes(key)) colOrder.push(key);
+
+  for (const key of colOrder) {
+    cols[key].sort((a, b) => stateRank(a) - stateRank(b) || a.name.localeCompare(b.name));
+  }
+  orderRows(cols, colOrder, connections);
   return { cols, colOrder };
+}
+
+/** How many sweeps the ordering makes. Four is where the demo tree stops changing. */
+const SWEEPS = 4;
+
+/**
+ * Barycenter ordering, in place. Each sweep walks the columns in one
+ * direction and sorts every column by the mean row of each node's neighbours
+ * in the other columns, ties broken by the current position so an unconnected
+ * node keeps its place.
+ */
+function orderRows(cols: Record<string, Item[]>, colOrder: string[], connections: Connection[]) {
+  const present = new Set(colOrder.flatMap(k => cols[k].map(i => i.id)));
+  const neighbours = new Map<string, string[]>();
+  for (const c of connections) {
+    if (!present.has(c.from) || !present.has(c.to) || c.from === c.to) continue;
+    if (!neighbours.has(c.from)) neighbours.set(c.from, []);
+    if (!neighbours.has(c.to)) neighbours.set(c.to, []);
+    neighbours.get(c.from)!.push(c.to);
+    neighbours.get(c.to)!.push(c.from);
+  }
+  if (neighbours.size === 0) return;
+
+  const rowOf = new Map<string, number>();
+  const index = () => {
+    for (const key of colOrder) {
+      cols[key].forEach((item, r) => {
+        rowOf.set(item.id, r);
+      });
+    }
+  };
+  index();
+
+  for (let sweep = 0; sweep < SWEEPS; sweep++) {
+    const order = sweep % 2 === 0 ? colOrder : [...colOrder].reverse();
+    for (const key of order) {
+      const column = cols[key];
+      const bary = new Map<string, number>();
+      for (const item of column) {
+        const rows = (neighbours.get(item.id) || []).map(n => rowOf.get(n) ?? 0);
+        bary.set(
+          item.id,
+          rows.length ? rows.reduce((s, r) => s + r, 0) / rows.length : (rowOf.get(item.id) ?? 0)
+        );
+      }
+      column.sort(
+        (a, b) => bary.get(a.id)! - bary.get(b.id)! || rowOf.get(a.id)! - rowOf.get(b.id)!
+      );
+      column.forEach((item, r) => {
+        rowOf.set(item.id, r);
+      });
+    }
+  }
 }
 
 export interface Placed {

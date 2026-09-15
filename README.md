@@ -87,8 +87,8 @@ cd ambit
 > The npm package is built and ready but not yet published, so there is no `npx` path yet.
 
 <div align="center">
-<img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, drawn as nodes in domain columns" width="900">
-<br><sub>My Setup is the same map built from discovered config, not the curated tree — every server, agent, and model found on the machine, placed in its domain</sub>
+<img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
+<br><sub>My Setup is the list the map is drawn from: every server, agent, and model found on the machine, whether it is on, what its check said, and which capabilities on the map it provides</sub>
 </div>
 
 ---
@@ -118,7 +118,7 @@ The three console blocks below are captured from a run against a fixture graph b
 ```console
 $ ambit status
 
-    summary: 37/56 capabilities reached · 26 with a single provider
+    summary: 37/56 capabilities reached · 8 with a single provider
     reached: 37
     total: 56
     verified: 0
@@ -276,30 +276,32 @@ sequenceDiagram
 
 ## The map
 
-The web UI (`./bootstrap.sh web`) is an operational canvas over the same graph the CLI reads.
+The web UI (`./bootstrap.sh web`) is three views over the same graph the CLI reads. The **map** is the curated tree with your position on it. **My Setup** is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides. **Time & cost** is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. Search (<kbd>/</kbd>) finds anything by name and opens it where it lives.
+
+Select a node and its edges are drawn apart: what it needs in teal, what it enables in indigo, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take. The header counts the map's nodes by state, and each count highlights its nodes, the way the legend keys do.
 
 The **Docs** button defines every term on the canvas; [the four above](#the-words-ambit-uses) cover most of it.
 
-### Three lenses on the canvas
+### Two lenses on the canvas
 
-The switch sits over the map, top right. Press <kbd>1</kbd>–<kbd>3</kbd> to change it from the keyboard.
+The switch sits over the map, top right. Press <kbd>1</kbd> or <kbd>2</kbd> to change it from the keyboard.
 
 | Lens | What it renders | Use it for |
 | :--- | :--- | :--- |
-| **Standard** | Chronological era columns with reached, frontier, and locked nodes. | Reading overall progression and what is nearby. |
-| **Attention** | Nodes warmed amber to crimson by how often a human has had to intervene. | Finding which tools keep interrupting you. |
-| **Shared credentials** | Highlights capabilities that hang off shared authentication. | Checking blast radius before rotating a key. |
+| **Standard** | Era columns with reached, next-step and blocked nodes. | Reading overall progression and what is nearby. |
+| **Attention** | Nodes shaded by how often a person had to step in, offered once the ledger has recorded any. | Finding which tools keep interrupting you. |
 
 ### Simulation
 
 Select a node to open the inspector, then simulate against it. Neither mode writes anything.
 
-- **Simulate outage** dims the canvas and renders the multi-hop failure cascade in red, with a running count of disabled downstream capabilities.
+- **Simulate an outage** dims the canvas and draws the cascade: red for what stops, amber for what keeps another provider and only loses one, with the count of each.
 - **Simulate unlocking** acquires a locked primitive hypothetically and lights up everything that becomes reachable in green.
+- **Show the gap** draws what a blocked node is waiting on, every hop up, priced in setup time.
 
 ### Approving proposals
 
-When an agent proposes an environment change over MCP, the **Proposals** panel shows the diff and mints a signed approval receipt in one click. The same thing happens from the terminal with `ambit approve <id> <who>`.
+When an agent proposes an environment change over MCP, the **Proposals** panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click. The same thing happens from the terminal with `ambit approve <id> <who>`.
 
 ---
 

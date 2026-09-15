@@ -3,38 +3,26 @@ import { useEffect, useState } from 'react';
 /** Matches the mobile breakpoint in App.css, where the panels become sheets. */
 const NARROW = '(max-width: 768px)';
 
-/**
- * Whether the screen is narrow, and whether the capabilities panel is open.
- *
- * The panel is 340px of absolutely-positioned overlay. On a phone that is
- * the whole screen: it covered the landing page, including the button that
- * loads the demo, so the published demo was unusable on the device most
- * people follow a link from. Narrow screens start with it closed, and it opens
- * as a bottom sheet rather than a left rail. On medium screens it also closes
- * when a node is selected, so the detail panel does not squeeze the map.
- */
-export function useViewport(selectedId: string | null) {
-  const [isNarrow, setIsNarrow] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(NARROW).matches
-  );
-  const [leftOpen, setLeftOpen] = useState(() => !isNarrow);
+/** Whether this document is on a narrow screen, read once and kept current. */
+export function isNarrowScreen(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(NARROW).matches;
+}
 
+/**
+ * Whether the screen is narrow.
+ *
+ * On a phone the map is a wall of nodes at forty percent and the detail panel
+ * is a bottom sheet, so the shell lands narrow screens on My Setup, a list,
+ * and keeps the map one tap away.
+ */
+export function useNarrow(): boolean {
+  const [isNarrow, setIsNarrow] = useState(isNarrowScreen);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia(NARROW);
-    const onChange = (e: MediaQueryListEvent) => {
-      setIsNarrow(e.matches);
-      setLeftOpen(!e.matches);
-    };
+    const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-
-  useEffect(() => {
-    if (selectedId && typeof window !== 'undefined' && window.innerWidth < 1200 && !isNarrow) {
-      setLeftOpen(false);
-    }
-  }, [selectedId, isNarrow]);
-
-  return { isNarrow, leftOpen, setLeftOpen };
+  return isNarrow;
 }

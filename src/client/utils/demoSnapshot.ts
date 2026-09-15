@@ -150,5 +150,77 @@ export function demoSnapshot(): LoopSnapshot {
       ],
       forecast: { predicted_hours: 37, observed_hours: 41 },
     },
+    // What runs without a person, and what could. Two grants have been
+    // confirmed by hand often enough, with nothing failing, that the engine
+    // would suggest a threshold for them; one budget is part spent.
+    authority: {
+      autonomous: 31,
+      confirm: 12,
+      forbidden: 3,
+      promotable: [
+        {
+          capability: 'Secret Management',
+          id: 'combo:secret-management',
+          action: 'read_secret',
+          asked: 24,
+          evidence: '24 successful uses, 2 passing checks',
+          command: 'ambit authority promote secret-management read_secret --after=10 --by=<person>',
+        },
+        {
+          capability: 'Continuous Delivery',
+          id: 'combo:continuous-delivery',
+          action: 'deploy_staging',
+          asked: 14,
+          evidence: '14 successful uses',
+          command:
+            'ambit authority promote continuous-delivery deploy_staging --after=10 --by=<person>',
+        },
+      ],
+      budgets: [
+        {
+          capability: 'Hosted Inference',
+          action: 'execute',
+          ceiling_dollars: 20,
+          spent_dollars: 12.4,
+          period: 'month',
+        },
+      ],
+      sandboxes: ['repo:acme/playground'],
+    },
+    // Ranked by what has blocked work, then by leverage: the same three the
+    // terminal prints, each one step away on the demo tree.
+    next: [
+      {
+        id: 'combo:embeddings',
+        capability: 'Embeddings',
+        why: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which is supplied and waiting on this alone.',
+        cost: '10m',
+        basis: 'observed',
+      },
+      {
+        id: 'combo:local-tool-calling',
+        capability: 'Local Tool Calling',
+        why: 'It has blocked work 3 times.',
+        cost: '15m',
+        basis: 'observed',
+      },
+      {
+        id: 'combo:model-routing',
+        capability: 'Model Routing',
+        why: 'Reaching it also reaches Offline Capable, which is already supplied and waiting on this alone.',
+        cost: '10m',
+        basis: 'observed',
+      },
+    ],
+    // The week's movement. Continuous Delivery is the entry worth the strip:
+    // nothing providing it was added, Automated Tests satisfied the one
+    // prerequisite it was waiting on.
+    since: {
+      from: '2026-09-08',
+      gained: ['Automated Tests'],
+      emergent: ['Continuous Delivery'],
+      lost: [],
+      diminished: ['E2E on Edge'],
+    },
   };
 }

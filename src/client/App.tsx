@@ -1,12 +1,13 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import AppDeck from './components/AppDeck';
-import { isNext } from './components/civ/layout';
+import AppDeck, { type MapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
-import CapabilityListPanel from './components/CapabilityListPanel';
-import LoopDashboard from './components/LoopDashboard';
+import { isEntry, isNext, visibleItems } from './components/civ/layout';
 import DocsModal, { type DocsTab } from './components/DocsModal';
+import Finder from './components/Finder';
 import GettingStartedGuide from './components/GettingStartedGuide';
+import LoopDashboard from './components/LoopDashboard';
 import NodeDetailPanel from './components/NodeDetailPanel';
+import SetupView from './components/SetupView';
 import Toast from './components/Toast';
 import WelcomeScreen from './components/WelcomeScreen';
 import { useGraphStream } from './hooks/useGraphStream';
@@ -14,15 +15,25 @@ import { useGuide } from './hooks/useGuide';
 import { useHotkeys } from './hooks/useHotkeys';
 import { useToast } from './hooks/useToast';
 import { useUrlSync } from './hooks/useUrlSync';
-import { useViewport } from './hooks/useViewport';
-import { readLinkState } from './linkState';
-import { statusLabel } from './utils/labels';
+import { isNarrowScreen, useNarrow } from './hooks/useViewport';
+import { readLinkState, type LinkState, type View } from './linkState';
 import { useAmbitStore } from './store/ambitStore';
+import { statusLabel } from './utils/labels';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 
-/** The width of the docked capability list and of the detail panel. */
+/** The width of the detail panel. */
 const PANEL_W = 340;
+
+/**
+ * Where a visit lands. The link decides when it names a view. A narrow
+ * screen that was not told opens on My Setup: at phone width the map is
+ * texture and the list is not, and the map stays one tap away.
+ */
+export function initialView(link: LinkState, narrow: boolean): View {
+  if (link.viewStated) return link.view;
+  return narrow && link.view === 'tree' ? 'config' : link.view;
+}
 
 const Loading = () => (
   <div className="app-loading">
@@ -46,48 +57,39 @@ export default function App() {
   const error = useAmbitStore(s => s.error);
   const demo = useAmbitStore(s => s.demo);
   const lens = useAmbitStore(s => s.activeLens);
-  const treeFilter = useAmbitStore(s => s.treeFilter);
+  const spotlight = useAmbitStore(s => s.spotlight);
   const proposals = useAmbitStore(s => s.proposals);
   const showApprovalModal = useAmbitStore(s => s.showApprovalModal);
 
   const selectItem = useAmbitStore(s => s.selectItem);
   const hoverItem = useAmbitStore(s => s.hoverItem);
-  const loadConfig = useAmbitStore(s => s.loadConfig);
-  const loadTechTree = useAmbitStore(s => s.loadTechTree);
+  const loadGraph = useAmbitStore(s => s.loadGraph);
   const seedDemo = useAmbitStore(s => s.seedDemo);
-  const seedDemoTree = useAmbitStore(s => s.seedDemoTree);
   const loadProposals = useAmbitStore(s => s.loadProposals);
   const loadAttentionData = useAmbitStore(s => s.loadAttentionData);
   const loadLoop = useAmbitStore(s => s.loadLoop);
   const probeBackend = useAmbitStore(s => s.probeBackend);
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
+  const setSpotlight = useAmbitStore(s => s.setSpotlight);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
 
-  // The URL is read once; the toggles own every later change.
+  // The URL is read once; the controls own every later change.
   const [link] = useState(() =>
     readLinkState(typeof window === 'undefined' ? '' : window.location.search)
   );
-  const [source, setSource] = useState(link.source);
-  const [view, setView] = useState(link.view);
+  const [view, setView] = useState<View>(() => initialView(link, isNarrowScreen()));
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
+  const [finderOpen, setFinderOpen] = useState(false);
 
   const openDocs = (tab?: DocsTab) => {
     setDocsTab(tab);
     setShowDocs(true);
   };
 
-  useUrlSync({
-    source,
-    view,
-    focusId: selectedId,
-    docsOpen: showDocs,
-    demo,
-    lens,
-    treeFilter,
-  });
+  useUrlSync({ view, focusId: selectedId, docsOpen: showDocs, demo, lens });
 
-  const { isNarrow, leftOpen, setLeftOpen } = useViewport(selectedId);
+  const isNarrow = useNarrow();
   const { showGuide, dismissGuide } = useGuide(link.guideOff);
   const [toast, setToast] = useToast();
 
@@ -96,8 +98,7 @@ export default function App() {
       // Something rebuilt the graph: a seed, an adapter, another session. The
       // page reloads itself, and says so: a view that changes under the reader
       // with no explanation reads as a glitch.
-      if (source === 'tree') loadTechTree();
-      else loadConfig();
+      loadGraph();
       loadLoop();
       setToast('The graph changed underneath — reloaded.');
     },
@@ -110,11 +111,7 @@ export default function App() {
   });
 
   useHotkeys({
-    openSearch: () => {
-      setLeftOpen(true);
-      setTimeout(() => document.getElementById('tp-search-input')?.focus(), 60);
-    },
-    toggleSidebar: () => setLeftOpen(o => !o),
+    openSearch: () => setFinderOpen(true),
     toggleDocs: () => setShowDocs(o => !o),
     toggleGovernance: () => {
       const open = useAmbitStore.getState().showApprovalModal;
@@ -122,6 +119,7 @@ export default function App() {
       if (!open) loadProposals();
     },
     escape: () => {
+      setFinderOpen(false);
       setShowApprovalModal(false);
       setShowDocs(false);
       selectItem(null);
@@ -130,22 +128,18 @@ export default function App() {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount only. The link is read once, and the store actions have stable identities. Re-running this on a re-render would re-seed the demo, which is exactly what it must not do.
   useEffect(() => {
-    // ?demo=1 seeds the graph before anything can fetch. loadConfig()'s
+    // ?demo=1 seeds the graph before anything can fetch. loadGraph()'s
     // no-backend path would otherwise clobber the seeded data back to an
-    // empty graph. The tree is a different dataset from the config view, so
-    // it is asked for explicitly instead of fetched. The demo must look the
-    // same with an engine behind it as without one.
+    // empty graph. The demo must look the same with an engine behind it as
+    // without one.
     if (link.demo) seedDemo();
     probeBackend();
     loadProposals();
     loadAttentionData();
-    if (!link.demo) loadLoop();
-    if (link.demo) {
-      if (source === 'tree') seedDemoTree();
-      return;
+    if (!link.demo) {
+      loadLoop();
+      loadGraph();
     }
-    if (source === 'tree') loadTechTree();
-    else loadConfig();
   }, []);
 
   // ?focus=<id> selects a node once the graph that contains it has loaded.
@@ -162,43 +156,42 @@ export default function App() {
     }
   }, [focusTarget, selectItem]);
 
-  // In the demo the two views are the same invented setup seen twice, so
-  // switching tabs must not go to the network. Locally that fetched the
-  // developer's own machine into a page they asked to be a demo.
-  const openTree = () => {
-    setView('graph');
-    setSource('tree');
-    if (demo) seedDemoTree();
-    else loadTechTree();
-  };
-  const showTree = () => {
-    openTree();
-    selectItem(null);
+  /** Select something without toggling it off when it is already selected. */
+  const select = (id: string) => {
+    if (useAmbitStore.getState().selectedItem !== id) selectItem(id);
   };
 
   /**
-   * Follow a priced opportunity to the node it is about.
-   *
-   * The Time & cost page's "Map" button selected the node and ran the unlock
-   * simulation while leaving you on the dashboard, where neither is visible, so
-   * the button appeared to do nothing at all.
+   * Show an item where it lives: a node of the tree on the map, an entry of
+   * the machine in My Setup. The finder and the detail panel's neighbour
+   * lists both go through here, so following a link from a tree node to the
+   * server that provides it lands on the list where that server is.
+   */
+  const show = (id: string) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    setView(isEntry(item) ? 'config' : 'tree');
+    select(id);
+  };
+
+  /**
+   * Follow a priced opportunity to the node it is about, with the unlock
+   * simulation running. Both happen on the map, so the map is shown first.
    */
   const showOnMap = (id: string) => {
-    openTree();
-    selectItem(id);
+    setView('tree');
+    select(id);
     startAcquisition(id);
   };
-  const showSetup = () => {
-    setView('graph');
-    setSource('config');
-    selectItem(null);
-    if (demo) seedDemo();
-    else loadConfig();
-  };
-  const showLoop = () => {
-    setView('loop');
-    selectItem(null);
-    if (!demo) loadLoop();
+
+  const showView = (next: View) => {
+    setView(next);
+    // The detail panel is meaningful over the map and the list, and in the
+    // way over the figures.
+    if (next === 'loop') {
+      selectItem(null);
+      if (!demo) loadLoop();
+    }
   };
 
   /**
@@ -223,16 +216,30 @@ export default function App() {
 
   const selected = selectedId ? items.find(i => i.id === selectedId) : undefined;
   const detailOpen = Boolean(showDetailPanel && selectedId);
-  const listInset = leftOpen && !isNarrow ? PANEL_W : 0;
+
+  // The header counts one population per view: the map's nodes by state, or
+  // the setup's entries by whether they are enabled. It used to count both in
+  // one fraction, so the demo read "42 of 60" over a tree of 33.
+  const mapItems = visibleItems(items);
+  const counts: MapCounts = {
+    reached: mapItems.filter(i => i.status === 'built').length,
+    next: mapItems.filter(i => i.status !== 'built' && isNext(i)).length,
+    blocked: mapItems.filter(i => i.status !== 'built' && !isNext(i)).length,
+  };
+  const entries = items.filter(isEntry);
+  const hasTree = items.some(i => !isEntry(i));
 
   // No graph yet: the welcome page, on its own. The chrome around the map (a
-  // capability list reading "(0)", a status pill reading "0 / 0") would
-  // otherwise be the first thing a visitor saw.
+  // status pill reading "0 of 0") would otherwise be the first thing a
+  // visitor saw.
   if (!items.length && !loading && !error) {
     return (
       <div className="app">
         <WelcomeScreen
-          onExploreDemo={seedDemo}
+          onExploreDemo={() => {
+            seedDemo();
+            setView(isNarrow ? 'config' : 'tree');
+          }}
           onViewLoop={() => {
             seedDemo();
             setView('loop');
@@ -254,19 +261,20 @@ export default function App() {
   return (
     <div className="app">
       <AppDeck
-        reached={items.filter(i => i.status === 'built').length}
-        next={items.filter(i => i.status !== 'built' && isNext(i)).length}
-        total={items.length}
         view={view}
-        source={source}
+        counts={view === 'tree' ? counts : null}
+        entries={
+          view === 'config'
+            ? { enabled: entries.filter(i => i.status === 'built').length, total: entries.length }
+            : null
+        }
         connected={connected}
         draftCount={proposals.filter(p => p.status === 'draft').length}
-        leftOpen={leftOpen}
-        onToggleSidebar={() => setLeftOpen(o => !o)}
+        spotlight={spotlight}
+        onSpotlight={setSpotlight}
+        onSearch={() => setFinderOpen(true)}
+        onShowView={showView}
         onShare={share}
-        onShowTree={showTree}
-        onShowSetup={showSetup}
-        onShowLoop={showLoop}
         onShowProposals={showProposals}
         onShowDocs={() => openDocs()}
       />
@@ -276,14 +284,16 @@ export default function App() {
         {error && (
           <div className="app-error">
             <p>{error}</p>
-            <button type="button" className="tp-btn" onClick={() => loadConfig()}>
+            <button type="button" className="tp-btn" onClick={() => loadGraph()}>
               Try again
             </button>
           </div>
         )}
         {view === 'loop' ? (
-          <LoopDashboard leftInset={listInset} onShowOnMap={showOnMap} />
-        ) : items.length > 0 ? (
+          <LoopDashboard onShowOnMap={showOnMap} />
+        ) : view === 'config' ? (
+          <SetupView onShow={show} />
+        ) : items.length > 0 && hasTree ? (
           <Suspense fallback={<Loading />}>
             <CivTree
               items={items}
@@ -292,12 +302,26 @@ export default function App() {
               hoveredId={hoveredId}
               onSelect={selectItem}
               onHover={hoverItem}
-              leftInset={listInset ? listInset + 8 : 8}
+              leftInset={8}
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
             />
           </Suspense>
+        ) : items.length > 0 ? (
+          // A config read in the browser has entries and no tree: placing
+          // them on the curated tree is the engine's job, and there is none
+          // behind a dropped file.
+          <div className="app-map-empty">
+            <p>
+              The map places a setup on the curated tree, and placing it takes the engine. What this
+              file declares is in My Setup; for the map, clone the repository and run{' '}
+              <code>./bootstrap.sh web</code>.
+            </p>
+            <button type="button" className="tp-btn" onClick={() => showView('config')}>
+              Open My Setup
+            </button>
+          </div>
         ) : null}
-        {showGuide && view === 'graph' && items.length > 0 && (
+        {showGuide && view === 'tree' && hasTree && (
           <GettingStartedGuide
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
             onDismiss={dismissGuide}
@@ -311,24 +335,11 @@ export default function App() {
 
       {detailOpen && (
         <aside className="app-detail-panel" aria-label="Capability details">
-          <NodeDetailPanel />
+          <NodeDetailPanel onShow={show} />
         </aside>
       )}
 
-      {leftOpen && isNarrow && (
-        <div
-          className="app-drawer-backdrop"
-          onClick={() => setLeftOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {leftOpen && (
-        <aside className="app-capabilities-panel" aria-label="Capabilities">
-          <CapabilityListPanel />
-        </aside>
-      )}
-
+      <Finder open={finderOpen} onClose={() => setFinderOpen(false)} onShow={show} />
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
       <DocsModal
         isOpen={showDocs}

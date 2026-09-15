@@ -12,7 +12,9 @@ import { afterEach, expect, test } from 'vitest';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { useAmbitStore } from '../store/ambitStore';
+import { demoProposals } from '../store/demo';
 import AppDeck from './AppDeck';
+import ApprovalModal from './ApprovalModal';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 
@@ -53,19 +55,16 @@ afterEach(() => {
 const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
   renderToStaticMarkup(
     <AppDeck
-      reached={1}
-      next={1}
-      total={3}
-      view="graph"
-      source="tree"
+      view="tree"
+      counts={{ reached: 1, next: 1, blocked: 1 }}
+      entries={null}
       connected={false}
       draftCount={0}
-      leftOpen={false}
-      onToggleSidebar={() => {}}
+      spotlight={null}
+      onSpotlight={() => {}}
+      onSearch={() => {}}
+      onShowView={() => {}}
       onShare={() => {}}
-      onShowTree={() => {}}
-      onShowSetup={() => {}}
-      onShowLoop={() => {}}
       onShowProposals={() => {}}
       onShowDocs={() => {}}
       {...props}
@@ -213,6 +212,21 @@ test('a house word carries its own definition, from the one glossary', () => {
   expect(deck()).toContain('class="term"');
 });
 
+test('the header counts the three states of the map, and each count is a control', () => {
+  // It read "42 of 60 reached" over a tree of 33: entries counted with nodes,
+  // and the least informative state leading. Three segments now, each the
+  // same control as its legend key.
+  const html = deck({ counts: { reached: 12, next: 5, blocked: 3 } });
+  expect(html).toContain('Highlight Next step on the map');
+  expect(html).toContain('Highlight Blocked on the map');
+  expect(html).not.toContain('of 20');
+
+  // Off the map, the pill counts what that view lists.
+  const setup = deck({ view: 'config', counts: null, entries: { enabled: 9, total: 11 } });
+  expect(setup).toContain('9 of 11 enabled');
+  expect(setup).not.toContain('Highlight');
+});
+
 test('the detail panel words a status for the graph the node came from', () => {
   // "Tool server · Reached" sat directly above a switch reading "Enabled":
   // two words for one fact, disagreeing. A config entry is enabled or not.
@@ -227,4 +241,90 @@ test('the detail panel words a status for the graph the node came from', () => {
     backend: 'live',
   });
   expect(renderToStaticMarkup(<NodeDetailPanel />)).toContain('Reached');
+});
+
+test('the governance half is on the page: authority, next steps, and the week', () => {
+  // Whether a capability may act without asking, which grants have earned a
+  // threshold, what to reach next and why, and what moved: all terminal-only
+  // until now, and the most decision-shaped data the engine holds.
+  seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
+  const html = renderToStaticMarkup(<LoopDashboard />);
+  expect(html).toContain('What may act without asking');
+  expect(html).toContain('Earned a threshold nobody set');
+  expect(html).toContain('What to reach next');
+  expect(html).toContain('emergent');
+});
+
+test('a proposal card carries what deciding on it needs', () => {
+  // Saves, costs, undo, unlocks, precedent: stored by the engine, shown by
+  // nothing. The card had the goal and the steps.
+  seed({ proposals: demoProposals() });
+  const html = renderToStaticMarkup(<ApprovalModal isOpen onClose={() => {}} />);
+  expect(html).toContain('Saves');
+  expect(html).toContain('Costs');
+  expect(html).toContain('Undo');
+  expect(html).toContain('every step is a config change with an inverse');
+  expect(html).toContain('privacy local accepted 4 of 4');
+});
+
+test('a blocked node says what it is blocked by, and prices the gap', () => {
+  const embeddings: Item = {
+    id: 'combo:embeddings',
+    name: 'Embeddings',
+    type: 'possibility',
+    status: 'specified',
+    description: '',
+    position: { x: 0, y: 0, z: 0 },
+    meta: { era: 4, state: 'locked', next: true, setupSeconds: 600 },
+  };
+  const vectorStore: Item = {
+    ...embeddings,
+    id: 'combo:vector-store',
+    name: 'Vector Store',
+    meta: { era: 4, state: 'locked', next: false, setupSeconds: 900 },
+  };
+  seed({
+    items: [embeddings, vectorStore],
+    connections: [{ from: embeddings.id, to: vectorStore.id, type: 'hard-dep' }],
+    selectedItem: vectorStore.id,
+    showDetailPanel: true,
+  });
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+  expect(html).toContain('Blocked by Embeddings, about 10m of setup first');
+  expect(html).toContain('Show the gap on the map');
+});
+
+test('an outage tells what stops from what only loses a provider', () => {
+  // Two providers of one capability: losing either weakens it, losing both
+  // ends it. The cascade painted both the same.
+  const git: Item = {
+    id: 'mcp:git',
+    name: 'git',
+    type: 'mcp-server',
+    status: 'built',
+    description: '',
+    position: { x: 0, y: 0, z: 0 },
+    meta: { domain: 'devops' },
+  };
+  const github: Item = { ...git, id: 'mcp:github', name: 'github' };
+  const vc: Item = {
+    ...git,
+    id: 'combo:version-control',
+    name: 'Version Control',
+    type: 'possibility',
+    meta: { era: 1, state: 'unlocked', next: false, providers: ['mcp:git', 'mcp:github'] },
+  };
+  seed({
+    items: [git, github, vc],
+    connections: [
+      { from: git.id, to: vc.id, type: 'hard-dep', kind: 'provides' },
+      { from: github.id, to: vc.id, type: 'hard-dep', kind: 'provides' },
+    ],
+    selectedItem: git.id,
+    showDetailPanel: true,
+  });
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+  expect(html).toContain(
+    'Nothing else would stop working without it, but 1 capability would lose a provider'
+  );
 });

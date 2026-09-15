@@ -18,16 +18,21 @@ import {
   columnOf,
   costOf,
   domainOf,
+  edgePath,
   eraOf,
+  eraProgress,
+  isEntry,
   isNext,
   layoutNodes,
   NODE_R,
+  outageCascade,
   ROW_H,
   sceneSize,
   START_X,
   START_Y,
+  unlockCascade,
   visibleItems,
-  eraProgress,
+  wrapLabel,
 } from './layout.ts';
 
 const item = (id: string, meta: Record<string, unknown> = {}, type = 'possibility'): Item =>
@@ -64,9 +69,21 @@ test('an era decides the column; without one the domain does', () => {
 test('a column is labelled by its era name when one is carried', () => {
   expect(columnLabel('era:4', [item('a', { eraName: 'Memory' })])).toBe('Memory');
   expect(columnLabel('era:4', [item('a')])).toBe('Era 4');
-  expect(columnLabel('infra', [])).toBe('Foundation');
-  // An unknown domain reads as itself rather than as blank.
+  // A domain column is named with the glossary's word for the domain, which
+  // is the word the detail panel prints. It read "Foundation", which is also
+  // the tree's first era.
+  expect(columnLabel('infra', [])).toBe('infra');
   expect(columnLabel('nonesuch', [])).toBe('nonesuch');
+});
+
+test('a name wraps onto two lines and is cut only past the second', () => {
+  expect(wrapLabel('Shell Execution')).toEqual(['Shell Execution']);
+  expect(wrapLabel('Private Data Handling')).toEqual(['Private Data', 'Handling']);
+  expect(wrapLabel('A Rather Long Capability Name Indeed')).toEqual([
+    'A Rather Long',
+    'Capability Name…',
+  ]);
+  expect(wrapLabel('')).toEqual([]);
 });
 
 test('setup cost reads in minutes below an hour and hours above', () => {
@@ -85,22 +102,18 @@ test('next means the frontier, and is never inferred', () => {
 
 // ── What is on screen ────────────────────────────────────────────────────────
 
-test('any era at all means the tree, and the tree alone is shown', () => {
+test('any era at all means the tree, and the tree alone is drawn', () => {
   // Mixing config entries into the era columns would make a column mean two
-  // things and break reading prerequisites left to right.
+  // things and break reading prerequisites left to right. The entries are
+  // what My Setup lists.
   const items = [item('combo:x', { era: 1 }), item('mcp:y', { domain: 'infra' }, 'mcp-server')];
-  expect(visibleItems(items, 'all').map(i => i.id)).toEqual(['combo:x']);
+  expect(visibleItems(items).map(i => i.id)).toEqual(['combo:x']);
+  expect(items.filter(isEntry).map(i => i.id)).toEqual(['mcp:y']);
 });
 
-test('without eras the filter selects by type, and keeps the framework', () => {
-  const items = [
-    item('mcp:a', {}, 'mcp-server'),
-    item('agent:b', {}, 'agent'),
-    item('core', {}, 'framework'),
-  ];
-  expect(visibleItems(items, 'all')).toHaveLength(3);
-  expect(visibleItems(items, 'server').map(i => i.id)).toEqual(['mcp:a', 'core']);
-  expect(visibleItems(items, 'agent').map(i => i.id)).toEqual(['agent:b', 'core']);
+test('a graph with no eras at all is drawn as it stands', () => {
+  const items = [item('mcp:a', {}, 'mcp-server'), item('agent:b', {}, 'agent')];
+  expect(visibleItems(items)).toHaveLength(2);
 });
 
 // ── Columns ──────────────────────────────────────────────────────────────────
@@ -131,6 +144,65 @@ test('every item lands in exactly one column', () => {
   const { cols } = buildColumns(items);
   expect(cols['era:1'].map(i => i.id)).toEqual(['a', 'b']);
   expect(cols['era:2'].map(i => i.id)).toEqual(['c']);
+});
+
+// ── Row order ────────────────────────────────────────────────────────────────
+
+const withStatus = (id: string, era: number, status: 'built' | 'specified', next = false) =>
+  ({ ...item(id, { era, next }), status }) as Item;
+
+test('rows open in state order: reached, then the frontier, then blocked', () => {
+  // Insertion order used to be the row order, so height meant nothing while
+  // the Docs said it showed how far up the tree something sat.
+  const { cols } = buildColumns([
+    withStatus('blocked', 1, 'specified'),
+    withStatus('next', 1, 'specified', true),
+    withStatus('reached', 1, 'built'),
+  ]);
+  expect(cols['era:1'].map(i => i.id)).toEqual(['reached', 'next', 'blocked']);
+});
+
+test('a node is pulled toward the row of what it connects to', () => {
+  // Two columns, two edges that cross under the initial order: a→d and b→c.
+  // After ordering, one column has swapped so the edges no longer cross.
+  // Which column moves is the heuristic's business; that they uncross is not.
+  const items = [
+    item('a', { era: 1 }),
+    item('b', { era: 1 }),
+    item('c', { era: 2 }),
+    item('d', { era: 2 }),
+  ];
+  const edges: Connection[] = [
+    { from: 'a', to: 'd', type: 'hard-dep' },
+    { from: 'b', to: 'c', type: 'hard-dep' },
+  ];
+  const { cols } = buildColumns(items, edges);
+  const row = (id: string) =>
+    Object.values(cols)
+      .flat()
+      .findIndex(i => i.id === id) % 2;
+  const left = Math.sign(row('a') - row('b'));
+  const right = Math.sign(row('d') - row('c'));
+  expect(left).toBe(right);
+});
+
+test('ordering is deterministic and leaves an unconnected node where it was', () => {
+  const items = [
+    item('a', { era: 1 }),
+    item('b', { era: 1 }),
+    item('c', { era: 2 }),
+    item('lone', { era: 2 }),
+  ];
+  const edges: Connection[] = [{ from: 'b', to: 'c', type: 'hard-dep' }];
+  const once = buildColumns(items, edges).cols['era:2'].map(i => i.id);
+  const twice = buildColumns(items, edges).cols['era:2'].map(i => i.id);
+  expect(once).toEqual(twice);
+  expect(once).toContain('lone');
+});
+
+test('an edge leaves and arrives horizontally, and bows out inside one column', () => {
+  expect(edgePath(0, 0, 100, 50)).toBe('M0,0 C50,0 50,50 100,50');
+  expect(edgePath(10, 0, 10, 80)).toBe('M10,0 C50,0 50,80 10,80');
 });
 
 // ── Placement ────────────────────────────────────────────────────────────────
@@ -214,6 +286,33 @@ test('a cycle terminates rather than hanging the walk', () => {
     { from: 'b', to: 'a', type: 'requires' },
   ];
   expect([...buildAdjacency(cyclic, 'a').chainIds].sort()).toEqual(['a', 'b']);
+});
+
+// ── The two cascades ─────────────────────────────────────────────────────────
+
+test('an outage cascades along every hop downstream', () => {
+  // a→b→c, x→y: losing a takes b and c, and never x or y.
+  expect([...outageCascade(edges, 'a')].sort()).toEqual(['b', 'c']);
+  expect(outageCascade(edges, 'c').size).toBe(0);
+});
+
+test('an unlock reaches what its required prerequisites then allow, closed over itself', () => {
+  const items = [
+    withStatus('have', 1, 'built'),
+    withStatus('gap', 1, 'specified', true),
+    withStatus('then', 2, 'specified'),
+    withStatus('later', 3, 'specified'),
+    withStatus('optional-only', 2, 'specified'),
+  ];
+  const deps: Connection[] = [
+    { from: 'have', to: 'then', type: 'hard-dep' },
+    { from: 'gap', to: 'then', type: 'hard-dep' },
+    { from: 'then', to: 'later', type: 'hard-dep' },
+    { from: 'gap', to: 'optional-only', type: 'soft-dep' },
+  ];
+  // Reaching the gap satisfies `then`, which satisfies `later`. A soft edge
+  // gates nothing, so the optional target is not claimed.
+  expect([...unlockCascade(items, deps, 'gap')].sort()).toEqual(['later', 'then']);
 });
 
 describe('eraProgress', () => {

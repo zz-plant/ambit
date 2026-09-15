@@ -210,6 +210,12 @@ function singlePointsOfFailure(db: Db) {
     // action a *person* supplies is a different matter — one provider there is
     // exactly the finding, because only that person can do it.
     if (t.kind === 'action' && names.get(list[0])?.kind === 'capability') continue;
+    // A runtime contributes every entry read out of its config, so each of
+    // them has the runtime as its one provider by construction. Listing them
+    // made the report say that most of a machine was one provider from lost,
+    // which is true of the runtime and informative about nothing else. The
+    // runtime's own loss is what `ambit impact runtime:<name>` answers.
+    if (list.length === 1 && names.get(list[0])?.kind === 'runtime') continue;
 
     if (list.length === 1) {
       out.push({

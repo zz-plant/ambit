@@ -10,17 +10,29 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
+import { PROVISION_EDGES } from './ontology.ts';
 import { FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
+import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
+import { ledgerSince } from './ledger.ts';
+import { nextSteps } from './next.ts';
+import { observedPreferences, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
 import { singlePointsOfFailure } from './inference.ts';
 import { deficits } from './planning.ts';
 import {
+  AUTHORITY_MODES,
   NODE_TYPES,
   PROPOSAL_STATUSES,
+  type AuthorityMode,
+  type FailureCount,
+  type LoopAuthority,
+  type LoopNext,
   type LoopResponse,
+  type LoopSince,
   type NodeType,
+  type ProposalDecision,
   type ProposalRow,
   type ProposalStatus,
   type TechTreeResponse,
@@ -51,7 +63,7 @@ function nodeType(category: string): NodeType {
 export function techTreeView(db: Db): TechTreeResponse {
   const caps = db
     .prepare(
-      `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle
+      `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle, kind
      FROM capabilities c WHERE c.kind != 'action' OR NOT EXISTS (
        SELECT 1 FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
        WHERE d.to_capability = c.id AND d.kind = 'provides' AND p.kind = 'capability'
@@ -61,9 +73,26 @@ export function techTreeView(db: Db): TechTreeResponse {
 
   const visible = new Set(caps.map(c => c.id));
   const deps = db
-    .prepare('SELECT from_capability, to_capability, is_hard_requisite FROM dependencies')
+    .prepare('SELECT from_capability, to_capability, is_hard_requisite, kind FROM dependencies')
     .all()
     .filter(d => visible.has(d.from_capability) && visible.has(d.to_capability));
+
+  // Who supplies what, and what presents which credential. The map's outage
+  // simulation needs the first to tell "stops" from "loses a provider", and
+  // the panel names the second.
+  const credentialIds = new Set(caps.filter(c => c.kind === 'credential').map(c => c.id));
+  const providersOf = new Map<string, string[]>();
+  const credentialsOf = new Map<string, string[]>();
+  for (const d of deps) {
+    if ((PROVISION_EDGES as string[]).includes(d.kind)) {
+      if (!providersOf.has(d.to_capability)) providersOf.set(d.to_capability, []);
+      providersOf.get(d.to_capability)!.push(d.from_capability);
+    }
+    if (d.kind === 'uses' && credentialIds.has(d.to_capability)) {
+      if (!credentialsOf.has(d.from_capability)) credentialsOf.set(d.from_capability, []);
+      credentialsOf.get(d.from_capability)!.push(d.to_capability);
+    }
+  }
 
   // Era and the "researchable now" state are what make this read as a tech tree
   // rather than a list: Civ's whole grammar is reached / can be researched next
@@ -88,6 +117,26 @@ export function techTreeView(db: Db): TechTreeResponse {
       .all()
       .map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
   );
+
+  // How many runs passed, of how many: one success is a weaker claim than
+  // forty-seven of fifty, and the panel used to say only "passed".
+  const reliability = new Map<string, { passed: number; total: number }>();
+  try {
+    for (const r of db
+      .prepare(
+        `SELECT capability_id, SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passed,
+                COUNT(*) AS total
+         FROM session_learning WHERE action IN ('verified', 'failed') GROUP BY capability_id`
+      )
+      .all<{ capability_id: string; passed: number; total: number }>()) {
+      reliability.set(r.capability_id, { passed: r.passed, total: r.total });
+    }
+  } catch {
+    /* a graph with no ledger yet */
+  }
+
+  const authority = effectiveAuthority(db);
+  const failures = recentFailures(db);
 
   const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
   const hardPrereqs = new Map<string, string[]>();
@@ -119,6 +168,11 @@ export function techTreeView(db: Db): TechTreeResponse {
       next: isNext(c.id, c.state),
       lifecycle: c.lifecycle,
       lastChecked: lastEvidence.get(c.id)?.at,
+      providers: providersOf.get(c.id),
+      credentials: credentialsOf.get(c.id),
+      reliability: reliability.get(c.id),
+      authority: authority.get(c.id),
+      failures: failures.get(c.id),
     },
   }));
 
@@ -126,9 +180,69 @@ export function techTreeView(db: Db): TechTreeResponse {
     from: d.from_capability,
     to: d.to_capability,
     type: d.is_hard_requisite ? 'hard-dep' : 'soft-dep',
+    kind: d.kind || undefined,
   }));
 
   return { items, connections };
+}
+
+const isMode = (m: unknown): m is AuthorityMode =>
+  (AUTHORITY_MODES as readonly string[]).includes(String(m));
+
+/**
+ * Each capability's effective, unscoped modes, from the same report `ambit
+ * authority` prints so the panel and the terminal cannot disagree. Execute is
+ * the narrowest of the grants that are not observe, which is how the report
+ * itself groups them.
+ */
+function effectiveAuthority(
+  db: Db
+): Map<string, { execute: AuthorityMode; observe?: AuthorityMode }> {
+  const out = new Map<string, { execute: AuthorityMode; observe?: AuthorityMode }>();
+  let detail: any[] = [];
+  try {
+    detail = (authorityReport(db) as any).detail || [];
+  } catch {
+    return out;
+  }
+  const execute = new Map<string, AuthorityMode>();
+  const observe = new Map<string, AuthorityMode>();
+  for (const row of detail) {
+    if (row.scope || !isMode(row.mode)) continue;
+    if (row.action === 'observe') {
+      observe.set(row.id, row.mode);
+      continue;
+    }
+    const current = execute.get(row.id);
+    execute.set(row.id, current ? (narrower(current, row.mode) as AuthorityMode) : row.mode);
+  }
+  for (const [id, mode] of execute) out.set(id, { execute: mode, observe: observe.get(id) });
+  return out;
+}
+
+/** What the runtime reported failing here lately, by class and signal. */
+function recentFailures(db: Db, days = 30): Map<string, FailureCount[]> {
+  const out = new Map<string, FailureCount[]>();
+  try {
+    for (const r of db
+      .prepare(
+        `SELECT capability_id, class, signal, COUNT(*) AS times, MAX(timestamp) AS last
+         FROM failure_signals
+         WHERE capability_id IS NOT NULL AND timestamp >= datetime('now', ?)
+         GROUP BY capability_id, class, signal ORDER BY times DESC`
+      )
+      .all<{ capability_id: string; class: string; signal: string; times: number; last: string }>(
+        `-${days} days`
+      )) {
+      if (!out.has(r.capability_id)) out.set(r.capability_id, []);
+      out
+        .get(r.capability_id)!
+        .push({ class: r.class, signal: r.signal, times: r.times, last: r.last });
+    }
+  } catch {
+    /* a database predating failure signals */
+  }
+  return out;
 }
 
 /**
@@ -164,7 +278,7 @@ export function graphSummary(db: Db): { reached: number; total: number; observat
   return { reached, total, observations };
 }
 
-/** Proposals for the approval UI: the full rows, newest first. */
+/** Proposals for the approval UI: the full rows, newest first, each with its decision context. */
 export function recentProposals(db: Db, limit = 50): ProposalRow[] {
   let rows: Record<string, any>[];
   try {
@@ -172,12 +286,83 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
   } catch {
     return [];
   }
+  let learned: ReturnType<typeof observedPreferences> = [];
+  try {
+    learned = observedPreferences(db);
+  } catch {
+    /* a database predating rejections */
+  }
   return rows.map(r => ({
     ...r,
     status: (PROPOSAL_STATUSES as readonly string[]).includes(r.status)
       ? (r.status as ProposalStatus)
       : 'draft',
+    decision: decisionFor(r, learned),
   })) as ProposalRow[];
+}
+
+/**
+ * What a person needs to decide on a proposal, read off what the draft stored.
+ *
+ * The card showed the goal and the steps. Deciding needs the benefit, which
+ * the economic case carries; the cost, which the steps carry; whether it can
+ * be undone, which every step's inverse says; what it unlocks, which the
+ * simulation says; and how this person has decided on things like it, which
+ * the record of approvals and rejections says. All five were stored and none
+ * was shown.
+ */
+function decisionFor(
+  row: Record<string, any>,
+  learned: ReturnType<typeof observedPreferences>
+): ProposalDecision | undefined {
+  let steps: any[];
+  try {
+    steps = JSON.parse(row.steps);
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(steps)) return undefined;
+  const parse = (text: unknown) => {
+    if (typeof text !== 'string') return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
+  };
+  const economic = parse(row.economic_case);
+  const simulated = parse(row.simulated);
+  const traits = new Set<string>();
+  for (const s of steps) {
+    const t = traitsOf(s);
+    if (t.privacy) traits.add(`privacy:${t.privacy}`);
+    traits.add(t.recurring ? 'cost:recurring' : 'cost:one-off');
+  }
+  const recurring = steps
+    .map(s => s.recurring_cost)
+    .find((r: unknown) => typeof r === 'string' && r && r !== 'none');
+  return {
+    setup_hours:
+      Math.round((steps.reduce((t, s) => t + (Number(s.setup_seconds) || 0), 0) / 3600) * 10) / 10,
+    // Every step reversible is the only shape `ambit apply` will run; the
+    // demo's hand-written steps carry no inverse and stay a document, honestly.
+    reversible: steps.length > 0 && steps.every(s => Boolean(s.inverse)),
+    requires_person: steps.some(s => Boolean(s.requires_person)),
+    recurring: recurring || undefined,
+    privacy: steps.map(s => s.privacy).find((p: unknown) => typeof p === 'string') || undefined,
+    forecast: economic?.predicted
+      ? {
+          hours_month_now: Number(economic.observed?.human_hours_month) || 0,
+          hours_month_after: Number(economic.predicted.human_hours_month_after) || 0,
+          savings_dollars_month: Number(economic.predicted.savings_dollars_month) || 0,
+          confidence: String(economic.confidence || 'low'),
+        }
+      : null,
+    unlocks: [...(simulated?.acquired || []), ...(simulated?.unblocked || [])]
+      .map((u: any) => String(u?.name || u?.id || ''))
+      .filter(Boolean),
+    precedent: learned.filter(l => traits.has(l.trait)),
+  };
 }
 
 /** How often a person had to step in, per capability — the heatmap's input. */
@@ -251,6 +436,9 @@ export function loopView(db: Db): LoopResponse {
   const interventions = digest.interventions ?? 0;
   return {
     source: 'ledger',
+    authority: loopAuthority(db),
+    next: loopNext(db),
+    since: loopSince(db),
     // The ledger is what fills this page. With nothing in it the figures would
     // all be zero, which reads as "you waste no time" rather than "nothing has
     // been recorded" — so the page says which it is instead of drawing it.
@@ -284,6 +472,121 @@ export function loopView(db: Db): LoopResponse {
 
 /** The window every figure on the loop page is drawn over. */
 const LOOP_WINDOW_DAYS = 30;
+
+/**
+ * What runs without a person, what could, and what is spent. Read from the
+ * same reports `ambit authority` and `ambit authority promote` print. The
+ * page had nothing of this: the governance half of the product, and the most
+ * decision-shaped data it holds, was terminal-only.
+ */
+function loopAuthority(db: Db): LoopAuthority {
+  const empty: LoopAuthority = {
+    autonomous: 0,
+    confirm: 0,
+    forbidden: 0,
+    promotable: [],
+    budgets: [],
+    sandboxes: [],
+  };
+  let report: any;
+  try {
+    report = authorityReport(db);
+  } catch {
+    return empty;
+  }
+  const count = (list: unknown) => (Array.isArray(list) ? list.length : 0);
+  let promotable: LoopAuthority['promotable'] = [];
+  try {
+    promotable = (suggestPromotions(db) as any[]).map(p => ({
+      capability: String(p.capability),
+      id: String(p.id),
+      action: String(p.action),
+      asked: Number(p.asked_by_hand) || 0,
+      evidence: String(p.evidence || ''),
+      command: String(p.set_it || ''),
+    }));
+  } catch {
+    /* a ledger with no interventions */
+  }
+  let budgets: LoopAuthority['budgets'] = [];
+  try {
+    budgets = db
+      .prepare(
+        `SELECT b.capability_id, b.action, b.budget_cents, b.spent_cents, b.period, c.name
+         FROM budgets b LEFT JOIN capabilities c ON c.id = b.capability_id
+         WHERE b.budget_cents > 0 ORDER BY b.capability_id`
+      )
+      .all<any>()
+      .map(b => ({
+        capability: String(b.name || b.capability_id),
+        action: String(b.action),
+        ceiling_dollars: Math.round(b.budget_cents) / 100,
+        spent_dollars: Math.round(b.spent_cents) / 100,
+        period: String(b.period || 'month'),
+      }));
+  } catch {
+    /* a database predating budgets */
+  }
+  let sandboxes: string[] = [];
+  try {
+    sandboxes = db
+      .prepare('SELECT target FROM sandboxes ORDER BY target')
+      .all<{ target: string }>()
+      .map(s => s.target);
+  } catch {
+    /* a database predating sandboxes */
+  }
+  return {
+    autonomous: count(report.autonomous),
+    confirm: count(report.needs_approval),
+    forbidden: count(report.forbidden),
+    promotable,
+    budgets,
+    sandboxes,
+  };
+}
+
+/** The three the terminal prints for `ambit next`, with the basis named. */
+function loopNext(db: Db): LoopNext[] {
+  try {
+    const report = nextSteps(db) as any;
+    const basis = String(report.basis || '').startsWith('observed') ? 'observed' : 'structural';
+    return (report.next || []).map((n: any) => ({
+      id: String(n.id),
+      capability: String(n.capability),
+      why: String(n.why || ''),
+      cost: String(n.cost || ''),
+      basis,
+      missing: Array.isArray(n.missing) ? n.missing.map(String) : undefined,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** How the frontier moved in the last week, or null before a second observation. */
+function loopSince(db: Db): LoopSince | null {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000)
+    .toISOString()
+    .replace('T', ' ')
+    .slice(0, 19);
+  let report: any;
+  try {
+    report = ledgerSince(db, weekAgo);
+  } catch {
+    return null;
+  }
+  if (!report || report.error) return null;
+  const names = (list: unknown) =>
+    Array.isArray(list) ? list.map((e: any) => String(e?.name || e?.id || e)).filter(Boolean) : [];
+  return {
+    from: String(report.since),
+    gained: names(report.gained),
+    emergent: names(report.emergent),
+    lost: names(report.lost),
+    diminished: names(report.diminished),
+  };
+}
 
 /** What `humanDigest` returns per (capability, kind), as much of it as is drawn. */
 interface Intervention {

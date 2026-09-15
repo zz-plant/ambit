@@ -645,7 +645,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -664,7 +667,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -683,7 +689,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -704,7 +713,10 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:playwright"
+          ]
         }
       },
       {
@@ -725,7 +737,14 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:playwright"
+          ],
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -746,7 +765,10 @@
           "era": 1,
           "eraName": "Foundation",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "tool:lsp"
+          ]
         }
       },
       {
@@ -788,7 +810,15 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:docker",
+            "tool:deploy"
+          ],
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -809,7 +839,15 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:sqlite",
+            "mcp:postgres"
+          ],
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -830,7 +868,11 @@
           "era": 4,
           "eraName": "Memory",
           "next": true,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -893,7 +935,14 @@
           "era": 1,
           "eraName": "Foundation",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "tool:edit"
+          ],
+          "authority": {
+            "execute": "autonomous",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -914,7 +963,11 @@
           "era": 2,
           "eraName": "Model Access",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "provider:anthropic",
+            "provider:ollama"
+          ]
         }
       },
       {
@@ -956,7 +1009,10 @@
           "era": 2,
           "eraName": "Model Access",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "provider:ollama"
+          ]
         }
       },
       {
@@ -1019,7 +1075,14 @@
           "era": 5,
           "eraName": "Autonomy",
           "next": false,
-          "lifecycle": "detected"
+          "lifecycle": "detected",
+          "providers": [
+            "mcp:slack"
+          ],
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1040,7 +1103,10 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:sentry"
+          ]
         }
       },
       {
@@ -1082,7 +1148,11 @@
           "era": 5,
           "eraName": "Autonomy",
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "autonomous",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1103,7 +1173,10 @@
           "era": 4,
           "eraName": "Memory",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:memory"
+          ]
         }
       },
       {
@@ -1124,7 +1197,11 @@
           "era": 7,
           "eraName": "Sovereignty",
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "confirm"
+          }
         }
       },
       {
@@ -1145,7 +1222,11 @@
           "era": 4,
           "eraName": "Memory",
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1166,7 +1247,10 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "detected"
+          "lifecycle": "detected",
+          "providers": [
+            "agent:reviewer"
+          ]
         }
       },
       {
@@ -1187,7 +1271,11 @@
           "era": 5,
           "eraName": "Autonomy",
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1208,7 +1296,14 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:1password"
+          ],
+          "authority": {
+            "execute": "forbidden",
+            "observe": "confirm"
+          }
         }
       },
       {
@@ -1229,7 +1324,11 @@
           "era": 7,
           "eraName": "Sovereignty",
           "next": true,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1250,7 +1349,14 @@
           "era": 1,
           "eraName": "Foundation",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "tool:bash"
+          ],
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1292,7 +1398,12 @@
           "era": 5,
           "eraName": "Autonomy",
           "next": false,
-          "lifecycle": "detected"
+          "lifecycle": "detected",
+          "providers": [
+            "agent:reviewer",
+            "agent:researcher",
+            "agent:steward"
+          ]
         }
       },
       {
@@ -1313,7 +1424,15 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:git",
+            "mcp:github",
+            "mcp:filesystem",
+            "mcp:playwright",
+            "mcp:sqlite",
+            "mcp:fetch"
+          ]
         }
       },
       {
@@ -1355,7 +1474,15 @@
           "era": 1,
           "eraName": "Foundation",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:git",
+            "mcp:github"
+          ],
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1376,7 +1503,15 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured"
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:fetch",
+            "agent:researcher"
+          ],
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          }
         }
       },
       {
@@ -1414,7 +1549,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1433,7 +1571,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1452,7 +1593,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1471,7 +1615,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1490,7 +1637,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1509,7 +1659,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1528,7 +1681,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1547,7 +1703,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1566,7 +1725,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1585,7 +1747,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1604,7 +1769,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1623,7 +1791,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1642,7 +1813,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1661,7 +1835,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1680,7 +1857,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1699,7 +1879,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1756,7 +1939,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1775,7 +1961,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       },
       {
@@ -1832,7 +2021,10 @@
           "state": "unlocked",
           "setupSeconds": 0,
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ]
         }
       }
     ],
@@ -1840,457 +2032,548 @@
       {
         "from": "agent:researcher",
         "to": "combo:subagents",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "agent:researcher",
         "to": "combo:web-research",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "agent:reviewer",
         "to": "combo:review-loop",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "agent:reviewer",
         "to": "combo:subagents",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "agent:steward",
         "to": "combo:subagents",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "combo:automated-tests",
         "to": "combo:continuous-delivery",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:automated-tests",
         "to": "combo:observability",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:automated-tests",
         "to": "combo:review-loop",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:code-intelligence",
         "to": "combo:automated-tests",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:embeddings",
         "to": "combo:local-embeddings",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:embeddings",
         "to": "combo:vector-store",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:extended-context",
         "to": "combo:context-compaction",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:file-editing",
         "to": "combo:code-intelligence",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:file-editing",
         "to": "combo:skill-library",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:hosted-inference",
         "to": "combo:embeddings",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:hosted-inference",
         "to": "combo:model-routing",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:local-embeddings",
         "to": "combo:offline-capable",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:local-runtime",
         "to": "combo:local-embeddings",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:local-runtime",
         "to": "combo:local-tool-calling",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:local-runtime",
         "to": "combo:model-routing",
-        "type": "soft-dep"
+        "type": "soft-dep",
+        "kind": "optional"
       },
       {
         "from": "combo:local-runtime",
         "to": "combo:self-hosted-stack",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:local-tool-calling",
         "to": "combo:extended-context",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:local-tool-calling",
         "to": "combo:offline-capable",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:local-tool-calling",
         "to": "combo:parallel-execution",
-        "type": "soft-dep"
+        "type": "soft-dep",
+        "kind": "optional"
       },
       {
         "from": "combo:local-tool-calling",
         "to": "combo:private-data-handling",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:model-routing",
         "to": "combo:subagents",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:observability",
         "to": "combo:self-hosted-stack",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:review-loop",
         "to": "combo:evaluation",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:scheduled-work",
         "to": "combo:notifications",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:secret-management",
         "to": "combo:private-data-handling",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:shell-execution",
         "to": "combo:hosted-inference",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:shell-execution",
         "to": "combo:local-runtime",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:shell-execution",
         "to": "combo:tool-protocol",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:shell-execution",
         "to": "combo:version-control",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:subagents",
         "to": "combo:parallel-execution",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:subagents",
         "to": "combo:review-loop",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:subagents",
         "to": "combo:scheduled-work",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:tool-protocol",
         "to": "combo:browser-automation",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:tool-protocol",
         "to": "combo:data-access",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:tool-protocol",
         "to": "combo:persistent-memory",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:tool-protocol",
         "to": "combo:secret-management",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:tool-protocol",
         "to": "combo:web-research",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:vector-store",
         "to": "combo:retrieval",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "combo:version-control",
         "to": "combo:continuous-delivery",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "requires"
       },
       {
         "from": "mcp:1password",
         "to": "combo:secret-management",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:docker",
         "to": "combo:continuous-delivery",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:fetch",
         "to": "combo:tool-protocol",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:fetch",
         "to": "combo:web-research",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:filesystem",
         "to": "combo:tool-protocol",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:git",
         "to": "combo:tool-protocol",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:git",
         "to": "combo:version-control",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:github",
         "to": "combo:tool-protocol",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:github",
         "to": "combo:version-control",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:memory",
         "to": "combo:persistent-memory",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:playwright",
         "to": "combo:automated-tests",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:playwright",
         "to": "combo:browser-automation",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:playwright",
         "to": "combo:tool-protocol",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:postgres",
         "to": "combo:data-access",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:sentry",
         "to": "combo:observability",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:slack",
         "to": "combo:notifications",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:sqlite",
         "to": "combo:data-access",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "mcp:sqlite",
         "to": "combo:tool-protocol",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "provider:anthropic",
         "to": "combo:hosted-inference",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "provider:ollama",
         "to": "combo:hosted-inference",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "provider:ollama",
         "to": "combo:local-runtime",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "runtime:opencode",
         "to": "agent:researcher",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "agent:reviewer",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "agent:steward",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:1password",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:docker",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:fetch",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:filesystem",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:git",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:github",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:grafana",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:kubernetes",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:memory",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:playwright",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:postgres",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:sentry",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:slack",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "mcp:sqlite",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "provider:anthropic",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "provider:ollama",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "tool:bench",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "tool:deploy",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "runtime:opencode",
         "to": "tool:migrate",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "contributes"
       },
       {
         "from": "tool:bash",
         "to": "combo:shell-execution",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "tool:deploy",
         "to": "combo:continuous-delivery",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "tool:edit",
         "to": "combo:file-editing",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       },
       {
         "from": "tool:lsp",
         "to": "combo:code-intelligence",
-        "type": "hard-dep"
+        "type": "hard-dep",
+        "kind": "provides"
       }
     ]
   }

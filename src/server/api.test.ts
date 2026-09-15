@@ -92,6 +92,16 @@ test('health reports the paths it resolved, so a misconfigured run is legible', 
   expect(body.configExists).toBe(true);
 });
 
+test('the loop carries the governance half: authority, next steps, movement', async () => {
+  const r = await fetch(`${base}/api/loop`);
+  const body = await json(r);
+  expect(r.status).toBe(200);
+  expect(typeof body.authority.autonomous).toBe('number');
+  expect(Array.isArray(body.authority.promotable)).toBe(true);
+  expect(Array.isArray(body.next)).toBe(true);
+  expect('since' in body).toBe(true);
+});
+
 test('the graph is served in the shape the client renders', async () => {
   const r = await fetch(`${base}/api/tech-tree`);
   const body = await json(r);

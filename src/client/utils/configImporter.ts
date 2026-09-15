@@ -19,6 +19,8 @@ export interface Connection {
   from: string;
   to: string;
   type: string;
+  /** What the edge means to the engine, when the engine drew it: provides, requires, uses. */
+  kind?: string;
 }
 
 interface OpenCodeConfig {

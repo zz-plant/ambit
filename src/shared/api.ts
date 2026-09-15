@@ -63,6 +63,18 @@ export interface McpSnippetResponse {
 
 // ── GET /api/tech-tree ───────────────────────────────────────────────────────
 
+/** Whether a capability may act without asking. The engine's three modes. */
+export const AUTHORITY_MODES = ['autonomous', 'confirm', 'forbidden'] as const;
+export type AuthorityMode = (typeof AUTHORITY_MODES)[number];
+
+/** A failure the runtime reported, classified by the engine, counted over a window. */
+export interface FailureCount {
+  class: string;
+  signal: string;
+  times: number;
+  last: string;
+}
+
 export interface TreeItemMeta {
   /** The client renders meta generically, so extra keys have to be allowed. */
   [key: string]: unknown;
@@ -75,6 +87,20 @@ export interface TreeItemMeta {
   next: boolean;
   lifecycle: string;
   lastChecked?: string;
+  /**
+   * The nodes that supply this one, by provision edge. With one, losing it
+   * ends the capability; with more, losing one only thins the redundancy,
+   * which is the difference an outage simulation has to draw.
+   */
+  providers?: string[];
+  /** The credential nodes this one presents, so shared ones can be named. */
+  credentials?: string[];
+  /** Declared checks that ran: how many passed, of how many. */
+  reliability?: { passed: number; total: number };
+  /** The effective, unscoped modes: may it act, and may it look, without asking. */
+  authority?: { execute: AuthorityMode; observe?: AuthorityMode };
+  /** What the runtime reported failing here in the last thirty days. */
+  failures?: FailureCount[];
 }
 
 /**
@@ -126,6 +152,8 @@ export interface TreeConnection {
   from: string;
   to: string;
   type: 'hard-dep' | 'soft-dep';
+  /** What the edge means to the engine: provides, contributes, requires, uses. */
+  kind?: string;
 }
 
 export interface TechTreeResponse {
@@ -134,6 +162,32 @@ export interface TechTreeResponse {
 }
 
 // ── GET /api/proposals, POST /api/proposals/:id/approve ──────────────────────
+
+/**
+ * What a person needs to decide on a proposal: what it would save, what it
+ * costs, whether it can be undone, what it unlocks, and how they have decided
+ * on things like it before. Composed by the server from the stored steps,
+ * simulation and economic case; hand-written on the demo's rows.
+ */
+export interface ProposalDecision {
+  setup_hours: number;
+  /** Every step is a config change with a computed inverse. */
+  reversible: boolean;
+  /** Some step describes work only a person can do. */
+  requires_person: boolean;
+  recurring?: string;
+  privacy?: string;
+  forecast: {
+    hours_month_now: number;
+    hours_month_after: number;
+    savings_dollars_month: number;
+    confidence: string;
+  } | null;
+  /** What the frontier simulation says becomes reachable. */
+  unlocks: string[];
+  /** The record's leaning on the traits this proposal has, where it has one. */
+  precedent: { trait: string; leans: string; approved: number; rejected: number }[];
+}
 
 export interface ProposalRow {
   id: string;
@@ -149,6 +203,7 @@ export interface ProposalRow {
   expires_at?: string | null;
   approval_artifact?: string | null;
   economic_case?: string | null;
+  decision?: ProposalDecision;
 }
 
 export interface ProposalsResponse {
@@ -228,6 +283,55 @@ export interface LoopOpportunity {
  * paid. The hosted demo builds the same shape by hand — see
  * src/client/utils/demoSnapshot.ts — so one dashboard renders both.
  */
+/** What runs without a person, what does not, and what could. */
+export interface LoopAuthority {
+  /** Reached capabilities by the mode their execute grant resolves to. */
+  autonomous: number;
+  confirm: number;
+  forbidden: number;
+  /** Grants that have earned a threshold nobody set, with the command that sets one. */
+  promotable: {
+    capability: string;
+    id: string;
+    action: string;
+    asked: number;
+    evidence: string;
+    command: string;
+  }[];
+  /** Spend delegated in advance, and how much of each ceiling is used. */
+  budgets: {
+    capability: string;
+    action: string;
+    ceiling_dollars: number;
+    spent_dollars: number;
+    period: string;
+  }[];
+  /** Targets declared as places where acting does not matter. */
+  sandboxes: string[];
+}
+
+/** One capability worth reaching next, with the reason and the price. */
+export interface LoopNext {
+  id: string;
+  capability: string;
+  why: string;
+  cost: string;
+  /** Whether the ranking rests on recorded blocks or on structural leverage. */
+  basis: 'observed' | 'structural';
+  missing?: string[];
+}
+
+/** How the frontier moved since a past observation. */
+export interface LoopSince {
+  from: string;
+  gained: string[];
+  /** Became reachable although nothing providing them was added: composition. */
+  emergent: string[];
+  lost: string[];
+  /** Still reached, no longer usable: a check started failing. */
+  diminished: string[];
+}
+
 export interface LoopSnapshot {
   status: {
     reached: number;
@@ -268,6 +372,9 @@ export interface LoopSnapshot {
     monthly_hours: { month: string; hours: number; acquired?: string }[];
     forecast: { predicted_hours: number; observed_hours: number } | null;
   };
+  authority: LoopAuthority;
+  next: LoopNext[];
+  since: LoopSince | null;
 }
 
 export interface LoopResponse extends LoopSnapshot {
