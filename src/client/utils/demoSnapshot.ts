@@ -99,6 +99,8 @@ export function demoSnapshot(): LoopSnapshot {
             kind: 'build',
             total_first_year_dollars: 4560,
             privacy: 'local',
+            // The record leans local: four approved, none refused.
+            favoured: true,
           },
         ],
       },
@@ -210,6 +212,17 @@ export function demoSnapshot(): LoopSnapshot {
         why: 'Reaching it also reaches Offline Capable, which is already supplied and waiting on this alone.',
         cost: '10m',
         basis: 'observed',
+      },
+    ],
+    // Asked for and never there. Vector Store has stopped work four times as
+    // the same missing tool, which is an acquisition and not an incident.
+    demand: [
+      {
+        id: 'combo:vector-store',
+        name: 'Vector Store',
+        times: 4,
+        structural: true,
+        failing: false,
       },
     ],
     // The week's movement. Continuous Delivery is the entry worth the strip:

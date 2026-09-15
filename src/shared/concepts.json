@@ -83,14 +83,14 @@
       "term": "Proposal",
       "short": "A change to your setup, drafted for a person to approve",
       "long": "An agent that finds a gap drafts a proposal rather than acting: the steps, their inverses, and what the frontier would look like afterwards. Approving it mints a signed artifact that expires; `ambit apply` verifies that signature before anything runs, and refuses if the proposal changed after approval.",
-      "seen": "The Proposals panel, with what each would save, cost, undo and unlock; ambit propose / approve / apply"
+      "seen": "The Proposals panel, with what each would save, cost, undo and unlock, and the no it records with its reason; ambit propose / approve / reject / apply"
     },
     {
       "key": "authority",
       "term": "Authority",
       "short": "Whether it may run, not whether it can",
       "long": "Being technically able to perform an action is not permission to perform it. Authority is tracked separately per capability — observe and execute, each autonomous, confirm, or forbidden — so a reached capability can still require approval. This is what lets a larger technical surface stay governable: the limits are explicit rather than implied.",
-      "seen": "The Authority figure on Time & cost, the mode line in the detail panel, and ambit authority"
+      "seen": "The Authority figure on Time & cost, the mode line and the per-action list in the detail panel, and ambit authority"
     },
     {
       "key": "frontier",
@@ -104,7 +104,7 @@
       "term": "Decay",
       "short": "What you have stopped tending",
       "long": "`ambit decay` ranks capabilities by how long since their configuration last changed. It tracks configuration decisions, not how often you invoke something — a server you use daily but never reconfigure will look static, which is intentional. The question it answers is 'what have I stopped tending', not 'what do I use least'.",
-      "seen": "ambit decay"
+      "seen": "Config unchanged, in the detail panel; ambit decay"
     }
   ]
 }

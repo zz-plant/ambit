@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { InfrastructureScanResponse, RepoScanResponse } from '../../shared/api';
+import { useAmbitStore } from '../store/ambitStore';
 
 /**
  * The two scans the server has always computed and nothing has ever drawn.
@@ -15,6 +16,39 @@ import type { InfrastructureScanResponse, RepoScanResponse } from '../../shared/
 /** Waiting, or a scan that had nothing to say. Same shape for both panels. */
 function PanelNote({ children }: { children: ReactNode }) {
   return <div className="tp-empty tp-empty--note">{children}</div>;
+}
+
+/**
+ * A server the global config has and this repository's does not, with the
+ * entry ready to paste. The endpoint composes it and the person pastes it: an
+ * MCP entry carries a command the runtime executes, so it crosses into a
+ * config only by their own hand.
+ */
+function MissingServer({ name }: { name: string }) {
+  const snippetFor = useAmbitStore(s => s.snippetFor);
+  const known = useAmbitStore(s => Boolean(s.configMcp[name]));
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  if (!known) return <span>{name}</span>;
+  return (
+    <button
+      type="button"
+      className="tp-inline-btn"
+      title={`Copy the global entry for ${name}, ready to paste into this repository's config`}
+      onClick={async () => {
+        const snippet = await snippetFor(name);
+        if (snippet) {
+          navigator.clipboard?.writeText(snippet);
+          setState('copied');
+        } else setState('failed');
+        setTimeout(() => setState('idle'), 2000);
+      }}
+    >
+      {name}
+      <span className="tp-inline-hint">
+        {state === 'copied' ? 'copied' : state === 'failed' ? 'no entry' : 'copy entry'}
+      </span>
+    </button>
+  );
 }
 
 export function RepoDriftPanel({ scan }: { scan: RepoScanResponse | null }) {
@@ -43,7 +77,18 @@ export function RepoDriftPanel({ scan }: { scan: RepoScanResponse | null }) {
           </div>
           <div className="tp-item-meta">
             {r.uniqueMcps.length > 0 && <span>only here: {r.uniqueMcps.join(', ')}. </span>}
-            {r.missingMcps.length > 0 && <span>missing: {r.missingMcps.join(', ')}. </span>}
+            {r.missingMcps.length > 0 && (
+              <span>
+                missing:{' '}
+                {r.missingMcps.map((m, i) => (
+                  <span key={m}>
+                    {i > 0 ? ', ' : ''}
+                    <MissingServer name={m} />
+                  </span>
+                ))}
+                .{' '}
+              </span>
+            )}
             {r.uniqueAgents.length > 0 && <span>agents: {r.uniqueAgents.join(', ')}. </span>}
             {r.defaultAgent && <span>default agent: {r.defaultAgent}.</span>}
             {!r.uniqueMcps.length && !r.missingMcps.length && !r.uniqueAgents.length && (

@@ -73,6 +73,9 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
     (item.meta?.failures as
       | { class: string; signal: string; times: number; last: string }[]
       | undefined) ?? [];
+  const actions =
+    (item.meta?.actions as { id: string; name: string; mode: string }[] | undefined) ?? [];
+  const daysSinceChange = item.meta?.daysSinceChange as number | undefined;
   const evidence =
     item.status !== 'built' || !lifecycle
       ? undefined
@@ -148,6 +151,8 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
     'reliability',
     'authority',
     'failures',
+    'actions',
+    'daysSinceChange',
   ]);
   const details = Object.entries(item.meta).filter(
     ([k, v]) => !saidElsewhere.has(k) && isStated(v)
@@ -212,7 +217,8 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
       )}
 
       {/* Whether it may act, apart from whether it can: the engine's effective
-          mode, which no web surface used to show. */}
+          mode, which no web surface used to show, and then the finer answer,
+          per action, which is the one an agent acts on. */}
       {authority && (
         <p className="sp-authority">
           {authority.execute === 'autonomous'
@@ -230,6 +236,22 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
               }`
             : ''}
         </p>
+      )}
+      {actions.length > 0 && (
+        <ul className="sp-actions" aria-label="What it may do">
+          {actions.map(a => (
+            <li key={a.id} className={`sp-action sp-action--${a.mode}`}>
+              <span className="sp-action-name">{a.name.replace(/_/g, ' ')}</span>
+              <span className="sp-action-mode">
+                {a.mode === 'autonomous'
+                  ? 'without asking'
+                  : a.mode === 'confirm'
+                    ? 'asks'
+                    : 'forbidden'}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {/*
@@ -437,13 +459,23 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         </div>
       )}
 
-      {(setup || details.length > 0) && (
+      {(setup ||
+        details.length > 0 ||
+        (daysSinceChange !== undefined && daysSinceChange >= 14)) && (
         <div className="sp-attrs" style={{ marginTop: '8px' }}>
           <div className="sp-section-label">Details</div>
           {setup && (
             <div className="sp-attr-row">
               <span className="sp-attr-key">Setup time</span>
               <span className="sp-attr-val">{setup}</span>
+            </div>
+          )}
+          {daysSinceChange !== undefined && daysSinceChange >= 14 && (
+            <div className="sp-attr-row">
+              <span className="sp-attr-key">
+                <Term name="decay">Config unchanged</Term>
+              </span>
+              <span className="sp-attr-val">{daysSinceChange} days</span>
             </div>
           )}
           {details.map(([k, v]) => (

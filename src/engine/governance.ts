@@ -72,6 +72,30 @@ function approveProposals(db: Db, ids: string[], who?: string) {
 }
 
 /**
+ * Declares a person the graph can hold accountable, if it does not already.
+ *
+ * Approval and refusal both refuse an actor the graph does not know, which is
+ * right for a name typed on a command line. The web surface is different: the
+ * API binds loopback only, so whoever is at the browser is the person whose
+ * machine this is, and the one-click approval the README promises failed on
+ * every machine that had not declared them by hand. The server declares the
+ * web actor through this before it approves or rejects. Declaring is not
+ * granting: the actor holds no authority, only a name the record can carry.
+ */
+function ensureActor(db: Db, id: string, name: string, role: string): boolean {
+  const humanId = id.startsWith('human:') ? id : `human:${id}`;
+  const before = db
+    .prepare("SELECT 1 AS ok FROM capabilities WHERE id = ? AND category = 'human'")
+    .get(humanId);
+  if (before) return false;
+  db.prepare(
+    `INSERT OR IGNORE INTO capabilities (id, name, domain, description, category, state, maturity_score, kind)
+     VALUES (?, ?, 'social', ?, 'human', 'active', 1.0, 'actor')`
+  ).run(humanId, name, role);
+  return true;
+}
+
+/**
  * Records that a person turned a proposal down, and why.
  *
  * Approval was recordable from the first version and refusal was not, which
@@ -432,6 +456,7 @@ function applyRemoval(db: Db, capId: string) {
 
 export {
   inverseOf,
+  ensureActor,
   approveProposal,
   approveProposals,
   rejectProposal,

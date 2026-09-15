@@ -142,7 +142,8 @@ src/engine/testing/        The shared test harness: a throwaway graph, driven in
 Three processes put the graph in front of something else: a browser, an agent session, and an intercepted tool call.
 
 ```
-src/server/api.ts          The visualizer API and SSE stream: reads views, writes config
+src/server/api.ts          The visualizer API and SSE stream: reads views, writes config;
+                           approves and rejects proposals as the web actor; serves the briefing
 src/server/config.ts       The agent config this server will touch: `ownEntry`, and the
                            AGENT_FIELDS / COMMAND_FIELDS allow-lists. It cannot create an entry
 src/server/repos.ts        How far each repository's config has drifted from the global one
@@ -171,7 +172,7 @@ src/client/                React frontend
                            share, proposals, docs
     Finder.tsx             Search by name; a node opens on the map, an entry in My Setup
     SetupView.tsx          My Setup: one row per entry, with its evidence and the nodes it provides;
-                           repo drift and infrastructure as its other tabs
+                           repo drift, infrastructure and the agent's briefing as its other tabs
     WelcomeScreen.tsx      What an empty graph shows — the pitch, two real figures, and the ways in
     figures.tsx            The sparkline, era strip and reach bar every surface draws the same way
     Term.tsx               A house word with its definition attached — one glossary, two renderings
@@ -248,7 +249,7 @@ The reviewer-facing statement of these is [SECURITY.md](./SECURITY.md); below is
 
 1. **Loopback only** — `server.listen(API_PORT, '127.0.0.1')`. Never bind `0.0.0.0`; the LAN and Tailscale must not reach this.
 2. **Origin allowlist** — requests with a non-local `Origin` are rejected with 403 *before* routing. CORS response headers are not sufficient on their own: a simple request (`Content-Type: text/plain`) skips preflight and still reaches the handler, so the check must reject the request, not just omit the header.
-3. **No entry creation over HTTP** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups go through `ownEntry` in `src/server/config.ts`, which requires `Object.hasOwn` and a non-null object value; a bare truth test accepts `__proto__` and pollutes every object in the process. No host addresses are hardcoded either: `GET /api/infrastructure/scan` probes only what the manifest at `INFRA_MANIFEST` names, and returns an empty scan plus one informational finding when there is none.
+3. **No entry creation over HTTP** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. The two decision routes, `/api/proposals/:id/approve` and `/api/proposals/:id/reject`, write to the graph and never to a config: an approval mints an artifact only `ambit apply` can spend, and a rejection is a row. Both declare the `human:web` actor through `ensureActor` before deciding, because the engine refuses a decision from a person the graph does not know and the person at a loopback port is the machine's own; declaring is not granting, and the actor holds no authority. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups go through `ownEntry` in `src/server/config.ts`, which requires `Object.hasOwn` and a non-null object value; a bare truth test accepts `__proto__` and pollutes every object in the process. No host addresses are hardcoded either: `GET /api/infrastructure/scan` probes only what the manifest at `INFRA_MANIFEST` names, and returns an empty scan plus one informational finding when there is none.
 4. **No egress you did not type** — the graph is a local SQLite file and there is no telemetry. Three commands open a socket at all: `ambit notify` and `ambit notify-approvals`, each of which refuses to send without the topic argument you type, and `ambit incidents`, which probes the hosts that same manifest names and uploads nothing. `runCommand` in `src/engine/cli.ts` is declared `async` for those three alone; every other command finishes before the call returns.
 
 ## One glossary

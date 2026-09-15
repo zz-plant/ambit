@@ -276,7 +276,7 @@ sequenceDiagram
 
 ## The map
 
-The web UI (`./bootstrap.sh web`) is three views over the same graph the CLI reads. The **map** is the curated tree with your position on it. **My Setup** is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides. **Time & cost** is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. Search (<kbd>/</kbd>) finds anything by name and opens it where it lives.
+The web UI (`./bootstrap.sh web`) is three views over the same graph the CLI reads. The **map** is the curated tree with your position on it. **My Setup** is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides; its Briefing tab is the prose an agent is given at connect, so what the agent believes about the machine is inspectable. **Time & cost** is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. Search (<kbd>/</kbd>) finds anything by name and opens it where it lives.
 
 Select a node and its edges are drawn apart: what it needs in teal, what it enables in indigo, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take. The header counts the map's nodes by state, and each count highlights its nodes, the way the legend keys do.
 
@@ -301,7 +301,7 @@ Select a node to open the inspector, then simulate against it. Neither mode writ
 
 ### Approving proposals
 
-When an agent proposes an environment change over MCP, the **Proposals** panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click. The same thing happens from the terminal with `ambit approve <id> <who>`.
+When an agent proposes an environment change over MCP, the **Proposals** panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click, or records a no with the reason, which is what the next draft learns from. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`.
 
 ---
 

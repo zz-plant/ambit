@@ -16,7 +16,7 @@ import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
 import { ledgerSince } from './ledger.ts';
 import { nextSteps } from './next.ts';
-import { observedPreferences, traitsOf } from './observed.ts';
+import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
 import { singlePointsOfFailure } from './inference.ts';
@@ -28,6 +28,7 @@ import {
   type AuthorityMode,
   type FailureCount,
   type LoopAuthority,
+  type LoopDemand,
   type LoopNext,
   type LoopResponse,
   type LoopSince,
@@ -63,7 +64,8 @@ function nodeType(category: string): NodeType {
 export function techTreeView(db: Db): TechTreeResponse {
   const caps = db
     .prepare(
-      `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle, kind
+      `SELECT id, name, domain, description, category, state, unlock_cost_setup, lifecycle, kind,
+              updated_at
      FROM capabilities c WHERE c.kind != 'action' OR NOT EXISTS (
        SELECT 1 FROM dependencies d JOIN capabilities p ON p.id = d.from_capability
        WHERE d.to_capability = c.id AND d.kind = 'provides' AND p.kind = 'capability'
@@ -137,6 +139,7 @@ export function techTreeView(db: Db): TechTreeResponse {
 
   const authority = effectiveAuthority(db);
   const failures = recentFailures(db);
+  const actions = conferredActions(db, authority);
 
   const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
   const hardPrereqs = new Map<string, string[]>();
@@ -173,6 +176,8 @@ export function techTreeView(db: Db): TechTreeResponse {
       reliability: reliability.get(c.id),
       authority: authority.get(c.id),
       failures: failures.get(c.id),
+      actions: actions.get(c.id),
+      daysSinceChange: c.state === 'locked' ? undefined : daysSince(c.updated_at),
     },
   }));
 
@@ -188,6 +193,49 @@ export function techTreeView(db: Db): TechTreeResponse {
 
 const isMode = (m: unknown): m is AuthorityMode =>
   (AUTHORITY_MODES as readonly string[]).includes(String(m));
+
+/** Whole days since a stored timestamp, or nothing when the clocks disagree. */
+function daysSince(stamp: unknown): number | undefined {
+  if (typeof stamp !== 'string' || !stamp) return undefined;
+  const ms =
+    Date.now() - new Date(stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`).getTime();
+  return Number.isFinite(ms) && ms >= 0 ? Math.floor(ms / 86_400_000) : undefined;
+}
+
+/**
+ * The actions each capability confers, with the mode each resolves to. The
+ * panel used to say only the capability's own mode, which is the narrowest of
+ * these; what an agent may actually do is per action, and reading a
+ * repository is a different permission from merging to its default branch.
+ */
+function conferredActions(
+  db: Db,
+  authority: Map<string, { execute: AuthorityMode }>
+): Map<string, { id: string; name: string; mode: AuthorityMode }[]> {
+  const out = new Map<string, { id: string; name: string; mode: AuthorityMode }[]>();
+  try {
+    for (const r of db
+      .prepare(
+        `SELECT d.from_capability capability, a.id, a.name FROM dependencies d
+         JOIN capabilities a ON a.id = d.to_capability
+         JOIN capabilities c ON c.id = d.from_capability
+         WHERE d.kind = 'provides' AND a.kind = 'action' AND c.kind = 'capability'
+         ORDER BY c.name, a.name`
+      )
+      .all<{ capability: string; id: string; name: string }>()) {
+      if (!out.has(r.capability)) out.set(r.capability, []);
+      out.get(r.capability)!.push({
+        id: r.id,
+        name: r.name,
+        // Absent means nothing narrowed it, which is how `ambit actions` reads it too.
+        mode: authority.get(r.id)?.execute ?? 'autonomous',
+      });
+    }
+  } catch {
+    /* a graph with no contract actions */
+  }
+  return out;
+}
 
 /**
  * Each capability's effective, unscoped modes, from the same report `ambit
@@ -430,7 +478,7 @@ export function loopView(db: Db): LoopResponse {
     },
     payback_months: o.payback_months ?? null,
     confidence: o.confidence,
-    acquisition_options: o.acquisition_options,
+    acquisition_options: favour(db, o.acquisition_options),
   })) as LoopResponse['opportunities'];
 
   const interventions = digest.interventions ?? 0;
@@ -439,6 +487,7 @@ export function loopView(db: Db): LoopResponse {
     authority: loopAuthority(db),
     next: loopNext(db),
     since: loopSince(db),
+    demand: loopDemand(db),
     // The ledger is what fills this page. With nothing in it the figures would
     // all be zero, which reads as "you waste no time" rather than "nothing has
     // been recorded" — so the page says which it is instead of drawing it.
@@ -544,6 +593,48 @@ function loopAuthority(db: Db): LoopAuthority {
     budgets,
     sandboxes,
   };
+}
+
+/**
+ * The alternative the record of this person's decisions favours, marked.
+ *
+ * The same choice `ambit propose` makes when it drafts, made visible where the
+ * options are compared, and only where the record leans: with nothing learned
+ * the options are listed as the catalog orders them, and nothing is marked.
+ */
+function favour(
+  db: Db,
+  options: unknown
+): LoopResponse['opportunities'][number]['acquisition_options'] {
+  if (!Array.isArray(options) || options.length < 2) return options as never;
+  try {
+    const preferred = preferredOption(db, options);
+    if (!preferred.because) return options as never;
+    return options.map((o, i) => (i === preferred.index ? { ...o, favoured: true } : o));
+  } catch {
+    return options as never;
+  }
+}
+
+/**
+ * What work has asked for and never had, worst first. Read off the deficit
+ * report, which used to reach the page only as a fragility footnote; a
+ * capability blocked four times this week is the head of the queue of what
+ * to reach, not a risk.
+ */
+function loopDemand(db: Db): LoopDemand[] {
+  const report = deficits(db);
+  if (!Array.isArray(report)) return [];
+  return (report as any[])
+    .filter(d => d.still_missing)
+    .slice(0, 5)
+    .map(d => ({
+      id: String(d.id),
+      name: String(d.name),
+      times: Number(d.times_blocked) || 0,
+      structural: String(d.verdict || '').startsWith('structural'),
+      failing: String(d.verdict || '').includes('failing'),
+    }));
 }
 
 /** The three the terminal prints for `ambit next`, with the basis named. */

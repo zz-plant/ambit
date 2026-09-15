@@ -68,9 +68,14 @@ function signerLabel(actor: string | null | undefined): string {
 export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const proposals = useAmbitStore(s => s.proposals);
   const approveProposal = useAmbitStore(s => s.approveProposal);
+  const rejectProposal = useAmbitStore(s => s.rejectProposal);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved'>('all');
+  const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved' | 'rejected'>('all');
+  // A no in progress: which card, and the reason typed so far. The reason is
+  // optional and is the most valuable part of the record.
+  const [declining, setDeclining] = useState<{ id: string; reason: string } | null>(null);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
 
   // Escape closes it. Dismissal used to be a click on the backdrop and nothing
   // else, which is unreachable without a pointer.
@@ -86,8 +91,18 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   const handleApprove = async (proposalId: string) => {
     setApprovingId(proposalId);
-    await approveProposal(proposalId, WEB_ACTOR);
+    setDecisionError(null);
+    const result = await approveProposal(proposalId, WEB_ACTOR);
+    if (!result.ok) setDecisionError(result.error || 'Could not record the approval.');
     setApprovingId(null);
+  };
+
+  const handleReject = async () => {
+    if (!declining) return;
+    setDecisionError(null);
+    const result = await rejectProposal(declining.id, declining.reason.trim() || undefined);
+    if (!result.ok) setDecisionError(result.error || 'Could not record the decision.');
+    else setDeclining(null);
   };
 
   const copyApplyCmd = (id: string) => {
@@ -100,10 +115,14 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   const draftCount = proposals.filter(p => p.status === 'draft').length;
   const approvedCount = proposals.filter(p => p.status === 'approved').length;
+  const rejectedCount = proposals.filter(p => p.status === 'rejected').length;
   const tabs: [typeof statusTab, string][] = [
     ['all', `All (${proposals.length})`],
     ['draft', `Waiting${draftCount > 0 ? ` (${draftCount})` : ''}`],
     ['approved', `Approved (${approvedCount})`],
+    ...(rejectedCount > 0
+      ? ([['rejected', `Turned down (${rejectedCount})`]] as [typeof statusTab, string][])
+      : []),
   ];
 
   return (
@@ -157,7 +176,9 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               ? 'Nothing waiting. When an agent needs a change to your setup, it appears here for you to approve.'
               : statusTab === 'draft'
                 ? 'Nothing waiting for your approval.'
-                : 'Nothing approved yet.'}
+                : statusTab === 'rejected'
+                  ? 'Nothing turned down.'
+                  : 'Nothing approved yet.'}
           </div>
         ) : (
           <div className="gov-list">
@@ -168,14 +189,27 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               } catch {
                 /* ignore */
               }
-              const isApproved = p.status === 'approved';
+              const isApproved = p.status === 'approved' || p.status === 'applied';
+              const isRejected = p.status === 'rejected';
+              const isDeclining = declining?.id === p.id;
 
               return (
-                <div key={p.id} className={`gov-card ${isApproved ? 'gov-card--approved' : ''}`}>
+                <div
+                  key={p.id}
+                  className={`gov-card ${isApproved ? 'gov-card--approved' : ''} ${isRejected ? 'gov-card--rejected' : ''}`}
+                >
                   <div className="gov-card-head">
                     <code className="gov-id">{p.id}</code>
-                    <span className={`gov-status ${isApproved ? 'gov-status--approved' : ''}`}>
-                      {isApproved ? 'Approved' : 'Waiting for your approval'}
+                    <span
+                      className={`gov-status ${isApproved ? 'gov-status--approved' : ''} ${isRejected ? 'gov-status--rejected' : ''}`}
+                    >
+                      {p.status === 'applied'
+                        ? 'Applied'
+                        : isApproved
+                          ? 'Approved'
+                          : isRejected
+                            ? 'Turned down'
+                            : 'Waiting for your approval'}
                     </span>
                   </div>
 
@@ -188,15 +222,41 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                       <div className="sp-section-label">
                         {parsedSteps.length} {parsedSteps.length === 1 ? 'step' : 'steps'}
                       </div>
+                      {/* An engine step is {id, name, chosen, …}; the demo's
+                          hand-written ones are {action, provider}. Either reads
+                          as a name and what supplies it; a step shaped some third
+                          way used to print as its own JSON. */}
                       {parsedSteps.map((step, idx) => (
                         <div key={idx} className="gov-step">
-                          <code>{step.action || step.key || JSON.stringify(step)}</code>
-                          {step.provider && (
-                            <span className="gov-step-via">via {step.provider}</span>
+                          <code>{step.name || step.action || step.key || step.id || 'step'}</code>
+                          {(step.chosen || step.provider) && (
+                            <span className="gov-step-via">via {step.chosen || step.provider}</span>
                           )}
                         </div>
                       ))}
                     </div>
+                  )}
+
+                  {isDeclining && (
+                    <div className="gov-decline">
+                      <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
+                        Why not? Optional, and what the next draft learns from.
+                      </label>
+                      <input
+                        id={`decline-${p.id}`}
+                        className="tp-search gov-decline-input"
+                        placeholder="too expensive, wrong provider, not this quarter…"
+                        value={declining.reason}
+                        onChange={e => setDeclining({ id: p.id, reason: e.target.value })}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleReject();
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {decisionError && (declining?.id === p.id || approvingId === p.id) && (
+                    <p className="gov-error">{decisionError}</p>
                   )}
 
                   <div className="gov-foot">
@@ -205,12 +265,31 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         <span className="gov-signed">
                           Signed by {signerLabel(p.approved_by)} · receipt verified
                         </span>
+                        {p.status !== 'applied' && (
+                          <button
+                            type="button"
+                            className="tp-btn-sm"
+                            onClick={() => copyApplyCmd(p.id)}
+                          >
+                            {copiedId === p.id ? 'Copied' : `Copy: ambit apply ${p.id}`}
+                          </button>
+                        )}
+                      </>
+                    ) : isRejected ? (
+                      <span className="gov-hint">
+                        Recorded. A no teaches the next draft what to choose instead.
+                      </span>
+                    ) : isDeclining ? (
+                      <>
                         <button
                           type="button"
                           className="tp-btn-sm"
-                          onClick={() => copyApplyCmd(p.id)}
+                          onClick={() => setDeclining(null)}
                         >
-                          {copiedId === p.id ? 'Copied' : `Copy: ambit apply ${p.id}`}
+                          Keep it waiting
+                        </button>
+                        <button type="button" className="tp-btn" onClick={handleReject}>
+                          Record the no
                         </button>
                       </>
                     ) : (
@@ -218,14 +297,23 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         <span className="gov-hint">
                           Approving signs a receipt; nothing runs yet.
                         </span>
-                        <button
-                          type="button"
-                          className="tp-btn tp-btn--primary"
-                          disabled={approvingId === p.id}
-                          onClick={() => handleApprove(p.id)}
-                        >
-                          {approvingId === p.id ? 'Signing…' : 'Approve and sign'}
-                        </button>
+                        <span className="gov-actions">
+                          <button
+                            type="button"
+                            className="tp-btn-sm"
+                            onClick={() => setDeclining({ id: p.id, reason: '' })}
+                          >
+                            Turn down
+                          </button>
+                          <button
+                            type="button"
+                            className="tp-btn tp-btn--primary"
+                            disabled={approvingId === p.id}
+                            onClick={() => handleApprove(p.id)}
+                          >
+                            {approvingId === p.id ? 'Signing…' : 'Approve and sign'}
+                          </button>
+                        </span>
                       </>
                     )}
                   </div>

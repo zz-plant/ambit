@@ -102,6 +102,54 @@ test('the loop carries the governance half: authority, next steps, movement', as
   expect('since' in body).toBe(true);
 });
 
+test('the browser can decide either way, and the graph knows who decided', async () => {
+  // Approval from the panel failed on every machine that had not declared a
+  // `web` actor by hand, and refusal had no route at all. Both declare the
+  // person at the loopback port and record the decision.
+  execFileSync(
+    'node',
+    [
+      '--experimental-sqlite',
+      join(ROOT, 'src', 'engine', 'engine.ts'),
+      'propose',
+      'local-embeddings',
+    ],
+    {
+      env: {
+        ...process.env,
+        AMBIT_DB: join(dir, 'graph.db'),
+        OPENCODE_CONFIG: join(dir, 'opencode.json'),
+      },
+      stdio: 'ignore',
+    }
+  );
+  const list = await json(await fetch(`${base}/api/proposals`));
+  const drafts = list.proposals.filter((p: any) => p.status === 'draft');
+  expect(drafts.length).toBeGreaterThan(0);
+  expect(drafts[0].decision).toBeDefined();
+
+  const rejected = await fetch(`${base}/api/proposals/${drafts[0].id}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: 'not this quarter' }),
+  });
+  expect(rejected.status).toBe(200);
+  const body = await json(rejected);
+  expect(body.rejected_by).toBe('human:web');
+  expect(body.reason).toBe('not this quarter');
+
+  const after = await json(await fetch(`${base}/api/proposals`));
+  expect(after.proposals.find((p: any) => p.id === drafts[0].id).status).toBe('rejected');
+});
+
+test('the briefing the agent is given can be read by the person', async () => {
+  const r = await fetch(`${base}/api/briefing`);
+  const body = await json(r);
+  expect(r.status).toBe(200);
+  expect(body.text).toContain('Ambit ·');
+  expect(body.budget).toBeGreaterThan(0);
+});
+
 test('the graph is served in the shape the client renders', async () => {
   const r = await fetch(`${base}/api/tech-tree`);
   const body = await json(r);

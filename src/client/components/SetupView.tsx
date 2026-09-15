@@ -18,7 +18,7 @@ import { Term } from './Term';
  * infrastructure are the other two things a machine has, so they are tabs
  * here instead of in a side panel.
  */
-type Tab = 'entries' | 'repos' | 'infra';
+type Tab = 'entries' | 'repos' | 'infra' | 'briefing';
 
 /** Kinds in the order a person asks about them, with the glossary key where one exists. */
 const KINDS: { type: string; label: string; term?: string }[] = [
@@ -62,15 +62,19 @@ export function SetupView({ onShow }: SetupViewProps) {
   const infrastructure = useAmbitStore(s => s.infrastructure);
   const loadRepos = useAmbitStore(s => s.loadRepos);
   const loadInfrastructure = useAmbitStore(s => s.loadInfrastructure);
+  const briefing = useAmbitStore(s => s.briefing);
+  const loadBriefing = useAmbitStore(s => s.loadBriefing);
   const [kind, setKind] = useState<string>('all');
   const [tab, setTab] = useState<Tab>('entries');
 
-  // Fetched when the tab is first opened, not on mount: both walk the disk,
-  // and most sessions never ask.
+  // Fetched when the tab is first opened, not on mount: the scans walk the
+  // disk, the briefing applies any threshold whose evidence now holds, and
+  // most sessions never ask.
   useEffect(() => {
     if (tab === 'repos' && !repos) loadRepos();
     if (tab === 'infra' && !infrastructure) loadInfrastructure();
-  }, [tab, repos, infrastructure, loadRepos, loadInfrastructure]);
+    if (tab === 'briefing') loadBriefing();
+  }, [tab, repos, infrastructure, loadRepos, loadInfrastructure, loadBriefing]);
 
   const entries = useMemo(() => items.filter(isEntry), [items]);
   const byId = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
@@ -123,6 +127,7 @@ export function SetupView({ onShow }: SetupViewProps) {
                   ['entries', 'Entries'],
                   ['repos', repos ? `Repos (${repos.repos.length})` : 'Repos'],
                   ['infra', 'Infra'],
+                  ['briefing', 'Briefing'],
                 ] as [Tab, string][]
               ).map(([key, label]) => (
                 <button
@@ -137,7 +142,9 @@ export function SetupView({ onShow }: SetupViewProps) {
                       ? "How each repository's agent config differs from your global one"
                       : key === 'infra'
                         ? 'The devices and services in your manifest, probed just now'
-                        : undefined
+                        : key === 'briefing'
+                          ? 'What an agent is told about this machine when it connects'
+                          : undefined
                   }
                 >
                   {label}
@@ -149,6 +156,24 @@ export function SetupView({ onShow }: SetupViewProps) {
 
         {tab === 'repos' && <RepoDriftPanel scan={repos} />}
         {tab === 'infra' && <InfrastructurePanel scan={infrastructure} />}
+        {tab === 'briefing' && (
+          // What the agent believes about this machine, inspectable by the
+          // person it believes it about. Served at connect as the MCP resource
+          // ambit://briefing; this is the same prose.
+          <div className="setup-briefing">
+            <p className="tp-note">
+              What an agent is told when it connects, before its first tool call: what works, what
+              is broken, what waits on you, what blocked work lately, and what to reach next. Capped
+              near {briefing?.budget ?? 1200} tokens and trimmed from the bottom, so the order is
+              the order of usefulness.
+            </p>
+            {briefing ? (
+              <pre className="setup-briefing-text">{briefing.text}</pre>
+            ) : (
+              <div className="tp-empty tp-empty--note">Composing the briefing…</div>
+            )}
+          </div>
+        )}
         {tab === 'entries' && (
           <>
             <div className="setup-controls">
