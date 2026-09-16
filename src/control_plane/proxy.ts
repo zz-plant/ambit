@@ -220,14 +220,22 @@ export function approvalCovers(db: Db, proposalId: string, capabilityId: string)
 export function executeThroughControlPlane(
   db: Db,
   envDir: string,
-  request: AgentExecutionRequest
+  request: AgentExecutionRequest,
+  /**
+   * What sits on the other side of the gate. It defaults to the simulated
+   * environment, which is the only implementation here; a real one is passed
+   * in and nothing above this line changes. The executor reached past this
+   * seam to the JSON file for a while, which left the interface true only on
+   * paper: implementing it changed nothing, because nothing called it.
+   */
+  adapter: EnvironmentAdapter<SimulatedEnvironment> = simulatedAdapter(envDir)
 ): ControlPlaneResult {
   const traceId = randomBytes(16).toString('hex');
   const spanId = randomBytes(8).toString('hex');
   const startTime = new Date().toISOString();
 
-  const preState = readSimulatedEnvironment(envDir);
-  const preHash = preState.immutable_hash;
+  const preState = adapter.read();
+  const preHash = adapter.hashOf(preState);
 
   const runId = request.run_id || `run-incident-${Date.now()}`;
   beginRun(db, {
@@ -413,8 +421,8 @@ export function executeThroughControlPlane(
       },
     });
 
-    const postState = readSimulatedEnvironment(envDir);
-    const stateUnchanged = postState.immutable_hash === preHash;
+    const postState = adapter.read();
+    const stateUnchanged = adapter.hashOf(postState) === preHash;
 
     const span: OpenTelemetrySpan = {
       trace_id: traceId,
@@ -472,16 +480,14 @@ export function executeThroughControlPlane(
     detail: 'Execution permitted via valid human HMAC approval artifact',
   });
 
-  // Perform Mock Production Transition Safely
-  const updatedState: SimulatedEnvironment = {
-    ...preState,
+  // The one state change the gate exists to guard, handed to whatever is on
+  // the other side of it.
+  const postState = adapter.apply({
     production_version: request.payload?.target_version || 'v2.0.0',
     last_deployed_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     last_deployed_by: `agent:${request.agent_id} [authorized-by:human:security-lead]`,
     active_containers: ['web-prod-v2-1', 'web-prod-v2-2'],
-  };
-  writeSimulatedEnvironment(envDir, updatedState);
-  const postState = readSimulatedEnvironment(envDir);
+  });
 
   endRun(db, runId, 'completed', 50000);
 

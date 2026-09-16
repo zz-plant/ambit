@@ -293,15 +293,3 @@ export function importConfig(config: OpenCodeConfig): { items: Item[]; connectio
 
   return { items, connections };
 }
-
-export function countByType(items: Item[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const i of items) counts[i.type] = (counts[i.type] || 0) + 1;
-  return counts;
-}
-
-export function countByStatus(items: Item[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const i of items) counts[i.status] = (counts[i.status] || 0) + 1;
-  return counts;
-}
