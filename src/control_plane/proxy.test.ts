@@ -124,6 +124,72 @@ test('the full remediation loop ends in an authorized, audited deploy', () => {
   expect(trail.approval.artifact.signed).toBe(true);
 });
 
+// ── The seam ─────────────────────────────────────────────────────────────────
+
+/**
+ * The gate is only environment-agnostic if something other than the simulated
+ * environment can be behind it. `EnvironmentAdapter` was documented as the way
+ * to put a real one there while the executor read and wrote the JSON file
+ * directly, so implementing the interface did nothing at all. This substitutes
+ * an adapter and checks the deploy arrives through it.
+ */
+test('an authorized deploy goes through the adapter it was handed', () => {
+  const blocked = executeThroughControlPlane(db, envDir, DEPLOY);
+  const proposalId = blocked.remediation_proposal_id!;
+  verifyStaging();
+  approveProposal(db, proposalId, 'human:security-lead');
+
+  const calls: string[] = [];
+  let state = { production_version: 'v1.0.0', immutable_hash: 'hash-before' };
+  const elsewhere = {
+    read: () => {
+      calls.push('read');
+      return state as never;
+    },
+    apply: (change: Record<string, unknown>) => {
+      calls.push('apply');
+      state = { ...state, ...change, immutable_hash: 'hash-after' } as never;
+      return state as never;
+    },
+    hashOf: (s: { immutable_hash: string }) => {
+      calls.push('hashOf');
+      return s.immutable_hash;
+    },
+  };
+
+  const before = onDisk();
+  const authorized = executeThroughControlPlane(
+    db,
+    envDir,
+    { ...DEPLOY, hmac_approval_token: proposalId },
+    elsewhere
+  );
+
+  expect(authorized.ok).toBe(true);
+  expect(calls).toContain('apply');
+  expect(state.production_version).toBe('v2.0.0');
+  // The simulated environment is not what was deployed to, so its file is as
+  // it was: the gate did not reach past the adapter it was given.
+  expect(onDisk()).toEqual(before);
+});
+
+test('a blocked deploy leaves a substituted adapter unapplied', () => {
+  const calls: string[] = [];
+  const elsewhere = {
+    read: () => ({ immutable_hash: 'unmoved' }) as never,
+    apply: () => {
+      calls.push('apply');
+      return { immutable_hash: 'moved' } as never;
+    },
+    hashOf: (s: { immutable_hash: string }) => s.immutable_hash,
+  };
+
+  const blocked = executeThroughControlPlane(db, envDir, DEPLOY, elsewhere);
+
+  expect(blocked.ok).toBe(false);
+  expect(calls).not.toContain('apply');
+});
+
 // ── The approval artifact ────────────────────────────────────────────────────
 
 test('a token naming no proposal is refused and the state survives', () => {

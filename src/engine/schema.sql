@@ -49,16 +49,6 @@ CREATE TABLE IF NOT EXISTS dependencies (
     UNIQUE(from_capability, to_capability)
 );
 
-CREATE TABLE IF NOT EXISTS synergies (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    requirement_ids TEXT NOT NULL,
-    unlocked_capability TEXT NOT NULL,
-    discount_percent INTEGER NOT NULL DEFAULT 0,
-    description TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
 CREATE TABLE IF NOT EXISTS session_learning (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     session_id TEXT NOT NULL,
