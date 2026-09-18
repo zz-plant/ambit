@@ -118,6 +118,11 @@ function governingMode(covering: Array<{ mode: string; scope?: string }>): strin
     .reduce(narrower);
 }
 
+/** The `narrowed_by` entry for an elevation that ran out. */
+function expiredElevation(capability: string, name: string) {
+  return [{ id: capability, name: `${name} temporary elevation`, lifecycle: 'expired' }];
+}
+
 /**
  * Whether a scope covers a target.
  *
@@ -183,17 +188,30 @@ function canExecute(
 
   const grants = db
     .prepare(
-      `SELECT capability_id, action, mode, holder, scope, source, note
+      `SELECT capability_id, action, mode, holder, scope, source, note, expires_at
      FROM authority WHERE capability_id = ? AND action = ?`
     )
     .all<Omit<AuthorityRow, 'id'>>(capability, action);
 
+  let expiredGrant: (Omit<AuthorityRow, 'id'> & { expires_at?: string | null }) | undefined;
   const covering = grants.filter((g: any) => {
     if (g.holder && input.actor && g.holder !== input.actor) return false;
     if (g.scope && input.target && !scopeCovers(g.scope, input.target)) return false;
+    if (g.expires_at) {
+      const expiry = new Date(g.expires_at).getTime();
+      if (!Number.isNaN(expiry) && expiry <= Date.now()) {
+        if (g.mode === 'autonomous') expiredGrant = g;
+        return false;
+      }
+    }
     return true;
   });
 
+  // An expired grant decides nothing. What remains covering decides, exactly
+  // as if the elevation had never been declared: a standing confirm stays
+  // confirm, and nothing at all stays a refusal. Treating expiry as a fall
+  // back to confirm would let a row that has ended widen authority for good.
+  // The expired grant is kept only to explain the answer.
   const governing = governingMode(covering as any);
   const grant = covering.find((g: any) => g.mode === governing);
 
@@ -248,8 +266,12 @@ function canExecute(
       verdict: 'no' as const,
       reason: covering.length
         ? `${cap.name} is forbidden for ${action}. This is not a slow yes — do not retry it under another name.`
-        : `No grant covers ${cap.name} / ${action}${input.target ? ` on ${input.target}` : ''}. Ask the person for one rather than retrying.`,
+        : expiredGrant
+          ? `${cap.name} was granted unattended for ${action} until ${expiredGrant.expires_at}, and nothing covers it now. Ask the person for a new grant rather than retrying.`
+          : `No grant covers ${cap.name} / ${action}${input.target ? ` on ${input.target}` : ''}. Ask the person for one rather than retrying.`,
       missing: covering.length ? undefined : missingPrerequisites(db, capability),
+      narrowed_by:
+        expiredGrant && !covering.length ? expiredElevation(capability, cap.name) : undefined,
       capability,
       action,
       governing_grant: undefined,
@@ -285,6 +307,16 @@ function canExecute(
     governing === 'autonomous' && !sandbox ? brokenFoundations(db, capability) : [];
   const unattended = (governing === 'autonomous' && !foundation.length) || Boolean(sandbox);
   const foundationNames = foundation.map(f => `${f.name} is ${f.lifecycle}`).join(', ');
+  const narrowedReason =
+    expiredGrant && governing !== 'autonomous'
+      ? `${cap.name} temporary autonomous grant expired at ${expiredGrant.expires_at}. Returning to confirmation.`
+      : undefined;
+  const narrowedBy = foundation.length
+    ? foundation
+    : expiredGrant && governing !== 'autonomous'
+      ? expiredElevation(capability, cap.name)
+      : undefined;
+
   return {
     decision: unattended ? 'ALLOW' : 'CONFIRM',
     verdict: unattended ? ('yes' as const) : ('ask' as const),
@@ -292,10 +324,11 @@ function canExecute(
       ? `${input.target} is a sandbox ${sandbox.declared_by} declared, so ${cap.name} runs unattended there. It stays at confirm elsewhere.`
       : foundation.length
         ? `${cap.name} is granted unattended for ${action}, but ${foundationNames}. What the grant rests on stopped holding, so it asks a person until the check passes again.`
-        : governing === 'autonomous'
-          ? `${cap.name} may run unattended for ${action}.`
-          : `${cap.name} is permitted for ${action}, with a person in the loop. Ask before running it.`,
-    narrowed_by: foundation.length ? foundation : undefined,
+        : narrowedReason ||
+          (governing === 'autonomous'
+            ? `${cap.name} may run unattended for ${action}.`
+            : `${cap.name} is permitted for ${action}, with a person in the loop. Ask before running it.`),
+    narrowed_by: narrowedBy,
     capability,
     action,
     governing_grant: grant,

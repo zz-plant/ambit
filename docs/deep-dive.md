@@ -190,7 +190,7 @@ Hermes has no machine-readable config export today, so the adapter reads its doc
 
 Agent capabilities do not stop at the model boundary. A local GPU, NAS, browser worker, Proxmox host, database, or cloud account can all contribute to what the system can accomplish.
 
-Ambit scans infrastructure from an explicit local manifest (`INFRA_MANIFEST`, default `~/.config/opencode/infrastructure.json`). With no manifest it returns an empty scan rather than an error — no host addresses are baked in.
+Ambit scans infrastructure from an explicit local manifest (`INFRA_MANIFEST`, default `~/.config/opencode/infrastructure.json`) and from the local Docker socket when one exists (`DOCKER_HOST=unix://…`, `/var/run/docker.sock`, or the per-user socket Docker Desktop, OrbStack, Colima and Rancher Desktop leave). The socket is read with one `GET /containers/json`: every container, running or not, becomes a service on a `device:docker` node, with its image, state, published ports and compose project. A TCP `DOCKER_HOST` is never probed, and nothing here can start or stop a container. With no manifest and no socket it returns an empty scan rather than an error — no host addresses are baked in.
 
 The manifest is not specific to servers. A device is anything that can act — a Pi, a GPU host, a robot arm, a sensor, a decoder — and they seed as first-class nodes in a `physical` domain. Devices and services seed into the engine graph itself: a device is a `resource` with a `runs_on` edge to every service hosted on it, so `ambit impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph counts. Whether that generalization is the right one is argued in [the affordance frontier](./affordance-frontier.md); what is implemented is that the model does not assume software.
 
@@ -384,12 +384,14 @@ plan       goal <cap-or-sentence> [--paths|--simulate|--prefs] · next [n]
 check      verify [cap] [--history] [--target=<object>]
            authority [cap] [scope <target>]
            authority promote [<cap> <action> --after=N --window=30d --scope=X --by=<person>]
+           authority grant <cap> <mode> [--ttl=30m] [--scope=X] [--by=<person>]
            authority sandbox [<target> --by=<person>] · budget [set|clear]
            can <cap> [--target X] [--spend N] · credentials
            incidents · incident resolve <svc> <outcome>
 govern     proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
            reject <id> <person> ["why"]
-           apply <id> · rollback <id> · history [since <when>]
+           apply <id> · rollback <id> · dispatch <id> [--to=<url>]
+           history [since <when>]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest <file>
            delegation object|answer|objections · delegation source add|sources|pull
@@ -427,6 +429,7 @@ The table covers the commands whose answer is not obvious from the name, in the 
 | `ambit authority <cap>` | Which concrete actions does this confer, and which of them may run unattended? |
 | `ambit authority scope <target>` | What a scope actually covers and what it does not — a grant scoped elsewhere is named as excluded |
 | `ambit authority promote <cap> <action> --after=N --by=<person>` | The threshold that widens a grant once its evidence supports it. A person sets it once; a single failing check afterwards puts the grant back, with nobody asked |
+| `ambit authority grant <cap> <mode> --ttl=30m` | Autonomy for a window and no longer. Once expired the grant decides nothing and whatever stood before it decides again; the row is never rewritten, so it stays as the record of what was granted |
 | `ambit authority sandbox <target> --by=<person>` | Somewhere acting does not matter. Confirmation is relaxed inside it; a refusal never is, because rehearsing a forbidden action would be a way round it |
 | `ambit budget set <cap> --amount=$20 --by=<person>` | Standing spend that needs no person. When it is spent the answer goes back to asking, which is what makes a ceiling safer than approving each purchase |
 | `ambit incidents` | Probe the infrastructure manifest; open an incident run for every offline service with the authority decision for its recovery. `incident resolve <svc> <outcome>` closes it with MTTR |
@@ -435,6 +438,7 @@ The table covers the commands whose answer is not obvious from the name, in the 
 | `ambit reject <id> <person> ["why"]` | A refusal, recorded. Approval was always written to the graph and refusal was not, so nothing could learn the shape of a no |
 | `ambit history since <when>` | What became reachable since a past date — and what emerged rather than being added? |
 | `ambit audit <run-…\|prop-…\|human:name\|days>` | The trail: who approved what, what ran, against what target, under which grant, and whether it held |
+| `ambit dispatch <id> [--to=<url>]` | Push a proposal to Slack, Discord, Telegram, ntfy or a JSON endpoint: the decision for a draft, the signed artifact once approved. One-way; the reply is `ambit approve` on a machine that holds the key |
 | **report** — *what the system cost to operate* | |
 | `ambit attention [days]` | How much of the work still runs through the human, and which interventions are likely reducible |
 | `ambit notify <topic>` | Push the attention digest to ntfy — nothing is sent without a topic |

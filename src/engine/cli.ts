@@ -26,6 +26,7 @@ import {
   promotionReport,
   declareSandbox,
   removeSandbox,
+  grantAuthority,
 } from './assurance.ts';
 import { setBudget, budgetReport, clearBudget } from './budgets.ts';
 import { reversibilityReport } from './reversibility.ts';
@@ -55,6 +56,7 @@ import {
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
+import { dispatchProposal } from './dispatch.ts';
 import { workReport, usageReport } from './telemetry.ts';
 import { economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
@@ -260,7 +262,27 @@ async function runCommand(
       // Grants, then per-capability actions, then scope coverage, then the
       // thresholds that widen a grant on evidence — one verb.
       if (arg === 'scope') emit(scopeReport(db, positional[1]));
-      else if (arg === 'sandbox') {
+      else if (arg === 'grant') {
+        if (!positional[1] || !positional[2]) {
+          emit({
+            error:
+              'Usage: ambit authority grant <capability> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>] [--action=<action>]',
+          });
+        } else {
+          emit(
+            grantAuthority(db, {
+              capability: positional[1],
+              mode: positional[2],
+              action: value('action'),
+              scope: value('scope'),
+              ttl: value('ttl'),
+              expires: value('expires'),
+              by: value('by'),
+              note: value('note'),
+            })
+          );
+        }
+      } else if (arg === 'sandbox') {
         // Somewhere acting does not matter, so evidence can be gathered where
         // a mistake costs nothing.
         if (positional[1] === 'remove') emit(removeSandbox(db, positional[2]));
@@ -385,8 +407,21 @@ async function runCommand(
       if (arg === 'since') emit(ledgerSince(db, positional[1]));
       else emit(ledgerHistory(db));
       break;
-    case 'propose':
-      emit(propose(db, arg, Number(positional[1]) || undefined));
+    case 'propose': {
+      const drafted = propose(db, arg, Number(positional[1]) || undefined);
+      // --dispatch pushes the draft out of band in the same breath, so an
+      // unattended loop's request reaches the person without a second verb.
+      if (drafted?.proposal && (flags.has('--dispatch') || value('dispatch'))) {
+        emit({
+          ...drafted,
+          dispatch: await dispatchProposal(db, drafted.proposal, { to: value('dispatch') }),
+        });
+      } else emit(drafted);
+      break;
+    }
+    case 'dispatch':
+      // async: the push is an HTTP POST and must complete before close.
+      emit(await dispatchProposal(db, arg, { to: value('to') }));
       break;
     case 'proposals':
       // What exists, or what is actually waiting on a decision.
@@ -401,7 +436,24 @@ async function runCommand(
       // environment that grows and a backlog nobody opens.
       const ids = positional.slice(0, -1);
       const person = positional[positional.length - 1];
-      emit(ids.length > 1 ? approveProposals(db, ids, person) : approveProposal(db, arg, person));
+      const approved: any =
+        ids.length > 1 ? approveProposals(db, ids, person) : approveProposal(db, arg, person);
+      // --dispatch sends the signed artifact where the person is, so what
+      // they read on a phone is what apply will verify here.
+      if (flags.has('--dispatch') || value('dispatch')) {
+        const to = value('dispatch');
+        // Only what was actually approved goes out; a refused approval has
+        // nothing signed to send.
+        const wins: string[] =
+          ids.length > 1
+            ? (approved.results || []).filter((r: any) => !r.error).map((r: any) => r.id)
+            : approved.error
+              ? []
+              : [arg];
+        const pushed: Record<string, any> = {};
+        for (const id of wins) pushed[id] = await dispatchProposal(db, id, { to });
+        emit({ ...approved, dispatch: ids.length > 1 ? pushed : pushed[arg] });
+      } else emit(approved);
       break;
     }
     case 'reject':
@@ -528,7 +580,8 @@ function result(argv: string[], state: { value: unknown; calls: number }): any {
  * without awaiting anything — which is all but three of them.
  *
  * Synchronous on purpose. `runCommand` is declared async because `notify`,
- * `notify-approvals` and `incidents` reach the network, but every other case
+ * `notify-approvals`, `dispatch` and `incidents` reach the network (and
+ * `propose`/`approve` do when asked to `--dispatch`), but every other case
  * runs to completion before the call returns, so the result is already in hand.
  * Making the seam synchronous is what lets a test read
  * `cli('status').health` rather than parenthesising an await at 137 call sites.
@@ -548,7 +601,7 @@ function capture(db: Db, argv: string[], mappingOverride?: string): any {
   return result(argv, state);
 }
 
-/** The same seam for the three commands that reach the network. */
+/** The same seam for the commands that reach the network. */
 async function captureAsync(db: Db, argv: string[], mappingOverride?: string): Promise<any> {
   const { state, done, restore } = begin(db, argv, mappingOverride);
   try {

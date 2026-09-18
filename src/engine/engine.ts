@@ -44,8 +44,10 @@ export {
   suggestPromotions,
   declareSandbox,
   removeSandbox,
+  grantAuthority,
 } from './assurance.ts';
 export { setBudget, budgetReport, clearBudget } from './budgets.ts';
+export { dispatchProposal } from './dispatch.ts';
 export { reversibilityReport } from './reversibility.ts';
 export { observedPreferences, observedReport, preferredOption } from './observed.ts';
 export { objectReport, knownObjects } from './objects.ts';

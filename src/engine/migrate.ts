@@ -54,6 +54,10 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ['proposals', 'approval_artifact', 'TEXT'],
   // What actually happened after an apply, so the next prediction can learn.
   ['proposals', 'observed_roi', 'TEXT'],
+  // §12.10: when a proposal was last pushed out of band, and to which kind
+  // of channel — so the pending report can say it already asked.
+  ['proposals', 'dispatched_at', 'TEXT'],
+  ['proposals', 'dispatched_to', 'TEXT'],
   // §12.6: a grant can carry the evidence threshold that would widen it. Null
   // means what it has always meant — this grant only ever changes by hand.
   ['authority', 'promote_after', 'INTEGER'],
@@ -61,6 +65,8 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ['authority', 'promote_set_by', 'TEXT'],
   ['authority', 'promoted_at', 'TEXT'],
   ['authority', 'promoted_on_evidence', 'TEXT'],
+  // §13.10: time-bounded temporary authority elevation (TTL).
+  ['authority', 'expires_at', 'TEXT'],
   // A budget is a standing grant with a ceiling, so it has to know when its
   // period began or "20 dollars a month" silently means "20 dollars ever".
   ['budgets', 'period_start', 'TEXT'],

@@ -529,7 +529,7 @@ export function answerObjection(db: Db, input: AnswerInput): ObjectionResult {
   if (!because) return { ok: false, reason: 'an answer needs a reason: pass --because' };
 
   const objection = storedRecord(db, input.objection);
-  if (!objection || objection.kind !== 'objection') {
+  if (objection?.kind !== 'objection') {
     return { ok: false, reason: `no objection with id ${input.objection}` };
   }
 

@@ -91,6 +91,8 @@ export type ProposalRow = {
   expires_at: string | null;
   approval_artifact: string | null;
   observed_roi: string | null;
+  dispatched_at?: string | null;
+  dispatched_to?: string | null;
 };
 
 export type AuthorityRow = {
@@ -102,6 +104,7 @@ export type AuthorityRow = {
   scope: string;
   source: string;
   note: string | null;
+  expires_at?: string | null;
 };
 
 export type PreferenceRow = {

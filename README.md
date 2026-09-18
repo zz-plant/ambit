@@ -129,8 +129,8 @@ $ ambit status
         unproven: 14
         failing: 0
         last check: never
-        provable now: Automated Tests, Browser Automation, Code Intelligence, File Editing, Local Runtime, Shell Execution, Version Control, Web Research
-        note: configured is not working — ambit verify would turn 8 of the unproven into evidence
+        provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
+        note: configured is not working — ambit verify would turn 11 of the unproven into evidence
     domains:
     …
 ```
@@ -301,7 +301,7 @@ Select a node to open the inspector, then simulate against it. Neither mode writ
 
 ### Approving proposals
 
-When an agent proposes an environment change over MCP, the **Proposals** panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click, or records a no with the reason, which is what the next draft learns from. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`.
+When an agent proposes an environment change over MCP, the **Proposals** panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click, or records a no with the reason, which is what the next draft learns from. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`. When you are away from the machine, `ambit dispatch <id>` pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.
 
 ---
 
@@ -416,7 +416,7 @@ Ambit reads developer toolchains and writes to agent configs, so a few propertie
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
 2. **Origin allowlist.** A request with a non-local `Origin` is rejected with 403 *before* routing. Response headers alone are not sufficient — a simple request skips preflight and would otherwise reach the handler.
 3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else: it toggles an MCP server's `enabled`, and edits an agent's `description` or `model` and a command's `description`. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution. Adding a server returns a snippet for you to paste.
-4. **No egress you did not type.** Everything lives in an embedded SQLite database on your machine. There is no telemetry and no credential leaves the host. Three commands open a socket at all: `ambit notify` and `ambit notify-approvals`, each pushing text to an ntfy topic you name, and `ambit incidents`, which sends an empty GET to the hosts your own infrastructure manifest lists. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
+4. **No egress you did not type.** Everything lives in an embedded SQLite database on your machine. There is no telemetry and no credential leaves the host. Four commands open a socket at all: `ambit notify` and `ambit notify-approvals`, each pushing text to an ntfy topic you name; `ambit dispatch`, which pushes one proposal to a webhook URL you configure; and `ambit incidents`, which sends an empty GET to the hosts your own infrastructure manifest lists. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
 
 ---
 

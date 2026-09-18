@@ -7,7 +7,7 @@ import { useAmbitStore } from '../store/ambitStore';
  *
  * `/api/repos/scan` opens every repository's own agent config and reports how
  * far it has drifted from the global one; `/api/infrastructure/scan` probes
- * the devices and services named in a manifest. Both shipped with no caller in
+ * the devices and services named in a manifest, and the local Docker socket. Both shipped with no caller in
  * the client, so the work was done on request and thrown away. They sit in the
  * side panel rather than on the map because neither is a capability: one is a
  * comparison between configs, the other is a reading taken just now.
@@ -106,8 +106,9 @@ export function InfrastructurePanel({ scan }: { scan: InfrastructureScanResponse
   if (!scan.nodes.length) {
     return (
       <PanelNote>
-        No manifest at <code>~/.config/opencode/infrastructure.json</code>. List the devices and
-        services you run there and this becomes a live reading of them — no addresses are built in.
+        No manifest at <code>~/.config/opencode/infrastructure.json</code>, and no Docker socket.
+        List the devices and services you run in the manifest and this becomes a live reading of
+        them, with any containers the local engine reports beside them — no addresses are built in.
       </PanelNote>
     );
   }
