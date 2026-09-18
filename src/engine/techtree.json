@@ -350,7 +350,15 @@
         ]
       },
       "setup_seconds": 600,
-      "hint": "Add your first MCP server"
+      "hint": "Add your first MCP server",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v npx >/dev/null || command -v uvx >/dev/null"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "browser-automation",
@@ -553,6 +561,14 @@
       },
       "setup_seconds": 600,
       "hint": "Connect a database MCP server, ideally read-only to start",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v sqlite3 >/dev/null || command -v psql >/dev/null || command -v duckdb >/dev/null || command -v jq >/dev/null"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "confirm",
@@ -1202,6 +1218,14 @@
       },
       "setup_seconds": 1800,
       "hint": "Put agent commits behind CI so nothing merges unverified",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v gh >/dev/null || command -v wrangler >/dev/null || command -v docker >/dev/null"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "confirm"
@@ -1339,6 +1363,14 @@
       },
       "setup_seconds": 7200,
       "hint": "Move inference onto a machine you own and reach it over a private network",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "tailscale status >/dev/null 2>&1 || /Applications/Tailscale.app/Contents/MacOS/Tailscale status >/dev/null 2>&1 || docker info >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "confirm"

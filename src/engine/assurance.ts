@@ -51,5 +51,7 @@ export {
   declareSandbox,
   removeSandbox,
   evidenceCount,
+  grantAuthority,
+  parseDuration,
 } from './assure/promote.ts';
 export { authorityReport, actionsReport, scopeReport } from './assure/reports.ts';

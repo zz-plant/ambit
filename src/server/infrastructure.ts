@@ -1,13 +1,16 @@
 /**
  * The device and service topology the client draws alongside the capability
- * graph, probed from a manifest the user supplies.
+ * graph, probed from a manifest the user supplies and from the local Docker
+ * socket when one is present.
  *
  * The manifest path comes from INFRA_MANIFEST (default
  * ~/.config/opencode/infrastructure.json), so no host addresses are baked in.
- * With no manifest the scan is empty rather than an error.
+ * With no manifest the scan carries only what the socket reports, and with
+ * neither it is empty rather than an error.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { readConfig, INFRA_MANIFEST_PATH } from './config.ts';
+import { dockerScan } from './docker.ts';
 import type {
   InfrastructureNode as InfraNode,
   InfrastructureLink as InfraLink,
@@ -87,6 +90,14 @@ export async function buildInfrastructureScan(): Promise<{
   const links: InfraLink[] = [...(manifest?.links || [])];
   const findings: InfraFinding[] = [];
 
+  // What is running now, from the engine itself. Probed whether or not a
+  // manifest exists: containers are the one kind of service nobody writes a
+  // manifest for, because the runtime already knows them.
+  const docker = await dockerScan();
+  nodes.push(...docker.nodes);
+  links.push(...docker.links);
+  findings.push(...docker.findings);
+
   if (!manifest) {
     findings.push({
       severity: 'info',
@@ -94,11 +105,11 @@ export async function buildInfrastructureScan(): Promise<{
     });
     return {
       generatedAt,
-      source: INFRA_MANIFEST_PATH,
+      source: docker.socket ? `${INFRA_MANIFEST_PATH} + ${docker.socket}` : INFRA_MANIFEST_PATH,
       nodes,
       links,
       findings,
-      summary: { online: 0, degraded: 0, offline: 0, unknown: 0 },
+      summary: summarize(nodes),
     };
   }
 
@@ -181,22 +192,24 @@ export async function buildInfrastructureScan(): Promise<{
     }
   }
 
-  const summary = nodes.reduce(
+  return {
+    generatedAt,
+    source: docker.socket ? `${INFRA_MANIFEST_PATH} + ${docker.socket}` : INFRA_MANIFEST_PATH,
+    nodes,
+    links,
+    findings,
+    summary: summarize(nodes),
+  };
+}
+
+function summarize(nodes: InfraNode[]) {
+  return nodes.reduce(
     (acc, node) => {
       acc[node.status] += 1;
       return acc;
     },
     { online: 0, degraded: 0, offline: 0, unknown: 0 }
   );
-
-  return {
-    generatedAt,
-    source: INFRA_MANIFEST_PATH,
-    nodes,
-    links,
-    findings,
-    summary,
-  };
 }
 
 /**

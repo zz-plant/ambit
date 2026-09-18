@@ -378,6 +378,7 @@ export {
   humanDigest,
   digestMessage,
   notify,
+  draftSummary,
   pendingApprovals,
   pendingDrafts,
   pendingMessage,

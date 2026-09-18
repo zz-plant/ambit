@@ -148,6 +148,10 @@ CREATE TABLE IF NOT EXISTS authority (
     promote_set_by TEXT,
     promoted_at TEXT,
     promoted_on_evidence TEXT,
+    -- §13.10: time-bounded temporary authority elevation (TTL).
+    -- Null expires_at means permanent grant. Expired autonomous grants
+    -- fall back to confirm mode.
+    expires_at TEXT,
     UNIQUE(capability_id, action, holder, scope, source)
 );
 

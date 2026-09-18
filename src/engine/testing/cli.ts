@@ -220,7 +220,7 @@ function seedWith(vars: Record<string, string | undefined>, mapping?: string): v
   });
 }
 
-/** `cli` for the three commands that reach the network. */
+/** `cli` for the commands that reach the network. */
 async function cliAsync(cmd: string, ...args: string[]): Promise<any> {
   const dbPath = join(dir, 'graph.db');
   return withEnv(

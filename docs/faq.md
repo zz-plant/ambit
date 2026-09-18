@@ -41,6 +41,7 @@ Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints
 | :--- | :--- | :--- |
 | `ambit notify <topic>` | The attention digest: which capabilities interrupted you, how often, and the suggested fix for each. | One HTTP POST to [ntfy](https://ntfy.sh), or to the server you name in `NTFY_SERVER`. |
 | `ambit notify-approvals <topic>` | Proposals waiting to be applied, by id and goal; and unapproved drafts, each with its id, goal, cost, recurring billing, and up to three capabilities it would unlock. | The same POST. |
+| `ambit dispatch <id>` (and `propose`/`approve` with `--dispatch`) | One proposal: its id, goal, cost and what it unlocks, with the approve and reject commands; once approved, the signed artifact too. Never a command to run. | One POST to the URL in `AMBIT_APPROVAL_WEBHOOK` or `--to`, in Slack, Discord, Telegram, ntfy or plain JSON shape. Nothing is sent without one. |
 | `ambit incidents` | Nothing. It sends an empty GET to each service URL named in your infrastructure manifest (`$INFRA_MANIFEST`, or `~/.config/opencode/infrastructure.json`), to see which are answering. | Those hosts, and nowhere else. |
 | `ambit share [--redact]` | Nothing. It writes an HTML file you send yourself. | Your disk. |
 

@@ -27,6 +27,7 @@ const GROUPS: Record<string, string[]> = {
     'reject',
     'apply',
     'rollback',
+    'dispatch',
     'history',
     'audit',
     'delegation',

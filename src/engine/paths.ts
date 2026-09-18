@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 
 /**
  * Where the engine's authored data lives — schema.sql, techtree.json,
@@ -33,17 +33,102 @@ export function techTreePath(): string {
   return process.env.AMBIT_TECHTREE || join(ENGINE_DIR, 'techtree.json');
 }
 
+/**
+ * Scoped tech tree overlay file, allowing per-repository or per-project
+ * capability extensions without modifying the core curated tree.
+ * Roadmap §13.11 / Issue #51.
+ */
+export function overlayTechTreePath(): string | null {
+  if (process.env.AMBIT_OVERLAY_TECHTREE) {
+    return process.env.AMBIT_OVERLAY_TECHTREE;
+  }
+  const dotAmbit = join(process.cwd(), '.ambit', 'techtree.json');
+  if (existsSync(dotAmbit)) return dotAmbit;
+  const dotJson = join(process.cwd(), '.ambit.json');
+  if (existsSync(dotJson)) return dotJson;
+  return null;
+}
+
+/** Clears the tree cache. */
+export function clearTreeCache(): void {
+  treeCache.clear();
+}
+
+/** Merges an overlay tech tree definition on top of the base curated tree. */
+function mergeTrees(base: any, overlay: any): any {
+  if (!overlay || !Array.isArray(overlay.nodes)) return base;
+  const mergedNodes = (base.nodes || []).map((n: any) => ({
+    ...n,
+    detect: n.detect ? { ...n.detect, any: [...(n.detect.any || [])] } : undefined,
+    requires: n.requires ? [...n.requires] : undefined,
+  }));
+  const nodeMap = new Map<string, number>();
+  mergedNodes.forEach((node: any, idx: number) => {
+    nodeMap.set(node.id, idx);
+  });
+
+  for (const node of overlay.nodes) {
+    if (!node?.id) continue;
+    if (nodeMap.has(node.id)) {
+      const idx = nodeMap.get(node.id)!;
+      if (node.override) {
+        mergedNodes[idx] = { ...node };
+      } else {
+        const existing = mergedNodes[idx];
+        mergedNodes[idx] = {
+          ...existing,
+          ...node,
+          detect: {
+            ...existing.detect,
+            ...node.detect,
+            any: Array.from(
+              new Set([...(existing.detect?.any || []), ...(node.detect?.any || [])])
+            ),
+          },
+          requires: Array.from(new Set([...(existing.requires || []), ...(node.requires || [])])),
+        };
+      }
+    } else {
+      nodeMap.set(node.id, mergedNodes.length);
+      mergedNodes.push({ ...node });
+    }
+  }
+
+  return {
+    ...base,
+    ...overlay,
+    nodes: mergedNodes,
+  };
+}
+
 export function loadTechTree(): any {
-  const path = techTreePath();
-  const cached = treeCache.get(path);
+  const basePath = techTreePath();
+  const overlayPath = overlayTechTreePath();
+  let mtimes = '';
+  try {
+    mtimes = `${statSync(basePath).mtimeMs}|${overlayPath && existsSync(overlayPath) ? statSync(overlayPath).mtimeMs : ''}`;
+  } catch {}
+  const cacheKey = `${basePath}|${overlayPath ?? ''}|${mtimes}`;
+  const cached = treeCache.get(cacheKey);
   if (cached) return cached;
+
   let tree: any;
   try {
-    tree = JSON.parse(readFileSync(path, 'utf8'));
+    tree = JSON.parse(readFileSync(basePath, 'utf8'));
   } catch {
     tree = { nodes: [] };
   }
-  treeCache.set(path, tree);
+
+  if (overlayPath) {
+    try {
+      const overlay = JSON.parse(readFileSync(overlayPath, 'utf8'));
+      tree = mergeTrees(tree, overlay);
+    } catch {
+      // An invalid overlay file is skipped to avoid crashing the engine.
+    }
+  }
+
+  treeCache.set(cacheKey, tree);
   return tree;
 }
 

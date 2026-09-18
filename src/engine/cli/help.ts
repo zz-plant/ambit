@@ -73,6 +73,9 @@ check — what is proven, what is permitted, what is currently broken
                           against that object rather than the verb in general
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
+  check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]
+                          declare a grant, or elevate one for a window; once
+                          the TTL runs out whatever stood before decides again
   check authority promote [<cap> <action> --after=N --window=30d --scope=<target>
                           --by=<person>]   widen a grant once the evidence
                           supports it; --scope buys it for one target only. One
@@ -93,6 +96,11 @@ govern — the reviewable path from proposal to applied change
   govern approve <id> [<id>…] <person>   several in one sitting
   govern reject <id> <person> ["why"]    a no, recorded — it teaches the next draft
   govern apply <id> / govern rollback <id>
+  govern dispatch <id> [--to=<url>]   push a proposal to Slack, Discord,
+                          Telegram, ntfy or any JSON endpoint — the decision
+                          for a draft, the signed artifact once approved.
+                          AMBIT_APPROVAL_WEBHOOK is the standing target;
+                          propose and approve take --dispatch to push as they go
   govern history [since <when>]   how the frontier moved
   govern audit [run-…|prop-…|human:name|days]   the trail — who approved
                           what, what ran, and whether it held

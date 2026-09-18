@@ -521,6 +521,134 @@ function removeSandbox(db: Db, target?: string) {
   return { removed: target, note: 'Actions there ask for confirmation again.' };
 }
 
+/** Parses duration strings like '30m', '1h', '2d', '10s' into milliseconds. */
+function parseDuration(duration: string): number | null {
+  const match = duration.trim().match(/^(\d+(?:\.\d+)?)\s*([smhd])$/i);
+  if (!match) return null;
+  const val = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+  switch (unit) {
+    case 's':
+      return val * 1000;
+    case 'm':
+      return val * 60 * 1000;
+    case 'h':
+      return val * 3600 * 1000;
+    case 'd':
+      return val * 86400 * 1000;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Grants or updates an authority mode for a capability, optionally with a TTL
+ * or expiry.
+ *
+ * Roadmap §13.10: Time-bounded elevation. Relaxes confirmation temporarily,
+ * returning automatically to confirm mode when the TTL expires.
+ */
+function grantAuthority(
+  db: Db,
+  input: {
+    capability: string;
+    mode: string;
+    action?: string;
+    scope?: string;
+    holder?: string;
+    source?: string;
+    ttl?: string;
+    expires?: string;
+    by?: string;
+    note?: string;
+  }
+) {
+  const capability =
+    input.capability.startsWith('combo:') || input.capability.includes(':')
+      ? input.capability
+      : `combo:${input.capability}`;
+
+  const cap = db.prepare('SELECT id, name FROM capabilities WHERE id = ?').get<any>(capability);
+  if (!cap) {
+    return { error: `Capability ${capability} not found in graph.` };
+  }
+
+  const validModes = ['autonomous', 'confirm', 'forbidden'];
+  const mode = input.mode.toLowerCase();
+  if (!validModes.includes(mode)) {
+    return { error: `Mode must be one of: ${validModes.join(', ')} (got ${input.mode})` };
+  }
+  // A refusal that runs out is a way of talking a system into what it was
+  // told not to do, the same shape §12.6 refuses for thresholds.
+  if (mode === 'forbidden' && (input.ttl || input.expires)) {
+    return { error: 'A forbidden grant takes no TTL. Revoke it by declaring another mode.' };
+  }
+
+  let expiresAt: string | null = null;
+  let expiresDesc = 'permanent';
+  if (input.ttl) {
+    const ms = parseDuration(input.ttl);
+    if (ms === null) {
+      return { error: `Invalid TTL duration "${input.ttl}". Expected format like 30m, 1h, 2d.` };
+    }
+    expiresAt = new Date(Date.now() + ms).toISOString();
+    expiresDesc = `TTL ${input.ttl} (expires ${expiresAt})`;
+  } else if (input.expires) {
+    const d = new Date(input.expires);
+    if (Number.isNaN(d.getTime())) {
+      return {
+        error: `Invalid expiration timestamp "${input.expires}". Expected ISO-8601 string.`,
+      };
+    }
+    expiresAt = d.toISOString();
+    expiresDesc = `expires ${expiresAt}`;
+  }
+
+  const action = input.action || 'execute';
+  // `--by` is who declared the grant, as it is for promote and sandbox. It is
+  // not the holder: a person granting an agent authority is the ordinary
+  // case, and binding the grant to the person would exclude the agent.
+  const by = input.by ? (input.by.startsWith('human:') ? input.by : `human:${input.by}`) : null;
+  const holder = input.holder || '';
+  const scope = input.scope || '';
+  const source = input.source || 'human';
+  const note =
+    input.note ||
+    [
+      expiresAt ? `temporary ${mode} elevation (${expiresDesc})` : null,
+      by ? `declared by ${by}` : null,
+    ]
+      .filter(Boolean)
+      .join('; ') ||
+    null;
+
+  db.prepare(`
+    INSERT INTO authority (capability_id, action, mode, holder, scope, source, note, expires_at, promote_set_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(capability_id, action, holder, scope, source) DO UPDATE SET
+      mode = excluded.mode,
+      note = excluded.note,
+      expires_at = excluded.expires_at,
+      promote_set_by = COALESCE(excluded.promote_set_by, authority.promote_set_by)
+  `).run(capability, action, mode, holder, scope, source, note, expiresAt, by);
+
+  db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes, object) VALUES ('authority', ?, 'grant-written', 1, ?, ?)"
+  ).run(capability, `${action} → ${mode} (${expiresDesc})`, scope || null);
+
+  return {
+    capability: cap.name,
+    id: capability,
+    action,
+    mode,
+    scope: scope || undefined,
+    holder: holder || undefined,
+    declared_by: by || undefined,
+    expires_at: expiresAt || undefined,
+    duration: expiresDesc,
+  };
+}
+
 export {
   setPromotion,
   evaluatePromotions,
@@ -531,4 +659,6 @@ export {
   evidenceCount,
   describeEvidence,
   windowDays,
+  parseDuration,
+  grantAuthority,
 };
