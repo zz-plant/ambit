@@ -54,11 +54,49 @@ export default function AppDeck(p: AppDeckProps) {
           className="app-deck-btn"
           onClick={p.onSearch}
           title="Find a capability on the map or in your setup (/)"
+          aria-label="Search capabilities"
         >
-          Search
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            className="app-deck-icon"
+            aria-hidden="true"
+          >
+            <circle cx="7" cy="7" r="5" />
+            <path d="M11 11 L14.5 14.5" />
+          </svg>
+          <span className="app-deck-btn-label">Search</span>
           <kbd className="app-deck-key">/</kbd>
         </button>
         <div className="app-brand-group">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 64 64"
+            fill="none"
+            className="app-brand-mark"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient id="ambit-brand-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="100%" stopColor="#0284c7" />
+              </linearGradient>
+            </defs>
+            <rect width="64" height="64" rx="14" fill="url(#ambit-brand-grad)" />
+            <g stroke="#ffffff" strokeLinecap="round">
+              <path d="M14 50 L32 14 L50 50" strokeWidth="8.5" />
+              <path d="M21 40 H43" strokeWidth="7.5" />
+            </g>
+            <circle cx="32" cy="14" r="7.5" fill="#ffffff" />
+            <circle cx="14" cy="50" r="6.5" fill="#ffffff" />
+            <circle cx="50" cy="50" r="6.5" fill="#ffffff" />
+          </svg>
           <span className="app-brand">Ambit</span>
         </div>
         {p.counts && (
@@ -107,7 +145,24 @@ export default function AppDeck(p: AppDeckProps) {
             onClick={() => p.onShowView('tree')}
             title="The curated capability tree, with your position on it"
           >
-            Map
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-tab-icon"
+              aria-hidden="true"
+            >
+              <circle cx="4" cy="12" r="2" />
+              <circle cx="12" cy="4" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <path d="M5.5 10.5 L10.5 5.5 M6 12 H10" />
+            </svg>
+            <span>Map</span>
           </button>
           <button
             type="button"
@@ -115,7 +170,24 @@ export default function AppDeck(p: AppDeckProps) {
             onClick={() => p.onShowView('config')}
             title="The servers, agents and models found on this machine, and what each one provides"
           >
-            My Setup
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-tab-icon"
+              aria-hidden="true"
+            >
+              <rect x="2" y="3" width="12" height="3" rx="1" />
+              <rect x="2" y="10" width="12" height="3" rx="1" />
+              <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
+              <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
+            </svg>
+            <span>My Setup</span>
           </button>
           <button
             type="button"
@@ -123,7 +195,22 @@ export default function AppDeck(p: AppDeckProps) {
             onClick={() => p.onShowView('loop')}
             title="Where human attention goes, and what would pay back fastest"
           >
-            Time &amp; cost
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-tab-icon"
+              aria-hidden="true"
+            >
+              <path d="M2 12 L6 8 L9 11 L14 4" />
+              <circle cx="14" cy="4" r="1.5" fill="currentColor" />
+            </svg>
+            <span>Time &amp; cost</span>
           </button>
         </nav>
       </div>
@@ -134,16 +221,50 @@ export default function AppDeck(p: AppDeckProps) {
           className="app-deck-btn"
           onClick={p.onShare}
           title="Copy a link that opens exactly this view — graph, node and lens"
+          aria-label="Share view link"
         >
-          Share
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="app-deck-icon"
+            aria-hidden="true"
+          >
+            <circle cx="4" cy="8" r="2" />
+            <circle cx="12" cy="4" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <path d="M5.8 7.1 L10.2 4.9 M5.8 8.9 L10.2 11.1" />
+          </svg>
+          <span className="app-deck-btn-label">Share</span>
         </button>
         <button
           type="button"
           className={`app-deck-btn ${p.draftCount > 0 ? 'app-deck-btn--alert' : ''}`}
           onClick={p.onShowProposals}
           title="Changes an agent wants to make, waiting for your approval (g)"
+          aria-label={p.draftCount > 0 ? `Proposals (${p.draftCount} waiting)` : 'Proposals'}
         >
-          Proposals
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="app-deck-icon"
+            aria-hidden="true"
+          >
+            <path d="M3 2 H10 L13 5 V14 H3 Z" />
+            <path d="M9 2 V5 H13" />
+          </svg>
+          <span className="app-deck-btn-label">Proposals</span>
           {p.draftCount > 0 && <span className="app-deck-count">{p.draftCount}</span>}
         </button>
         <button
@@ -151,8 +272,23 @@ export default function AppDeck(p: AppDeckProps) {
           className="app-deck-btn"
           onClick={p.onShowDocs}
           title="Every term on the map, defined (?)"
+          aria-label="Documentation and glossary"
         >
-          Docs
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="app-deck-icon"
+            aria-hidden="true"
+          >
+            <path d="M2 3.5 C2 2.7 2.7 2 3.5 2 H7.5 V14 H3.5 C2.7 14 2 13.3 2 12.5 Z M14 3.5 C14 2.7 13.3 2 12.5 2 H8.5 V14 H12.5 C13.3 14 14 13.3 14 12.5 Z" />
+          </svg>
+          <span className="app-deck-btn-label">Docs</span>
         </button>
       </div>
     </header>
