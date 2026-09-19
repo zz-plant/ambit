@@ -8,13 +8,21 @@
  */
 import { test, expect, afterEach } from 'vitest';
 import { APPLIABLE, cli, cliAsync, getDb, join, dir, seed } from './testing/cli.ts';
-import { detectKind, dispatchProposal, proposalMessage, webhookRequest } from './dispatch.ts';
+import {
+  detectKind,
+  dispatchProposal,
+  dispatchPending,
+  proposalMessage,
+  webhookRequest,
+} from './dispatch.ts';
 import type { ProposalRow } from './rows.ts';
 
 afterEach(() => {
   delete process.env.AMBIT_APPROVAL_WEBHOOK;
   delete process.env.AMBIT_APPROVAL_WEBHOOK_KIND;
   delete process.env.AMBIT_TELEGRAM_CHAT_ID;
+  delete process.env.PUSHOVER_USER;
+  delete process.env.PUSHOVER_TOKEN;
 });
 
 /** A fetch that records the request and answers 200. */
@@ -32,6 +40,7 @@ test('detectKind reads the service off the host', () => {
   expect(detectKind('https://discord.com/api/webhooks/1/abc')).toBe('discord');
   expect(detectKind('https://api.telegram.org/bot123:abc/sendMessage')).toBe('telegram');
   expect(detectKind('https://ntfy.sh/ambit')).toBe('ntfy');
+  expect(detectKind('https://api.pushover.net/1/messages.json')).toBe('pushover');
   expect(detectKind('https://example.internal/hook')).toBe('generic');
   expect(detectKind('not a url')).toBe('generic');
 });
@@ -185,4 +194,50 @@ test('propose --dispatch and approve --dispatch push in the same breath', async 
   const a = await cliAsync('approve', p.proposal, 'kanav', '--dispatch');
   expect(a.approved_by).toBeTruthy();
   expect(a.dispatch.error).toContain('No webhook configured');
+});
+
+test('pushover receives token and user formatted payload', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  const db = getDb(join(dir, 'graph.db'));
+  const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(p.proposal)!;
+  db.close();
+  const message = proposalMessage(row);
+
+  const pushover = webhookRequest(
+    { url: 'https://api.pushover.net/1/messages.json?user=u123&token=t456', kind: 'pushover' },
+    message,
+    row
+  ) as any;
+  expect(pushover.url).toBe('https://api.pushover.net/1/messages.json');
+  const parsed = JSON.parse(pushover.body);
+  expect(parsed.user).toBe('u123');
+  expect(parsed.token).toBe('t456');
+  expect(parsed.message).toContain(p.proposal);
+
+  const missingToken = webhookRequest(
+    { url: 'https://api.pushover.net/1/messages.json', kind: 'pushover' },
+    message,
+    row
+  ) as any;
+  expect(missingToken.error).toContain('Pushover needs user and token');
+});
+
+test('dispatch pending pushes all draft proposals', async () => {
+  seed(APPLIABLE).close();
+  const p1 = cli('propose', 'web-research');
+  const { calls, fetchImpl } = recorder();
+
+  const db = getDb(join(dir, 'graph.db'));
+  const r = await dispatchPending(db, {
+    to: 'https://hooks.slack.com/services/T0/B0/x',
+    fetchImpl,
+  });
+  expect(r.count).toBeGreaterThanOrEqual(1);
+  expect(calls.length).toBeGreaterThanOrEqual(1);
+  const row = db
+    .prepare('SELECT dispatched_at FROM proposals WHERE id = ?')
+    .get<ProposalRow>(p1.proposal)!;
+  expect(row.dispatched_at).toBeTruthy();
+  db.close();
 });

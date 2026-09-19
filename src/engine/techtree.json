@@ -119,7 +119,7 @@
         "command": [
           "sh",
           "-c",
-          "command -v tsc || command -v pyright || command -v gopls"
+          "command -v tsc || command -v pyright || command -v gopls || command -v node || command -v python3"
         ],
         "timeout_seconds": 10
       }
@@ -514,6 +514,14 @@
       },
       "setup_seconds": 900,
       "hint": "Move API keys out of opencode.json into a vault or environment references",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v op >/dev/null 2>&1 || command -v bw >/dev/null 2>&1 || command -v pass >/dev/null 2>&1 || command -v security >/dev/null 2>&1 || test -f ~/.env"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "confirm",
         "execute": "forbidden",
@@ -906,7 +914,15 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Write a SKILL.md for a workflow you explain more than twice"
+      "hint": "Write a SKILL.md for a workflow you explain more than twice",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "test -d ~/.agents/skills || test -d ~/.opencode/skills || test -d .agents/skills || test -d plugins"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "parallel-execution",
@@ -964,6 +980,14 @@
       },
       "setup_seconds": 1800,
       "hint": "Move a recurring check onto a schedule instead of remembering to run it",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "crontab -l >/dev/null 2>&1 || command -v launchctl >/dev/null 2>&1 || command -v systemctl >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "confirm",
@@ -1032,6 +1056,14 @@
       },
       "setup_seconds": 600,
       "hint": "Add a push channel so background agents can surface results",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v curl >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      },
       "contract": {
         "can": [
           "send_notification"
@@ -1367,7 +1399,7 @@
         "command": [
           "sh",
           "-c",
-          "tailscale status >/dev/null 2>&1 || /Applications/Tailscale.app/Contents/MacOS/Tailscale status >/dev/null 2>&1 || docker info >/dev/null 2>&1"
+          "tailscale status >/dev/null 2>&1 || /Applications/Tailscale.app/Contents/MacOS/Tailscale status >/dev/null 2>&1 || docker info >/dev/null 2>&1 || command -v docker >/dev/null 2>&1 || command -v tailscale >/dev/null 2>&1"
         ],
         "timeout_seconds": 10
       },

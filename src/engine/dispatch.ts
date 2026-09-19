@@ -19,7 +19,7 @@ import { draftSummary } from './attention.ts';
  * anything.
  */
 
-type WebhookKind = 'slack' | 'discord' | 'telegram' | 'ntfy' | 'generic';
+type WebhookKind = 'slack' | 'discord' | 'telegram' | 'ntfy' | 'pushover' | 'generic';
 
 interface WebhookTarget {
   url: string;
@@ -40,7 +40,7 @@ function webhookTarget(explicit?: string): WebhookTarget | null {
   return { url, kind: forced && KINDS.has(forced) ? forced : detectKind(url) };
 }
 
-const KINDS = new Set<WebhookKind>(['slack', 'discord', 'telegram', 'ntfy', 'generic']);
+const KINDS = new Set<WebhookKind>(['slack', 'discord', 'telegram', 'ntfy', 'pushover', 'generic']);
 
 function detectKind(url: string): WebhookKind {
   let host = '';
@@ -52,6 +52,7 @@ function detectKind(url: string): WebhookKind {
   if (host === 'hooks.slack.com') return 'slack';
   if (host === 'discord.com' || host === 'discordapp.com') return 'discord';
   if (host === 'api.telegram.org') return 'telegram';
+  if (host === 'api.pushover.net') return 'pushover';
   if (host === 'ntfy.sh' || host.startsWith('ntfy.')) return 'ntfy';
   const own = process.env.NTFY_SERVER;
   if (own) {
@@ -62,9 +63,9 @@ function detectKind(url: string): WebhookKind {
   return 'generic';
 }
 
-/** The URL as it may appear in output: a Telegram URL carries the bot token. */
+/** The URL as it may appear in output: secrets are redacted. */
 function redact(url: string): string {
-  return url.replace(/\/bot[^/]+/, '/bot***');
+  return url.replace(/\/bot[^/]+/, '/bot***').replace(/([?&]token=)[^&]+/, '$1***');
 }
 
 /**
@@ -173,6 +174,32 @@ function webhookRequest(
         headers: { 'Content-Type': 'text/plain', Title: message.title },
         body: message.text,
       };
+    case 'pushover': {
+      let url: URL;
+      try {
+        url = new URL(target.url);
+      } catch {
+        return { error: `Not a URL: ${redact(target.url)}` };
+      }
+      const token = url.searchParams.get('token') || process.env.PUSHOVER_TOKEN;
+      const user = url.searchParams.get('user') || process.env.PUSHOVER_USER;
+      if (!token || !user) {
+        return {
+          error:
+            'Pushover needs user and token: put ?user=<key>&token=<token> on the webhook URL or set PUSHOVER_USER and PUSHOVER_TOKEN.',
+        };
+      }
+      return {
+        url: 'https://api.pushover.net/1/messages.json',
+        headers: json,
+        body: JSON.stringify({
+          token,
+          user,
+          title: message.title,
+          message: message.text,
+        }),
+      };
+    }
     default:
       return {
         url: target.url,
@@ -264,4 +291,36 @@ async function dispatchProposal(
   };
 }
 
-export { webhookTarget, detectKind, proposalMessage, webhookRequest, dispatchProposal, redact };
+/**
+ * Pushes all pending draft proposals to the configured webhook.
+ *
+ *   ambit dispatch pending [--to=<url>]
+ *   ambit dispatch --pending [--to=<url>]
+ */
+async function dispatchPending(db: Migratable, options: DispatchOptions = {}): Promise<any> {
+  const rows = db
+    .prepare("SELECT id FROM proposals WHERE status = 'draft' ORDER BY created_at ASC")
+    .all<ProposalRow>();
+  if (!rows || rows.length === 0) {
+    return { dispatched: [], count: 0, note: 'No pending draft proposals to dispatch.' };
+  }
+  const results = [];
+  for (const r of rows) {
+    const res = await dispatchProposal(db, r.id, options);
+    results.push(res);
+  }
+  return {
+    dispatched: results,
+    count: results.length,
+  };
+}
+
+export {
+  webhookTarget,
+  detectKind,
+  proposalMessage,
+  webhookRequest,
+  dispatchProposal,
+  dispatchPending,
+  redact,
+};
