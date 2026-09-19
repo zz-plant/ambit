@@ -56,7 +56,7 @@ import {
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
-import { dispatchProposal } from './dispatch.ts';
+import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport } from './telemetry.ts';
 import { economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
@@ -419,10 +419,16 @@ async function runCommand(
       } else emit(drafted);
       break;
     }
-    case 'dispatch':
+    case 'dispatch': {
       // async: the push is an HTTP POST and must complete before close.
-      emit(await dispatchProposal(db, arg, { to: value('to') }));
+      const isPending = !arg || arg === 'pending' || flags.has('--pending') || arg === 'all';
+      if (isPending) {
+        emit(await dispatchPending(db, { to: value('to') }));
+      } else {
+        emit(await dispatchProposal(db, arg, { to: value('to') }));
+      }
       break;
+    }
     case 'proposals':
       // What exists, or what is actually waiting on a decision.
       emit(flags.has('--pending') ? pendingProposals(db) : listProposals(db));
