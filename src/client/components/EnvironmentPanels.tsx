@@ -14,8 +14,39 @@ import { useAmbitStore } from '../store/ambitStore';
  */
 
 /** Waiting, or a scan that had nothing to say. Same shape for both panels. */
-function PanelNote({ children }: { children: ReactNode }) {
-  return <div className="tp-empty tp-empty--note">{children}</div>;
+function PanelNote({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="tp-empty tp-empty--note">
+      {icon}
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function RepoEmptyIllustration() {
+  return (
+    <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="currentColor" className="tp-empty-graphic" aria-hidden="true">
+      <rect x="8" y="10" width="32" height="28" rx="4" strokeWidth="1.6" strokeDasharray="3 2" />
+      <circle cx="18" cy="18" r="2.5" strokeWidth="1.6" />
+      <circle cx="18" cy="30" r="2.5" strokeWidth="1.6" />
+      <circle cx="30" cy="24" r="2.5" strokeWidth="1.6" />
+      <path d="M18 20.5 V27.5 M18 20.5 C18 24 30 20 30 24" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function InfraEmptyIllustration() {
+  return (
+    <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="currentColor" className="tp-empty-graphic" aria-hidden="true">
+      <rect x="8" y="9" width="32" height="12" rx="3" strokeWidth="1.6" />
+      <rect x="8" y="27" width="32" height="12" rx="3" strokeWidth="1.6" />
+      <circle cx="14" cy="15" r="1.5" fill="currentColor" />
+      <circle cx="14" cy="33" r="1.5" fill="currentColor" />
+      <line x1="20" y1="15" x2="34" y2="15" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+      <line x1="20" y1="33" x2="34" y2="33" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+      <path d="M24 21 V27" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="2 2" />
+    </svg>
+  );
 }
 
 /**
@@ -55,7 +86,7 @@ export function RepoDriftPanel({ scan }: { scan: RepoScanResponse | null }) {
   if (!scan) return <PanelNote>Reading each repository’s config…</PanelNote>;
   if (!scan.repos.length) {
     return (
-      <PanelNote>
+      <PanelNote icon={<RepoEmptyIllustration />}>
         No repository carries its own <code>opencode.json</code>. Nothing has drifted, because
         nothing is local yet.
       </PanelNote>
@@ -105,7 +136,7 @@ export function InfrastructurePanel({ scan }: { scan: InfrastructureScanResponse
   if (!scan) return <PanelNote>Probing the hosts in your manifest…</PanelNote>;
   if (!scan.nodes.length) {
     return (
-      <PanelNote>
+      <PanelNote icon={<InfraEmptyIllustration />}>
         No manifest at <code>~/.config/opencode/infrastructure.json</code>, and no Docker socket.
         List the devices and services you run in the manifest and this becomes a live reading of
         them, with any containers the local engine reports beside them — no addresses are built in.

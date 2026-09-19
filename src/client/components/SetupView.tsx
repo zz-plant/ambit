@@ -124,12 +124,46 @@ export function SetupView({ onShow }: SetupViewProps) {
             <div className="setup-tabs" role="tablist" aria-label="What this machine has">
               {(
                 [
-                  ['entries', 'Entries'],
-                  ['repos', repos ? `Repos (${repos.repos.length})` : 'Repos'],
-                  ['infra', 'Infra'],
-                  ['briefing', 'Briefing'],
-                ] as [Tab, string][]
-              ).map(([key, label]) => (
+                  [
+                    'entries',
+                    'Entries',
+                    <svg key="e" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                      <rect x="2" y="3" width="12" height="3" rx="1" />
+                      <rect x="2" y="10" width="12" height="3" rx="1" />
+                      <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
+                      <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
+                    </svg>,
+                  ],
+                  [
+                    'repos',
+                    repos ? `Repos (${repos.repos.length})` : 'Repos',
+                    <svg key="r" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                      <circle cx="4" cy="4" r="2" />
+                      <circle cx="4" cy="12" r="2" />
+                      <circle cx="12" cy="7" r="2" />
+                      <path d="M4 6 V10 M4 6 C4 9 12 5 12 7" />
+                    </svg>,
+                  ],
+                  [
+                    'infra',
+                    'Infra',
+                    <svg key="i" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                      <rect x="2" y="3" width="12" height="4" rx="1" />
+                      <rect x="2" y="9" width="12" height="4" rx="1" />
+                      <circle cx="4" cy="5" r="0.5" fill="currentColor" />
+                      <circle cx="4" cy="11" r="0.5" fill="currentColor" />
+                    </svg>,
+                  ],
+                  [
+                    'briefing',
+                    'Briefing',
+                    <svg key="b" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                      <path d="M3 2.5 H13 V13.5 H3 Z" />
+                      <path d="M5 5.5 H11 M5 8 H10 M5 10.5 H8" />
+                    </svg>,
+                  ],
+                ] as [Tab, string, React.ReactNode][]
+              ).map(([key, label, icon]) => (
                 <button
                   key={key}
                   type="button"
@@ -147,7 +181,8 @@ export function SetupView({ onShow }: SetupViewProps) {
                           : undefined
                   }
                 >
-                  {label}
+                  {icon}
+                  <span>{label}</span>
                 </button>
               ))}
             </div>

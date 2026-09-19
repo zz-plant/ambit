@@ -70,6 +70,24 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
   return (
     <main className="app-welcome">
       <div className="app-welcome-hero">
+        <div className="app-welcome-emblem" aria-hidden="true">
+          <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+            <defs>
+              <linearGradient id="emblem-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="100%" stopColor="#0284c7" />
+              </linearGradient>
+            </defs>
+            <rect width="64" height="64" rx="16" fill="url(#emblem-grad)" />
+            <g stroke="#ffffff" strokeLinecap="round">
+              <path d="M14 50 L32 14 L50 50" strokeWidth="8" />
+              <path d="M21 40 H43" strokeWidth="7" />
+            </g>
+            <circle cx="32" cy="14" r="8" fill="#ffffff" />
+            <circle cx="14" cy="50" r="7" fill="#ffffff" />
+            <circle cx="50" cy="50" r="7" fill="#ffffff" />
+          </svg>
+        </div>
         <h1 className="app-welcome-title">Ambit</h1>
         <p className="app-welcome-tagline">{TAGLINE}</p>
 
@@ -139,30 +157,40 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
             readConfigFile(e.dataTransfer.files[0]);
           }}
         >
-          <p>
-            Both figures are example data.{' '}
-            <button
-              type="button"
-              className="app-welcome-link"
-              onClick={() => fileInput.current?.click()}
-            >
-              Map your own config
-            </button>{' '}
-            — drop an <code>opencode.json</code> here, or any agent config. It is read in this tab
-            and never uploaded.
-          </p>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/json,.json"
-            className="visually-hidden"
-            onChange={e => readConfigFile(e.target.files?.[0])}
-          />
-          {dropError && <p className="app-welcome-droperr">{dropError}</p>}
-          <p className="app-welcome-local">
-            For the full picture — verification, proposals, the ledger — clone the repository and
-            run <code>./bootstrap.sh web</code>.
-          </p>
+          <div className="app-welcome-drop-icon" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none" stroke="currentColor">
+              <rect x="5" y="7" width="16" height="22" rx="3" strokeWidth="1.6" strokeDasharray="3 2" />
+              <path d="M9 13 H17 M9 17 H14" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M22 18 H29 M29 18 L26 15 M29 18 L26 21" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="30" cy="18" r="2" fill="currentColor" />
+            </svg>
+          </div>
+          <div className="app-welcome-drop-text">
+            <p>
+              Both figures are example data.{' '}
+              <button
+                type="button"
+                className="app-welcome-link"
+                onClick={() => fileInput.current?.click()}
+              >
+                Map your own config
+              </button>{' '}
+              — drop an <code>opencode.json</code> here, or any agent config. It is read in this tab
+              and never uploaded.
+            </p>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/json,.json"
+              className="visually-hidden"
+              onChange={e => readConfigFile(e.target.files?.[0])}
+            />
+            {dropError && <p className="app-welcome-droperr">{dropError}</p>}
+            <p className="app-welcome-local">
+              For the full picture — verification, proposals, the ledger — clone the repository and
+              run <code>./bootstrap.sh web</code>.
+            </p>
+          </div>
         </div>
       </div>
     </main>
