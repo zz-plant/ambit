@@ -192,6 +192,12 @@ code, pre, .code, .sp-cli-cmd {
   margin-right: 6px;
 }
 
+.app-brand-mark {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
 .app-brand {
   font-weight: 700;
   font-size: 15px;
@@ -200,6 +206,19 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.app-deck-icon,
+.app-tab-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.app-deck-btn:hover .app-deck-icon,
+.app-deck-tab:hover .app-tab-icon,
+.app-deck-tab--active .app-tab-icon {
+  opacity: 1;
 }
 
 /* The key beside the Search button, in the same grey as the tooltips. */
@@ -837,6 +856,10 @@ code, pre, .code, .sp-cli-cmd {
   box-shadow: var(--shadow-md);
 }
 
+.sp-grab-bar {
+  display: none;
+}
+
 .sp-hdr {
   display: flex;
   align-items: flex-start;
@@ -1324,7 +1347,15 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
+}
+
+.app-welcome-emblem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 16px rgba(99, 102, 241, 0.35));
+  margin-bottom: -6px;
 }
 
 .app-welcome-title {
@@ -1389,9 +1420,26 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 @media (max-width: 720px) {
+  .app-welcome {
+    padding: 16px 12px;
+  }
+
+  .app-welcome-hero {
+    gap: 12px;
+  }
+
+  .app-welcome-title {
+    font-size: 26px;
+  }
+
+  .app-welcome-tagline {
+    font-size: 13.5px;
+    padding: 0 8px;
+  }
+
   .app-welcome-figures {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 14px;
   }
 }
 
@@ -2793,6 +2841,53 @@ code, pre, .code, .sp-cli-cmd {
   text-align: center;
 }
 
+.setup-tab-icon {
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 5px;
+  opacity: 0.85;
+}
+
+.setup-tab--active .setup-tab-icon {
+  opacity: 1;
+}
+
+.fig-kpi-icon {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.civ-sim-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+
+.tp-empty-graphic {
+  color: var(--accent);
+  opacity: 0.7;
+  margin-bottom: 8px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.sp-modal-icon,
+.docs-header-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.docs-title-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
 @media (max-width: 560px) {
   .docs-action {
     grid-template-columns: 1fr;
@@ -2811,6 +2906,16 @@ code, pre, .code, .sp-cli-cmd {
     height: 60%;
     border-left: none;
     border-top: 1px solid var(--border);
+  }
+
+  .sp-grab-bar {
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--border-bright);
+    border-radius: var(--radius-full);
+    margin: 0 auto 10px;
+    flex-shrink: 0;
   }
 
   /* The row scrolls sideways rather than clipping: on a 375px screen the
@@ -2845,7 +2950,45 @@ code, pre, .code, .sp-cli-cmd {
     max-width: none;
   }
 
+  .civ-hud {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .civ-zoom-hud,
   .civ-lens-hud {
+    padding: 2px;
+    gap: 1px;
+  }
+
+  .civ-zoom-btn {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 4px;
+  }
+
+  .civ-zoom-btn-label {
+    display: none;
+  }
+
+  .civ-lens-hud {
+    display: flex;
+  }
+
+  .civ-lens-hud .app-deck-tab {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .tp-filter-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .tp-filter-chips::-webkit-scrollbar {
     display: none;
   }
 
@@ -2881,6 +3024,45 @@ code, pre, .code, .sp-cli-cmd {
   }
 }
 
+@media (max-width: 560px) {
+  .app-deck {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .app-deck-btn-label {
+    display: none;
+  }
+
+  .app-deck-btn {
+    padding: 0 8px;
+    min-width: 32px;
+  }
+
+  .app-deck-key {
+    display: none;
+  }
+
+  .app-brand {
+    font-size: 13.5px;
+  }
+
+  .app-deck-tab {
+    padding: 4px 7px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .fig-kpis {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .loop-hero {
+    margin-bottom: 10px;
+  }
+}
 
 /* ── Scrollbars ────────────────────────────────────────────────────────────
    Nothing styled these, so every scrolling panel drew the platform default:
@@ -3065,14 +3247,32 @@ code, pre, .code, .sp-cli-cmd {
 /* ─── DROP A CONFIG ───
    Mapping a setup with nothing installed: the file is read in the tab. */
 .app-welcome-drop {
-  margin-top: 20px;
-  padding: 16px 20px;
+  margin-top: 16px;
+  padding: 14px 18px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px dashed var(--border-bright);
   border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
   transition:
     border-color 0.15s ease,
     background 0.15s ease;
+}
+
+.app-welcome-drop-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-welcome-drop-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .app-welcome-drop:hover {
@@ -3101,6 +3301,22 @@ code, pre, .code, .sp-cli-cmd {
 .app-welcome-droperr {
   margin-top: 8px !important;
   color: var(--error) !important;
+}
+
+.loop-pipeline-graphic {
+  margin: 16px 0 20px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.loop-pipeline-svg {
+  max-width: 540px;
+  height: auto;
 }
 
 /* ─── LOOP PAGE: THE STATES THAT ARE NOT A FIGURE ─── */

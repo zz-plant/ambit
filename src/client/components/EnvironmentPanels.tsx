@@ -25,19 +25,39 @@ function PanelNote({ icon, children }: { icon?: ReactNode; children: ReactNode }
 
 function RepoEmptyIllustration() {
   return (
-    <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="currentColor" className="tp-empty-graphic" aria-hidden="true">
+    <svg
+      width="44"
+      height="44"
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      className="tp-empty-graphic"
+      aria-hidden="true"
+    >
       <rect x="8" y="10" width="32" height="28" rx="4" strokeWidth="1.6" strokeDasharray="3 2" />
       <circle cx="18" cy="18" r="2.5" strokeWidth="1.6" />
       <circle cx="18" cy="30" r="2.5" strokeWidth="1.6" />
       <circle cx="30" cy="24" r="2.5" strokeWidth="1.6" />
-      <path d="M18 20.5 V27.5 M18 20.5 C18 24 30 20 30 24" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M18 20.5 V27.5 M18 20.5 C18 24 30 20 30 24"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
 function InfraEmptyIllustration() {
   return (
-    <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="currentColor" className="tp-empty-graphic" aria-hidden="true">
+    <svg
+      width="44"
+      height="44"
+      viewBox="0 0 48 48"
+      fill="none"
+      stroke="currentColor"
+      className="tp-empty-graphic"
+      aria-hidden="true"
+    >
       <rect x="8" y="9" width="32" height="12" rx="3" strokeWidth="1.6" />
       <rect x="8" y="27" width="32" height="12" rx="3" strokeWidth="1.6" />
       <circle cx="14" cy="15" r="1.5" fill="currentColor" />

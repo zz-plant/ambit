@@ -161,6 +161,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
 
   return (
     <div className="star-panel">
+      <div className="sp-grab-bar" aria-hidden="true" />
       <div className="sp-hdr">
         <span className="sp-sig" style={{ color }} aria-hidden="true">
           {typeSymbol(item.type)}

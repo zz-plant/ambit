@@ -83,7 +83,14 @@ export default function AppDeck(p: AppDeckProps) {
             aria-hidden="true"
           >
             <defs>
-              <linearGradient id="ambit-brand-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+              <linearGradient
+                id="ambit-brand-grad"
+                x1="0"
+                y1="0"
+                x2="64"
+                y2="64"
+                gradientUnits="userSpaceOnUse"
+              >
                 <stop offset="0%" stopColor="#6366f1" />
                 <stop offset="100%" stopColor="#0284c7" />
               </linearGradient>

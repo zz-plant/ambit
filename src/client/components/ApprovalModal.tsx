@@ -138,6 +138,22 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         aria-labelledby="proposals-title"
       >
         <div className="sp-hdr">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="sp-modal-icon"
+            aria-hidden="true"
+          >
+            <path d="M4 3 H13 L17 7 V17 H4 Z" />
+            <path d="M12 3 V7 H16" />
+            <path d="M7 11 H13 M7 14 H11" strokeWidth="1.4" />
+          </svg>
           <div className="sp-title-group">
             <h2 id="proposals-title" className="sp-designation">
               Proposals

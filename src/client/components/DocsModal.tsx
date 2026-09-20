@@ -94,9 +94,25 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
         aria-modal="true"
       >
         <div className="docs-header">
-          <div>
-            <h2 className="docs-title">How to read this</h2>
-            <p className="docs-subtitle">Your setup, placed on a tree of agent capabilities</p>
+          <div className="docs-title-wrap">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="docs-header-icon"
+              aria-hidden="true"
+            >
+              <path d="M3 4 C3 3.2 3.7 2.5 4.5 2.5 H9.5 V17.5 H4.5 C3.7 17.5 3 16.8 3 16 Z M17 4 C17 3.2 16.3 2.5 15.5 2.5 H10.5 V17.5 H15.5 C16.3 17.5 17 16.8 17 16 Z" />
+            </svg>
+            <div>
+              <h2 className="docs-title">How to read this</h2>
+              <p className="docs-subtitle">Your setup, placed on a tree of agent capabilities</p>
+            </div>
           </div>
           <button type="button" className="docs-close" onClick={onClose} aria-label="Close">
             ✕

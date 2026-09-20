@@ -73,7 +73,14 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
         <div className="app-welcome-emblem" aria-hidden="true">
           <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
             <defs>
-              <linearGradient id="emblem-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+              <linearGradient
+                id="emblem-grad"
+                x1="0"
+                y1="0"
+                x2="64"
+                y2="64"
+                gradientUnits="userSpaceOnUse"
+              >
                 <stop offset="0%" stopColor="#6366f1" />
                 <stop offset="100%" stopColor="#0284c7" />
               </linearGradient>
@@ -159,9 +166,22 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
         >
           <div className="app-welcome-drop-icon" aria-hidden="true">
             <svg width="32" height="32" viewBox="0 0 36 36" fill="none" stroke="currentColor">
-              <rect x="5" y="7" width="16" height="22" rx="3" strokeWidth="1.6" strokeDasharray="3 2" />
+              <rect
+                x="5"
+                y="7"
+                width="16"
+                height="22"
+                rx="3"
+                strokeWidth="1.6"
+                strokeDasharray="3 2"
+              />
               <path d="M9 13 H17 M9 17 H14" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M22 18 H29 M29 18 L26 15 M29 18 L26 21" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <path
+                d="M22 18 H29 M29 18 L26 15 M29 18 L26 21"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
               <circle cx="30" cy="18" r="2" fill="currentColor" />
             </svg>
           </div>

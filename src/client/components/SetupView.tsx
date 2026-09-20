@@ -127,7 +127,18 @@ export function SetupView({ onShow }: SetupViewProps) {
                   [
                     'entries',
                     'Entries',
-                    <svg key="e" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                    <svg
+                      key="e"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      className="setup-tab-icon"
+                      aria-hidden="true"
+                    >
                       <rect x="2" y="3" width="12" height="3" rx="1" />
                       <rect x="2" y="10" width="12" height="3" rx="1" />
                       <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
@@ -137,7 +148,18 @@ export function SetupView({ onShow }: SetupViewProps) {
                   [
                     'repos',
                     repos ? `Repos (${repos.repos.length})` : 'Repos',
-                    <svg key="r" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                    <svg
+                      key="r"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      className="setup-tab-icon"
+                      aria-hidden="true"
+                    >
                       <circle cx="4" cy="4" r="2" />
                       <circle cx="4" cy="12" r="2" />
                       <circle cx="12" cy="7" r="2" />
@@ -147,7 +169,18 @@ export function SetupView({ onShow }: SetupViewProps) {
                   [
                     'infra',
                     'Infra',
-                    <svg key="i" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                    <svg
+                      key="i"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      className="setup-tab-icon"
+                      aria-hidden="true"
+                    >
                       <rect x="2" y="3" width="12" height="4" rx="1" />
                       <rect x="2" y="9" width="12" height="4" rx="1" />
                       <circle cx="4" cy="5" r="0.5" fill="currentColor" />
@@ -157,7 +190,18 @@ export function SetupView({ onShow }: SetupViewProps) {
                   [
                     'briefing',
                     'Briefing',
-                    <svg key="b" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="setup-tab-icon" aria-hidden="true">
+                    <svg
+                      key="b"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      className="setup-tab-icon"
+                      aria-hidden="true"
+                    >
                       <path d="M3 2.5 H13 V13.5 H3 Z" />
                       <path d="M5 5.5 H11 M5 8 H10 M5 10.5 H8" />
                     </svg>,
@@ -324,6 +368,13 @@ export function SetupView({ onShow }: SetupViewProps) {
 
             {shown.length === 0 && (
               <div className="tp-empty">
+                <div className="tp-empty-graphic" aria-hidden="true">
+                  <svg width="40" height="40" viewBox="0 0 48 48" fill="none" stroke="currentColor" aria-hidden="true">
+                    <circle cx="20" cy="20" r="11" strokeWidth="2" strokeDasharray="3 2" />
+                    <path d="M28 28 L40 40" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M16 20 H24" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+                  </svg>
+                </div>
                 <div>{q ? 'No entries match the filter' : 'Nothing of this kind is set up'}</div>
                 <button
                   type="button"

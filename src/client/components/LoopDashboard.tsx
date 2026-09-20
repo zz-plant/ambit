@@ -116,7 +116,23 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   return (
     <figure className="fig fig--assurance">
       <figcaption className="fig-caption">
-        <span className="fig-caption-title">What the graph can prove</span>
+        <span className="fig-caption-title">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            className="fig-kpi-icon"
+            aria-hidden="true"
+          >
+            <path d="M8 2 L13 4 V8 C13 11.5 8 14 8 14 C8 14 3 11.5 3 8 V4 Z" />
+            <path d="M6 8 L7.5 9.5 L10.5 6.5" />
+          </svg>
+          What the graph can prove
+        </span>
         <span className="fig-caption-note" style={NUM}>
           {status.verified} of {status.total} proved
           {status.total > 0 ? ` · ${Math.round((status.verified / status.total) * 100)}%` : ''}
@@ -158,10 +174,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
  * were read by nothing. A machine could be one revoked token away from losing a
  * capability, and the page would say only how many checks had passed. They are
  * graph facts, so they answer on a machine whose ledger is still empty, which
- * is the state this page spent its first week in.
- *
- * A row with nothing in it is dropped rather than drawn as a zero: an empty
- * list here is good news, and good news that looks like a finding is noise.
+ * makes them the only figures that can be drawn on day one.
  */
 function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   // Deficits used to be a third row here. They are demand, not fragility, and
@@ -176,7 +189,24 @@ function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   return (
     <figure className="fig fig--assurance">
       <figcaption className="fig-caption">
-        <span className="fig-caption-title">What could break</span>
+        <span className="fig-caption-title">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            className="fig-kpi-icon"
+            aria-hidden="true"
+          >
+            <path d="M8 2 L14 13 H2 Z" />
+            <line x1="8" y1="6" x2="8" y2="9" />
+            <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
+          </svg>
+          What could break
+        </span>
         <span className="fig-caption-note">from the graph, not the ledger</span>
       </figcaption>
       <ul className="fig-key">
@@ -858,6 +888,106 @@ function EmptyLedger({
           <NextFigure next={loop.next ?? []} demand={loop.demand ?? []} onShowOnMap={onShowOnMap} />
         )}
 
+        <div className="loop-pipeline-graphic" aria-hidden="true">
+          <svg
+            width="100%"
+            height="64"
+            viewBox="0 0 540 64"
+            fill="none"
+            className="loop-pipeline-svg"
+            aria-hidden="true"
+          >
+            <defs>
+              <linearGradient
+                id="pipe-grad"
+                x1="0"
+                y1="0"
+                x2="540"
+                y2="0"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#0284c7" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0.8" />
+              </linearGradient>
+            </defs>
+            <line
+              x1="120"
+              y1="32"
+              x2="420"
+              y2="32"
+              stroke="url(#pipe-grad)"
+              strokeWidth="2"
+              strokeDasharray="5 3"
+            />
+            <g transform="translate(10, 12)">
+              <rect
+                width="110"
+                height="40"
+                rx="8"
+                fill="var(--bg-elevated)"
+                stroke="var(--border)"
+                strokeWidth="1.2"
+              />
+              <circle cx="20" cy="20" r="4" fill="#6366f1" />
+              <text
+                x="32"
+                y="24"
+                fill="var(--text-primary)"
+                fontSize="11"
+                fontWeight="600"
+                fontFamily="var(--font-sans)"
+              >
+                OpenCode
+              </text>
+            </g>
+            <circle cx="180" cy="32" r="3" fill="#6366f1" />
+            <g transform="translate(210, 12)">
+              <rect
+                width="120"
+                height="40"
+                rx="8"
+                fill="var(--bg-elevated)"
+                stroke="var(--border)"
+                strokeWidth="1.2"
+              />
+              <circle cx="20" cy="20" r="4" fill="#0284c7" />
+              <text
+                x="32"
+                y="24"
+                fill="var(--text-primary)"
+                fontSize="11"
+                fontWeight="600"
+                fontFamily="var(--font-sans)"
+              >
+                Plugins
+              </text>
+            </g>
+            <circle cx="360" cy="32" r="3" fill="#0284c7" />
+            <g transform="translate(390, 12)">
+              <rect
+                width="130"
+                height="40"
+                rx="8"
+                fill="var(--bg-elevated)"
+                stroke="var(--border)"
+                strokeWidth="1.2"
+              />
+              <circle cx="20" cy="20" r="4" fill="#10b981" />
+              <text
+                x="32"
+                y="24"
+                fill="var(--text-primary)"
+                fontSize="11"
+                fontWeight="600"
+                fontFamily="var(--font-sans)"
+              >
+                Work Ledger
+              </text>
+            </g>
+          </svg>
+        </div>
+
         <p className="loop-subtitle">Two bridges fill the rest.</p>
         <ol className="loop-empty-steps">
           <li>
@@ -924,7 +1054,23 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
         <div className="fig-kpis">
           <figure className="fig fig--kpi">
             <figcaption className="fig-caption">
-              <span className="fig-caption-title">Hours a person spent in the loop</span>
+              <span className="fig-caption-title">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  className="fig-kpi-icon"
+                  aria-hidden="true"
+                >
+                  <circle cx="8" cy="8" r="6" />
+                  <path d="M8 4.5 V8 L10.5 9.5" />
+                </svg>
+                Hours a person spent in the loop
+              </span>
               <span className="fig-caption-note">the shaded band is the saving</span>
             </figcaption>
             {/* A ledger with runs and no interventions drew "0h saved, $0 a
@@ -955,7 +1101,23 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
           <figure className="fig fig--kpi">
             <figcaption className="fig-caption">
-              <span className="fig-caption-title">Forecast against what happened</span>
+              <span className="fig-caption-title">
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  className="fig-kpi-icon"
+                  aria-hidden="true"
+                >
+                  <circle cx="8" cy="8" r="6" strokeDasharray="3 2" />
+                  <circle cx="8" cy="8" r="2" fill="currentColor" />
+                </svg>
+                Forecast against what happened
+              </span>
               <span className="fig-caption-note">{roi.verdict}</span>
             </figcaption>
             {roi.forecast ? (
