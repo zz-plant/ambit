@@ -25,7 +25,7 @@ test('the landing draws one bar per era on a shared scale, with the fraction bes
   expect(html).toContain('How much of each era is reached');
   const bars = html.match(/class="fig-eras-track"/g) || [];
   expect(bars.length).toBe(7);
-  expect(html).toMatch(/of 33 on the tree/);
+  expect(html).toMatch(/of 35 on the tree/);
 });
 
 test('both figures are labelled as example data', () => {

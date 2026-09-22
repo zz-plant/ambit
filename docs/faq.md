@@ -12,6 +12,12 @@ A list shows what is configured, one server at a time. Ambit records what each c
 
 No. Ambit reads OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, and Codex CLI from each one's standard config path, plus the skill directories `~/.agents/skills` and `~/.opencode/skills`. A server that two clients both list is one capability with two providers, not two capabilities. Adding a reader for another client is one of the most useful contributions; [CONTRIBUTING.md](../CONTRIBUTING.md) points at where they live.
 
+### I use Jev. Where does it fit?
+
+Ambit maps TypeSafe's Jev as **Typed Judgment**, in the Model Access era, and finds it however it arrives: as one of its MCP servers, as TypeSafe listed as a provider, or as an open clone that serves the same API. A clone such as Kev or LitJev running on your own hardware also reaches **Local Typed Judgment** in Sovereignty. That difference matters because the hosted API may keep requests for a while unless you have a zero-retention agreement, and a local clone keeps the state it judges on your machine. `ambit verify combo:local-typed-judgment` asks the clone one trivial question on this machine and records whether it answered; it never contacts the hosted API.
+
+Use Jev to decide what to try, and `ambit_can` to decide whether it may run. Jev returns a probability, and text inside the state it reads can move that probability. In one published test, injected text dropped Jev's probability of blocking `rm -rf ~/.ssh` from 0.76 to 0.48. Ambit's answer to whether an action may run comes from a grant a person set, so nothing an agent reads can widen it.
+
 ## Installing and running
 
 ### What do I need installed?

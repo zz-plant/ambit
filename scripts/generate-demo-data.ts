@@ -64,6 +64,7 @@ const FIXTURE = {
     kubernetes: { type: 'local', enabled: true },
     grafana: { type: 'remote', enabled: true },
     '1password': { type: 'local', enabled: true },
+    jev: { type: 'remote', enabled: true },
   },
   command: {
     deploy: { description: 'Ship to staging' },

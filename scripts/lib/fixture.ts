@@ -49,6 +49,7 @@ export const FIXTURE = {
     slack: { type: 'remote', command: ['slack-mcp'], enabled: true },
     sentry: { type: 'remote', command: ['sentry-mcp'], enabled: true },
     kubernetes: { type: 'local', command: ['k8s-mcp'], enabled: true },
+    jev: { type: 'remote', command: ['jev-mcp'], enabled: true },
   },
   command: {
     deploy: { description: 'Ship to staging' },

@@ -225,6 +225,8 @@ Authority is recorded per action, and from two sources. The curated model says w
 
 Enforcement lands where it matters. `ambit can <cap> [--target X] [--spend N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. The one limit worth stating: enforcement is on Ambit's own apply path, not yet interposed between every runtime and every tool — the runtime adapters are the next boundary.
 
+A calibrated classifier is a capability, not an authority. Typed decision models such as TypeSafe's Jev are cheap and fast enough to screen every tool call, and harnesses now use them that way. They are welcome on the map as Typed Judgment, and a runtime may consult one before it asks `ambit can`. They never stand in for the grant. A probability read from state an agent fetched can be steered by whoever wrote that state, which is the failure a grant a person set in advance does not have.
+
 ### The frontier ledger
 
 `capabilities` holds the present state and is overwritten on every seed, so on its own the graph can only say what the system can do *now*. Every seed also records the whole frontier, which lets it answer what was reachable at a past date:

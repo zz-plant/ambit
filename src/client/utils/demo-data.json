@@ -76,6 +76,10 @@
       "1password": {
         "type": "local",
         "enabled": true
+      },
+      "jev": {
+        "type": "remote",
+        "enabled": true
       }
     },
     "command": {
@@ -260,6 +264,25 @@
       {
         "id": "mcp:grafana",
         "name": "grafana",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote MCP server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "envKeys": [],
+          "type": "remote",
+          "domain": "meta",
+          "maturity": 0.8
+        },
+        "group": "Cloudflare"
+      },
+      {
+        "id": "mcp:jev",
+        "name": "jev",
         "type": "mcp-server",
         "status": "built",
         "description": "remote MCP server",
@@ -563,6 +586,11 @@
       {
         "from": "runtime:opencode",
         "to": "mcp:grafana",
+        "type": "connects"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:jev",
         "type": "connects"
       },
       {
@@ -1099,6 +1127,27 @@
         }
       },
       {
+        "id": "combo:local-typed-judgment",
+        "name": "Local Typed Judgment",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Typed decisions from a model on your own hardware, so the state it judges never leaves the machine — Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 7,
+          "eraName": "Sovereignty",
+          "next": true,
+          "lifecycle": "unknown"
+        }
+      },
+      {
         "id": "combo:model-routing",
         "name": "Model Routing",
         "type": "possibility",
@@ -1578,6 +1627,31 @@
         }
       },
       {
+        "id": "combo:typed-judgment",
+        "name": "Typed Judgment",
+        "type": "possibility",
+        "status": "built",
+        "description": "A decision model that answers a typed question with a calibrated probability, not text",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "ai-ml",
+          "state": "unlocked",
+          "setupSeconds": 300,
+          "era": 2,
+          "eraName": "Model Access",
+          "next": false,
+          "lifecycle": "configured",
+          "providers": [
+            "mcp:jev"
+          ],
+          "daysSinceChange": 0
+        }
+      },
+      {
         "id": "combo:vector-store",
         "name": "Vector Store",
         "type": "possibility",
@@ -1874,6 +1948,29 @@
         }
       },
       {
+        "id": "mcp:jev",
+        "name": "jev",
+        "type": "mcp-server",
+        "status": "built",
+        "description": "remote server",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "unlocked",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown",
+          "providers": [
+            "runtime:opencode"
+          ],
+          "daysSinceChange": 0
+        }
+      },
+      {
         "id": "mcp:kubernetes",
         "name": "kubernetes",
         "type": "mcp-server",
@@ -2085,7 +2182,7 @@
         "name": "opencode",
         "type": "runtime",
         "status": "built",
-        "description": "Agent runtime — contributes 22 capabilities",
+        "description": "Agent runtime — contributes 23 capabilities",
         "position": {
           "x": 0,
           "y": 0,
@@ -2347,6 +2444,12 @@
       },
       {
         "from": "combo:local-runtime",
+        "to": "combo:local-typed-judgment",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:local-runtime",
         "to": "combo:model-routing",
         "type": "soft-dep",
         "kind": "optional"
@@ -2431,6 +2534,12 @@
       },
       {
         "from": "combo:shell-execution",
+        "to": "combo:typed-judgment",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:shell-execution",
         "to": "combo:version-control",
         "type": "hard-dep",
         "kind": "requires"
@@ -2480,6 +2589,12 @@
       {
         "from": "combo:tool-protocol",
         "to": "combo:web-research",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:typed-judgment",
+        "to": "combo:local-typed-judgment",
         "type": "hard-dep",
         "kind": "requires"
       },
@@ -2546,6 +2661,12 @@
       {
         "from": "mcp:github",
         "to": "combo:version-control",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
+        "from": "mcp:jev",
+        "to": "combo:typed-judgment",
         "type": "hard-dep",
         "kind": "provides"
       },
@@ -2678,6 +2799,12 @@
       {
         "from": "runtime:opencode",
         "to": "mcp:grafana",
+        "type": "hard-dep",
+        "kind": "contributes"
+      },
+      {
+        "from": "runtime:opencode",
+        "to": "mcp:jev",
         "type": "hard-dep",
         "kind": "contributes"
       },
