@@ -107,12 +107,12 @@ function emit(data: any): void {
     }
   };
 
-  const renderOne = (row: any, indent = '  ') => {
+  const renderOne = (row: any, indent = '  ', headline = true) => {
     if (typeof row !== 'object' || row === null) {
       console.log(indent + String(row));
       return;
     }
-    const headKey = HEADLINE.find(k => row[k] !== undefined);
+    const headKey = headline ? HEADLINE.find(k => row[k] !== undefined) : undefined;
     if (headKey) console.log(`${indent}${C.bold}${row[headKey]}${C.reset}`);
     // Arrays of scalars are values, not nesting. Skipping every object dropped
     // them, which `scalar`'s array branch shows was never the intent — and it
@@ -127,17 +127,16 @@ function emit(data: any): void {
     // A nested plain object used to be dropped entirely, which is how `ambit
     // can` came to print six of its nine fields: the governing grant and the
     // evidence about the target were visible only with --json, and nothing
-    // said so. Rendered as an indented block rather than skipped.
+    // said so. Rendered as an indented block rather than skipped, and all the
+    // way down: stopping one level in dropped `goal --judge`'s suggestion and
+    // its probabilities the same way. No headline inside a block, so a nested
+    // record with an id or a name reads as its fields, as it always did.
     for (const [k, v] of Object.entries(row)) {
       if (k === headKey || skip(k, v)) continue;
       if (typeof v !== 'object' || v === null || Array.isArray(v)) continue;
-      const entries = Object.entries(v).filter(([, x]) => !skip(k, x));
-      if (!entries.length) continue;
+      if (!Object.values(v).some(x => !skip(k, x))) continue;
       console.log(`${indent}  ${C.grey}${label(k)}:${C.reset}`);
-      for (const [ck, cv] of entries) {
-        if (typeof cv === 'object' && !Array.isArray(cv)) continue;
-        console.log(`${indent}    ${C.grey}${label(ck)}:${C.reset} ${scalar(cv)}`);
-      }
+      renderOne(v, `${indent}  `, false);
     }
     for (const [k, v] of Object.entries(row)) {
       if (Array.isArray(v) && v.some(x => typeof x === 'object')) {

@@ -55,6 +55,7 @@ import {
 } from './delegation.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
 import { goalFor, pathsFor } from './goals.ts';
+import { judgeGoal } from './judge.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport } from './telemetry.ts';
@@ -170,7 +171,13 @@ async function runCommand(
         emit(
           arg ? simulateFrontier(db, [arg]) : { error: 'Usage: ambit goal <capability> --simulate' }
         );
-      else emit(goalFor(db, arg));
+      else if (flags.has('--judge') || value('judge') !== undefined) {
+        // async: asks a judgment model on this machine, and only when the
+        // vocabulary could not recommend. A goal the words cover opens no socket.
+        const routed = goalFor(db, arg) as any;
+        if (!arg || routed.error || routed.exact || routed.recommended) emit(routed);
+        else emit({ ...routed, judged: await judgeGoal(arg, { url: value('judge') }) });
+      } else emit(goalFor(db, arg));
       break;
     }
     case 'attention':
@@ -587,7 +594,8 @@ function result(argv: string[], state: { value: unknown; calls: number }): any {
  *
  * Synchronous on purpose. `runCommand` is declared async because `notify`,
  * `notify-approvals`, `dispatch` and `incidents` reach the network (and
- * `propose`/`approve` do when asked to `--dispatch`), but every other case
+ * `propose`/`approve` do when asked to `--dispatch`, and `goal` asks a local
+ * judgment model when given `--judge`), but every other case
  * runs to completion before the call returns, so the result is already in hand.
  * Making the seam synchronous is what lets a test read
  * `cli('status').health` rather than parenthesising an await at 137 call sites.

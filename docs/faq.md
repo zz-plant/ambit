@@ -14,7 +14,7 @@ No. Ambit reads OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desk
 
 ### I use Jev. Where does it fit?
 
-Ambit maps TypeSafe's Jev as **Typed Judgment**, in the Model Access era, and finds it however it arrives: as one of its MCP servers, as TypeSafe listed as a provider, or as an open clone that serves the same API. A clone such as Kev or LitJev running on your own hardware also reaches **Local Typed Judgment** in Sovereignty. That difference matters because the hosted API may keep requests for a while unless you have a zero-retention agreement, and a local clone keeps the state it judges on your machine. `ambit verify combo:local-typed-judgment` asks the clone one trivial question on this machine and records whether it answered; it never contacts the hosted API.
+Ambit maps TypeSafe's Jev as **Typed Judgment**, in the Model Access era, and finds it however it arrives: as one of its MCP servers, as TypeSafe listed as a provider, or as an open clone that serves the same API. A clone such as Kev or LitJev running on your own hardware also reaches **Local Typed Judgment** in Sovereignty. That difference matters because the hosted API may keep requests for a while unless you have a zero-retention agreement, and a local clone keeps the state it judges on your machine. `ambit verify combo:local-typed-judgment` asks the clone one trivial question on this machine and records whether it answered; it never contacts the hosted API. A clone can also route goals the tree's words do not cover: `ambit goal "triage incoming bug reports" --judge` puts the sentence to it as a Choice over the tree, and prints the likeliest capability with its probability as a suggestion. It writes nothing.
 
 Use Jev to decide what to try, and `ambit_can` to decide whether it may run. Jev returns a probability, and text inside the state it reads can move that probability. In one published test, injected text dropped Jev's probability of blocking `rm -rf ~/.ssh` from 0.76 to 0.48. Ambit's answer to whether an action may run comes from a grant a person set, so nothing an agent reads can widen it.
 
@@ -41,7 +41,7 @@ Delete the database file `ambit where` names and run `./bootstrap.sh` (or `ambit
 
 ### Does anything leave my machine?
 
-Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. Four commands are the ones to check if you are auditing egress.
+Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. Five commands are the ones to check if you are auditing egress.
 
 | Command | What it sends | Where it goes |
 | :--- | :--- | :--- |
@@ -49,6 +49,7 @@ Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints
 | `ambit notify-approvals <topic>` | Proposals waiting to be applied, by id and goal; and unapproved drafts, each with its id, goal, cost, recurring billing, and up to three capabilities it would unlock. | The same POST. |
 | `ambit dispatch <id>` (and `propose`/`approve` with `--dispatch`) | One proposal: its id, goal, cost and what it unlocks, with the approve and reject commands; once approved, the signed artifact too. Never a command to run. | One POST to the URL in `AMBIT_APPROVAL_WEBHOOK` or `--to`, in Slack, Discord, Telegram, ntfy or plain JSON shape. Nothing is sent without one. |
 | `ambit incidents` | Nothing. It sends an empty GET to each service URL named in your infrastructure manifest (`$INFRA_MANIFEST`, or `~/.config/opencode/infrastructure.json`), to see which are answering. | Those hosts, and nowhere else. |
+| `ambit goal "<sentence>" --judge` | The sentence you typed, and the name and one-line description of every node in the curated tree, as one Choice question. Only when no goal phrase in the tree matches it. | One POST to a judgment model on this machine: `--judge=<url>`, `AMBIT_JUDGE_URL`, or Kev's default `http://127.0.0.1:8009`. Any other host is refused before anything is sent. |
 | `ambit share [--redact]` | Nothing. It writes an HTML file you send yourself. | Your disk. |
 
 Neither notify command sends anything without a topic. An ntfy topic is readable by anyone who knows its name, so pick one you would not guess. The share file is built from an allow-list; [`ambit share`](../README.md#ambit-share--what-may-leave-the-graph-and-what-may-not) in the README says what may enter it. [SECURITY.md](../SECURITY.md) lists the invariants.
