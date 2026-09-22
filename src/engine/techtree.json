@@ -336,6 +336,36 @@
       }
     },
     {
+      "id": "typed-judgment",
+      "name": "Typed Judgment",
+      "goal": [
+        "classify",
+        "route a decision",
+        "score",
+        "calibrated decision",
+        "jev",
+        "system one"
+      ],
+      "era": 2,
+      "domain": "ai-ml",
+      "description": "A decision model that answers a typed question with a calibrated probability, not text",
+      "requires": [
+        "shell-execution"
+      ],
+      "detect": {
+        "any": [
+          "jev",
+          "typesafe",
+          "systemone",
+          "system-one",
+          "semif",
+          "(^|[:/._-])kev([:/._-]|$)"
+        ]
+      },
+      "setup_seconds": 300,
+      "hint": "TypeSafe's Jev, through its API or one of its MCP servers, or a local clone that serves the same API"
+    },
+    {
       "id": "tool-protocol",
       "name": "Tool Protocol",
       "era": 3,
@@ -1407,6 +1437,34 @@
         "observe": "autonomous",
         "execute": "confirm"
       }
+    },
+    {
+      "id": "local-typed-judgment",
+      "name": "Local Typed Judgment",
+      "goal": [
+        "local jev",
+        "private classification",
+        "decide without sending the state anywhere"
+      ],
+      "era": 7,
+      "domain": "ai-ml",
+      "description": "Typed decisions from a model on your own hardware, so the state it judges never leaves the machine",
+      "requires": [
+        "typed-judgment",
+        "local-runtime"
+      ],
+      "detect": {
+        "any": [
+          "litjev",
+          "openjev",
+          "jev-clone",
+          "jevclone",
+          "semif",
+          "(^|[:/._-])kev([:/._-]|$)"
+        ]
+      },
+      "setup_seconds": 1800,
+      "hint": "Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it"
     }
   ]
 }

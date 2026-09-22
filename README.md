@@ -13,9 +13,9 @@
 
 <br>
 
-<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: a tool is selected and its dependents listed, switching it off turns seven downstream capabilities red and two amber, a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
+<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: a tool is selected and its dependents listed, switching it off turns eight downstream capabilities red and two amber, a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
 
-<sub>One setup, mapped. Pick a tool and Ambit shows what depends on it; switch it off and it shows the seven things that stop working with it and the two that only lose a provider. Then which tools interrupt you most, and a change waiting on your approval.</sub>
+<sub>One setup, mapped. Pick a tool and Ambit shows what depends on it; switch it off and it shows the eight things that stop working with it and the two that only lose a provider. Then which tools interrupt you most, and a change waiting on your approval.</sub>
 
 `brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
 
@@ -101,15 +101,15 @@ The three console blocks below are captured from a run against a fixture graph b
 ```console
 $ ambit status
 
-    summary: 37/56 capabilities reached · 8 with a single provider
-    reached: 37
-    total: 56
+    summary: 39/59 capabilities reached · 9 with a single provider
+    reached: 39
+    total: 59
     verified: 0
     failing: 0
     actions: 18/28 reached
     evidence:
         proven: 0
-        unproven: 14
+        unproven: 15
         failing: 0
         last check: never
         provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
@@ -159,10 +159,10 @@ $ ambit impact combo:local-runtime
         becomes unavailable: false
       Self-Hosted Stack
         becomes unavailable: false
+      Local Typed Judgment
+        becomes unavailable: false
     combos at risk:
       Local Tool Calling
-        severity: warning
-      Model Routing
     …
 ```
 <!-- /example -->
@@ -374,9 +374,12 @@ Ambit sits above the protocol layer and below workflow orchestration. It neither
 | Workflow state machines (LangGraph) | – | within one task | – | – | within one task |
 | Package managers (Nix, Homebrew) | – | for binaries | – | – | – |
 | A list of configured MCP servers | by name | – | – | – | – |
+| Typed decision models (Jev) | – | – | – | – | by a probability, which text in the state can move |
 | **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
 
 Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Ambit models what those binaries add up to on this host, what it costs a person to keep them working, and what an agent may do with them.
+
+A typed decision model such as TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) answers whether a tool call looks safe with a calibrated probability, cheaply enough to ask on every call. Injected text can move that probability, so Ambit maps Jev as a capability and never lets it decide what an agent may do. [The FAQ](./docs/faq.md#i-use-jev-where-does-it-fit) says how the two fit together.
 
 ---
 

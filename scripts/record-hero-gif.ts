@@ -88,6 +88,7 @@ const FIXTURE = {
     sentry: { type: 'remote', command: ['sentry-mcp'], enabled: true },
     kubernetes: { type: 'local', command: ['k8s-mcp'], enabled: true },
     grafana: { type: 'remote', command: ['grafana-mcp'], enabled: true },
+    jev: { type: 'remote', command: ['jev-mcp'], enabled: true },
     puppeteer: { type: 'local', command: ['puppeteer-mcp'], enabled: true },
   },
   command: {
