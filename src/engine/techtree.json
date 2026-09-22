@@ -1464,7 +1464,15 @@
         ]
       },
       "setup_seconds": 1800,
-      "hint": "Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it"
+      "hint": "Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "b=\"${TYPESAFE_BASE_URL:-$JEV_BASE_URL}\"\nq='{\"state\":\"ambit\",\"questions\":{\"ok\":{\"type\":\"noul\",\"instructions\":\"Is the state a single word?\"}}}'\nfor u in \"$b\" http://127.0.0.1:8009 http://127.0.0.1:8080; do\n  case \"$u\" in *@*) continue ;; esac\n  case \"$u\" in http://127.0.0.1|http://127.0.0.1:*|http://127.0.0.1/*|http://localhost|http://localhost:*|http://localhost/*) ;; *) continue ;; esac\n  curl -sf -m 5 -H 'content-type: application/json' -d \"$q\" \"${u%/}/v1/systemone\" | grep -q '\"answers\"' && exit 0\ndone\nexit 1"
+        ],
+        "timeout_seconds": 20
+      }
     }
   ]
 }
