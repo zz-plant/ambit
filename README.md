@@ -64,24 +64,7 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet for each client. |
 
-Homebrew, a checkout, and Codespaces, in full.
-
-**Homebrew** installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux:
-
-```bash
-brew install zz-plant/tap/ambit
-ambit
-```
-
-**A checkout** adds the map. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and the skill directories `~/.agents/skills` and `~/.opencode/skills`, builds a local SQLite graph, and reports your frontier; `./bootstrap.sh web` also starts the map. The report it prints when it finishes is `ambit status` itself, not a separate first-run format: [Ask from the terminal](#ask-from-the-terminal) shows that command against a fixture graph. It links `ambit` into `~/.local/bin` when that is on your PATH and prints the `ln -s` line otherwise. `--dry-run` shows what it would do.
-
-```bash
-git clone https://github.com/zz-plant/ambit.git
-cd ambit
-./bootstrap.sh
-```
-
-**Codespaces** runs the checkout in a container: the devcontainer seeds a graph and starts the map on port 3000, so nothing touches your machine and the graph is the container's.
+Homebrew installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux. A checkout adds the map: `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and the skill directories `~/.agents/skills` and `~/.opencode/skills`, builds a local SQLite graph, and finishes by printing `ambit status`, which [Ask from the terminal](#ask-from-the-terminal) shows against a fixture graph. It links `ambit` into `~/.local/bin` when that is on your PATH and prints the `ln -s` line otherwise; `--dry-run` shows what it would do. Codespaces runs the same checkout in a container, so the graph is the container's and nothing touches your machine.
 
 > [!NOTE]
 > The npm package is built and ready but not yet published, so there is no `npx` path yet.
@@ -194,7 +177,7 @@ $ ambit impact combo:local-runtime
 
 Registering Ambit as an MCP server lets an agent inspect its own toolchain and plan around what is missing.
 
-Sixty tools, each advertised once, each answering with MCP `structuredContent` alongside the text block so an agent reads a field and never parses a string. A legacy `tt_` prefix is still accepted for configs written before the rename but is no longer listed: advertising both would double `tools/list` to 120 entries and spend about 4,900 tokens of every agent's context on duplicates. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names all sixty, grouped.
+Sixty tools, each advertised once, each answering with MCP `structuredContent` alongside the text block so an agent reads a field and never parses a string. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names all sixty, grouped. (The `tt_` prefix from before the rename is still accepted, just no longer listed.)
 
 ### Claude Code
 
@@ -393,30 +376,24 @@ Ambit sits above the protocol layer and below workflow orchestration. It neither
 | A list of configured MCP servers | by name | – | – | – | – |
 | **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
 
-- **Against vector tool-RAG.** Semantic search finds tools that sound relevant. It has no view of prerequisite order and cannot tell a working tool from a broken one.
-- **Against workflow state machines.** LangGraph models control flow within one task. Ambit models what the host environment is capable of executing at all.
-- **Against package managers.** Nix and Homebrew install binaries. Ambit models the affordance those binaries add up to, and what it costs a person to keep them working.
+Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Ambit models what those binaries add up to on this host, what it costs a person to keep them working, and what an agent may do with them.
 
 ---
 
 ## Position in the revisable-delegation loop
 
-Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds **capability** and **authorization**.
-
-A grant holds only while what it rests on does — a capability whose hard prerequisite has started failing no longer runs unattended, and the narrowing lifts by itself when the check passes again — and every narrowing is written as an append-only, hash-chained stream of [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record) that another Ambit environment can read as evidence. What a peer sends can inform this graph and never revoke anything in it.
-
-[The deep dive](./docs/deep-dive.md#delegation-records) has the record kinds, the objection path, and the limits; the siblings are [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), and [Ethotechnics](https://ethotechnics.org) (the record shape).
+Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds **capability** and **authorization**. A grant holds only while what it rests on does, and every narrowing is written as an append-only, hash-chained stream of [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record) that another Ambit environment can read as evidence and never as an instruction. [The deep dive](./docs/deep-dive.md#delegation-records) has the record kinds, the objection path, and the limits; the siblings are [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), and [Ethotechnics](https://ethotechnics.org) (the record shape).
 
 ---
 
 ## Security invariants
 
-Ambit reads developer toolchains and writes to agent configs, so a few properties are fixed and cannot be relaxed. [`SECURITY.md`](./SECURITY.md) states each in full, with what is in scope and what is not; [`AGENTS.md`](./AGENTS.md) says where each is enforced.
+Ambit reads developer toolchains and writes to agent configs, so four properties are fixed and cannot be relaxed. [`SECURITY.md`](./SECURITY.md) states each in full, with what is in scope and what is not; [`AGENTS.md`](./AGENTS.md#security-posture) says where each is enforced.
 
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
-2. **Origin allowlist.** A request with a non-local `Origin` is rejected with 403 *before* routing. Response headers alone are not sufficient — a simple request skips preflight and would otherwise reach the handler.
-3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else: it toggles an MCP server's `enabled`, and edits an agent's `description` or `model` and a command's `description`. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution. Adding a server returns a snippet for you to paste.
-4. **No egress you did not type.** Everything lives in an embedded SQLite database on your machine. There is no telemetry and no credential leaves the host. Four commands open a socket at all: `ambit notify` and `ambit notify-approvals`, each pushing text to an ntfy topic you name; `ambit dispatch`, which pushes one proposal to a webhook URL you configure; and `ambit incidents`, which sends an empty GET to the hosts your own infrastructure manifest lists. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
+2. **Origin allowlist.** A request with a non-local `Origin` is rejected with 403 *before* routing, because a simple request skips preflight and response headers alone would not stop it.
+3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.
+4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Four commands open a socket at all (`notify`, `notify-approvals`, `dispatch`, `incidents`), and each needs a target you name. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
 
 ---
 
@@ -432,22 +409,17 @@ Ambit reads developer toolchains and writes to agent configs, so a few propertie
 
 ## Contributing
 
-New capability models, runtime adapters, visualization work, and edge-case reports are all welcome.
-
-Both halves of the repo typecheck under `strict`, and the suite runs against real SQLite. [CONTRIBUTING.md](./CONTRIBUTING.md#the-checks-ci-runs) lists every check CI runs, documentation included: the console blocks above are checked against a fresh run, and the prose against a corpus ceiling on the two constructions a machine overuses ([AGENTS.md rule 17](./AGENTS.md#rules)).
+New capability models, runtime adapters, visualization work, and edge-case reports are all welcome. [CONTRIBUTING.md](./CONTRIBUTING.md) gets you from a clone to a passing pull request and [lists every check CI runs](./CONTRIBUTING.md#the-checks-ci-runs), documentation included: the console blocks above are checked against a fresh run, and the prose against a corpus ceiling ([AGENTS.md rule 17](./AGENTS.md#rules)).
 
 ---
 
 ## Support the project
 
-Ambit is a personal project. If it answered a question your config files could not, the cheapest way to help is a star: it is how the next person with the same stack finds it.
+Ambit is a personal project. If it answered a question your config files could not, [a star](https://github.com/zz-plant/ambit/stargazers) is how the next person with the same stack finds it, and [the release notes](https://github.com/zz-plant/ambit/releases) explain each change.
 
-- [Star the repository](https://github.com/zz-plant/ambit/stargazers), and [watch releases](https://github.com/zz-plant/ambit/releases) for the notes that explain each change.
 - Post an `ambit share --redact` snapshot of your own map. The file names nothing on your machine, and every real graph is an argument the demo cannot make.
 - Report the runtime it does not read yet, or the capability it models wrong. Both are [issue templates](https://github.com/zz-plant/ambit/issues/new/choose).
 - Citing it in writing? [`CITATION.cff`](./CITATION.cff) is what GitHub's *Cite this repository* button reads.
-
-<a href="https://star-history.com/#zz-plant/ambit&Date"><img src="https://api.star-history.com/svg?repos=zz-plant/ambit&type=Date" alt="Star history for zz-plant/ambit" width="600"></a>
 
 ---
 
