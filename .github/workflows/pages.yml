@@ -32,6 +32,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The same Node the CI matrix's floor runs, so the build here cannot
+      # differ from the one the tests passed on.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
 
       - run: npm ci
 

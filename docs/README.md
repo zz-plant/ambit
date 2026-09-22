@@ -6,6 +6,7 @@
 
 - [FAQ](./faq.md) — the short answers, each pointing at the longer one.
 - [Deep dive](./deep-dive.md) — the long-form reference: nodes, assurance checks, authority contracts, the work ledger, and every MCP tool.
+- [llms.txt](../src/client/public/llms.txt) — the project on one page for an agent deciding whether to recommend it, served at [zz-plant.github.io/ambit/llms.txt](https://zz-plant.github.io/ambit/llms.txt).
 
 ## Argument: why the thing exists
 

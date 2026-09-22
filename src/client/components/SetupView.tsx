@@ -369,7 +369,14 @@ export function SetupView({ onShow }: SetupViewProps) {
             {shown.length === 0 && (
               <div className="tp-empty">
                 <div className="tp-empty-graphic" aria-hidden="true">
-                  <svg width="40" height="40" viewBox="0 0 48 48" fill="none" stroke="currentColor" aria-hidden="true">
+                  <svg
+                    width="40"
+                    height="40"
+                    viewBox="0 0 48 48"
+                    fill="none"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
                     <circle cx="20" cy="20" r="11" strokeWidth="2" strokeDasharray="3 2" />
                     <path d="M28 28 L40 40" strokeWidth="2.5" strokeLinecap="round" />
                     <path d="M16 20 H24" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />

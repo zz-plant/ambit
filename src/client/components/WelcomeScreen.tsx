@@ -71,7 +71,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
     <main className="app-welcome">
       <div className="app-welcome-hero">
         <div className="app-welcome-emblem" aria-hidden="true">
-          <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+          <svg width="48" height="48" viewBox="0 0 64 64" fill="none" aria-hidden="true">
             <defs>
               <linearGradient
                 id="emblem-grad"
@@ -165,7 +165,14 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
           }}
         >
           <div className="app-welcome-drop-icon" aria-hidden="true">
-            <svg width="32" height="32" viewBox="0 0 36 36" fill="none" stroke="currentColor">
+            <svg
+              width="32"
+              height="32"
+              viewBox="0 0 36 36"
+              fill="none"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
               <rect
                 x="5"
                 y="7"
