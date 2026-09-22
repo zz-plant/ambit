@@ -223,6 +223,8 @@ scripts/check-prose.ts     The em dash and "rather than" ceilings, over every co
                            document that ships
 scripts/check-assets.ts    That every shipped image is the size the page claims
 scripts/check-demo-data.ts That demo-data.json still matches what the engine builds from the fixture
+scripts/build-docs.ts      The docs as static pages under /ambit/docs/, and the sitemap written
+                           from the same list; `npm run build` runs it after Vite
 scripts/adapters/          Deeper runtime readers than mcp-clients.ts: claude-code.ts · hermes.ts ·
                            surface.ts (a published capability surface) · telemetry.ts (work events
                            piped to /api/telemetry)

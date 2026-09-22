@@ -94,6 +94,11 @@ let backendProbe: Promise<boolean> | null = null;
 /** What a failed request says to the person: the error's own words, or that the network did not answer. */
 const errorMessage = (e: unknown) => (e instanceof Error && e.message) || 'Network error';
 
+/** Served from GitHub Pages, where no engine can be listening. */
+export const isHostedDemo = (
+  host = (globalThis as { location?: { hostname?: string } }).location?.hostname ?? ''
+) => host === 'github.io' || host.endsWith('.github.io');
+
 /**
  * Whether there is an engine behind the page. Probed once and remembered: the
  * published demo is static files on GitHub Pages, and every optional call —
@@ -106,6 +111,12 @@ const errorMessage = (e: unknown) => (e instanceof Error && e.message) || 'Netwo
  * its welcome screen instead of an error.
  */
 export function backendAvailable(): Promise<boolean> {
+  // The hosted demo is GitHub Pages, which never has an engine behind it, and
+  // asking anyway logged a 404 for /api/health in every visitor's console.
+  if (!backendProbe && isHostedDemo()) {
+    backendProbe = Promise.resolve(false);
+    useAmbitStore.setState({ backend: 'static' });
+  }
   backendProbe ??= fetch('/api/health')
     .then(r =>
       r

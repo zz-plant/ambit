@@ -1,3 +1,6 @@
+# Crawlers read robots.txt only at a host's root, and this site is served
+# under /ambit/, so this file takes effect only if the site moves to its own
+# domain. Until then the sitemap is submitted to search consoles directly.
 User-agent: *
 Allow: /
 

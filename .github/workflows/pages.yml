@@ -11,6 +11,13 @@ on:
     paths:
       - 'src/client/**'
       - 'src/shared/**'
+      # The docs are published as pages too, built from these files.
+      - 'docs/**'
+      - 'README.md'
+      - 'SECURITY.md'
+      - 'CONTRIBUTING.md'
+      - 'CHANGELOG.md'
+      - 'scripts/build-docs.ts'
       - 'vite.config.ts'
       - 'package.json'
       - 'package-lock.json'
