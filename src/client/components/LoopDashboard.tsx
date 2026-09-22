@@ -8,7 +8,8 @@ import type {
   LoopSince,
   LoopSnapshot,
 } from '../../shared/api';
-import { HoursSparkline, NUM, money } from './figures';
+import { useCopied } from '../hooks/useCopied';
+import { HoursSparkline, NUM, StackedBar, money } from './figures';
 
 /**
  * The work ledger's view of a month: where human attention went, what it cost,
@@ -111,7 +112,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
     { key: 'unproven', n: unproven, label: 'configured, never checked' },
     { key: 'failing', n: failing, label: 'check failing' },
     { key: 'unreached', n: unreached, label: 'not reached' },
-  ].filter(s => s.n > 0);
+  ];
 
   return (
     <figure className="fig fig--assurance">
@@ -138,31 +139,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
           {status.total > 0 ? ` · ${Math.round((status.verified / status.total) * 100)}%` : ''}
         </span>
       </figcaption>
-      <div
-        className="fig-stack"
-        role="img"
-        aria-label={segments.map(s => `${s.n} ${s.label}`).join(', ')}
-      >
-        {segments.map(s => (
-          <div
-            key={s.key}
-            className={`fig-stack-seg fig-stack-seg--${s.key}`}
-            style={{ flexGrow: s.n }}
-            title={`${s.n} ${s.label}`}
-          />
-        ))}
-      </div>
-      <ul className="fig-key">
-        {segments.map(s => (
-          <li key={s.key} className="fig-key-item">
-            <span className={`fig-key-swatch fig-key-swatch--${s.key}`} aria-hidden="true" />
-            <span className="fig-key-n" style={NUM}>
-              {s.n}
-            </span>
-            <span className="fig-key-label">{s.label}</span>
-          </li>
-        ))}
-      </ul>
+      <StackedBar segments={segments} />
     </figure>
   );
 }
@@ -412,13 +389,13 @@ function AuthorityFigure({
   onShow?: (id: string) => void;
 }) {
   const items = useAmbitStore(s => s.items);
-  const [copied, setCopied] = React.useState<string | null>(null);
+  const [copied, copy] = useCopied();
   const total = authority.autonomous + authority.confirm + authority.forbidden;
   const segments = [
     { key: 'autonomous', n: authority.autonomous, label: 'run unattended' },
     { key: 'confirm', n: authority.confirm, label: 'ask first' },
     { key: 'forbidden', n: authority.forbidden, label: 'forbidden' },
-  ].filter(s => s.n > 0);
+  ];
   const onMap = (id: string) => items.some(i => i.id === id);
 
   return (
@@ -431,35 +408,7 @@ function AuthorityFigure({
             : 'no authority declared yet'}
         </span>
       </figcaption>
-      {segments.length > 0 && (
-        <>
-          <div
-            className="fig-stack"
-            role="img"
-            aria-label={segments.map(s => `${s.n} ${s.label}`).join(', ')}
-          >
-            {segments.map(s => (
-              <div
-                key={s.key}
-                className={`fig-stack-seg fig-stack-seg--${s.key}`}
-                style={{ flexGrow: s.n }}
-                title={`${s.n} ${s.label}`}
-              />
-            ))}
-          </div>
-          <ul className="fig-key">
-            {segments.map(s => (
-              <li key={s.key} className="fig-key-item">
-                <span className={`fig-key-swatch fig-key-swatch--${s.key}`} aria-hidden="true" />
-                <span className="fig-key-n" style={NUM}>
-                  {s.n}
-                </span>
-                <span className="fig-key-label">{s.label}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      {total > 0 && <StackedBar segments={segments} />}
 
       {authority.promotable.length > 0 && (
         <div className="fig-block">
@@ -484,11 +433,7 @@ function AuthorityFigure({
                   type="button"
                   className="tp-btn-sm"
                   title={p.command}
-                  onClick={() => {
-                    navigator.clipboard?.writeText(p.command);
-                    setCopied(`${p.id}/${p.action}`);
-                    setTimeout(() => setCopied(null), 2000);
-                  }}
+                  onClick={() => copy(`${p.id}/${p.action}`, p.command)}
                 >
                   {copied === `${p.id}/${p.action}` ? 'Copied' : 'Copy the command that sets one'}
                 </button>
@@ -887,106 +832,6 @@ function EmptyLedger({
         {loop && (
           <NextFigure next={loop.next ?? []} demand={loop.demand ?? []} onShowOnMap={onShowOnMap} />
         )}
-
-        <div className="loop-pipeline-graphic" aria-hidden="true">
-          <svg
-            width="100%"
-            height="64"
-            viewBox="0 0 540 64"
-            fill="none"
-            className="loop-pipeline-svg"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient
-                id="pipe-grad"
-                x1="0"
-                y1="0"
-                x2="540"
-                y2="0"
-                gradientUnits="userSpaceOnUse"
-              >
-                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.8" />
-                <stop offset="50%" stopColor="#0284c7" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#10b981" stopOpacity="0.8" />
-              </linearGradient>
-            </defs>
-            <line
-              x1="120"
-              y1="32"
-              x2="420"
-              y2="32"
-              stroke="url(#pipe-grad)"
-              strokeWidth="2"
-              strokeDasharray="5 3"
-            />
-            <g transform="translate(10, 12)">
-              <rect
-                width="110"
-                height="40"
-                rx="8"
-                fill="var(--bg-elevated)"
-                stroke="var(--border)"
-                strokeWidth="1.2"
-              />
-              <circle cx="20" cy="20" r="4" fill="#6366f1" />
-              <text
-                x="32"
-                y="24"
-                fill="var(--text-primary)"
-                fontSize="11"
-                fontWeight="600"
-                fontFamily="var(--font-sans)"
-              >
-                OpenCode
-              </text>
-            </g>
-            <circle cx="180" cy="32" r="3" fill="#6366f1" />
-            <g transform="translate(210, 12)">
-              <rect
-                width="120"
-                height="40"
-                rx="8"
-                fill="var(--bg-elevated)"
-                stroke="var(--border)"
-                strokeWidth="1.2"
-              />
-              <circle cx="20" cy="20" r="4" fill="#0284c7" />
-              <text
-                x="32"
-                y="24"
-                fill="var(--text-primary)"
-                fontSize="11"
-                fontWeight="600"
-                fontFamily="var(--font-sans)"
-              >
-                Plugins
-              </text>
-            </g>
-            <circle cx="360" cy="32" r="3" fill="#0284c7" />
-            <g transform="translate(390, 12)">
-              <rect
-                width="130"
-                height="40"
-                rx="8"
-                fill="var(--bg-elevated)"
-                stroke="var(--border)"
-                strokeWidth="1.2"
-              />
-              <circle cx="20" cy="20" r="4" fill="#10b981" />
-              <text
-                x="32"
-                y="24"
-                fill="var(--text-primary)"
-                fontSize="11"
-                fontWeight="600"
-                fontFamily="var(--font-sans)"
-              >
-                Work Ledger
-              </text>
-            </g>
-          </svg>
-        </div>
 
         <p className="loop-subtitle">Two bridges fill the rest.</p>
         <ol className="loop-empty-steps">

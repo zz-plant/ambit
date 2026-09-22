@@ -27,6 +27,53 @@ export const NUM = { fontVariantNumeric: 'tabular-nums' } as const;
 
 export const money = (n: number) => `$${n.toLocaleString()}`;
 
+/** One segment of a stacked bar: what it counts, how many, and the word for it. */
+export interface StackSegment {
+  key: string;
+  n: number;
+  label: string;
+}
+
+/**
+ * A count split into segments, as one bar and a key beneath it.
+ *
+ * Each segment is coloured by its key through `fig-stack-seg--<key>` and
+ * `fig-key-swatch--<key>`, and the key repeats each count in writing, so
+ * colour is never the only encoding. Empty segments are not drawn.
+ */
+export function StackedBar({ segments }: { segments: StackSegment[] }) {
+  const shown = segments.filter(s => s.n > 0);
+  return (
+    <>
+      <div
+        className="fig-stack"
+        role="img"
+        aria-label={shown.map(s => `${s.n} ${s.label}`).join(', ')}
+      >
+        {shown.map(s => (
+          <div
+            key={s.key}
+            className={`fig-stack-seg fig-stack-seg--${s.key}`}
+            style={{ flexGrow: s.n }}
+            title={`${s.n} ${s.label}`}
+          />
+        ))}
+      </div>
+      <ul className="fig-key">
+        {shown.map(s => (
+          <li key={s.key} className="fig-key-item">
+            <span className={`fig-key-swatch fig-key-swatch--${s.key}`} aria-hidden="true" />
+            <span className="fig-key-n" style={NUM}>
+              {s.n}
+            </span>
+            <span className="fig-key-label">{s.label}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 type Series = LoopSnapshot['roi']['monthly_hours'];
 
 interface SparklineProps {

@@ -1,8 +1,26 @@
 import { useEffect, useState } from 'react';
 import type { ProposalDecision } from '../../shared/api';
+import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { WEB_ACTOR } from '../utils/copy';
 import { NUM, money } from './figures';
+
+/**
+ * What a step may be called, and what supplies it. An engine step is
+ * `{id, name, chosen, …}`; the demo's hand-written ones are `{action,
+ * provider}`. Either reads as a name and what supplies it.
+ */
+type StepLike = Partial<Record<'id' | 'name' | 'action' | 'key' | 'chosen' | 'provider', string>>;
+
+/** The stored steps are a JSON string; anything that is not a list of them is no steps. */
+function parseSteps(steps: string): StepLike[] {
+  try {
+    const parsed: unknown = JSON.parse(steps);
+    return Array.isArray(parsed) ? parsed.filter(s => s && typeof s === 'object') : [];
+  } catch {
+    return [];
+  }
+}
 
 /**
  * The four things a decision needs, in a fixed order: what it saves, what it
@@ -70,7 +88,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const approveProposal = useAmbitStore(s => s.approveProposal);
   const rejectProposal = useAmbitStore(s => s.rejectProposal);
   const [approvingId, setApprovingId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedId, copy] = useCopied();
   const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved' | 'rejected'>('all');
   // A no in progress: which card, and the reason typed so far. The reason is
   // optional and is the most valuable part of the record.
@@ -105,11 +123,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
     else setDeclining(null);
   };
 
-  const copyApplyCmd = (id: string) => {
-    navigator.clipboard?.writeText(`ambit apply ${id}`);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2500);
-  };
+  const copyApplyCmd = (id: string) => copy(id, `ambit apply ${id}`);
 
   const filtered = proposals.filter(p => statusTab === 'all' || p.status === statusTab);
 
@@ -199,12 +213,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         ) : (
           <div className="gov-list">
             {filtered.map(p => {
-              let parsedSteps: any[] = [];
-              try {
-                parsedSteps = JSON.parse(p.steps);
-              } catch {
-                /* ignore */
-              }
+              const parsedSteps = parseSteps(p.steps);
               const isApproved = p.status === 'approved' || p.status === 'applied';
               const isRejected = p.status === 'rejected';
               const isDeclining = declining?.id === p.id;

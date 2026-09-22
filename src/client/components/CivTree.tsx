@@ -66,6 +66,76 @@ function heatStep(count: number, max: number): number {
   return hit === -1 ? bins.length : hit + 1;
 }
 
+/** One entry of the legend under the map: a swatch, a stroke, or a heading for the ramp. */
+type LegendKey =
+  | { kind: 'label'; label: string }
+  | { kind: 'node'; label: string; color: string; sym?: string }
+  | { kind: 'ring' | 'faded' | 'square'; label: string }
+  | { kind: 'line'; label: string; color?: string; dashed?: boolean };
+
+/**
+ * The count under a column's name, drawn as well as written. A column is a
+ * set with a size and a filled fraction; saying "Era 5" where "1 of 5" could
+ * stand was a label where a measurement belonged. One scale across all seven
+ * columns: the bar's full width is the largest era, so a short bar is a small
+ * era and not a poorly-filled one. Beside the count, what finishing the
+ * column would cost in setup time.
+ */
+function ColumnCount({
+  column,
+  list,
+  largest,
+  x,
+}: {
+  column: string;
+  list: Item[];
+  largest: number;
+  x: number;
+}) {
+  const reached = list.filter(i => i.status === 'built').length;
+  const next = list.filter(i => i.status !== 'built' && isNext(i)).length;
+  const left = readableSeconds(
+    list
+      .filter(i => i.status !== 'built')
+      .reduce((t, i) => t + (Number(i.meta?.setupSeconds) || 0), 0)
+  );
+  const barW = ((COL_W - 64) * list.length) / largest;
+  const unit = list.length ? barW / list.length : 0;
+  const bx = x + COL_W / 2 - 16 - barW / 2;
+  const by = START_Y - 11;
+  return (
+    <g>
+      <text
+        x={x + COL_W / 2 - 16}
+        y={START_Y - 16}
+        textAnchor="middle"
+        fill="var(--text-muted)"
+        fontSize={9.5}
+        fontWeight={500}
+        style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
+      >
+        {column.startsWith('era:') ? `Era ${column.slice(4)} · ` : ''}
+        {reached} of {list.length}
+        {left ? ` · ${left} left` : ''}
+      </text>
+      <rect className="fig-eras-track" x={bx} y={by} width={barW} height={3} rx={1} />
+      {reached > 0 && (
+        <rect className="fig-eras-reached" x={bx} y={by} width={unit * reached} height={3} rx={1} />
+      )}
+      {next > 0 && (
+        <rect
+          className="fig-eras-next"
+          x={bx + unit * reached}
+          y={by}
+          width={unit * next}
+          height={3}
+          rx={1}
+        />
+      )}
+    </g>
+  );
+}
+
 export default function CivTree({
   items,
   connections,
@@ -135,6 +205,7 @@ export default function CivTree({
   );
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
+  const largestColumn = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
 
   // One hop, both ways, from the node in focus: the selection, or failing
   // that whatever the pointer is over. Selecting used to light the whole
@@ -200,24 +271,22 @@ export default function CivTree({
    */
   // While a node is selected the legend also keys the two directions its
   // edges are drawn in.
-  const directionKeys =
+  const directionKeys: LegendKey[] =
     selectedId && focusId === selectedId
       ? [
           { kind: 'line', color: 'var(--edge-needs)', label: 'Needs' },
           { kind: 'line', color: 'var(--accent)', label: 'Enables' },
         ]
       : [];
-  const legend: any[] =
+  const legend: LegendKey[] =
     activeLens === 'attention'
       ? [
           // A scale with no unit is a row of coloured dots. Say what is
           // being counted, once, at the head of the ramp.
-          { kind: 'label' as const, label: 'Interventions a month' },
-          ...heatBins(attentionMax).map((b, i) => ({
-            kind: 'node' as const,
-            color: `var(--heat-${i + 1})`,
-            label: b.label,
-          })),
+          { kind: 'label', label: 'Interventions a month' },
+          ...heatBins(attentionMax).map(
+            (b, i): LegendKey => ({ kind: 'node', color: `var(--heat-${i + 1})`, label: b.label })
+          ),
         ]
       : isTreeView
         ? [
@@ -244,7 +313,7 @@ export default function CivTree({
             ...directionKeys,
           ];
   const legendCount = legend.length;
-  const hasSpotlights = legend.some((l: any) => Boolean(SPOTLIGHTS[l.label]));
+  const hasSpotlights = legend.some(l => Boolean(SPOTLIGHTS[l.label]));
 
   // The selected node has the detail panel open beside it, which says
   // everything the tooltip would, so the tooltip is for the others.
@@ -480,77 +549,7 @@ export default function CivTree({
                   <title>{termTitle(isTreeView ? 'era' : 'domain')}</title>
                   {columnLabel(d, cols[d] || [])}
                 </text>
-                {(() => {
-                  // The count under the name, drawn as well as written. A column
-                  // is a set with a size and a filled fraction; saying "Era 5"
-                  // where "1 of 5" could stand was a label where a measurement
-                  // belonged. One scale across all seven columns: the bar's
-                  // full width is the largest era, so a short bar is a small era
-                  // and not a poorly-filled one.
-                  const list = cols[d] || [];
-                  const reached = list.filter((i: Item) => i.status === 'built').length;
-                  const next = list.filter((i: Item) => i.status !== 'built' && isNext(i)).length;
-                  // What finishing the column would cost in setup time: a
-                  // planning number beside the count.
-                  const left = readableSeconds(
-                    list
-                      .filter((i: Item) => i.status !== 'built')
-                      .reduce((t: number, i: Item) => t + (Number(i.meta?.setupSeconds) || 0), 0)
-                  );
-                  const largest = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
-                  const barW = ((COL_W - 64) * list.length) / largest;
-                  const unit = list.length ? barW / list.length : 0;
-                  const bx = x + COL_W / 2 - 16 - barW / 2;
-                  const by = START_Y - 11;
-                  return (
-                    <g>
-                      <text
-                        x={x + COL_W / 2 - 16}
-                        y={START_Y - 16}
-                        textAnchor="middle"
-                        fill="var(--text-muted)"
-                        fontSize={9.5}
-                        fontWeight={500}
-                        style={{
-                          fontFamily: 'var(--font-sans)',
-                          fontVariantNumeric: 'tabular-nums',
-                        }}
-                      >
-                        {d.startsWith('era:') ? `Era ${d.slice(4)} · ` : ''}
-                        {reached} of {list.length}
-                        {left ? ` · ${left} left` : ''}
-                      </text>
-                      <rect
-                        className="fig-eras-track"
-                        x={bx}
-                        y={by}
-                        width={barW}
-                        height={3}
-                        rx={1}
-                      />
-                      {reached > 0 && (
-                        <rect
-                          className="fig-eras-reached"
-                          x={bx}
-                          y={by}
-                          width={unit * reached}
-                          height={3}
-                          rx={1}
-                        />
-                      )}
-                      {next > 0 && (
-                        <rect
-                          className="fig-eras-next"
-                          x={bx + unit * reached}
-                          y={by}
-                          width={unit * next}
-                          height={3}
-                          rx={1}
-                        />
-                      )}
-                    </g>
-                  );
-                })()}
+                <ColumnCount column={d} list={cols[d] || []} largest={largestColumn} x={x} />
               </g>
             );
           })}
@@ -1037,7 +1036,7 @@ export default function CivTree({
               stroke="var(--border)"
               strokeWidth={1}
             />
-            {legend.map((l: any, i: number) => {
+            {legend.map((l, i) => {
               // The heat scale is a ramp, so its swatches sit close together and
               // read as one object rather than as five separate keys.
               const lx =

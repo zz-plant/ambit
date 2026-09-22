@@ -23,7 +23,7 @@ export interface Connection {
   kind?: string;
 }
 
-interface OpenCodeConfig {
+export interface OpenCodeConfig {
   mcp?: Record<
     string,
     {

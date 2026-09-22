@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
 import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
-import type { Item, Connection } from '../utils/configImporter';
+import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
 import { importConfig } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import {
@@ -91,6 +91,9 @@ async function getJson<K extends keyof ApiRoutes>(path: K): Promise<ApiRoutes[K]
 }
 
 let backendProbe: Promise<boolean> | null = null;
+/** What a failed request says to the person: the error's own words, or that the network did not answer. */
+const errorMessage = (e: unknown) => (e instanceof Error && e.message) || 'Network error';
+
 /**
  * Whether there is an engine behind the page. Probed once and remembered: the
  * published demo is static files on GitHub Pages, and every optional call —
@@ -107,7 +110,7 @@ export function backendAvailable(): Promise<boolean> {
     .then(r =>
       r
         .json()
-        .then((j: any) => j?.status === 'ok')
+        .then((j: unknown) => (j as { status?: string } | null)?.status === 'ok')
         .catch(() => false)
     )
     .catch(() => false)
@@ -341,8 +344,8 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       }
       const err = (await res.json()) as { error?: string };
       return { ok: false, error: err?.error || 'Approval failed' };
-    } catch (e: any) {
-      return { ok: false, error: e?.message || 'Network error' };
+    } catch (e) {
+      return { ok: false, error: errorMessage(e) };
     }
   },
 
@@ -373,8 +376,8 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       }
       const err = (await res.json()) as { error?: string };
       return { ok: false, error: err?.error || 'Could not record the decision' };
-    } catch (e: any) {
-      return { ok: false, error: e?.message || 'Network error' };
+    } catch (e) {
+      return { ok: false, error: errorMessage(e) };
     }
   },
 
@@ -473,25 +476,27 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * file is not kept.
    */
   loadFromJSON: jsonStr => {
-    let data: any;
+    let parsed: unknown;
     try {
-      data = JSON.parse(jsonStr);
+      parsed = JSON.parse(jsonStr);
     } catch {
       return false;
     }
-    if (!data || typeof data !== 'object') return false;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+    const data = parsed as Record<string, unknown>;
 
     if (Array.isArray(data.items)) {
-      const items: Item[] = data.items.map((i: Partial<Item>) => ({
+      // An `ambit graph` export is taken at its word, with the fields an
+      // older export may lack filled in.
+      const items: Item[] = (data.items as Item[]).map(i => ({
         ...i,
         status: i.status || 'built',
         position: i.position || { x: 0, y: 0, z: 0 },
         meta: i.meta || {},
       }));
-      const connections: Connection[] = (data.connections || []).map((c: Partial<Connection>) => ({
-        ...c,
-        type: c.type || 'connects',
-      }));
+      const connections: Connection[] = ((data.connections as Connection[] | undefined) || []).map(
+        c => ({ ...c, type: c.type || 'connects' })
+      );
       set({ items, connections, loading: false, error: null, demo: false });
       return true;
     }
@@ -503,7 +508,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       k => data[k] && typeof data[k] === 'object'
     );
     if (!looksLikeConfig) return false;
-    const graph = importConfig(data);
+    const graph = importConfig(data as OpenCodeConfig);
     if (!graph.items.length) return false;
     set({ ...graph, loading: false, error: null, demo: false });
     return true;
