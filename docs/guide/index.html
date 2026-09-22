@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ambit guide: install, CLI and MCP setup</title>
+<meta name="description" content="Install Ambit, map your AI agent setup, and ask what works, what breaks and what to set up next, from the terminal or over MCP in Claude Code and OpenCode." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/guide/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/guide/" />
+<meta property="og:title" content="Ambit guide: install, CLI and MCP setup" />
+<meta property="og:description" content="Install Ambit, map your AI agent setup, and ask what works, what breaks and what to set up next, from the terminal or over MCP in Claude Code and OpenCode." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#090d16" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Ambit guide: install, CLI and MCP setup","description":"Install Ambit, map your AI agent setup, and ask what works, what breaks and what to set up next, from the terminal or over MCP in Claude Code and OpenCode.","url":"https://zz-plant.github.io/ambit/docs/guide/","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}}</script>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--fg:#e2e8f0;--muted:#94a3b8;--link:#a5b4fc;--line:#1e293b;--code:#111827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<div align="center"><h1 id="ambit"><a class="anchor" href="#ambit" aria-hidden="true" tabindex="-1">#</a>Ambit</h1>
+<p><strong>What you, your agents, and your machines can jointly do — and where your own time is going.</strong></p>
+<p><a href="https://github.com/zz-plant/ambit/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&amp;style=flat-square&amp;label=tests" alt="CI"></a>
+<a href="https://github.com/zz-plant/ambit/releases/latest"><img src="https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&amp;color=6366f1" alt="Release"></a>
+<a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&amp;logo=node.js&amp;logoColor=white" alt="Node"></a>
+<a href="https://github.com/zz-plant/ambit/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-informational?style=flat-square" alt="License: MIT"></a></p>
+<p><a href="https://zz-plant.github.io/ambit/?demo=1"><strong>Live demo</strong></a> · <a href="#what-ambit-is">What it is</a> · <a href="#get-started">Get started</a> · <a href="#ask-from-the-terminal">Terminal</a> · <a href="#connect-it-to-your-agent">Agent MCP</a> · <a href="#the-map">The map</a> · <a href="#in-practice">In practice</a> · <a href="#how-it-works">How it works</a> · <a href="/ambit/docs/faq/">FAQ</a> · <a href="/ambit/docs/deep-dive/">Deep dive</a></p>
+<br><img src="/ambit/docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: a tool is selected and its dependents listed, switching it off turns eight downstream capabilities red and two amber, a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920"><p><sub>One setup, mapped. Pick a tool and Ambit shows what depends on it; switch it off and it shows the eight things that stop working with it and the two that only lose a provider. Then which tools interrupt you most, and a change waiting on your approval.</sub></p>
+<p><code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and install nothing.</p>
+</div><hr>
+<h2 id="what-ambit-is"><a class="anchor" href="#what-ambit-is" aria-hidden="true" tabindex="-1">#</a>What Ambit is</h2>
+<p>If you use AI agents, your setup is spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials, and more than one machine. Every piece has its own config file.</p>
+<p>What they add up to — what your human-plus-agent system can actually <em>do</em> — is written down nowhere.</p>
+<p>Ambit reads those configs and builds one map out of them. Every tool, model, skill, and credential becomes a point on it; everything one of them needs in order to work becomes a line to another. That map answers questions no single config file can:</p>
+<ol>
+<li><strong>What works right now?</strong> What is set up, what is broken, and what is one dependency away.</li>
+<li><strong>What breaks downstream</strong> if a model, tool, or credential goes away.</li>
+<li><strong>What compound abilities emerge</strong> when two independent tools are combined.</li>
+<li><strong>What is worth setting up next</strong>, priced by the human attention it would save.</li>
+</ol>
+<p>You ask from the terminal. Your agents ask over MCP, mid-session, before they run into the limit — Ambit is itself an MCP server, so the thing describing your MCP servers speaks the same protocol they do. (A <em>meta-MCP server</em>, if you want the term to search for.)</p>
+<h3 id="the-words-ambit-uses"><a class="anchor" href="#the-words-ambit-uses" aria-hidden="true" tabindex="-1">#</a>The words Ambit uses</h3>
+<p>Four of them carry most of the meaning, in the terminal and on the map alike.</p>
+<ul>
+<li><strong>Capability</strong> — one thing your setup can do. Every MCP server, agent, skill, provider, model, and command in your config becomes one, as does every node of the curated tree.</li>
+<li><strong>Era</strong> — how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.</li>
+<li><strong>Reached, next step, blocked</strong> — reached means something in your config provides it. A next step is one whose prerequisites are met with nothing detected: this is the frontier, and <code>ambit goal</code> lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.</li>
+<li><strong>Required vs optional prerequisite</strong> — a required prerequisite gates the capability; an optional one strengthens it without gating. Only required ones block a node. Both are drawn, optional ones fainter. The data model and the CLI call these hard and soft.</li>
+</ul>
+<div align="center">
+<img src="/ambit/docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
+<br><sub>Filled nodes are reached · Outlined nodes are a next step · Faded nodes are blocked, with a prerequisite missing</sub>
+</div><hr>
+<h2 id="get-started"><a class="anchor" href="#get-started" aria-hidden="true" tabindex="-1">#</a>Get started</h2>
+<table>
+<thead>
+<tr>
+<th align="left">Way in</th>
+<th align="left">What it gives you</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>In the browser</strong></td>
+<td align="left"><a href="https://zz-plant.github.io/ambit/?demo=1">Open the hosted demo</a> and read an example setup, or drop your own <code>opencode.json</code> on the page and it is mapped in the tab, uploading nothing.</td>
+</tr>
+<tr>
+<td align="left"><strong>On your machine</strong></td>
+<td align="left"><code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code> reads your real agent config and prints where you stand.</td>
+</tr>
+<tr>
+<td align="left"><strong>With the map</strong></td>
+<td align="left"><code>git clone https://github.com/zz-plant/ambit.git &amp;&amp; cd ambit &amp;&amp; ./bootstrap.sh web</code> builds the graph from your own configs and serves the canvas the figures on this page show.</td>
+</tr>
+<tr>
+<td align="left"><strong>In a cloud IDE</strong></td>
+<td align="left"><a href="https://codespaces.new/zz-plant/ambit?quickstart=1"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces"></a> A full checkout with the map running, in a browser tab.</td>
+</tr>
+<tr>
+<td align="left"><strong>From your agent</strong></td>
+<td align="left">Register Ambit over MCP and the agent can ask what it is able to do before it tries. <a href="#connect-it-to-your-agent">Connect it to your agent</a> has the snippet for each client.</td>
+</tr>
+</tbody></table>
+<p>Homebrew installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux. A checkout adds the map: <code>./bootstrap.sh</code> discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and the skill directories <code>~/.agents/skills</code> and <code>~/.opencode/skills</code>, builds a local SQLite graph, and finishes by printing <code>ambit status</code>, which <a href="#ask-from-the-terminal">Ask from the terminal</a> shows against a fixture graph. It links <code>ambit</code> into <code>~/.local/bin</code> when that is on your PATH and prints the <code>ln -s</code> line otherwise; <code>--dry-run</code> shows what it would do. Codespaces runs the same checkout in a container, so the graph is the container&#39;s and nothing touches your machine.</p>
+<blockquote>
+<p><strong>Note.</strong>
+The npm package is built and ready but not yet published, so there is no <code>npx</code> path yet.</p>
+</blockquote>
+<div align="center">
+<img src="/ambit/docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
+<br><sub>My Setup is the list the map is drawn from: every server, agent, and model found on the machine, whether it is on, what its check said, and which capabilities on the map it provides</sub>
+</div><hr>
+<h2 id="ask-from-the-terminal"><a class="anchor" href="#ask-from-the-terminal" aria-hidden="true" tabindex="-1">#</a>Ask from the terminal</h2>
+<table>
+<thead>
+<tr>
+<th align="left">Command</th>
+<th align="left">What it answers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>ambit status</code></td>
+<td align="left">Environment health — what is reached, what is failing its declared check, what has a single provider, plus pending approvals</td>
+</tr>
+<tr>
+<td align="left"><code>ambit goal &lt;name&gt;</code></td>
+<td align="left">The path to unlock a capability, in order, with setup estimates</td>
+</tr>
+<tr>
+<td align="left"><code>ambit impact &lt;id&gt;</code></td>
+<td align="left">Blast radius: what breaks if this tool, model, or credential goes down</td>
+</tr>
+<tr>
+<td align="left"><code>ambit graph combos</code></td>
+<td align="left">Compound capabilities, including the ones you are one prerequisite away from</td>
+</tr>
+<tr>
+<td align="left"><code>ambit authority</code></td>
+<td align="left">Per-action permissions: what runs unattended, what needs confirmation</td>
+</tr>
+<tr>
+<td align="left"><code>ambit verify [id]</code></td>
+<td align="left">Run a capability&#39;s declared check and record whether it actually works</td>
+</tr>
+<tr>
+<td align="left"><code>ambit history [since]</code></td>
+<td align="left">How the frontier moved, separating what you acquired from what emerged</td>
+</tr>
+<tr>
+<td align="left"><code>ambit share</code></td>
+<td align="left">A self-contained HTML snapshot of the map, written locally and safe to post</td>
+</tr>
+</tbody></table>
+<p><code>ambit help</code> covers a first session; <code>ambit help --all</code> is the full surface, grouped by what you are trying to do, and <code>ambit help &lt;term&gt;</code> explains one concept.</p>
+<p>Everything above answers on a graph Ambit builds by itself. A second group (<code>attention</code>, <code>work</code>, <code>usage</code>, <code>opportunities</code>, <code>roi</code>, <code>audit</code>) prices the human cost of running the stack, and reads from a work ledger that starts empty. Those commands tell you what they need instead of returning a number, and they become useful after a few weeks of recorded runs, not on install. <a href="/ambit/docs/faq/#i-ran-ambit-attention-and-it-says-nothing-is-recorded-is-it-broken">The FAQ</a> says how to start recording them.</p>
+<p>The three console blocks below are captured from a run against a fixture graph by <code>npm run docs:examples</code>, and CI fails if they drift from what the commands actually print.</p>
+<h3 id="ambit-status--where-the-environment-stands"><a class="anchor" href="#ambit-status--where-the-environment-stands" aria-hidden="true" tabindex="-1">#</a>ambit status — where the environment stands</h3>
+<!-- example: ambit status -->
+<pre><code class="language-console">$ ambit status
+
+    summary: 39/59 capabilities reached · 9 with a single provider
+    reached: 39
+    total: 59
+    verified: 0
+    failing: 0
+    actions: 18/28 reached
+    evidence:
+        proven: 0
+        unproven: 15
+        failing: 0
+        last check: never
+        provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
+        note: configured is not working — ambit verify would turn 11 of the unproven into evidence
+    domains:
+    …
+</code></pre>
+<!-- /example --><h3 id="ambit-goal--what-it-would-take-to-reach-something"><a class="anchor" href="#ambit-goal--what-it-would-take-to-reach-something" aria-hidden="true" tabindex="-1">#</a>ambit goal — what it would take to reach something</h3>
+<!-- example: ambit goal local-embeddings -->
+<pre><code class="language-console">$ ambit goal local-embeddings
+
+    goal: Local Embeddings
+    exact: true
+    reachable: true
+    steps: 2
+    estimated setup: 25m
+    order:
+      Embeddings
+        id: combo:embeddings
+        setup seconds: 600
+        options:
+          nomic-embed via local runtime
+            setup seconds: 600
+            recurring cost: none
+            privacy: local
+    …
+</code></pre>
+<!-- /example --><h3 id="ambit-impact--what-breaks-if-this-goes-away"><a class="anchor" href="#ambit-impact--what-breaks-if-this-goes-away" aria-hidden="true" tabindex="-1">#</a>ambit impact — what breaks if this goes away</h3>
+<!-- example: ambit impact combo:local-runtime -->
+<pre><code class="language-console">$ ambit impact combo:local-runtime
+
+    capability: Local Runtime
+    decayed:
+      Local Tool Calling
+        becomes unavailable: false
+      Model Routing
+        becomes unavailable: false
+      Local Embeddings
+        becomes unavailable: false
+      Self-Hosted Stack
+        becomes unavailable: false
+      Local Typed Judgment
+        becomes unavailable: false
+    combos at risk:
+      Local Tool Calling
+    …
+</code></pre>
+<!-- /example --><h3 id="ambit-share--what-may-leave-the-graph-and-what-may-not"><a class="anchor" href="#ambit-share--what-may-leave-the-graph-and-what-may-not" aria-hidden="true" tabindex="-1">#</a>ambit share — what may leave the graph, and what may not</h3>
+<p><code>ambit share</code> builds its HTML from an allow-list — name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as &quot;a person&quot;, and <code>--redact</code> replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.</p>
+<hr>
+<h2 id="connect-it-to-your-agent"><a class="anchor" href="#connect-it-to-your-agent" aria-hidden="true" tabindex="-1">#</a>Connect it to your agent</h2>
+<p>Registering Ambit as an MCP server lets an agent inspect its own toolchain and plan around what is missing.</p>
+<p>Sixty tools, each advertised once, each answering with MCP <code>structuredContent</code> alongside the text block so an agent reads a field and never parses a string. <a href="/ambit/docs/deep-dive/#the-full-mcp-surface">The deep dive</a> names all sixty, grouped. (The <code>tt_</code> prefix from before the rename is still accepted, just no longer listed.)</p>
+<h3 id="claude-code"><a class="anchor" href="#claude-code" aria-hidden="true" tabindex="-1">#</a>Claude Code</h3>
+<pre><code class="language-bash">claude mcp add ambit -- ambit mcp
+</code></pre>
+<p>Ambit also publishes a resource, <code>ambit://briefing</code>, which a client reads on
+connect: what is reached and proven, what is configured but failing, what is
+waiting on you, what blocked work in the last week, and what is worth reaching
+next. It is capped at about 1,200 tokens. To put the same thing at the top of
+every session yourself, add a hook to <code>~/.claude/settings.json</code>:</p>
+<pre><code class="language-json">{
+  &quot;hooks&quot;: {
+    &quot;SessionStart&quot;: [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;ambit briefing&quot; }] }]
+  }
+}
+</code></pre>
+<h3 id="opencode-configopencodeopencodejson"><a class="anchor" href="#opencode-configopencodeopencodejson" aria-hidden="true" tabindex="-1">#</a>OpenCode (<code>~/.config/opencode/opencode.json</code>)</h3>
+<pre><code class="language-json">{
+  &quot;mcp&quot;: {
+    &quot;ambit&quot;: {
+      &quot;type&quot;: &quot;local&quot;,
+      &quot;command&quot;: [&quot;ambit&quot;, &quot;mcp&quot;],
+      &quot;enabled&quot;: true
+    }
+  }
+}
+</code></pre>
+<p>Both assume <code>ambit</code> is on your PATH. Homebrew puts it there; from a checkout, <code>bootstrap.sh</code> links it into <code>~/.local/bin</code> and prints the <code>ln -s</code> line if that directory is not on your PATH. Failing both, use the absolute path to <code>cli.js</code>.</p>
+<p>An agent can read the map, query what a goal is missing, and <strong>propose</strong> a configuration change. Applying one always requires your approval.</p>
+<h3 id="the-one-line-for-your-agents-instructions"><a class="anchor" href="#the-one-line-for-your-agents-instructions" aria-hidden="true" tabindex="-1">#</a>The one line for your agent&#39;s instructions</h3>
+<p>The habit worth teaching is a single question before an unfamiliar tool, because the alternative is the retry loop that spends your attention:</p>
+<blockquote>
+<p>Before running a tool you have not used this session, call <code>ambit_can</code> with
+the capability. On <code>yes</code>, act. On <code>ask</code>, put it to the person. On <code>no</code>, it has
+already recorded the deficit, so do not retry it under another name.</p>
+</blockquote>
+<p>It answers from the graph without probing anything, and a refusal files itself as a deficit, which is what makes the third occurrence show up as infrastructure that should exist instead of a wall to work around again.</p>
+<p>Here is the whole loop from a live run. <code>node --experimental-strip-types scripts/demo-agent-loop.ts</code> re-records it, and every frame is real engine output — a failing loop fails the recording instead of rendering a fiction.</p>
+<div align="center">
+<img src="/ambit/docs/assets/agent-loop-demo.gif" alt="An agent hits a missing capability, asks Ambit why over MCP, and drafts a proposal; a person approves and applies it; the frontier moves and Local Embeddings unlocks through composition" width="920">
+<br><sub>Agent: hits a block, records the deficit, asks <code>goal</code>, drafts a proposal · Human: <code>approve</code>, <code>apply</code> · One config patch, four capabilities.</sub>
+</div><h3 id="what-the-exchange-looks-like"><a class="anchor" href="#what-the-exchange-looks-like" aria-hidden="true" tabindex="-1">#</a>What the exchange looks like</h3>
+<pre><code class="language-mermaid">sequenceDiagram
+    autonumber
+    actor Developer
+    participant Agent as AI Agent (Claude Code / OpenCode)
+    participant Ambit as Ambit Engine (MCP)
+    participant Host as Local Host
+
+    Developer-&gt;&gt;Agent: &quot;Deploy the billing hotfix to staging&quot;
+    Agent-&gt;&gt;Ambit: ambit_authority(&quot;act:continuous-delivery/deploy_staging&quot;)
+    Note over Ambit,Agent: Checks prerequisites and authority contracts
+    Ambit--&gt;&gt;Agent: { status: &quot;blocked&quot;, authority: &quot;confirm&quot;, missing: [&quot;credential:k8s-kubeconfig&quot;] }
+    Agent-&gt;&gt;Ambit: ambit_propose(&quot;deploy-staging&quot;)
+    Ambit--&gt;&gt;Agent: { proposal_id: &quot;prop-staging-42&quot;, applicable: true }
+    Agent-&gt;&gt;Developer: &quot;I need the staging kubeconfig and your confirmation: ambit approve prop-staging-42&quot;
+    Developer-&gt;&gt;Ambit: ambit approve prop-staging-42 (mints a signed artifact)
+    Developer-&gt;&gt;Host: ambit apply prop-staging-42 (applies and verifies)
+</code></pre>
+<hr>
+<h2 id="the-map"><a class="anchor" href="#the-map" aria-hidden="true" tabindex="-1">#</a>The map</h2>
+<p>The web UI (<code>./bootstrap.sh web</code>) is three views over the same graph the CLI reads. The <strong>map</strong> is the curated tree with your position on it. <strong>My Setup</strong> is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides; its Briefing tab is the prose an agent is given at connect, so what the agent believes about the machine is inspectable. <strong>Time &amp; cost</strong> is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. Search (<kbd>/</kbd>) finds anything by name and opens it where it lives.</p>
+<p>Select a node and its edges are drawn apart: what it needs in teal, what it enables in indigo, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take. The header counts the map&#39;s nodes by state, and each count highlights its nodes, the way the legend keys do.</p>
+<p>The <strong>Docs</strong> button defines every term on the canvas; <a href="#the-words-ambit-uses">the four above</a> cover most of it.</p>
+<h3 id="two-lenses-on-the-canvas"><a class="anchor" href="#two-lenses-on-the-canvas" aria-hidden="true" tabindex="-1">#</a>Two lenses on the canvas</h3>
+<p>The switch sits over the map, top right. Press <kbd>1</kbd> or <kbd>2</kbd> to change it from the keyboard.</p>
+<table>
+<thead>
+<tr>
+<th align="left">Lens</th>
+<th align="left">What it renders</th>
+<th align="left">Use it for</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Standard</strong></td>
+<td align="left">Era columns with reached, next-step and blocked nodes.</td>
+<td align="left">Reading overall progression and what is nearby.</td>
+</tr>
+<tr>
+<td align="left"><strong>Attention</strong></td>
+<td align="left">Nodes shaded by how often a person had to step in, offered once the ledger has recorded any.</td>
+<td align="left">Finding which tools keep interrupting you.</td>
+</tr>
+</tbody></table>
+<h3 id="simulation"><a class="anchor" href="#simulation" aria-hidden="true" tabindex="-1">#</a>Simulation</h3>
+<p>Select a node to open the inspector, then simulate against it. Neither mode writes anything.</p>
+<ul>
+<li><strong>Simulate an outage</strong> dims the canvas and draws the cascade: red for what stops, amber for what keeps another provider and only loses one, with the count of each.</li>
+<li><strong>Simulate unlocking</strong> acquires a locked primitive hypothetically and lights up everything that becomes reachable in green.</li>
+<li><strong>Show the gap</strong> draws what a blocked node is waiting on, every hop up, priced in setup time.</li>
+</ul>
+<h3 id="approving-proposals"><a class="anchor" href="#approving-proposals" aria-hidden="true" tabindex="-1">#</a>Approving proposals</h3>
+<p>When an agent proposes an environment change over MCP, the <strong>Proposals</strong> panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click, or records a no with the reason, which is what the next draft learns from. The same things happen from the terminal with <code>ambit approve &lt;id&gt; &lt;who&gt;</code> and <code>ambit reject &lt;id&gt; &lt;who&gt; &quot;why&quot;</code>. When you are away from the machine, <code>ambit dispatch &lt;id&gt;</code> pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.</p>
+<hr>
+<h2 id="in-practice"><a class="anchor" href="#in-practice" aria-hidden="true" tabindex="-1">#</a>In practice</h2>
+<h3 id="the-combo-you-already-almost-have"><a class="anchor" href="#the-combo-you-already-almost-have" aria-hidden="true" tabindex="-1">#</a>The combo you already almost have</h3>
+<p>You run local Postgres and Ollama, but your agent cannot do private semantic code search over your repositories.</p>
+<p><code>ambit graph combos</code> reports the gap as one step — <code>CREATE EXTENSION vector;</code> — and <code>ambit goal retrieval --simulate</code> shows what that five-minute change reaches, with no cloud API in the path.</p>
+<h3 id="an-agent-diagnosing-itself"><a class="anchor" href="#an-agent-diagnosing-itself" aria-hidden="true" tabindex="-1">#</a>An agent diagnosing itself</h3>
+<p>An agent in Claude Code is asked to deploy to staging. Left alone it runs <code>kubectl</code>, collects unauthorized errors, retries, and leaves local state worse than it found it.</p>
+<p>Calling <code>ambit_authority</code> first returns <code>authority: confirm</code> and <code>missing: staging-kubeconfig</code>. The agent stops cleanly and asks for an approval it can name.</p>
+<h3 id="rotating-a-shared-token"><a class="anchor" href="#rotating-a-shared-token" aria-hidden="true" tabindex="-1">#</a>Rotating a shared token</h3>
+<p>You are about to revoke a personal access token. Without a model of what depends on it, two background MCP tools and a scheduled sync agent fail silently some hours later.</p>
+<p><code>ambit impact credential:github/user-token</code> names the providers and capabilities standing on that one credential, which is the argument for provisioning granular tokens first.</p>
+<p>The <code>credentials</code> block that declares the sharing is in <a href="/ambit/docs/deep-dive/#what-a-node-is">the deep dive</a>. Until you write one, <code>ambit credentials</code> reports that none are declared.</p>
+<hr>
+<h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true" tabindex="-1">#</a>How it works</h2>
+<p>Discovery reads your host configs into an embedded SQLite graph. Three surfaces read that graph back out — the terminal CLI, the MCP server, and the web canvas. Discovery, verification, and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map&#39;s editor for entries that already exist, which cannot create one.</p>
+<p>Each client is read from its own standard config path, and every server stays attributed to the client that listed it. When two clients name the same server, that is one capability with two providers, not two capabilities, which is what stops Ambit from counting a single binary twice and calling the result redundancy.</p>
+<h3 id="seven-eras-and-what-follows-from-them"><a class="anchor" href="#seven-eras-and-what-follows-from-them" aria-hidden="true" tabindex="-1">#</a>Seven eras, and what follows from them</h3>
+<p>Discovered capabilities are placed into a curated tree that runs from <strong>Foundation</strong> and <strong>Model Access</strong> through <strong>Tool Use</strong>, <strong>Memory</strong>, <strong>Autonomy</strong>, and <strong>Assurance</strong> to <strong>Sovereignty</strong>. Because each capability records what it needs, Ambit works out what you can reach without taking a config file&#39;s word for it.</p>
+<p>Two things follow from that:</p>
+<ul>
+<li><strong>Combos.</strong> Higher-order abilities appear from tools that were configured separately — a vector store plus local embeddings becomes semantic retrieval, which neither config mentions.</li>
+<li><strong>Near misses.</strong> When you are one or two prerequisites from a capability that unlocks several others, that gap is worth naming. <code>ambit graph combos</code> lists them.</li>
+</ul>
+<h3 id="configured-is-not-working"><a class="anchor" href="#configured-is-not-working" aria-hidden="true" tabindex="-1">#</a>Configured is not working</h3>
+<p>Ambit keeps two properties apart, and the distinction is load-bearing:</p>
+<ul>
+<li><code>state</code> is <strong>structural</strong> — is this thing configured, and what does it depend on. This is what the frontier ledger records.</li>
+<li><code>lifecycle</code> is <strong>health</strong> — did its declared verification command actually pass. A capability can be fully configured and still <code>degraded</code> or <code>broken</code>.</li>
+</ul>
+<p>Every availability decision gates on lifecycle, not state. A broken capability is excluded from plans, simulations, goals, authority checks, and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan.</p>
+<p><code>ambit status</code> reports proven, unproven, and failing counts. The map badges each reached node: <code>✓</code> for a passing check, <code>!</code> for a failing one, nothing for configured-but-never-verified.</p>
+<h3 id="fragility-is-computed-not-guessed"><a class="anchor" href="#fragility-is-computed-not-guessed" aria-hidden="true" tabindex="-1">#</a>Fragility is computed, not guessed</h3>
+<ul>
+<li><strong>Single points of failure</strong> — capabilities with exactly one provider.</li>
+<li><strong>Bottlenecks</strong> — nodes ranked by how much sits downstream of them. The map marks the same idea on each node, as a keystone.</li>
+<li><strong>Shared credentials</strong> — providers presenting the same credential fail together, so three providers behind one token is not redundancy. This one is declared, never inferred: name the sharers in a <code>credentials</code> block and <code>ambit impact credential:...</code> will show what revoking it would end.</li>
+</ul>
+<hr>
+<h2 id="the-control-plane"><a class="anchor" href="#the-control-plane" aria-hidden="true" tabindex="-1">#</a>The control plane</h2>
+<p>Host-level agent tooling is a real attack surface, so execution goes through an interceptor and never straight to the shell. The decision is real: the DAG check, the authority evaluation, the approval artifact and the audit trail all run against your actual graph. What sits on the other side of the gate is a fixture: <code>simulatedAdapter</code> in <code>src/control_plane/proxy.ts</code> keeps its state in a JSON file, and Ambit ships no deployment integration. A real one implements the three-method <code>EnvironmentAdapter</code> in that file, and nothing above the gate changes.</p>
+<ul>
+<li><strong>Interception.</strong> Before a tool call reaches your machine, the proxy in <code>src/control_plane/proxy.ts</code> checks three things: are this capability&#39;s prerequisites in place, is it actually working, and is the caller allowed to do this. A call that fails any of them is refused — <code>AMBIT_BLOCKED_UNAUTHORIZED</code>, exit code <code>2</code> — and nothing on the machine has changed.</li>
+<li><strong>Human-in-the-loop remediation.</strong> A blocked execution drafts a structured proposal and an HMAC challenge. <code>ambit approve &lt;proposal-id&gt; &lt;person&gt;</code> mints a signed artifact that the executor verifies before any state changes. An artifact stops being valid if the proposal changed after approval, or if it has expired.</li>
+<li><strong>Tracing.</strong> Spans and structured events record DAG evaluations, missing authorizations, challenges, and verification receipts.</li>
+</ul>
+<p>A worked example — an autonomous deploy agent blocked mid-flight, then remediated — is written up in <a href="https://github.com/zz-plant/ambit/blob/main/docs/incidents/INCIDENT_TRACE_001.md"><code>docs/incidents/INCIDENT_TRACE_001.md</code></a>.</p>
+<pre><code class="language-bash">npm test                                                  # the suite behind the walkthrough
+npm run demo:incident                                     # the 90-second terminal walkthrough
+asciinema play docs/incidents/demo_intervention_trace.cast # replay the recording
+</code></pre>
+<hr>
+<h2 id="where-this-sits-in-the-stack"><a class="anchor" href="#where-this-sits-in-the-stack" aria-hidden="true" tabindex="-1">#</a>Where this sits in the stack</h2>
+<p>Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.</p>
+<table>
+<thead>
+<tr>
+<th align="left">System</th>
+<th align="center">Finds a tool</th>
+<th align="center">Knows prerequisite order</th>
+<th align="center">Tells working from configured</th>
+<th align="center">Prices human attention</th>
+<th align="center">Gates what an agent may do</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Vector tool-RAG</td>
+<td align="center">by similarity</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">–</td>
+</tr>
+<tr>
+<td align="left">Workflow state machines (LangGraph)</td>
+<td align="center">–</td>
+<td align="center">within one task</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">within one task</td>
+</tr>
+<tr>
+<td align="left">Package managers (Nix, Homebrew)</td>
+<td align="center">–</td>
+<td align="center">for binaries</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">–</td>
+</tr>
+<tr>
+<td align="left">A list of configured MCP servers</td>
+<td align="center">by name</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">–</td>
+</tr>
+<tr>
+<td align="left">Typed decision models (Jev)</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">–</td>
+<td align="center">by a probability, which text in the state can move</td>
+</tr>
+<tr>
+<td align="left"><strong>Ambit</strong></td>
+<td align="center">by what it needs</td>
+<td align="center">across the whole host</td>
+<td align="center">✓ declared checks</td>
+<td align="center">✓ work ledger</td>
+<td align="center">✓ authority contracts, signed approvals</td>
+</tr>
+</tbody></table>
+<p>Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Ambit models what those binaries add up to on this host, what it costs a person to keep them working, and what an agent may do with them.</p>
+<p>A typed decision model such as TypeSafe&#39;s <a href="https://en.wikipedia.org/wiki/Jev_(AI_model)">Jev</a> answers whether a tool call looks safe with a calibrated probability, cheaply enough to ask on every call. Injected text can move that probability, so Ambit maps Jev as a capability and never lets it decide what an agent may do. <a href="/ambit/docs/faq/#i-use-jev-where-does-it-fit">The FAQ</a> says how the two fit together.</p>
+<hr>
+<h2 id="position-in-the-revisable-delegation-loop"><a class="anchor" href="#position-in-the-revisable-delegation-loop" aria-hidden="true" tabindex="-1">#</a>Position in the revisable-delegation loop</h2>
+<p>Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds <strong>capability</strong> and <strong>authorization</strong>. A grant holds only while what it rests on does, and every narrowing is written as an append-only, hash-chained stream of <a href="https://ethotechnics.org/standards/std-07-revisable-delegation-record">STD-07 Revisable Delegation Records</a> that another Ambit environment can read as evidence and never as an instruction. <a href="/ambit/docs/deep-dive/#delegation-records">The deep dive</a> has the record kinds, the objection path, and the limits; the siblings are <a href="https://github.com/zz-plant/whether">Whether</a> (act), <a href="https://github.com/refract-org/refract">Refract</a> (discrepancy), <a href="https://nextconsensus.com">NextConsensus</a> (belief), and <a href="https://ethotechnics.org">Ethotechnics</a> (the record shape).</p>
+<hr>
+<h2 id="security-invariants"><a class="anchor" href="#security-invariants" aria-hidden="true" tabindex="-1">#</a>Security invariants</h2>
+<p>Ambit reads developer toolchains and writes to agent configs, so four properties are fixed and cannot be relaxed. <a href="/ambit/docs/security/"><code>SECURITY.md</code></a> states each in full, with what is in scope and what is not; <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#security-posture"><code>AGENTS.md</code></a> says where each is enforced.</p>
+<ol>
+<li><strong>Loopback only.</strong> The API server binds <code>127.0.0.1</code>. No LAN, no tunnel.</li>
+<li><strong>Origin allowlist.</strong> A request with a non-local <code>Origin</code> is rejected with 403 <em>before</em> routing, because a simple request skips preflight and response headers alone would not stop it.</li>
+<li><strong>No entry creation over HTTP.</strong> The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.</li>
+<li><strong>No egress you did not type.</strong> The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket at all (<code>notify</code>, <code>notify-approvals</code>, <code>dispatch</code>, <code>incidents</code>, and <code>goal --judge</code>). The first four each need a target you name, and the last refuses any host but this machine. <a href="/ambit/docs/faq/#does-anything-leave-my-machine">The FAQ</a> lists exactly what each one sends.</li>
+</ol>
+<hr>
+<h2 id="documentation"><a class="anchor" href="#documentation" aria-hidden="true" tabindex="-1">#</a>Documentation</h2>
+<ul>
+<li><a href="/ambit/docs/faq/">FAQ</a> — what needs installing, what leaves the machine, why the attention commands are empty on day one.</li>
+<li><a href="/ambit/docs/deep-dive/">Deep dive</a> — the reference for the model under everything above.</li>
+<li><a href="/ambit/docs/security/">Security</a> · <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md">Agent invariants</a> · <a href="https://github.com/zz-plant/ambit/blob/main/SUPPORT.md">Support</a> · <a href="/ambit/docs/contributing/">Contributing</a> — the invariants above in full, where each is enforced, where each kind of question goes, and how to send a change.</li>
+<li><a href="/ambit/docs/">Everything else</a> — the argument, the theory, the design notes, the changelog, the incident traces.</li>
+<li><a href="https://zz-plant.github.io/ambit/llms.txt"><code>llms.txt</code></a> — the project in one page, for an agent that is deciding whether to recommend it.</li>
+</ul>
+<hr>
+<h2 id="contributing"><a class="anchor" href="#contributing" aria-hidden="true" tabindex="-1">#</a>Contributing</h2>
+<p>New capability models, runtime adapters, visualization work, and edge-case reports are all welcome. <a href="/ambit/docs/contributing/">CONTRIBUTING.md</a> gets you from a clone to a passing pull request and <a href="/ambit/docs/contributing/#the-checks-ci-runs">lists every check CI runs</a>, documentation included: the console blocks above are checked against a fresh run, and the prose against a corpus ceiling (<a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#rules">AGENTS.md rule 17</a>).</p>
+<hr>
+<h2 id="support-the-project"><a class="anchor" href="#support-the-project" aria-hidden="true" tabindex="-1">#</a>Support the project</h2>
+<p>Ambit is a personal project. If it answered a question your config files could not, <a href="https://github.com/zz-plant/ambit/stargazers">a star</a> is how the next person with the same stack finds it, and <a href="https://github.com/zz-plant/ambit/releases">the release notes</a> explain each change.</p>
+<ul>
+<li>Post an <code>ambit share --redact</code> snapshot of your own map. The file names nothing on your machine, and every real graph is an argument the demo cannot make.</li>
+<li>Report the runtime it does not read yet, or the capability it models wrong. Both are <a href="https://github.com/zz-plant/ambit/issues/new/choose">issue templates</a>.</li>
+<li>Citing it in writing? <a href="https://github.com/zz-plant/ambit/blob/main/CITATION.cff"><code>CITATION.cff</code></a> is what GitHub&#39;s <em>Cite this repository</em> button reads.</li>
+</ul>
+<hr>
+<h2 id="license"><a class="anchor" href="#license" aria-hidden="true" tabindex="-1">#</a>License</h2>
+<p><a href="https://github.com/zz-plant/ambit/blob/main/LICENSE">MIT</a> © Kanav Jain</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/README.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>

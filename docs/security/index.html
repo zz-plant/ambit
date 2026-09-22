@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ambit security invariants</title>
+<meta name="description" content="Ambit's security invariants: loopback only, an origin allowlist, no config entry created over HTTP, and no network traffic you did not type." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/security/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/security/" />
+<meta property="og:title" content="Ambit security invariants" />
+<meta property="og:description" content="Ambit's security invariants: loopback only, an origin allowlist, no config entry created over HTTP, and no network traffic you did not type." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#090d16" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Ambit security invariants","description":"Ambit's security invariants: loopback only, an origin allowlist, no config entry created over HTTP, and no network traffic you did not type.","url":"https://zz-plant.github.io/ambit/docs/security/","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}}</script>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--fg:#e2e8f0;--muted:#94a3b8;--link:#a5b4fc;--line:#1e293b;--code:#111827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="security"><a class="anchor" href="#security" aria-hidden="true" tabindex="-1">#</a>Security</h1>
+<h2 id="reporting"><a class="anchor" href="#reporting" aria-hidden="true" tabindex="-1">#</a>Reporting</h2>
+<p>Report vulnerabilities privately through GitHub: <strong><a href="https://github.com/zz-plant/ambit/security/advisories/new">Security → Report a vulnerability</a></strong>. Private reporting is enabled on this repository. Please do not open a public issue for anything exploitable.</p>
+<p>Ambit is a personal project, not a staffed one — expect a first response in days rather than hours.</p>
+<h2 id="what-is-worth-reporting"><a class="anchor" href="#what-is-worth-reporting" aria-hidden="true" tabindex="-1">#</a>What is worth reporting</h2>
+<p>Ambit reads your agent configuration and, through the visualizer, writes back to it. Four invariants hold that surface, and a break in any of the four is a vulnerability. <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#security-posture">AGENTS.md</a> says where each of the four is enforced in code.</p>
+<ul>
+<li><strong>Loopback only.</strong> The API server binds <code>127.0.0.1</code>. Nothing on your LAN and nothing through a tunnel can reach it, and any path that widens that bind is in scope.</li>
+<li><strong>Origin allowlist.</strong> A request with a non-local <code>Origin</code> is rejected with 403 <em>before routing</em>. CORS headers alone would be insufficient, because a simple request skips preflight and reaches the handler regardless. Anything that lets a page you visit reach the API is in scope.</li>
+<li><strong>No entry creation over HTTP.</strong> An MCP entry carries a command your agent runtime executes, so creating one over HTTP would be remote code execution. The API can toggle an existing MCP server&#39;s <code>enabled</code>, edit an existing agent&#39;s <code>description</code> or <code>model</code>, and edit an existing command&#39;s <code>description</code>; adding a server produces a snippet you paste yourself. Any path that turns an HTTP request into a new executable config entry is in scope.</li>
+<li><strong>No egress you did not type.</strong> The graph is a local SQLite file and there is no telemetry. The only outbound calls in the engine are <code>ambit notify</code> and <code>ambit notify-approvals</code>, each of which needs a topic argument before it sends anything; <code>ambit dispatch</code> (and <code>propose</code>/<code>approve</code> with <code>--dispatch</code>), which needs a webhook URL from <code>--to</code> or <code>AMBIT_APPROVAL_WEBHOOK</code> and sends one proposal&#39;s summary or signed artifact, never a command; <code>ambit incidents</code>, which probes the service URLs your own manifest names with an empty GET; and <code>ambit goal --judge</code>, which sends the goal you typed to a judgment model on this machine and refuses any URL whose host is not <code>127.0.0.1</code>, <code>localhost</code> or <code>[::1]</code>, or that carries credentials. The server reads the local Docker socket when one exists, over a unix socket and read-only; that is not egress, and it never starts or stops anything. Any other path that moves the graph off the machine is in scope, and an exfiltration path is high severity.</li>
+</ul>
+<p>Also in scope: anything that causes the engine to execute content from a scanned configuration or infrastructure manifest.</p>
+<h2 id="what-is-not"><a class="anchor" href="#what-is-not" aria-hidden="true" tabindex="-1">#</a>What is not</h2>
+<ul>
+<li>The declared verification checks run commands from the capability model by design. That model is code in this repository; changing it is equivalent to changing any other source file.</li>
+<li><code>ambit apply &lt;id&gt;</code> and the visualizer&#39;s config editing modify your configuration on purpose, writing a <code>.bak</code> first.</li>
+<li>Findings against a fork&#39;s own capability model, or against a configuration you supplied yourself, are not vulnerabilities in Ambit.</li>
+</ul>
+<h2 id="where-your-data-is"><a class="anchor" href="#where-your-data-is" aria-hidden="true" tabindex="-1">#</a>Where your data is</h2>
+<p>The graph is a local SQLite file whose path <code>ambit where</code> prints, and it describes your machines, your credentials-adjacent tooling, and your network reach. <code>ambit graph</code> and <code>ambit status</code> describe your machine too, so redact before pasting either into a report; <a href="/ambit/docs/faq/#does-anything-leave-my-machine">the FAQ</a> lists the commands that can move data and what each one sends.</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/SECURITY.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>

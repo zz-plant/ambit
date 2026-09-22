@@ -3,31 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ambit — a map of what you, your agents, and your machines can do</title>
-    <meta name="description" content="What you, your agents, and your machines can jointly do — and where your own time is going. Ambit reads your agent configs into one capability map, answers from the terminal, and answers your agents over MCP." />
+    <title>Ambit: capability map and MCP server for AI agent setups</title>
+    <meta name="description" content="See what your AI agent setup can do. Ambit maps Claude Code, Cursor, OpenCode and other MCP configs into one capability graph you query from the terminal." />
     <link rel="canonical" href="https://zz-plant.github.io/ambit/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://zz-plant.github.io/ambit/" />
-    <meta property="og:title" content="Ambit" />
+    <meta property="og:title" content="Ambit: a capability map for AI agent setups" />
     <meta property="og:description" content="What you, your agents, and your machines can jointly do — and where your own time is going." />
     <meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content="Ambit: what you, your agents, and your machines can jointly do" />
     <meta property="og:site_name" content="Ambit" />
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:creator" content="@zz_plant" />
-    <meta name="twitter:title" content="Ambit" />
+    <meta name="twitter:title" content="Ambit: a capability map for AI agent setups" />
     <meta name="twitter:description" content="What you, your agents, and your machines can jointly do — and where your own time is going." />
     <meta name="twitter:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
 
     <meta name="theme-color" content="#090d16" />
+    <script>document.documentElement.classList.add('js')</script>
+    <style>.js .static-intro{display:none}</style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <!-- Loaded without blocking the first paint. `display=optional` uses the
+         font only if it arrives almost at once and otherwise keeps the system
+         fallback for the visit, so text never re-flows under the reader. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=optional" onload="this.onload=null;this.rel='stylesheet'" />
     <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/ambit/apple-touch-icon.png" />
     <link rel="alternate" type="text/plain" href="/ambit/llms.txt" title="Ambit for agents (llms.txt)" />
@@ -47,22 +53,51 @@
       },
       "description": "What you, your agents, and your machines can jointly do — and where your own time is going. A capability graph for agent environments, readable from the terminal and over MCP.",
       "url": "https://zz-plant.github.io/ambit/",
-      "softwareVersion": "latest",
-      "license": "https://github.com/zz-plant/ambit/blob/main/LICENSE"
+      "softwareVersion": "0.4.1",
+      "license": "https://github.com/zz-plant/ambit/blob/main/LICENSE",
+      "image": "https://zz-plant.github.io/ambit/social-preview.png",
+      "author": { "@type": "Person", "name": "Kanav Jain" },
+      "codeRepository": "https://github.com/zz-plant/ambit",
+      "downloadUrl": "https://github.com/zz-plant/ambit/releases/latest",
+      "installUrl": "https://zz-plant.github.io/ambit/docs/guide/#get-started",
+      "softwareHelp": "https://zz-plant.github.io/ambit/docs/faq/",
+      "sameAs": ["https://github.com/zz-plant/ambit"]
     }
     </script>
-    <script type="module" crossorigin src="/ambit/assets/index-BMRx85M8.js"></script>
+    <script type="module" crossorigin src="/ambit/assets/index-BF_5zVrA.js"></script>
     <link rel="modulepreload" crossorigin href="/ambit/assets/rolldown-runtime-CbXtAM7H.js">
     <link rel="modulepreload" crossorigin href="/ambit/assets/react-CPYPbbnH.js">
-    <link rel="stylesheet" crossorigin href="/ambit/assets/index-CZ6kBWjH.css">
+    <link rel="stylesheet" crossorigin href="/ambit/assets/index-DvUkAxSF.css">
   </head>
   <body>
-    <noscript>
-      <div style="padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #090d16; color: #f8fafc;">
-        <h1>Ambit</h1>
-        <p>The map needs JavaScript. The <a href="https://github.com/zz-plant/ambit" style="color: #818cf8;">repository</a> has the terminal and MCP surfaces, which do not.</p>
-      </div>
-    </noscript>
-    <div id="root"></div>
+    <!-- What a reader without JavaScript, and a crawler that does not run it,
+         can read: the same claim the welcome screen makes, in text, with
+         links into the docs. React replaces it when the app mounts, and the
+         `js` class hides it until then, so a browser drawing the app never
+         shows it. -->
+    <div id="root">
+      <main class="static-intro" style="max-width: 720px; margin: 0 auto; padding: 32px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; background: #090d16; color: #e2e8f0;">
+        <h1>Ambit: what you, your agents, and your machines can jointly do</h1>
+        <p>If you use AI agents, your setup is spread across LLM providers, MCP servers, local CLI tools, skills, credentials, and more than one machine. Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop and Codex CLI and builds one capability graph out of them.</p>
+        <h2>What it answers</h2>
+        <ul>
+          <li>What works right now, what is broken, and what is one dependency away.</li>
+          <li>What breaks downstream if a model, MCP server, tool or credential goes away.</li>
+          <li>What compound abilities emerge when two tools are combined.</li>
+          <li>What is worth setting up next, priced by the human attention it would save.</li>
+        </ul>
+        <p>You ask from the terminal. Your agents ask over MCP: Ambit is itself an MCP server, with sixty tools and an approval step a person signs before any configuration changes. Everything stays in a local SQLite file.</p>
+        <p>The interactive map needs JavaScript. Read about it instead:</p>
+        <ul>
+          <li><a href="?demo=1" style="color: #a5b4fc;">Live demo</a>, the map on example data</li>
+          <li><a href="docs/guide/" style="color: #a5b4fc;">Guide</a>: install, the CLI, and connecting it to Claude Code or OpenCode</li>
+          <li><a href="docs/faq/" style="color: #a5b4fc;">FAQ</a>: what it reads, and what leaves your machine</li>
+          <li><a href="docs/deep-dive/" style="color: #a5b4fc;">Reference</a>: the model and every MCP tool</li>
+          <li><a href="docs/jev/" style="color: #a5b4fc;">Ambit and Jev</a>: typed judgment on the capability map</li>
+          <li><a href="docs/" style="color: #a5b4fc;">All documentation</a></li>
+          <li><a href="https://github.com/zz-plant/ambit" style="color: #a5b4fc;">Source on GitHub</a>, MIT licensed</li>
+        </ul>
+      </main>
+    </div>
   </body>
 </html>

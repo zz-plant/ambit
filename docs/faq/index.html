@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ambit FAQ</title>
+<meta name="description" content="Short answers about Ambit: which agent runtimes it reads, what leaves your machine, how an agent changes config, Jev, and why attention reports start empty." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/faq/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/faq/" />
+<meta property="og:title" content="Ambit FAQ" />
+<meta property="og:description" content="Short answers about Ambit: which agent runtimes it reads, what leaves your machine, how an agent changes config, Jev, and why attention reports start empty." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#090d16" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Ambit FAQ","description":"Short answers about Ambit: which agent runtimes it reads, what leaves your machine, how an agent changes config, Jev, and why attention reports start empty.","url":"https://zz-plant.github.io/ambit/docs/faq/","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}}</script>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--fg:#e2e8f0;--muted:#94a3b8;--link:#a5b4fc;--line:#1e293b;--code:#111827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="faq"><a class="anchor" href="#faq" aria-hidden="true" tabindex="-1">#</a>FAQ</h1>
+<p>Short answers, with a pointer to the longer one where there is one. Terms are defined in <a href="/ambit/docs/guide/#the-words-ambit-uses">the README</a>, and <code>ambit help &lt;term&gt;</code> looks any of them up from the terminal.</p>
+<h2 id="is-this-for-me"><a class="anchor" href="#is-this-for-me" aria-hidden="true" tabindex="-1">#</a>Is this for me</h2>
+<h3 id="how-is-this-different-from-listing-my-mcp-servers"><a class="anchor" href="#how-is-this-different-from-listing-my-mcp-servers" aria-hidden="true" tabindex="-1">#</a>How is this different from listing my MCP servers?</h3>
+<p>A list shows what is configured, one server at a time. Ambit records what each capability <em>needs</em>, so it can answer the questions a list cannot: what breaks downstream if this credential is revoked, which capability you are one prerequisite away from, and which tools interrupt you most. The <a href="/ambit/docs/guide/#where-this-sits-in-the-stack">comparison table</a> in the README places it next to tool-RAG, workflow graphs, and package managers.</p>
+<h3 id="do-i-need-claude-code-for-this"><a class="anchor" href="#do-i-need-claude-code-for-this" aria-hidden="true" tabindex="-1">#</a>Do I need Claude Code for this?</h3>
+<p>No. Ambit reads OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, and Codex CLI from each one&#39;s standard config path, plus the skill directories <code>~/.agents/skills</code> and <code>~/.opencode/skills</code>. A server that two clients both list is one capability with two providers, not two capabilities. Adding a reader for another client is one of the most useful contributions; <a href="/ambit/docs/contributing/">CONTRIBUTING.md</a> points at where they live.</p>
+<h3 id="i-use-jev-where-does-it-fit"><a class="anchor" href="#i-use-jev-where-does-it-fit" aria-hidden="true" tabindex="-1">#</a>I use Jev. Where does it fit?</h3>
+<p>Ambit maps TypeSafe&#39;s Jev as <strong>Typed Judgment</strong>, in the Model Access era, and finds it however it arrives: as one of its MCP servers, as TypeSafe listed as a provider, or as an open clone that serves the same API. A clone such as Kev or LitJev running on your own hardware also reaches <strong>Local Typed Judgment</strong> in Sovereignty. That difference matters because the hosted API may keep requests for a while unless you have a zero-retention agreement, and a local clone keeps the state it judges on your machine. <code>ambit verify combo:local-typed-judgment</code> asks the clone one trivial question on this machine and records whether it answered; it never contacts the hosted API. A clone can also route goals the tree&#39;s words do not cover: <code>ambit goal &quot;triage incoming bug reports&quot; --judge</code> puts the sentence to it as a Choice over the tree, and prints the likeliest capability with its probability as a suggestion. It writes nothing.</p>
+<p>Use Jev to decide what to try, and <code>ambit_can</code> to decide whether it may run. Jev returns a probability, and text inside the state it reads can move that probability. In one published test, injected text dropped Jev&#39;s probability of blocking <code>rm -rf ~/.ssh</code> from 0.76 to 0.48. Ambit&#39;s answer to whether an action may run comes from a grant a person set, so nothing an agent reads can widen it.</p>
+<h2 id="installing-and-running"><a class="anchor" href="#installing-and-running" aria-hidden="true" tabindex="-1">#</a>Installing and running</h2>
+<h3 id="what-do-i-need-installed"><a class="anchor" href="#what-do-i-need-installed" aria-hidden="true" tabindex="-1">#</a>What do I need installed?</h3>
+<p>Node 22.18 or newer, and nothing else. The engine, the CLI, the API server, and the test runner all use <code>node:sqlite</code>; the map is Vite, which runs on Node too. Python is only needed for <code>npm run demo:incident</code>, the terminal walkthrough.</p>
+<h3 id="can-i-npx-it"><a class="anchor" href="#can-i-npx-it" aria-hidden="true" tabindex="-1">#</a>Can I <code>npx</code> it?</h3>
+<p>Not yet. The npm package is built and ready but not published. Until it is, use one of:</p>
+<pre><code class="language-bash">brew install zz-plant/tap/ambit                                  # CLI and engine
+git clone https://github.com/zz-plant/ambit.git &amp;&amp; cd ambit &amp;&amp; ./bootstrap.sh   # everything, including the map
+</code></pre>
+<h3 id="how-do-i-reset-the-graph"><a class="anchor" href="#how-do-i-reset-the-graph" aria-hidden="true" tabindex="-1">#</a>How do I reset the graph?</h3>
+<p>Delete the database file <code>ambit where</code> names and run <code>./bootstrap.sh</code> (or <code>ambit seed</code>) again. Discovery is idempotent, and <code>*.db</code> is gitignored so a checkout never commits one.</p>
+<h2 id="what-it-touches"><a class="anchor" href="#what-it-touches" aria-hidden="true" tabindex="-1">#</a>What it touches</h2>
+<h3 id="does-anything-leave-my-machine"><a class="anchor" href="#does-anything-leave-my-machine" aria-hidden="true" tabindex="-1">#</a>Does anything leave my machine?</h3>
+<p>Not unless you ask it to. The graph is a local SQLite file (<code>ambit where</code> prints its path), there is no telemetry, and the API server binds loopback only. Five commands are the ones to check if you are auditing egress.</p>
+<table>
+<thead>
+<tr>
+<th align="left">Command</th>
+<th align="left">What it sends</th>
+<th align="left">Where it goes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>ambit notify &lt;topic&gt;</code></td>
+<td align="left">The attention digest: which capabilities interrupted you, how often, and the suggested fix for each.</td>
+<td align="left">One HTTP POST to <a href="https://ntfy.sh">ntfy</a>, or to the server you name in <code>NTFY_SERVER</code>.</td>
+</tr>
+<tr>
+<td align="left"><code>ambit notify-approvals &lt;topic&gt;</code></td>
+<td align="left">Proposals waiting to be applied, by id and goal; and unapproved drafts, each with its id, goal, cost, recurring billing, and up to three capabilities it would unlock.</td>
+<td align="left">The same POST.</td>
+</tr>
+<tr>
+<td align="left"><code>ambit dispatch &lt;id&gt;</code> (and <code>propose</code>/<code>approve</code> with <code>--dispatch</code>)</td>
+<td align="left">One proposal: its id, goal, cost and what it unlocks, with the approve and reject commands; once approved, the signed artifact too. Never a command to run.</td>
+<td align="left">One POST to the URL in <code>AMBIT_APPROVAL_WEBHOOK</code> or <code>--to</code>, in Slack, Discord, Telegram, ntfy or plain JSON shape. Nothing is sent without one.</td>
+</tr>
+<tr>
+<td align="left"><code>ambit incidents</code></td>
+<td align="left">Nothing. It sends an empty GET to each service URL named in your infrastructure manifest (<code>$INFRA_MANIFEST</code>, or <code>~/.config/opencode/infrastructure.json</code>), to see which are answering.</td>
+<td align="left">Those hosts, and nowhere else.</td>
+</tr>
+<tr>
+<td align="left"><code>ambit goal &quot;&lt;sentence&gt;&quot; --judge</code></td>
+<td align="left">The sentence you typed, and the name and one-line description of every node in the curated tree, as one Choice question. Only when no goal phrase in the tree matches it.</td>
+<td align="left">One POST to a judgment model on this machine: <code>--judge=&lt;url&gt;</code>, <code>AMBIT_JUDGE_URL</code>, or Kev&#39;s default <code>http://127.0.0.1:8009</code>. Any other host is refused before anything is sent.</td>
+</tr>
+<tr>
+<td align="left"><code>ambit share [--redact]</code></td>
+<td align="left">Nothing. It writes an HTML file you send yourself.</td>
+<td align="left">Your disk.</td>
+</tr>
+</tbody></table>
+<p>Neither notify command sends anything without a topic. An ntfy topic is readable by anyone who knows its name, so pick one you would not guess. The share file is built from an allow-list; <a href="/ambit/docs/guide/#ambit-share--what-may-leave-the-graph-and-what-may-not"><code>ambit share</code></a> in the README says what may enter it. <a href="/ambit/docs/security/">SECURITY.md</a> lists the invariants.</p>
+<h3 id="what-does-ambit-store-about-my-machine"><a class="anchor" href="#what-does-ambit-store-about-my-machine" aria-hidden="true" tabindex="-1">#</a>What does Ambit store about my machine?</h3>
+<p>Names and structure. A credential is a node you declared in a <code>credentials</code> block, holding a name and a note; the schema has no column a secret could be written to, and discovery never reads one. The one <code>command</code> column in the database belongs to <code>declared_checks</code>, which holds a check a skill registered for itself, never anything read from your config. Discovery reads your config files and writes only the database. Writing back to one takes a person, which is the next answer.</p>
+<h3 id="can-an-agent-change-my-configuration-through-ambit"><a class="anchor" href="#can-an-agent-change-my-configuration-through-ambit" aria-hidden="true" tabindex="-1">#</a>Can an agent change my configuration through Ambit?</h3>
+<p>Not on its own. An agent can read the graph, ask what a goal is missing, and <em>propose</em> a change over MCP. Approving and applying are not MCP tools. They run from the terminal or the map, by a person, and <code>ambit apply</code> writes a <code>.bak</code> beside any file it edits. The map also has a direct editor for entries that already exist, such as switching an MCP server off, which writes to the config on a person&#39;s click without a proposal; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.</p>
+<h3 id="where-do-i-report-a-security-problem"><a class="anchor" href="#where-do-i-report-a-security-problem" aria-hidden="true" tabindex="-1">#</a>Where do I report a security problem?</h3>
+<p>Privately, through <a href="https://github.com/zz-plant/ambit/security/advisories/new">GitHub security advisories</a>. Anything that lets a web page reach the local API, turns an HTTP request into a new executable config entry, or moves the graph off the machine is in scope, and an exfiltration path is high severity. <a href="/ambit/docs/security/">SECURITY.md</a> has the full scope.</p>
+<h2 id="reading-what-it-tells-you"><a class="anchor" href="#reading-what-it-tells-you" aria-hidden="true" tabindex="-1">#</a>Reading what it tells you</h2>
+<h3 id="i-ran-ambit-attention-and-it-says-nothing-is-recorded-is-it-broken"><a class="anchor" href="#i-ran-ambit-attention-and-it-says-nothing-is-recorded-is-it-broken" aria-hidden="true" tabindex="-1">#</a>I ran <code>ambit attention</code> and it says nothing is recorded. Is it broken?</h3>
+<p>No. <code>attention</code>, <code>work</code>, <code>usage</code>, <code>opportunities</code>, <code>roi</code>, and <code>audit</code> price the human cost of running your stack, and they read from a work ledger that starts empty. They become useful after a few weeks of recorded runs. Copying <code>plugins/ambit-telemetry.js</code> into <code>~/.config/opencode/plugins/</code> records every tool execution and permission prompt from OpenCode sessions; <a href="/ambit/docs/deep-dive/#the-work-ledger">the deep dive</a> covers the ledger.</p>
+<h3 id="what-is-the-difference-between-reached-and-verified"><a class="anchor" href="#what-is-the-difference-between-reached-and-verified" aria-hidden="true" tabindex="-1">#</a>What is the difference between &quot;reached&quot; and &quot;verified&quot;?</h3>
+<p>Reached is structural: something in your config provides the capability, and its prerequisites are met. Verified is evidence: its declared read-only check ran and passed. The database calls these <code>state</code> and <code>lifecycle</code>, and a capability can be reached and still <code>degraded</code> or <code>broken</code>, so every availability decision gates on the check. <code>ambit verify</code> runs the checks; <code>ambit status</code> reports proven, unproven, and failing counts. The README section <a href="/ambit/docs/guide/#configured-is-not-working">Configured is not working</a> is the longer argument.</p>
+<h2 id="something-else"><a class="anchor" href="#something-else" aria-hidden="true" tabindex="-1">#</a>Something else?</h2>
+<p><a href="https://github.com/zz-plant/ambit/blob/main/SUPPORT.md">SUPPORT.md</a> says where each kind of question goes.</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/docs/faq.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>

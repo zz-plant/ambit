@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Ambit roadmap and design rationale</title>
+<meta name="description" content="Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/roadmap/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/roadmap/" />
+<meta property="og:title" content="Ambit roadmap and design rationale" />
+<meta property="og:description" content="Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#090d16" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Ambit roadmap and design rationale","description":"Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks.","url":"https://zz-plant.github.io/ambit/docs/roadmap/","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}}</script>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--fg:#e2e8f0;--muted:#94a3b8;--link:#a5b4fc;--line:#1e293b;--code:#111827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="roadmap"><a class="anchor" href="#roadmap" aria-hidden="true" tabindex="-1">#</a>Roadmap</h1>
+<blockquote>
+<p><strong>Status: a design document, not a plan of record.</strong> This is a long statement of intent with no dates, no owners and nothing that can close. It reads as a roadmap and functions as an essay; anything here that is going to be built belongs in an issue, where it can be assigned and closed.</p>
+</blockquote>
+<p>Ambit today is a capability graph. It reads your configuration, places it on a curated tech tree, and answers questions about the structure: what is reached, what the next step is, what would break if a given thing disappeared.</p>
+<p>That is a model of <strong>what exists</strong>. This document describes the move to a model of <strong>what can be acquired</strong>, and the loop that closes between the two.</p>
+<p>Each section says what is built and what is not. The README describes only what runs; <a href="/ambit/docs/deep-dive/">the deep dive</a> documents the built parts in full, so a built section here keeps its rationale and does not repeat the reference. Sections are ordered by dependency, not by date.</p>
+<h2 id="the-argument"><a class="anchor" href="#the-argument" aria-hidden="true" tabindex="-1">#</a>The argument</h2>
+<blockquote>
+<p>A capability is not something configured. A capability is an action the system has evidence it can perform.</p>
+</blockquote>
+<p>Everything here follows from taking that seriously.</p>
+<p>That claim gives four layers, ordered by ambition. Each is defensible on its own; each depends on the one above it.</p>
+<table>
+<thead>
+<tr>
+<th align="left">Layer</th>
+<th align="left">What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>1 · Inventory</strong></td>
+<td align="left">discover the capabilities implicit in configuration and infrastructure, model their dependencies, costs, and failure cascades</td>
+</tr>
+<tr>
+<td align="left"><strong>2 · Assurance</strong></td>
+<td align="left">distinguish <em>configured</em> from <em>demonstrated</em> — <code>installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate</code></td>
+</tr>
+<tr>
+<td align="left"><strong>3 · Planning</strong></td>
+<td align="left">given a desired outcome, compute the capability delta and compare paths that close it</td>
+</tr>
+<tr>
+<td align="left"><strong>4 · Reflexive infrastructure</strong></td>
+<td align="left">agents use the model to improve the environment they themselves operate in</td>
+</tr>
+</tbody></table>
+<p>&quot;Reflexive infrastructure&quot; rather than &quot;self-improving&quot;: the system can inspect the conditions of its own action and propose modifications to them, and a human approves every one.</p>
+<p>All four serve a different objective function. A conventional assistant optimizes roughly:</p>
+<pre><code>utility = task_value − cost − risk
+</code></pre>
+<p>Ambit adds a fourth term and takes it seriously:</p>
+<pre><code>utility = task_value − cost − risk + λ · reusable_capability_created
+</code></pre>
+<p>That single change produces the behaviors worth having:</p>
+<ul>
+<li><em>&quot;I can do this by hand in 20 minutes, but 35 minutes spent building it as a capability makes every future instance nearly free.&quot;</em></li>
+<li><em>&quot;Don&#39;t add another service — the Postgres node already does this with pgvector.&quot;</em></li>
+<li><em>&quot;We have done this manually five times. It should be a skill.&quot;</em></li>
+<li><em>&quot;This mini PC closes four current bottlenecks at once.&quot;</em></li>
+</ul>
+<p>The objective is not a bigger graph. It is:</p>
+<blockquote>
+<p><strong>Increase the frontier of reliably achievable goals per unit of human attention, money, risk, and infrastructure.</strong></p>
+</blockquote>
+<p>And the loop that objective runs on:</p>
+<pre><code>do real work → discover friction → identify the capability deficit
+     ↑                                        │
+     │                              find the cheapest reusable fix
+     │                                        │
+     │                              human + agent decide
+     │                                        │
+     │                              build / connect / acquire
+     │                                        │
+     │                              verify it
+     │                                        │
+     └──────── more becomes possible ◄── record it in the graph
+</code></pre>
+<h2 id="status-at-a-glance"><a class="anchor" href="#status-at-a-glance" aria-hidden="true" tabindex="-1">#</a>Status at a glance</h2>
+<p>What each section still lacks is collected here and stated nowhere else, so a reader deciding whether the project is real does not have to hunt through every section for it.</p>
+<table>
+<thead>
+<tr>
+<th align="left">§</th>
+<th align="left">Section</th>
+<th align="left">Status</th>
+<th align="left">What remains</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><a href="#1-separate-capability-from-implementation--built">1</a></td>
+<td align="left">Separate capability from implementation</td>
+<td align="left">built</td>
+<td align="left"><code>resource</code> is a kind with little behind it: a model and a machine are both resources, and nothing reasons about capacity, location or contention. The half about actions carrying objects is §13&#39;s remainder.</td>
+</tr>
+<tr>
+<td align="left"><a href="#2-put-the-human-and-the-machines-in-the-graph--partly-built">2</a></td>
+<td align="left">Put the human and the machines in the graph</td>
+<td align="left">partly built</td>
+<td align="left">Cost and risk tolerance are not modeled: a preference is a word matched to an alternative&#39;s properties, not a budget or a threshold, so a plan cannot say <em>this step is not worth your attention</em> or <em>you asked not to spend more than this</em>. The infrastructure manifest is read but not probed by the engine (the server probes it for the visualizer), so a device&#39;s reachability gates nothing. The server now also reads the local Docker socket, so containers appear as live services; Tailscale nodes and GPU VRAM capacity are still authored, not probed.</td>
+</tr>
+<tr>
+<td align="left"><a href="#3-acquisition-recipes--partly-built">3</a></td>
+<td align="left">Acquisition recipes</td>
+<td align="left">partly built</td>
+<td align="left">A recipe&#39;s multi-step verification is not executable: a check is one read-only command, not a procedure with an undo.</td>
+</tr>
+<tr>
+<td align="left"><a href="#4-detection-becomes-verification--built-and-gates">4</a></td>
+<td align="left">Detection becomes verification</td>
+<td align="left">built, and gates</td>
+<td align="left">Gates on evidence: a failing check demotes, a threshold a person set promotes (§12.6), and real use counts (§13.2). The gate is consulted at every decision surface and enforced in two places, the apply path (§10) and the control plane (§15); everywhere else it is read and not obeyed, and a check whose failure flipped a capability to <code>broken</code> is re-verified by hand.</td>
+</tr>
+<tr>
+<td align="left"><a href="#5-goal--capability-delta--partly-built">5</a></td>
+<td align="left">Goal → capability delta</td>
+<td align="left">partly built</td>
+<td align="left">A goal naming no known vocabulary has no route in: <em>maintain the homelab unattended</em> reaches three known capabilities and does not synthesize <em>service health observation</em> or <em>bounded restart authority</em> out of whole cloth. Whole-strategy alternatives (broad authority, a capability-scoped MCP, a kubernetes migration) have to be authored before a goal can be offered as a choice at that grain. <code>ambit goal --judge</code> routes an unmatched goal through a typed decision model on this machine as a Choice over the tree, and prints the likeliest node with its probability; it suggests and writes nothing, and the MCP <code>ambit_goal</code> does not offer it yet.</td>
+</tr>
+<tr>
+<td align="left"><a href="#6-failure-becomes-an-input--built">6</a></td>
+<td align="left">Failure becomes an input</td>
+<td align="left">built</td>
+<td align="left">Recurrence becoming a proposal (§5, §10) is still a human step, deliberately: <code>ambit next</code> ranks the recurrences and drafts nothing until someone chooses.</td>
+</tr>
+<tr>
+<td align="left"><a href="#7-the-ledger--shipped">7</a></td>
+<td align="left">The ledger</td>
+<td align="left">shipped</td>
+<td align="left">Use is recorded and counts toward promotion, and it carries no object, so which capability was exercised <em>on what</em> is unanswered (§13.9).</td>
+</tr>
+<tr>
+<td align="left"><a href="#7b-affordance-domains--built-derived">7b</a></td>
+<td align="left">Affordance domains</td>
+<td align="left">built, derived</td>
+<td align="left">Derived from structure, not from keywords. The map draws <code>physical</code>, which is a node domain; the derived domains are not, so the map has no column for them. The era grammar is deliberately designed, and adding columns for what <code>ambit graph affordances</code> computes would be design work, not model work. The theory&#39;s <em>environment</em> term, an affordance holding in one workspace and not another, has no representation.</td>
+</tr>
+<tr>
+<td align="left"><a href="#8-a-runtime-adapter-layer--partly-built">8</a></td>
+<td align="left">A runtime adapter layer</td>
+<td align="left">partly built</td>
+<td align="left">A runtime-owned capability surface exists as an export and a reader; no runtime publishes one yet, so file-parsing is still the path that runs. Runtime adapters for emerging assistants (Cline, Roo Code, Continue, Zed) and an IDE sidebar extension embedding the AG-UI stream are unbuilt.</td>
+</tr>
+<tr>
+<td align="left"><a href="#9-authority-as-a-first-class-edge--built-and-mediates-one-thing">9</a></td>
+<td align="left">Authority as a first-class edge</td>
+<td align="left">built, and mediates one thing</td>
+<td align="left">The one place is a grant narrowing when what it rests on fails. Nothing forces a <em>runtime</em> to consult the gate.</td>
+</tr>
+<tr>
+<td align="left"><a href="#9b-the-record-it-writes-std-07--shipped">9b</a></td>
+<td align="left">The record it writes: STD-07</td>
+<td align="left">shipped</td>
+<td align="left">Nothing reads the records. Ambit is the second publisher of the shape and there is still no consumer.</td>
+</tr>
+<tr>
+<td align="left"><a href="#10-a-second-generation-mcp--partly-built">10</a></td>
+<td align="left">A second-generation MCP</td>
+<td align="left">partly built</td>
+<td align="left">A capability with no declared check applies unverified and reports that it did; refusing outright would break the acquisition path for every capability whose recipe is not a check, so it stays a report until §3&#39;s multi-step verification can back it. Nothing that changes the world is exposed over MCP: <code>ambit_simulate</code> and <code>ambit_propose</code> exist, and there is no <code>apply_step</code>, <code>request_approval</code> or <code>rollback</code>. Stdio is the only transport; HTTP/SSE and WebSocket transports, sandboxed container/WASM execution, and an authenticated CLI installer (<code>ambit install</code>) are unbuilt.</td>
+</tr>
+<tr>
+<td align="left"><a href="#11-the-visualizer-becomes-a-negotiating-surface--built-and-shipping">11</a></td>
+<td align="left">The visualizer becomes a negotiating surface</td>
+<td align="left">built and shipping</td>
+<td align="left">Only the state and run subset of AG-UI; no tool-call or reasoning events, by design. Canvas ergonomics for large graphs (light theme tokens, a minimap HUD, high-resolution SVG/PNG exports, and historical timeline playback) are unbuilt.</td>
+</tr>
+<tr>
+<td align="left"><a href="#12-the-long-running-agent--built-except-the-install">12</a></td>
+<td align="left">The long-running agent</td>
+<td align="left">built, except the install</td>
+<td align="left">Homebrew installs it (§12.9); the npm package is built and unpublished, so <code>npx</code> is not yet a path in. Out-of-band dispatch (§12.10) pushes a proposal to Slack, Discord, Telegram or ntfy; the reply still comes back through <code>ambit approve</code> on a machine holding the key, by design.</td>
+</tr>
+<tr>
+<td align="left"><a href="#13-expanding-the-ambit--built">13</a></td>
+<td align="left">Expanding the ambit</td>
+<td align="left">built</td>
+<td align="left">Authority and evidence refer to objects, and the era tree does not: <em>read repo A</em> and <em>read repo B</em> are two recorded facts and still one node. Tree overlays (<code>.ambit/techtree.json</code>) and time-bounded grants (<code>authority grant --ttl</code>) are built; an overlay node is seeded like a curated one, and an expired grant decides nothing without being rewritten, so what stood before the elevation stands after it.</td>
+</tr>
+<tr>
+<td align="left"><a href="#14-the-economic-half--partly-built">14</a></td>
+<td align="left">The economic half</td>
+<td align="left">partly built</td>
+<td align="left">The marketplace, deliberately, until observed demand fills the catalog; and the reports need weeks of recorded work before they are worth trusting. Granular token/dollar attribution per capability and local vs hosted provider arbitrage are unbuilt.</td>
+</tr>
+<tr>
+<td align="left"><a href="#15-the-control-plane--built-against-a-simulated-environment">15</a></td>
+<td align="left">The control plane</td>
+<td align="left">built, against a simulated environment</td>
+<td align="left">One real <code>EnvironmentAdapter</code> implementation, and a runtime that routes through the proxy by default. It has its own entry point and no <code>ambit</code> verb, so nothing reaches it unless a caller chooses to. Pre-execution dry-run blast radius simulation and emergency break-glass logging are unbuilt.</td>
+</tr>
+<tr>
+<td align="left"><a href="#16-federation-fleet-governance-and-team-agency--partly-built">16</a></td>
+<td align="left">Federation, fleet governance, and team agency</td>
+<td align="left">partly built</td>
+<td align="left">Multi-tenant graph synchronization, GitOps PR-driven governance, enterprise role-based access control, and compliance audit exports (SOC2) are unbuilt.</td>
+</tr>
+</tbody></table>
+<h2 id="1-separate-capability-from-implementation--built"><a class="anchor" href="#1-separate-capability-from-implementation--built" aria-hidden="true" tabindex="-1">#</a>1. Separate capability from implementation — built</h2>
+<p>A node used to conflate two things: the capability (<em>web research</em>) and the thing providing it (<em>a Tavily MCP server</em>). Splitting them was the prerequisite for almost everything else, because it lets a capability survive a change of provider and lets two providers compete to satisfy one need.</p>
+<p>Six first-class object types:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Object</th>
+<th align="left">Example</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Goal</strong></td>
+<td align="left">&quot;agents maintain my homelab unattended&quot;</td>
+</tr>
+<tr>
+<td align="left"><strong>Capability</strong></td>
+<td align="left">restart a service</td>
+</tr>
+<tr>
+<td align="left"><strong>Provider</strong></td>
+<td align="left">Proxmox MCP</td>
+</tr>
+<tr>
+<td align="left"><strong>Resource</strong></td>
+<td align="left">the NUC that runs Proxmox</td>
+</tr>
+<tr>
+<td align="left"><strong>Authority</strong></td>
+<td align="left">may restart containers, not hosts</td>
+</tr>
+<tr>
+<td align="left"><strong>Evidence</strong></td>
+<td align="left">probe restarted a test container and confirmed health</td>
+</tr>
+</tbody></table>
+<pre><code>Goal  &quot;autonomously maintain homelab&quot;
+  │ requires
+  ▼
+Capability  &quot;diagnose service failure&quot;
+  │ provided_by
+  ├──────────────┐
+  ▼              ▼
+Netdata MCP    SSH / shell
+  │              │
+  └─── runs_on ──┘
+          ▼
+     homelab node
+</code></pre>
+<p>Once providers are separate, the comparison stops being between capabilities and becomes one between <strong>ways of obtaining the same capability</strong> — the comparison that actually matters when deciding what to build, and what <code>ambit goal --paths</code> and <code>ambit catalog</code> do today.</p>
+<p>Built. Every node declares what kind of thing it is (<code>capability</code>, <code>action</code>, <code>provider</code>, <code>resource</code>, <code>actor</code>, <code>runtime</code>) and every edge declares what the relation means. Of the six object types above, three are node kinds; authority and evidence are tables of their own, and <code>goal</code> became one when §14 needed to price a goal and not only route to it.</p>
+<p>The narrow half came first: the <code>provides</code> edges existed and no analysis consulted them, so every provider was treated as though it were the only one. <code>ambit impact</code> now asks whether anything else supplies a capability before calling its loss critical — removing one of three git providers reports <code>redundant · also provided by 2</code> where it previously reported <code>critical</code> four times over, once per edge. <code>ambit status</code> lists capabilities with exactly one provider, which is fragility; <code>ambit_bottlenecks</code> over MCP ranks leverage, which is the opposite reading.</p>
+<p>Typing the edges was also a correctness fix, not tidiness. <code>providersOf</code> matched three English sentences, so an adapter phrasing one differently dropped a provider out of both analyses with nothing failing: a capability with two providers still reported as a single point of failure.</p>
+<p>Action-level capabilities are built. A tech-tree node may declare <code>contract.can</code>, and each entry becomes an <code>act:&lt;node&gt;/&lt;action&gt;</code> node conferred by the capability and carrying its own authority — so the model can now say <em>may read the repository, may not merge to its default branch</em>, which is the distinction the coarse node could not make. Ten nodes declare a contract; the rest behave exactly as before.</p>
+<p>The id rework was deliberately avoided. Every id appears in the ledger&#39;s stored snapshots, so re-iding would invalidate the history of the one component whose value is that its history is continuous. Kind is a column instead, existing databases migrate by <code>ALTER TABLE</code> and a one-time backfill, and <code>ambit status</code>, <code>ambit impact</code>, <code>ambit goal</code> and <code>ambit history</code> return byte-identical output against a graph seeded by the previous version. The cost is that an id no longer tells you what it is, and callers must read the column.</p>
+<p>Scope is checked now, not merely recorded. <code>ambit authority scope &lt;target&gt;</code> (<code>repo:owner/name</code>, <code>device:nuc</code>, <code>svc:ollama</code>) lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope is a prefix claim: <code>repo:owner/name</code> covers the repo and its branches, and a grant scoped elsewhere is named as excluded, never silently treated as covering. Scope decides as well as reporting: §9 gives the resolution rule, and §13.3 gives the grant that exercises it.</p>
+<p>Also built: <code>credential</code>, and the correction it exists for. Redundancy was counted by provider, so three things supplying one capability read as threefold redundancy — and if all three present the same token, one revocation takes them down together. Ambit called such a capability robust and, because having several providers is what kept it out of the single-point-of-failure report, excluded it by the very fact that made it fragile. A <code>uses</code> edge records what a provider authenticates with; <code>ambit status</code> lists such a capability among its spofs, <code>ambit impact</code> calls the survivors <code>nominal</code> and not <code>redundant</code>, and <code>ambit credentials</code> answers what a revocation would end. The intersection, not the union: providers holding <code>{A}</code>, <code>{A,B}</code> and <code>{B}</code> survive losing either, and reporting that as fragile would be the same error inverted.</p>
+<p>A credential node holds an identity and never a secret — there is no field one could arrive in. And because nothing <em>provides</em> a credential, the ledger&#39;s vocabulary rule could not catch it: a new node with no providers classifies as <code>gained</code>, so declaring three credentials on an unchanged machine would have read as three capabilities acquired. Credentials are excluded from the frontier by kind, which leaves every existing kind counted exactly as before and keeps a snapshot taken now comparable with one taken before they existed.</p>
+<h2 id="2-put-the-human-and-the-machines-in-the-graph--partly-built"><a class="anchor" href="#2-put-the-human-and-the-machines-in-the-graph--partly-built" aria-hidden="true" tabindex="-1">#</a>2. Put the human and the machines in the graph — partly built</h2>
+<p>The interesting unit is not the agent. It is <strong>user + agent population + infrastructure</strong>, and each brings something the others cannot.</p>
+<p>The human contributes authority, judgment, money, physical access, and the willingness to accept particular risks. Not as a profile — as an actor with capabilities and authorities, the same as any other node:</p>
+<pre><code class="language-yaml">human:kanav
+  provides: [approve-purchases, physical-machine-access, github-admin,
+             evaluate-subjective-output]
+  prefers:  [local-when-practical, minimize-recurring-cost,
+             tolerate-setup-for-compounding-benefit]
+</code></pre>
+<p>Hardware stops being &quot;some computers&quot; and becomes addressable capacity: 24GB of always-on VRAM reachable over Tailscale is <em>latent local inference, embeddings, browser workers, and batch evaluation</em> — and the graph can then observe that you already own most of what private semantic search requires.</p>
+<p>The payoff is that a plan can include the human as a step. Instead of &quot;I can&#39;t do that&quot;, the answer becomes: <em>eight of these ten steps are mine; you need to authorize the device and press the reset button; then I finish and verify the rest.</em></p>
+<p>Built: an <code>actors</code> block seeds people as nodes. <code>provides</code> becomes a capability only that person supplies; <code>authorizes</code> becomes a hard prerequisite edge, so <code>ambit goal continuous-delivery</code> reports <code>requires_person: Kanav</code> and does not present the path as autonomous. Approval is a dependency, not a policy note.</p>
+<p>Preferences are built. A person may declare how they like things done (<code>prefers: [local-when-practical, minimize-recurring-cost]</code>), stored as data and matched by <code>ambit goal</code> against the alternatives a step&#39;s acquisition actually offers. Where the plan&#39;s default choice fights a stated preference, the plan names it and points at the alternative that matches: asking Kanav to approve a hosted, recurring CI default when they prefer local and one-off reads as if there is no choice, and the plan refuses to read that way. <code>ambit goal --prefs [who]</code> lists the declarations.</p>
+<p>Machines are now capability-bearing in the engine, not only in the visualizer. <code>INFRA_MANIFEST</code> devices seed as <code>resource</code> nodes with <code>runs_on</code> edges to the services hosted on them, so <code>ambit impact device:nuc</code> answers what actually breaks when the machine disappears, and a plan can point at capacity the graph can count.</p>
+<p>Auto-probing is what keeps this honest. A static <code>INFRA_MANIFEST</code> is a reasonable seed, but machines change underneath it: containers crash, mesh networks drop routes, and memory fills. The server now reads the local Docker socket (<code>DOCKER_HOST</code>, <code>/var/run/docker.sock</code>, or the per-user socket a desktop runtime leaves) with one <code>GET /containers/json</code>, and every container lands in the infrastructure scan as a service on a <code>device:docker</code> node, running, paused or exited. No socket is a quiet absence; a socket file with a stopped engine behind it is a warning, not an error. Probing the Tailscale daemon (<code>tailscale status --json</code>) and reading available VRAM (Metal, NVIDIA SMI) would extend the same seam, and are not built.</p>
+<p>Every human act is recorded and counted. <code>ambit digest</code> measures how much of the work still runs through the person (approvals, applications, permission blocks, failed checks) and names the reducible ones: the same approval demanded repeatedly is infrastructure shaped like a person, and the report says to grant the authority once. <code>ambit notify &lt;topic&gt;</code> pushes that digest to ntfy, and only when a topic is given — the attention loop is opt-in and local-first, a single POST of the digest text. This is the first turn of &quot;repeated demands on human effort become evidence about what the system should learn to do without the human.&quot;</p>
+<h2 id="3-acquisition-recipes--partly-built"><a class="anchor" href="#3-acquisition-recipes--partly-built" aria-hidden="true" tabindex="-1">#</a>3. Acquisition recipes — partly built</h2>
+<p>The largest single addition to the data model. A node stops being documentation and becomes an installable competency:</p>
+<pre><code class="language-yaml">capability: persistent-memory
+contract:
+  can: [store_fact, retrieve_fact, forget_fact]
+requires: [durable-storage, retrieval-interface]
+acquisition:
+  alternatives: [mem0, postgres-memory, filesystem-memory]
+verification:
+  - store a random nonce
+  - restart the agent
+  - retrieve the nonce
+  - delete it, confirm deletion
+authority:
+  read: autonomous
+  write: autonomous
+  delete: confirm
+rollback:
+  - disable the MCP server
+  - restore the config backup
+</code></pre>
+<p>At that point the tech tree behaves less like a diagram and more like a package manager for agency.</p>
+<p>Built: eleven capabilities carry <code>acquisition.alternatives</code>, and <code>ambit goal</code> attaches them to each step. Alternatives, not one blessed answer, because the trade-off is rarely setup time: the hosted embedding API is three minutes against ten and costs money and a data boundary, and the plan says so.</p>
+<p>The contract is built. <code>contract.can</code> lists the actions a capability confers, ten nodes declare one, and each action is a node with its own authority: <code>ambit authority version-control</code> reports that reading the repository and committing may happen unattended and that pushing a branch and merging to the default branch may not.</p>
+<p>Built: executable verification per contract action. A contract entry may be a name or <code>{ id, verify }</code>, and <code>ambit verify act:&lt;capability&gt;/&lt;action&gt;</code> runs the action&#39;s own check against the action node. Reading a repository is a weaker claim than having read a particular repository, and the two now carry separate evidence. <code>ambit verify</code> with no argument runs every declared node check and every action check; <code>ambit verify &lt;capability&gt;</code> still answers &quot;no check declared&quot; instead of erroring.</p>
+<h2 id="4-detection-becomes-verification--built-and-gates"><a class="anchor" href="#4-detection-becomes-verification--built-and-gates" aria-hidden="true" tabindex="-1">#</a>4. Detection becomes verification — built, and gates</h2>
+<p>Today detection is regex against discovered configuration. That is a reasonable bootstrap, and it is honest about what it proves — <em>something named Ollama exists</em> — but it does not prove an agent can use Ollama to finish a task.</p>
+<p>Each capability gets a lifecycle:</p>
+<pre><code>UNKNOWN → DETECTED → CONFIGURED → VERIFIED → RELIABLE → DEGRADED → BROKEN
+</code></pre>
+<p>with verification that executes:</p>
+<pre><code>Local Tool Calling
+  detected:  a Qwen model is configured
+  verified:  model emitted a tool schema, the tool ran,
+             the result returned, the model used it
+  reliable:  47/50 fixture tasks passed
+</code></pre>
+<p>Built: nodes may declare a read-only <code>verify</code> command; <code>ambit verify</code> runs it and records the outcome in <code>session_learning</code>, which had carried the right columns since the first schema and had no writer. <code>ambit verify &lt;id&gt; --history</code> returns the history, and reliability is reported as passes over runs — one success is a weaker claim than forty-seven of fifty. Eight nodes declare a check today.</p>
+<p>Checks execute, so they live in this repository, are read-only by construction, and run only when asked. Nothing verifies on seed.</p>
+<p>The lifecycle is built and stored. <code>capabilities.lifecycle</code> holds <code>unknown</code>, <code>detected</code>, <code>configured</code>, <code>verified</code>, <code>reliable</code>, <code>degraded</code> or <code>broken</code>, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is <code>reliable</code>, one passing run is <code>verified</code>, and a check that has started failing is <code>broken</code>.</p>
+<p><code>state</code> is untouched beside it, deliberately: <code>state</code> is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore <code>broken</code> and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.</p>
+<p>Promotion on evidence is built, at the grain where it changes what happens: §12.6. A person sets a threshold on a grant once — <em>stop asking me about this after three passing checks in thirty days</em> — and the evidence decides when it takes effect. A single failing check afterwards puts the grant back, and that half needs nobody. The lifecycle itself still only moves on the evidence of its own check, which is what it should do.</p>
+<h2 id="5-goal--capability-delta--partly-built"><a class="anchor" href="#5-goal--capability-delta--partly-built" aria-hidden="true" tabindex="-1">#</a>5. Goal → capability delta — partly built</h2>
+<p>The headline capability of the mature system. Given a goal, compute the gap and the routes across it:</p>
+<pre><code>plan(&quot;maintain homelab unattended&quot;)
+
+  have    ✓ tailscale  ✓ docker  ✓ proxmox  ✓ shell
+          ✓ notifications  ✓ scheduling
+  missing ○ service health observation   ○ bounded restart authority
+          ○ credential broker            ○ rollback snapshots
+          ○ post-action verification     ○ escalation policy
+
+  A  broad authority          45 min   risk high
+  B  capability-scoped MCP      2 hr   risk low    unlocks +7
+  C  kubernetes migration      14 hr   risk med    unlocks +19,
+                                                   regret-if-abandoned high
+</code></pre>
+<p>Built for the narrow case: <code>ambit goal &lt;capability&gt;</code> walks hard prerequisites depth-first and returns them in the order they must be closed, with an estimate.</p>
+<pre><code>ambit goal offline-capable
+  goal: Offline Capable · steps: 2 · estimated setup: 25m
+  1. Embeddings        10m
+  2. Local Embeddings  15m
+</code></pre>
+<p>The route in is built. The curated tree carries a <code>goal</code> vocabulary — the intent-side mirror of <code>detect</code>, which matches config ids: <code>detect</code> says &quot;a git MCP named X is Version Control&quot;, <code>goal</code> says &quot;a person wanting to <em>deploy without me</em> means Continuous Delivery and Scheduled Work&quot;. <code>ambit goal &lt;sentence&gt;</code> ranks every capability whose words appear in the sentence, each with its plan delta, so a free-form goal becomes a shortlist of concrete plans instead of an error:</p>
+<pre><code>ambit goal &quot;maintain the homelab unattended&quot;
+  recommended: Scheduled Work
+  Scheduled Work       unattended          → steps 3 · 50m
+  Observability        maintain           → steps 1 · 30m
+  Self-Hosted Stack    homelab            → steps 2 · 2.5h
+</code></pre>
+<p><code>ambit goal &lt;capability&gt; --paths</code> compares the alternative ways to close the gap, deriving risk from what the alternatives themselves carry (hosted moves data off the machine, recurring adds a bill, a step without a config patch cannot be undone by §10) and folding identical paths together so the list is of choices, not accidents:</p>
+<pre><code>ambit goal web-research --paths
+  5m   risk low   local   none   reversible
+</code></pre>
+<p>Web Research has one authored alternative, so the comparison is one line, and every column in it is derived from what that alternative carries, not authored beside it.</p>
+<h2 id="6-failure-becomes-an-input--built"><a class="anchor" href="#6-failure-becomes-an-input--built" aria-hidden="true" tabindex="-1">#</a>6. Failure becomes an input — built</h2>
+<p><code>session_learning</code> is more important than it currently looks. Every failed task should be classified: was it reasoning, missing knowledge, a missing tool, a missing permission, weak infrastructure, or an unreliable capability?</p>
+<p>Built. <code>ambit record &lt;capability&gt;</code> records that work was blocked by something missing, and <code>ambit status</code> reports which deficits recur. One is bad luck, three is a structural deficit and the verdict says so. Both are exposed over MCP as <code>ambit_blocked</code> and <code>ambit_deficits</code>, since an agent hitting the same wall is exactly who should record it.</p>
+<p>Classification is built. <code>ambit record &lt;capability&gt; &lt;class&gt; [&quot;what you were trying to do&quot;]</code> records why work was blocked (reasoning, knowledge, tool, permission, infrastructure, or reliability) and <code>ambit status</code> reports the causes beside the count, so a capability blocked four times as a missing tool and once as a missing permission reads as one structural deficit and one incident instead of five of a kind. <code>ambit_blocked</code> accepts the same classification over MCP.</p>
+<p>Inference is built, from the signals and not from the prose: §12.2. A runtime already states that a command was not found, that permission was denied, that a host was unreachable, that an MCP call returned an error kind — and the telemetry bridge hands those over for classification, so the ledger fills from work instead of from someone remembering to record it. A failure whose shape says nothing is left unclassified, never guessed at, and one that cannot be attributed to a capability is kept anyway, since &quot;this keeps failing and the model cannot name it&quot; is a finding about the model.</p>
+<p>The tree already tells you to write a SKILL.md for anything you explain more than twice. Generalized, that rule is the governing principle of the whole project:</p>
+<blockquote>
+<p><strong>Repeated friction should become infrastructure.</strong></p>
+</blockquote>
+<h2 id="7-the-ledger--shipped"><a class="anchor" href="#7-the-ledger--shipped" aria-hidden="true" tabindex="-1">#</a>7. The ledger — shipped</h2>
+<p>Built. <code>frontier_snapshots</code> records every capability&#39;s state on each seed, written only when the state differs from the previous observation, so the table logs changes and not runs. <code>ambit history</code> lists the observations, and <code>ambit history since [when]</code> compares two.</p>
+<p>The entry that justified the table works:</p>
+<pre><code>ambit history since
+  frontier then: 13
+  frontier now:  19
+  gained:    Embeddings · Local Embeddings · nomic-embed-text
+  emergent:  Model Routing · Offline Capable · Subagents
+</code></pre>
+<p><code>emergent</code> is the column a per-component changelog cannot produce: those three became reachable although nothing providing them was added. Offline Capable was already provided by an agent that did not change — it flipped because its prerequisites were satisfied elsewhere. One embedding model was added; six capabilities moved.</p>
+<p>Classification compares against the ids recorded in the snapshot, not timestamps. <code>created_at &gt; taken_at</code> looked equivalent and was not: <code>datetime(&#39;now&#39;)</code> resolves to the second, so two seeds inside the same second classified every addition as pre-existing.</p>
+<p><code>ambit history</code> also distinguishes a fourth thing: <strong>vocabulary</strong>. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system, not the system having changed: the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so <code>frontier_now</code> stays on the same basis as <code>frontier_then</code>. Without it, upgrading would have reported a dozen capabilities gained on a machine where nothing happened, which is exactly what the ledger exists not to say.</p>
+<p>Use is written now — the telemetry bridge records every capability a run exercised, and a successful use counts as evidence (§13.2) — but it carries no object, so <em>which repository</em> was committed to is not a question the ledger can answer yet (§13.9). It also records demonstrated reliability beside reach: each snapshot carries a <code>verified</code> count and an id→lifecycle map, so <code>ambit history</code> reports a capability that stopped working as <code>diminished</code> (with <code>reason: verification failing</code>) while <code>frontier_now</code> stays flat — the check started failing, nothing was removed.</p>
+<h2 id="7b-affordance-domains--built-derived"><a class="anchor" href="#7b-affordance-domains--built-derived" aria-hidden="true" tabindex="-1">#</a>7b. Affordance domains — built, derived</h2>
+<p><code>ambit graph affordances</code> (and <code>ambit_affordances</code> over MCP) derives each capability&#39;s domain from its structure instead of from a keyword. <a href="/ambit/docs/affordance-frontier/#what-the-software-does-with-this">The theory</a> carries the argument for reading them that way, and names the <em>environment</em> term the derivation still has no representation for.</p>
+<table>
+<thead>
+<tr>
+<th align="left">Domain</th>
+<th align="left">Derived when</th>
+<th align="left">Why that is the test</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">institutional</td>
+<td align="left">an actor authorizes it</td>
+<td align="left">an authority holder must exist for it to be acquirable</td>
+</tr>
+<tr>
+<td align="left">economic</td>
+<td align="left">its acquisition carries a recurring cost</td>
+<td align="left">a budget and a counterparty are implied</td>
+</tr>
+<tr>
+<td align="left">cognitive</td>
+<td align="left">a person supplies it</td>
+<td align="left">human cognition is necessary to produce the action, which is the human-composed case; approval, the human-gated one, is §9</td>
+</tr>
+<tr>
+<td align="left">physical</td>
+<td align="left">a provider runs on a device</td>
+<td align="left">a robot arm and a neural decoder seed and render alongside MCP servers, where before anything acting on the world collapsed into <code>meta</code></td>
+</tr>
+<tr>
+<td align="left">machine-composed-human</td>
+<td align="left">a person and a machine both supply it</td>
+<td align="left">the affordance is in the loop and in neither half, which is the theory&#39;s BCI case given a structural home</td>
+</tr>
+</tbody></table>
+<p>A capability can satisfy several, and all of them are named: one that an actor authorizes and whose acquisition carries a recurring cost is institutional <em>and</em> economic.</p>
+<h2 id="8-a-runtime-adapter-layer--partly-built"><a class="anchor" href="#8-a-runtime-adapter-layer--partly-built" aria-hidden="true" tabindex="-1">#</a>8. A runtime adapter layer — partly built</h2>
+<p>Do not model &quot;Claude has tool X, Hermes has tool Y&quot;. Model what each runtime <em>provides</em>, and let the graph decide which runtime can execute which step:</p>
+<pre><code>             send-email
+          ╱      │       ╲
+    Claude     Hermes    OpenCode
+    connector  SMTP      MCP server
+</code></pre>
+<p>The point is durability. You stop maintaining a setup for one assistant and start maintaining a capability fabric that different intelligences attach to, which matters more each time the model landscape shifts.</p>
+<p><code>scripts/adapters/hermes.ts</code> reads a Hermes installation and contributes its capabilities to the same graph, with <code>AMBIT_RUNTIME</code> attributing them to a runtime node. Ids are deliberately not namespaced: a git MCP under either runtime is one capability with two providers, and the runtime edges keep that legible.</p>
+<p>What building it surfaced:</p>
+<ul>
+<li>Hermes exposes <strong>authority as data</strong> (<code>approvals.mode</code>, <code>approvals.cron_mode</code>), so §9 has a real source of truth to read instead of a schema to invent.</li>
+<li>Detection was tuned to one runtime&#39;s naming. Hermes names a model <code>Jan-v1-4B-Q4_K_M</code> where OpenCode names the runtime <code>ollama</code>; quantization suffixes are now a local-weights signal.</li>
+<li>No runtime publishes a machine-readable capability surface. Reading another tool&#39;s private files works and is not the right contract. The durable version is an export the runtime owns — and the export now exists: <code>ambit graph surface</code> emits the graph&#39;s whole vocabulary (nodes by kind, edges by meaning, authority grants) in a schema-versioned manifest, and <code>scripts/adapters/surface.ts</code> consumes one, so a runtime that publishes a surface is read directly and file-parsing is only the fallback. The round-trip works, which is how the contract gets exercised before any other runtime adopts it.</li>
+<li>Both adapters read authority and could only print it. They now hand it to the engine in the same fragment they hand over their MCP servers, so what a runtime permits reaches the graph and can narrow what the model says an action is like in general.</li>
+<li>The editor is an assistant runtime too. Cline, Roo Code, Continue.dev, and Zed each maintain assistant sessions and tool registries. Extending the adapter layer to read their configurations keeps the graph unified across standalone agents and editor sidecars. A native IDE sidebar extension (VS Code, Cursor) embedding the AG-UI event stream eliminates switching to the browser, while respecting the loopback boundary: the extension reads the graph over HTTP and requests approvals through the authenticated CLI.</li>
+</ul>
+<h2 id="9-authority-as-a-first-class-edge--built-and-mediates-one-thing"><a class="anchor" href="#9-authority-as-a-first-class-edge--built-and-mediates-one-thing" aria-hidden="true" tabindex="-1">#</a>9. Authority as a first-class edge — built, and mediates one thing</h2>
+<p>The server already refuses to create MCP entries because those entries contain commands that get executed, binds to loopback, and rejects foreign origins. That boundary should be <strong>generalized, never weakened</strong>.</p>
+<p>Per capability:</p>
+<pre><code>OBSERVE  autonomous     EXECUTE   conditional
+PLAN     autonomous     VERIFY    autonomous
+SIMULATE autonomous     ESCALATE  autonomous
+
+docker-container-management
+  inspect: autonomous   recreate: confirm
+  restart: autonomous   delete:   confirm
+                        change_mount: forbidden
+</code></pre>
+<p>This is not guardrails instead of capability. Granular, legible authority is what makes it safe to grant a much larger total action surface — the agent can be given more precisely because the limits are explicit.</p>
+<p>Built. Authority is a table, not a blob on a node: each grant records its mode, its source, its holder and its scope. <code>ambit authority</code> splits reached capabilities into what may run unattended and what may not — Shell Execution is reached everywhere and still gated; Secret Management is forbidden outright.</p>
+<p>Also built: authority derived from the runtime that would execute the step. Hermes states <code>approvals.mode</code> and <code>approvals.cron_mode</code>, Claude Code states <code>permissions.defaultMode</code>, and both adapters now pass them through. A runtime&#39;s grant is held against the runtime node and resolved through what it contributes, so a capability added in a later run cannot miss a grant recorded in an earlier one. Where the model and the runtime disagree the narrower wins and the report names which source narrowed it, since that is the half worth knowing. An unrecognized approval setting becomes <code>confirm</code>, never <code>autonomous</code>: guessing permissively would describe a system as freer to act than the runtime in front of it permits.</p>
+<p>And the granularity the section asked for. The <code>docker-container-management</code> sketch above (inspect autonomous, recreate confirm, change_mount forbidden) is expressible now that a capability&#39;s contract actions are nodes with their own authority.</p>
+<p>Scope is no longer only reported: it decides (§13.3). Two rules, in order: a forbidden grant wins outright at any specificity, and among the rest the most specific covering scope governs, ties going to the narrower mode. That is what makes <em>yes, on staging</em> expressible — under narrowest-wins alone, a grant saying &quot;autonomous on staging&quot; could never beat the standing &quot;confirm everywhere&quot;, so the trade of a smaller blast radius for unattended operation bought nothing and nobody offered it.</p>
+<p>Mediating, now, in one place that matters. A grant holds only while what it rests on still works: <code>canExecute</code> reads the hard prerequisites of the capability being acted on, and an unattended grant standing over a failing one returns CONFIRM instead of ALLOW. The graph had known both halves of this for a long time — the credential is broken, the grant depends on it — and joined them nowhere, so the answer stayed autonomous while its foundation was gone. That was the concrete shape of &quot;describes rather than mediates&quot;.</p>
+<p>Three properties of how it does it. The stored grant is never rewritten: what a person declared stays declared, and the narrowing is a property of the decision, so nothing has to remember to put it back when the check passes again. It needs no recorder to have run first, because a gate that depended on a background job would be advisory again. And a declared sandbox is exempt, since consequences are contained there and acting on a broken foundation somewhere that does not matter is how the evidence to fix it gets gathered.</p>
+<p>What that costs the caller is stated back to them: the decision carries <code>narrowed_by</code>, naming the capability and the lifecycle that took the grant down.</p>
+<h2 id="9b-the-record-it-writes-std-07--shipped"><a class="anchor" href="#9b-the-record-it-writes-std-07--shipped" aria-hidden="true" tabindex="-1">#</a>9b. The record it writes: STD-07 — shipped</h2>
+<p>§9 makes the gate mediate. <code>ambit delegation</code> writes the account of it, in a shape something other than Ambit can read: <a href="https://ethotechnics.org/standards/std-07-revisable-delegation-record">STD-07, the Revisable Delegation Record</a>. That is separate work from the enforcement and deliberately downstream of it.</p>
+<p><code>ambit delegation --record</code> writes four kinds for every grant currently narrowed by a failing foundation: a <code>capability</code> record for the thing that broke, an <code>authorization</code> record for the grant, carrying in <code>depends_on</code> what it rests on and in <code>invalidated_by</code> what would end it, a <code>discrepancy</code> for the divergence, and a <code>revision</code> superseding the authorization. Verification calls it too, since that is the moment evidence changes.</p>
+<p>Append-only and hash-chained: sha256 over the record without its integrity block, keys sorted, each row carrying the hash of the one before, so an edited or deleted record is detectable. <code>ambit delegation verify</code> recomputes the chain. <code>ambit delegation --export</code> emits newline-delimited JSON.</p>
+<p>Conformance is declared as level 2 for those four kinds and nothing else. <code>action</code> and <code>outcome</code> are deliberately not emitted: the environment adapter is simulated, so an action record from here would attest to a fixture. The manifest in <code>server.json</code> says so, because the standard&#39;s own adoption note is that declaring a level honestly is conformance and claiming one the log does not earn is not.</p>
+<p>A consumer is the thing worth building next, because a record format with publishers and no readers is a documentation format.</p>
+<h2 id="10-a-second-generation-mcp--partly-built"><a class="anchor" href="#10-a-second-generation-mcp--partly-built" aria-hidden="true" tabindex="-1">#</a>10. A second-generation MCP — partly built</h2>
+<p>Today&#39;s seventeen tools were analytical: they answered questions about the graph. The next set exposes a lifecycle:</p>
+<pre><code>cg_state  cg_can  cg_goal  cg_plan  cg_explain_plan
+cg_propose_acquisition  cg_simulate_acquisition
+cg_request_approval  cg_apply_step
+cg_verify  cg_rollback
+cg_report_failure  cg_record_outcome
+cg_opportunities  cg_compound
+</code></pre>
+<p><code>cg_simulate_acquisition</code> matters as much as <code>cg_plan</code>: showing the graph as it <em>would</em> be, before anything changes, is what makes approval meaningful and not ceremonial.</p>
+<p>Built, the two safe stages. <code>ambit goal &lt;capability&gt; --simulate</code> computes the frontier as it would be, against a copy of the state; its useful output is not the acquisition but what comes with it — a capability already provided and held back only by the prerequisite the change satisfies. On this machine, acquiring a vector store moves the frontier by two, because Retrieval is already supplied by an agent and waiting.</p>
+<p><code>ambit propose &lt;capability&gt; [n]</code> drafts a reviewable acquisition: ordered steps, the alternative chosen and its cost and privacy consequences, the simulated result, stored in a <code>proposals</code> table. Choosing the hosted alternatives for Retrieval takes it from 25 minutes to 13, at a per-token bill and a data boundary — the trade-off stated, not implied.</p>
+<p>Every step carries an <code>inverse</code>, or it carries null. That is the gate, not an omission: no step may execute without one.</p>
+<p>Also built, both sides of the threshold except the act itself. Alternatives whose acquisition genuinely <em>is</em> a config change carry a declarative <code>config_patch</code>, and <code>inverseOf</code> derives the undo from it — removing what it adds, or restoring what it overwrites when the key already exists. Anything needing an installer or a running service gets no inverse, and null is a refusal, not a gap: a proposal is <code>applicable</code> only when every step has one.</p>
+<p><code>ambit approve &lt;proposal&gt; &lt;person&gt;</code> records approval as evidence against a <code>human:</code> node, so the ledger can later answer who authorized an expansion of the frontier. It refuses a name that is not a person in the graph, because an approval has to come from someone accountable, and refuses to approve twice. Deliberately CLI-only and not exposed over MCP: an agent may draft and preview, but approval is the human&#39;s act and should not be reachable by the thing being approved.</p>
+<p>Built, with the two decisions made explicitly.</p>
+<p><strong>Scope is configuration, structurally.</strong> A step carries a declarative patch or it carries nothing; there is no field that holds a command, so no data file in this repository can cause something to be executed. That is the shape <code>addMcp</code> over HTTP had, and refusing it permanently is worth more than gating it.</p>
+<p><strong>Approval stays in the terminal.</strong> The write path is off the network entirely. A browser-reachable apply would reopen the surface this project spent its early work closing; the visualizer can display proposals without being able to authorize them.</p>
+<p><code>ambit apply</code> refuses in this order: unknown proposal, already applied, not approved by a person, any step without an inverse, any step that is not a configuration change. It backs the file up before the first byte changes, writes, records the act against the approver, then verifies the goal — and if verification fails, rolls back automatically and reports the change as reversed, not as a success.</p>
+<p><code>ambit rollback</code> uses the stored inverse instead of the backup, because the inverse describes only what the proposal changed; restoring a whole backup would discard anything edited since.</p>
+<p>An apply now re-seeds, so the graph reflects the change immediately instead of on the next manual seed — both on a successful apply and on the rollback that follows a failed verification, which is the &quot;reversed&quot; half of the same guarantee. The order that matters is enforced: the inverse is computed and stored before a step runs, verification promotes state only on evidence, and a failed apply runs its inverse automatically.</p>
+<p>Built: the surface is 60 tools where it was 17 analytical ones, adding <code>ambit_verify</code>, <code>ambit_evidence</code>, <code>ambit_authority</code>, <code>ambit_actions</code>, <code>ambit_plan</code>, <code>ambit_since</code>, <code>ambit_ledger</code>, <code>ambit_blocked</code> and <code>ambit_deficits</code> — so an agent can ask whether a capability is real, whether it may act, what is missing, and record being blocked. Previously those existed only on the CLI, which meant the lifecycle was available to the human and not to the agent. <code>ambit_actions</code> is the one an agent should reach for before acting: <code>ambit_authority</code> answers at the capability grain, and permission is per action.</p>
+<p>What remains is transport variety, execution sandboxing, and an authenticated CLI installer. Stdio processes launched on the local host are only one deployment model; MCP servers now run over HTTP/SSE and WebSockets across private containers and cloud backends. The reader and proxy must attach to remote endpoints without assuming a local PID. Untrusted community servers also need isolation: executing stdio tools inside container or WebAssembly sandboxes bounds their filesystem reach. And while entry creation over HTTP is permanently rejected, an authenticated CLI installer (<code>ambit install &lt;server&gt;</code>) bridges discovery and configuration without compromising the loopback boundary.</p>
+<h2 id="11-the-visualizer-becomes-a-negotiating-surface--built-and-shipping"><a class="anchor" href="#11-the-visualizer-becomes-a-negotiating-surface--built-and-shipping" aria-hidden="true" tabindex="-1">#</a>11. The visualizer becomes a negotiating surface — built and shipping</h2>
+<p>Ambit implements the state and run subset of <a href="https://docs.ag-ui.com">AG-UI</a>, the Agent-User Interaction protocol: <code>/api/events</code> streams <code>RunStarted</code>, a <code>StateSnapshot</code> on connect, and — when the graph changes underneath the view — a <code>StateDelta</code> of RFC 6902 patches plus a <code>TextMessageChunk</code> narrating the change. The client reloads when the graph changes. The immediate benefit is a view that does not go stale when a seed or an adapter rewrites the graph; the durable one is that the transport an agent would use to propose a change, and a human to approve it, already speaks a standard vocabulary and not one invented here.</p>
+<p><code>StateDelta</code> is the protocol&#39;s reason for existing: a patch is smaller than a snapshot, and a client that kept the connect snapshot can apply it. The delta is emitted for every change after the initial snapshot, so the transport is honest about what changed instead of resending the whole graph.</p>
+<p>The visual negotiating surface is shipping:</p>
+<ol>
+<li><strong>Simulation on the canvas.</strong> <em>Simulate an outage</em> dims the map and draws the multi-hop cascade in red with a count of what stops working; <em>Simulate unlocking this</em> lights what becomes reachable in green. Neither writes anything.</li>
+<li><strong>Approval in one click.</strong> The Proposals panel shows what an agent drafted, whether every step has an inverse, and signs a receipt; applying stays a command the person runs.</li>
+<li><strong>Two lenses</strong>, switched on the map itself: Standard, and Attention (nodes shaded by how often a person had to step in), offered once the ledger has recorded any. The host-cluster lens was sunset with the 3D views. The shared-credentials lens was withdrawn when it turned out to colour nodes by a substring of their id; credentials are the engine&#39;s report, <code>ambit credentials</code>.</li>
+</ol>
+<p>Not implemented: tool calls and reasoning events. Ambit does not execute agent steps — it models the environment those steps would run in — so fabricating a tool-call or reasoning stream would be noise in the protocol&#39;s own vocabulary. Calling Ambit &quot;AG-UI compatible&quot; would still overstate it; it implements the state and run subset deliberately.</p>
+<p><strong>A2UI was evaluated and rejected.</strong> It is a generative UI specification: agents describe components and the front end renders them. Ambit&#39;s interface is a designed visual grammar — era columns, three states, dependency edges, a legend — and its legibility is the product. Letting an agent improvise components would replace a representation that was reasoned about with one that is generated per response. A2UI suits surfaces where the agent&#39;s output shape is unknown in advance; here it is known and deliberate.</p>
+<p>What the visualizer still lacks is physical ergonomics for large setups. When a graph scales past several hundred nodes, navigation requires a minimap HUD. High-glare environments demand a light theme option using vanilla CSS tokens. Teams documenting capability architectures require high-resolution canvas export (SVG, PNG, standalone HTML). And scrubbing backwards across historical snapshots would turn the ledger into an interactive replay, letting an operator watch the frontier expand over time.</p>
+<h2 id="12-the-long-running-agent--built-except-the-install"><a class="anchor" href="#12-the-long-running-agent--built-except-the-install" aria-hidden="true" tabindex="-1">#</a>12. The long-running agent — built, except the install</h2>
+<p>Everything above assumes someone asks. A long-running agent — one that works with the same person across weeks, on more than one machine, and wants to become more capable — does not ask. It hits a missing binary mid-task, works around it, and hits it again next week. Ambit&#39;s thesis is exactly that agent&#39;s loop: friction, deficit, acquisition with approval, verification, a larger action space. What was missing was the plumbing that puts Ambit in front of the agent at the moment friction happens, and that turns growth into something the person can grant instead of something the agent has to request each time.</p>
+<p>Ten parts: nine built and tested in <code>src/engine/agent-loop.test.ts</code>, <code>src/mcp/server.test.ts</code> and <code>src/engine/dispatch.test.ts</code>, one waiting on a token. The reference is <a href="/ambit/docs/deep-dive/">the deep dive</a>. What each one decided, and why:</p>
+<ol>
+<li><strong>The briefing</strong> is an MCP <em>resource</em>, <code>ambit://briefing</code>, because a resource is what a runtime reads at connect and a tool has to be thought of first. Prose with ids, capped near 1,200 tokens by trimming whole lines from the bottom, since the order is the order of usefulness. Reading it applies any threshold whose evidence now supports it: asking what the environment is like is the right moment for an authorized promotion to take effect.</li>
+<li><strong>Passive deficit capture</strong> classifies failures the runtime already reported (exit codes, error kinds, messages) in the engine, never in the bridge, because a bridge that judged what counts as a permission error would be a second copy of the rule. A failure whose shape says nothing stays unclassified. Every signal is counted; the attributable ones also become deficits.</li>
+<li><strong>One question before acting.</strong> <code>ambit_can</code> answers <code>yes</code>, <code>ask</code> or <code>no</code> in one round trip from three indexed reads, and a <code>no</code> files the deficit in the same call, so the habit costs one call and not two.</li>
+<li><strong>A curriculum.</strong> <code>ambit next</code> ranks by observed blocks when the ledger has them and by leverage per hour of setup when it does not, and says which. It offers only what is one acquisition away; anything further is a project, and <code>ambit goal</code> is where projects live. It answers instead of drafting proposals, because answering a question by writing three rows is how a table fills with documents nobody chose.</li>
+<li><strong>The agent&#39;s own growth.</strong> A skill the agent wrote goes on the map only with a read-only check that runs immediately, because an unverifiable claim of new capability is the exact failure this project exists to prevent, and worst coming from the agent whose reach it widens.</li>
+<li><strong>Evidence to authority.</strong> A person sets a threshold once; the grant widens when the evidence arrives and narrows on one failing check with nobody asked. A <code>forbidden</code> grant takes no threshold, since that would be a mechanism for talking a system into what it was told not to do. Demotion compares row ids, not timestamps, for the reason §7 gives.</li>
+<li><strong>The digest</strong> is built into the briefing and not beside it: every briefing carries what changed since the last one, and the mark moves when it is read, not on a schedule.</li>
+<li><strong>A ledger that travels.</strong> <code>ambit sync</code> moves the graph and the ledger as one file against an allow-list. Commands do not travel, because a command in a data file runs on whoever imports it; grants do not travel, because importing one would let a permissive machine widen a careful one by moving a file.</li>
+<li><strong>One line to install — half built.</strong> <code>brew install zz-plant/tap/ambit</code> on macOS or Linux is one line, and the release workflow keeps the tap current. <code>claude mcp add ambit -- npx -y ambit-cli mcp</code> on a machine with Node and nothing else is not: the package is built and the publish workflow waits on a token. Until it lands, an agent on a machine without Homebrew cannot act on the decision that Ambit would help without a checkout.</li>
+<li><strong>Out-of-band approval dispatch.</strong> When a long-running agent drafts a proposal while the operator is away from the machine, the loop stalls. <code>ambit dispatch &lt;id&gt;</code> (or <code>propose --dispatch</code>, <code>approve --dispatch</code>) pushes it to a Slack, Discord or Telegram webhook, an ntfy topic, or any JSON endpoint, chosen by <code>AMBIT_APPROVAL_WEBHOOK</code> or <code>--to</code>. A draft goes out with its goal, cost, what it unlocks, and the <code>approve</code>/<code>reject</code> commands; an approved proposal goes out with its signed artifact, so what the phone shows is what <code>apply</code> will verify. The channel is one-way on purpose: no token in a chat message mints an approval, because a chat is not a machine that holds the key, and the reply comes back through <code>ambit approve</code> where it always did.</li>
+</ol>
+<pre><code>session starts → briefing (12.1) → agent asks before acting (12.3)
+      ↑                                       │
+      │                          no → deficit recorded (12.2)
+      │                                       │
+      │                          recurs → next (12.4) → propose → approve (12.10)
+      │                                       │
+      │                          acquire → verify → registered (12.5)
+      │                                       │
+      │                          evidence accrues → authority widens (12.6)
+      │                                       │
+      └────── digest says what changed (12.7), on every machine (12.8)
+</code></pre>
+<h2 id="13-expanding-the-ambit--built"><a class="anchor" href="#13-expanding-the-ambit--built" aria-hidden="true" tabindex="-1">#</a>13. Expanding the ambit — built</h2>
+<p>§12 puts Ambit in front of the agent at the moment friction happens. It does not, on its own, make anything grow: an agent can notice a gap, name it, ask about it and be told no, and the environment is exactly as capable at the end of that as at the start. What decides whether the loop widens is mostly not in the agent. Every acquisition costs one human interruption, so the growth rate is proposals multiplied by the odds of a yes, divided by what saying yes costs — and only the last term is easy to change. The other half was that the evidence which earned autonomy was synthetic: thresholds counted self-tests the agent triggered while the ledger recorded the capability doing the actual job and none of it counted.</p>
+<p>Eleven changes, built, with acceptance tests in <code>src/engine/expansion.test.ts</code>, <code>src/engine/ttl-authority.test.ts</code> and <code>src/engine/techtree-overlay.test.ts</code>:</p>
+<ol>
+<li><strong>The graph asks for the threshold.</strong> <code>ambit authority promote</code> with no arguments names grants confirmed by hand three or more times with clean evidence and no threshold, each with the command that would end the asking. It suggests and never sets; an agent that could set its own threshold would be granting itself authority through a side door.</li>
+<li><strong>Real work counts as evidence</strong> — the capability exercised inside a run that achieved its outcome, beside a passing check. Only checks count against: attributing a failed run&#39;s outcome to everything it touched would demote whatever a bad afternoon went near. Scoped thresholds count checks only, because use carries no object.</li>
+<li><strong>Scope traded for mode.</strong> <code>--scope</code> writes a new grant for one target and leaves the standing one untouched. §9&#39;s resolution rule is what makes it mean something.</li>
+<li><strong>Somewhere to practice.</strong> A declared sandbox relaxes confirmation inside itself and never a refusal, since rehearsing a forbidden action would be a way round it. It is where a scoped threshold gets met cheaply: practice in staging, earn staging.</li>
+<li><strong>A ceiling instead of a gate.</strong> A standing budget is delegated spend; when it is spent the answer goes back to asking with nobody having to notice. An elapsed period reads as spent-nothing without writing, because a decision API that wrote to the database to answer a question would be a strange thing to put in front of every action.</li>
+<li><strong>Reversibility as the growth lever.</strong> <code>apply</code> refuses any step without a computed inverse, and read backwards that refusal is the list of what the agent can never do for itself. <code>ambit reversible</code> publishes both halves, separating &quot;the recipes exist and none is a config change&quot; from &quot;no recipe at all&quot;.</li>
+<li><strong>Learning from the refusals.</strong> Approval was always recorded and refusal was not, so the graph could learn what a yes looked like and never a no. <code>ambit reject</code> records the other half; a trait needs three decisions before it counts and one that went both ways reads as contested, not settled by majority.</li>
+<li><strong>The cost of a yes.</strong> Pending drafts and the approval push carry the decision (goal, cost, bill, what it unlocks) instead of announcing that one exists, and <code>approve</code> takes several ids and one name. Each still gets its own signed artifact, and apply still runs one at a time.</li>
+<li><strong>Actions carry objects</strong>, in the slice that pays first: authority and evidence can refer to a target, <code>verify --target</code> files the result against it, and <code>ambit objects</code> reports what may be done to one thing on what evidence. The era tree is untouched; what this establishes is that committing to one repository forty times proves nothing about the next one, and the graph can now say so.</li>
+<li><strong>Time-bounded elevation.</strong> A standing grant was either permanent confirmation or permanent autonomy, and an operator pairing closely with an agent for an afternoon had to confirm every command or grant autonomy for good. <code>ambit authority grant &lt;cap&gt; autonomous --ttl=30m</code> relaxes confirmation for the window and no longer. Expiry is read at decision time and never written: <code>canExecute</code> skips a grant whose <code>expires_at</code> has passed and lets whatever still covers decide, so a standing confirm is confirm again and nothing at all is a refusal again. An expired row that still bought confirmation would be a permanent widening by way of a grant that had ended. The expired elevation is named in <code>narrowed_by</code>, and the row stays as the record of what was granted and when it ended. A forbidden grant takes no TTL, for the reason a threshold does not.</li>
+<li><strong>Scoped tech tree overlays.</strong> The curated tree is general software development; a biotech or robotics team, or a company with private infrastructure, has capabilities it cannot name there. <code>.ambit/techtree.json</code> in the working directory (or <code>AMBIT_OVERLAY_TECHTREE</code>) is merged over the curated tree before seeding: a new id is a new node with its contract and prerequisites, an existing id extends the curated node&#39;s detection and requirements, and <code>override: true</code> replaces it. The overlay is data like the tree it extends, so nothing in it can name a command.</li>
+</ol>
+<h2 id="14-the-economic-half--partly-built"><a class="anchor" href="#14-the-economic-half--partly-built" aria-hidden="true" tabindex="-1">#</a>14. The economic half — partly built</h2>
+<p>The loop in <a href="#the-argument">the argument</a> is the graph half, and it is built. The loop that pays for it is built too, first turn:</p>
+<pre><code>real work happens → the work ledger observes (runs, events, interventions,
+consumption) → attention prices the human burden → opportunities ranks the
+durable fixes → propose carries the observed case → the approval broker mints
+a signed, expiring artifact → apply enforces canExecute and verifies → roi
+measures before/after and writes the observation back
+</code></pre>
+<p>What exists: the work ledger and its AG-UI ingestion, the attention report that never flags judgment, the economic model (dollars declare, cents store), the opportunity engine ranked by attention/cash/roi/reliability/frontier, economic proposals, the signed approval broker with browser approval, the capital allocator (<code>opportunities --budget N</code>), the acquisition catalog (the supply side for the demand the opportunity engine finds), realized ROI, and a federation skeleton of signed summaries.</p>
+<p>Attribution must reach the capability grain. Knowing total model spend does not tell an engineering lead whether Web Research or Code Refactoring consumed the budget. Joining consumption ledger records with capability IDs breaks down token and dollar costs per node. The opportunity engine can then model provider arbitrage: comparing hosted API consumption against local hardware amortization to show when moving embeddings or code analysis to a local model pays for dedicated hardware.</p>
+<h2 id="15-the-control-plane--built-against-a-simulated-environment"><a class="anchor" href="#15-the-control-plane--built-against-a-simulated-environment" aria-hidden="true" tabindex="-1">#</a>15. The control plane — built, against a simulated environment</h2>
+<p>The gate §9 describes stays a report until something consults it before acting. The interceptor is that something: it sits in front of the tool call, and a call whose prerequisites are missing, whose foundation is failing, or whose caller is not permitted is refused with nothing on the machine changed.</p>
+<p>The decision is real. It runs against the actual graph, through the same <code>canExecute</code> §9 describes and the same authority table, and it writes the same audit trail. The simulated environment behind it costs so little because the gate never learns what it is gating, which is also why replacing it is not a rewrite. <a href="/ambit/docs/guide/#the-control-plane">The README</a> describes what it does today.</p>
+<p>Production enforcement requires intercepting live tool calls across real transports. Before prompting the operator for approval, the interceptor can run <code>ambit_simulate</code> to show the expected blast radius directly in the decision prompt. During active incidents, an audited emergency override (<code>--break-glass</code>) allows privileged execution while logging immutable, hash-chained records.</p>
+<h2 id="16-federation-fleet-governance-and-team-agency--partly-built"><a class="anchor" href="#16-federation-fleet-governance-and-team-agency--partly-built" aria-hidden="true" tabindex="-1">#</a>16. Federation, fleet governance, and team agency — partly built</h2>
+<p>Ambit starts on one developer&#39;s workstation. In an engineering organization, capabilities, credentials, and infrastructure are distributed across dozens of machines and engineers.</p>
+<p>The loop in §14 extends to fleets:</p>
+<pre><code>local work ledger → signed summary export → team portfolio sync →
+cross-machine capability routing → GitOps policy review → organizational frontier
+</code></pre>
+<p>Four capabilities complete the team layer:</p>
+<ol>
+<li><strong>Multi-tenant graph synchronization.</strong> Developers publish signed environment summaries (<code>ambit sync</code>) to a shared organizational catalog. The team view aggregates shared infrastructure (homelabs, GPU clusters, shared databases) without sharing private credentials or local path configurations.</li>
+<li><strong>GitOps-driven governance.</strong> Capability contracts, authority defaults, and spending ceilings belong in version control. Teams manage capability policy via pull requests against a shared repository, letting code review govern which autonomous grants become organization defaults.</li>
+<li><strong>Role-based delegation hierarchies.</strong> Distinct actors carry distinct trust profiles. Junior engineers and automated subagents inherit conservative confirm policies for production resources, while platform maintainers hold autonomous grants. The gate evaluates covering scopes across both user identity and agent role.</li>
+<li><strong>Compliance and SIEM audit exports.</strong> The ledger already produces hash-chained records. Formatting exports for SOC2 and ISO27001 compliance, and streaming audit events to corporate SIEM systems (Splunk, Elastic), turns agent oversight into verifiable enterprise infrastructure.</li>
+</ol>
+<h2 id="sunset"><a class="anchor" href="#sunset" aria-hidden="true" tabindex="-1">#</a>Sunset</h2>
+<p>Anything that told you something interesting about the graph without changing what you should do is not a first-class feature. The 3D visualizer, <code>trend</code>, <code>recs</code>, <code>fork</code>, <code>insight</code>, <code>profile</code>, <code>prune</code>, the setup/token <code>budget</code>, the consultant/snapshot/trending stores, and <code>maturity_score</code> as a headline are gone or demoted. What is left groups under five nouns (graph, plan, check, govern, report), and <a href="/ambit/docs/deep-dive/#the-full-cli-surface">the deep dive</a> enumerates it. What stays is what establishes truth, measures dependence, supports decisions, and governs change.</p>
+<h2 id="the-through-line"><a class="anchor" href="#the-through-line" aria-hidden="true" tabindex="-1">#</a>The through-line</h2>
+<p><a href="#status-at-a-glance">The table above</a> collects what each section still lacks. Two things run under all of it.</p>
+<p>The first is enforcement. Ambit can say what may be done, by whom, with what, on what evidence, and whether a grant covers a given target, and it narrows a grant when what it rests on fails. It stops something in two places, its own apply path and the control plane, and nowhere else: a runtime that never calls <code>ambit can</code> is unaffected by any of it.</p>
+<p>The second is the tree. Every entry on the list the graph will eventually need — read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only — is a verb bound to a noun, and the era tree still has only the verbs (§13.9). Once it carries objects, it stops being the ontology and becomes what it should be: a rollup over affordances, with <em>Version Control</em> derived from <code>{read, commit, push, merge}</code> over the repositories that actually exist.</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/docs/roadmap.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>

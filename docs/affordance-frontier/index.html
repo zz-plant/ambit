@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The affordance frontier · Ambit</title>
+<meta name="description" content="The theory under Ambit: the affordance frontier of human-machine systems, and how robots and brain-computer interfaces test it." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/affordance-frontier/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/affordance-frontier/" />
+<meta property="og:title" content="The affordance frontier · Ambit" />
+<meta property="og:description" content="The theory under Ambit: the affordance frontier of human-machine systems, and how robots and brain-computer interfaces test it." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#090d16" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"The affordance frontier · Ambit","description":"The theory under Ambit: the affordance frontier of human-machine systems, and how robots and brain-computer interfaces test it.","url":"https://zz-plant.github.io/ambit/docs/affordance-frontier/","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}}</script>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--fg:#e2e8f0;--muted:#94a3b8;--link:#a5b4fc;--line:#1e293b;--code:#111827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="the-affordance-frontier"><a class="anchor" href="#the-affordance-frontier" aria-hidden="true" tabindex="-1">#</a>The affordance frontier</h1>
+<blockquote>
+<p>This document is theory. It describes the object Ambit is trying to model, not what the software currently does. The argument it supports is <a href="/ambit/docs/why-ambit/">Why Ambit</a>; the software is the <a href="/ambit/docs/guide/">README</a>, and the design rationale is <a href="/ambit/docs/roadmap/">the roadmap</a>.</p>
+</blockquote>
+<h2 id="the-object"><a class="anchor" href="#the-object" aria-hidden="true" tabindex="-1">#</a>The object</h2>
+<p>Ambit models the <strong>affordance frontier</strong> of extended human-machine systems: the set of digital, cognitive, physical, social, institutional, and economic actions made reachable by the composition of humans, models, software, authority, bodies, and machines.</p>
+<p>The shortest form: <em>Ambit makes the capability frontier of an agentic system legible.</em></p>
+<pre><code>A(S) = A_digital ∪ A_cognitive ∪ A_physical ∪ A_social ∪ A_institutional ∪ A_economic
+</code></pre>
+<p>These compose <em>across</em> boundaries, which is where the interesting cases live:</p>
+<pre><code class="language-mermaid">flowchart LR
+    A[&quot;Notice Opportunity\n(Cognitive)&quot;] --&gt; B[&quot;Research Options\n(Digital)&quot;]
+    B --&gt; C[&quot;Obtain Approval\n(Institutional)&quot;]
+    C --&gt; D[&quot;Transfer Funds\n(Economic)&quot;]
+    D --&gt; E[&quot;Order Hardware\n(Economic)&quot;]
+    E --&gt; F[&quot;Robot Installs Unit\n(Physical)&quot;]
+    F --&gt; G[&quot;Compute Online\n(Digital)&quot;]
+    G --&gt; H[&quot;Capacity Expands\n(Cognitive)&quot;]
+</code></pre>
+<p>That chain is not well described as &quot;an AI using a tool.&quot; It is a self-extending sociotechnical system.</p>
+<h2 id="why-affordance-and-not-capability"><a class="anchor" href="#why-affordance-and-not-capability" aria-hidden="true" tabindex="-1">#</a>Why &quot;affordance&quot; and not &quot;capability&quot;</h2>
+<p>A hammer does not contain hammering. Hammering emerges from a relation between an agent, the tool, the agent&#39;s motor ability, a suitable target, and an environment. Affordances are relational; capabilities sound like possessions.</p>
+<p>The same is true of the digital case, which is easy to miss because software feels like a list of features. <em>Shell access</em> is not really a capability. It is a resource that participates in producing one. The actual affordance might be <em>modify the running service</em>, and it exists only when reasoning, shell, credentials, network, target machine, installed software, and authorization all line up.</p>
+<p>Robotics makes the relational character obvious, because physical affordances have always worked this way. A robot possesses a gripper; whether it can open a particular door depends on gripper geometry, force, perception, handle type, reach, locomotion, planning, door state, authorization, and possibly a human holding something aside.</p>
+<p>Ambit generalizes that logic to digital and institutional action.</p>
+<h2 id="the-hard-cases"><a class="anchor" href="#the-hard-cases" aria-hidden="true" tabindex="-1">#</a>The hard cases</h2>
+<p>The test of an abstraction is whether it survives cases it was not designed for. Two of them.</p>
+<h3 id="robotics"><a class="anchor" href="#robotics" aria-hidden="true" tabindex="-1">#</a>Robotics</h3>
+<p>Robotics adds physical actuation. The primitives change; the accounting problem does not.</p>
+<pre><code>Capability: deliver medication to patient
+  cognition      planning model
+  perception     cameras + localization
+  actuation      mobile base + gripper
+  authority      authorized for this ward
+  human          pharmacist loads the medication
+  environment    elevator API reachable
+  verification   delivery confirmed by recipient
+</code></pre>
+<p>The capability belongs to the assembled system, not to &quot;the robot.&quot; A single warehouse robot cannot fulfill an order; inventory software plus a planner plus conveyors plus pickers plus payment authorization plus human exception handling can. The meaningful unit is the fulfillment system.</p>
+<p>This also lets embodiment be discussed without mysticism. A body supplies sensors, actuators, position, energy constraints, physical access, vulnerability, and feedback — it is one class of affordance-producing infrastructure, not a precondition for agency. A corporation has consequential physical agency through employees, trucks, factories, and bank accounts without possessing one body. An AI system may acquire physical agency the same way: cameras in several buildings, drones elsewhere, warehouse robots, contracted humans, automated purchasing. Its body would be distributed.</p>
+<p>The operational question is therefore not <em>does this system have a body</em> but <strong>which physical affordances can it reliably bring about, through which actuators?</strong></p>
+<h3 id="brain-computer-interfaces"><a class="anchor" href="#brain-computer-interfaces" aria-hidden="true" tabindex="-1">#</a>Brain-computer interfaces</h3>
+<p>BCIs are harder, because they erode the boundary the model depends on.</p>
+<pre><code class="language-mermaid">flowchart LR
+    INT[&quot;1. Intention&quot;] --&gt; SIG[&quot;2. Neural Signal&quot;]
+    SIG --&gt; DEC[&quot;3. Decoder&quot;]
+    DEC --&gt; INTERP[&quot;4. Interpretation&quot;]
+    INTERP --&gt; PLAN[&quot;5. Planner&quot;]
+    PLAN --&gt; ACT[&quot;6. Actuator&quot;]
+    ACT --&gt; ENV[&quot;7. Environment&quot;]
+    ENV --&gt; FEED[&quot;8. Sensory Feedback&quot;]
+    FEED -.-&gt;|&quot;Closed Loop&quot;| INT
+</code></pre>
+<p>Where is <em>pick up the cup</em> in that loop? Not in the unaided nervous system, the decoder, the model, the planner, or the arm. It exists only in the closed circuit.</p>
+<p>This forces a distinction Ambit should eventually make explicit:</p>
+<ul>
+<li><strong>Human-gated</strong> — the machine acts only after approval.</li>
+<li><strong>Human-composed</strong> — human cognition is necessary to produce the action.</li>
+<li><strong>Machine-composed-human</strong> — the machine extends what the human can perceive, remember, decide, communicate, or do.</li>
+</ul>
+<p>&quot;Human in the loop&quot; implies two pre-existing entities passing control. A tight enough interface produces a coupled system whose relevant cognition spans both, and which has abilities neither participant has alone. Calling the human a supervisor misses what is happening.</p>
+<p>BCIs also introduce <strong>cognitive affordances</strong> — remember, communicate intention, retrieve external knowledge, control a device, maintain attention — where the frontier of a person with a memory prosthesis differs from the same person without one.</p>
+<h2 id="intellectual-genealogy"><a class="anchor" href="#intellectual-genealogy" aria-hidden="true" tabindex="-1">#</a>Intellectual genealogy</h2>
+<p>No existing field studies this frontier directly. Its concepts are distributed:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Field</th>
+<th align="left">Asks</th>
+<th align="left">Contributes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Cybernetics</strong></td>
+<td align="left">what can this system control?</td>
+<td align="left">understanding a system through its effective possibilities rather than its parts&#39; intelligence</td>
+</tr>
+<tr>
+<td align="left"><strong>Sociotechnical systems</strong></td>
+<td align="left">how do humans, technology and institutions interact?</td>
+<td align="left">the correct boundary: human + machine + institution</td>
+</tr>
+<tr>
+<td align="left"><strong>Security / attack graphs</strong></td>
+<td align="left">what can this principal reach?</td>
+<td align="left">that innocuous permissions compose into reachable paths</td>
+</tr>
+<tr>
+<td align="left"><strong>Capability approach</strong> (Sen, Nussbaum, Robeyns)</td>
+<td align="left">what can a person actually achieve?</td>
+<td align="left">resources ≠ effective freedom to achieve an outcome</td>
+</tr>
+<tr>
+<td align="left"><strong>Agent evaluation</strong></td>
+<td align="left">can the agent do task X?</td>
+<td align="left">empirical autonomy measurement</td>
+</tr>
+<tr>
+<td align="left"><strong>Systems engineering / CMDB</strong></td>
+<td align="left">what depends on what?</td>
+<td align="left">dependency and failure-propagation machinery</td>
+</tr>
+</tbody></table>
+<p>The security parallel is the closest structurally. Attack-graph analysis already asks <em>given this topology, what can this principal reach</em> — Ambit generalizes the question from unauthorized attack paths to all productive capacity for action.</p>
+<p>The capability-approach parallel is the closest conceptually. Where Sen distinguishes possessing resources from possessing the effective freedom to achieve an outcome, Ambit distinguishes <em>tool installed</em> from <em>capability actually reachable</em>, and tries to make the conversion function computationally explicit: resources, permissions, skills, connectivity, persistence and authority into effective capabilities.</p>
+<p>What appears underdeveloped is the intersection: given an evolving assemblage of models, software, credentials, infrastructure, persistent processes, organizations and humans, <strong>what set of outcomes is reachable, and how is that set changing?</strong></p>
+<pre><code>C(S_t) = { outcomes S can reliably and legitimately cause at time t }
+ΔC     = C(S_t+1) − C(S_t)
+</code></pre>
+<p>Ambit&#39;s <a href="/ambit/docs/deep-dive/#the-frontier-ledger">ledger</a> is a first, narrow implementation of ΔC over one kind of system.</p>
+<h2 id="the-agi-thesis"><a class="anchor" href="#the-agi-thesis" aria-hidden="true" tabindex="-1">#</a>The AGI thesis</h2>
+<p>AGI need not arrive as one monolithic model crossing a threshold. It may arrive compositionally: models plus tools plus persistence plus credentials plus infrastructure plus humans, forming systems whose aggregate ability to act becomes the historically relevant thing.</p>
+<p>The conventional framing plots <em>model capability over time</em> and asks how many intellectual tasks a model can perform. The systems framing plots <strong>system capability frontier over time</strong> and asks across how many domains an assembled system can perceive opportunities, form goals, marshal resources, act, observe consequences, adapt, and continue.</p>
+<p>Those curves need not move together. A model release can move the first considerably and the second barely, for want of authority and infrastructure. Connect an unchanged model to a persistent runtime, a bank account, a fleet of machines and broad organizational authority, and the benchmarks barely move while the second curve climbs: <em>this model did not change, but the system around it acquired twelve new reachable capabilities this month.</em> At some point descriptions like that stop looking like a chatbot&#39;s tool configuration and start looking like the operational anatomy of a persistent actor.</p>
+<p>That discrepancy is the thing almost nobody has needed to measure, and it may become one of the more important quantities in an agentic world.</p>
+<p>The key variable is <strong>cross-domain composability</strong>. A system that writes excellent essays and proves theorems but cannot connect those abilities to persistent action has broad cognition and narrow agency. A system with weaker models that combines reasoning, software, money, institutions, robots, humans, memory, communication and manufacturing may have far greater general agency.</p>
+<p>Which suggests a criterion:</p>
+<blockquote>
+<p>General agency exists when an extended system possesses a sufficiently broad and composable affordance frontier that it can pursue consequential goals across domains without requiring a separately constructed human workflow for each one.</p>
+</blockquote>
+<p>And a sharper historical line than &quot;which model was first&quot;:</p>
+<blockquote>
+<p>AGI may turn out not to describe what a machine became, but what human-machine systems became capable of doing.</p>
+</blockquote>
+<p>At that point, asking whether the intelligence resides in the person, the model, the robot, or the interface is probably the wrong level of analysis.</p>
+<h2 id="what-the-software-does-with-this"><a class="anchor" href="#what-the-software-does-with-this" aria-hidden="true" tabindex="-1">#</a>What the software does with this</h2>
+<p>Four concrete consequences have landed.</p>
+<ul>
+<li>The infrastructure manifest accepts devices of any kind. A robot arm declared as a device and a neural decoder declared as a service on it seed into the graph as first-class nodes with a <code>runs_on</code> edge between them, exactly as a Pi and a container do.</li>
+<li>The domain vocabulary was entirely software, so anything acting on the world collapsed into the <code>meta</code> column. <code>physical</code> is now a domain, and such resources render in their own column.</li>
+<li>The relational reading is now the data model rather than a gloss on it. A node declares what kind of thing it is — capability, action, provider, resource, actor, runtime — and an edge declares what the relation means. <em>Shell access</em> is a provider; the affordance is the action it confers, and the two are different rows. That is the paragraph above about hammers, made executable.</li>
+<li>Actions carry their own authority and their own evidence. <code>read a repository</code> and <code>merge to its default branch</code> are one capability and two permissions, and the graph says so.</li>
+</ul>
+<p>The distinction the affordance reading forces — that an affordance exists only when reasoning, tool, target, and authorization line up — is what the split buys. A capability is reached when something supplies it; an action is exercisable when it is reached <em>and</em> permitted <em>and</em> has evidence behind it, and those are three columns rather than one boolean.</p>
+<p>The domains are derived from structure, not matched from keywords: <code>ambit graph affordances</code> calls a capability institutional when an authority holder must approve it and physical when a provider runs on a device. What it derives, the map does not draw. What has not landed is the line the whole project sits behind: Ambit describes authority, and enforcement stops at its own gate. <code>apply</code> and the control-plane proxy refuse a step that fails <code>canExecute</code>; nothing forces a runtime to consult that gate, so a system that acts without asking is not stopped by the graph. <a href="/ambit/docs/roadmap/#status-at-a-glance">Roadmap §7b and §9</a> carry the current state of each, and the theory above still runs ahead of them.</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/docs/affordance-frontier.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>

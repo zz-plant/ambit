@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contributing to Ambit</title>
+<meta name="description" content="How to go from a clone of Ambit to a passing pull request: setup, the checks CI runs, and the contributions worth the most." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/contributing/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/contributing/" />
+<meta property="og:title" content="Contributing to Ambit" />
+<meta property="og:description" content="How to go from a clone of Ambit to a passing pull request: setup, the checks CI runs, and the contributions worth the most." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/social-preview.png" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#090d16" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Contributing to Ambit","description":"How to go from a clone of Ambit to a passing pull request: setup, the checks CI runs, and the contributions worth the most.","url":"https://zz-plant.github.io/ambit/docs/contributing/","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}}</script>
+<style>
+:root{color-scheme:dark;--bg:#090d16;--fg:#e2e8f0;--muted:#94a3b8;--link:#a5b4fc;--line:#1e293b;--code:#111827}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="contributing"><a class="anchor" href="#contributing" aria-hidden="true" tabindex="-1">#</a>Contributing</h1>
+<p>Fork → branch → commit → PR. This file gets you from a clone to a passing PR. <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md">AGENTS.md</a> is what a change must not break, and where the code lives. <a href="/ambit/docs/deep-dive/">The deep dive</a> is what the model means: what a node is, what a check proves, what an authority grant does. <a href="/ambit/docs/guide/">The README</a> is what Ambit is for.</p>
+<h2 id="setup"><a class="anchor" href="#setup" aria-hidden="true" tabindex="-1">#</a>Setup</h2>
+<pre><code class="language-bash">git clone https://github.com/zz-plant/ambit.git
+cd ambit
+./bootstrap.sh
+</code></pre>
+<p>Node 22.18 or newer, and nothing else. CI runs 22 and 24. The engine, the CLI, the API server and the test runner all open the graph through <code>node:sqlite</code>; the visualizer is Vite, which runs on Node too. A checkout keeps its graph in the checkout (<code>toolchain-viz.db</code>), so your working graph is never the one an installed copy uses — <code>ambit where</code> prints the path either way.</p>
+<p><code>./bootstrap.sh web</code> does all of that and then serves the map on :3000, which is worth opening once before you change anything behind it. Once you are editing the client, <code>npm run dev</code> runs the API on :3001 and Vite on :3000 together.</p>
+<p>You can also open the repository in <a href="https://codespaces.new/zz-plant/ambit?quickstart=1">Codespaces</a>; the devcontainer seeds a graph and starts the map, so nothing needs installing to read the code and the canvas side by side.</p>
+<h2 id="the-checks-ci-runs"><a class="anchor" href="#the-checks-ci-runs" aria-hidden="true" tabindex="-1">#</a>The checks CI runs</h2>
+<p>Every push and pull request runs all of these, twice, on Node 22 and Node 24. Running them locally first is faster than a round trip:</p>
+<pre><code class="language-bash">npm run test:coverage        # the suite, plus the coverage floors a bare `npm test` does not apply
+npm run lint                 # Biome, formatting included
+npm run build                # typechecks both projects, then builds the client
+npm run assets:check         # the shipped images are the right shape, and the hero GIF is not stale
+npm run prose:check          # the corpus ceiling on em dashes and &quot;rather than&quot;
+npm run docs:examples:check  # every console block in the README still matches what the command prints
+npm run demo:check           # the published demo still matches what the engine would build from its fixture
+</code></pre>
+<p>CI also runs <code>./bootstrap.sh</code> against a machine with no agent config, because that is the first thing a new user does and it is the path that has broken twice. It then greps the README for an <code>ambit-cli</code> install line, which cannot be advertised until that package is on npm.</p>
+<p>The last three commands are the ones an ordinary change trips. <code>prose:check</code> measures the whole corpus, not your paragraph: it fails when a pass pushes either of the two constructions it counts past the ceiling in <code>scripts/check-prose.ts</code>. That ceiling sits above where the corpus stands, so the next drift up fails and every improvement can lower it. <code>docs:examples:check</code> re-runs the real commands behind the README&#39;s console blocks, so a block that stops matching is a fact that moved, not a typo. <code>demo:check</code> rebuilds the published demo from its fixture, which is how a model change fails at the commit that caused it instead of going stale in a screenshot nobody reopens.</p>
+<h2 id="what-is-worth-contributing"><a class="anchor" href="#what-is-worth-contributing" aria-hidden="true" tabindex="-1">#</a>What is worth contributing</h2>
+<p>Three kinds of change are small, self-contained, and worth more than their size. They are the standing list: no backlog of scoped issues sits behind them, and an issue carries <a href="https://github.com/zz-plant/ambit/labels/good%20first%20issue"><code>good first issue</code></a> once somebody files one against them. Start from a bullet.</p>
+<ul>
+<li><strong>A runtime reader.</strong> Ambit discovers the runtimes <a href="/ambit/docs/faq/#do-i-need-claude-code-for-this">the FAQ lists</a>, and five of them are read by <code>src/engine/mcp-clients.ts</code>, 140 lines for the set. Each client is a five-field entry in the <code>CLIENTS</code> array: a runtime, a label, an env override, the paths to look in, and a parser. Four of the five share <code>readMcpServersJson</code>, because they all keep an <code>mcpServers</code> block, so a client that keeps one is five fields and no new code. Codex&#39;s TOML is the exception, and reading it takes under thirty lines. Nothing tests this file yet, so the first reader to arrive with a fixture and a test for <code>discoverMcpClients</code> is worth more than the reader. Every one makes the shared model more useful and the single-runtime assumption weaker. Deeper adapters, such as Hermes telemetry, live in <code>scripts/adapters/</code>.</li>
+<li><strong>A declared check.</strong> Every node in <code>src/engine/techtree.json</code> carries a <code>detect</code> block: regexes matched against the ids of what a seed found. A match says something on the machine supplies the capability, which is not the same as the capability working. What closes that gap is <code>verify</code>, one field holding a command and a timeout, and 17 of the 35 nodes have one. The other 18 are open. A check that passes turns &quot;configured&quot; into &quot;working&quot; for everyone who has that tool, and turning the first kind of evidence into the second is the most valuable contribution here.</li>
+<li><strong>A README block that drifted.</strong> The console examples are captured by <code>npm run docs:examples</code>, and CI fails when they no longer match. If a command&#39;s output moved and the README did not, re-capture and send the diff.</li>
+</ul>
+<p>The seven eras and their dependencies are curated and encode opinions that deserve argument — whether a capability is real, what it genuinely requires, which era it belongs to. Open a <a href="https://github.com/zz-plant/ambit/issues/new?template=capability-model.md">capability-model issue</a> rather than a PR if the change is a judgment call.</p>
+<h2 id="sending-it"><a class="anchor" href="#sending-it" aria-hidden="true" tabindex="-1">#</a>Sending it</h2>
+<p>Branch off <code>main</code> and keep the pull request to one thing. The template&#39;s checklist is conditional, so most changes tick nothing: it asks only when the change touches the API server, where the graph is stored, the curated tree, or the set of runtime readers and declared checks, and each question is the one a review would ask anyway. A first pull request gets an automatic reply, then a person.</p>
+<h2 id="things-to-keep-true"><a class="anchor" href="#things-to-keep-true" aria-hidden="true" tabindex="-1">#</a>Things to keep true</h2>
+<p>The invariants a change must not break are stated once, in <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md">AGENTS.md</a>. Two of the four under <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#security-posture">Security posture</a> bear on ordinary changes: loopback only, and no entry creation over HTTP. Two more are numbered <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md#rules">rules</a>: one resolver decides where the graph is, and nothing that travels may execute. Read that file before touching <code>src/server/api.ts</code>, <code>sync.ts</code>, or anything under <code>assure/</code>.</p>
+<p>Release and launch mechanics, including the directory-submission table, live in <a href="https://github.com/zz-plant/ambit/blob/main/.github/launch-kit.md">.github/launch-kit.md</a>.</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/CONTRIBUTING.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>
