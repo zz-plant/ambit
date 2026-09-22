@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
-import type { Connection } from '../utils/configImporter';
+import type { Connection, Item } from '../utils/configImporter';
 import {
   typeLabel,
   statusLabel,
@@ -9,6 +9,7 @@ import {
   isRuntimeNode,
 } from '../utils/labels';
 import { costOf, gapOf, outageSplit, readableSeconds, unlockCascade } from './civ/layout';
+import { useCopied } from '../hooks/useCopied';
 import { Term } from './Term';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 
@@ -25,6 +26,41 @@ interface NodeDetailPanelProps {
   onShow?: (id: string) => void;
 }
 
+/**
+ * One direction of a node's edges: what it needs, or what it enables. Keyed
+ * with the colour the map draws that direction in, and hidden when empty.
+ */
+function LinkList({
+  title,
+  edge,
+  links,
+  onShow,
+}: {
+  title: string;
+  edge: 'needs' | 'enables';
+  links: { node: Item; note?: string }[];
+  onShow: (id: string) => void;
+}) {
+  if (links.length === 0) return null;
+  return (
+    <div className="sp-links">
+      <div className="sp-section-label">
+        <span className={`sp-edge-dot sp-edge-dot--${edge}`} aria-hidden="true" />
+        {title} ({links.length})
+      </div>
+      <div className="sp-link-list">
+        {links.map(({ node, note }) => (
+          <button type="button" key={node.id} className="sp-link" onClick={() => onShow(node.id)}>
+            <span className="sp-link-dot" style={{ background: typeColor(node.type) }} />
+            <span className="sp-link-name">{node.name}</span>
+            {note && <span className="sp-link-type">{note}</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
@@ -39,7 +75,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
   const toggleMcpEnabled = useAmbitStore(s => s.toggleMcpEnabled);
 
   const item = items.find(i => i.id === selectedId);
-  const [copiedCmd, setCopiedCmd] = React.useState<string | null>(null);
+  const [copiedCmd, copy] = useCopied();
   const [toggling, setToggling] = React.useState(false);
   const [toggleError, setToggleError] = React.useState<string | null>(null);
 
@@ -177,16 +213,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
               typeLabel(item.type)
             )}{' '}
             ·{' '}
-            <span
-              style={{
-                color:
-                  item.status === 'built'
-                    ? 'var(--ok)'
-                    : item.status === 'specified'
-                      ? 'var(--warn)'
-                      : 'var(--error)',
-              }}
-            >
+            <span className={`sp-status sp-status--${item.status}`}>
               {statusLabel(item.status, item)}
             </span>
           </div>
@@ -386,11 +413,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         </div>
       )}
 
-      {item.description && (
-        <div className="sp-desc" style={{ marginBottom: '8px' }}>
-          {item.description}
-        </div>
-      )}
+      {item.description && <div className="sp-desc">{item.description}</div>}
 
       {isolated && <p className="sp-note">Connected to nothing else on this map.</p>}
 
@@ -403,11 +426,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           <button
             type="button"
             className={`sp-cli-copy-btn ${copiedCmd === 'verify' ? 'sp-cli-copy-btn--copied' : ''}`}
-            onClick={() => {
-              navigator.clipboard?.writeText(`ambit verify ${item.id}`);
-              setCopiedCmd('verify');
-              setTimeout(() => setCopiedCmd(null), 2000);
-            }}
+            onClick={() => copy('verify', `ambit verify ${item.id}`)}
             aria-label={`Copy command ambit verify ${item.id}`}
           >
             {copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}
@@ -415,55 +434,23 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         </div>
       </div>
 
-      {needs.length > 0 && (
-        <div className="sp-links" style={{ marginTop: '8px' }}>
-          <div className="sp-section-label">
-            <span className="sp-edge-dot sp-edge-dot--needs" aria-hidden="true" />
-            Needs ({needs.length})
-          </div>
-          <div className="sp-link-list">
-            {needs.map(({ node, conn }) => (
-              <button
-                type="button"
-                key={node.id}
-                className="sp-link"
-                onClick={() => (onShow ?? selectItem)(node.id)}
-              >
-                <span className="sp-link-dot" style={{ background: typeColor(node.type) }} />
-                <span className="sp-link-name">{node.name}</span>
-                <span className="sp-link-type">{prerequisiteLabel(conn)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {enables.length > 0 && (
-        <div className="sp-links" style={{ marginTop: '8px' }}>
-          <div className="sp-section-label">
-            <span className="sp-edge-dot sp-edge-dot--enables" aria-hidden="true" />
-            Enables ({enables.length})
-          </div>
-          <div className="sp-link-list">
-            {enables.map(({ node }) => (
-              <button
-                type="button"
-                key={node.id}
-                className="sp-link"
-                onClick={() => (onShow ?? selectItem)(node.id)}
-              >
-                <span className="sp-link-dot" style={{ background: typeColor(node.type) }} />
-                <span className="sp-link-name">{node.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <LinkList
+        title="Needs"
+        edge="needs"
+        links={needs.map(({ node, conn }) => ({ node, note: prerequisiteLabel(conn) }))}
+        onShow={onShow ?? selectItem}
+      />
+      <LinkList
+        title="Enables"
+        edge="enables"
+        links={enables.map(({ node }) => ({ node }))}
+        onShow={onShow ?? selectItem}
+      />
 
       {(setup ||
         details.length > 0 ||
         (daysSinceChange !== undefined && daysSinceChange >= 14)) && (
-        <div className="sp-attrs" style={{ marginTop: '8px' }}>
+        <div className="sp-attrs">
           <div className="sp-section-label">Details</div>
           {setup && (
             <div className="sp-attr-row">

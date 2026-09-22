@@ -763,11 +763,6 @@ code, pre, .code, .sp-cli-cmd {
   border-color: var(--border);
 }
 
-.tp-item--sel {
-  background: var(--bg-elevated);
-  border-color: var(--border-bright);
-}
-
 .tp-item-hdr {
   display: flex;
   align-items: center;
@@ -939,13 +934,19 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
 }
 
-/* The two lists are keyed with the colours the map draws their edges in. */
 .sp-section-label {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
 }
 
+/* The two lists are keyed with the colours the map draws their edges in. */
 .sp-edge-dot {
   width: 12px;
   height: 2px;
@@ -958,18 +959,30 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-desc {
+  margin-bottom: 8px;
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
-.sp-section-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  margin-bottom: 6px;
+/* The sections of the panel, spaced from whatever precedes them. The
+   spacing was an inline style on each one. */
+.sp-links,
+.sp-attrs {
+  margin-top: 8px;
+}
+
+/* The header's state, in the state's colour. */
+.sp-status--built {
+  color: var(--ok);
+}
+
+.sp-status--specified {
+  color: var(--warn);
+}
+
+.sp-status--deprecated {
+  color: var(--error);
 }
 
 .sp-sim-group {
@@ -2284,36 +2297,6 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--fig-data);
 }
 
-.fig-row-options {
-  display: block;
-  font-size: 10.5px;
-  color: var(--text-muted);
-  margin-top: 5px;
-  line-height: 1.5;
-}
-
-/* Money first and in a fixed-width column, so the dollar figures of two
-   alternatives sit under one another and the comparison is a glance. */
-.fig-row-options {
-  margin: 0;
-}
-
-.fig-row-option {
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: 8px;
-}
-
-.fig-row-option dt {
-  color: var(--text-secondary);
-  font-weight: 600;
-  text-align: right;
-}
-
-.fig-row-option dd {
-  margin: 0;
-}
-
 .fig-row-svg {
   display: block;
   width: 100%;
@@ -3298,25 +3281,9 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
 }
 
-.app-welcome-droperr {
-  margin-top: 8px !important;
-  color: var(--error) !important;
-}
-
-.loop-pipeline-graphic {
-  margin: 16px 0 20px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  display: flex;
-  justify-content: center;
-  overflow-x: auto;
-}
-
-.loop-pipeline-svg {
-  max-width: 540px;
-  height: auto;
+.app-welcome-drop .app-welcome-droperr {
+  margin-top: 8px;
+  color: var(--error);
 }
 
 /* ─── LOOP PAGE: THE STATES THAT ARE NOT A FIGURE ─── */
