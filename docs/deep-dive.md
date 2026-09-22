@@ -379,7 +379,7 @@ Run `ambit` with no arguments and it shows where the environment stands; `ambit 
 graph      impact <id> · catalog <cap> · where · skills · objects [target]
            share [--redact] [--out=path] · sync export|import <path>
            graph [surface|combos|affordances]
-plan       goal <cap-or-sentence> [--paths|--simulate|--prefs] · next [n]
+plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · next [n]
            reversible
            opportunities [--by=…] [--budget=N] · opportunity <id>
            propose <cap> [option] · roi [proposal-id] · portfolio [--budget=N]

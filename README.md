@@ -396,7 +396,7 @@ Ambit reads developer toolchains and writes to agent configs, so four properties
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
 2. **Origin allowlist.** A request with a non-local `Origin` is rejected with 403 *before* routing, because a simple request skips preflight and response headers alone would not stop it.
 3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.
-4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Four commands open a socket at all (`notify`, `notify-approvals`, `dispatch`, `incidents`), and each needs a target you name. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
+4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket at all (`notify`, `notify-approvals`, `dispatch`, `incidents`, and `goal --judge`). The first four each need a target you name, and the last refuses any host but this machine. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
 
 ---
 

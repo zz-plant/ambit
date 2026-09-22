@@ -37,7 +37,7 @@ A *capability* is one thing the setup can do. Its *era* is how far up the curate
 - To close a gap, call `ambit_next` or `ambit_goal`, then `ambit_propose`; a person approves and applies from the terminal or the map
 - A skill you wrote yourself goes on the map with `ambit_register_skill`, which requires a read-only command that proves it works and runs it immediately
 - Before touching a target you have not touched, call `ambit_objects` with it: what may be done there, and what has been proved there. Evidence about one repository is not a claim about another
-- Alongside a typed decision model such as TypeSafe's Jev: use Jev for the cheap judgment of what to try, and `ambit_can` for whether it may run. Ambit maps Jev, its MCP servers and its local clones as the Typed Judgment capability, and never treats a probability as a grant
+- Alongside a typed decision model such as TypeSafe's Jev: use Jev for the cheap judgment of what to try, and `ambit_can` for whether it may run. Ambit maps Jev, its MCP servers and its local clones as the Typed Judgment capability, and never treats a probability as a grant. With a clone running locally, `ambit goal "<sentence>" --judge` routes a goal the tree's words miss, as a suggestion that writes nothing
 - `ambit_promotions` lists grants that have earned a threshold nobody has set. Surface them: a person who sets one is never asked about that action again. Setting it is their act, never yours
 
 ## Optional

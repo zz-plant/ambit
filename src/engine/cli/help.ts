@@ -17,6 +17,8 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
   goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
                     delta, compare acquisition paths, or check preferences
+                    --judge[=url] asks a judgment model on this machine when
+                    no words match; it suggests and writes nothing
   opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
                     ranked investments — observed burden, priced, compared
   verify [cap] [--history]   run the declared check, or show past verification
@@ -53,8 +55,11 @@ graph — the structure, and what it would cost to lose a piece
 plan — what to acquire next, and whether it paid
   plan next [n]           the capabilities worth reaching next, each with why,
                           what it costs, and the command that proposes it
-  plan goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan
-                          the delta, compare acquisition paths, check preferences
+  plan goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]]   route a
+                          goal, plan the delta, compare acquisition paths, check
+                          preferences; --judge asks a judgment model on this
+                          machine (AMBIT_JUDGE_URL, or Kev on 127.0.0.1:8009)
+                          when no words match, and suggests without writing
   plan opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
                           ranked investments — observed burden, priced, compared;
                           --budget allocates the best combination within $N
