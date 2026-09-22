@@ -188,6 +188,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
               ref={fileInput}
               type="file"
               accept="application/json,.json"
+              aria-label="Choose an agent config file to map"
               className="visually-hidden"
               onChange={e => readConfigFile(e.target.files?.[0])}
             />

@@ -2,7 +2,7 @@
   "name": "ambit-cli",
   "version": "0.4.1",
   "private": false,
-  "description": "What you, your agents, and your machines can jointly do \u2014 and where your own time is going.",
+  "description": "What you, your agents, and your machines can jointly do — and where your own time is going.",
   "mcpName": "io.github.zz-plant/ambit",
   "type": "module",
   "engines": {
@@ -10,7 +10,8 @@
   },
   "scripts": {
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run server\" \"vite\"",
-    "build": "npm run typecheck && vite build",
+    "build": "npm run typecheck && vite build && npm run docs:build",
+    "docs:build": "node --experimental-strip-types scripts/build-docs.ts",
     "test": "vitest run",
     "demo:incident": "python3 scripts/demo_incident_trace.py",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
@@ -43,6 +44,7 @@
     "@vitejs/plugin-react": "^6.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^10.0.5",
+    "marked": "^18.0.14",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "typescript": "^7.0.2",

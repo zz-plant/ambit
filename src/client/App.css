@@ -1343,17 +1343,22 @@ code, pre, .code, .sp-cli-cmd {
 /* Shown on its own, with none of the app chrome: there is no graph yet, so a
    capability list reading "(0)" and a status pill reading "0 / 0" would be
    the first thing a visitor saw. */
+/* Centred with auto margins, not align-items. A flex item centred with
+   align-items that is taller than its container overflows at both ends, so
+   on a phone the top of the hero sat above the scroll origin where no one
+   could reach it, and when web fonts arrived and it grew, it grew upward
+   and moved everything already on screen. Auto margins centre it when it
+   fits and top-align it when it does not. */
 .app-welcome {
   position: absolute;
   inset: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 24px;
   overflow-y: auto;
 }
 
 .app-welcome-hero {
+  margin: auto;
   max-width: 760px;
   width: 100%;
   text-align: center;
@@ -1464,11 +1469,12 @@ code, pre, .code, .sp-cli-cmd {
   justify-content: center;
 }
 
+/* The darker accent: white on --accent is 4.46:1, just under AA for text this size. */
 .app-welcome-btn {
   height: 38px;
   padding: 0 20px;
   border-radius: var(--radius-sm);
-  background: var(--accent);
+  background: var(--accent-dim);
   color: var(--on-accent);
   border: 1px solid transparent;
   font-size: 13px;
@@ -1485,7 +1491,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-welcome-btn:hover {
-  background: var(--accent-dim);
+  background: #4338ca;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 

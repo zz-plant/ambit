@@ -1,8 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { readFileSync } from 'node:fs';
+
+/** The released version, for the page's structured data, read from the one place it is written. */
+const VERSION = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+).version;
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'ambit-version',
+      transformIndexHtml: html => html.replace('%AMBIT_VERSION%', VERSION),
+    },
+  ],
   // GitHub Pages serves the demo under /ambit/.
   base: '/ambit/',
   root: 'src/client',
