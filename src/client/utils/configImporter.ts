@@ -97,6 +97,59 @@ function inferDomain(name: string, type: string, hint = ''): string {
  */
 const RUNTIME_ID = 'runtime:opencode';
 
+/**
+ * The `mcpServers` block that Claude Desktop, Claude Code, Cursor, Windsurf
+ * and Gemini CLI all write, in the shape `importConfig` reads.
+ *
+ * The browser's drop zone accepted only the OpenCode format, so five of the
+ * seven runtimes the landing names were refused with "nothing in it to map".
+ * What counts as remote transcribes `discoverMcpClients` in
+ * `src/engine/mcp-clients.ts`; keep the two in step. A config without the
+ * block returns null, and the caller decides what else it might be.
+ */
+function fromMcpServers(data: Record<string, unknown>): OpenCodeConfig | null {
+  const servers = data.mcpServers;
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) return null;
+  const mcp: NonNullable<OpenCodeConfig['mcp']> = {};
+  for (const [name, raw] of Object.entries(servers as Record<string, unknown>)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const s = raw as Record<string, unknown>;
+    const url = [s.url, s.serverUrl, s.httpUrl].find(u => typeof u === 'string') as
+      | string
+      | undefined;
+    const remote = Boolean(url) || s.type === 'http' || s.type === 'sse';
+    const args = Array.isArray(s.args) ? s.args.filter(a => typeof a === 'string') : [];
+    mcp[name] = {
+      type: remote ? 'remote' : 'local',
+      url,
+      command: typeof s.command === 'string' ? [s.command, ...args] : undefined,
+      env: s.env && typeof s.env === 'object' ? (s.env as Record<string, string>) : undefined,
+      enabled: s.disabled !== true,
+    };
+  }
+  return Object.keys(mcp).length ? { mcp } : null;
+}
+
+/**
+ * A dropped `mcpServers` config, drawn. `importConfig` names its runtime
+ * OpenCode Core, which is true of the file it was written for and false of
+ * a Claude Desktop or Cursor config, so the root is renamed to what the file
+ * actually says: some MCP client, unnamed.
+ */
+export function importMcpServers(
+  data: Record<string, unknown>
+): { items: Item[]; connections: Connection[] } | null {
+  const config = fromMcpServers(data);
+  if (!config) return null;
+  const graph = importConfig(config);
+  graph.items = graph.items.map(i =>
+    i.id === RUNTIME_ID
+      ? { ...i, name: 'Your MCP client', description: 'The client this config belongs to' }
+      : i
+  );
+  return graph;
+}
+
 export function importConfig(config: OpenCodeConfig): { items: Item[]; connections: Connection[] } {
   const items: Item[] = [];
   const connections: Connection[] = [];

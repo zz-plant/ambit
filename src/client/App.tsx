@@ -9,6 +9,7 @@ import LoopDashboard from './components/LoopDashboard';
 import NodeDetailPanel from './components/NodeDetailPanel';
 import SetupView from './components/SetupView';
 import Toast from './components/Toast';
+import Tour from './components/Tour';
 import WelcomeScreen from './components/WelcomeScreen';
 import { useGraphStream } from './hooks/useGraphStream';
 import { useGuide } from './hooks/useGuide';
@@ -16,24 +17,14 @@ import { useHotkeys } from './hooks/useHotkeys';
 import { useToast } from './hooks/useToast';
 import { useUrlSync } from './hooks/useUrlSync';
 import { isNarrowScreen, useNarrow } from './hooks/useViewport';
-import { readLinkState, type LinkState, type View } from './linkState';
-import { useAmbitStore } from './store/ambitStore';
+import { hostedLanding, initialView, readLinkState, type View } from './linkState';
+import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 
 /** The width of the detail panel. */
 const PANEL_W = 340;
-
-/**
- * Where a visit lands. The link decides when it names a view. A narrow
- * screen that was not told opens on My Setup: at phone width the map is
- * texture and the list is not, and the map stays one tap away.
- */
-export function initialView(link: LinkState, narrow: boolean): View {
-  if (link.viewStated) return link.view;
-  return narrow && link.view === 'tree' ? 'config' : link.view;
-}
 
 const Loading = () => (
   <div className="app-loading">
@@ -75,9 +66,15 @@ export default function App() {
 
   // The URL is read once; the controls own every later change.
   const [link] = useState(() =>
-    readLinkState(typeof window === 'undefined' ? '' : window.location.search)
+    hostedLanding(
+      readLinkState(typeof window === 'undefined' ? '' : window.location.search),
+      isHostedDemo()
+    )
   );
-  const [view, setView] = useState<View>(() => initialView(link, isNarrowScreen()));
+  const { showGuide, dismissGuide } = useGuide(link.guideOff);
+  const [view, setView] = useState<View>(() =>
+    initialView(link, isNarrowScreen(), link.demo && showGuide)
+  );
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
   const [finderOpen, setFinderOpen] = useState(false);
@@ -90,7 +87,9 @@ export default function App() {
   useUrlSync({ view, focusId: selectedId, docsOpen: showDocs, demo, lens });
 
   const isNarrow = useNarrow();
-  const { showGuide, dismissGuide } = useGuide(link.guideOff);
+  // The tour runs on the demo the first time, like the card it replaces there,
+  // and again whenever someone asks to watch the outage from the landing.
+  const [tourAsked, setTourAsked] = useState(false);
   const [toast, setToast] = useToast();
 
   const { connected } = useGraphStream({
@@ -228,6 +227,11 @@ export default function App() {
   };
   const entries = items.filter(isEntry);
   const hasTree = items.some(i => !isEntry(i));
+  const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
+  const endTour = () => {
+    setTourAsked(false);
+    dismissGuide();
+  };
 
   // No graph yet: the welcome page, on its own. The chrome around the map (a
   // status pill reading "0 of 0") would otherwise be the first thing a
@@ -238,7 +242,8 @@ export default function App() {
         <WelcomeScreen
           onExploreDemo={() => {
             seedDemo();
-            setView(isNarrow ? 'config' : 'tree');
+            setView('tree');
+            setTourAsked(true);
           }}
           onViewLoop={() => {
             seedDemo();
@@ -303,6 +308,7 @@ export default function App() {
               onHover={hoverItem}
               leftInset={8}
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
+              narrated={touring}
             />
           </Suspense>
         ) : items.length > 0 ? (
@@ -320,15 +326,29 @@ export default function App() {
             </button>
           </div>
         ) : null}
-        {showGuide && view === 'tree' && hasTree && (
-          <GettingStartedGuide
+        {touring ? (
+          <Tour
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
-            onDismiss={dismissGuide}
-            onReadMore={() => {
-              openDocs('reading');
-              dismissGuide();
+            onDone={endTour}
+            onShowProposals={showProposals}
+            onMapped={() => {
+              endTour();
+              setView('config');
             }}
           />
+        ) : (
+          showGuide &&
+          view === 'tree' &&
+          hasTree && (
+            <GettingStartedGuide
+              style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
+              onDismiss={dismissGuide}
+              onReadMore={() => {
+                openDocs('reading');
+                dismissGuide();
+              }}
+            />
+          )
         )}
       </div>
 

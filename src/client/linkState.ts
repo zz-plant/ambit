@@ -70,6 +70,35 @@ export function readLinkState(search: string): LinkState {
   };
 }
 
+/**
+ * What a visit to the hosted site with no query string opens on.
+ *
+ * The published site has no engine behind it, so a bare visit used to land on
+ * a welcome page whose job was to offer the demo, and the demo was one click
+ * further. Every visitor to that page was there for the demo; the page was a
+ * door in front of an open door. A hosted visit now is the demo, on the map,
+ * which is where the tour runs. A link that states a view still wins, and a
+ * local visit is left alone: there the empty state is a real answer about a
+ * machine that has not been seeded.
+ */
+export function hostedLanding(link: LinkState, hosted: boolean): LinkState {
+  if (!hosted || link.demo) return link;
+  return { ...link, demo: true, view: link.viewStated ? link.view : 'tree' };
+}
+
+/**
+ * Where a visit lands. The link decides when it names a view. A narrow
+ * screen that was not told opens on My Setup: at phone width the map is
+ * texture and the list is not, and the map stays one tap away. The exception
+ * is a first visit to the demo, where the tour narrates the map: a cascade
+ * with a sentence under it reads on a phone, and it is the whole pitch.
+ */
+export function initialView(link: LinkState, narrow: boolean, touring = false): View {
+  if (link.viewStated) return link.view;
+  if (touring) return 'tree';
+  return narrow && link.view === 'tree' ? 'config' : link.view;
+}
+
 /** What `writeLinkState` needs to know. The guide and the stated-ness are read-side facts. */
 export type ShareState = Omit<LinkState, 'guideOff' | 'viewStated'>;
 

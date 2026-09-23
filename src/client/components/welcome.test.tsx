@@ -1,54 +1,56 @@
 /**
- * The front door shows measurements, not a cartoon.
+ * The front door opens on a question, and one thing to watch.
  *
- * The landing used to draw four labelled circles for a product whose claim is
- * that it measures things. It now draws the two measurements the demo makes,
- * from the same example data the demo runs on, and says so. This pins that: if
- * the figures stop rendering, or the disclosure goes, the first screen is a
- * pitch again.
+ * The landing used to open on the product's name, a sentence about joint
+ * capability and two charts of example data a visitor had to read a caption
+ * to understand. It now opens on the afternoon everyone has had, one number
+ * from the sample setup with a button that shows it happening, and a place to
+ * paste a config. These pin that: if the number stops being the one the demo
+ * draws, or the paste box goes, the first screen is a pitch again.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
+import { mergeGraphs } from '../store/ambitStore';
+import { coldOpen, demoConfigGraph, demoTreeGraph } from '../store/demo';
 import WelcomeScreen from './WelcomeScreen';
 
 const html = renderToStaticMarkup(<WelcomeScreen onExploreDemo={() => {}} onViewLoop={() => {}} />);
 
-test('the landing draws the year of hours with its acquisitions named', () => {
-  expect(html).toContain('Hours a person spent stepping in');
-  expect(html).toContain('Apr · Automated Tests');
-  expect(html).toContain('Oct · Scheduled Work');
+test('the headline is a question the visitor already has, not the product name', () => {
+  expect(html).toMatch(/<h1[^>]*>When one piece of your agent setup breaks/);
 });
 
-test('the landing draws one bar per era on a shared scale, with the fraction beside it', () => {
-  expect(html).toContain('How much of each era is reached');
-  const bars = html.match(/class="fig-eras-track"/g) || [];
-  expect(bars.length).toBe(7);
-  expect(html).toMatch(/of 35 on the tree/);
+test('the one number on the page is what stops in the demo, counting only what worked', () => {
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  const cold = coldOpen(items, connections);
+  // The first choice cut off twelve things and none had been reached; a
+  // headline number of things that "stopped" has to be things that ran.
+  expect(cold?.stopped.length).toBeGreaterThanOrEqual(3);
+  for (const item of cold?.stopped ?? []) {
+    expect(item.status).toBe('built');
+    expect(['degraded', 'broken']).not.toContain(item.meta?.lifecycle);
+  }
+  expect(html).toContain(`<span class="app-welcome-fact-figure">${cold?.stopped.length}</span>`);
+  expect(html).toContain('Watch it happen');
 });
 
-test('both figures are labelled as example data', () => {
-  expect(html).toContain('Both figures are example data');
-});
-
-test('the landing offers to map a config with nothing installed', () => {
-  // `loadFromJSON` sat in the store with no drop target and no picker, so the
-  // answer to "what does this look like for my setup" was "clone the repo".
-  expect(html).toContain('Map your own config');
+test('the landing offers to map a config by pasting it, with nothing installed', () => {
+  // The files live in hidden directories a picker does not show, so the paste
+  // box comes first and the paths are one click away.
+  expect(html).toContain('Paste an agent config');
+  expect(html).toContain('Where is mine?');
+  expect(html).toContain('~/.cursor/mcp.json');
   expect(html).toContain('never uploaded');
 });
 
 test('the landing names the runtimes it reads, so a visitor can tell it reads theirs', () => {
-  // The tagline says what Ambit is for and names no tool. A visitor deciding
-  // whether to stay is asking whether it reads the one they use.
   for (const runtime of ['Claude Code', 'Cursor', 'OpenCode', 'Codex CLI']) {
     expect(html).toContain(runtime);
   }
 });
 
-test('the ways in come before the figures, so a phone shows one on its first screen', () => {
-  // Below two charts, the demo button sat under the fold at phone width.
-  expect(html.indexOf('Open the demo')).toBeGreaterThan(-1);
-  expect(html.indexOf('Open the demo')).toBeLessThan(html.indexOf('app-welcome-figures'));
+test('the demo comes before the paste box, so a phone shows it on its first screen', () => {
+  expect(html.indexOf('Watch it happen')).toBeLessThan(html.indexOf('Paste an agent config'));
 });
 
 test('a convinced visitor finds the install line and the docs without leaving for GitHub', () => {

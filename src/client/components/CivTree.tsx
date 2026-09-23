@@ -6,6 +6,7 @@ import { typeColor, typeSymbol } from '../utils/typeColors';
 import {
   buildAdjacency,
   buildColumns,
+  cascadeDepths,
   COL_W,
   columnLabel,
   columnOf,
@@ -40,6 +41,12 @@ interface CivTreeProps {
   hoveredId: string | null;
   onSelect: (id: string | null) => void;
   onHover: (id: string | null) => void;
+  /**
+   * A tour is telling the story of what is on screen. The simulation banner
+   * and the map's finding would say the same thing a second time, and the
+   * banner's Done would end a step out from under the tour.
+   */
+  narrated?: boolean;
 }
 
 /**
@@ -147,6 +154,7 @@ export default function CivTree({
   onHover,
   leftInset = 0,
   rightInset = 0,
+  narrated = false,
 }: CivTreeProps) {
   const requestedLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
@@ -170,6 +178,20 @@ export default function CivTree({
       ]),
     [simulatedNodeId, simulatedCascadeIds, simulatedWeakenedIds]
   );
+  // How far each simulated node is from where the simulation started, so the
+  // cascade can be drawn spreading outward, one hop after another.
+  const simDepth = useMemo(
+    () =>
+      simulatedNodeId
+        ? cascadeDepths(connections, simulatedNodeId, simSet)
+        : new Map<string, number>(),
+    [connections, simulatedNodeId, simSet]
+  );
+  /** The stagger for a node the simulation reaches: the hop count, as a CSS variable. */
+  const hopStyle = (id: string): React.CSSProperties | undefined => {
+    const hop = simDepth.get(id);
+    return hop === undefined ? undefined : ({ '--hop': hop } as React.CSSProperties);
+  };
   const attentionInterventions = useAmbitStore(s => s.attentionInterventions);
   // The top of the scale the lens is drawn against, and the number its legend
   // prints. Taken from the data so the ramp spans what is actually there.
@@ -467,19 +489,21 @@ export default function CivTree({
         rightInset={rightInset}
       />
 
-      <SimulationBanner
-        simulationMode={simulationMode}
-        simulatedNodeId={simulatedNodeId}
-        simulatedItem={simulatedItem}
-        simulatedCascadeIds={simulatedCascadeIds}
-        simulatedWeakenedIds={simulatedWeakenedIds}
-        items={items}
-        clearSimulation={clearSimulation}
-        leftInset={leftInset}
-        rightInset={rightInset}
-      />
+      {!narrated && (
+        <SimulationBanner
+          simulationMode={simulationMode}
+          simulatedNodeId={simulatedNodeId}
+          simulatedItem={simulatedItem}
+          simulatedCascadeIds={simulatedCascadeIds}
+          simulatedWeakenedIds={simulatedWeakenedIds}
+          items={items}
+          clearSimulation={clearSimulation}
+          leftInset={leftInset}
+          rightInset={rightInset}
+        />
+      )}
 
-      {simulationMode === 'none' && !selectedId && (
+      {!narrated && simulationMode === 'none' && !selectedId && (
         <MapFinding
           findings={findings}
           onShow={id => onSelect(id)}
@@ -612,6 +636,8 @@ export default function CivTree({
             return (
               <path
                 key={`c-${i}`}
+                className={isSimLine ? 'civ-sim-edge' : undefined}
+                style={isSimLine ? hopStyle(conn.to) : undefined}
                 d={edgePath(fromPos.x, fromPos.y, toPos.x, toPos.y)}
                 fill="none"
                 stroke={strokeColor}
@@ -750,6 +776,7 @@ export default function CivTree({
                       key={item.id}
                       transform={`translate(${cx}, ${cy})`}
                       opacity={baseOpacity}
+                      className={isSimRoot || isSimAffected ? 'civ-sim-hit' : undefined}
                       tabIndex={0}
                       role="button"
                       aria-pressed={selected}
@@ -776,8 +803,29 @@ export default function CivTree({
                         onHover?.(null);
                         setHoverItem(null);
                       }}
-                      style={{ cursor: 'pointer', transition: 'opacity .15s' }}
+                      style={{
+                        cursor: 'pointer',
+                        transition: 'opacity .15s',
+                        ...hopStyle(item.id),
+                      }}
                     >
+                      {(isSimRoot || isSimAffected) && (
+                        <circle
+                          // Remounted per simulation, so each one replays its ripple.
+                          key={`${simulationMode}:${simulatedNodeId}`}
+                          className="civ-sim-ripple"
+                          r={NODE_R}
+                          fill="none"
+                          stroke={
+                            simulationMode === 'outage'
+                              ? 'var(--error)'
+                              : simulationMode === 'gap'
+                                ? 'var(--warn)'
+                                : 'var(--ok)'
+                          }
+                          strokeWidth={2}
+                        />
+                      )}
                       {isKeystone && !dimmed && (
                         <rect
                           x={-NODE_R - 4}

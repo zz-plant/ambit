@@ -165,21 +165,27 @@ One renderer: `CivTree.tsx` (SVG), the curated tree in era columns — the 3D mo
 src/client/                React frontend
   App.tsx                  The shell: which view is showing, and how the hooks and panels fit
   linkState.ts             The URL in both directions — which view, node and lens it asks for, and
-                           how a view is written back to it. Pure, tested without a window
+                           how a view is written back to it. A bare visit to the hosted site is
+                           the demo, on the map. Pure, tested without a window
   hooks/                   useViewport (narrow screens) · useHotkeys · useGraphStream (the AG-UI
                            state stream, and whether it is attached) · useUrlSync (the address bar
-                           follows the view) · useGuide · useToast · useLatest
+                           follows the view) · useGuide · useToast · useLatest · useConfigImport
+                           (a pasted or dropped config, read in the tab)
   components/
     AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
                            share, proposals, docs
     Finder.tsx             Search by name; a node opens on the map, an entry in My Setup
     SetupView.tsx          My Setup: one row per entry, with its evidence and the nodes it provides;
                            repo drift, infrastructure and the agent's briefing as its other tabs
-    WelcomeScreen.tsx      What an empty graph shows — the pitch, two real figures, and the ways in
-    figures.tsx            The sparkline, era strip and reach bar every surface draws the same way
+    WelcomeScreen.tsx      What an empty graph shows: the question, one number from the demo's
+                           outage with a button that plays it, and the paste box
+    ConfigIntake.tsx       Paste a config or pick the file, and where each runtime keeps it
+    Tour.tsx               The demo narrated, on the hosted site's first visit: an outage that
+                           spreads, a failing check, the next step, the approval gate, your config
+    figures.tsx            The sparkline and reach bar every surface draws the same way
     Term.tsx               A house word with its definition attached — one glossary, two renderings
                            (a popover in HTML, a <title> in the SVG map)
-    GettingStartedGuide.tsx  The first-run card
+    GettingStartedGuide.tsx  The first-run card on a real graph; the demo gets the tour instead
     Toast.tsx              A transient notice from the graph stream
     CivTree.tsx            The SVG map: era columns, one-hop highlighting of what a node needs and
                            enables, the two simulations, an inline legend
