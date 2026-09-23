@@ -47,7 +47,7 @@ const CHECK = process.argv.includes('--check');
 const TARGETS: { file: string; examples: string[][] }[] = [
   {
     file: 'README.md',
-    examples: [['status'], ['goal', 'local-embeddings'], ['impact', 'combo:local-runtime']],
+    examples: [['status'], ['goal', 'local-embeddings'], ['impact', 'mcp:playwright']],
   },
 ];
 

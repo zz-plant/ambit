@@ -4,12 +4,14 @@
 
 **What you, your agents, and your machines can jointly do — and where your own time is going.**
 
+Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop and Codex CLI into one local graph, and answers what no single config file can: what works, what is configured but broken, and what stops working if one MCP server, model or token goes away.
+
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=6366f1)](https://github.com/zz-plant/ambit/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
-[**Live demo**](https://zz-plant.github.io/ambit/?demo=1) · [What it is](#what-ambit-is) · [Get started](#get-started) · [Terminal](#ask-from-the-terminal) · [Agent MCP](#connect-it-to-your-agent) · [The map](#the-map) · [In practice](#in-practice) · [How it works](#how-it-works) · [FAQ](./docs/faq.md) · [Deep dive](./docs/deep-dive.md)
+[**Try the live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Connect it to your agent](#connect-it-to-your-agent) · [FAQ](./docs/faq.md) · [Docs](https://zz-plant.github.io/ambit/docs/)
 
 <br>
 
@@ -49,8 +51,51 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 <div align="center">
 <img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
-<br><sub>Filled nodes are reached · Outlined nodes are a next step · Faded nodes are blocked, with a prerequisite missing</sub>
+<br><sub>Filled nodes are reached · Heavy rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
 </div>
+
+---
+
+## In practice
+
+### The combo you already almost have
+
+You run local Postgres and Ollama, but your agent cannot do private semantic code search over your repositories.
+
+`ambit graph combos` reports the gap as one step — `CREATE EXTENSION vector;` — and `ambit goal retrieval --simulate` shows what that five-minute change reaches, with no cloud API in the path.
+
+### An agent diagnosing itself
+
+An agent in Claude Code is asked to deploy to staging. Left alone it runs `kubectl`, collects unauthorized errors, retries, and leaves local state worse than it found it.
+
+Calling `ambit_authority` first returns `authority: confirm` and `missing: staging-kubeconfig`. The agent stops cleanly and asks for an approval it can name.
+
+### Rotating a shared token
+
+You are about to revoke a personal access token. Without a model of what depends on it, two background MCP tools and a scheduled sync agent fail silently some hours later.
+
+`ambit impact credential:github/user-token` names the providers and capabilities standing on that one credential, which is the argument for provisioning granular tokens first.
+
+The `credentials` block that declares the sharing is in [the deep dive](./docs/deep-dive.md#what-a-node-is). Until you write one, `ambit credentials` reports that none are declared.
+
+---
+
+## Where this sits in the stack
+
+Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.
+
+| System | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| Vector tool-RAG | by similarity | – | – | – | – |
+| Workflow state machines (LangGraph) | – | within one task | – | – | within one task |
+| Package managers (Nix, Homebrew) | – | for binaries | – | – | – |
+| A list of configured MCP servers | by name | – | – | – | – |
+| Typed decision models (Jev) | – | – | – | – | by a probability, which text in the state can move |
+| **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
+
+Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Ambit models what those binaries add up to on this host, what it costs a person to keep them working, and what an agent may do with them.
+
+A typed decision model such as TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) answers whether a tool call looks safe with a calibrated probability, cheaply enough to ask on every call. Injected text can move that probability, so Ambit maps Jev as a capability and never lets it decide what an agent may do. [The FAQ](./docs/faq.md#i-use-jev-where-does-it-fit) says how the two fit together.
 
 ---
 
@@ -143,26 +188,26 @@ $ ambit goal local-embeddings
 ```
 <!-- /example -->
 
-### ambit impact — what breaks if this goes away
+### ambit impact — what breaks if one MCP server goes away
 
-<!-- example: ambit impact combo:local-runtime -->
+<!-- example: ambit impact mcp:playwright -->
 ```console
-$ ambit impact combo:local-runtime
+$ ambit impact mcp:playwright
 
-    capability: Local Runtime
+    capability: playwright
     decayed:
-      Local Tool Calling
+      Tool Protocol
         becomes unavailable: false
-      Model Routing
-        becomes unavailable: false
-      Local Embeddings
-        becomes unavailable: false
-      Self-Hosted Stack
-        becomes unavailable: false
-      Local Typed Judgment
-        becomes unavailable: false
+        also provided by: 5
+      Browser Automation
+        becomes unavailable: true
+      Automated Tests
+        becomes unavailable: true
     combos at risk:
-      Local Tool Calling
+      Tool Protocol
+        severity: redundant
+        also provided by: 5
+      Browser Automation
     …
 ```
 <!-- /example -->
@@ -261,7 +306,7 @@ sequenceDiagram
 
 The web UI (`./bootstrap.sh web`) is three views over the same graph the CLI reads. The **map** is the curated tree with your position on it. **My Setup** is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides; its Briefing tab is the prose an agent is given at connect, so what the agent believes about the machine is inspectable. **Time & cost** is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. Search (<kbd>/</kbd>) finds anything by name and opens it where it lives.
 
-Select a node and its edges are drawn apart: what it needs in teal, what it enables in indigo, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take. The header counts the map's nodes by state, and each count highlights its nodes, the way the legend keys do.
+One line over the map says what it found before you read a node: a capability that is configured and failing its check, or else the next step that reaches the most, with a button that previews it. Select a node and its edges are drawn apart: what it needs in teal, what it enables in indigo, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take. The header counts the map's nodes by state, and each count highlights its nodes, the way the legend keys do.
 
 The **Docs** button defines every term on the canvas; [the four above](#the-words-ambit-uses) cover most of it.
 
@@ -279,36 +324,12 @@ The switch sits over the map, top right. Press <kbd>1</kbd> or <kbd>2</kbd> to c
 Select a node to open the inspector, then simulate against it. Neither mode writes anything.
 
 - **Simulate an outage** dims the canvas and draws the cascade: red for what stops, amber for what keeps another provider and only loses one, with the count of each.
-- **Simulate unlocking** acquires a locked primitive hypothetically and lights up everything that becomes reachable in green.
+- **Simulate unlocking** acquires a locked primitive hypothetically and lights up, in green, everything that becomes reachable because of it.
 - **Show the gap** draws what a blocked node is waiting on, every hop up, priced in setup time.
 
 ### Approving proposals
 
 When an agent proposes an environment change over MCP, the **Proposals** panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click, or records a no with the reason, which is what the next draft learns from. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`. When you are away from the machine, `ambit dispatch <id>` pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.
-
----
-
-## In practice
-
-### The combo you already almost have
-
-You run local Postgres and Ollama, but your agent cannot do private semantic code search over your repositories.
-
-`ambit graph combos` reports the gap as one step — `CREATE EXTENSION vector;` — and `ambit goal retrieval --simulate` shows what that five-minute change reaches, with no cloud API in the path.
-
-### An agent diagnosing itself
-
-An agent in Claude Code is asked to deploy to staging. Left alone it runs `kubectl`, collects unauthorized errors, retries, and leaves local state worse than it found it.
-
-Calling `ambit_authority` first returns `authority: confirm` and `missing: staging-kubeconfig`. The agent stops cleanly and asks for an approval it can name.
-
-### Rotating a shared token
-
-You are about to revoke a personal access token. Without a model of what depends on it, two background MCP tools and a scheduled sync agent fail silently some hours later.
-
-`ambit impact credential:github/user-token` names the providers and capabilities standing on that one credential, which is the argument for provisioning granular tokens first.
-
-The `credentials` block that declares the sharing is in [the deep dive](./docs/deep-dive.md#what-a-node-is). Until you write one, `ambit credentials` reports that none are declared.
 
 ---
 
@@ -364,25 +385,6 @@ asciinema play docs/incidents/demo_intervention_trace.cast # replay the recordin
 
 ---
 
-## Where this sits in the stack
-
-Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.
-
-| System | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| Vector tool-RAG | by similarity | – | – | – | – |
-| Workflow state machines (LangGraph) | – | within one task | – | – | within one task |
-| Package managers (Nix, Homebrew) | – | for binaries | – | – | – |
-| A list of configured MCP servers | by name | – | – | – | – |
-| Typed decision models (Jev) | – | – | – | – | by a probability, which text in the state can move |
-| **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
-
-Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Ambit models what those binaries add up to on this host, what it costs a person to keep them working, and what an agent may do with them.
-
-A typed decision model such as TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) answers whether a tool call looks safe with a calibrated probability, cheaply enough to ask on every call. Injected text can move that probability, so Ambit maps Jev as a capability and never lets it decide what an agent may do. [The FAQ](./docs/faq.md#i-use-jev-where-does-it-fit) says how the two fit together.
-
----
-
 ## Position in the revisable-delegation loop
 
 Ambit is one of five systems that each hold a step of the loop an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Ambit holds **capability** and **authorization**. A grant holds only while what it rests on does, and every narrowing is written as an append-only, hash-chained stream of [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record) that another Ambit environment can read as evidence and never as an instruction. [The deep dive](./docs/deep-dive.md#delegation-records) has the record kinds, the objection path, and the limits; the siblings are [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), and [Ethotechnics](https://ethotechnics.org) (the record shape).
@@ -421,6 +423,7 @@ New capability models, runtime adapters, visualization work, and edge-case repor
 Ambit is a personal project. If it answered a question your config files could not, [a star](https://github.com/zz-plant/ambit/stargazers) is how the next person with the same stack finds it, and [the release notes](https://github.com/zz-plant/ambit/releases) explain each change.
 
 - Post an `ambit share --redact` snapshot of your own map. The file names nothing on your machine, and every real graph is an argument the demo cannot make.
+- To hear when a new runtime reader or capability lands, choose **Watch → Custom → Releases**. That sends the release notes and nothing else.
 - Report the runtime it does not read yet, or the capability it models wrong. Both are [issue templates](https://github.com/zz-plant/ambit/issues/new/choose).
 - Citing it in writing? [`CITATION.cff`](./CITATION.cff) is what GitHub's *Cite this repository* button reads.
 

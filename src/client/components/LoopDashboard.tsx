@@ -162,9 +162,12 @@ function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   ].filter(r => r.names?.length);
 
   if (!rows.length) return null;
+  // Something configured and not working is the most urgent fact on the page,
+  // so it is drawn as an alert across the page and not a card in the grid.
+  const alarm = status.degraded?.length > 0;
 
   return (
-    <figure className="fig fig--assurance">
+    <figure className={`fig fig--assurance ${alarm ? 'fig--alert' : ''}`}>
       <figcaption className="fig-caption">
         <span className="fig-caption-title">
           <svg
@@ -431,11 +434,11 @@ function AuthorityFigure({
                 </span>
                 <button
                   type="button"
-                  className="tp-btn-sm"
+                  className="fig-cta"
                   title={p.command}
                   onClick={() => copy(`${p.id}/${p.action}`, p.command)}
                 >
-                  {copied === `${p.id}/${p.action}` ? 'Copied' : 'Copy the command that sets one'}
+                  {copied === `${p.id}/${p.action}` ? 'Copied ✓' : 'Copy the command that sets one'}
                 </button>
               </li>
             ))}
@@ -860,6 +863,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
   const loopSource = useAmbitStore(s => s.loopSource);
   const loopEmpty = useAmbitStore(s => s.loopEmpty);
   const [confidenceFilter, setConfidenceFilter] = React.useState<'all' | 'high' | 'medium'>('all');
+  const items = useAmbitStore(s => s.items);
 
   // No snapshot at all means the same thing as an empty one: nothing has been
   // recorded here. A blank page would read as a broken tab. An empty snapshot
@@ -875,6 +879,18 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
   const filtered = opportunities.filter(
     o => confidenceFilter === 'all' || o.confidence === confidenceFilter
   );
+  // The page's one sentence, and the move it recommends: the saving so far,
+  // then the opportunity that pays back soonest. The page opened on a title
+  // and a paragraph of method, and its best number sat in the first of five
+  // equal cards.
+  const saved = attention.interventions > 0 || roi.monthly_hours.length > 1;
+  const topMove = [...opportunities]
+    .filter(o => o.payback_months != null)
+    .sort((a, b) => (a.payback_months as number) - (b.payback_months as number))[0];
+  const topNode =
+    topMove?.capability_id && items.some(i => i.id === topMove.capability_id)
+      ? topMove.capability_id
+      : null;
   const filters: [typeof confidenceFilter, string][] = [
     ['all', 'All'],
     ['high', 'High confidence'],
@@ -886,7 +902,29 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
       <div className="loop-inner">
         <div className="loop-hero">
           <div>
-            <h2 className="loop-title">Where the time goes</h2>
+            <p className="loop-kicker">Where the time goes</p>
+            {saved ? (
+              <h2 className="loop-lead" style={NUM}>
+                <strong>{roi.hours_per_year}h</strong> of a person&rsquo;s time saved,{' '}
+                <strong>{money(roi.dollars_per_year)}</strong> a year.
+              </h2>
+            ) : (
+              <h2 className="loop-title">Where the time goes</h2>
+            )}
+            {topMove && (
+              <div className="loop-move">
+                <p style={NUM}>
+                  Next: <strong>{topMove.title}</strong>. Pays back in {topMove.payback_months}{' '}
+                  {topMove.payback_months === 1 ? 'month' : 'months'} and recovers{' '}
+                  {money(topMove.expected.savings_dollars_month)} a month.
+                </p>
+                {onShowOnMap && topNode && (
+                  <button type="button" className="fig-cta" onClick={() => onShowOnMap(topNode)}>
+                    Show it on the map
+                  </button>
+                )}
+              </div>
+            )}
             <p className="loop-subtitle">
               Every time a person had to step in, recorded against the capability that needed them.
               Priced, and ranked by what would pay back fastest.
@@ -896,8 +934,10 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
           </div>
         </div>
 
+        {status.degraded?.length > 0 && <Fragility status={status} />}
+
         <div className="fig-kpis">
-          <figure className="fig fig--kpi">
+          <figure className="fig fig--kpi fig--wide">
             <figcaption className="fig-caption">
               <span className="fig-caption-title">
                 <svg
@@ -934,7 +974,9 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
                   <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
                 </div>
                 {roi.monthly_hours.length > 1 ? (
-                  <HoursSparkline series={roi.monthly_hours} width={280} height={92} annotate />
+                  // Drawn at the width the card now has, so its labels stay
+                  // their own size instead of scaling up with the figure.
+                  <HoursSparkline series={roi.monthly_hours} width={560} height={110} annotate />
                 ) : (
                   <p className="fig-note">
                     A month-by-month line appears once there are two months.
@@ -984,7 +1026,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
           </figure>
 
           <AssuranceBar status={status} />
-          <Fragility status={status} />
+          {!(status.degraded?.length > 0) && <Fragility status={status} />}
         </div>
 
         <AuthorityFigure authority={authority} onShow={onShow} />

@@ -7,6 +7,7 @@
  *   src/client/public/favicon.svg           the vector the page links
  *   src/client/public/apple-touch-icon.png  180×180, the iOS home screen icon
  *   src/client/public/social-preview.png    the page's own copy, for og:image
+ *   src/client/public/og/<page>.png          one card per published docs page
  *
  * The last two are new to this script, and adding them is the point. The touch
  * icon was drawn by hand once and never regenerated, so it had drifted to a
@@ -24,6 +25,7 @@
 import { execSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { PAGES, type Page } from './build-docs.ts';
 
 const ASSETS_DIR = join(process.cwd(), 'docs', 'assets');
 const PUBLIC_DIR = join(process.cwd(), 'src', 'client', 'public');
@@ -33,29 +35,6 @@ const FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sa
 /** The line the README leads with; index.html, package.json and CITATION.cff quote it too. */
 const TAGLINE =
   'What you, your agents, and your machines can jointly do — and where your own time is going.';
-
-/**
- * The tagline, broken for the card. The breaks fall on the comma and on the
- * dash, so each line ends where the sentence pauses; the version before this
- * one broke after "and where", which left a line hanging on a preposition.
- * `checkTagline` holds the two spellings together.
- */
-const HEADLINE = [
-  'What you, your agents,',
-  'and your machines can jointly do —',
-  'and where your own time is going.',
-];
-
-/** Fails the build if the card's line breaks stop spelling the tagline. */
-function checkTagline(): void {
-  const joined = HEADLINE.join(' ');
-  if (joined !== TAGLINE) {
-    console.error(
-      `  ❌ headline drifted from the tagline\n     card: ${joined}\n     line: ${TAGLINE}`
-    );
-    process.exit(1);
-  }
-}
 
 // ── The mark ─────────────────────────────────────────────────────────────────
 //
@@ -124,100 +103,119 @@ function icon(radius: number): string {
   </svg>`;
 }
 
-// ── The card ─────────────────────────────────────────────────────────────────
+// ── The cards ────────────────────────────────────────────────────────────────
 //
-// One rule governs this drawing: nothing on it may depend on a detail smaller
-// than the smallest size the card is seen at. A timeline unfurl renders it
-// about 480px wide, two and a half times down from the 1280 it is drawn at.
+// One rule governs these drawings: nothing on them may depend on a detail
+// smaller than the smallest size a card is seen at. A timeline unfurl renders
+// it about 480px wide, two and a half times down from the 1280 it is drawn at,
+// so no text here is under 26px and no node under 17px.
 //
-// The card this replaces put a miniature of the running UI on the right — nine
-// identical circles in three columns, with 12px era labels and a 10px "Era 1"
-// under each. At 480px the labels were five pixels tall and the nine circles
-// carried no information, so 40% of the card was noise. The other rule follows
-// from that one: the graphic is honestly abstract. A drawing that imitates the
-// product's screenshot at a size where no screenshot is legible is a fake, and
-// the real screenshots are in the README where they have room.
+// The card before this one led with the tagline, "What you, your agents, and
+// your machines can jointly do", beside an abstract graph of coloured dots. It
+// named no tool a reader uses and showed nothing happening, and in a feed it
+// read as a brand, which is the thing a scrolling reader skips. This one asks
+// the question the product answers, names the runtimes it reads so a reader
+// can tell it is about theirs, and draws the answer: one node down, and what
+// goes with it. The graphic is still honestly abstract. A drawing that imitates
+// the product's screenshot at a size where no screenshot is legible is a fake,
+// and the real screenshots are in the README where they have room.
 
-/** A node of the map. `frontier` nodes are one step out, and drawn hollow. */
-type Node = { x: number; y: number; r: number; c?: string; frontier?: boolean; key?: boolean };
+const INK = '#f8fafc';
+const SUB = '#a8b3c7';
+const QUIET = '#6b7a93';
+const RED = '#f43f5e';
+
+/** Text is data here: a title with an ampersand would otherwise end the SVG. */
+const xml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Words into lines of at most `width` characters, never more than `max` lines. */
+function wrap(text: string, width: number, max: number): string[] {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if (line && (line + ' ' + word).length > width) {
+      lines.push(line);
+      line = word;
+    } else line = line ? `${line} ${word}` : word;
+  }
+  if (line) lines.push(line);
+  return lines.length > max ? [...lines.slice(0, max - 1), `${lines[max - 1]}…`] : lines;
+}
 
 /**
- * Hand-placed, in loose columns with uneven rows. An earlier pass fanned these
- * out radially at a fixed radius and it read as a sunburst logo; a map is
- * irregular, and it runs off the edges of its frame.
- *
- * Radii stay at 17 and above so every node clears 6px at unfurl scale, and the
- * palette is four of the app's node-type colours, amber used once.
+ * A node of the card's graph. `down` is the one that failed, `lost` what
+ * stops with it, and `frontier` is not reached, drawn dashed.
+ */
+type Node = { x: number; y: number; r: number; down?: boolean; lost?: boolean; frontier?: boolean };
+
+/**
+ * Hand-placed, in loose columns with uneven rows: a map is irregular and it
+ * runs off the edges of its frame. The failed node sits where the eye lands
+ * first on the right half, and what it takes with it fans out to its right.
  */
 const NODES: Record<string, Node> = {
-  a1: { x: 868, y: 122, r: 21, c: '#38bdf8' },
-  a2: { x: 842, y: 332, r: 24, c: '#8b5cf6' },
-  a3: { x: 886, y: 524, r: 20, c: '#10b981' },
-  keystone: { x: 1022, y: 240, r: 34, key: true },
-  b2: { x: 1006, y: 446, r: 23, c: '#38bdf8' },
-  b3: { x: 1058, y: 608, r: 19, c: '#8b5cf6' },
-  c1: { x: 1174, y: 104, r: 22, c: '#f59e0b' },
-  c2: { x: 1202, y: 296, r: 21, c: '#8b5cf6' },
-  c3: { x: 1158, y: 478, r: 18, frontier: true },
-  d1: { x: 1248, y: 170, r: 20, frontier: true },
-  d2: { x: 1254, y: 388, r: 18, frontier: true },
-  d3: { x: 1238, y: 572, r: 17, frontier: true },
+  a1: { x: 820, y: 150, r: 22 },
+  a2: { x: 800, y: 330, r: 24 },
+  a3: { x: 840, y: 520, r: 20 },
+  down: { x: 960, y: 270, r: 36, down: true },
+  b1: { x: 1070, y: 130, r: 22, lost: true },
+  b2: { x: 1100, y: 300, r: 24, lost: true },
+  b3: { x: 1010, y: 450, r: 22, lost: true },
+  c1: { x: 1210, y: 200, r: 21, lost: true },
+  c2: { x: 1230, y: 390, r: 20, lost: true },
+  c3: { x: 1150, y: 560, r: 20, lost: true },
+  d1: { x: 960, y: 610, r: 18, frontier: true },
+  d2: { x: 1260, y: 580, r: 17, frontier: true },
 };
 
-/** `[from, to, soft]`. Soft edges lead to the frontier, and are dashed. */
-const EDGES: [string, string, boolean?][] = [
-  ['a1', 'keystone'],
-  ['a2', 'keystone'],
-  ['a3', 'b2'],
-  ['a2', 'b2'],
-  ['keystone', 'c1'],
-  ['keystone', 'c2'],
-  ['keystone', 'b2'],
-  ['b2', 'b3'],
-  ['b2', 'c3', true],
-  ['c1', 'd1', true],
-  ['c2', 'd1', true],
-  ['c2', 'd2', true],
-  ['c3', 'd3', true],
-  ['b3', 'd3', true],
+const EDGES: [string, string][] = [
+  ['a1', 'down'],
+  ['a2', 'down'],
+  ['a2', 'a3'],
+  ['a3', 'd1'],
+  ['down', 'b1'],
+  ['down', 'b2'],
+  ['down', 'b3'],
+  ['b1', 'c1'],
+  ['b2', 'c1'],
+  ['b2', 'c2'],
+  ['b3', 'c3'],
+  ['c3', 'd2'],
 ];
 
-function graph(): string {
+function graph(opacity = 1): string {
   const parts: string[] = [];
-
-  for (const [from, to, soft] of EDGES) {
+  for (const [from, to] of EDGES) {
     const f = NODES[from];
     const t = NODES[to];
+    const hot = (f.down || f.lost) && t.lost;
+    const soft = t.frontier;
     parts.push(
       `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}" stroke="${
-        soft ? 'rgba(148,163,184,0.30)' : 'rgba(129,140,248,0.50)'
-      }" stroke-width="${soft ? 2.5 : 3.5}"${soft ? ' stroke-dasharray="8 7"' : ''} stroke-linecap="round"/>`
+        hot ? 'rgba(244,63,94,0.70)' : soft ? 'rgba(148,163,184,0.30)' : 'rgba(129,140,248,0.50)'
+      }" stroke-width="${hot ? 4 : soft ? 2.5 : 3.5}"${soft ? ' stroke-dasharray="8 7"' : ''} stroke-linecap="round"/>`
     );
   }
-
   for (const n of Object.values(NODES)) {
-    if (n.key) continue;
+    if (n.down) continue;
     parts.push(
       n.frontier
         ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="none" stroke="rgba(148,163,184,0.62)" stroke-width="3.2" stroke-dasharray="9 6.5"/>`
-        : `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="${n.c}"/>`
+        : n.lost
+          ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="#3b1220" stroke="${RED}" stroke-width="4"/>`
+          : `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="#6366f1"/>`
     );
   }
-
-  // The keystone last, so it sits over its own edges: lit, ringed, and the
-  // source of every solid edge on the card.
-  const k = NODES.keystone;
-  parts.push(`<circle cx="${k.x}" cy="${k.y}" r="96" fill="url(#keyGlow)"/>
-    <circle cx="${k.x}" cy="${k.y}" r="48" fill="none" stroke="rgba(99,102,241,0.30)" stroke-width="1.5"/>
-    <circle cx="${k.x}" cy="${k.y}" r="${k.r}" fill="#6366f1"/>
-    <circle cx="${k.x}" cy="${k.y}" r="${k.r}" fill="none" stroke="#c7d2fe" stroke-width="3"/>`);
-
-  return parts.join('\n    ');
+  // The failed node last, over its own edges: lit red, crossed out.
+  const d = NODES.down;
+  parts.push(`<circle cx="${d.x}" cy="${d.y}" r="100" fill="url(#downGlow)"/>
+    <circle cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${RED}"/>
+    <path d="M${d.x - 13} ${d.y - 13} L${d.x + 13} ${d.y + 13} M${d.x + 13} ${d.y - 13} L${d.x - 13} ${d.y + 13}" stroke="#fff" stroke-width="7" stroke-linecap="round"/>`);
+  return `<g opacity="${opacity}">${parts.join('\n    ')}</g>`;
 }
 
-function socialCard(): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
-    <defs>
+/** The ground every card shares: the dark gradient, two glows, and the red one. */
+const GROUND = `<defs>
       ${MARK_GRADIENT}
       <linearGradient id="bg" x1="0" y1="0" x2="0" y2="640" gradientUnits="userSpaceOnUse">
         <stop offset="0%" stop-color="#0c1222"/>
@@ -227,32 +225,66 @@ function socialCard(): string {
         <stop offset="0%" stop-color="rgba(99,102,241,0.20)"/>
         <stop offset="100%" stop-color="rgba(99,102,241,0)"/>
       </radialGradient>
-      <radialGradient id="glowB" cx="0.8" cy="0.55" r="0.5">
-        <stop offset="0%" stop-color="rgba(14,165,233,0.13)"/>
-        <stop offset="100%" stop-color="rgba(14,165,233,0)"/>
-      </radialGradient>
-      <radialGradient id="keyGlow">
-        <stop offset="0%" stop-color="rgba(99,102,241,0.40)"/>
-        <stop offset="100%" stop-color="rgba(99,102,241,0)"/>
+      <radialGradient id="downGlow">
+        <stop offset="0%" stop-color="rgba(244,63,94,0.38)"/>
+        <stop offset="100%" stop-color="rgba(244,63,94,0)"/>
       </radialGradient>
     </defs>
-
     <rect width="1280" height="640" fill="url(#bg)"/>
-    <rect width="1280" height="640" fill="url(#glowA)"/>
-    <rect width="1280" height="640" fill="url(#glowB)"/>
+    <rect width="1280" height="640" fill="url(#glowA)"/>`;
 
+/** The mark and the name, small: the card is about the question, not the brand. */
+const BRAND = `<g transform="translate(80, 62) scale(0.62)">${mark('url(#mk)')}</g>
+    <text x="132" y="96" font-family="${FONT}" font-size="36" font-weight="700" fill="${INK}" letter-spacing="-0.8">Ambit</text>`;
+
+function socialCard(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+    ${GROUND}
     ${graph()}
+    <text x="1236" y="70" font-family="${FONT}" font-size="30" font-weight="700" fill="${RED}" text-anchor="end">1 down, ${Object.values(NODES).filter(n => n.lost).length} stop working</text>
 
-    <g transform="translate(88, 100) scale(0.84)">${mark('url(#mk)')}</g>
-    <text x="158" y="148" font-family="${FONT}" font-size="66" font-weight="700" fill="#f8fafc" letter-spacing="-2.2">Ambit</text>
+    ${BRAND}
 
-    ${HEADLINE.map(
-      (line, i) =>
-        `<text x="88" y="${250 + i * 52}" font-family="${FONT}" font-size="40" font-weight="500" fill="#eef2f8" letter-spacing="-0.6">${line}</text>`
-    ).join('\n    ')}
+    <text font-family="${FONT}" font-size="60" font-weight="750" fill="${INK}" letter-spacing="-1.8">
+      <tspan x="80" y="230">What breaks if one</tspan>
+      <tspan x="80" y="302">MCP server goes down?</tspan>
+    </text>
 
-    <text x="88" y="430" font-family="${FONT}" font-size="23" font-weight="500" fill="#94a3b8">Ask from the terminal. Your agents ask over MCP.</text>
-    <text x="88" y="562" font-family="${FONT}" font-size="17" font-weight="500" fill="#61708a" letter-spacing="0.2">zz-plant.github.io/ambit</text>
+    <text font-family="${FONT}" font-size="27" font-weight="500" fill="${SUB}">
+      <tspan x="80" y="392">Ambit maps Claude Code, Cursor, OpenCode</tspan>
+      <tspan x="80" y="428">and four more into one graph of what</tspan>
+      <tspan x="80" y="464">your agents can actually do.</tspan>
+    </text>
+
+    <rect x="80" y="548" width="352" height="56" rx="28" fill="#4f46e5"/>
+    <text x="256" y="585" font-family="${FONT}" font-size="26" font-weight="650" fill="#ffffff" text-anchor="middle">Try the live demo →</text>
+    <text x="456" y="585" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">open source, runs locally</text>
+  </svg>`;
+}
+
+/**
+ * A docs page's card: which page, and why open it.
+ *
+ * Every page shared the home card, so a link to the security invariants
+ * unfurled as "What breaks if one MCP server goes down?", a question that page
+ * does not answer. Each now leads with its own `card` line from build-docs.ts,
+ * with the page's title under it and the graph faint behind, so the set reads
+ * as one site.
+ */
+function docCard(page: Page): string {
+  const lines = wrap(page.card, 24, 3);
+  const top = 250 - (lines.length - 2) * 34;
+  const titleY = top + lines.length * 76 + 18;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+    ${GROUND}
+    ${graph(0.35)}
+    ${BRAND}
+    <text x="80" y="${top - 70}" font-family="${FONT}" font-size="26" font-weight="700" fill="#818cf8" letter-spacing="3">DOCS</text>
+    <text font-family="${FONT}" font-size="64" font-weight="750" fill="${INK}" letter-spacing="-1.6">
+      ${lines.map((l, i) => `<tspan x="80" y="${top + i * 76}">${xml(l)}</tspan>`).join('\n      ')}
+    </text>
+    <text x="80" y="${titleY}" font-family="${FONT}" font-size="28" font-weight="500" fill="${SUB}">${xml(wrap(page.title, 44, 1)[0])}</text>
+    <text x="80" y="586" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">zz-plant.github.io/ambit/docs/${xml(page.slug ? `${page.slug}/` : '')}</text>
   </svg>`;
 }
 
@@ -366,6 +398,16 @@ const SCENES: Record<string, Scene> = {
   },
 };
 
+for (const page of PAGES) {
+  SCENES[`og:${page.slug || 'docs'}`] = {
+    width: 1280,
+    height: 640,
+    minBytes: 15_000,
+    svg: () => docCard(page),
+    outputs: [join(PUBLIC_DIR, 'og', `${page.slug || 'docs'}.png`)],
+  };
+}
+
 /** The vectors that ship as vectors, written from the same `mark()`. */
 const VECTORS: Record<string, string> = {
   [join(PUBLIC_DIR, 'favicon.svg')]: icon(14),
@@ -374,8 +416,8 @@ const VECTORS: Record<string, string> = {
 
 function main(): void {
   const dryRun = process.argv.includes('--dry-run');
-  checkTagline();
   mkdirSync(ASSETS_DIR, { recursive: true });
+  mkdirSync(join(PUBLIC_DIR, 'og'), { recursive: true });
 
   let failed = 0;
 

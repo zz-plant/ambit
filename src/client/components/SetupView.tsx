@@ -33,17 +33,41 @@ const KINDS: { type: string; label: string; term?: string }[] = [
   { type: 'config', label: 'Configuration' },
 ];
 
-/** What the engine has demonstrated about an entry, as one word and a colour. */
-function evidenceOf(item: Item): { text: string; tone: 'ok' | 'error' | 'muted' } | null {
-  const lifecycle = item.meta?.lifecycle as string | undefined;
-  if (!lifecycle || item.status !== 'built') return null;
-  if (lifecycle === 'reliable' || lifecycle === 'verified')
-    return { text: 'check passed', tone: 'ok' };
-  if (lifecycle === 'degraded' || lifecycle === 'broken')
-    return { text: 'check failing', tone: 'error' };
-  if (lifecycle === 'configured') return { text: 'never checked', tone: 'muted' };
-  return null;
+type Evidence = { text: string; tone: 'ok' | 'error' | 'muted'; failing?: Item[] };
+
+const FAILING = ['degraded', 'broken'];
+const PASSED = ['reliable', 'verified'];
+
+/**
+ * What the engine has demonstrated about an entry, as a few words and a colour.
+ *
+ * An entry read out of a config carries no lifecycle of its own; the checks run
+ * against the tree nodes it provides. So an entry answers for those: failing if
+ * any of them fails, passed when every one it provides has passed, and never
+ * checked otherwise. The column used to be blank for every config entry, beside
+ * a status column that read "Enabled" twenty-eight times.
+ */
+function evidenceOf(item: Item, proves: Item[]): Evidence | null {
+  if (item.status !== 'built') return null;
+  const own = item.meta?.lifecycle as string | undefined;
+  if (own && own !== 'unknown' && own !== 'detected') {
+    if (PASSED.includes(own)) return { text: 'check passed', tone: 'ok' };
+    if (FAILING.includes(own)) return { text: 'check failing', tone: 'error' };
+    return { text: 'never checked', tone: 'muted' };
+  }
+  if (!proves.length) return null;
+  const life = (n: Item) => String(n.meta?.lifecycle ?? '');
+  const failing = proves.filter(n => FAILING.includes(life(n)));
+  if (failing.length) return { text: 'check failing', tone: 'error', failing };
+  if (proves.every(n => PASSED.includes(life(n)))) return { text: 'check passed', tone: 'ok' };
+  return { text: 'never checked', tone: 'muted' };
 }
+
+/** "a", "a and b", "a, b and 3 more": names in a sentence, never a wall of them. */
+const nameList = (names: string[]) =>
+  names.length <= 2
+    ? names.join(' and ')
+    : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
 
 interface SetupViewProps {
   /** Show a tree node on the map, selected. */
@@ -108,12 +132,40 @@ export function SetupView({ onShow }: SetupViewProps) {
   const other = shown.filter(i => !KINDS.some(k => k.type === i.type));
   const enabled = entries.filter(i => i.status === 'built').length;
 
+  // What the list has to say, before anyone reads a row: what is failing, and
+  // what is enabled but puts nothing on the map, which is either dead weight or
+  // a gap in the tree. It opened on "28 of 28 entries enabled", the one fact in
+  // the view that carried no news.
+  const live = entries.filter(i => i.status === 'built');
+  const failingEntries = live.filter(
+    i => evidenceOf(i, provides.get(i.id) || [])?.tone === 'error'
+  );
+  const idle = live.filter(i => i.type === 'mcp-server' && (provides.get(i.id) || []).length === 0);
+
   return (
     <div className="setup">
       <div className="setup-inner">
         <div className="setup-head">
           <div>
             <h2 className="setup-title">My Setup</h2>
+            {(failingEntries.length > 0 || idle.length > 0) && tab === 'entries' && (
+              <ul className="setup-findings">
+                {failingEntries.length > 0 && (
+                  <li className="setup-finding setup-finding--bad">
+                    <strong>{nameList(failingEntries.map(i => i.name))}</strong>{' '}
+                    {failingEntries.length === 1 ? 'provides' : 'provide'} something whose check is
+                    failing.
+                  </li>
+                )}
+                {idle.length > 0 && (
+                  <li className="setup-finding setup-finding--warn">
+                    <strong>{nameList(idle.map(i => i.name))}</strong>{' '}
+                    {idle.length === 1 ? 'is' : 'are'} enabled but{' '}
+                    {idle.length === 1 ? 'provides' : 'provide'} nothing on the map.
+                  </li>
+                )}
+              </ul>
+            )}
             <p className="setup-subtitle">
               {enabled} of {entries.length} entries enabled. Each row is one thing your agent
               configs declare, with what the engine has proved about it and the capabilities it
@@ -314,8 +366,10 @@ export function SetupView({ onShow }: SetupViewProps) {
                 </h3>
                 <div className="setup-rows">
                   {g.rows.map(item => {
-                    const evidence = evidenceOf(item);
                     const proves = provides.get(item.id) || [];
+                    const evidence = evidenceOf(item, proves);
+                    const provesNothing =
+                      item.type === 'mcp-server' && item.status === 'built' && !proves.length;
                     const selected = selectedId === item.id;
                     return (
                       <div
@@ -340,13 +394,29 @@ export function SetupView({ onShow }: SetupViewProps) {
                             <span className="setup-row-kind">{typeLabel(item.type)}</span>
                           )}
                         </button>
-                        <span className={`tp-badge tp-badge--${item.status}`}>
-                          {statusLabel(item.status, item)}
-                        </span>
-                        <span className={`setup-row-evidence is-${evidence?.tone ?? 'none'}`}>
+                        {/* Only the exception is written: "Enabled" on every row
+                            was a column of the same word. */}
+                        {item.status === 'built' ? (
+                          <span className="tp-badge" />
+                        ) : (
+                          <span className={`tp-badge tp-badge--${item.status}`}>
+                            {statusLabel(item.status, item)}
+                          </span>
+                        )}
+                        <span
+                          className={`setup-row-evidence is-${evidence?.tone ?? 'none'}`}
+                          title={
+                            evidence?.failing
+                              ? `Failing: ${evidence.failing.map(n => n.name).join(', ')}`
+                              : undefined
+                          }
+                        >
                           {evidence?.text ?? ''}
                         </span>
                         <span className="setup-row-provides">
+                          {provesNothing && (
+                            <span className="setup-row-idle">Provides nothing on the map</span>
+                          )}
                           {proves.map(node => (
                             <button
                               key={node.id}

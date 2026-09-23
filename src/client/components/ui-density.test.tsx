@@ -115,7 +115,9 @@ test('detail panel presents each relationship once, in its direction', () => {
 test('detail panel states the impact instead of offering a command to copy', () => {
   const html = renderToStaticMarkup(<NodeDetailPanel />);
 
-  expect(html).toContain('1 other capability would stop working');
+  // The count is emphasised, so the sentence is read as text, without its tags.
+  const text = html.replace(/<[^>]+>/g, '');
+  expect(text).toContain('1 other capability would stop working');
   expect(html).not.toContain('ambit impact');
   // A check executes, so that one stays a command.
   expect(html).toContain('ambit verify core');

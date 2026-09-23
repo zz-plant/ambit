@@ -744,10 +744,14 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:playwright"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "daysSinceChange": 0
         }
       },
@@ -769,10 +773,14 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "broken",
           "providers": [
             "mcp:playwright"
           ],
+          "reliability": {
+            "passed": 0,
+            "total": 1
+          },
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -861,11 +869,15 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:docker",
             "tool:deploy"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -891,11 +903,15 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:sqlite",
             "mcp:postgres"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -1005,10 +1021,14 @@
           "era": 1,
           "eraName": "Foundation",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "tool:edit"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "authority": {
             "execute": "autonomous",
             "observe": "autonomous"
@@ -1051,11 +1071,15 @@
           "era": 2,
           "eraName": "Model Access",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "provider:anthropic",
             "provider:ollama"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "daysSinceChange": 0
         }
       },
@@ -1098,10 +1122,14 @@
           "era": 2,
           "eraName": "Model Access",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "provider:ollama"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "daysSinceChange": 0
         }
       },
@@ -1221,10 +1249,14 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:sentry"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "daysSinceChange": 0
         }
       },
@@ -1292,10 +1324,14 @@
           "era": 4,
           "eraName": "Memory",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:memory"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "daysSinceChange": 0
         }
       },
@@ -1450,10 +1486,14 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:1password"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "authority": {
             "execute": "forbidden",
             "observe": "confirm"
@@ -1521,10 +1561,14 @@
           "era": 1,
           "eraName": "Foundation",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "tool:bash"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -1614,7 +1658,7 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:git",
             "mcp:github",
@@ -1623,6 +1667,10 @@
             "mcp:sqlite",
             "mcp:fetch"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "daysSinceChange": 0
         }
       },
@@ -1690,11 +1738,15 @@
           "era": 1,
           "eraName": "Foundation",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:git",
             "mcp:github"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -1742,11 +1794,15 @@
           "era": 3,
           "eraName": "Tool Use",
           "next": false,
-          "lifecycle": "configured",
+          "lifecycle": "verified",
           "providers": [
             "mcp:fetch",
             "agent:researcher"
           ],
+          "reliability": {
+            "passed": 1,
+            "total": 1
+          },
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
