@@ -11,9 +11,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import WelcomeScreen from './WelcomeScreen';
 
-const html = renderToStaticMarkup(
-  <WelcomeScreen onExploreDemo={() => {}} onViewLoop={() => {}} onShowDocs={() => {}} />
-);
+const html = renderToStaticMarkup(<WelcomeScreen onExploreDemo={() => {}} onViewLoop={() => {}} />);
 
 test('the landing draws the year of hours with its acquisitions named', () => {
   expect(html).toContain('Hours a person spent stepping in');
@@ -37,4 +35,24 @@ test('the landing offers to map a config with nothing installed', () => {
   // answer to "what does this look like for my setup" was "clone the repo".
   expect(html).toContain('Map your own config');
   expect(html).toContain('never uploaded');
+});
+
+test('the landing names the runtimes it reads, so a visitor can tell it reads theirs', () => {
+  // The tagline says what Ambit is for and names no tool. A visitor deciding
+  // whether to stay is asking whether it reads the one they use.
+  for (const runtime of ['Claude Code', 'Cursor', 'OpenCode', 'Codex CLI']) {
+    expect(html).toContain(runtime);
+  }
+});
+
+test('the ways in come before the figures, so a phone shows one on its first screen', () => {
+  // Below two charts, the demo button sat under the fold at phone width.
+  expect(html.indexOf('Open the demo')).toBeGreaterThan(-1);
+  expect(html.indexOf('Open the demo')).toBeLessThan(html.indexOf('app-welcome-figures'));
+});
+
+test('a convinced visitor finds the install line and the docs without leaving for GitHub', () => {
+  expect(html).toContain('brew install zz-plant/tap/ambit');
+  expect(html).toMatch(/href="[^"]*docs\/guide\/"/);
+  expect(html).toMatch(/href="[^"]*docs\/faq\/"/);
 });

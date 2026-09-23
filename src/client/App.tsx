@@ -244,7 +244,6 @@ export default function App() {
             seedDemo();
             setView('loop');
           }}
-          onShowDocs={tab => openDocs(tab)}
         />
         <DocsModal
           isOpen={showDocs}
