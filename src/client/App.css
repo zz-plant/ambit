@@ -1390,6 +1390,79 @@ code, pre, .code, .sp-cli-cmd {
   max-width: 460px;
 }
 
+/* What it is, in concrete nouns: the tagline says what it is for, and a
+   visitor's first question is whether it reads the tool they use. */
+.app-welcome-lede {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 560px;
+  margin-top: -8px;
+}
+
+.app-welcome-disclose {
+  margin: -8px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* The install line, for a visitor who is already convinced. */
+.app-welcome-install {
+  display: flex;
+  align-items: stretch;
+  max-width: 100%;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.app-welcome-cmd {
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.app-welcome-copy {
+  flex-shrink: 0;
+  padding: 0 12px;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.app-welcome-copy:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.app-welcome-more {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  font-size: 12.5px;
+}
+
+.app-welcome-more a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.app-welcome-more a:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
 /* Two figures side by side on the front door, on the dashboard's own tokens
    so the landing and the loop view are one drawing hand. */
 .app-welcome-figures {
@@ -1519,17 +1592,6 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
   border-color: var(--border-bright);
   background: var(--bg-hover);
-}
-
-.app-welcome-drop .app-welcome-link {
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.app-welcome-drop .app-welcome-link:hover {
-  color: var(--text-primary);
 }
 
 .app-welcome-local {
@@ -3234,61 +3296,31 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* ─── DROP A CONFIG ───
-   Mapping a setup with nothing installed: the file is read in the tab. */
-.app-welcome-drop {
-  margin-top: 16px;
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed var(--border-bright);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  text-align: left;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-
-.app-welcome-drop-icon {
-  flex-shrink: 0;
-  color: var(--accent);
-  opacity: 0.85;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.app-welcome-drop-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.app-welcome-drop:hover {
-  background: rgba(255, 255, 255, 0.035);
-  border-color: var(--border-hover);
-}
-
-.app-welcome-drop.is-over {
-  border-color: var(--accent);
+   Mapping a setup with nothing installed: the file is read in the tab. The
+   whole landing takes the drop, so the outline goes on the page itself. */
+.app-welcome.is-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: -10px;
   background: var(--accent-soft);
 }
 
-.app-welcome-drop p {
-  margin: 0;
+.app-welcome-drophint {
+  margin: -6px 0 0;
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-muted);
+  max-width: 520px;
 }
 
-.app-welcome-drop code {
+.app-welcome-drophint code {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-secondary);
 }
 
-.app-welcome-drop .app-welcome-droperr {
-  margin-top: 8px;
+.app-welcome-droperr {
+  margin: 0;
+  font-size: 12px;
   color: var(--error);
 }
 

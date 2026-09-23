@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { BrandMark } from './BrandMark';
 import { demoTreeGraph } from '../store/demo';
@@ -10,32 +11,56 @@ import { EraStrip, HoursSparkline, NUM } from './figures';
 interface WelcomeProps {
   onExploreDemo: () => void;
   onViewLoop: () => void;
-  onShowDocs: (tab?: 'concepts' | 'reading' | 'doing' | 'hotkeys') => void;
 }
 
 /** What a dropped file may be, and how big one of those ever is. */
 const MAX_CONFIG_BYTES = 2_000_000;
 
 /**
- * What an empty graph shows: the pitch, two real figures, and one way in.
+ * The runtimes discovery reads, named on the front door. A visitor's first
+ * question is whether this works with the tool they use, and the tagline alone
+ * never said.
+ */
+const RUNTIMES = [
+  'Claude Code',
+  'Cursor',
+  'OpenCode',
+  'Windsurf',
+  'Gemini CLI',
+  'Claude Desktop',
+  'Codex CLI',
+];
+
+/** The one-line install the README leads with. */
+const INSTALL = 'brew install zz-plant/tap/ambit && ambit';
+
+/** The published docs, beside the app on the hosted site. */
+const DOCS = `${import.meta.env.BASE_URL}docs/`;
+
+/**
+ * What an empty graph shows: what Ambit is, the ways in, and two real figures.
  *
  * The front door used to carry a cartoon — four circles labelled LLM, MCP,
  * Tool, Goal — for a product whose whole claim is that it measures things. It
  * now shows the two measurements the product makes, drawn from the same example
  * data the demo runs on and labelled as such: where a person's hours went over
- * a year, and how much of each era is reached. A visitor sees the sensibility
- * before they see a button.
+ * a year, and how much of each era is reached.
  *
- * Rendered without the app chrome — no capability list, no status pill — so
- * the first screen is not an empty search result. One button; the rest are
- * links, because four equal buttons gave a visitor four decisions before they
- * had seen anything.
+ * The order is the order of a visitor's questions. What is it, and does it read
+ * the tool I use: the tagline never said, and the sentence under it names the
+ * runtimes. Can I try it: the demo, and mapping their own config, sit directly
+ * under that, above the figures, so on a phone the way in is on the first
+ * screen and not under two charts. Then the evidence, and last what a visitor
+ * who is already convinced needs: the install line and the docs, which the page
+ * used to link nowhere. Rendered without the app chrome, so the first screen
+ * is not an empty search result.
  */
-export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }: WelcomeProps) {
+export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProps) {
   const loadFromJSON = useAmbitStore(s => s.loadFromJSON);
   const fileInput = useRef<HTMLInputElement>(null);
   const [dropping, setDropping] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
+  const [copied, copy] = useCopied();
 
   /**
    * Map a config the visitor hands over, in their own browser.
@@ -69,13 +94,74 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
   const last = series[series.length - 1];
 
   return (
-    <main className="app-welcome">
+    // The whole page takes a dropped file, so there is no target to aim at;
+    // the "Map your own config" button is the keyboard path.
+    <main
+      className={`app-welcome ${dropping ? 'is-over' : ''}`}
+      onDragOver={e => {
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={e => {
+        // Moving onto a child fires this too; only leaving the page counts.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+      }}
+      onDrop={e => {
+        e.preventDefault();
+        setDropping(false);
+        readConfigFile(e.dataTransfer.files[0]);
+      }}
+    >
       <div className="app-welcome-hero">
         <div className="app-welcome-emblem" aria-hidden="true">
           <BrandMark size={48} />
         </div>
         <h1 className="app-welcome-title">Ambit</h1>
         <p className="app-welcome-tagline">{TAGLINE}</p>
+        <p className="app-welcome-lede">
+          It reads the configs of {RUNTIMES.slice(0, -1).join(', ')} and {RUNTIMES.at(-1)} into one
+          map: what works, what breaks if a piece goes away, and what is worth setting up next. The
+          graph is a file on your machine.
+        </p>
+
+        <div className="app-welcome-actions">
+          <button type="button" className="app-welcome-btn" onClick={onExploreDemo}>
+            Open the demo
+          </button>
+          <button
+            type="button"
+            className="app-welcome-link"
+            onClick={() => fileInput.current?.click()}
+            title="Read an agent config in this tab and draw it. Nothing is uploaded."
+          >
+            Map your own config
+          </button>
+          <button
+            type="button"
+            className="app-welcome-link"
+            onClick={onViewLoop}
+            title="Time & cost: where human attention goes, and what would pay back fastest"
+          >
+            Time &amp; cost
+          </button>
+        </div>
+        <p className="app-welcome-drophint">
+          Or drop an <code>opencode.json</code>, or any agent config, anywhere on this page. It is
+          read in this tab and never uploaded.
+        </p>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          aria-label="Choose an agent config file to map"
+          className="visually-hidden"
+          onChange={e => readConfigFile(e.target.files?.[0])}
+        />
+        {dropError && (
+          <p className="app-welcome-droperr" role="alert">
+            {dropError}
+          </p>
+        )}
 
         <div className="app-welcome-figures">
           <figure className="welcome-fig">
@@ -99,106 +185,32 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onShowDocs }:
             <EraStrip eras={eras} />
           </figure>
         </div>
+        <p className="app-welcome-disclose">
+          Both figures are example data, the same setup the demo opens on.
+        </p>
 
-        <div className="app-welcome-actions">
-          <button type="button" className="app-welcome-btn" onClick={onExploreDemo}>
-            Open the demo
-          </button>
+        <div className="app-welcome-install">
+          <code className="app-welcome-cmd">{INSTALL}</code>
           <button
             type="button"
-            className="app-welcome-link"
-            onClick={onViewLoop}
-            title="Time & cost: where human attention goes, and what would pay back fastest"
+            className="app-welcome-copy"
+            onClick={() => copy('install', INSTALL)}
+            aria-label="Copy the install command"
           >
-            Time &amp; cost
+            {copied ? 'Copied' : 'Copy'}
           </button>
-          <button
-            type="button"
-            className="app-welcome-link"
-            onClick={() => onShowDocs('reading')}
-            title="How to read the map: eras, circles, and prerequisites"
-          >
-            How to read the map
-          </button>
-          <a
-            href="https://github.com/zz-plant/ambit"
-            target="_blank"
-            rel="noopener"
-            className="app-welcome-link"
-          >
-            GitHub
+        </div>
+        <p className="app-welcome-local">
+          That installs the CLI and the MCP server. For the map of your own machine, clone the
+          repository and run <code>./bootstrap.sh web</code>.
+        </p>
+        <nav className="app-welcome-more" aria-label="Read more">
+          <a href={`${DOCS}guide/`}>Guide</a>
+          <a href={`${DOCS}faq/`}>What it reads, and what leaves your machine</a>
+          <a href="https://github.com/zz-plant/ambit" rel="noopener">
+            Source on GitHub
           </a>
-        </div>
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop zone; the button inside it is the keyboard path */}
-        <div
-          className={`app-welcome-drop ${dropping ? 'is-over' : ''}`}
-          onDragOver={e => {
-            e.preventDefault();
-            setDropping(true);
-          }}
-          onDragLeave={() => setDropping(false)}
-          onDrop={e => {
-            e.preventDefault();
-            setDropping(false);
-            readConfigFile(e.dataTransfer.files[0]);
-          }}
-        >
-          <div className="app-welcome-drop-icon" aria-hidden="true">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 36 36"
-              fill="none"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <rect
-                x="5"
-                y="7"
-                width="16"
-                height="22"
-                rx="3"
-                strokeWidth="1.6"
-                strokeDasharray="3 2"
-              />
-              <path d="M9 13 H17 M9 17 H14" strokeWidth="1.6" strokeLinecap="round" />
-              <path
-                d="M22 18 H29 M29 18 L26 15 M29 18 L26 21"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="30" cy="18" r="2" fill="currentColor" />
-            </svg>
-          </div>
-          <div className="app-welcome-drop-text">
-            <p>
-              Both figures are example data.{' '}
-              <button
-                type="button"
-                className="app-welcome-link"
-                onClick={() => fileInput.current?.click()}
-              >
-                Map your own config
-              </button>{' '}
-              — drop an <code>opencode.json</code> here, or any agent config. It is read in this tab
-              and never uploaded.
-            </p>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="application/json,.json"
-              aria-label="Choose an agent config file to map"
-              className="visually-hidden"
-              onChange={e => readConfigFile(e.target.files?.[0])}
-            />
-            {dropError && <p className="app-welcome-droperr">{dropError}</p>}
-            <p className="app-welcome-local">
-              For the full picture — verification, proposals, the ledger — clone the repository and
-              run <code>./bootstrap.sh web</code>.
-            </p>
-          </div>
-        </div>
+        </nav>
       </div>
     </main>
   );
