@@ -315,6 +315,25 @@ test('an unlock reaches what its required prerequisites then allow, closed over 
   expect([...unlockCascade(items, deps, 'gap')].sort()).toEqual(['later', 'then']);
 });
 
+test('an unlock claims only what depends on it, not what another step already allows', () => {
+  const items = [
+    withStatus('have', 1, 'built'),
+    withStatus('gap', 1, 'specified', true),
+    withStatus('elsewhere', 2, 'specified', true),
+    withStatus('after-elsewhere', 3, 'specified'),
+    withStatus('after-gap', 2, 'specified'),
+  ];
+  const deps: Connection[] = [
+    { from: 'have', to: 'elsewhere', type: 'hard-dep' },
+    { from: 'elsewhere', to: 'after-elsewhere', type: 'hard-dep' },
+    { from: 'gap', to: 'after-gap', type: 'hard-dep' },
+  ];
+  // Every next step used to be credited with everything reachable from
+  // anywhere: `gap` claimed `elsewhere` and what follows it, which it has
+  // nothing to do with.
+  expect([...unlockCascade(items, deps, 'gap')]).toEqual(['after-gap']);
+});
+
 describe('eraProgress', () => {
   const item = (id: string, era: number, status: 'built' | 'specified', next = false): Item => ({
     id,

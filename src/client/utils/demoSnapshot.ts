@@ -8,6 +8,28 @@
  * illustrative, not fabricated-as-live: the page labels it sample data.
  */
 import type { LoopSnapshot } from '../../shared/api';
+import { demoTreeGraph } from '../store/demo';
+
+/**
+ * The evidence half of the status, read off the demo tree and not written
+ * here. It used to be typed in: 38 checks passing and "E2E on Edge" failing,
+ * over a map on which nothing had ever been checked and no node had that name.
+ * A visitor who saw the failure on one page and not the other had a reason to
+ * trust neither.
+ */
+function treeStatus() {
+  const combos = demoTreeGraph().items.filter(i => i.id.startsWith('combo:'));
+  const lifecycle = (i: (typeof combos)[number]) => String(i.meta?.lifecycle ?? '');
+  const reached = combos.filter(i => i.status === 'built');
+  const failing = reached.filter(i => ['degraded', 'broken'].includes(lifecycle(i)));
+  return {
+    reached: reached.length,
+    total: combos.length,
+    verified: reached.filter(i => ['verified', 'reliable'].includes(lifecycle(i))).length,
+    failing: failing.length,
+    degraded: failing.map(i => i.name),
+  };
+}
 
 /**
  * The illustrative snapshot a visitor sees in LOOP view.
@@ -24,12 +46,8 @@ import type { LoopSnapshot } from '../../shared/api';
 export function demoSnapshot(): LoopSnapshot {
   return {
     status: {
-      reached: 46,
-      total: 49,
-      verified: 38,
-      failing: 1,
-      degraded: ['E2E on Edge'],
-      spofs: ['Version Control', 'Local Inference', 'Secret Management'],
+      ...treeStatus(),
+      spofs: ['Version Control', 'Hosted Inference', 'Secret Management'],
       deficits: ['Vector Store — blocked 4×, structural'],
       pending: [{ id: 'prop-msrv0x', goal: 'Automate invoice retrieval' }],
     },
@@ -233,7 +251,7 @@ export function demoSnapshot(): LoopSnapshot {
       gained: ['Automated Tests'],
       emergent: ['Continuous Delivery'],
       lost: [],
-      diminished: ['E2E on Edge'],
+      diminished: treeStatus().degraded,
     },
   };
 }

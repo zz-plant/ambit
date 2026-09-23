@@ -27,6 +27,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { importConfig } from '../src/client/utils/configImporter.ts';
+import { deriveLifecycles, verifyCheck } from '../src/engine/assurance.ts';
 import { getDb } from '../src/engine/db.ts';
 import { techTreeView } from '../src/engine/views.ts';
 
@@ -91,6 +92,38 @@ const MAPPING = JSON.stringify({
   skill_dirs: [],
 });
 
+/**
+ * What the demo's checks said, by capability: `true` passed, `false` failed.
+ *
+ * A seed verifies nothing, so the tree used to arrive with every reached node
+ * "configured, never checked", while the Time & cost page beside it reported
+ * checks passing and one failing. Two views of one invented machine disagreed
+ * about whether anything had been proved. The results are run through the
+ * engine's own check runner, with `true` and `false` standing in for the real
+ * commands exactly as the fixture stands in for a real config, so the tree's
+ * lifecycles are the ones the engine would derive from this evidence.
+ *
+ * Two reached nodes are left unchecked on purpose: "configured is not working"
+ * is the distinction the map exists to draw, and a demo with nothing in that
+ * state could not show it.
+ */
+export const DEMO_EVIDENCE: Record<string, boolean> = {
+  'combo:automated-tests': true,
+  'combo:browser-automation': false,
+  'combo:continuous-delivery': true,
+  'combo:data-access': true,
+  'combo:file-editing': true,
+  'combo:hosted-inference': true,
+  'combo:local-runtime': true,
+  'combo:observability': true,
+  'combo:persistent-memory': true,
+  'combo:secret-management': true,
+  'combo:shell-execution': true,
+  'combo:tool-protocol': true,
+  'combo:version-control': true,
+  'combo:web-research': true,
+};
+
 export function buildDemoData(): {
   fixture: typeof FIXTURE;
   config: ReturnType<typeof importConfig>;
@@ -126,6 +159,10 @@ export function buildDemoData(): {
     );
 
     const db = getDb(dbPath);
+    for (const [id, passes] of Object.entries(DEMO_EVIDENCE)) {
+      verifyCheck(db, id, id, { command: [passes ? 'true' : 'false'] });
+    }
+    deriveLifecycles(db);
     const tree = techTreeView(db);
     db.close();
 
@@ -147,7 +184,17 @@ export function serialise(data: ReturnType<typeof buildDemoData>): string {
       generatedBy: 'npm run demo:generate',
       fixture: data.fixture,
       config: { items: byId(data.config.items), connections: byEdge(data.config.connections) },
-      tree: { items: byId(data.tree.items), connections: byEdge(data.tree.connections) },
+      tree: {
+        // When a check ran is the clock of whoever regenerated the file, so it
+        // is left out: the committed demo would otherwise age a day every day
+        // and differ on every run. An absent timestamp is a state the panel
+        // already renders.
+        items: byId(data.tree.items).map(({ meta, ...item }) => {
+          const { lastChecked: _, ...rest } = (meta ?? {}) as Record<string, unknown>;
+          return { ...item, meta: rest };
+        }),
+        connections: byEdge(data.tree.connections),
+      },
     },
     null,
     2

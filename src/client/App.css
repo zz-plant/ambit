@@ -603,8 +603,48 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .setup-row-evidence {
-  font-size: 11px;
+  font-size: 11.5px;
+  font-weight: 500;
   white-space: nowrap;
+}
+
+/* What the list found, above the list: a failing check, and enabled servers
+   that put nothing on the map. */
+.setup-findings {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setup-finding {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.setup-finding strong {
+  color: var(--text-primary);
+}
+
+.setup-finding--bad {
+  border-color: var(--error);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.setup-finding--warn {
+  border-color: var(--warn);
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.setup-row-idle {
+  font-size: 11px;
+  color: var(--warn);
 }
 
 .setup-row-evidence.is-ok {
@@ -917,6 +957,77 @@ code, pre, .code, .sp-cli-cmd {
   margin: 0 0 4px;
   font-size: 11.5px;
   line-height: 1.4;
+  color: var(--ok);
+}
+
+/* Never checked, or failing: the finding the panel exists for, so it gets
+   the panel's first block, a colour, and the one command that settles it. */
+.sp-verdict {
+  margin: 4px 0 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+}
+
+.sp-verdict--warn {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.sp-verdict--bad {
+  border-color: rgba(244, 63, 94, 0.55);
+  background: rgba(244, 63, 94, 0.1);
+}
+
+.sp-verdict-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.sp-verdict--warn .sp-verdict-title {
+  color: var(--warn);
+}
+
+.sp-verdict--bad .sp-verdict-title {
+  color: var(--error);
+}
+
+.sp-verdict-body {
+  margin: 4px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.sp-verdict-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: var(--accent-dim);
+  color: var(--on-accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sp-verdict-btn:hover {
+  background: #4338ca;
+}
+
+.sp-verdict-btn code {
+  font-size: 11.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sp-note {
@@ -927,11 +1038,17 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* The transitive answer, stated above the button that draws it. */
+/* What depends on it, the panel's second finding: body size, not a footnote. */
 .sp-impact {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 13.5px;
   line-height: 1.45;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.sp-impact strong {
+  color: var(--error);
+  font-weight: 700;
 }
 
 .sp-section-label {
@@ -973,8 +1090,17 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* The header's state, in the state's colour. */
-.sp-status--built {
+.sp-status--built,
+.sp-status--ok {
   color: var(--ok);
+}
+
+.sp-status--warn {
+  color: var(--warn);
+}
+
+.sp-status--bad {
+  color: var(--error);
 }
 
 .sp-status--specified {
@@ -1317,6 +1443,94 @@ code, pre, .code, .sp-cli-cmd {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* The map's headline: a failing check first, else the best next step. It sits
+   on the zoom controls' row (the HUD's own 12px), centred, and gives way to a simulation's banner. */
+.civ-finding-wrap {
+  top: 12px;
+  height: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.civ-finding {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  padding: 8px 10px 8px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(99, 102, 241, 0.55);
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.civ-finding strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.civ-finding--bad {
+  border-color: rgba(244, 63, 94, 0.6);
+  background: rgba(60, 14, 26, 0.9);
+}
+
+.civ-finding-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--error);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.civ-finding-btn {
+  flex-shrink: 0;
+  padding: 5px 14px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--accent-dim);
+  color: var(--on-accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.civ-finding-btn:hover {
+  background: #4338ca;
+}
+
+.civ-finding--bad .civ-finding-btn {
+  background: var(--error-deep);
+}
+
+@media (max-width: 720px) {
+  /* At phone width the map is short and the top of it is the part in view,
+     so the sentence goes to the bottom edge instead of over the first row. */
+  .civ-finding-wrap {
+    top: auto;
+    bottom: 16px;
+    height: auto;
+  }
+
+  .civ-finding {
+    font-size: 12px;
+    border-radius: var(--radius-lg);
+  }
 }
 
 /* A transient notice from the graph stream. */
@@ -1887,6 +2101,73 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
 }
 
+/* The page's sentence: the saving, in the page's largest type. */
+.loop-kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.loop-lead {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--text-secondary);
+}
+
+.loop-lead strong {
+  color: var(--text-primary);
+  font-weight: 750;
+}
+
+.loop-move {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 12px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.loop-move p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.loop-move strong {
+  color: var(--text-primary);
+}
+
+/* The one filled button a figure carries: the action it recommends. */
+.fig-cta {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
+  color: var(--on-accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fig-cta:hover {
+  background: #4338ca;
+}
+
 .loop-subtitle {
   margin-top: 4px;
   font-size: 12.5px;
@@ -1998,6 +2279,30 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-kpis .fig {
   margin: 0;
+}
+
+/* The saving is the page's headline figure, so it takes two tracks. */
+@media (min-width: 900px) {
+  .fig-kpis .fig--wide {
+    grid-column: span 2;
+  }
+}
+
+/* Configured and not working: an alert across the page, above the figures. */
+.fig--alert {
+  border-color: rgba(244, 63, 94, 0.55);
+  background: rgba(244, 63, 94, 0.07);
+  margin-bottom: 18px;
+}
+
+.fig--alert .fig-caption-title {
+  color: var(--error);
+  font-size: 14px;
+}
+
+.fig--alert .fig-key-label {
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
 .fig--kpi .fig-caption,
@@ -3697,11 +4002,11 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .loop-since {
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 14px;
-  font-size: 11.5px;
+  gap: 6px 16px;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 

@@ -297,6 +297,11 @@ export const readableSeconds = (s: number): string =>
  * What becomes reachable if `id` were reached: every node whose required
  * prerequisites are then all met, closed over itself. The unlock simulation
  * draws this set and the detail panel states its size.
+ *
+ * Only what depends on `id` counts. The closure is taken twice, with and
+ * without it, and the difference is the answer. Taken once, it credited every
+ * node already reachable from somewhere else, so on the demo tree each of six
+ * unrelated next steps "made 18 more reachable", the same 18.
  */
 export function unlockCascade(items: Item[], connections: Connection[], id: string): Set<string> {
   const required = new Map<string, string[]>();
@@ -306,18 +311,27 @@ export function unlockCascade(items: Item[], connections: Connection[], id: stri
     required.get(c.to)!.push(c.from);
   }
   const reached = new Set(items.filter(i => i.status === 'built').map(i => i.id));
-  reached.add(id);
-  const unlocked = new Set<string>();
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const [target, prereqs] of required) {
-      if (reached.has(target) || unlocked.has(target)) continue;
-      if (prereqs.every(p => reached.has(p) || unlocked.has(p))) {
-        unlocked.add(target);
-        changed = true;
+  // `barred` is never admitted: without it, the baseline would reach `id`
+  // itself the moment its own prerequisites were met, and so everything after.
+  const closure = (start: Set<string>, barred?: string) => {
+    const have = new Set(start);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const [target, prereqs] of required) {
+        if (have.has(target) || target === barred) continue;
+        if (prereqs.every(p => have.has(p))) {
+          have.add(target);
+          changed = true;
+        }
       }
     }
+    return have;
+  };
+  const without = closure(reached, id);
+  const unlocked = new Set<string>();
+  for (const n of closure(new Set([...reached, id]))) {
+    if (n !== id && !without.has(n)) unlocked.add(n);
   }
   return unlocked;
 }
@@ -455,4 +469,36 @@ export function sceneSize({ cols, colOrder }: Columns): { width: number; height:
     width: START_X + colOrder.length * COL_W + 60,
     height: Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 60,
   };
+}
+
+/** What the map says before anyone asks, in the order it matters. */
+export interface MapFindings {
+  /** Reached, with a check that failed: configured, and not working. */
+  failing: Item[];
+  /** The next step that reaches the most, cheapest first on a tie. */
+  best?: { item: Item; reaches: number };
+}
+
+/**
+ * The map's headline. It used to have none: sixty circles and a legend, and
+ * the reader was left to find the one failing check and to work out which
+ * outlined node was worth reaching. Both are answers the page can compute, so
+ * it states them, and the circles become the evidence for a sentence.
+ */
+export function mapFindings(items: Item[], connections: Connection[]): MapFindings {
+  const tree = visibleItems(items).filter(i => !isEntry(i));
+  const failing = tree.filter(
+    i => i.status === 'built' && ['degraded', 'broken'].includes(String(i.meta?.lifecycle ?? ''))
+  );
+  let best: MapFindings['best'];
+  for (const item of tree) {
+    if (item.status === 'built' || !isNext(item)) continue;
+    const reaches = unlockCascade(items, connections, item.id).size;
+    const cost = Number(item.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
+    const bestCost = Number(best?.item.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
+    if (!best || reaches > best.reaches || (reaches === best.reaches && cost < bestCost)) {
+      best = { item, reaches };
+    }
+  }
+  return { failing, best };
 }

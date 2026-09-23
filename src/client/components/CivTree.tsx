@@ -14,6 +14,7 @@ import {
   eraOf,
   isNext,
   layoutNodes,
+  mapFindings,
   NODE_R,
   readableSeconds,
   ROW_H,
@@ -23,6 +24,7 @@ import {
   visibleItems,
   wrapLabel,
 } from './civ/layout.ts';
+import { MapFinding } from './civ/MapFinding.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
@@ -157,6 +159,7 @@ export default function CivTree({
   const simulatedCascadeIds = useAmbitStore(s => s.simulatedCascadeIds);
   const simulatedWeakenedIds = useAmbitStore(s => s.simulatedWeakenedIds);
   const clearSimulation = useAmbitStore(s => s.clearSimulation);
+  const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   // Everything a simulation touches, so an edge is lit when both ends are.
   const simSet = useMemo(
     () =>
@@ -205,6 +208,7 @@ export default function CivTree({
   );
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
+  const findings = useMemo(() => mapFindings(items, connections), [items, connections]);
   const largestColumn = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
 
   // One hop, both ways, from the node in focus: the selection, or failing
@@ -475,6 +479,19 @@ export default function CivTree({
         rightInset={rightInset}
       />
 
+      {simulationMode === 'none' && !selectedId && (
+        <MapFinding
+          findings={findings}
+          onShow={id => onSelect(id)}
+          onPreview={id => {
+            onSelect(id);
+            startAcquisition(id);
+          }}
+          leftInset={leftInset}
+          rightInset={rightInset}
+        />
+      )}
+
       {/* biome-ignore lint/a11y/noStaticElementInteractions: Dragging to pan is a pointer affordance layered over the canvas. Content inside is keyboard operable. */}
       <div
         ref={containerRef}
@@ -646,25 +663,41 @@ export default function CivTree({
                         ? 0.15
                         : dimmed
                           ? 0.25
-                          : reached
+                          : reached || next
                             ? 1
-                            : next
-                              ? 0.95
-                              : 0.4;
+                            : 0.75;
+                  const failingNode = reached && ['degraded', 'broken'].includes(lifecycleOf(item));
 
-                  let nodeFill = reached ? defaultColor : 'var(--bg-elevated)';
+                  // Reached is done, so it is the quietest filled state; a next
+                  // step is the recommendation, so it is the loudest ring on the
+                  // map; blocked is drawn as a gap, dashed and legible, and not
+                  // faded to where it could not be read.
+                  let nodeFill = reached
+                    ? defaultColor
+                    : next
+                      ? 'var(--accent-soft)'
+                      : 'var(--bg-canvas)';
                   let sc = selected
                     ? 'var(--on-accent)'
                     : inNeeds
                       ? 'var(--edge-needs)'
                       : inEnables
                         ? 'var(--accent)'
-                        : next
-                          ? 'var(--accent)'
-                          : reached
-                            ? defaultColor
-                            : 'var(--border-subtle)';
-                  let sw = selected || inNeeds || inEnables ? 2.5 : next ? 2 : reached ? 1.5 : 1;
+                        : failingNode
+                          ? 'var(--error)'
+                          : next
+                            ? 'var(--accent)'
+                            : reached
+                              ? defaultColor
+                              : 'var(--text-muted)';
+                  let sw =
+                    selected || inNeeds || inEnables || failingNode
+                      ? 2.5
+                      : next
+                        ? 3
+                        : reached
+                          ? 1.5
+                          : 1.25;
 
                   if (simulationMode === 'outage') {
                     if (isSimRoot) {
@@ -753,9 +786,9 @@ export default function CivTree({
                           height={(NODE_R + 4) * 2}
                           rx={8}
                           fill="none"
-                          stroke="rgba(245, 158, 11, 0.4)"
-                          strokeWidth={1.5}
-                          strokeDasharray="4,3"
+                          stroke="rgba(245, 158, 11, 0.85)"
+                          strokeWidth={2}
+                          strokeDasharray="5,3"
                         />
                       )}
 
@@ -778,9 +811,9 @@ export default function CivTree({
                           x={NODE_R + 6}
                           y={-NODE_R + 4}
                           textAnchor="start"
-                          fill="var(--text-muted)"
-                          fontSize={10}
-                          fontWeight={600}
+                          fill="#a5b4fc"
+                          fontSize={11.5}
+                          fontWeight={700}
                           fontFamily="var(--font-sans)"
                         >
                           {costOf(item)}
@@ -790,8 +823,18 @@ export default function CivTree({
                       <circle
                         r={NODE_R}
                         fill={nodeFill}
+                        fillOpacity={
+                          reached && simulationMode === 'none' && !isAttentionHot && !selected
+                            ? 0.6
+                            : 1
+                        }
                         stroke={sc}
                         strokeWidth={sw}
+                        strokeDasharray={
+                          !reached && !next && simulationMode === 'none' && !isAttentionHot
+                            ? '5,4'
+                            : undefined
+                        }
                         opacity={0.95}
                       />
                       <text
@@ -1108,18 +1151,18 @@ export default function CivTree({
                   {l.kind === 'ring' && (
                     <circle
                       r={7}
-                      fill="var(--bg-elevated)"
+                      fill="var(--accent-soft)"
                       stroke="var(--accent)"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                     />
                   )}
                   {l.kind === 'faded' && (
                     <circle
                       r={7}
-                      fill="var(--bg-elevated)"
-                      stroke="var(--border-bright)"
-                      strokeWidth={1}
-                      opacity={0.7}
+                      fill="var(--bg-canvas)"
+                      stroke="var(--text-muted)"
+                      strokeWidth={1.25}
+                      strokeDasharray="3,2"
                     />
                   )}
                   {l.kind === 'square' && (

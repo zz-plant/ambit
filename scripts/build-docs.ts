@@ -36,6 +36,13 @@ export interface Page {
   title: string;
   /** At most about 155 characters, which is what a result snippet shows. */
   description: string;
+  /**
+   * The line the page's link card leads with, drawn by generate-scenes.ts.
+   * Not the title: a title is written for a results page, which already shows
+   * the site, and a card is seen in a feed beside nothing, where "Ambit FAQ"
+   * says which page it is and not why to open it.
+   */
+  card: string;
 }
 
 export const PAGES: Page[] = [
@@ -45,6 +52,7 @@ export const PAGES: Page[] = [
     title: 'Ambit documentation',
     description:
       'Every Ambit document in one place: the guide, the FAQ, the reference, the argument for it, the roadmap, the changelog, and how to contribute.',
+    card: 'Every Ambit document, in one place',
   },
   {
     src: 'README.md',
@@ -52,6 +60,7 @@ export const PAGES: Page[] = [
     title: 'Ambit guide: install, CLI and MCP setup',
     description:
       'Install Ambit, map your AI agent setup, and ask what works, what breaks and what to set up next, from the terminal or over MCP in Claude Code and OpenCode.',
+    card: 'Map what your AI agent setup can do, in one command',
   },
   {
     src: 'docs/faq.md',
@@ -59,6 +68,7 @@ export const PAGES: Page[] = [
     title: 'Ambit FAQ',
     description:
       'Short answers about Ambit: which agent runtimes it reads, what leaves your machine, how an agent changes config, Jev, and why attention reports start empty.',
+    card: 'What it reads, and what never leaves your machine',
   },
   {
     src: 'docs/jev.md',
@@ -66,6 +76,7 @@ export const PAGES: Page[] = [
     title: 'Ambit and Jev: typed judgment on the capability map',
     description:
       "How Ambit maps TypeSafe's Jev and its local clones, proves a local model answers, routes goals through it, and keeps its probabilities off the authority path.",
+    card: 'A judgment model on the map, kept off the authority path',
   },
   {
     src: 'docs/deep-dive.md',
@@ -73,6 +84,7 @@ export const PAGES: Page[] = [
     title: 'Ambit reference: nodes, authority, ledgers and every MCP tool',
     description:
       'The Ambit reference: what a node is, capability versus authority, the frontier and work ledgers, delegation records, and the full CLI and MCP surfaces.',
+    card: 'Every node, grant, ledger and MCP tool, explained',
   },
   {
     src: 'docs/why-ambit.md',
@@ -80,6 +92,7 @@ export const PAGES: Page[] = [
     title: 'Why Ambit: effective agency as a governed object',
     description:
       'Why Ambit exists: agent stacks become capable through composition, and effective agency should be a governed, verified and legible object.',
+    card: 'Agents get capable by composition. Who governs that?',
   },
   {
     src: 'docs/affordance-frontier.md',
@@ -87,6 +100,7 @@ export const PAGES: Page[] = [
     title: 'The affordance frontier · Ambit',
     description:
       'The theory under Ambit: the affordance frontier of human-machine systems, and how robots and brain-computer interfaces test it.',
+    card: 'What a human-machine system can reach, and what limits it',
   },
   {
     src: 'docs/roadmap.md',
@@ -94,6 +108,7 @@ export const PAGES: Page[] = [
     title: 'Ambit roadmap and design rationale',
     description:
       "Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks.",
+    card: 'What is built, what is missing, and why',
   },
   {
     src: 'SECURITY.md',
@@ -101,6 +116,7 @@ export const PAGES: Page[] = [
     title: 'Ambit security invariants',
     description:
       "Ambit's security invariants: loopback only, an origin allowlist, no config entry created over HTTP, and no network traffic you did not type.",
+    card: 'Loopback only, and no traffic you did not type',
   },
   {
     src: 'CONTRIBUTING.md',
@@ -108,14 +124,19 @@ export const PAGES: Page[] = [
     title: 'Contributing to Ambit',
     description:
       'How to go from a clone of Ambit to a passing pull request: setup, the checks CI runs, and the contributions worth the most.',
+    card: 'From a fresh clone to a merged pull request',
   },
   {
     src: 'CHANGELOG.md',
     slug: 'changelog',
     title: 'Ambit changelog',
     description: 'What changed in each Ambit release and why, newest first.',
+    card: 'What changed in each release, and why',
   },
 ];
+
+/** The page's own link card, rendered by `npm run assets:generate` into the public dir. */
+export const cardPath = (p: Page) => `${BASE}og/${p.slug || 'docs'}.png`;
 
 export const pagePath = (p: Page) => `${BASE}docs/${p.slug ? `${p.slug}/` : ''}`;
 const bySource = new Map(PAGES.map(p => [p.src, p]));
@@ -226,9 +247,15 @@ export function renderPage(page: Page, body: string): string {
 <meta property="og:url" content="${url}" />
 <meta property="og:title" content="${escapeHtml(page.title)}" />
 <meta property="og:description" content="${escapeHtml(page.description)}" />
-<meta property="og:image" content="${ORIGIN}${BASE}social-preview.png" />
+<meta property="og:image" content="${ORIGIN}${cardPath(page)}" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="640" />
+<meta property="og:image:alt" content="${escapeHtml(page.card)}" />
 <meta property="og:site_name" content="Ambit" />
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${escapeHtml(page.title)}" />
+<meta name="twitter:description" content="${escapeHtml(page.description)}" />
+<meta name="twitter:image" content="${ORIGIN}${cardPath(page)}" />
 <meta name="theme-color" content="#090d16" />
 <link rel="icon" href="${BASE}favicon.svg" type="image/svg+xml" />
 <script type="application/ld+json">${JSON.stringify(ld)}</script>

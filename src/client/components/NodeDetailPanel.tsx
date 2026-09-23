@@ -112,30 +112,41 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
   const actions =
     (item.meta?.actions as { id: string; name: string; mode: string }[] | undefined) ?? [];
   const daysSinceChange = item.meta?.daysSinceChange as number | undefined;
-  const evidence =
+  // The verdict on whether it works, stated as loudly as the answer deserves.
+  // A passing check is good news and stays one quiet line. Never checked and
+  // failing are the findings the panel exists for: "configured is not working"
+  // used to be muted grey under a green "Reached", so the header contradicted
+  // the only sentence that mattered.
+  const verdict: { tone: 'ok' | 'warn' | 'bad'; title: string; body?: string } | undefined =
     item.status !== 'built' || !lifecycle
       ? undefined
       : lifecycle === 'reliable'
         ? {
-            color: 'var(--ok)',
-            text: `✓ Check passing consistently${checkedAgo ? ` · last run ${checkedAgo}` : ''}${runs}`,
+            tone: 'ok',
+            title: `✓ Check passing consistently${checkedAgo ? ` · last run ${checkedAgo}` : ''}${runs}`,
           }
         : lifecycle === 'verified'
           ? {
-              color: 'var(--ok)',
-              text: `✓ Check passed${checkedAgo ? ` · last run ${checkedAgo}` : ''}${runs}`,
+              tone: 'ok',
+              title: `✓ Check passed${checkedAgo ? ` · last run ${checkedAgo}` : ''}${runs}`,
             }
           : lifecycle === 'degraded' || lifecycle === 'broken'
             ? {
-                color: 'var(--error)',
-                text: `! Check failing${checkedAgo ? ` · last run ${checkedAgo}` : ''}${runs}`,
+                tone: 'bad',
+                title: 'Configured, but not working',
+                body: `The last check failed${checkedAgo ? ` ${checkedAgo}` : ''}${runs}. Anything that needs this is not really available.`,
               }
             : lifecycle === 'configured'
               ? {
-                  color: 'var(--text-muted)',
-                  text: 'Configured — never verified. Nothing has demonstrated this works.',
+                  tone: 'warn',
+                  title: 'Configured, never checked',
+                  body: 'Nothing has shown this works. One command finds out.',
                 }
               : undefined;
+  // The header's status takes the verdict's colour, so "Reached" is green only
+  // when something proved it.
+  const statusTone = item.status !== 'built' ? item.status : verdict ? verdict.tone : item.status;
+  const verifyCmd = `ambit verify ${item.id}`;
 
   const byId = new Map(items.map(i => [i.id, i]));
   // One hop each way, the same two sets the map colours: what this needs, and
@@ -213,7 +224,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
               typeLabel(item.type)
             )}{' '}
             ·{' '}
-            <span className={`sp-status sp-status--${item.status}`}>
+            <span className={`sp-status sp-status--${statusTone}`}>
               {statusLabel(item.status, item)}
             </span>
           </div>
@@ -238,10 +249,21 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         </p>
       )}
 
-      {evidence && (
-        <p className="sp-evidence" style={{ color: evidence.color }}>
-          {evidence.text}
-        </p>
+      {verdict?.tone === 'ok' && <p className="sp-evidence">{verdict.title}</p>}
+      {verdict && verdict.tone !== 'ok' && (
+        <div className={`sp-verdict sp-verdict--${verdict.tone}`} role="status">
+          <p className="sp-verdict-title">{verdict.title}</p>
+          <p className="sp-verdict-body">{verdict.body}</p>
+          <button
+            type="button"
+            className="sp-verdict-btn"
+            onClick={() => copy('verify', verifyCmd)}
+            aria-label={`Copy command ${verifyCmd}`}
+          >
+            <code>{verifyCmd}</code>
+            <span>{copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}</span>
+          </button>
+        </div>
       )}
 
       {/* Whether it may act, apart from whether it can: the engine's effective
@@ -341,13 +363,20 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           <div className="sp-sim-group">
             {item.status === 'built' ? (
               <p className="sp-impact">
-                {stops
-                  ? `If this went down, ${stops} other ${plural(stops)} would stop working${
-                      weakened ? ` and ${weakened} would lose a provider` : ''
-                    }.`
-                  : weakened
-                    ? `Nothing else would stop working without it, but ${weakened} ${plural(weakened)} would lose a provider.`
-                    : 'Nothing else stops working without it.'}
+                {stops ? (
+                  <>
+                    If this went down,{' '}
+                    <strong>
+                      {stops} other {plural(stops)}
+                    </strong>{' '}
+                    would stop working
+                    {weakened ? ` and ${weakened} would lose a provider` : ''}.
+                  </>
+                ) : weakened ? (
+                  `Nothing else would stop working without it, but ${weakened} ${plural(weakened)} would lose a provider.`
+                ) : (
+                  'Nothing else stops working without it.'
+                )}
               </p>
             ) : missing.length ? (
               <p className="sp-impact">
@@ -419,20 +448,22 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
 
       {/* The one command the page cannot run for you: a check executes, so
           it runs only where a person types it. */}
-      <div className="sp-cli-actions">
-        <div className="sp-section-label">Check it</div>
-        <div className="sp-cli-row">
-          <code className="sp-cli-cmd">ambit verify {item.id}</code>
-          <button
-            type="button"
-            className={`sp-cli-copy-btn ${copiedCmd === 'verify' ? 'sp-cli-copy-btn--copied' : ''}`}
-            onClick={() => copy('verify', `ambit verify ${item.id}`)}
-            aria-label={`Copy command ambit verify ${item.id}`}
-          >
-            {copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}
-          </button>
+      {!(verdict && verdict.tone !== 'ok') && (
+        <div className="sp-cli-actions">
+          <div className="sp-section-label">Check it</div>
+          <div className="sp-cli-row">
+            <code className="sp-cli-cmd">{verifyCmd}</code>
+            <button
+              type="button"
+              className={`sp-cli-copy-btn ${copiedCmd === 'verify' ? 'sp-cli-copy-btn--copied' : ''}`}
+              onClick={() => copy('verify', verifyCmd)}
+              aria-label={`Copy command ${verifyCmd}`}
+            >
+              {copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <LinkList
         title="Needs"

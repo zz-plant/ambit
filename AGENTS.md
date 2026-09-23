@@ -187,6 +187,7 @@ src/client/                React frontend
                            and tested apart from the renderer
     civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
+    civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step
     NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, needs and enables
     EnvironmentPanels.tsx  What /api/repos/scan and /api/infrastructure/scan return, drawn
     ApprovalModal.tsx      The proposal diff, and the one-click approval receipt
