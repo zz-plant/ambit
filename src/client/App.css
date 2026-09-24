@@ -1310,6 +1310,17 @@ code, pre, .code, .sp-cli-cmd {
   overflow: auto;
 }
 
+.civ-scroll--headline {
+  padding-top: 40px;
+}
+
+@media (max-width: 720px) {
+  /* The finding moves to the bottom edge at phone width. */
+  .civ-scroll--headline {
+    padding-top: 0;
+  }
+}
+
 .civ-hud {
   position: absolute;
   top: 12px;
@@ -1501,9 +1512,81 @@ code, pre, .code, .sp-cli-cmd {
   top: 12px;
   height: auto;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   pointer-events: none;
+}
+
+/* The range line: smaller than the finding under it, since it is the frame
+   the finding is read in, not the finding. */
+.civ-range {
+  pointer-events: auto;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  /* Clear of the zoom controls on the left and the lens switch on the right,
+     which share its row; it wraps before it runs under either. */
+  max-width: max(280px, calc(100% - 420px));
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.civ-range strong {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.civ-range-note {
+  color: var(--text-muted);
+}
+
+.civ-range-delta {
+  padding: 0 5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.civ-range-delta--up {
+  color: var(--ok);
+}
+
+.civ-range-delta--down {
+  color: var(--error);
+}
+
+.civ-range-delta:hover {
+  border-color: currentColor;
+}
+
+.civ-range-sim {
+  margin-left: 8px;
+  padding: 1px 10px;
+  border: 1px solid rgba(244, 63, 94, 0.55);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.civ-range-sim:hover {
+  background: rgba(244, 63, 94, 0.15);
 }
 
 .civ-finding {
@@ -2762,7 +2845,7 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: minmax(120px, 190px) 1fr 44px;
   grid-template-areas: 'name track count' 'note note note';
   align-items: center;
-  gap: 4px 14px;
+  gap: 4px 10px;
   padding: 9px 0;
   border-bottom: 1px solid var(--border-subtle);
 }

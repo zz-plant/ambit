@@ -188,6 +188,8 @@ export interface TreeConnection {
 export interface TechTreeResponse {
   items: TreeItem[];
   connections: TreeConnection[];
+  /** How the frontier moved this week; null before a second observation. */
+  since?: LoopSince | null;
 }
 
 // ── GET /api/proposals, POST /api/proposals/:id/approve ──────────────────────

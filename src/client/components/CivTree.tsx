@@ -29,7 +29,7 @@ import {
   visibleItems,
   wrapLabel,
 } from './civ/layout.ts';
-import { MapFinding } from './civ/MapFinding.tsx';
+import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
@@ -190,6 +190,7 @@ export default function CivTree({
   const simulatedWeakenedIds = useAmbitStore(s => s.simulatedWeakenedIds);
   const clearSimulation = useAmbitStore(s => s.clearSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
+  const startOutage = useAmbitStore(s => s.startOutageSimulation);
   // Everything a simulation touches, so an edge is lit when both ends are.
   const simSet = useMemo(
     () =>
@@ -260,6 +261,15 @@ export default function CivTree({
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
   const findings = useMemo(() => mapFindings(items, connections), [items, connections]);
+  const rangeSince = useAmbitStore(s => s.rangeSince);
+  // The ledger reports the week by name; the tree's names are unique.
+  const weekNames = useMemo(
+    () => ({
+      gained: new Set([...(rangeSince?.gained ?? []), ...(rangeSince?.emergent ?? [])]),
+      lost: new Set([...(rangeSince?.lost ?? []), ...(rangeSince?.diminished ?? [])]),
+    }),
+    [rangeSince]
+  );
   const largestColumn = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
 
   // One hop, both ways, from the node in focus: the selection, or failing
@@ -309,6 +319,8 @@ export default function CivTree({
   };
   const SPOTLIGHTS: Record<string, (item: Item) => boolean> = {
     Reached: i => i.status === 'built',
+    [GAINED_THIS_WEEK]: i => weekNames.gained.has(i.name),
+    [LOST_THIS_WEEK]: i => weekNames.lost.has(i.name),
     // The header's two halves of reached light the same way its segments read.
     Verified: isProven,
     Unproven: i => i.status === 'built' && !isProven(i),
@@ -560,7 +572,13 @@ export default function CivTree({
       {!narrated && simulationMode === 'none' && !selectedId && (
         <MapFinding
           findings={findings}
+          since={rangeSince}
           onShow={id => onSelect(id)}
+          onSimulate={id => {
+            onSelect(id);
+            startOutage(id);
+          }}
+          onSpotlight={key => setSpotlight(spotlight === key ? null : key)}
           onPreview={id => {
             onSelect(id);
             startAcquisition(id);
@@ -573,7 +591,17 @@ export default function CivTree({
       {/* biome-ignore lint/a11y/noStaticElementInteractions: Dragging to pan is a pointer affordance layered over the canvas. Content inside is keyboard operable. */}
       <div
         ref={containerRef}
-        className="civ-scroll"
+        // The headline is two rows when there is a finding under the range
+        // line; the canvas starts below the second, so the era headers stay
+        // readable.
+        className={`civ-scroll ${
+          !narrated &&
+          simulationMode === 'none' &&
+          !selectedId &&
+          (findings.failing.length || findings.best)
+            ? 'civ-scroll--headline'
+            : ''
+        }`}
         // Dragging to pan is a pointer affordance layered over the canvas. The
         // a11y warning on this element is expected and left visible: every node
         // inside carries role="button", tabIndex and a key handler, so the

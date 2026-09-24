@@ -97,7 +97,7 @@
       "term": "Frontier",
       "short": "What the system can do, as of a moment",
       "long": "Every seed records the state of every capability, so the graph can answer what was reachable at a past date rather than only now. `ambit history since` compares two of those observations. Its useful column is the emergent one: capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
-      "seen": "The Since strip on Time & cost, ambit history, ambit history since"
+      "seen": "The line over the map (verified, and how it moved this week), the Since strip on Time & cost, ambit history, ambit history since"
     },
     {
       "key": "decay",

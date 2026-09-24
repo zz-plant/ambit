@@ -14,7 +14,8 @@ import { useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
-import { mapFindings } from './civ/layout';
+import { MapFinding } from './civ/MapFinding';
+import { mapFindings, outageImpact, outageSentence, outageSplit } from './civ/layout';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
@@ -105,4 +106,40 @@ test('Time & cost opens on the saving and the move that pays back soonest', () =
   // Something configured and not working is an alert above the figures.
   expect(html.indexOf('fig--alert')).toBeGreaterThan(-1);
   expect(html.indexOf('fig--alert')).toBeLessThan(html.indexOf('fig-kpis'));
+});
+
+test('the map leads with the verified range, and the one loss that would stop the most', () => {
+  const { items, connections } = merged;
+  const found = mapFindings(items, connections);
+  // The count the header and Time & cost report: tree nodes with a passing check.
+  expect(found.verified).toBe(demoSnapshot().status.verified);
+  // The weakest point is a piece of the setup, not the agent runtime itself,
+  // and its count is the one the outage banner states when it is simulated.
+  const weakest = found.weakest!;
+  expect(weakest.item.type).not.toBe('runtime');
+  const said = outageSentence(
+    weakest.item.name,
+    outageImpact(items, outageSplit(items, connections, weakest.item.id))
+  );
+  expect(said.count).toBe(`${weakest.stops} capabilities`);
+});
+
+test('the week is stated as movement, and its absence is said, never printed as +0', () => {
+  const found = mapFindings(merged.items, merged.connections);
+  const render = (since: Parameters<typeof MapFinding>[0]['since']) =>
+    text(
+      renderToStaticMarkup(
+        <MapFinding findings={found} since={since} onShow={() => {}} onPreview={() => {}} />
+      )
+    );
+  const week = render(demoSnapshot().since);
+  expect(week).toContain(`${found.verified} verified`);
+  expect(week).toContain('+2');
+  expect(week).toContain('−1');
+  expect(week).toContain('this week');
+  expect(render(null)).toContain('no earlier observation to compare yet');
+  expect(render(null)).not.toContain('+0');
+  expect(
+    render({ from: '2026-09-01', gained: [], emergent: [], lost: [], diminished: [] })
+  ).toContain('no change this week');
 });

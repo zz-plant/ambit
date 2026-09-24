@@ -18,6 +18,7 @@ import {
   type ApproveResponse,
   type BriefingResponse,
   type InfrastructureScanResponse,
+  type LoopSince,
   type LoopSnapshot,
   type ProposalRow,
   type RejectResponse,
@@ -177,6 +178,12 @@ interface StoreState {
   /** Where the time went and what would buy it back — from the ledger, or the demo's sample. */
   loop: LoopSnapshot | null;
   loopSource: 'ledger' | 'sample' | null;
+  /**
+   * How the map's range moved this week, from the tree view on a real
+   * machine and from the sample on the demo. Null before a second
+   * observation, which is a state the map explains.
+   */
+  rangeSince: LoopSince | null;
   /** True when the ledger exists and has recorded nothing yet. */
   loopEmpty: boolean;
   /** Whether an engine is answering, as far as the health probe got. */
@@ -252,6 +259,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   demo: false,
   loop: null,
   loopSource: null,
+  rangeSince: null,
   loopEmpty: false,
   backend: 'unknown',
   repos: null,
@@ -538,6 +546,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       loop: demoSnapshot(),
       loopSource: 'sample',
       loopEmpty: false,
+      rangeSince: demoSnapshot().since,
       attentionInterventions: DEMO_ATTENTION,
     }),
 
@@ -594,7 +603,13 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return;
       }
       const merged = mergeGraphs(treeGraph, configGraph);
-      set({ items: merged.items, connections: merged.connections, loading: false, error: null });
+      set({
+        items: merged.items,
+        connections: merged.connections,
+        rangeSince: tree?.since ?? null,
+        loading: false,
+        error: null,
+      });
     } catch (e) {
       set({ error: 'Could not load: ' + (e as Error).message, loading: false });
     }

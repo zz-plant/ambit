@@ -61,6 +61,17 @@ export const columnLabel = (key: string, items: Item[]): string => {
   return (named?.meta?.eraName as string) || `Era ${key.slice(4)}`;
 };
 
+/**
+ * The node that everything else hangs off — the agent runtime itself.
+ *
+ * Keyed `runtime:opencode` by the engine and, since the config view was
+ * realigned, by `importConfig` too. `framework` is still accepted because the
+ * demo's hand-authored loop snapshot uses it.
+ */
+export function isRuntimeNode(item: { id: string; type: string }): boolean {
+  return item.id === 'runtime:opencode' || item.type === 'runtime' || item.type === 'framework';
+}
+
 /** Prerequisites met, nothing detected — the frontier you can take next. */
 export const isNext = (item: Item): boolean => item.meta?.next === true;
 
@@ -584,6 +595,13 @@ export interface MapFindings {
   failing: Item[];
   /** The next step that reaches the most, cheapest first on a tie. */
   best?: { item: Item; reaches: number };
+  /** The size of the range there is evidence for: tree nodes with a passing check. */
+  verified: number;
+  /**
+   * The one reached node whose loss would stop the most that works, counted
+   * the way the outage banner counts. Absent when no single loss stops any.
+   */
+  weakest?: { item: Item; stops: number };
 }
 
 /**
@@ -605,5 +623,14 @@ export function mapFindings(items: Item[], connections: Connection[]): MapFindin
       best = { item, reaches };
     }
   }
-  return { failing, best };
+  let weakest: MapFindings['weakest'];
+  // The runtime is the agent itself: losing it stops everything, which is
+  // true and tells nobody anything. The weakest point is a piece of the setup.
+  for (const item of items) {
+    if (item.status !== 'built' || isRuntimeNode(item)) continue;
+    // The same count the outage banner states when this one is simulated.
+    const stops = outageImpact(items, outageSplit(items, connections, item.id)).stopped.length;
+    if (stops > (weakest?.stops ?? 0)) weakest = { item, stops };
+  }
+  return { failing, best, verified: tree.filter(isProven).length, weakest };
 }

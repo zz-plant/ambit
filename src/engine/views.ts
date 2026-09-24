@@ -8,7 +8,6 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ConferredAction } from '../shared/api.ts';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
@@ -27,6 +26,7 @@ import {
   NODE_TYPES,
   PROPOSAL_STATUSES,
   type AuthorityMode,
+  type ConferredAction,
   type FailureCount,
   type LoopAuthority,
   type LoopDemand,
@@ -199,7 +199,9 @@ export function techTreeView(db: Db): TechTreeResponse {
     kind: d.kind || undefined,
   }));
 
-  return { items, connections };
+  // How the range moved this week, so the map can lead with it. Null before
+  // a second observation, which the map explains instead of printing +0.
+  return { items, connections, since: loopSince(db) };
 }
 
 const isMode = (m: unknown): m is AuthorityMode =>

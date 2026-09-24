@@ -341,3 +341,21 @@ test('a reached node no grant names reads the way the gate answers it', () => {
   // Locked has nothing to act with, and is given no answer.
   expect(items.find(i => i.id === 'combo:far')!.meta.authority).toBeUndefined();
 });
+
+test("the tree carries the week's movement, and says nothing before a second observation", () => {
+  const db = makeGraph({
+    capabilities: [
+      {
+        id: 'combo:shell',
+        name: 'Shell',
+        category: 'combo',
+        kind: 'capability',
+        state: 'unlocked',
+      },
+    ],
+  });
+  const view = techTreeView(db);
+  db.close();
+  // One seed is one observation: there is no week to compare against yet.
+  expect(view.since).toBeNull();
+});

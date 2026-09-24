@@ -6,7 +6,9 @@
 // `possibility` read as "Possibility" in the detail panel, "Combo" in the
 // legend and "Tech tree node" in the docs, which is three names for one circle.
 // src/client/vocabulary.test.ts holds these against src/shared/concepts.json.
-import { isNext } from '../components/civ/layout';
+import { isNext, isRuntimeNode } from '../components/civ/layout';
+
+export { isRuntimeNode };
 import type { Item } from './configImporter';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -82,15 +84,4 @@ export function statusLabel(status: string, item?: Item): string {
 export function metaKeyLabel(key: string): string {
   const spaced = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
-}
-
-/**
- * The node that everything else hangs off — the agent runtime itself.
- *
- * Keyed `runtime:opencode` by the engine and, since the config view was
- * realigned, by `importConfig` too. `framework` is still accepted because the
- * demo's hand-authored loop snapshot uses it.
- */
-export function isRuntimeNode(item: { id: string; type: string }): boolean {
-  return item.id === 'runtime:opencode' || item.type === 'runtime' || item.type === 'framework';
 }
