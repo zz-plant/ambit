@@ -130,6 +130,17 @@ export interface TreeItemMeta {
   actions?: ConferredAction[];
   /** Days since this capability's configuration last changed: what has stopped being tended. */
   daysSinceChange?: number;
+  /**
+   * The affordance domains the engine derives from structure: institutional
+   * (a person must approve it), economic (an acquisition costs every month),
+   * cognitive (a person supplies it), physical (it runs on a device), and
+   * machine-composed-human (a person and a machine supply it together).
+   */
+  structure?: string[];
+  /** The people who approve or supply it, by name. */
+  people?: string[];
+  /** The devices its providers run on, by name. */
+  devices?: string[];
 }
 
 /**

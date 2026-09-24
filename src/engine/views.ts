@@ -20,7 +20,7 @@ import { nextSteps } from './next.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
-import { singlePointsOfFailure } from './inference.ts';
+import { affordanceDomains, singlePointsOfFailure } from './inference.ts';
 import { deficits } from './planning.ts';
 import {
   AUTHORITY_MODES,
@@ -154,6 +154,25 @@ export function techTreeView(db: Db): TechTreeResponse {
       ? { execute: 'forbidden' as const, ungranted: true as const }
       : undefined);
 
+  // What each capability needs beyond the agent: a person who approves or
+  // supplies it, a device it runs on, a recurring cost. Derived by the engine
+  // from structure; the map marks the joint ones and the panel names who.
+  const nameById = new Map<string, string>(caps.map(c => [c.id, c.name]));
+  const joint = new Map<string, { structure: string[]; people?: string[]; devices?: string[] }>();
+  try {
+    for (const r of affordanceDomains(db).capabilities as any[]) {
+      if (!r.structure?.length) continue;
+      const named = (ids?: string[]) => ids?.map(id => nameById.get(id) ?? id);
+      joint.set(r.id, {
+        structure: r.structure,
+        people: named(r.people),
+        devices: named(r.devices),
+      });
+    }
+  } catch {
+    /* no curated tree: nothing is derived, and nothing is marked */
+  }
+
   const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
   const hardPrereqs = new Map<string, string[]>();
   for (const d of deps) {
@@ -191,6 +210,9 @@ export function techTreeView(db: Db): TechTreeResponse {
       failures: failures.get(c.id),
       actions: actions.get(c.id),
       daysSinceChange: c.state === 'locked' ? undefined : daysSince(c.updated_at),
+      structure: joint.get(c.id)?.structure,
+      people: joint.get(c.id)?.people,
+      devices: joint.get(c.id)?.devices,
     },
   }));
 

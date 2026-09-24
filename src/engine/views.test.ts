@@ -437,3 +437,38 @@ test('with nothing recorded, the answer says so instead of claiming everything i
   expect(report.seen).toBe(0);
   expect(report.note).toContain('ambit-telemetry.js');
 });
+
+test('a joint capability names who it needs: the person who approves it, the device it runs on', () => {
+  const node = (id: string, name: string, kind: CapabilityFixture['kind']): CapabilityFixture => ({
+    id,
+    name,
+    category: kind === 'capability' ? 'combo' : 'mcp',
+    kind,
+    state: 'unlocked',
+  });
+  const db = makeGraph({
+    capabilities: [
+      node('combo:continuous-delivery', 'Continuous Delivery', 'capability'),
+      node('combo:local-runtime', 'Local Runtime', 'capability'),
+      node('combo:shell-execution', 'Shell Execution', 'capability'),
+      node('human:you', 'You', 'actor'),
+      node('device:nuc', 'nuc', 'resource'),
+      node('svc:ollama', 'ollama', 'provider'),
+    ],
+    dependencies: [
+      { from: 'human:you', to: 'combo:continuous-delivery', kind: 'authorizes', hard: true },
+      { from: 'svc:ollama', to: 'combo:local-runtime', kind: 'provides', hard: true },
+      { from: 'device:nuc', to: 'svc:ollama', kind: 'runs_on', hard: true },
+    ],
+  });
+  const items = techTreeView(db).items;
+  db.close();
+  const meta = (id: string) => items.find(i => i.id === id)!.meta;
+  expect(meta('combo:continuous-delivery').structure).toContain('institutional');
+  expect(meta('combo:continuous-delivery').people).toEqual(['You']);
+  expect(meta('combo:local-runtime').structure).toContain('physical');
+  expect(meta('combo:local-runtime').devices).toEqual(['nuc']);
+  // Nothing derived is nothing stated.
+  expect(meta('combo:shell-execution').structure).toBeUndefined();
+  expect(meta('combo:shell-execution').people).toBeUndefined();
+});

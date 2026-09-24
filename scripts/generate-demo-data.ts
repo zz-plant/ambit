@@ -72,6 +72,11 @@ const FIXTURE = {
     migrate: { description: 'Run database migrations' },
     bench: { description: 'Run the benchmark suite' },
   },
+  // A person is part of the setup: shipping to production waits on their
+  // yes, so the demo shows a capability the agents cannot reach alone.
+  actors: {
+    you: { name: 'You', authorizes: ['continuous-delivery'] },
+  },
 };
 
 /** The mapping the engine reads the fixture through — the stock config keys. */

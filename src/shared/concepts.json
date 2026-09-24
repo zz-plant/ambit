@@ -93,6 +93,13 @@
       "seen": "The Authority lens on the map, the Authority figure on Time & cost, the mode line and the per-action list in the detail panel, and ambit authority"
     },
     {
+      "key": "joint",
+      "term": "Joint capability",
+      "short": "One the agent cannot supply alone",
+      "long": "Some of what a setup can do exists only when a person or a machine takes part. The engine derives it from structure, not from names: a person who must approve a capability makes it institutional, one who supplies it makes it cognitive, a provider running on a device makes it physical, and a person and a machine supplying it together is the case where the ability sits in the loop and in neither half. A recurring acquisition cost is economic. The map marks the joint ones with a person or a device; the panel names who.",
+      "seen": "The person and device marks on the map and their legend keys, Joint capability in the detail panel, and ambit graph affordances"
+    },
+    {
       "key": "frontier",
       "term": "Frontier",
       "short": "What the system can do, as of a moment",

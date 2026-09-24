@@ -124,6 +124,18 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
       | { id: string; name: string; mode: string; ungranted?: boolean }[]
       | undefined) ?? [];
   const daysSinceChange = item.meta?.daysSinceChange as number | undefined;
+  const structure = (item.meta?.structure as string[] | undefined) ?? [];
+  const people = (item.meta?.people as string[] | undefined) ?? [];
+  const devices = (item.meta?.devices as string[] | undefined) ?? [];
+  const who = (names: string[]) => (names.length ? ` (${names.join(', ')})` : '');
+  const JOINT_CLAUSE: Record<string, string> = {
+    institutional: `A person must approve it${who(people)}`,
+    cognitive: `A person supplies it${who(people)}`,
+    'machine-composed-human': 'A person and a machine supply it together',
+    physical: `It runs on a device${who(devices)}`,
+    economic: 'One way to acquire it costs money every month',
+  };
+  const jointClauses = structure.map(d => JOINT_CLAUSE[d]).filter(Boolean);
   // The verdict on whether it works, stated as loudly as the answer deserves.
   // A passing check is good news and stays one quiet line. Never checked and
   // failing are the findings the panel exists for: "configured is not working"
@@ -300,6 +312,21 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
               }`
             : ''}
         </p>
+      )}
+      {/* What it takes besides the agent, from the domains the engine derives
+          from structure. Each clause names who, so "needs a person" says which
+          person. Absent structure prints nothing. */}
+      {jointClauses.length > 0 && (
+        <div className="sp-joint">
+          <span className="sp-joint-hd">
+            <Term name="joint">Joint capability</Term>
+          </span>
+          <ul>
+            {jointClauses.map(c => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </div>
       )}
       {actions.length > 0 && (
         <ul className="sp-actions" aria-label="What it may do">

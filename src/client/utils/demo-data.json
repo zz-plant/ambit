@@ -92,6 +92,14 @@
       "bench": {
         "description": "Run the benchmark suite"
       }
+    },
+    "actors": {
+      "you": {
+        "name": "You",
+        "authorizes": [
+          "continuous-delivery"
+        ]
+      }
     }
   },
   "config": {
@@ -890,7 +898,14 @@
             "execute": "confirm",
             "observe": "autonomous"
           },
-          "daysSinceChange": 0
+          "daysSinceChange": 0,
+          "structure": [
+            "institutional",
+            "economic"
+          ],
+          "people": [
+            "You"
+          ]
         }
       },
       {
@@ -966,7 +981,10 @@
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
-          }
+          },
+          "structure": [
+            "economic"
+          ]
         }
       },
       {
@@ -1209,7 +1227,10 @@
           "era": 2,
           "eraName": "Model Access",
           "next": true,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "structure": [
+            "economic"
+          ]
         }
       },
       {
@@ -1277,7 +1298,10 @@
             "execute": "forbidden",
             "ungranted": true
           },
-          "daysSinceChange": 0
+          "daysSinceChange": 0,
+          "structure": [
+            "economic"
+          ]
         }
       },
       {
@@ -1489,6 +1513,9 @@
               "name": "list_jobs",
               "mode": "autonomous"
             }
+          ],
+          "structure": [
+            "economic"
           ]
         }
       },
@@ -1749,7 +1776,10 @@
           "era": 4,
           "eraName": "Memory",
           "next": false,
-          "lifecycle": "unknown"
+          "lifecycle": "unknown",
+          "structure": [
+            "economic"
+          ]
         }
       },
       {
@@ -1867,6 +1897,26 @@
         },
         "meta": {
           "domain": "meta",
+          "state": "active",
+          "setupSeconds": 0,
+          "next": false,
+          "lifecycle": "unknown",
+          "daysSinceChange": 0
+        }
+      },
+      {
+        "id": "human:you",
+        "name": "You",
+        "type": "config",
+        "status": "built",
+        "description": "Person in the system",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "social",
           "state": "active",
           "setupSeconds": 0,
           "next": false,
@@ -2697,6 +2747,12 @@
         "to": "combo:continuous-delivery",
         "type": "hard-dep",
         "kind": "requires"
+      },
+      {
+        "from": "human:you",
+        "to": "combo:continuous-delivery",
+        "type": "hard-dep",
+        "kind": "authorizes"
       },
       {
         "from": "mcp:1password",

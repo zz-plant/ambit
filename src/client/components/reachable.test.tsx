@@ -544,3 +544,32 @@ test('My Setup lists what the agents used that the map has no node for', () => {
   expect(html).not.toContain('Invalid Date');
   expect(html).not.toContain('NaN');
 });
+
+test('the map marks what needs a person, and the panel says who', () => {
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  seed({
+    items,
+    connections,
+    activeLens: 'default',
+    selectedItem: 'combo:continuous-delivery',
+    showDetailPanel: true,
+  });
+  const map = renderToStaticMarkup(
+    <CivTree
+      items={items}
+      connections={connections}
+      selectedId={null}
+      hoveredId={null}
+      onSelect={() => {}}
+    />
+  );
+  expect(map).toContain('Needs a person: You');
+  expect(map).toContain('Needs a person');
+  // No node in the demo runs on a device, so there is no key for one.
+  expect(map).not.toContain('Runs on a device');
+
+  const panel = renderToStaticMarkup(<NodeDetailPanel />).replace(/<[^>]+>/g, '');
+  expect(panel).toContain('Joint capability');
+  expect(panel).toContain('A person must approve it (You)');
+  expect(panel).toContain('One way to acquire it costs money every month');
+});

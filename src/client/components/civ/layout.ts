@@ -589,6 +589,23 @@ export const AUTHORITY_LABEL: Record<AuthorityMark, string> = {
   ungranted: 'No grant yet',
 };
 
+/**
+ * What a node needs beyond the agent, as the map marks it: a person (who
+ * approves it, supplies it, or supplies it with a machine) or a device its
+ * provider runs on. A person outranks a device when both hold, since asking
+ * someone is the costlier dependency. A recurring cost is economic, not
+ * joint, and is left to the panel.
+ */
+export type JointMark = 'person' | 'device';
+
+export function jointMark(item: Item): JointMark | undefined {
+  const structure = (item.meta?.structure as string[] | undefined) ?? [];
+  if (structure.some(d => ['institutional', 'cognitive', 'machine-composed-human'].includes(d)))
+    return 'person';
+  if (structure.includes('physical')) return 'device';
+  return undefined;
+}
+
 /** What the map says before anyone asks, in the order it matters. */
 export interface MapFindings {
   /** Reached, with a check that failed: configured, and not working. */

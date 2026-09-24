@@ -18,6 +18,8 @@ import {
   eraOf,
   isNext,
   isProven,
+  type JointMark,
+  jointMark,
   layoutNodes,
   mapFindings,
   NODE_R,
@@ -97,12 +99,37 @@ const AUTHORITY_SYM: Record<AuthorityMark, string> = {
   ungranted: '–',
 };
 
+/**
+ * The mark for a joint capability: a person, or a device, in a small disc at
+ * the node's lower left. Drawn, not typed, since the glyphs a font offers for
+ * either vary by platform.
+ */
+function JointIcon({ mark }: { mark: JointMark }) {
+  return (
+    <>
+      <circle r={6.5} fill="var(--bg-surface)" stroke="var(--accent)" strokeWidth={1.2} />
+      {mark === 'person' ? (
+        <>
+          <circle cy={-1.8} r={1.7} fill="var(--accent)" />
+          <path d="M-3 3.2 C-3 0.6 3 0.6 3 3.2 Z" fill="var(--accent)" />
+        </>
+      ) : (
+        <>
+          <rect x={-3.2} y={-2.6} width={6.4} height={4.2} rx={0.8} fill="var(--accent)" />
+          <line x1={-1.6} y1={3} x2={1.6} y2={3} stroke="var(--accent)" strokeWidth={1.1} />
+        </>
+      )}
+    </>
+  );
+}
+
 /** One entry of the legend under the map: a swatch, a stroke, or a heading for the ramp. */
 type LegendKey =
   | { kind: 'label'; label: string }
   | { kind: 'node'; label: string; color: string; sym?: string }
   | { kind: 'ring' | 'faded' | 'square'; label: string }
-  | { kind: 'line'; label: string; color?: string; dashed?: boolean };
+  | { kind: 'line'; label: string; color?: string; dashed?: boolean }
+  | { kind: 'joint'; label: string; mark: JointMark };
 
 /**
  * The count under a column's name, drawn as well as written. A column is a
@@ -315,10 +342,14 @@ export default function CivTree({
     Required: 'prerequisite',
     Optional: 'prerequisite',
     'Interventions a month': 'attention',
+    'Needs a person': 'joint',
+    'Runs on a device': 'joint',
     ...Object.fromEntries(Object.values(AUTHORITY_LABEL).map(l => [l, 'authority'])),
   };
   const SPOTLIGHTS: Record<string, (item: Item) => boolean> = {
     Reached: i => i.status === 'built',
+    'Needs a person': i => jointMark(i) === 'person',
+    'Runs on a device': i => jointMark(i) === 'device',
     [GAINED_THIS_WEEK]: i => weekNames.gained.has(i.name),
     [LOST_THIS_WEEK]: i => weekNames.lost.has(i.name),
     // The header's two halves of reached light the same way its segments read.
@@ -348,6 +379,15 @@ export default function CivTree({
    */
   // While a node is selected the legend also keys the two directions its
   // edges are drawn in.
+  // Keyed only when the map has one: most machines declare no person and no
+  // device, and a key for a mark nothing carries is a question with no answer.
+  const jointKeys: LegendKey[] = (['person', 'device'] as JointMark[])
+    .filter(m => filtered.some(i => jointMark(i) === m))
+    .map(m => ({
+      kind: 'joint',
+      mark: m,
+      label: m === 'person' ? 'Needs a person' : 'Runs on a device',
+    }));
   const directionKeys: LegendKey[] =
     selectedId && focusId === selectedId
       ? [
@@ -384,6 +424,7 @@ export default function CivTree({
               { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
               { kind: 'line', label: 'Required' },
               { kind: 'line', dashed: true, label: 'Optional' },
+              ...jointKeys,
               ...directionKeys,
             ]
           : [
@@ -1042,6 +1083,16 @@ export default function CivTree({
                             </text>
                           </g>
                         )}
+                      {!dimmed && jointMark(item) && (
+                        <g transform={`translate(${-NODE_R + 3}, ${NODE_R - 3})`}>
+                          <title>
+                            {jointMark(item) === 'person'
+                              ? `Needs a person: ${((item.meta?.people as string[]) ?? []).join(', ')}`
+                              : `Runs on a device: ${((item.meta?.devices as string[]) ?? []).join(', ')}`}
+                          </title>
+                          <JointIcon mark={jointMark(item)!} />
+                        </g>
+                      )}
                       {/* Two lines where the name needs them. A trailing space
                           on the first keeps the element's text the whole name,
                           which the recorder matches against the aria-label. */}
@@ -1307,6 +1358,7 @@ export default function CivTree({
                       )}
                     </>
                   )}
+                  {l.kind === 'joint' && <JointIcon mark={l.mark} />}
                   {l.kind === 'ring' && (
                     <circle
                       r={7}

@@ -4440,6 +4440,27 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* ─── THE PANEL'S REASONS AND MOVES ─── */
+/* What a node needs beyond the agent: who approves it, who supplies it, what
+   it runs on. A heading and one line per clause. */
+.sp-joint {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.sp-joint-hd {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.sp-joint ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+}
+
 .sp-authority {
   margin: 0 0 4px;
   font-size: 11.5px;

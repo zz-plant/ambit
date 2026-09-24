@@ -132,9 +132,18 @@ function affordanceDomains(db: Db) {
   const cognitive = new Set<string>();
   const physical = new Set<string>();
   const providersOn = new Map<string, string[]>(); // provider → [devices]
+  // Who each of those comes from, so a surface can name the person or the
+  // machine and not only the domain.
+  const people = new Map<string, Set<string>>();
+  const devices = new Map<string, Set<string>>();
+  const note = (map: Map<string, Set<string>>, cap: string, who: string) => {
+    if (!map.has(cap)) map.set(cap, new Set());
+    map.get(cap)!.add(who);
+  };
   for (const e of edges) {
     if (e.k === 'authorizes') institutional.add(e.t);
     if (e.k === 'provides' && e.ck === 'actor') cognitive.add(e.t);
+    if ((e.k === 'authorizes' || e.k === 'provides') && e.ck === 'actor') note(people, e.t, e.f);
     if (e.k === 'runs_on' && e.f.startsWith('device:')) {
       if (!providersOn.has(e.t)) providersOn.set(e.t, []);
       providersOn.get(e.t)!.push(e.f);
@@ -143,7 +152,10 @@ function affordanceDomains(db: Db) {
   // capability → providers, then any provider on a device marks it physical.
   for (const e of edges) {
     if (e.k !== 'provides' && e.k !== 'contributes') continue;
-    if ((providersOn.get(e.f) || []).length) physical.add(e.t);
+    for (const device of providersOn.get(e.f) || []) {
+      physical.add(e.t);
+      note(devices, e.t, device);
+    }
   }
 
   // Machine-composed-human: a capability supplied by both a person and a
@@ -189,6 +201,8 @@ function affordanceDomains(db: Db) {
       declared_domain: c.domain,
       domain: structure[0] || c.domain,
       structure: structure.length ? structure : undefined,
+      people: people.has(c.id) ? [...people.get(c.id)!].sort() : undefined,
+      devices: devices.has(c.id) ? [...devices.get(c.id)!].sort() : undefined,
       reached: c.state !== 'locked',
     };
   });

@@ -26,6 +26,7 @@ import {
   NODE_R,
   authorityMark,
   isProven,
+  jointMark,
   outageCascade,
   outageImpact,
   outageSentence,
@@ -425,4 +426,16 @@ test('proven is reached with a passing check, the list the engine counts with', 
   expect(isProven(item('c', { lifecycle: 'configured' }))).toBe(false);
   expect(isProven(item('b', { lifecycle: 'broken' }))).toBe(false);
   expect(isProven({ ...item('l', { lifecycle: 'verified' }), status: 'specified' })).toBe(false);
+});
+
+test('a joint mark is a person or a device, and a recurring cost is neither', () => {
+  const withStructure = (structure: string[]) => item('x', { structure });
+  expect(jointMark(withStructure(['institutional', 'economic']))).toBe('person');
+  expect(jointMark(withStructure(['cognitive']))).toBe('person');
+  expect(jointMark(withStructure(['machine-composed-human']))).toBe('person');
+  expect(jointMark(withStructure(['physical']))).toBe('device');
+  // Asking someone is the costlier dependency, so it is the one marked.
+  expect(jointMark(withStructure(['physical', 'institutional']))).toBe('person');
+  expect(jointMark(withStructure(['economic']))).toBeUndefined();
+  expect(jointMark(item('y'))).toBeUndefined();
 });
