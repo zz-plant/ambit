@@ -27,7 +27,7 @@ export interface DependencyFixture {
   from: string;
   to: string;
   hard?: boolean;
-  kind?: 'requires' | 'provides' | 'uses' | 'authorizes' | 'runs_on';
+  kind?: 'requires' | 'provides' | 'contributes' | 'uses' | 'authorizes' | 'runs_on';
 }
 
 export interface GraphFixture {
