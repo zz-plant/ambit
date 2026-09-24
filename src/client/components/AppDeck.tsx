@@ -61,6 +61,10 @@ export default function AppDeck(p: AppDeckProps) {
   return (
     <header className="app-deck">
       <div className="app-deck-left">
+        <div className="app-brand-group">
+          <BrandMark size={18} className="app-brand-mark" />
+          <span className="app-brand">Ambit</span>
+        </div>
         <button
           type="button"
           className="app-deck-btn"
@@ -85,10 +89,6 @@ export default function AppDeck(p: AppDeckProps) {
           <span className="app-deck-btn-label">Search</span>
           <kbd className="app-deck-key">/</kbd>
         </button>
-        <div className="app-brand-group">
-          <BrandMark size={18} className="app-brand-mark" />
-          <span className="app-brand">Ambit</span>
-        </div>
         {p.counts && (
           <div className="app-status-pill" title="The map by state">
             <ReachBar
