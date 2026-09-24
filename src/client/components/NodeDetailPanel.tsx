@@ -290,6 +290,78 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         </div>
       )}
 
+      {/* The impact in one line, then the simulation that draws it: an outage
+          for a reached node; the gap, and an unlock, for one that is not. */}
+      {(() => {
+        const isSimulated = simulatedNodeId === item.id;
+        // Only what was working is said to stop; the banner says the same.
+        const outage = split ? outageSentence('this', outageImpact(items, split), true) : null;
+        const missing = gap ? [...gap.missing] : [];
+        // Name the direct ones first: they are what to reach, the rest is
+        // what those need in turn.
+        const direct = missing.filter(id => needs.some(n => n.node.id === id));
+        const named = (direct.length ? direct : missing)
+          .slice(0, 3)
+          .map(id => byId.get(id)?.name || id);
+        const more = missing.length - named.length;
+
+        return (
+          <div className="sp-sim-group">
+            {item.status === 'built' ? (
+              <p className="sp-impact">
+                {outage?.before}
+                {outage?.count && <strong>{outage.count}</strong>}
+                {outage?.after}
+              </p>
+            ) : missing.length ? (
+              <p className="sp-impact">
+                Blocked by {named.join(', ')}
+                {more > 0 ? ` and ${more} more` : ''}
+                {gap?.seconds ? `, about ${readableSeconds(gap.seconds)} of setup first` : ''}.
+              </p>
+            ) : (
+              <p className="sp-impact">
+                {cascade
+                  ? `Prerequisites met. Unlocking it would make ${cascade} more ${plural(cascade)} reachable.`
+                  : 'Prerequisites met. Unlocking it reaches nothing further on its own.'}
+              </p>
+            )}
+            {isSimulated ? (
+              <button type="button" className="sp-action-btn sp-action-btn--sim" onClick={clearSim}>
+                Exit simulation
+              </button>
+            ) : item.status === 'built' ? (
+              <button
+                type="button"
+                className="sp-action-btn sp-action-btn--outage"
+                onClick={() => startOutage(item.id)}
+              >
+                Simulate an outage
+              </button>
+            ) : (
+              <>
+                {missing.length > 0 && (
+                  <button
+                    type="button"
+                    className="sp-action-btn sp-action-btn--gap"
+                    onClick={() => startGap(item.id)}
+                  >
+                    Show the gap on the map
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="sp-action-btn sp-action-btn--unlock"
+                  onClick={() => startAcquisition(item.id)}
+                >
+                  Simulate unlocking this
+                </button>
+              </>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Whether it may act, apart from whether it can: the engine's effective
           mode, which no web surface used to show, and then the finer answer,
           per action, which is the one an agent acts on. */}
@@ -386,78 +458,6 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           </p>
         </div>
       )}
-
-      {/* The impact in one line, then the simulation that draws it: an outage
-          for a reached node; the gap, and an unlock, for one that is not. */}
-      {(() => {
-        const isSimulated = simulatedNodeId === item.id;
-        // Only what was working is said to stop; the banner says the same.
-        const outage = split ? outageSentence('this', outageImpact(items, split), true) : null;
-        const missing = gap ? [...gap.missing] : [];
-        // Name the direct ones first: they are what to reach, the rest is
-        // what those need in turn.
-        const direct = missing.filter(id => needs.some(n => n.node.id === id));
-        const named = (direct.length ? direct : missing)
-          .slice(0, 3)
-          .map(id => byId.get(id)?.name || id);
-        const more = missing.length - named.length;
-
-        return (
-          <div className="sp-sim-group">
-            {item.status === 'built' ? (
-              <p className="sp-impact">
-                {outage?.before}
-                {outage?.count && <strong>{outage.count}</strong>}
-                {outage?.after}
-              </p>
-            ) : missing.length ? (
-              <p className="sp-impact">
-                Blocked by {named.join(', ')}
-                {more > 0 ? ` and ${more} more` : ''}
-                {gap?.seconds ? `, about ${readableSeconds(gap.seconds)} of setup first` : ''}.
-              </p>
-            ) : (
-              <p className="sp-impact">
-                {cascade
-                  ? `Prerequisites met. Unlocking it would make ${cascade} more ${plural(cascade)} reachable.`
-                  : 'Prerequisites met. Unlocking it reaches nothing further on its own.'}
-              </p>
-            )}
-            {isSimulated ? (
-              <button type="button" className="sp-action-btn sp-action-btn--sim" onClick={clearSim}>
-                Exit simulation
-              </button>
-            ) : item.status === 'built' ? (
-              <button
-                type="button"
-                className="sp-action-btn sp-action-btn--outage"
-                onClick={() => startOutage(item.id)}
-              >
-                Simulate an outage
-              </button>
-            ) : (
-              <>
-                {missing.length > 0 && (
-                  <button
-                    type="button"
-                    className="sp-action-btn sp-action-btn--gap"
-                    onClick={() => startGap(item.id)}
-                  >
-                    Show the gap on the map
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="sp-action-btn sp-action-btn--unlock"
-                  onClick={() => startAcquisition(item.id)}
-                >
-                  Simulate unlocking this
-                </button>
-              </>
-            )}
-          </div>
-        );
-      })()}
 
       {/* Classified by the engine from what the runtime said: a 401 is a
           permission, a missing binary is a tool. "Check failing" says what;
