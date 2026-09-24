@@ -75,6 +75,26 @@ export interface FailureCount {
   last: string;
 }
 
+/**
+ * What a node may do without asking. `ungranted` marks a reached node no
+ * execute grant names: the gate refuses it with "No grant covers ...", so its
+ * mode is `forbidden`, and the flag says the refusal is waiting on a grant,
+ * not one somebody made.
+ */
+export interface NodeAuthority {
+  execute: AuthorityMode;
+  observe?: AuthorityMode;
+  ungranted?: true;
+}
+
+/** One action a capability confers, and the mode it resolves to. */
+export interface ConferredAction {
+  id: string;
+  name: string;
+  mode: AuthorityMode;
+  ungranted?: true;
+}
+
 export interface TreeItemMeta {
   /** The client renders meta generically, so extra keys have to be allowed. */
   [key: string]: unknown;
@@ -98,7 +118,7 @@ export interface TreeItemMeta {
   /** Declared checks that ran: how many passed, of how many. */
   reliability?: { passed: number; total: number };
   /** The effective, unscoped modes: may it act, and may it look, without asking. */
-  authority?: { execute: AuthorityMode; observe?: AuthorityMode };
+  authority?: NodeAuthority;
   /** What the runtime reported failing here in the last thirty days. */
   failures?: FailureCount[];
   /**
@@ -107,7 +127,7 @@ export interface TreeItemMeta {
    * on the capability is the narrowest of these, and the finer answer is the
    * one an agent acts on.
    */
-  actions?: { id: string; name: string; mode: AuthorityMode }[];
+  actions?: ConferredAction[];
   /** Days since this capability's configuration last changed: what has stopped being tended. */
   daysSinceChange?: number;
 }

@@ -24,7 +24,7 @@ export type View = (typeof VIEWS)[number];
  * as an analysis, on a map whose curated nodes never matched it. The engine's
  * own credential report is `ambit credentials`.
  */
-export const LENSES = ['default', 'attention'] as const;
+export const LENSES = ['default', 'attention', 'authority'] as const;
 export type ActiveLens = (typeof LENSES)[number];
 
 /**

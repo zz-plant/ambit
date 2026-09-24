@@ -4,6 +4,9 @@ import { useAmbitStore } from '../store/ambitStore';
 import { isRuntimeNode } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import {
+  AUTHORITY_LABEL,
+  type AuthorityMark,
+  authorityMark,
   buildAdjacency,
   buildColumns,
   cascadeDepths,
@@ -74,6 +77,24 @@ function heatStep(count: number, max: number): number {
   const hit = bins.findIndex(b => count <= b.to);
   return hit === -1 ? bins.length : hit + 1;
 }
+
+/**
+ * The authority lens: one hue per mode and a glyph in the centre, so a reader
+ * who cannot tell amber from green still reads the mode. No grant yet is
+ * drawn as an outline, since nothing has been decided about it.
+ */
+const AUTHORITY_FILL: Record<AuthorityMark, string> = {
+  autonomous: 'var(--ok)',
+  confirm: 'var(--warn)',
+  forbidden: 'var(--error)',
+  ungranted: 'var(--bg-canvas)',
+};
+const AUTHORITY_SYM: Record<AuthorityMark, string> = {
+  autonomous: '▶',
+  confirm: '?',
+  forbidden: '×',
+  ungranted: '–',
+};
 
 /** One entry of the legend under the map: a swatch, a stroke, or a heading for the ramp. */
 type LegendKey =
@@ -203,8 +224,15 @@ export default function CivTree({
   // HUD offers it disabled with the reason. The map used to go grey with a
   // note over it.
   const attentionAvailable = attentionMax > 0;
+  const authorityAvailable = React.useMemo(
+    () => items.some(i => authorityMark(i) !== undefined),
+    [items]
+  );
   const activeLens =
-    requestedLens === 'attention' && !attentionAvailable ? 'default' : requestedLens;
+    (requestedLens === 'attention' && !attentionAvailable) ||
+    (requestedLens === 'authority' && !authorityAvailable)
+      ? 'default'
+      : requestedLens;
 
   const simulatedItem = items.find(i => i.id === simulatedNodeId);
 
@@ -276,6 +304,7 @@ export default function CivTree({
     Required: 'prerequisite',
     Optional: 'prerequisite',
     'Interventions a month': 'attention',
+    ...Object.fromEntries(Object.values(AUTHORITY_LABEL).map(l => [l, 'authority'])),
   };
   const SPOTLIGHTS: Record<string, (item: Item) => boolean> = {
     Reached: i => i.status === 'built',
@@ -288,6 +317,12 @@ export default function CivTree({
     Keystone: keystone,
     Passing: i => ['verified', 'reliable'].includes(lifecycleOf(i)),
     Failing: i => ['degraded', 'broken'].includes(lifecycleOf(i)),
+    ...Object.fromEntries(
+      (Object.keys(AUTHORITY_LABEL) as AuthorityMark[]).map(m => [
+        AUTHORITY_LABEL[m],
+        (i: Item) => authorityMark(i) === m,
+      ])
+    ),
   };
 
   /**
@@ -305,40 +340,51 @@ export default function CivTree({
         ]
       : [];
   const legend: LegendKey[] =
-    activeLens === 'attention'
-      ? [
-          // A scale with no unit is a row of coloured dots. Say what is
-          // being counted, once, at the head of the ramp.
-          { kind: 'label', label: 'Interventions a month' },
-          ...heatBins(attentionMax).map(
-            (b, i): LegendKey => ({ kind: 'node', color: `var(--heat-${i + 1})`, label: b.label })
-          ),
-        ]
-      : isTreeView
+    activeLens === 'authority'
+      ? (Object.keys(AUTHORITY_LABEL) as AuthorityMark[]).map(
+          (m): LegendKey => ({
+            kind: 'node',
+            color: AUTHORITY_FILL[m],
+            sym: AUTHORITY_SYM[m],
+            label: AUTHORITY_LABEL[m],
+          })
+        )
+      : activeLens === 'attention'
         ? [
-            { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
-            { kind: 'ring', label: 'Next step' },
-            { kind: 'faded', label: 'Blocked' },
-            { kind: 'square', label: 'Keystone' },
-            { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-            { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-            { kind: 'line', label: 'Required' },
-            { kind: 'line', dashed: true, label: 'Optional' },
-            ...directionKeys,
+            // A scale with no unit is a row of coloured dots. Say what is
+            // being counted, once, at the head of the ramp.
+            { kind: 'label', label: 'Interventions a month' },
+            ...heatBins(attentionMax).map(
+              (b, i): LegendKey => ({ kind: 'node', color: `var(--heat-${i + 1})`, label: b.label })
+            ),
           ]
-        : [
-            { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Tool server' },
-            { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
-            { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
-            { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
-            { kind: 'square', label: 'Keystone' },
-            { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-            { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
-            { kind: 'line', label: 'Required' },
-            { kind: 'line', dashed: true, label: 'Optional' },
-            ...directionKeys,
-          ];
+        : isTreeView
+          ? [
+              { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
+              { kind: 'ring', label: 'Next step' },
+              { kind: 'faded', label: 'Blocked' },
+              { kind: 'square', label: 'Keystone' },
+              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+              { kind: 'line', label: 'Required' },
+              { kind: 'line', dashed: true, label: 'Optional' },
+              ...directionKeys,
+            ]
+          : [
+              { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Tool server' },
+              { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
+              { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
+              { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
+              { kind: 'square', label: 'Keystone' },
+              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+              { kind: 'line', label: 'Required' },
+              { kind: 'line', dashed: true, label: 'Optional' },
+              ...directionKeys,
+            ];
   const legendCount = legend.length;
+  // Where the trailing hint sits: past the last key, at the pitch the keys use.
+  const legendEnd = 10 + legendCount * (activeLens === 'authority' ? 150 : 112);
   const hasSpotlights = legend.some(l => Boolean(SPOTLIGHTS[l.label]));
 
   // The selected node has the detail panel open beside it, which says
@@ -360,6 +406,8 @@ export default function CivTree({
         setActiveLens('default');
       } else if (e.key === '2') {
         if (attentionAvailable) setActiveLens('attention');
+      } else if (e.key === '3') {
+        if (authorityAvailable) setActiveLens('authority');
       } else if (e.key === '0') {
         e.preventDefault();
         setZoom(1);
@@ -390,6 +438,7 @@ export default function CivTree({
   }, [
     setActiveLens,
     attentionAvailable,
+    authorityAvailable,
     clearSimulation,
     simulationMode,
     selectedId,
@@ -485,6 +534,7 @@ export default function CivTree({
         activeLens={activeLens}
         onSetLens={setActiveLens}
         attentionAvailable={attentionAvailable}
+        authorityAvailable={authorityAvailable}
         leftInset={leftInset}
         rightInset={rightInset}
       />
@@ -674,6 +724,9 @@ export default function CivTree({
                   const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
                   const heat = heatStep(interventionCount, attentionMax);
 
+                  const mark = activeLens === 'authority' ? authorityMark(item) : undefined;
+                  const isAuthorityLens = activeLens === 'authority';
+
                   const isKeystone = keystone(item);
 
                   const next = isNext(item);
@@ -681,7 +734,11 @@ export default function CivTree({
 
                   const isSpotlit = !spotlight || (SPOTLIGHTS[spotlight]?.(item) ?? true);
 
-                  const dimmed = (focusId !== null && !nearFocus) || isSimDimmed || !isSpotlit;
+                  const dimmed =
+                    (focusId !== null && !nearFocus) ||
+                    isSimDimmed ||
+                    !isSpotlit ||
+                    (isAuthorityLens && simulationMode === 'none' && !mark);
                   const baseOpacity =
                     isSimRoot || isSimAffected
                       ? 1
@@ -757,6 +814,12 @@ export default function CivTree({
                       sc = 'var(--on-accent)';
                       sw = 2;
                     }
+                  } else if (mark) {
+                    // Four categories, so four hues, each with its own glyph
+                    // in the centre: the lens must read without colour.
+                    nodeFill = AUTHORITY_FILL[mark];
+                    sc = mark === 'ungranted' ? 'var(--text-muted)' : 'var(--on-accent)';
+                    sw = 2;
                   } else if (isAttentionHot) {
                     // One hue, four steps, brighter with more — a quantity read
                     // as a quantity. It used to be two colours split at twenty:
@@ -767,7 +830,7 @@ export default function CivTree({
                     sw = 2;
                   }
 
-                  const sym = typeSymbol(item.type);
+                  const sym = mark ? AUTHORITY_SYM[mark] : typeSymbol(item.type);
                   const lines = wrapLabel(item.name);
 
                   return (
@@ -872,7 +935,11 @@ export default function CivTree({
                         r={NODE_R}
                         fill={nodeFill}
                         fillOpacity={
-                          reached && simulationMode === 'none' && !isAttentionHot && !selected
+                          reached &&
+                          simulationMode === 'none' &&
+                          !isAttentionHot &&
+                          !mark &&
+                          !selected
                             ? 0.6
                             : 1
                         }
@@ -1131,7 +1198,13 @@ export default function CivTree({
               // The heat scale is a ramp, so its swatches sit close together and
               // read as one object rather than as five separate keys.
               const lx =
-                activeLens === 'attention' ? (i === 0 ? 10 : 150 + (i - 1) * 62) : 10 + i * 112;
+                activeLens === 'attention'
+                  ? i === 0
+                    ? 10
+                    : 150 + (i - 1) * 62
+                  : activeLens === 'authority'
+                    ? 10 + i * 150
+                    : 10 + i * 112;
               const clickable = Boolean(SPOTLIGHTS[l.label]);
               const isLegendActive = spotlight === l.label;
               return (
@@ -1180,8 +1253,14 @@ export default function CivTree({
                         r={7}
                         fill={l.color}
                         opacity={0.9}
-                        stroke={isLegendActive ? 'var(--on-accent)' : 'none'}
-                        strokeWidth={isLegendActive ? 2 : 0}
+                        stroke={
+                          isLegendActive
+                            ? 'var(--on-accent)'
+                            : l.color === 'var(--bg-canvas)'
+                              ? 'var(--text-muted)'
+                              : 'none'
+                        }
+                        strokeWidth={isLegendActive ? 2 : l.color === 'var(--bg-canvas)' ? 1.25 : 0}
                       />
                       {l.sym && (
                         <text
@@ -1259,7 +1338,7 @@ export default function CivTree({
               <g
                 role="button"
                 tabIndex={0}
-                transform={`translate(${10 + legendCount * 112}, 8)`}
+                transform={`translate(${legendEnd}, 8)`}
                 style={{ cursor: 'pointer' }}
                 aria-label="Show every node again"
                 onClick={() => setSpotlight(null)}
@@ -1276,7 +1355,7 @@ export default function CivTree({
             ) : (
               hasSpotlights && (
                 <text
-                  transform={`translate(${10 + legendCount * 112}, 8)`}
+                  transform={`translate(${legendEnd}, 8)`}
                   y={3.5}
                   fill="var(--text-muted)"
                   fontSize={10.5}

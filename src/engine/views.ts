@@ -8,6 +8,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ConferredAction } from '../shared/api.ts';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
@@ -139,7 +140,17 @@ export function techTreeView(db: Db): TechTreeResponse {
 
   const authority = effectiveAuthority(db);
   const failures = recentFailures(db);
-  const actions = conferredActions(db, authority);
+  const granted = grantedIds(db);
+  const actions = conferredActions(db, authority, granted);
+  // A reached capability or action no execute grant names is refused by the
+  // gate ("No grant covers ..."), so the map says so. That is the engine's
+  // answer, not a missing one; a locked node has nothing to act with, and
+  // says nothing.
+  const authorityOf = (id: string, state: string, kind: string) =>
+    authority.get(id) ??
+    (state !== 'locked' && (kind === 'capability' || kind === 'action') && !granted.has(id)
+      ? { execute: 'forbidden' as const, ungranted: true as const }
+      : undefined);
 
   const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
   const hardPrereqs = new Map<string, string[]>();
@@ -174,7 +185,7 @@ export function techTreeView(db: Db): TechTreeResponse {
       providers: providersOf.get(c.id),
       credentials: credentialsOf.get(c.id),
       reliability: reliability.get(c.id),
-      authority: authority.get(c.id),
+      authority: authorityOf(c.id, c.state, c.kind),
       failures: failures.get(c.id),
       actions: actions.get(c.id),
       daysSinceChange: c.state === 'locked' ? undefined : daysSince(c.updated_at),
@@ -210,9 +221,10 @@ function daysSince(stamp: unknown): number | undefined {
  */
 function conferredActions(
   db: Db,
-  authority: Map<string, { execute: AuthorityMode }>
-): Map<string, { id: string; name: string; mode: AuthorityMode }[]> {
-  const out = new Map<string, { id: string; name: string; mode: AuthorityMode }[]>();
+  authority: Map<string, { execute: AuthorityMode }>,
+  granted: Set<string>
+): Map<string, ConferredAction[]> {
+  const out = new Map<string, ConferredAction[]>();
   try {
     for (const r of db
       .prepare(
@@ -224,17 +236,37 @@ function conferredActions(
       )
       .all<{ capability: string; id: string; name: string }>()) {
       if (!out.has(r.capability)) out.set(r.capability, []);
-      out.get(r.capability)!.push({
-        id: r.id,
-        name: r.name,
-        // Absent means nothing narrowed it, which is how `ambit actions` reads it too.
-        mode: authority.get(r.id)?.execute ?? 'autonomous',
-      });
+      // No grant at all is a refusal at the gate, which `canExecute` answers
+      // with "No grant covers ...". This used to read as autonomous, so the
+      // panel offered as unattended what the gate would refuse. A node with
+      // only scoped grants keeps the old reading; `ambit scope` answers it.
+      const mode = authority.get(r.id)?.execute;
+      out
+        .get(r.capability)!
+        .push(
+          mode || granted.has(r.id)
+            ? { id: r.id, name: r.name, mode: mode ?? 'autonomous' }
+            : { id: r.id, name: r.name, mode: 'forbidden', ungranted: true }
+        );
     }
   } catch {
     /* a graph with no contract actions */
   }
   return out;
+}
+
+/** Every node some execute grant names, at any scope. */
+function grantedIds(db: Db): Set<string> {
+  try {
+    return new Set(
+      db
+        .prepare(`SELECT DISTINCT capability_id FROM authority WHERE action != 'observe'`)
+        .all<{ capability_id: string }>()
+        .map(r => r.capability_id)
+    );
+  } catch {
+    return new Set();
+  }
 }
 
 /**

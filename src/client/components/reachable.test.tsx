@@ -13,9 +13,10 @@ import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoProposals, demoTreeGraph } from '../store/demo';
-import { outageSplit } from './civ/layout';
+import { authorityMark, outageSplit } from './civ/layout';
 import { SimulationBanner } from './civ/SimulationBanner';
 import AppDeck from './AppDeck';
+import CivTree from './CivTree';
 import ApprovalModal from './ApprovalModal';
 import { RepoDriftPanel } from './EnvironmentPanels';
 import LoopDashboard from './LoopDashboard';
@@ -472,4 +473,26 @@ test('a repository missing a server the global config has is handed the entry', 
   expect(html).toContain('copy entry');
   expect(html.match(/tp-inline-btn/g)?.length).toBe(1);
   expect(html).toContain('nonesuch');
+});
+
+test('the map has an authority lens, keyed by what the demo actually grants', () => {
+  // The engine answered "may it act without asking" for every reached node,
+  // and only the detail panel said so. The lens puts it on the map.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  const marks = new Set(items.map(authorityMark).filter(Boolean));
+  expect(marks).toEqual(new Set(['autonomous', 'confirm', 'forbidden', 'ungranted']));
+  seed({ items, connections, activeLens: 'authority' });
+  const html = renderToStaticMarkup(
+    <CivTree
+      items={items}
+      connections={connections}
+      selectedId={null}
+      hoveredId={null}
+      onSelect={() => {}}
+    />
+  );
+  expect(html).toMatch(/aria-pressed="true"[^>]*>Authority</);
+  for (const label of ['Acts without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
+    expect(html).toContain(label);
+  }
 });

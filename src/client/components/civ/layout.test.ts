@@ -24,6 +24,7 @@ import {
   isNext,
   layoutNodes,
   NODE_R,
+  authorityMark,
   outageCascade,
   outageImpact,
   outageSentence,
@@ -385,4 +386,20 @@ test('the panel reads "other" and keeps the count apart, so it can be emphasised
     count: '2 other capabilities',
     after: ' would stop working and 1 would lose a provider.',
   });
+});
+
+test('the authority lens paints what the engine answered, and nothing it did not', () => {
+  const reached = (authority?: Record<string, unknown>) =>
+    item('x', authority ? { authority } : {});
+  expect(authorityMark(reached({ execute: 'autonomous' }))).toBe('autonomous');
+  expect(authorityMark(reached({ execute: 'confirm', observe: 'autonomous' }))).toBe('confirm');
+  // No grant is refused at the gate, and said apart from a refusal someone wrote.
+  expect(authorityMark(reached({ execute: 'forbidden', ungranted: true }))).toBe('ungranted');
+  expect(authorityMark(reached({ execute: 'forbidden' }))).toBe('forbidden');
+  // Absent is not autonomous, and not reached has nothing to act with.
+  expect(authorityMark(reached())).toBeUndefined();
+  expect(
+    authorityMark({ ...reached({ execute: 'autonomous' }), status: 'specified' })
+  ).toBeUndefined();
+  expect(authorityMark(reached({ execute: 'sometimes' }))).toBeUndefined();
 });

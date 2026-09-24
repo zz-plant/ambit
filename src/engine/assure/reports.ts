@@ -262,9 +262,11 @@ function actionsReport(db: Db, capId?: string) {
   // the two surfaces cannot disagree about what is permitted.
   const authority = authorityReport(db) as any;
   const modeOf = new Map<string, any>();
+  const granted = new Set<string>();
   for (const row of authority.detail || []) {
-    if (row.action !== 'execute' || row.scope) continue;
-    modeOf.set(row.id, row);
+    if (row.action !== 'execute') continue;
+    granted.add(row.id);
+    if (!row.scope) modeOf.set(row.id, row);
   }
 
   const rows = actions.map((a: any) => {
@@ -277,7 +279,11 @@ function actionsReport(db: Db, capId?: string) {
       // whatever the capability's state says, and it must not read as
       // exercisable.
       reached: a.state !== 'locked' && usable(a.lifecycle),
-      mode: grant?.mode || 'autonomous',
+      // No grant at any scope is what `canExecute` refuses with "No grant
+      // covers ...", so it is not exercisable. This used to default to
+      // autonomous and report as exercisable what the gate would refuse.
+      mode: grant?.mode || (granted.has(a.id) ? 'autonomous' : 'forbidden'),
+      ...(granted.has(a.id) ? {} : { ungranted: true }),
       narrowed_by: grant?.narrowed_by,
       lifecycle: a.lifecycle,
     };

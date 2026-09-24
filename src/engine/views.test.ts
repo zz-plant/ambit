@@ -13,6 +13,7 @@
  */
 import { expect, test } from 'vitest';
 import { NODE_TYPES } from '../shared/api.ts';
+import { actionsReport, canExecute } from './assurance.ts';
 import { makeGraph } from './testing/graph.ts';
 import {
   graphSummary,
@@ -267,7 +268,10 @@ test('a node lists the actions it confers, each with its own mode', () => {
       { from: 'combo:shell', to: 'act:shell/run', kind: 'provides', hard: true },
       { from: 'combo:shell', to: 'act:shell/read', kind: 'provides', hard: true },
     ],
-    authority: [{ capability: 'act:shell/run', action: 'execute', mode: 'confirm' }],
+    authority: [
+      { capability: 'act:shell/run', action: 'execute', mode: 'confirm' },
+      { capability: 'act:shell/read', action: 'execute', mode: 'autonomous' },
+    ],
   });
   const shell = techTreeView(db).items.find(i => i.id === 'combo:shell')!;
   db.close();
@@ -300,4 +304,40 @@ test('what work asked for and never had heads the loop payload', () => {
   expect(loop.demand).toEqual([
     { id: 'combo:vector', name: 'Vector Store', times: 4, structural: true, failing: false },
   ]);
+});
+
+test('a reached node no grant names reads the way the gate answers it', () => {
+  // The panel said an ungranted action ran without asking, and `canExecute`
+  // refused it with "No grant covers". The map now says what the gate says.
+  const db = makeGraph({
+    capabilities: [
+      {
+        id: 'combo:shell',
+        name: 'Shell',
+        category: 'combo',
+        kind: 'capability',
+        state: 'unlocked',
+      },
+      { id: 'combo:far', name: 'Far', category: 'combo', kind: 'capability', state: 'locked' },
+      { id: 'act:shell/read', name: 'read', category: 'action', kind: 'action', state: 'unlocked' },
+    ],
+    dependencies: [{ from: 'combo:shell', to: 'act:shell/read', kind: 'provides', hard: true }],
+  });
+  const items = techTreeView(db).items;
+  const gate = canExecute(db, { capability: 'combo:shell' });
+  const actionGate = canExecute(db, { capability: 'act:shell/read' });
+  // `ambit authority shell` said exercisable, on the same fallback.
+  const report = actionsReport(db, 'shell') as any;
+  db.close();
+  expect(report.exercisable).toEqual([]);
+  expect(report.forbidden).toEqual(['act:shell/read']);
+  const shell = items.find(i => i.id === 'combo:shell')!;
+  expect(gate.verdict).toBe('no');
+  expect(shell.meta.authority).toEqual({ execute: 'forbidden', ungranted: true });
+  expect(actionGate.verdict).toBe('no');
+  expect(shell.meta.actions).toEqual([
+    { id: 'act:shell/read', name: 'read', mode: 'forbidden', ungranted: true },
+  ]);
+  // Locked has nothing to act with, and is given no answer.
+  expect(items.find(i => i.id === 'combo:far')!.meta.authority).toBeUndefined();
 });

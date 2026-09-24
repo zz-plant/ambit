@@ -112,13 +112,17 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
     reliability && reliability.total > 1
       ? ` · ${reliability.passed} of ${reliability.total} runs passed`
       : '';
-  const authority = item.meta?.authority as { execute: string; observe?: string } | undefined;
+  const authority = item.meta?.authority as
+    | { execute: string; observe?: string; ungranted?: boolean }
+    | undefined;
   const failures =
     (item.meta?.failures as
       | { class: string; signal: string; times: number; last: string }[]
       | undefined) ?? [];
   const actions =
-    (item.meta?.actions as { id: string; name: string; mode: string }[] | undefined) ?? [];
+    (item.meta?.actions as
+      | { id: string; name: string; mode: string; ungranted?: boolean }[]
+      | undefined) ?? [];
   const daysSinceChange = item.meta?.daysSinceChange as number | undefined;
   // The verdict on whether it works, stated as loudly as the answer deserves.
   // A passing check is good news and stays one quiet line. Never checked and
@@ -279,11 +283,13 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           per action, which is the one an agent acts on. */}
       {authority && (
         <p className="sp-authority">
-          {authority.execute === 'autonomous'
-            ? 'Acts without asking'
-            : authority.execute === 'confirm'
-              ? 'Asks before acting'
-              : 'Forbidden to act'}
+          {authority.ungranted
+            ? 'No grant yet: an agent asking to run it is refused until someone grants one'
+            : authority.execute === 'autonomous'
+              ? 'Acts without asking'
+              : authority.execute === 'confirm'
+                ? 'Asks before acting'
+                : 'Forbidden to act'}
           {authority.observe && authority.observe !== authority.execute
             ? ` · ${
                 authority.observe === 'autonomous'
@@ -301,11 +307,13 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
             <li key={a.id} className={`sp-action sp-action--${a.mode}`}>
               <span className="sp-action-name">{a.name.replace(/_/g, ' ')}</span>
               <span className="sp-action-mode">
-                {a.mode === 'autonomous'
-                  ? 'without asking'
-                  : a.mode === 'confirm'
-                    ? 'asks'
-                    : 'forbidden'}
+                {a.ungranted
+                  ? 'no grant yet'
+                  : a.mode === 'autonomous'
+                    ? 'without asking'
+                    : a.mode === 'confirm'
+                      ? 'asks'
+                      : 'forbidden'}
               </span>
             </li>
           ))}

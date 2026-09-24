@@ -89,8 +89,8 @@
       "key": "authority",
       "term": "Authority",
       "short": "Whether it may run, not whether it can",
-      "long": "Being technically able to perform an action is not permission to perform it. Authority is tracked separately per capability — observe and execute, each autonomous, confirm, or forbidden — so a reached capability can still require approval. This is what lets a larger technical surface stay governable: the limits are explicit rather than implied.",
-      "seen": "The Authority figure on Time & cost, the mode line and the per-action list in the detail panel, and ambit authority"
+      "long": "Being technically able to perform an action is not permission to perform it. Authority is tracked separately per capability — observe and execute, each autonomous, confirm, or forbidden — so a reached capability can still require approval. A reached capability no grant names is refused until someone grants one, and the map says \"no grant yet\" apart from a refusal somebody wrote. This is what lets a larger technical surface stay governable: the limits are explicit rather than implied.",
+      "seen": "The Authority lens on the map, the Authority figure on Time & cost, the mode line and the per-action list in the detail panel, and ambit authority"
     },
     {
       "key": "frontier",

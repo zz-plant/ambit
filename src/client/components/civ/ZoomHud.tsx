@@ -12,6 +12,7 @@ import type { ActiveLens } from '../../linkState';
 export const LENSES: readonly [ActiveLens, string, string][] = [
   ['default', 'Standard', '1'],
   ['attention', 'Attention', '2'],
+  ['authority', 'Authority', '3'],
 ];
 
 interface ZoomHudProps {
@@ -29,6 +30,8 @@ interface ZoomHudProps {
    * why, instead of a map that goes grey with a note over it.
    */
   attentionAvailable: boolean;
+  /** Whether any reached node carries an authority mode the lens could paint. */
+  authorityAvailable?: boolean;
   /** Pixels the capability list covers on the left, so the HUD stays clear of it. */
   leftInset?: number;
   /** Pixels the detail panel covers on the right. */
@@ -44,6 +47,7 @@ export function ZoomHud({
   activeLens,
   onSetLens,
   attentionAvailable,
+  authorityAvailable = true,
   leftInset = 0,
   rightInset = 0,
 }: ZoomHudProps) {
@@ -140,7 +144,9 @@ export function ZoomHud({
 
       <div className="civ-lens-hud" role="toolbar" aria-label="Lens">
         {LENSES.map(([lens, label, hotkey]) => {
-          const unavailable = lens === 'attention' && !attentionAvailable;
+          const unavailable =
+            (lens === 'attention' && !attentionAvailable) ||
+            (lens === 'authority' && !authorityAvailable);
           return (
             <button
               key={lens}
@@ -150,9 +156,11 @@ export function ZoomHud({
               disabled={unavailable}
               onClick={() => onSetLens(lens)}
               title={
-                unavailable
-                  ? 'Nothing recorded yet. This lens shades each capability by how often you had to step in; copy plugins/ambit-tracker.js into ~/.config/opencode/plugins/ and it fills from your own sessions.'
-                  : `${label} lens (${hotkey})`
+                unavailable && lens === 'authority'
+                  ? 'No reached capability carries an authority mode yet. Run ambit seed, and ambit authority lists what may act without asking.'
+                  : unavailable
+                    ? 'Nothing recorded yet. This lens shades each capability by how often you had to step in; copy plugins/ambit-tracker.js into ~/.config/opencode/plugins/ and it fills from your own sessions.'
+                    : `${label} lens (${hotkey})`
               }
             >
               {label}

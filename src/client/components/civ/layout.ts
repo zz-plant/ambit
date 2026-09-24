@@ -538,6 +538,32 @@ export function outageSentence(
   };
 }
 
+/**
+ * What a reached node may do without asking, as the authority lens paints it.
+ * `ungranted` is reached with no execute grant at all: the gate refuses it
+ * ("No grant covers ...") until someone grants one, which is a different
+ * thing to say from a refusal somebody wrote. A node that is not reached has
+ * nothing to act with, and one the engine sent no authority for is not given
+ * one here; both return undefined and the lens leaves them unpainted.
+ */
+export type AuthorityMark = 'autonomous' | 'confirm' | 'forbidden' | 'ungranted';
+
+export function authorityMark(item: Item): AuthorityMark | undefined {
+  if (item.status !== 'built') return undefined;
+  const authority = item.meta?.authority as { execute?: string; ungranted?: boolean } | undefined;
+  if (!authority?.execute) return undefined;
+  if (authority.ungranted) return 'ungranted';
+  return (['autonomous', 'confirm', 'forbidden'] as const).find(m => m === authority.execute);
+}
+
+/** The lens's words for each mark, which the legend and the headline share. */
+export const AUTHORITY_LABEL: Record<AuthorityMark, string> = {
+  autonomous: 'Acts without asking',
+  confirm: 'Asks first',
+  forbidden: 'Forbidden',
+  ungranted: 'No grant yet',
+};
+
 /** What the map says before anyone asks, in the order it matters. */
 export interface MapFindings {
   /** Reached, with a check that failed: configured, and not working. */

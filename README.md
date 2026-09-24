@@ -310,14 +310,15 @@ One line over the map says what it found before you read a node: a capability th
 
 The **Docs** button defines every term on the canvas; [the four above](#the-words-ambit-uses) cover most of it.
 
-### Two lenses on the canvas
+### Three lenses on the canvas
 
-The switch sits over the map, top right. Press <kbd>1</kbd> or <kbd>2</kbd> to change it from the keyboard.
+The switch sits over the map, top right. Press <kbd>1</kbd>, <kbd>2</kbd> or <kbd>3</kbd> to change it from the keyboard.
 
 | Lens | What it renders | Use it for |
 | :--- | :--- | :--- |
 | **Standard** | Era columns with reached, next-step and blocked nodes. | Reading overall progression and what is nearby. |
 | **Attention** | Nodes shaded by how often a person had to step in, offered once the ledger has recorded any. | Finding which tools keep interrupting you. |
+| **Authority** | Each reached node by what it may do: act without asking, ask first, forbidden, or no grant yet, which the gate refuses until someone grants one. | Seeing where being able to do something is not the same as being allowed to. |
 
 ### Simulation
 
