@@ -349,7 +349,7 @@ ambit rollback prop-msrsqzij
 <pre><code>           seed · briefing [--json|--peek] · status · next [n] · help [term]
 graph      impact &lt;id&gt; · catalog &lt;cap&gt; · where · skills · objects [target]
            share [--redact] [--out=path] · sync export|import &lt;path&gt;
-           graph [surface|combos|affordances]
+           graph [surface|combos|affordances|unmapped|capacity]
 plan       goal &lt;cap-or-sentence&gt; [--paths|--simulate|--prefs|--judge[=url]] · next [n]
            reversible
            opportunities [--by=…] [--budget=N] · opportunity &lt;id&gt;
@@ -420,7 +420,7 @@ report     work [limit] · usage [days] · economics · attention [days]
 </tr>
 <tr>
 <td align="left"><code>ambit graph</code></td>
-<td align="left">The whole graph as JSON; <code>graph surface</code> is the runtime-owned vocabulary a runtime would publish, <code>graph combos</code> the near-reachable ones, <code>graph affordances</code> the structural domains</td>
+<td align="left">The whole graph as JSON; <code>graph surface</code> is the runtime-owned vocabulary a runtime would publish, <code>graph combos</code> the near-reachable ones, <code>graph affordances</code> the structural domains, <code>graph unmapped</code> what the agents used that no node on the map accounts for (presence, never frequency) and the overlay that would add it, <code>graph capacity</code> the machines on your tailnet and this machine&#39;s memory, naming the online ones no manifest declares</td>
 </tr>
 <tr>
 <td align="left"><strong>plan</strong> — <em>what to acquire next, and whether it paid</em></td>
@@ -575,7 +575,7 @@ Self-Hosted Stack  configured, but Observability is not in place yet
 </tr>
 <tr>
 <td align="left"><strong>Operate</strong></td>
-<td align="left"><code>ambit_work</code>, <code>ambit_usage</code>, <code>ambit_run_begin</code>, <code>ambit_run_end</code>, <code>ambit_work_event</code>, <code>ambit_digest</code>, <code>ambit_economics</code>, <code>ambit_goal_value</code>, <code>ambit_opportunities</code>, <code>ambit_opportunity</code>, <code>ambit_catalog</code>, <code>ambit_roi</code>, <code>ambit_roi_summary</code>, <code>ambit_audit</code>, <code>ambit_incidents</code>, <code>ambit_incident_resolve</code>, <code>ambit_portfolio</code>, <code>ambit_can</code></td>
+<td align="left"><code>ambit_work</code>, <code>ambit_usage</code> (with <code>unmapped</code>, what was used and is on no node), <code>ambit_run_begin</code>, <code>ambit_run_end</code>, <code>ambit_work_event</code>, <code>ambit_digest</code>, <code>ambit_economics</code>, <code>ambit_goal_value</code>, <code>ambit_opportunities</code>, <code>ambit_opportunity</code>, <code>ambit_catalog</code>, <code>ambit_roi</code>, <code>ambit_roi_summary</code>, <code>ambit_audit</code>, <code>ambit_incidents</code>, <code>ambit_incident_resolve</code>, <code>ambit_portfolio</code>, <code>ambit_can</code></td>
 <td align="left">The economic loop read and written by an agent: record telemetry, price attention, rank opportunities, and check permission before acting.</td>
 </tr>
 <tr>
