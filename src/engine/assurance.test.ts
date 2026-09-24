@@ -6,7 +6,7 @@
  * so in practice it was checked through whatever that happened to print.
  */
 import { test, expect } from 'vitest';
-import { canExecute, scopeCovers, deriveLifecycles } from './assurance.ts';
+import { authorityReport, canExecute, scopeCovers, deriveLifecycles } from './assurance.ts';
 import { makeGraph, learn } from './testing/graph.ts';
 
 // ── Scope ────────────────────────────────────────────────────────────────────
@@ -174,5 +174,102 @@ test('a recent failure under a passing head reads as degraded, not reliable', ()
   expect(
     db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get('combo:x')!.lifecycle
   ).toBe('degraded');
+  db.close();
+});
+
+/**
+ * A runtime's own approval setting, as `ambit authority` and `ambit can` read
+ * it. The report applied a runtime-wide grant to everything the runtime
+ * contributes and the gate read only grants stored against the capability, so
+ * the report said confirm where the gate said ALLOW, unattended.
+ */
+function runtimeGraph(runtimeMode: 'autonomous' | 'confirm' | 'forbidden') {
+  return makeGraph({
+    capabilities: [
+      { id: 'runtime:claude-code', kind: 'runtime' },
+      { id: 'mcp:git', kind: 'provider' },
+      { id: 'combo:version-control', kind: 'capability' },
+      { id: 'act:version-control/read_repository', kind: 'action' },
+    ],
+    dependencies: [
+      { from: 'runtime:claude-code', to: 'mcp:git', kind: 'contributes' },
+      { from: 'mcp:git', to: 'combo:version-control', kind: 'provides' },
+      {
+        from: 'combo:version-control',
+        to: 'act:version-control/read_repository',
+        kind: 'provides',
+      },
+    ],
+    authority: [
+      { capability: 'combo:version-control', mode: 'autonomous', source: 'techtree' },
+      {
+        capability: 'act:version-control/read_repository',
+        mode: 'autonomous',
+        source: 'techtree',
+      },
+      {
+        capability: 'runtime:claude-code',
+        mode: runtimeMode,
+        holder: 'runtime:claude-code',
+        source: 'runtime:claude-code',
+      },
+    ],
+  });
+}
+
+test('the gate and the report agree on an action a runtime narrows', () => {
+  const db = runtimeGraph('confirm');
+  const reported = (authorityReport(db) as any).detail.find(
+    (r: any) => r.id === 'act:version-control/read_repository' && r.action === 'execute'
+  );
+  expect(reported.mode).toBe('confirm');
+  expect(reported.narrowed_by).toBe('runtime:claude-code');
+
+  // Whoever asks: no actor, the approving person governance passes, an agent id.
+  for (const actor of [undefined, 'human:web', 'agent-7']) {
+    for (const capability of ['act:version-control/read_repository', 'combo:version-control']) {
+      const d: any = canExecute(db, { capability, actor });
+      expect(d.decision, `${capability} as ${actor}`).toBe('CONFIRM');
+    }
+  }
+  const d: any = canExecute(db, { capability: 'act:version-control/read_repository' });
+  expect(d.reason).toContain('runtime:claude-code');
+  expect(d.governing_grant.source).toBe('runtime:claude-code');
+  db.close();
+});
+
+test('a runtime that forbids refuses, and a narrower scope is no way round it', () => {
+  const db = runtimeGraph('forbidden');
+  // A grant written about one repository cannot reach what the runtime refuses.
+  db.prepare(
+    `INSERT INTO authority (capability_id, action, mode, holder, scope, source, note)
+     VALUES ('act:version-control/read_repository', 'execute', 'autonomous', '', 'repo:me/app', 'test', '')`
+  ).run();
+  for (const target of [undefined, 'repo:me/app']) {
+    const d: any = canExecute(db, { capability: 'act:version-control/read_repository', target });
+    expect(d.decision, String(target)).toBe('DENY');
+  }
+  db.close();
+});
+
+test("a runtime that allows leaves the capability's own narrower grant standing", () => {
+  const db = runtimeGraph('autonomous');
+  db.prepare(
+    `UPDATE authority SET mode = 'confirm' WHERE capability_id = 'act:version-control/read_repository'`
+  ).run();
+  const d: any = canExecute(db, { capability: 'act:version-control/read_repository' });
+  expect(d.decision).toBe('CONFIRM');
+  // And a runtime that contributes nothing here decides nothing here.
+  db.prepare(
+    `INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle)
+     VALUES ('runtime:other', 'other', 'meta', '', 'runtime', 'active', 'runtime', 'verified')`
+  ).run();
+  db.prepare(
+    `INSERT INTO authority (capability_id, action, mode, holder, scope, source, note)
+     VALUES ('runtime:other', 'execute', 'forbidden', 'runtime:other', '', 'runtime:other', '')`
+  ).run();
+  expect(
+    (canExecute(db, { capability: 'act:version-control/read_repository' }) as any).decision
+  ).toBe('CONFIRM');
   db.close();
 });

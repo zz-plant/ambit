@@ -14,6 +14,7 @@ import type { Db } from '../db.ts';
 import { usable } from './lifecycle.ts';
 import { FAILING } from '../vocabulary.ts';
 import type { AuthorityRow, CapabilityRow } from '../rows.ts';
+import { runtimesReaching } from './reach.ts';
 
 /**
  * The three words an agent acts on. Roadmap §12.3.
@@ -148,9 +149,11 @@ function scopeCovers(scope: string, target: string): boolean {
  *
  * The answer is resolved the same way `tt authority` and `ambit authority
  * scope` resolve theirs, so the enforcement surface cannot disagree with the
- * reports: the narrowest covering grant wins, a grant that does not cover the
- * target is excluded, no covering grant means forbidden, and a capability whose
- * check is failing is refused whatever its permission says. A budget, when one
+ * reports: the grants considered include every runtime-wide grant whose reach
+ * (reach.ts) takes in this capability, they resolve under governingMode's two
+ * rules, a grant that does not cover the target is excluded, no covering grant
+ * means forbidden, and a capability whose check is failing is refused whatever
+ * its permission says. A budget, when one
  * is declared, must have room for the spend.
  *
  * CONFIRM is not a refusal — it is "permitted, with a person in the loop". The
@@ -186,16 +189,30 @@ function canExecute(
     };
   }
 
+  // The grants stored against this capability, and the runtime-wide grants of
+  // every runtime that contributes it (or the capability conferring it, for an
+  // action). `authorityReport` resolves the same set through the same reach,
+  // so the gate cannot be looser than the report says.
+  const runtimes = runtimesReaching(db, capability);
   const grants = db
     .prepare(
-      `SELECT capability_id, action, mode, holder, scope, source, note, expires_at
-     FROM authority WHERE capability_id = ? AND action = ?`
+      `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note, a.expires_at
+     FROM authority a JOIN capabilities c ON c.id = a.capability_id
+     WHERE a.action = ? AND (a.capability_id = ?
+       OR (c.kind = 'runtime' AND a.capability_id IN (${runtimes.map(() => '?').join(', ') || "''"})))`
     )
-    .all<Omit<AuthorityRow, 'id'>>(capability, action);
+    .all<Omit<AuthorityRow, 'id'>>(action, capability, ...runtimes);
+  const isRuntimeGrant = (g: { capability_id: string }) => g.capability_id !== capability;
 
   let expiredGrant: (Omit<AuthorityRow, 'id'> & { expires_at?: string | null }) | undefined;
   const covering = grants.filter((g: any) => {
-    if (g.holder && input.actor && g.holder !== input.actor) return false;
+    // A runtime grant's holder is the runtime: it records whose setting this
+    // is, not who it binds. It binds whatever acts through what that runtime
+    // supplies, whoever asks, which is how the report applies it. Held to the
+    // holder check, it would drop for every real caller (governance passes the
+    // approving person, the proxy an agent id) and the gate would be looser
+    // than the report again.
+    if (!isRuntimeGrant(g) && g.holder && input.actor && g.holder !== input.actor) return false;
     if (g.scope && input.target && !scopeCovers(g.scope, input.target)) return false;
     if (g.expires_at) {
       const expiry = new Date(g.expires_at).getTime();
@@ -214,6 +231,9 @@ function canExecute(
   // The expired grant is kept only to explain the answer.
   const governing = governingMode(covering as any);
   const grant = covering.find((g: any) => g.mode === governing);
+  // A runtime's own setting that decided the mode, so the answer can say whose
+  // setting it was: the capability's own grant may read autonomous.
+  const byRuntime = covering.find((g: any) => isRuntimeGrant(g) && g.mode === governing);
 
   // A declared practice environment: somewhere the person has said acting does
   // not matter. It relaxes a confirmation, never a refusal — rehearsing a
@@ -327,7 +347,9 @@ function canExecute(
         : narrowedReason ||
           (governing === 'autonomous'
             ? `${cap.name} may run unattended for ${action}.`
-            : `${cap.name} is permitted for ${action}, with a person in the loop. Ask before running it.`),
+            : `${cap.name} is permitted for ${action}, with a person in the loop${
+                byRuntime ? `: ${byRuntime.capability_id} asks before what it supplies runs` : ''
+              }. Ask before running it.`),
     narrowed_by: narrowedBy,
     capability,
     action,

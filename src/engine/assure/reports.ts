@@ -9,6 +9,7 @@
 import type { Db } from '../db.ts';
 import { usable } from './lifecycle.ts';
 import { narrower, scopeCovers } from './decide.ts';
+import { runtimeReach } from './reach.ts';
 import type { CapabilityRow } from '../rows.ts';
 
 /**
@@ -41,40 +42,10 @@ function authorityReport(db: Db) {
     };
   }
 
-  // Runtime-wide grants apply to everything that runtime contributes, so they
-  // are stored once against the runtime node and resolved here rather than
-  // copied onto every capability at seed — where a later contribution would
-  // silently miss them.
-  const runtimeReach = new Map<string, Set<string>>();
-  for (const r of db
-    .prepare(
-      `SELECT rt.from_capability runtime, p.to_capability capability
-     FROM dependencies rt JOIN dependencies p ON p.from_capability = rt.to_capability
-     WHERE rt.kind = 'contributes' AND p.kind = 'provides'`
-    )
-    .all()) {
-    if (!runtimeReach.has(r.runtime)) runtimeReach.set(r.runtime, new Set());
-    runtimeReach.get(r.runtime)!.add(r.capability);
-  }
-  // And one hop further, onto the actions those capabilities confer: a runtime
-  // that requires approval for everything it executes requires it for the
-  // individual actions too, or the finer vocabulary would quietly be the freer
-  // one.
-  const conferred = new Map<string, string[]>();
-  for (const r of db
-    .prepare(
-      `SELECT d.from_capability capability, d.to_capability action
-     FROM dependencies d JOIN capabilities c ON c.id = d.to_capability
-     WHERE d.kind = 'provides' AND c.kind = 'action'`
-    )
-    .all()) {
-    if (!conferred.has(r.capability)) conferred.set(r.capability, []);
-    conferred.get(r.capability)!.push(r.action);
-  }
-  for (const reach of runtimeReach.values()) {
-    for (const capId of [...reach])
-      for (const actionId of conferred.get(capId) || []) reach.add(actionId);
-  }
+  // Runtime-wide grants apply to everything that runtime contributes, and to
+  // the actions those capabilities confer. `runtimeReach` is the one answer to
+  // what that is; `canExecute` resolves through it too.
+  const reach = runtimeReach(db);
 
   // Collected first and resolved after, so which source wins does not depend on
   // the order rows come back in.
@@ -116,7 +87,7 @@ function authorityReport(db: Db) {
   for (const g of grants) {
     if (g.kind === 'runtime') {
       // A runtime's own grant is a statement about everything it supplies.
-      for (const capId of runtimeReach.get(g.capability_id) || []) {
+      for (const capId of reach.get(g.capability_id) || []) {
         const target = nodes.get(capId);
         if (!target) continue;
         record(
