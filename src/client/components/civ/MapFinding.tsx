@@ -48,6 +48,9 @@ function RangeLine({
       <span>
         <strong>{verified}</strong> verified
       </span>
+      <span className="civ-range-sep" aria-hidden="true">
+        ·
+      </span>
       {since === undefined ? null : !since ? (
         <span className="civ-range-note">no earlier observation to compare yet</span>
       ) : up || down ? (
@@ -87,18 +90,23 @@ function RangeLine({
         <span className="civ-range-note">no change this week</span>
       )}
       {weakest && (
-        <span>
-          losing <strong>{weakest.item.name}</strong> stops {weakest.stops}
-          {onSimulate && (
-            <button
-              type="button"
-              className="civ-range-sim"
-              onClick={() => onSimulate(weakest.item.id)}
-            >
-              Simulate
-            </button>
-          )}
-        </span>
+        <>
+          <span className="civ-range-sep" aria-hidden="true">
+            ·
+          </span>
+          <span>
+            losing <strong>{weakest.item.name}</strong> stops {weakest.stops}
+            {onSimulate && (
+              <button
+                type="button"
+                className="civ-range-sim"
+                onClick={() => onSimulate(weakest.item.id)}
+              >
+                Simulate
+              </button>
+            )}
+          </span>
+        </>
       )}
     </div>
   );
