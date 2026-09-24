@@ -59,6 +59,7 @@ import { judgeGoal } from './judge.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport, unmappedUse } from './telemetry.ts';
+import { capacityReport } from './capacity.ts';
 import { economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
 import { roiFor, roiSummary } from './roi.ts';
@@ -158,6 +159,7 @@ async function runCommand(
       if (arg === 'surface') emitRaw(surfaceFor(db));
       else if (arg === 'combos') emit(discoverCombos(db));
       else if (arg === 'affordances') emit(affordanceDomains(db));
+      else if (arg === 'capacity') emit(capacityReport());
       else if (arg === 'unmapped') emit(unmappedUse(db, Number(value('days')) || 30));
       else emitRaw(exportGraph(db), false);
       break;

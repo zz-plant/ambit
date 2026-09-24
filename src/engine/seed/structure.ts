@@ -7,8 +7,8 @@
  * it.
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { Db } from '../db.ts';
+import { infraManifestPath } from '../paths.ts';
 import { edgeWriter } from './writers.ts';
 
 /**
@@ -174,9 +174,7 @@ function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
  * machine that is not declared cannot be assumed.
  */
 function seedInfrastructure(db: Db, insert: any): number {
-  const path =
-    process.env.INFRA_MANIFEST ||
-    join(process.env.HOME || '/', '.config', 'opencode', 'infrastructure.json');
+  const path = infraManifestPath();
   let manifest: any = null;
   try {
     if (existsSync(path)) manifest = JSON.parse(readFileSync(path, 'utf8'));

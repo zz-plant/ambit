@@ -378,7 +378,7 @@ Run `ambit` with no arguments and it shows where the environment stands; `ambit 
            seed · briefing [--json|--peek] · status · next [n] · help [term]
 graph      impact <id> · catalog <cap> · where · skills · objects [target]
            share [--redact] [--out=path] · sync export|import <path>
-           graph [surface|combos|affordances|unmapped]
+           graph [surface|combos|affordances|unmapped|capacity]
 plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · next [n]
            reversible
            opportunities [--by=…] [--budget=N] · opportunity <id>
@@ -418,7 +418,7 @@ The table covers the commands whose answer is not obvious from the name, in the 
 | `ambit catalog <cap>` | The ways to acquire a capability — build, buy, subscribe, delegate, hire — compared by setup, one-time and recurring cost, privacy, verification and rollback |
 | `ambit objects [target]` | What may be done to a particular thing, and what has been proved about doing it *there*. Evidence about one repository is not a claim about another |
 | `ambit sync export\|import <path>` | The graph and the ledger as one file, so a container rebuilt from nothing gets its history back. No authority grants, no skill check commands, no credentials — a command in a data file is a command that runs on import |
-| `ambit graph` | The whole graph as JSON; `graph surface` is the runtime-owned vocabulary a runtime would publish, `graph combos` the near-reachable ones, `graph affordances` the structural domains, `graph unmapped` what the agents used that no node on the map accounts for (presence, never frequency) and the overlay that would add it |
+| `ambit graph` | The whole graph as JSON; `graph surface` is the runtime-owned vocabulary a runtime would publish, `graph combos` the near-reachable ones, `graph affordances` the structural domains, `graph unmapped` what the agents used that no node on the map accounts for (presence, never frequency) and the overlay that would add it, `graph capacity` the machines on your tailnet and this machine's memory, naming the online ones no manifest declares |
 | **plan** — *what to acquire next, and whether it paid* | |
 | `ambit goal <sentence>` | Route a free-form goal — "deploy without me" — to the capabilities whose words cover it, each with its plan delta |
 | `ambit goal <cap> --paths` | The alternative ways to reach a capability, compared by setup time, risk and lock-in |

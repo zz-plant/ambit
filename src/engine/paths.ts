@@ -154,3 +154,16 @@ export function configDefault(): string {
     join(process.env.HOME || '/', '.config', 'opencode', 'opencode.json')
   );
 }
+
+/**
+ * Where the infrastructure manifest is: INFRA_MANIFEST, or the default beside
+ * the agent config. A function for the reason `configDefault` is one; seeding
+ * and `ambit graph capacity` both read it, and the server's copy of this
+ * default is in src/server/config.ts.
+ */
+export function infraManifestPath(): string {
+  return (
+    process.env.INFRA_MANIFEST ||
+    join(process.env.HOME || '/', '.config', 'opencode', 'infrastructure.json')
+  );
+}
