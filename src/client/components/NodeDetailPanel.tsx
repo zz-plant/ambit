@@ -8,7 +8,15 @@ import {
   isConfigEntry,
   isRuntimeNode,
 } from '../utils/labels';
-import { costOf, gapOf, outageSplit, readableSeconds, unlockCascade } from './civ/layout';
+import {
+  costOf,
+  gapOf,
+  outageImpact,
+  outageSentence,
+  outageSplit,
+  readableSeconds,
+  unlockCascade,
+} from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
 import { Term } from './Term';
 import { typeColor, typeSymbol } from '../utils/typeColors';
@@ -348,8 +356,10 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           for a reached node; the gap, and an unlock, for one that is not. */}
       {(() => {
         const isSimulated = simulatedNodeId === item.id;
-        const stops = split?.stops.size ?? 0;
-        const weakened = split?.weakened.size ?? 0;
+        // Only what was working is said to stop; the banner says the same.
+        const outage = split
+          ? outageSentence('this', outageImpact(items, split.stops), split.weakened.size, true)
+          : null;
         const missing = gap ? [...gap.missing] : [];
         // Name the direct ones first: they are what to reach, the rest is
         // what those need in turn.
@@ -363,20 +373,9 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           <div className="sp-sim-group">
             {item.status === 'built' ? (
               <p className="sp-impact">
-                {stops ? (
-                  <>
-                    If this went down,{' '}
-                    <strong>
-                      {stops} other {plural(stops)}
-                    </strong>{' '}
-                    would stop working
-                    {weakened ? ` and ${weakened} would lose a provider` : ''}.
-                  </>
-                ) : weakened ? (
-                  `Nothing else would stop working without it, but ${weakened} ${plural(weakened)} would lose a provider.`
-                ) : (
-                  'Nothing else stops working without it.'
-                )}
+                {outage?.before}
+                {outage?.count && <strong>{outage.count}</strong>}
+                {outage?.after}
               </p>
             ) : missing.length ? (
               <p className="sp-impact">

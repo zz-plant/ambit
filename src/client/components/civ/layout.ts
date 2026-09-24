@@ -468,6 +468,76 @@ export function sceneSize({ cols, colOrder }: Columns): { width: number; height:
 export const isFailing = (item: Item): boolean =>
   item.status === 'built' && ['degraded', 'broken'].includes(String(item.meta?.lifecycle ?? ''));
 
+/**
+ * An outage's `stops`, split by what each node was doing before it. `stopped`
+ * was reached and passing its check, and is the only part that stops working.
+ * `broken` was reached and already failing, so the outage takes nothing from
+ * it. `cutOff` was never reached. The map draws all three red; a sentence
+ * about the outage has to tell them apart, or a root with twelve unreached
+ * dependents reads as twelve things that stopped.
+ */
+export interface OutageImpact {
+  stopped: Item[];
+  broken: Item[];
+  cutOff: Item[];
+}
+
+export function outageImpact(items: Item[], stops: Set<string>): OutageImpact {
+  const hit = items.filter(i => stops.has(i.id));
+  return {
+    stopped: hit.filter(i => i.status === 'built' && !isFailing(i)),
+    broken: hit.filter(isFailing),
+    cutOff: hit.filter(i => i.status !== 'built'),
+  };
+}
+
+/**
+ * The outage sentence the banner and the detail panel both say, in three
+ * pieces so the panel can emphasise the count. Only `stopped` is said to stop
+ * working; what was never reached is cut off, and what was failing already is
+ * named as failing. `others` reads "4 other capabilities" for a subject that
+ * is itself a capability ("this").
+ */
+export function outageSentence(
+  subject: string,
+  impact: OutageImpact,
+  weakened: number,
+  others = false
+): { before: string; count: string; after: string } {
+  const plural = (n: number) => (n === 1 ? 'capability' : 'capabilities');
+  const stopped = impact.stopped.length;
+  const cutOff = impact.cutOff.length;
+  const broken = impact.broken.length;
+  const rest = [
+    cutOff ? `${cutOff} not set up yet would be cut off` : '',
+    broken ? `${broken} ${broken === 1 ? 'was' : 'were'} already failing` : '',
+  ].filter(Boolean);
+  const tail = rest.length ? ` ${rest.join(', and ')}.` : '';
+  const before = `If ${subject} went down, `;
+  const nothing = rest.length ? 'nothing that works would stop' : 'nothing else would stop working';
+  if (stopped) {
+    return {
+      before,
+      count: `${stopped} ${others ? 'other ' : ''}${plural(stopped)}`,
+      after: ` would stop working${weakened ? ` and ${weakened} would lose a provider` : ''}.${tail}`,
+    };
+  }
+  if (weakened) {
+    return {
+      before,
+      count: '',
+      after: `${nothing}, but ${weakened} ${plural(weakened)} would lose a provider.${tail}`,
+    };
+  }
+  return {
+    before,
+    count: '',
+    after: rest.length
+      ? `nothing that works would stop.${tail}`
+      : 'nothing else would stop working.',
+  };
+}
+
 /** What the map says before anyone asks, in the order it matters. */
 export interface MapFindings {
   /** Reached, with a check that failed: configured, and not working. */

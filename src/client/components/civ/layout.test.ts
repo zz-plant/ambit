@@ -25,6 +25,9 @@ import {
   layoutNodes,
   NODE_R,
   outageCascade,
+  outageImpact,
+  outageSentence,
+  outageSplit,
   ROW_H,
   sceneSize,
   START_X,
@@ -331,4 +334,55 @@ test('an unlock claims only what depends on it, not what another step already al
   // anywhere: `gap` claimed `elsewhere` and what follows it, which it has
   // nothing to do with.
   expect([...unlockCascade(items, deps, 'gap')]).toEqual(['after-gap']);
+});
+
+test('an outage stops only what was working; the rest is cut off or already failing', () => {
+  // Hosted Inference in the demo cut off twelve and reached none, and the
+  // banner said twelve would stop working.
+  const items = [
+    item('root'),
+    item('ok', { lifecycle: 'proven' }),
+    item('failing', { lifecycle: 'degraded' }),
+    item('down', { lifecycle: 'broken' }),
+    { ...item('never'), status: 'specified' as const },
+  ];
+  const edges = ['ok', 'failing', 'down', 'never'].map(to => ({
+    from: 'root',
+    to,
+    type: 'hard-dep' as const,
+  }));
+  const impact = outageImpact(items, outageSplit(items, edges, 'root').stops);
+  expect(impact.stopped.map(i => i.id)).toEqual(['ok']);
+  expect(impact.broken.map(i => i.id)).toEqual(['failing', 'down']);
+  expect(impact.cutOff.map(i => i.id)).toEqual(['never']);
+
+  const said = outageSentence('Root', impact, 0);
+  expect(said.before + said.count + said.after).toBe(
+    'If Root went down, 1 capability would stop working. 1 not set up yet would be cut off, and 2 were already failing.'
+  );
+});
+
+test('an outage that reaches nothing working says so, and names what it cuts off', () => {
+  const impact = { stopped: [], broken: [], cutOff: [item('a'), item('b')] };
+  const said = outageSentence('Hosted Inference', impact, 0);
+  expect(said.count).toBe('');
+  expect(said.before + said.after).toBe(
+    'If Hosted Inference went down, nothing that works would stop. 2 not set up yet would be cut off.'
+  );
+  const quiet = outageSentence('this', { stopped: [], broken: [], cutOff: [] }, 0);
+  expect(quiet.before + quiet.after).toBe('If this went down, nothing else would stop working.');
+});
+
+test('the panel reads "other" and keeps the count apart, so it can be emphasised', () => {
+  const said = outageSentence(
+    'this',
+    { stopped: [item('x'), item('y')], broken: [], cutOff: [] },
+    1,
+    true
+  );
+  expect(said).toEqual({
+    before: 'If this went down, ',
+    count: '2 other capabilities',
+    after: ' would stop working and 1 would lose a provider.',
+  });
 });

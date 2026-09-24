@@ -9,7 +9,7 @@
  * the store's job is to choose between this module and the API.
  */
 import type { ProposalRow } from '../../shared/api';
-import { isFailing, outageSplit } from '../components/civ/layout';
+import { type OutageImpact, outageImpact, outageSplit } from '../components/civ/layout';
 import type { Connection, Item } from '../utils/configImporter';
 import { WEB_ACTOR } from '../utils/copy';
 import demoData from '../utils/demo-data.json';
@@ -55,24 +55,14 @@ export const COLD_OPEN_OUTAGE = 'combo:tool-protocol';
 export const COLD_OPEN_PLAIN = 'their MCP servers';
 
 /**
- * What the cold open takes down, split the way a sentence about it has to be.
- * `stopped` is what the agents could do and now cannot: reached, and not
- * already failing its check. `broken` was reached and had already stopped
- * working, so the outage takes nothing from it. `cutOff` is what they were
- * building toward. The map draws all three red; only the first stopped.
+ * What the cold open takes down, split the way `outageImpact` splits every
+ * outage: `stopped` could run and now cannot, `broken` was failing already,
+ * `cutOff` was never set up. The map draws all three red; only the first
+ * stopped.
  */
-export function coldOpen(
-  items: Item[],
-  connections: Connection[]
-): { stopped: Item[]; broken: Item[]; cutOff: Item[] } | null {
+export function coldOpen(items: Item[], connections: Connection[]): OutageImpact | null {
   if (!items.some(i => i.id === COLD_OPEN_OUTAGE)) return null;
-  const { stops } = outageSplit(items, connections, COLD_OPEN_OUTAGE);
-  const hit = items.filter(i => stops.has(i.id));
-  return {
-    stopped: hit.filter(i => i.status === 'built' && !isFailing(i)),
-    broken: hit.filter(isFailing),
-    cutOff: hit.filter(i => i.status !== 'built'),
-  };
+  return outageImpact(items, outageSplit(items, connections, COLD_OPEN_OUTAGE).stops);
 }
 
 /** The config view's fixture: a flat list of discovered entries. */

@@ -11,8 +11,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
-import { useAmbitStore } from '../store/ambitStore';
-import { demoProposals } from '../store/demo';
+import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
+import { demoConfigGraph, demoProposals, demoTreeGraph } from '../store/demo';
+import { outageSplit } from './civ/layout';
+import { SimulationBanner } from './civ/SimulationBanner';
 import AppDeck from './AppDeck';
 import ApprovalModal from './ApprovalModal';
 import { RepoDriftPanel } from './EnvironmentPanels';
@@ -341,7 +343,58 @@ test('an outage tells what stops from what only loses a provider', () => {
   });
   const html = renderToStaticMarkup(<NodeDetailPanel />);
   expect(html).toContain(
-    'Nothing else would stop working without it, but 1 capability would lose a provider'
+    'If this went down, nothing else would stop working, but 1 capability would lose a provider.'
+  );
+});
+
+test('an outage of something nothing reached says nothing that works would stop', () => {
+  // Hosted Inference in the demo cuts off twelve capabilities and reaches
+  // none of them. The banner said all twelve "would stop working".
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  const id = 'combo:hosted-inference';
+  const { stops, weakened } = outageSplit(items, connections, id);
+  const cutOff = items.filter(i => stops.has(i.id) && i.status !== 'built').length;
+  expect(cutOff).toBeGreaterThan(0);
+  const html = renderToStaticMarkup(
+    <SimulationBanner
+      simulationMode="outage"
+      simulatedNodeId={id}
+      simulatedItem={items.find(i => i.id === id)}
+      simulatedCascadeIds={stops}
+      simulatedWeakenedIds={weakened}
+      items={items}
+      clearSimulation={() => {}}
+    />
+  );
+  expect(html).not.toMatch(/\d+ capabilit(y|ies) would stop working/);
+  expect(html).toContain('nothing that works would stop');
+  expect(html).toContain(`${cutOff} not set up yet would be cut off`);
+});
+
+test('the panel counts only what was working as stopping, and names the rest', () => {
+  const root: Item = { ...server, id: 'mcp:root', name: 'root' };
+  const working: Item = {
+    ...server,
+    id: 'combo:working',
+    name: 'Working',
+    type: 'possibility',
+    meta: { era: 1, lifecycle: 'proven' },
+  };
+  const failing: Item = { ...working, id: 'combo:failing', meta: { era: 1, lifecycle: 'broken' } };
+  const locked: Item = { ...working, id: 'combo:locked', status: 'specified', meta: { era: 2 } };
+  seed({
+    items: [root, working, failing, locked],
+    connections: [working, failing, locked].map(n => ({
+      from: root.id,
+      to: n.id,
+      type: 'hard-dep' as const,
+    })),
+    selectedItem: root.id,
+    showDetailPanel: true,
+  });
+  const text = renderToStaticMarkup(<NodeDetailPanel />).replace(/<[^>]+>/g, '');
+  expect(text).toContain(
+    'If this went down, 1 other capability would stop working. 1 not set up yet would be cut off, and 1 was already failing.'
   );
 });
 
