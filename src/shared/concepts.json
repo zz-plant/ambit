@@ -20,7 +20,7 @@
       "term": "Reached, next step, blocked",
       "short": "Where you are on a tech tree node",
       "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next step: prerequisites are met but nothing was detected — this is the useful frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
-      "seen": "The three keys in the map legend, and the three counts in the header"
+      "seen": "The three keys in the map legend, and the header's counts, where reached is split into verified and unproven"
     },
     {
       "key": "prerequisite",
@@ -55,7 +55,7 @@
       "term": "Verified",
       "short": "Proven to work, not just configured",
       "long": "Detection proves a name appears in a config file. Verification runs a declared read-only check and records the result, so a capability can be said to work rather than to exist. Reliability is the share of recorded runs that passed, which is why the history is kept: one success is a weaker claim than forty-seven of fifty. Checks execute, so they live in the repository and run only when asked — never on seed.",
-      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one; a plain filled circle is configured but unproven. The detail panel adds how many runs the verdict rests on"
+      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one; a plain filled circle is configured but unproven. The header leads with the verified count. The detail panel adds how many runs the verdict rests on"
     },
     {
       "key": "maturity",

@@ -3,9 +3,15 @@ import { BrandMark } from './BrandMark';
 import { ReachBar } from './figures';
 import { Term } from './Term';
 
-/** The three states of the map, counted over its nodes alone. */
+/**
+ * The map's nodes, counted over the nodes alone. Reached is split by the
+ * evidence behind it: verified has a passing check, unproven is configured
+ * with none, or with one that fails. The two add up to what reached used to
+ * count, so the range the header leads with is the part there is proof of.
+ */
 export interface MapCounts {
-  reached: number;
+  verified: number;
+  unproven: number;
   next: number;
   blocked: number;
 }
@@ -34,11 +40,14 @@ interface AppDeckProps {
  *
  * It used to read "42 of 60 reached", counting the machine's entries in with
  * the tree's nodes and leading with the one state the glossary calls least
- * informative. The three segments count nodes alone, in the legend's order,
- * and each one is the same control as its legend key.
+ * informative. Then it read "16 reached", which counted a capability whose
+ * check was failing the same as one whose check passed. The segments count
+ * nodes alone, lead with what is verified, and each one is the same control
+ * as its legend key.
  */
 const SEGMENTS: [keyof MapCounts, string][] = [
-  ['reached', 'Reached'],
+  ['verified', 'Verified'],
+  ['unproven', 'Unproven'],
   ['next', 'Next step'],
   ['blocked', 'Blocked'],
 ];
@@ -46,7 +55,9 @@ const SEGMENTS: [keyof MapCounts, string][] = [
 /** The top bar: search, brand, the count for this view, the view tabs, share, proposals, docs. */
 export default function AppDeck(p: AppDeckProps) {
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
-  const total = p.counts ? p.counts.reached + p.counts.next + p.counts.blocked : 0;
+  const total = p.counts
+    ? p.counts.verified + p.counts.unproven + p.counts.next + p.counts.blocked
+    : 0;
   return (
     <header className="app-deck">
       <div className="app-deck-left">
@@ -80,7 +91,12 @@ export default function AppDeck(p: AppDeckProps) {
         </div>
         {p.counts && (
           <div className="app-status-pill" title="The map by state">
-            <ReachBar reached={p.counts.reached} next={p.counts.next} total={total} />
+            <ReachBar
+              proven={p.counts.verified}
+              reached={p.counts.verified + p.counts.unproven}
+              next={p.counts.next}
+              total={total}
+            />
             {SEGMENTS.map(([key, group]) => (
               <button
                 key={key}
@@ -93,7 +109,7 @@ export default function AppDeck(p: AppDeckProps) {
                 }
               >
                 <span className="app-status-n">{p.counts![key]}</span>
-                {key === 'reached' ? <Term name="state">reached</Term> : group.toLowerCase()}
+                {key === 'verified' ? <Term name="evidence">verified</Term> : group.toLowerCase()}
               </button>
             ))}
           </div>

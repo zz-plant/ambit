@@ -365,9 +365,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
       {(() => {
         const isSimulated = simulatedNodeId === item.id;
         // Only what was working is said to stop; the banner says the same.
-        const outage = split
-          ? outageSentence('this', outageImpact(items, split.stops), split.weakened.size, true)
-          : null;
+        const outage = split ? outageSentence('this', outageImpact(items, split), true) : null;
         const missing = gap ? [...gap.missing] : [];
         // Name the direct ones first: they are what to reach, the rest is
         // what those need in turn.

@@ -41,7 +41,6 @@ export function SimulationBanner({
 
   const name = simulatedItem?.name || simulatedNodeId;
   const n = simulatedCascadeIds.size;
-  const weakened = simulatedWeakenedIds?.size ?? 0;
   const plural = (count: number) => (count === 1 ? 'capability' : 'capabilities');
   // The gap's price: the setup time of everything in it, added up.
   const seconds = items
@@ -51,7 +50,10 @@ export function SimulationBanner({
   // for what it was. `outageSentence` is the detail panel's sentence too.
   const outage =
     simulationMode === 'outage'
-      ? outageSentence(name ?? '', outageImpact(items, simulatedCascadeIds), weakened)
+      ? outageSentence(
+          name ?? '',
+          outageImpact(items, { stops: simulatedCascadeIds, weakened: simulatedWeakenedIds })
+        )
       : null;
   const text = outage
     ? outage.before + outage.count + outage.after

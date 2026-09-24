@@ -60,7 +60,7 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
   renderToStaticMarkup(
     <AppDeck
       view="tree"
-      counts={{ reached: 1, next: 1, blocked: 1 }}
+      counts={{ verified: 1, unproven: 0, next: 1, blocked: 1 }}
       entries={null}
       connected={false}
       draftCount={0}
@@ -231,11 +231,15 @@ test('a house word carries its own definition, from the one glossary', () => {
   expect(deck()).toContain('class="term"');
 });
 
-test('the header counts the three states of the map, and each count is a control', () => {
+test('the header leads with what is verified, and each count is a control', () => {
   // It read "42 of 60 reached" over a tree of 33: entries counted with nodes,
-  // and the least informative state leading. Three segments now, each the
-  // same control as its legend key.
-  const html = deck({ counts: { reached: 12, next: 5, blocked: 3 } });
+  // and the least informative state leading. Then "16 reached", with a failing
+  // check counted like a passing one. Reached is split by its evidence now.
+  const html = deck({ counts: { verified: 9, unproven: 3, next: 5, blocked: 3 } });
+  const text = html.replace(/<[^>]+>/g, '');
+  expect(text).toMatch(/9\s*verified/);
+  expect(text).toMatch(/3\s*unproven/);
+  expect(html).toContain('Highlight Verified on the map');
   expect(html).toContain('Highlight Next step on the map');
   expect(html).toContain('Highlight Blocked on the map');
   expect(html).not.toContain('of 20');

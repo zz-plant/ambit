@@ -2434,6 +2434,12 @@ code, pre, .code, .sp-cli-cmd {
   fill: var(--fig-data, #818cf8);
 }
 
+/* Reached with no passing check: the same hue, at half the weight. */
+.fig-eras-unproven {
+  fill: var(--fig-data, #818cf8);
+  opacity: 0.4;
+}
+
 /* The frontier: outlined, because it is what could be reached, not what is. */
 .fig-eras-next {
   fill: none;
@@ -3259,6 +3265,21 @@ code, pre, .code, .sp-cli-cmd {
     grid-template-columns: 1fr;
     gap: 2px;
   }
+}
+
+/* Between a phone and a wide screen the header ran past the right edge,
+   and the Docs button went first. The buttons keep their icons and their
+   accessible names, and give up the words; the status pill keeps its words,
+   since a count without its noun says nothing. */
+@media (min-width: 769px) and (max-width: 1240px) {
+  .app-deck-btn .app-deck-btn-label,
+  .app-deck-btn .app-deck-key {
+    display: none;
+  }
+}
+
+.app-status-seg {
+  white-space: nowrap;
 }
 
 /* ─── RESPONSIVE RULES ─── */

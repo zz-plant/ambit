@@ -17,6 +17,7 @@ import {
   edgePath,
   eraOf,
   isNext,
+  isProven,
   layoutNodes,
   mapFindings,
   NODE_R,
@@ -308,6 +309,9 @@ export default function CivTree({
   };
   const SPOTLIGHTS: Record<string, (item: Item) => boolean> = {
     Reached: i => i.status === 'built',
+    // The header's two halves of reached light the same way its segments read.
+    Verified: isProven,
+    Unproven: i => i.status === 'built' && !isProven(i),
     'Next step': i => i.status !== 'built' && isNext(i),
     Blocked: i => i.status !== 'built' && !isNext(i),
     Server: i => i.type === 'mcp-server',

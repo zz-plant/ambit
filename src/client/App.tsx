@@ -1,7 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import AppDeck, { type MapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
-import { isEntry, isNext, visibleItems } from './components/civ/layout';
+import { isEntry, isNext, isProven, visibleItems } from './components/civ/layout';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
 import GettingStartedGuide from './components/GettingStartedGuide';
@@ -221,7 +221,8 @@ export default function App() {
   // one fraction, so the demo read "42 of 60" over a tree of 33.
   const mapItems = visibleItems(items);
   const counts: MapCounts = {
-    reached: mapItems.filter(i => i.status === 'built').length,
+    verified: mapItems.filter(isProven).length,
+    unproven: mapItems.filter(i => i.status === 'built' && !isProven(i)).length,
     next: mapItems.filter(i => i.status !== 'built' && isNext(i)).length,
     blocked: mapItems.filter(i => i.status !== 'built' && !isNext(i)).length,
   };

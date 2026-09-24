@@ -469,6 +469,13 @@ export const isFailing = (item: Item): boolean =>
   item.status === 'built' && ['degraded', 'broken'].includes(String(item.meta?.lifecycle ?? ''));
 
 /**
+ * Reached, and its check passed: the part of the range there is evidence for.
+ * `PROVEN` in the engine's vocabulary.ts is the same list, transcribed.
+ */
+export const isProven = (item: Item): boolean =>
+  item.status === 'built' && ['verified', 'reliable'].includes(String(item.meta?.lifecycle ?? ''));
+
+/**
  * An outage's `stops`, split by what each node was doing before it. `stopped`
  * was reached and passing its check, and is the only part that stops working.
  * `broken` was reached and already failing, so the outage takes nothing from
@@ -480,14 +487,21 @@ export interface OutageImpact {
   stopped: Item[];
   broken: Item[];
   cutOff: Item[];
+  /** Reached, keeps another provider, and only loses this one. */
+  thinned: Item[];
 }
 
-export function outageImpact(items: Item[], stops: Set<string>): OutageImpact {
-  const hit = items.filter(i => stops.has(i.id));
+export function outageImpact(
+  items: Item[],
+  split: { stops: Set<string>; weakened?: Set<string> }
+): OutageImpact {
+  const hit = items.filter(i => split.stops.has(i.id));
   return {
     stopped: hit.filter(i => i.status === 'built' && !isFailing(i)),
     broken: hit.filter(isFailing),
     cutOff: hit.filter(i => i.status !== 'built'),
+    // Something never reached had no provider to lose.
+    thinned: items.filter(i => split.weakened?.has(i.id) && i.status === 'built'),
   };
 }
 
@@ -501,9 +515,9 @@ export function outageImpact(items: Item[], stops: Set<string>): OutageImpact {
 export function outageSentence(
   subject: string,
   impact: OutageImpact,
-  weakened: number,
   others = false
 ): { before: string; count: string; after: string } {
+  const weakened = impact.thinned.length;
   const plural = (n: number) => (n === 1 ? 'capability' : 'capabilities');
   const stopped = impact.stopped.length;
   const cutOff = impact.cutOff.length;

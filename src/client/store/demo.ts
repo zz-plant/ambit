@@ -62,7 +62,7 @@ export const COLD_OPEN_PLAIN = 'their MCP servers';
  */
 export function coldOpen(items: Item[], connections: Connection[]): OutageImpact | null {
   if (!items.some(i => i.id === COLD_OPEN_OUTAGE)) return null;
-  return outageImpact(items, outageSplit(items, connections, COLD_OPEN_OUTAGE).stops);
+  return outageImpact(items, outageSplit(items, connections, COLD_OPEN_OUTAGE));
 }
 
 /** The config view's fixture: a flat list of discovered entries. */

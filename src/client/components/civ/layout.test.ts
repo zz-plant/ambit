@@ -25,6 +25,7 @@ import {
   layoutNodes,
   NODE_R,
   authorityMark,
+  isProven,
   outageCascade,
   outageImpact,
   outageSentence,
@@ -352,33 +353,32 @@ test('an outage stops only what was working; the rest is cut off or already fail
     to,
     type: 'hard-dep' as const,
   }));
-  const impact = outageImpact(items, outageSplit(items, edges, 'root').stops);
+  const impact = outageImpact(items, outageSplit(items, edges, 'root'));
   expect(impact.stopped.map(i => i.id)).toEqual(['ok']);
   expect(impact.broken.map(i => i.id)).toEqual(['failing', 'down']);
   expect(impact.cutOff.map(i => i.id)).toEqual(['never']);
 
-  const said = outageSentence('Root', impact, 0);
+  const said = outageSentence('Root', impact);
   expect(said.before + said.count + said.after).toBe(
     'If Root went down, 1 capability would stop working. 1 not set up yet would be cut off, and 2 were already failing.'
   );
 });
 
 test('an outage that reaches nothing working says so, and names what it cuts off', () => {
-  const impact = { stopped: [], broken: [], cutOff: [item('a'), item('b')] };
-  const said = outageSentence('Hosted Inference', impact, 0);
+  const impact = { stopped: [], broken: [], cutOff: [item('a'), item('b')], thinned: [] };
+  const said = outageSentence('Hosted Inference', impact);
   expect(said.count).toBe('');
   expect(said.before + said.after).toBe(
     'If Hosted Inference went down, nothing that works would stop. 2 not set up yet would be cut off.'
   );
-  const quiet = outageSentence('this', { stopped: [], broken: [], cutOff: [] }, 0);
+  const quiet = outageSentence('this', { stopped: [], broken: [], cutOff: [], thinned: [] });
   expect(quiet.before + quiet.after).toBe('If this went down, nothing else would stop working.');
 });
 
 test('the panel reads "other" and keeps the count apart, so it can be emphasised', () => {
   const said = outageSentence(
     'this',
-    { stopped: [item('x'), item('y')], broken: [], cutOff: [] },
-    1,
+    { stopped: [item('x'), item('y')], broken: [], cutOff: [], thinned: [item('z')] },
     true
   );
   expect(said).toEqual({
@@ -402,4 +402,27 @@ test('the authority lens paints what the engine answered, and nothing it did not
     authorityMark({ ...reached({ execute: 'autonomous' }), status: 'specified' })
   ).toBeUndefined();
   expect(authorityMark(reached({ execute: 'sometimes' }))).toBeUndefined();
+});
+
+test('only a reached node loses a provider; one never reached had none to lose', () => {
+  const items = [
+    item('a'),
+    item('b'),
+    item('reached', { providers: ['a', 'b'] }),
+    { ...item('never', { providers: ['a', 'b'] }), status: 'specified' as const },
+  ];
+  const edges = ['reached', 'never'].flatMap(to =>
+    ['a', 'b'].map(from => ({ from, to, type: 'hard-dep' as const, kind: 'provides' }))
+  );
+  const split = outageSplit(items, edges, 'a');
+  expect([...split.weakened].sort()).toEqual(['never', 'reached']);
+  expect(outageImpact(items, split).thinned.map(i => i.id)).toEqual(['reached']);
+});
+
+test('proven is reached with a passing check, the list the engine counts with', () => {
+  expect(isProven(item('v', { lifecycle: 'verified' }))).toBe(true);
+  expect(isProven(item('r', { lifecycle: 'reliable' }))).toBe(true);
+  expect(isProven(item('c', { lifecycle: 'configured' }))).toBe(false);
+  expect(isProven(item('b', { lifecycle: 'broken' }))).toBe(false);
+  expect(isProven({ ...item('l', { lifecycle: 'verified' }), status: 'specified' })).toBe(false);
 });

@@ -206,10 +206,13 @@ export function HoursSparkline({
  * the words say and says it before they are read.
  */
 export function ReachBar({
+  proven,
   reached,
   next,
   total,
 }: {
+  /** The verified part of reached, drawn solid; the rest of reached is drawn lighter. */
+  proven?: number;
   reached: number;
   next: number;
   total: number;
@@ -217,11 +220,15 @@ export function ReachBar({
   const w = 44;
   const h = 6;
   const seg = (n: number) => (total ? (n / total) * w : 0);
+  const solid = proven ?? reached;
   return (
     <svg className="fig-reach" viewBox={`0 0 ${w} ${h}`} width={w} height={h} aria-hidden="true">
       <rect className="fig-eras-track" x={0} y={0} width={w} height={h} rx={1.5} />
-      {reached > 0 && (
-        <rect className="fig-eras-reached" x={0} y={0} width={seg(reached)} height={h} rx={1.5} />
+      {reached > solid && (
+        <rect className="fig-eras-unproven" x={0} y={0} width={seg(reached)} height={h} rx={1.5} />
+      )}
+      {solid > 0 && (
+        <rect className="fig-eras-reached" x={0} y={0} width={seg(solid)} height={h} rx={1.5} />
       )}
       {next > 0 && (
         <rect
