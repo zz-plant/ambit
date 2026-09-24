@@ -15,9 +15,9 @@ Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, 
 
 <br>
 
-<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: a tool is selected and its dependents listed, switching it off turns eight downstream capabilities red and two amber, a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
+<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Shell Execution is selected and its dependents listed, switching it off turns what depends on it red and says nine working capabilities would stop, apart from those never set up and one already failing, a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
 
-<sub>One setup, mapped. Pick a tool and Ambit shows what depends on it; switch it off and it shows the eight things that stop working with it and the two that only lose a provider. Then which tools interrupt you most, and a change waiting on your approval.</sub>
+<sub>One setup, mapped. Pick a capability and Ambit shows what depends on it; switch it off and it counts the nine working things that would stop, apart from the ones never set up and the one already failing. Then which tools interrupt you most, and a change waiting on your approval.</sub>
 
 `brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
 

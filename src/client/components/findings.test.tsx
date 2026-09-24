@@ -117,6 +117,8 @@ test('the map leads with the verified range, and the one loss that would stop th
   // and its count is the one the outage banner states when it is simulated.
   const weakest = found.weakest!;
   expect(weakest.item.type).not.toBe('runtime');
+  // A node the map draws, never an entry that happens to share its name.
+  expect(weakest.item.meta?.era).toBeDefined();
   const said = outageSentence(
     weakest.item.name,
     outageImpact(items, outageSplit(items, connections, weakest.item.id))

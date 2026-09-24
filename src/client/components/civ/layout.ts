@@ -641,9 +641,12 @@ export function mapFindings(items: Item[], connections: Connection[]): MapFindin
     }
   }
   let weakest: MapFindings['weakest'];
-  // The runtime is the agent itself: losing it stops everything, which is
-  // true and tells nobody anything. The weakest point is a piece of the setup.
-  for (const item of items) {
+  // A node on the map, since that is what the line names and Simulate lights:
+  // an entry can share a node's name (tool:bash is "Shell Execution" too), and
+  // the line then named the node and counted the entry, one more than the
+  // banner said. The runtime is the agent itself: losing it stops everything,
+  // which is true and tells nobody anything.
+  for (const item of tree) {
     if (item.status !== 'built' || isRuntimeNode(item)) continue;
     // The same count the outage banner states when this one is simulated.
     const stops = outageImpact(items, outageSplit(items, connections, item.id)).stopped.length;

@@ -26,6 +26,9 @@ import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, normalize } from 'node:path';
+import { deriveLifecycles, verifyCheck } from '../src/engine/assurance.ts';
+import { getDb } from '../src/engine/db.ts';
+import { DEMO_EVIDENCE } from './generate-demo-data.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_GIF = join(ROOT, 'docs', 'assets', 'capability-graph-demo.gif');
@@ -327,6 +330,19 @@ async function main() {
     throw new Error(`fixture graph looks wrong: reached=${status.reached}`);
   console.log(`  ${status.reached}/${status.total} reached`);
 
+  // The demo's check results, through the engine's own runner, the way
+  // generate-demo-data.ts records them. Without them every reached node is
+  // unchecked, and since the header leads with what is verified, the README's
+  // first picture read "0 verified" over a machine the demo calls healthy.
+  {
+    const db = getDb(dbPath);
+    for (const [id, passes] of Object.entries(DEMO_EVIDENCE)) {
+      verifyCheck(db, id, id, { command: [passes ? 'true' : 'false'] });
+    }
+    deriveLifecycles(db);
+    db.close();
+  }
+
   // A drafted proposal so the approvals panel has something real in it.
   engine(['propose', 'local-embeddings']);
 
@@ -610,11 +626,12 @@ async function main() {
   // 2 — one capability, and what hangs off it. Nodes carry role=button and an
   // aria-label of "<name>, <type>", which is a contract the keyboard path
   // depends on too, so it is a safer handle than the rendered glyph.
-  // Prefer a reached node: an outage simulation on something that was never
-  // reached has no cascade to draw.
+  // Prefer a reached node whose loss stops something that works. Local Runtime
+  // led this list, and once the banner counted only working capabilities its
+  // outage read "nothing that works would stop": a blast radius of zero.
   const picked = await cdp.clickWhere(`(() => {
     const nodes = [...document.querySelectorAll('g[role="button"][aria-label]')];
-    const want = ['Local Runtime', 'Shell Execution', 'Version Control', 'File Editing'];
+    const want = ['Shell Execution', 'Version Control', 'File Editing', 'Local Runtime'];
     for (const w of want) {
       const n = nodes.find(x => x.getAttribute('aria-label').startsWith(w));
       if (n) return n;
@@ -636,6 +653,10 @@ async function main() {
   })()`);
   console.log(`  ${simmed}`);
   await sleep(1200);
+  const said = await cdp.eval(`document.querySelector('.civ-sim-banner span')?.textContent ?? ''`);
+  if (!/\d+ capabilit(y|ies) would stop working/.test(String(said)))
+    throw new Error(`the outage beat stops nothing that works: "${said}"`);
+  console.log(`  · ${said}`);
   await hold(2.4, 'blast radius');
 
   // 4 — back to a clean map
