@@ -636,12 +636,7 @@ export default function CivTree({
         // line; the canvas starts below the second, so the era headers stay
         // readable.
         className={`civ-scroll ${
-          !narrated &&
-          simulationMode === 'none' &&
-          !selectedId &&
-          (findings.failing.length || findings.best)
-            ? 'civ-scroll--headline'
-            : ''
+          !narrated && (findings.failing.length || findings.best) ? 'civ-scroll--headline' : ''
         }`}
         // Dragging to pan is a pointer affordance layered over the canvas. The
         // a11y warning on this element is expected and left visible: every node

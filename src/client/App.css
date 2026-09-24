@@ -1546,6 +1546,12 @@ code, pre, .code, .sp-cli-cmd {
   font-variant-numeric: tabular-nums;
 }
 
+.civ-range-sep {
+  color: var(--border-bright);
+  font-weight: 300;
+  user-select: none;
+}
+
 .civ-range-note {
   color: var(--text-muted);
 }
@@ -1576,17 +1582,20 @@ code, pre, .code, .sp-cli-cmd {
 .civ-range-sim {
   margin-left: 8px;
   padding: 1px 10px;
-  border: 1px solid rgba(244, 63, 94, 0.55);
+  border: 1px solid var(--border-bright);
   border-radius: var(--radius-full);
   background: transparent;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font: inherit;
   font-size: 11.5px;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .civ-range-sim:hover {
   background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.6);
+  color: var(--text-primary);
 }
 
 .civ-finding {
