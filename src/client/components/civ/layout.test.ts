@@ -8,7 +8,7 @@
  * a column ordered wrong, a node placed on top of another, a filter admitting
  * the wrong things.
  */
-import { describe, expect, it, test } from 'vitest';
+import { expect, test } from 'vitest';
 import type { Connection, Item } from '../../utils/configImporter';
 import {
   buildAdjacency,
@@ -20,7 +20,6 @@ import {
   domainOf,
   edgePath,
   eraOf,
-  eraProgress,
   isEntry,
   isNext,
   layoutNodes,
@@ -332,33 +331,4 @@ test('an unlock claims only what depends on it, not what another step already al
   // anywhere: `gap` claimed `elsewhere` and what follows it, which it has
   // nothing to do with.
   expect([...unlockCascade(items, deps, 'gap')]).toEqual(['after-gap']);
-});
-
-describe('eraProgress', () => {
-  const item = (id: string, era: number, status: 'built' | 'specified', next = false): Item => ({
-    id,
-    name: id,
-    type: 'possibility',
-    status,
-    description: '',
-    position: { x: 0, y: 0, z: 0 },
-    meta: { era, eraName: `Era ${era} name`, next },
-  });
-
-  it('counts reached, next and total per era, in era order', () => {
-    const rows = eraProgress([
-      item('c', 2, 'specified', true),
-      item('a', 1, 'built'),
-      item('b', 1, 'specified'),
-      item('d', 2, 'built'),
-    ]);
-    expect(rows.map(r => r.key)).toEqual(['era:1', 'era:2']);
-    expect(rows[0]).toMatchObject({ reached: 1, next: 0, total: 2 });
-    expect(rows[1]).toMatchObject({ reached: 1, next: 1, total: 2, label: 'Era 2 name' });
-  });
-
-  it('leaves config items, which have no era, out of the strip', () => {
-    const cfg: Item = { ...item('x', 1, 'built'), meta: { domain: 'infra' } };
-    expect(eraProgress([cfg])).toEqual([]);
-  });
 });

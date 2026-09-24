@@ -64,41 +64,6 @@ export const columnLabel = (key: string, items: Item[]): string => {
 /** Prerequisites met, nothing detected — the frontier you can take next. */
 export const isNext = (item: Item): boolean => item.meta?.next === true;
 
-/**
- * How far along each era is: reached, one step away, and the total.
- *
- * The era columns on the map carried a name and nothing else, so "how much of
- * Autonomy do I have" meant counting filled circles by eye. This is the count,
- * in era order, for the strip under each header and for the landing page's
- * small multiples. Pure, so the arithmetic is tested rather than trusted.
- */
-export interface EraProgress {
-  key: string;
-  label: string;
-  reached: number;
-  next: number;
-  total: number;
-}
-
-export const eraProgress = (items: Item[]): EraProgress[] => {
-  const byEra = new Map<number, Item[]>();
-  for (const item of items) {
-    const era = eraOf(item);
-    if (era === undefined) continue;
-    if (!byEra.has(era)) byEra.set(era, []);
-    byEra.get(era)!.push(item);
-  }
-  return [...byEra.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([era, list]) => ({
-      key: `era:${era}`,
-      label: columnLabel(`era:${era}`, list),
-      reached: list.filter(i => i.status === 'built').length,
-      next: list.filter(i => i.status !== 'built' && isNext(i)).length,
-      total: list.length,
-    }));
-};
-
 export const costOf = (item: Item): string => {
   const s = item.meta?.setupSeconds as number | undefined;
   if (!s) return '';
@@ -202,6 +167,31 @@ export function outageCascade(connections: Connection[], id: string): Set<string
     }
   }
   return cascade;
+}
+
+/**
+ * How many hops each node of a simulation sits from the node it started at,
+ * along dependency edges. The map staggers the cascade by this, so an outage
+ * reads as something spreading outward and not as a page that changed colour.
+ * Only nodes in `within` are counted; the walk does not pass through others.
+ */
+export function cascadeDepths(
+  connections: Connection[],
+  rootId: string,
+  within: Set<string>
+): Map<string, number> {
+  const { downstream } = buildAdjacency(connections, null);
+  const depth = new Map<string, number>([[rootId, 0]]);
+  const queue = [rootId];
+  while (queue.length) {
+    const current = queue.shift()!;
+    for (const next of downstream.get(current) || []) {
+      if (!within.has(next) || depth.has(next)) continue;
+      depth.set(next, depth.get(current)! + 1);
+      queue.push(next);
+    }
+  }
+  return depth;
 }
 
 /** The edge kinds that mean "supplies", as the engine names them. */
@@ -471,6 +461,13 @@ export function sceneSize({ cols, colOrder }: Columns): { width: number; height:
   };
 }
 
+/**
+ * Reached, and its check failed: configured, and not working. The engine's
+ * `usable(lifecycle)` is the same rule; the client has no engine to ask.
+ */
+export const isFailing = (item: Item): boolean =>
+  item.status === 'built' && ['degraded', 'broken'].includes(String(item.meta?.lifecycle ?? ''));
+
 /** What the map says before anyone asks, in the order it matters. */
 export interface MapFindings {
   /** Reached, with a check that failed: configured, and not working. */
@@ -487,9 +484,7 @@ export interface MapFindings {
  */
 export function mapFindings(items: Item[], connections: Connection[]): MapFindings {
   const tree = visibleItems(items).filter(i => !isEntry(i));
-  const failing = tree.filter(
-    i => i.status === 'built' && ['degraded', 'broken'].includes(String(i.meta?.lifecycle ?? ''))
-  );
+  const failing = tree.filter(isFailing);
   let best: MapFindings['best'];
   for (const item of tree) {
     if (item.status === 'built' || !isNext(item)) continue;

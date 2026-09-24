@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import type { Item } from '../utils/configImporter';
+import { INSTALL } from '../utils/copy';
 import { isConfigEntry, statusLabel, typeLabel } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import { eraOf, isEntry } from './civ/layout';
@@ -140,7 +141,15 @@ export function SetupView({ onShow }: SetupViewProps) {
   const failingEntries = live.filter(
     i => evidenceOf(i, provides.get(i.id) || [])?.tone === 'error'
   );
-  const idle = live.filter(i => i.type === 'mcp-server' && (provides.get(i.id) || []).length === 0);
+  // With no tree in the graph, nothing has been placed yet, so nothing can
+  // be said to provide nothing. That is a config read in the browser: the
+  // entries are real, and placing them on the tree is the engine's job. Every
+  // row used to say "Provides nothing on the map" in warning colour to a
+  // visitor who had just pasted their own setup.
+  const placed = items.some(i => !isEntry(i));
+  const idle = placed
+    ? live.filter(i => i.type === 'mcp-server' && (provides.get(i.id) || []).length === 0)
+    : [];
 
   return (
     <div className="setup">
@@ -148,6 +157,18 @@ export function SetupView({ onShow }: SetupViewProps) {
         <div className="setup-head">
           <div>
             <h2 className="setup-title">My Setup</h2>
+            {!placed && entries.length > 0 && tab === 'entries' && (
+              <div className="setup-unplaced">
+                <p>
+                  <strong>
+                    Read in this tab: {entries.length} {entries.length === 1 ? 'entry' : 'entries'}.
+                  </strong>{' '}
+                  Placing them on the map, with what each one makes possible and what breaks without
+                  it, takes the engine, which reads every runtime on the machine:
+                </p>
+                <code>{INSTALL}</code>
+              </div>
+            )}
             {(failingEntries.length > 0 || idle.length > 0) && tab === 'entries' && (
               <ul className="setup-findings">
                 {failingEntries.length > 0 && (
@@ -369,7 +390,10 @@ export function SetupView({ onShow }: SetupViewProps) {
                     const proves = provides.get(item.id) || [];
                     const evidence = evidenceOf(item, proves);
                     const provesNothing =
-                      item.type === 'mcp-server' && item.status === 'built' && !proves.length;
+                      placed &&
+                      item.type === 'mcp-server' &&
+                      item.status === 'built' &&
+                      !proves.length;
                     const selected = selectedId === item.id;
                     return (
                       <div

@@ -9,6 +9,7 @@
  * the store's job is to choose between this module and the API.
  */
 import type { ProposalRow } from '../../shared/api';
+import { isFailing, outageSplit } from '../components/civ/layout';
 import type { Connection, Item } from '../utils/configImporter';
 import { WEB_ACTOR } from '../utils/copy';
 import demoData from '../utils/demo-data.json';
@@ -37,6 +38,41 @@ export function demoTreeGraph(): Graph {
     connections: Connection[];
   };
   return { items: placed(snapshot.items), connections: snapshot.connections };
+}
+
+/**
+ * The outage the demo opens on. A visitor who has read nothing yet should see
+ * the product's one claim happen: a piece goes away, and what went with it
+ * turns red. Tool Protocol is "at least one MCP server", and in the sample
+ * what the agents do every day rests on it: the database, memory, secrets and
+ * search. Hosted Inference was the first choice and cuts
+ * off twelve, but none of the twelve is reached, so "twelve things stopped"
+ * would have been a claim about things that never worked.
+ */
+export const COLD_OPEN_OUTAGE = 'combo:tool-protocol';
+
+/** The cold open's root in words a visitor uses. The node's own name is the tree's. */
+export const COLD_OPEN_PLAIN = 'their MCP servers';
+
+/**
+ * What the cold open takes down, split the way a sentence about it has to be.
+ * `stopped` is what the agents could do and now cannot: reached, and not
+ * already failing its check. `broken` was reached and had already stopped
+ * working, so the outage takes nothing from it. `cutOff` is what they were
+ * building toward. The map draws all three red; only the first stopped.
+ */
+export function coldOpen(
+  items: Item[],
+  connections: Connection[]
+): { stopped: Item[]; broken: Item[]; cutOff: Item[] } | null {
+  if (!items.some(i => i.id === COLD_OPEN_OUTAGE)) return null;
+  const { stops } = outageSplit(items, connections, COLD_OPEN_OUTAGE);
+  const hit = items.filter(i => stops.has(i.id));
+  return {
+    stopped: hit.filter(i => i.status === 'built' && !isFailing(i)),
+    broken: hit.filter(isFailing),
+    cutOff: hit.filter(i => i.status !== 'built'),
+  };
 }
 
 /** The config view's fixture: a flat list of discovered entries. */

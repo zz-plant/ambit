@@ -52,3 +52,34 @@ test('anything else is refused rather than drawn as an empty graph', () => {
   // A refusal leaves the view alone; it does not blank it.
   expect(useAmbitStore.getState().items).toEqual([]);
 });
+
+test('an mcpServers config is mapped too, the block five of the seven runtimes write', () => {
+  // Claude Desktop, Claude Code, Cursor, Windsurf and Gemini CLI all keep their
+  // servers under `mcpServers`. The drop zone refused every one of them.
+  const ok = useAmbitStore.getState().loadFromJSON(
+    JSON.stringify({
+      mcpServers: {
+        github: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'] },
+        linear: { url: 'https://mcp.linear.app/sse' },
+        old: { command: 'old-server', disabled: true },
+      },
+    })
+  );
+
+  expect(ok).toBe(true);
+  const { items } = useAmbitStore.getState();
+  const byId = new Map(items.map(i => [i.id, i]));
+  expect(byId.get('mcp:github')?.meta.command).toEqual([
+    'npx',
+    '-y',
+    '@modelcontextprotocol/server-github',
+  ]);
+  expect(byId.get('mcp:linear')?.meta.type).toBe('remote');
+  expect(byId.get('mcp:old')?.status).toBe('specified');
+  // The file is not an OpenCode config, so its root does not claim to be one.
+  expect(byId.get('runtime:opencode')?.name).toBe('Your MCP client');
+});
+
+test('an empty mcpServers block is refused, not drawn as a lone runtime', () => {
+  expect(useAmbitStore.getState().loadFromJSON('{"mcpServers":{}}')).toBe(false);
+});

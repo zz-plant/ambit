@@ -1408,6 +1408,56 @@ code, pre, .code, .sp-cli-cmd {
   height: 0;
 }
 
+/* The cascade spreads. Each node a simulation reaches arrives one hop after
+   the node it depends on, with a ring leaving it, so an outage reads as
+   something travelling outward from one failure. --hop is set inline. */
+.civ-sim-hit {
+  animation: civ-sim-arrive 0.45s ease-out both;
+  animation-delay: calc(var(--hop, 0) * 220ms);
+}
+
+.civ-sim-edge {
+  animation: civ-sim-arrive 0.45s ease-out both;
+  animation-delay: calc((var(--hop, 1) - 0.5) * 220ms);
+}
+
+.civ-sim-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: civ-sim-ripple 0.9s ease-out;
+  animation-delay: calc(var(--hop, 0) * 220ms);
+  pointer-events: none;
+}
+
+@keyframes civ-sim-arrive {
+  from {
+    opacity: 0.12;
+  }
+}
+
+@keyframes civ-sim-ripple {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .civ-sim-hit,
+  .civ-sim-edge {
+    animation: none;
+  }
+
+  .civ-sim-ripple {
+    display: none;
+  }
+}
+
 .civ-sim-banner {
   display: inline-flex;
   align-items: center;
@@ -1582,19 +1632,26 @@ code, pre, .code, .sp-cli-cmd {
   gap: 18px;
 }
 
-.app-welcome-emblem {
+.app-welcome-brand {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 4px 16px rgba(99, 102, 241, 0.35));
-  margin-bottom: -6px;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--text-secondary);
 }
 
+/* The question a visitor already has, as the headline. The product name
+   moved up into the brand line: nobody arrives asking what Ambit is called. */
 .app-welcome-title {
   font-size: 34px;
+  line-height: 1.18;
   font-weight: 700;
   letter-spacing: -0.6px;
   color: var(--text-primary);
+  max-width: 640px;
+  text-wrap: balance;
 }
 
 .app-welcome-tagline {
@@ -1612,12 +1669,6 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-muted);
   max-width: 560px;
   margin-top: -8px;
-}
-
-.app-welcome-disclose {
-  margin: -8px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 /* The install line, for a visitor who is already convinced. */
@@ -1677,53 +1728,6 @@ code, pre, .code, .sp-cli-cmd {
   text-decoration: underline;
 }
 
-/* Two figures side by side on the front door, on the dashboard's own tokens
-   so the landing and the loop view are one drawing hand. */
-.app-welcome-figures {
-  --fig-data: #818cf8;
-  --fig-data-soft: rgba(129, 140, 248, 0.32);
-  --fig-track: rgba(255, 255, 255, 0.07);
-  --fig-rule: rgba(255, 255, 255, 0.14);
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 28px;
-  width: 100%;
-  max-width: 760px;
-  margin: 6px 0 2px;
-  text-align: left;
-}
-
-.welcome-fig {
-  margin: 0;
-  min-width: 0;
-}
-
-.welcome-fig-caption {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 8px;
-}
-
-.welcome-fig-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.welcome-fig-note {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.welcome-fig .fig-spark,
-.welcome-fig .fig-eras {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
 @media (max-width: 720px) {
   .app-welcome {
     padding: 16px 12px;
@@ -1734,52 +1738,77 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .app-welcome-title {
-    font-size: 26px;
+    font-size: 24px;
+  }
+
+  .app-welcome-fact {
+    gap: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .app-welcome-fact-figure {
+    font-size: 32px;
   }
 
   .app-welcome-tagline {
     font-size: 13.5px;
     padding: 0 8px;
   }
-
-  .app-welcome-figures {
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
 }
 
-.app-welcome-actions {
+/* One number from the sample, and a button that shows it happening. It is
+   the loudest thing on the page because it is the fastest way to the claim. */
+.app-welcome-fact {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-/* The darker accent: white on --accent is 4.46:1, just under AA for text this size. */
-.app-welcome-btn {
-  height: 38px;
-  padding: 0 20px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-dim);
-  color: var(--on-accent);
-  border: 1px solid transparent;
-  font-size: 13px;
-  font-weight: 500;
+  gap: 16px;
+  max-width: 560px;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--text-secondary);
   font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-decoration: none;
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
-.app-welcome-btn:hover {
-  background: #4338ca;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+.app-welcome-fact:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: var(--error);
+  transform: translateY(-1px);
+}
+
+.app-welcome-fact-figure {
+  flex-shrink: 0;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--error);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-welcome-fact-text strong {
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.app-welcome-yours {
+  width: 100%;
+  max-width: 560px;
+  text-align: left;
+}
+
+.app-welcome-yours h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
 }
 
 .app-welcome-link {
@@ -1795,17 +1824,14 @@ code, pre, .code, .sp-cli-cmd {
   transition: all 0.15s ease;
 }
 
-.app-welcome-actions .app-welcome-link {
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.025);
+.app-welcome-more .app-welcome-link {
+  font-size: 12.5px;
+  color: var(--accent);
 }
 
-.app-welcome-actions .app-welcome-link:hover {
+.app-welcome-more .app-welcome-link:hover {
   color: var(--text-primary);
-  border-color: var(--border-bright);
-  background: var(--bg-hover);
+  text-decoration: underline;
 }
 
 .app-welcome-local {
@@ -2399,12 +2425,7 @@ code, pre, .code, .sp-cli-cmd {
   font-weight: 500;
 }
 
-/* ── Small multiples: one bar per era, one scale ── */
-.fig-eras-label {
-  fill: var(--text-secondary);
-  font-size: 10px;
-}
-
+/* ── Era bars: the column counts and the status pill ── */
 .fig-eras-track {
   fill: var(--fig-track, rgba(255, 255, 255, 0.07));
 }
@@ -2418,17 +2439,6 @@ code, pre, .code, .sp-cli-cmd {
   fill: none;
   stroke: var(--fig-data, #818cf8);
   stroke-width: 1;
-}
-
-.fig-eras-n {
-  fill: var(--text-primary);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.fig-eras-of {
-  fill: var(--text-muted);
-  font-weight: 400;
 }
 
 /* ── Two marks on one axis ── */
@@ -3609,24 +3619,283 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-soft);
 }
 
-.app-welcome-drophint {
-  margin: -6px 0 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-muted);
-  max-width: 520px;
-}
-
-.app-welcome-drophint code {
-  font-family: var(--font-mono);
-  font-size: 11px;
+/* A config read in the browser, before any engine has placed it. */
+.setup-unplaced {
+  margin: 10px 0 4px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  font-size: 12.5px;
+  line-height: 1.55;
   color: var(--text-secondary);
 }
 
-.app-welcome-droperr {
+.setup-unplaced p {
+  margin: 0 0 8px;
+}
+
+.setup-unplaced strong {
+  color: var(--text-primary);
+}
+
+.setup-unplaced code {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+
+/* ─── A CONFIG OF YOUR OWN ───
+   The paste box, the file button and where each runtime keeps its file.
+   Shared by the landing and the tour's last step. */
+.intake {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.intake-paste {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.intake-paste:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.intake-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The darker accent: white on --accent is 4.46:1, just under AA for text this size. */
+.intake-btn {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--accent-dim);
+  color: var(--on-accent);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.intake-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.intake-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.intake-error {
   margin: 0;
   font-size: 12px;
   color: var(--error);
+}
+
+.intake-where summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.intake-where dl {
+  margin: 8px 0 0;
+  display: grid;
+  gap: 4px;
+}
+
+.intake-where dl > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.intake-where dt {
+  color: var(--text-muted);
+}
+
+.intake-where dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.intake-where code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.intake-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ─── THE TOUR ───
+   The demo, narrated, on the first-run card's frame. Wider, because each
+   step is a sentence and not a list, and the last step holds the paste box. */
+/* Bottom right, not the card's top right: an outage spreads rightward into
+   the later eras, and at the top it hid the end of the cascade it was
+   describing. The map's bottom right is its emptiest corner. */
+.app-tour {
+  top: auto;
+  bottom: 16px;
+  max-width: 380px;
+  width: calc(100% - 32px);
+  max-height: calc(100% - 72px);
+  overflow-y: auto;
+}
+
+.app-tour-count {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.app-tour-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.app-tour-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.app-tour-aside {
+  margin-top: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.app-tour-yours {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-tour-install {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.app-tour-install code {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.app-tour-install button {
+  flex-shrink: 0;
+  padding: 0 10px;
+  border: none;
+  border-left: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.app-tour-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.app-tour-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.app-tour-dots {
+  display: flex;
+  gap: 5px;
+  margin-right: auto;
+}
+
+.app-tour-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-bright);
+}
+
+.app-tour-dots span.is-on {
+  background: var(--accent);
+}
+
+.app-tour-back {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.app-tour-next {
+  height: 30px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--accent-dim);
+  color: var(--on-accent);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 /* ─── LOOP PAGE: THE STATES THAT ARE NOT A FIGURE ─── */

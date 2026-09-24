@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
 import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
 import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
-import { importConfig } from '../utils/configImporter';
+import { importConfig, importMcpServers } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import {
   DEMO_ATTENTION,
@@ -512,14 +512,15 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return true;
     }
 
-    // An agent config: mcp, agent, provider, command, skills. A file with none
-    // of those is some other JSON, and drawing an empty graph from it would
-    // look like a bug in the reader rather than a mismatch in the file.
+    // An agent config: OpenCode's mcp, agent, provider, command, skills, or
+    // the mcpServers block the other runtimes write. A file with none of
+    // those is some other JSON, and drawing an empty graph from it would look
+    // like a bug in the reader, not a mismatch in the file.
     const looksLikeConfig = ['mcp', 'agent', 'provider', 'command', 'skills'].some(
       k => data[k] && typeof data[k] === 'object'
     );
-    if (!looksLikeConfig) return false;
-    const graph = importConfig(data as OpenCodeConfig);
+    const graph = looksLikeConfig ? importConfig(data as OpenCodeConfig) : importMcpServers(data);
+    if (!graph) return false;
     if (!graph.items.length) return false;
     set({ ...graph, loading: false, error: null, demo: false });
     return true;

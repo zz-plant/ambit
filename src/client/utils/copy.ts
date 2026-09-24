@@ -8,6 +8,9 @@
 export const TAGLINE =
   'What you, your agents, and your machines can jointly do — and where your own time is going.';
 
+/** The one-line install the README leads with, quoted by the landing and the tour. */
+export const INSTALL = 'brew install zz-plant/tap/ambit && ambit';
+
 /**
  * Who an approval from the browser is recorded as. The terminal asks for a
  * name (`ambit approve <id> <who>`); the browser has none to give, so it signs
