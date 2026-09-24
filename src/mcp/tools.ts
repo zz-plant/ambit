@@ -184,8 +184,11 @@ const BASE_TOOLS = [
   {
     name: 'usage',
     description:
-      'Where capability effort actually went over a window — times exercised, duration, interventions per capability. Pass a window in days (default 30).',
-    inputSchema: { type: 'object', properties: { days: { type: 'number' } } },
+      'Where capability effort actually went over a window — times exercised, duration, interventions per capability. Pass a window in days (default 30). unmapped: tools used that no map node covers, with an overlay to paste.',
+    inputSchema: {
+      type: 'object',
+      properties: { days: { type: 'number' }, unmapped: { type: 'boolean' } },
+    },
   },
   {
     name: 'run_begin',

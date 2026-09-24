@@ -615,3 +615,11 @@ test('an opportunity carries its acquisition options', () => {
   expect(da.acquisition_options[0].provider).toBe('saas-x');
   expect(da.acquisition_options[0].kind).toBe('subscribe');
 });
+
+test('graph unmapped answers from the ledger, and says so when there is none', () => {
+  seed(WITH_PREFS).close();
+  const report = cli('graph', 'unmapped');
+  expect(report.seen).toBe(0);
+  expect(report.unmapped).toEqual([]);
+  expect(report.note).toContain('No tool use recorded in the last 30 days');
+});

@@ -5,7 +5,7 @@ import { INSTALL } from '../utils/copy';
 import { isConfigEntry, statusLabel, typeLabel } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import { eraOf, isEntry } from './civ/layout';
-import { InfrastructurePanel, RepoDriftPanel } from './EnvironmentPanels';
+import { InfrastructurePanel, RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
 import { Term } from './Term';
 
 /**
@@ -19,7 +19,7 @@ import { Term } from './Term';
  * infrastructure are the other two things a machine has, so they are tabs
  * here instead of in a side panel.
  */
-type Tab = 'entries' | 'repos' | 'infra' | 'briefing';
+type Tab = 'entries' | 'repos' | 'infra' | 'briefing' | 'unmapped';
 
 /** Kinds in the order a person asks about them, with the glossary key where one exists. */
 const KINDS: { type: string; label: string; term?: string }[] = [
@@ -89,6 +89,8 @@ export function SetupView({ onShow }: SetupViewProps) {
   const loadInfrastructure = useAmbitStore(s => s.loadInfrastructure);
   const briefing = useAmbitStore(s => s.briefing);
   const loadBriefing = useAmbitStore(s => s.loadBriefing);
+  const unmapped = useAmbitStore(s => s.unmapped);
+  const loadUnmapped = useAmbitStore(s => s.loadUnmapped);
   const [kind, setKind] = useState<string>('all');
   const [tab, setTab] = useState<Tab>('entries');
 
@@ -99,7 +101,8 @@ export function SetupView({ onShow }: SetupViewProps) {
     if (tab === 'repos' && !repos) loadRepos();
     if (tab === 'infra' && !infrastructure) loadInfrastructure();
     if (tab === 'briefing') loadBriefing();
-  }, [tab, repos, infrastructure, loadRepos, loadInfrastructure, loadBriefing]);
+    if (tab === 'unmapped') loadUnmapped();
+  }, [tab, repos, infrastructure, loadRepos, loadInfrastructure, loadBriefing, loadUnmapped]);
 
   const entries = useMemo(() => items.filter(isEntry), [items]);
   const byId = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
@@ -279,6 +282,25 @@ export function SetupView({ onShow }: SetupViewProps) {
                       <path d="M5 5.5 H11 M5 8 H10 M5 10.5 H8" />
                     </svg>,
                   ],
+                  [
+                    'unmapped',
+                    'Not on the map',
+                    <svg
+                      key="u"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      className="setup-tab-icon"
+                      aria-hidden="true"
+                    >
+                      <circle cx="8" cy="8" r="5.5" strokeDasharray="2.5 2" />
+                      <path d="M8 5.5 V10.5 M5.5 8 H10.5" />
+                    </svg>,
+                  ],
                 ] as [Tab, string, React.ReactNode][]
               ).map(([key, label, icon]) => (
                 <button
@@ -295,7 +317,9 @@ export function SetupView({ onShow }: SetupViewProps) {
                         ? 'The devices and services in your manifest, probed just now'
                         : key === 'briefing'
                           ? 'What an agent is told about this machine when it connects'
-                          : undefined
+                          : key === 'unmapped'
+                            ? 'What the agents used that no node on the map accounts for'
+                            : undefined
                   }
                 >
                   {icon}
@@ -308,6 +332,7 @@ export function SetupView({ onShow }: SetupViewProps) {
 
         {tab === 'repos' && <RepoDriftPanel scan={repos} />}
         {tab === 'infra' && <InfrastructurePanel scan={infrastructure} />}
+        {tab === 'unmapped' && <UnmappedPanel report={unmapped} />}
         {tab === 'briefing' && (
           // What the agent believes about this machine, inspectable by the
           // person it believes it about. Served at connect as the MCP resource

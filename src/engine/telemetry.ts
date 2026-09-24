@@ -1,4 +1,9 @@
+import type { UnmappedEntry, UnmappedResponse } from '../shared/api.ts';
+import type { Db } from './db.ts';
+import { attribute } from './failures.ts';
 import type { Migratable } from './migrate.ts';
+import { PROVISION_EDGES } from './ontology.ts';
+import { loadTechTree } from './paths.ts';
 import type { CapabilityRow, OutcomeRow, WorkEventRow, WorkRunRow } from './rows.ts';
 
 /**
@@ -335,6 +340,133 @@ function usageReport(db: Migratable, days = 30): any {
   }));
 }
 
+/**
+ * What the agents used in the last `days` that the map has no node for.
+ *
+ * The map can only show the range the curated tree names, so a tool used
+ * every day and matched by nothing on it was invisible, and the range looked
+ * smaller than it is. A tool is placed the way a failing one is attributed
+ * (`attribute` in failures.ts, the tree's own `detect` patterns), so what
+ * counts as on the map cannot drift from detection: a tool on the map is one
+ * attributed to a tree node, or to an entry that supplies a node specific to
+ * it. Five Cloudflare servers supplying only Tool Protocol are five servers
+ * whose work the map does not show.
+ *
+ * Presence, not frequency. AGENTS.md rule 4 tracks configuration decisions,
+ * not invocation counts, so this says what was used and when last, and never
+ * how often. The overlay is text for a person to paste into
+ * .ambit/techtree.json: a node matched to the entry by its id, which runs
+ * nothing (rule 7), and nothing here writes it.
+ */
+function unmappedUse(db: Db, days = 30): UnmappedResponse {
+  let tools: { tool: string; last: string }[] = [];
+  try {
+    tools = db
+      .prepare(
+        `SELECT action AS tool, MAX(at) AS last FROM work_events
+         WHERE kind = 'tool' AND action IS NOT NULL AND action != 'unknown'
+           AND at >= datetime('now', ?)
+         GROUP BY action ORDER BY action`
+      )
+      .all<{ tool: string; last: string }>(`-${days} days`);
+  } catch {
+    /* a graph with no ledger yet */
+  }
+  if (!tools.length) {
+    return {
+      days,
+      seen: 0,
+      unmapped: [],
+      note: `No tool use recorded in the last ${days} days. plugins/ambit-telemetry.js records it; copy it into ~/.config/opencode/plugins/.`,
+    };
+  }
+
+  const provisions = (PROVISION_EDGES as string[]).map(() => '?').join(', ');
+  const supplied = db.prepare(
+    `SELECT c.id FROM dependencies d JOIN capabilities c ON c.id = d.to_capability
+     WHERE d.from_capability = ? AND d.kind IN (${provisions}) AND c.kind = 'capability'`
+  );
+  const nameOf = db.prepare('SELECT name FROM capabilities WHERE id = ?');
+  const entryExists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?');
+  // A node whose every detect pattern matches the bare kind ("mcp:") would
+  // match any entry of that kind: Tool Protocol is "at least one MCP server".
+  // Supplying it says nothing about what this one server does, so it does
+  // not put the server's work on the map.
+  const detectOf = new Map<string, RegExp[]>();
+  try {
+    for (const n of loadTechTree().nodes || []) {
+      if (n.detect?.any?.length) {
+        detectOf.set(
+          `combo:${n.id}`,
+          n.detect.any.map((p: string) => new RegExp(p, 'i'))
+        );
+      }
+    }
+  } catch {
+    /* no curated tree: every supplied node counts */
+  }
+  const generic = (node: string, entry: string) => {
+    const res = detectOf.get(node);
+    const kind = entry.slice(0, entry.indexOf(':') + 1);
+    return Boolean(res && kind && res.every(re => re.test(kind)));
+  };
+  const onMap = (id: string) =>
+    id.startsWith('combo:') ||
+    supplied
+      .all<{ id: string }>(id, ...(PROVISION_EDGES as string[]))
+      .some(n => !generic(n.id, id));
+
+  const groups = new Map<string, UnmappedEntry>();
+  for (const t of tools) {
+    // A built-in tool is its own entry (`tool:bash`), and the tree detects the
+    // entry, not the tool's name; `attribute` resolves MCP names only.
+    const placed =
+      attribute(db, t.tool) ?? (entryExists.get(`tool:${t.tool}`) ? `tool:${t.tool}` : null);
+    if (placed && onMap(placed)) continue;
+    const key = placed ?? `tool:${t.tool}`;
+    const group = groups.get(key) ?? {
+      ...(placed
+        ? { entry: { id: placed, name: String(nameOf.get(placed)?.name ?? placed) } }
+        : {}),
+      tools: [],
+      lastUsed: t.last,
+    };
+    group.tools.push(t.tool);
+    if (t.last > group.lastUsed) group.lastUsed = t.last;
+    groups.set(key, group);
+  }
+  const unmapped = [...groups.values()].sort((a, b) => b.lastUsed.localeCompare(a.lastUsed));
+
+  // Only an entry can be matched by a node: detect patterns are tested
+  // against capability ids, and a bare tool name is not one.
+  const nodes = unmapped
+    .filter(u => u.entry)
+    .map(u => {
+      const slug = u.entry!.id.replace(/^[a-z]+:/, '').replace(/[^a-z0-9-]+/gi, '-');
+      return {
+        id: slug,
+        name: u.entry!.name,
+        era: 3,
+        description: `What ${u.entry!.name} does for your agents. Used: ${u.tools.join(', ')}.`,
+        detect: { any: [`^${u.entry!.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`] },
+        requires: u.entry!.id.startsWith('mcp:') ? ['tool-protocol'] : [],
+      };
+    });
+
+  return {
+    days,
+    seen: tools.length,
+    unmapped,
+    ...(nodes.length
+      ? {
+          overlay: JSON.stringify({ nodes }, null, 2),
+          overlay_note:
+            'Paste into .ambit/techtree.json, rename and describe each node, then run ambit seed. Era 3 is Tool Use; move a node if it belongs elsewhere.',
+        }
+      : {}),
+  };
+}
+
 export {
   beginRun,
   endRun,
@@ -345,4 +477,5 @@ export {
   recordOutcome,
   workReport,
   usageReport,
+  unmappedUse,
 };

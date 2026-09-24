@@ -176,7 +176,8 @@ src/client/                React frontend
                            share, proposals, docs
     Finder.tsx             Search by name; a node opens on the map, an entry in My Setup
     SetupView.tsx          My Setup: one row per entry, with its evidence and the nodes it provides;
-                           repo drift, infrastructure and the agent's briefing as its other tabs
+                           repo drift, infrastructure, the agent's briefing and what was
+                           used but is on no node of the map as its other tabs
     WelcomeScreen.tsx      What an empty graph shows: the question, one number from the demo's
                            outage with a button that plays it, and the paste box
     ConfigIntake.tsx       Paste a config or pick the file, and where each runtime keeps it

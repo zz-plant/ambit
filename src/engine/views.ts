@@ -15,6 +15,7 @@ import { FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
 import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
 import { ledgerSince } from './ledger.ts';
+import { unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
@@ -40,6 +41,7 @@ import {
   type TechTreeResponse,
   type TreeConnection,
   type TreeItem,
+  type UnmappedResponse,
 } from '../shared/api.ts';
 
 /** A category the client can draw, or 'config' — never a value it has no case for. */
@@ -855,4 +857,9 @@ function monthlyHours(db: Db): { month: string; hours: number; acquired?: string
     });
   }
   return out;
+}
+
+/** What the agents used that the map has no node for; the engine's report, as served. */
+export function unmappedView(db: Db, days = 30): UnmappedResponse {
+  return unmappedUse(db, days);
 }

@@ -485,6 +485,31 @@ export interface RepoScanResponse {
   repos: RepoDrift[];
 }
 
+// ── GET /api/unmapped ────────────────────────────────────────────────────────
+
+/** One thing the agents used that no node of the map accounts for. */
+export interface UnmappedEntry {
+  /** The config entry the tools came from, when the tool name says which. */
+  entry?: { id: string; name: string };
+  tools: string[];
+  lastUsed: string;
+}
+
+/**
+ * What was used and is not on the map. `seen` is how many distinct tools the
+ * ledger recorded in the window; zero means nothing was recorded, which the
+ * page explains, not that everything used is on the map.
+ */
+export interface UnmappedResponse {
+  days: number;
+  seen: number;
+  unmapped: UnmappedEntry[];
+  note?: string;
+  /** A .ambit/techtree.json body for a person to paste. Nothing writes it. */
+  overlay?: string;
+  overlay_note?: string;
+}
+
 /** Every endpoint, keyed by path — so neither side can invent a route. */
 export interface ApiRoutes {
   '/api/health': HealthResponse;
@@ -496,6 +521,7 @@ export interface ApiRoutes {
   '/api/proposals': ProposalsResponse;
   '/api/attention': AttentionResponse;
   '/api/loop': LoopResponse;
+  '/api/unmapped': UnmappedResponse;
   '/api/infrastructure/scan': InfrastructureScanResponse;
   '/api/repos/scan': RepoScanResponse;
 }

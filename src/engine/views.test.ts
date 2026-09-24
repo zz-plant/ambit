@@ -14,8 +14,11 @@
 import { expect, test } from 'vitest';
 import { NODE_TYPES } from '../shared/api.ts';
 import { actionsReport, canExecute } from './assurance.ts';
-import { makeGraph } from './testing/graph.ts';
+import { loadTechTree } from './paths.ts';
+import { addEvent, beginRun } from './telemetry.ts';
+import { type CapabilityFixture, makeGraph } from './testing/graph.ts';
 import {
+  unmappedView,
   graphSummary,
   interventionHeatmap,
   loopView,
@@ -358,4 +361,79 @@ test("the tree carries the week's movement, and says nothing before a second obs
   db.close();
   // One seed is one observation: there is no week to compare against yet.
   expect(view.since).toBeNull();
+});
+
+test('what the agents used and the map has no node for, with an overlay to paste', () => {
+  const cap = (id: string, name: string): CapabilityFixture => ({
+    id,
+    name,
+    category: 'combo',
+    kind: 'capability',
+    state: 'unlocked',
+  });
+  const entry = (id: string, name: string): CapabilityFixture => ({
+    id,
+    name,
+    category: 'mcp',
+    kind: 'provider',
+    state: 'unlocked',
+  });
+  const db = makeGraph({
+    capabilities: [
+      cap('combo:version-control', 'Version Control'),
+      cap('combo:tool-protocol', 'Tool Protocol'),
+      entry('mcp:git', 'git'),
+      entry('mcp:linear', 'linear'),
+      cap('combo:shell-execution', 'Shell Execution'),
+      { ...entry('tool:bash', 'bash'), category: 'tool' },
+    ],
+    dependencies: [
+      { from: 'mcp:git', to: 'combo:version-control', kind: 'provides', hard: true },
+      { from: 'mcp:git', to: 'combo:tool-protocol', kind: 'provides', hard: true },
+      // Every MCP server supplies Tool Protocol; that says nothing about linear.
+      { from: 'mcp:linear', to: 'combo:tool-protocol', kind: 'provides', hard: true },
+      { from: 'tool:bash', to: 'combo:shell-execution', kind: 'provides', hard: true },
+    ],
+  });
+  const { run } = beginRun(db, {});
+  for (const tool of [
+    'mcp__git__status',
+    'mcp__linear__create_issue',
+    'mcp__linear__list_issues',
+    'mcp__linear__list_issues',
+    'bash',
+    'todowrite',
+  ]) {
+    addEvent(db, run, { kind: 'tool', action: tool, actor: 'agent' });
+  }
+  const report = unmappedView(db);
+  db.close();
+
+  expect(report.seen).toBe(5);
+  // A built-in tool is placed by its own entry, as the tree detects it.
+  expect(report.unmapped.some(u => u.tools.includes('bash'))).toBe(false);
+  const linear = report.unmapped.find(u => u.entry?.id === 'mcp:linear')!;
+  expect(linear.tools).toEqual(['mcp__linear__create_issue', 'mcp__linear__list_issues']);
+  // Presence, never frequency (rule 4): no count anywhere in the answer.
+  expect(JSON.stringify(report)).not.toMatch(/"(times|count|uses)"/);
+  // A bare tool is listed, and cannot be matched by an overlay node.
+  expect(report.unmapped.some(u => !u.entry && u.tools[0] === 'todowrite')).toBe(true);
+  expect(report.unmapped.some(u => u.entry?.id === 'mcp:git')).toBe(false);
+
+  // The overlay is data the tree loader accepts, whose node detects linear.
+  const overlay = JSON.parse(report.overlay!);
+  expect(overlay.nodes).toHaveLength(1);
+  const node = overlay.nodes[0];
+  expect(node.detect.any.some((p: string) => new RegExp(p, 'i').test('mcp:linear'))).toBe(true);
+  expect(node.detect.any.some((p: string) => new RegExp(p, 'i').test('mcp:linear-2'))).toBe(false);
+  expect(Object.keys(node)).not.toContain('command');
+  expect(loadTechTree().nodes.some((n: { id: string }) => n.id === 'tool-protocol')).toBe(true);
+});
+
+test('with nothing recorded, the answer says so instead of claiming everything is on the map', () => {
+  const db = makeGraph({});
+  const report = unmappedView(db);
+  db.close();
+  expect(report.seen).toBe(0);
+  expect(report.note).toContain('ambit-telemetry.js');
 });

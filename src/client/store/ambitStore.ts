@@ -17,6 +17,7 @@ import {
   type ApiRoutes,
   type ApproveResponse,
   type BriefingResponse,
+  type UnmappedResponse,
   type InfrastructureScanResponse,
   type LoopSince,
   type LoopSnapshot,
@@ -194,6 +195,8 @@ interface StoreState {
   infrastructure: InfrastructureScanResponse | null;
   /** What an agent is told at connect, for the person to read. */
   briefing: BriefingResponse | null;
+  /** What the agents used that no node on the map accounts for. */
+  unmapped: UnmappedResponse | null;
   /** The global config's MCP entries by name, so a repo missing one can be handed the entry. */
   configMcp: Record<string, Record<string, unknown>>;
 
@@ -217,6 +220,7 @@ interface StoreState {
   ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
   rejectProposal: (proposalId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>;
   loadBriefing: () => Promise<void>;
+  loadUnmapped: () => Promise<void>;
   /** The paste-ready entry for one MCP server, from the endpoint that composes it. */
   snippetFor: (name: string) => Promise<string | null>;
   loadAttentionData: () => Promise<void>;
@@ -265,6 +269,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   repos: null,
   infrastructure: null,
   briefing: null,
+  unmapped: null,
   configMcp: {},
 
   setItems: (items, connections) => set({ items, connections }),
@@ -405,6 +410,16 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     try {
       const data = await getJson('/api/briefing');
       if (data) set({ briefing: data });
+    } catch {
+      /* the tab keeps its empty state */
+    }
+  },
+
+  loadUnmapped: async () => {
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/unmapped');
+      if (data) set({ unmapped: data });
     } catch {
       /* the tab keeps its empty state */
     }

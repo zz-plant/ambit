@@ -4685,3 +4685,9 @@ code, pre, .code, .sp-cli-cmd {
     gap: 4px;
   }
 }
+
+/* The overlay under the Not on the map list: a heading row with its copy
+   button, then the text to paste. */
+.setup-overlay {
+  margin-top: 16px;
+}

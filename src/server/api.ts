@@ -20,6 +20,7 @@ import { migrate } from '../engine/migrate.ts';
 import { resolveDbPath } from '../shared/db-path.ts';
 import {
   techTreeView,
+  unmappedView,
   graphSummary,
   recentProposals,
   interventionHeatmap,
@@ -67,6 +68,7 @@ import type {
   RejectRequest,
   RejectResponse,
   TechTreeResponse,
+  UnmappedResponse,
 } from '../shared/api.ts';
 
 /**
@@ -401,6 +403,14 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
       );
     }
     return json<TechTreeResponse>(withGraph(techTreeView));
+  }
+
+  // What was used and is not on the map. Read-only: the overlay it carries is
+  // text for a person to paste, and nothing here writes a file.
+  if (pathname === '/api/unmapped' && method === 'GET') {
+    if (!existsSync(GRAPH_DB_PATH))
+      return json<UnmappedResponse>({ days: 30, seen: 0, unmapped: [] });
+    return json<UnmappedResponse>(withGraph(db => unmappedView(db)));
   }
 
   if (pathname === '/api/proposals' && method === 'GET') {

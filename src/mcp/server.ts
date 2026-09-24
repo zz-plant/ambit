@@ -44,6 +44,7 @@ import {
   recordOutcome,
   workReport,
   usageReport,
+  unmappedUse,
   economicsReport,
   goalValue,
   opportunitiesFor,
@@ -370,7 +371,9 @@ function handleLine(line: string) {
               res = tt(db => workReport(db, args?.limit));
               break;
             case 'tt_usage':
-              res = tt(db => usageReport(db, args?.days));
+              res = tt(db =>
+                args?.unmapped ? unmappedUse(db, args?.days) : usageReport(db, args?.days)
+              );
               break;
             case 'tt_run_begin':
               res = tt(db => beginRun(db, args || {}));

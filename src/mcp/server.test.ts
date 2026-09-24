@@ -224,3 +224,20 @@ test('asking and being refused records the deficit in the same call', () => {
   expect(answer.verdict).toBe('no');
   expect(answer.recorded_deficit).toBeTruthy();
 });
+
+test('usage answers what was used and is not on the map when asked', () => {
+  // A new tool would have cost the listing's byte budget; the question is a
+  // view of the same ledger `usage` reads, so it is a flag on that tool.
+  const [reply] = rpc([
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'ambit_usage', arguments: { unmapped: true } },
+    },
+  ]);
+  const answer = JSON.parse(reply.result.content[0].text);
+  expect(answer.days).toBe(30);
+  expect(answer.unmapped).toEqual([]);
+  expect(answer.note).toContain('ambit-telemetry.js');
+});

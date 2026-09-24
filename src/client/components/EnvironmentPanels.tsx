@@ -1,5 +1,11 @@
 import { type ReactNode, useState } from 'react';
-import type { InfrastructureScanResponse, RepoScanResponse } from '../../shared/api';
+import type {
+  InfrastructureScanResponse,
+  RepoScanResponse,
+  UnmappedResponse,
+} from '../../shared/api';
+import { formatRelativeTime } from '../../shared/format';
+import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 
 /**
@@ -187,6 +193,84 @@ export function InfrastructurePanel({ scan }: { scan: InfrastructureScanResponse
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** SQLite's `datetime('now')` is UTC with no zone; a label, or nothing if it will not parse. */
+function usedAgo(stamp: string): string {
+  const d = new Date(stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`);
+  return Number.isNaN(d.getTime()) ? '' : formatRelativeTime(d);
+}
+
+/**
+ * What the agents used that no node on the map accounts for.
+ *
+ * The map can only show what the curated tree names, so a server used every
+ * day and matched by nothing looked like no part of the range at all. This
+ * lists it, by the entry it came from, with when it was last used and never
+ * how often; and it offers the overlay that would put it on the map, as text
+ * to paste. Nothing here writes a file.
+ */
+export function UnmappedPanel({ report }: { report: UnmappedResponse | null }) {
+  const [copied, copy] = useCopied();
+  if (!report) return <PanelNote>Reading the work ledger…</PanelNote>;
+  if (!report.seen) {
+    return (
+      <PanelNote>
+        No tool use recorded in the last {report.days} days, so there is nothing to compare with the
+        map yet. <code>plugins/ambit-telemetry.js</code> records it: copy it into{' '}
+        <code>~/.config/opencode/plugins/</code>.
+      </PanelNote>
+    );
+  }
+  if (!report.unmapped.length) {
+    return (
+      <PanelNote>
+        Every tool the agents used in the last {report.days} days ({report.seen}{' '}
+        {report.seen === 1 ? 'tool' : 'tools'}) is accounted for by a node on the map.
+      </PanelNote>
+    );
+  }
+  return (
+    <div className="tp-list">
+      <p className="tp-note">
+        Used in the last {report.days} days, and on no node of the map: the part of the range the
+        curated tree does not name. A server that supplies only Tool Protocol is listed, since that
+        node says nothing about what it does.
+      </p>
+      {report.unmapped.map(u => {
+        const ago = usedAgo(u.lastUsed);
+        return (
+          <div key={u.entry?.id ?? u.tools[0]} className="tp-item tp-item--static">
+            <div className="tp-item-hdr">
+              <span className="tp-item-name">{u.entry?.name ?? u.tools[0]}</span>
+              {ago && <span className="tp-badge">used {ago}</span>}
+            </div>
+            <div className="tp-item-meta">
+              {u.entry
+                ? u.tools.join(' · ')
+                : 'a tool with no config entry, so no overlay can match it'}
+            </div>
+          </div>
+        );
+      })}
+      {report.overlay && (
+        <div className="setup-overlay">
+          <div className="tp-item-hdr">
+            <span className="tp-item-name">Put them on the map</span>
+            <button
+              type="button"
+              className="tp-inline-btn"
+              onClick={() => copy('overlay', report.overlay!)}
+            >
+              {copied === 'overlay' ? 'Copied' : 'Copy overlay'}
+            </button>
+          </div>
+          {report.overlay_note && <p className="tp-note">{report.overlay_note}</p>}
+          <pre className="setup-briefing-text">{report.overlay}</pre>
+        </div>
+      )}
     </div>
   );
 }

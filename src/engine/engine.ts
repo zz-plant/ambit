@@ -85,6 +85,7 @@ export {
   recordOutcome,
   workReport,
   usageReport,
+  unmappedUse,
 } from './telemetry.ts';
 export {
   valueCents,

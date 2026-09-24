@@ -18,9 +18,10 @@ import { SimulationBanner } from './civ/SimulationBanner';
 import AppDeck from './AppDeck';
 import CivTree from './CivTree';
 import ApprovalModal from './ApprovalModal';
-import { RepoDriftPanel } from './EnvironmentPanels';
+import { RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
+import SetupView from './SetupView';
 
 const server: Item = {
   id: 'mcp:git',
@@ -499,4 +500,47 @@ test('the map has an authority lens, keyed by what the demo actually grants', ()
   for (const label of ['Acts without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
     expect(html).toContain(label);
   }
+});
+
+test('My Setup lists what the agents used that the map has no node for', () => {
+  // The map can only show what the curated tree names; a server used every
+  // day and matched by nothing was no part of the range anywhere.
+  seed({ backend: 'live', items: [server] });
+  expect(renderToStaticMarkup(<SetupView onShow={() => {}} />)).toContain('Not on the map');
+
+  const plain = (html: string) => html.replace(/<[^>]+>/g, '');
+  expect(
+    plain(renderToStaticMarkup(<UnmappedPanel report={{ days: 30, seen: 0, unmapped: [] }} />))
+  ).toContain('No tool use recorded in the last 30 days');
+  expect(
+    plain(renderToStaticMarkup(<UnmappedPanel report={{ days: 30, seen: 4, unmapped: [] }} />))
+  ).toContain('is accounted for by a node on the map');
+
+  const html = plain(
+    renderToStaticMarkup(
+      <UnmappedPanel
+        report={{
+          days: 30,
+          seen: 3,
+          unmapped: [
+            {
+              entry: { id: 'mcp:linear', name: 'linear' },
+              tools: ['mcp__linear__create_issue'],
+              lastUsed: 'not a time',
+            },
+            { tools: ['todowrite'], lastUsed: '2026-09-20 10:00:00' },
+          ],
+          overlay: '{ "nodes": [] }',
+          overlay_note: 'Paste into .ambit/techtree.json',
+        }}
+      />
+    )
+  );
+  expect(html).toContain('linear');
+  expect(html).toContain('mcp__linear__create_issue');
+  expect(html).toContain('no overlay can match it');
+  expect(html).toContain('Copy overlay');
+  // A time that will not parse is left out, never printed as a value.
+  expect(html).not.toContain('Invalid Date');
+  expect(html).not.toContain('NaN');
 });

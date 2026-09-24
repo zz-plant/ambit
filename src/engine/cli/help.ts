@@ -14,7 +14,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   briefing          what an agent should know before its first tool call
   status            health · degraded · sole providers · deficits · waiting approvals
   next              the three capabilities worth reaching next, and why
-  graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
+  graph [surface|combos|affordances|unmapped]   the graph, or a view of it
   goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
                     delta, compare acquisition paths, or check preferences
                     --judge[=url] asks a judgment model on this machine when
@@ -40,11 +40,13 @@ Five groups. Every verb also works on its own — \`ambit impact x\` and
   status            health · degraded · sole providers · deficits · waiting approvals
 
 graph — the structure, and what it would cost to lose a piece
-  graph [surface|combos|affordances]   the graph, or a runtime-owned view of it
+  graph [surface|combos|affordances|unmapped]   the graph, or a view of it
   graph impact <id>       what actually breaks if a capability goes away
   graph catalog <cap>     the ways to acquire a capability, compared by cost
   graph share [--redact] [--out=path]   a self-contained HTML snapshot of the
                           map — names, states, edges only; nothing leaves the machine
+  graph unmapped [--days=N]   what the agents used that no node on the map
+                          accounts for, and an overlay to paste that adds it
   graph where             where the graph is stored
   graph skills            what the agent registered that it built itself
   graph sync export [path] / graph sync import <path>   the graph and ledger as
