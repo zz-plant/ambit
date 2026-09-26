@@ -52,16 +52,25 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p><code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and install nothing.</p>
 </div><hr>
 <h2 id="what-ambit-is"><a class="anchor" href="#what-ambit-is" aria-hidden="true" tabindex="-1">#</a>What Ambit is</h2>
+<p><em>Ambit</em> (from Latin <em>ambitus</em>: circuit, perimeter, sphere of action) is the boundary of what you, your agents, and your machines can jointly and reliably do.</p>
 <p>If you use AI agents, your setup is spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials, and more than one machine. Every piece has its own config file.</p>
 <p>What they add up to — what your human-plus-agent system can actually <em>do</em> — is written down nowhere.</p>
 <p>Ambit reads those configs and builds one map out of them. Every tool, model, skill, and credential becomes a point on it; everything one of them needs in order to work becomes a line to another. That map answers questions no single config file can:</p>
 <ol>
-<li><strong>What works right now?</strong> What is set up, what is broken, and what is one dependency away.</li>
-<li><strong>What breaks downstream</strong> if a model, tool, or credential goes away.</li>
+<li><strong>What works right now?</strong> Distinguishing what is merely configured from what is proven to work (<code>installed ≠ working ≠ authorized</code>).</li>
+<li><strong>What breaks downstream</strong> if a model, tool, or credential goes away (transitive blast radius and shared single points of failure).</li>
 <li><strong>What compound abilities emerge</strong> when two independent tools are combined.</li>
 <li><strong>What is worth setting up next</strong>, priced by the human attention it would save.</li>
 </ol>
 <p>You ask from the terminal. Your agents ask over MCP, mid-session, before they run into the limit — Ambit is itself an MCP server, so the thing describing your MCP servers speaks the same protocol they do. (A <em>meta-MCP server</em>, if you want the term to search for.)</p>
+<h3 id="why-ambit-four-unfair-distinctions"><a class="anchor" href="#why-ambit-four-unfair-distinctions" aria-hidden="true" tabindex="-1">#</a>Why Ambit: four unfair distinctions</h3>
+<p>Most agent tooling catalogs tools by name or embeds them in vector stores. Ambit treats capability as an assured, governed boundary:</p>
+<ol>
+<li><strong>Transitive blast radius over shared credentials.</strong> Registries inspect tools in isolation. Ambit models actual dependency graphs. If a shared token or local daemon drops, Ambit traces every dependent capability, exposing when multiple &quot;redundant&quot; providers secretly collapse under a single point of failure.</li>
+<li><strong>Assurance over declaration (<code>installed ≠ working ≠ authorized</code>).</strong> A configured tool is not a working tool. Ambit runs declared checks (<code>ambit verify</code>), tracks failure signals, demotes broken capabilities without asking, and promotes authority grants only when backed by clean execution evidence.</li>
+<li><strong>Pre-flight briefing over context loops.</strong> Long-running agents waste context windows discovering broken tools through trial, error, and permission crashes. Ambit&#39;s meta-MCP briefing (<code>ambit://briefing</code>) gives the agent its proven action space before the first tool call.</li>
+<li><strong>Human attention accounting.</strong> The work ledger links tool runs, friction, and interruptions to dollars and human hours, ranking what to acquire or fix next based on return on human attention.</li>
+</ol>
 <h3 id="the-words-ambit-uses"><a class="anchor" href="#the-words-ambit-uses" aria-hidden="true" tabindex="-1">#</a>The words Ambit uses</h3>
 <p>Four of them carry most of the meaning, in the terminal and on the map alike.</p>
 <ul>
@@ -85,6 +94,9 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p>You are about to revoke a personal access token. Without a model of what depends on it, two background MCP tools and a scheduled sync agent fail silently some hours later.</p>
 <p><code>ambit impact credential:github/user-token</code> names the providers and capabilities standing on that one credential, which is the argument for provisioning granular tokens first.</p>
 <p>The <code>credentials</code> block that declares the sharing is in <a href="/ambit/docs/deep-dive/#what-a-node-is">the deep dive</a>. Until you write one, <code>ambit credentials</code> reports that none are declared.</p>
+<h3 id="stopping-a-context-window-thrash-loop"><a class="anchor" href="#stopping-a-context-window-thrash-loop" aria-hidden="true" tabindex="-1">#</a>Stopping a context-window thrash loop</h3>
+<p>An agent starts a task requiring browser automation. Playwright is configured in <code>opencode.json</code>, but a recent system update broke the local Chromium binary.</p>
+<p>Without Ambit, the agent issues tool calls, gets opaque exit codes, attempts four workarounds, burns 35,000 tokens of context, and fails. With <code>ambit://briefing</code>, the failing declared check demotes browser automation before the session begins. The agent immediately routes to a static HTTP fetcher or asks for the specific binary fix upfront.</p>
 <hr>
 <h2 id="where-this-sits-in-the-stack"><a class="anchor" href="#where-this-sits-in-the-stack" aria-hidden="true" tabindex="-1">#</a>Where this sits in the stack</h2>
 <p>Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.</p>
@@ -124,7 +136,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="center">–</td>
 </tr>
 <tr>
-<td align="left">A list of configured MCP servers</td>
+<td align="left">Flat MCP catalogs (Smithery, registries)</td>
 <td align="center">by name</td>
 <td align="center">–</td>
 <td align="center">–</td>
@@ -148,7 +160,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="center">✓ authority contracts, signed approvals</td>
 </tr>
 </tbody></table>
-<p>Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Ambit models what those binaries add up to on this host, what it costs a person to keep them working, and what an agent may do with them.</p>
+<p>Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Flat catalogs index servers without tracking whether their prerequisites exist on your machine. Ambit models what those tools add up to on this host, what it costs a person to keep them working, and what an agent may do with them.</p>
 <p>A typed decision model such as TypeSafe&#39;s <a href="https://en.wikipedia.org/wiki/Jev_(AI_model)">Jev</a> answers whether a tool call looks safe with a calibrated probability, cheaply enough to ask on every call. Injected text can move that probability, so Ambit maps Jev as a capability and never lets it decide what an agent may do. <a href="/ambit/docs/faq/#i-use-jev-where-does-it-fit">The FAQ</a> says how the two fit together.</p>
 <hr>
 <h2 id="get-started"><a class="anchor" href="#get-started" aria-hidden="true" tabindex="-1">#</a>Get started</h2>
