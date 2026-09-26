@@ -6,6 +6,8 @@ Ambit today is a capability graph. It reads your configuration, places it on a c
 
 That is a model of **what exists**. This document describes the move to a model of **what can be acquired**, and the loop that closes between the two.
 
+Ambit takes its name from the Latin *ambitus*: circuit, perimeter, sphere of action. In Roman law and modern governance alike, an ambit is the boundary within which authority is legitimate and outside of which power is unauthorized or invalid. An agent without an ambit is either reckless (executing until an unhandled permission error crashes the session) or paralyzed (asking for confirmation on every keystroke). Ambit is the dynamic, verifiable model of that perimeter: what the human-agent system can reliably do right now, what it is authorized to do autonomously, and how that perimeter safely expands over time.
+
 Each section says what is built and what is not. The README describes only what runs; [the deep dive](./deep-dive.md) documents the built parts in full, so a built section here keeps its rationale and does not repeat the reference. Sections are ordered by dependency, not by date.
 
 ## The argument
@@ -546,10 +548,14 @@ Four capabilities complete the team layer:
 
 Anything that told you something interesting about the graph without changing what you should do is not a first-class feature. The 3D visualizer, `trend`, `recs`, `fork`, `insight`, `profile`, `prune`, the setup/token `budget`, the consultant/snapshot/trending stores, and `maturity_score` as a headline are gone or demoted. What is left groups under five nouns (graph, plan, check, govern, report), and [the deep dive](./deep-dive.md#the-full-cli-surface) enumerates it. What stays is what establishes truth, measures dependence, supports decisions, and governs change.
 
-## The through-line
+## The through-line: The Living Ambit
 
-[The table above](#status-at-a-glance) collects what each section still lacks. Two things run under all of it.
+[The table above](#status-at-a-glance) collects what each section still lacks. Four core transitions run under all of it, carrying Ambit from a static graph into a living perimeter of agency:
 
-The first is enforcement. Ambit can say what may be done, by whom, with what, on what evidence, and whether a grant covers a given target, and it narrows a grant when what it rests on fails. It stops something in two places, its own apply path and the control plane, and nowhere else: a runtime that never calls `ambit can` is unaffected by any of it.
+1. **From reporting to enforcement.** Ambit can say what may be done, by whom, with what, on what evidence, and whether a grant covers a given target, and it narrows a grant when what it rests on fails. It stops something in two places, its own apply path and the control plane, and nowhere else: a runtime that never calls `ambit can` is unaffected by any of it. Closing this loop turns the graph from an external advisor into an active supervisor.
 
-The second is the tree. Every entry on the list the graph will eventually need — read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only — is a verb bound to a noun, and the era tree still has only the verbs (§13.9). Once it carries objects, it stops being the ontology and becomes what it should be: a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist.
+2. **From abstract verbs to bound affordances.** Every entry on the list the graph will eventually need (read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only) is a verb bound to a noun, and the era tree still has only the verbs (§13.9). Once it carries objects, it stops being the ontology and becomes what it should be: a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist. An agent earns autonomy over repo A without acquiring blanket access to repo B.
+
+3. **From static snapshots to ambient perimeter sensing.** A capability graph that updates only when someone types a CLI command or boots an agent is an offline snapshot. In a production environment, the perimeter contracts and expands continuously: a local Docker daemon restarts, an upstream API token expires, a laptop switches networks, or GPU VRAM fills. Ambient sensing continuously validates health, reachability, and credential validity in the background. The moment a dependency fails, the perimeter contracts, preventing agents from falling into blind retry loops. The moment health clears, the capability returns.
+
+4. **From friction loops to reflexive boundary negotiation.** When an agent hits an environmental barrier today, it either crashes or loops helplessly in its context window. In a reflexive system, friction is captured as a structured deficit. The agent inspects its own boundary, computes the capability delta, and drafts an approvable proposal complete with setup cost, reversibility recipes, and scoped authority limits. The human decides; the system verifies; the boundary expands. The agent never breaches its perimeter; it participates in negotiating it.
