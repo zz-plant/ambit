@@ -27,18 +27,29 @@ Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, 
 
 ## What Ambit is
 
+*Ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what you, your agents, and your machines can jointly and reliably do.
+
 If you use AI agents, your setup is spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials, and more than one machine. Every piece has its own config file.
 
 What they add up to — what your human-plus-agent system can actually *do* — is written down nowhere.
 
 Ambit reads those configs and builds one map out of them. Every tool, model, skill, and credential becomes a point on it; everything one of them needs in order to work becomes a line to another. That map answers questions no single config file can:
 
-1. **What works right now?** What is set up, what is broken, and what is one dependency away.
-2. **What breaks downstream** if a model, tool, or credential goes away.
+1. **What works right now?** Distinguishing what is merely configured from what is proven to work (`installed ≠ working ≠ authorized`).
+2. **What breaks downstream** if a model, tool, or credential goes away (transitive blast radius and shared single points of failure).
 3. **What compound abilities emerge** when two independent tools are combined.
 4. **What is worth setting up next**, priced by the human attention it would save.
 
 You ask from the terminal. Your agents ask over MCP, mid-session, before they run into the limit — Ambit is itself an MCP server, so the thing describing your MCP servers speaks the same protocol they do. (A *meta-MCP server*, if you want the term to search for.)
+
+### Why Ambit: four unfair distinctions
+
+Most agent tooling catalogs tools by name or embeds them in vector stores. Ambit treats capability as an assured, governed boundary:
+
+1. **Transitive blast radius over shared credentials.** Registries inspect tools in isolation. Ambit models actual dependency graphs. If a shared token or local daemon drops, Ambit traces every dependent capability, exposing when multiple "redundant" providers secretly collapse under a single point of failure.
+2. **Assurance over declaration (`installed ≠ working ≠ authorized`).** A configured tool is not a working tool. Ambit runs declared checks (`ambit verify`), tracks failure signals, demotes broken capabilities without asking, and promotes authority grants only when backed by clean execution evidence.
+3. **Pre-flight briefing over context loops.** Long-running agents waste context windows discovering broken tools through trial, error, and permission crashes. Ambit's meta-MCP briefing (`ambit://briefing`) gives the agent its proven action space before the first tool call.
+4. **Human attention accounting.** The work ledger links tool runs, friction, and interruptions to dollars and human hours, ranking what to acquire or fix next based on return on human attention.
 
 ### The words Ambit uses
 
@@ -78,6 +89,12 @@ You are about to revoke a personal access token. Without a model of what depends
 
 The `credentials` block that declares the sharing is in [the deep dive](./docs/deep-dive.md#what-a-node-is). Until you write one, `ambit credentials` reports that none are declared.
 
+### Stopping a context-window thrash loop
+
+An agent starts a task requiring browser automation. Playwright is configured in `opencode.json`, but a recent system update broke the local Chromium binary.
+
+Without Ambit, the agent issues tool calls, gets opaque exit codes, attempts four workarounds, burns 35,000 tokens of context, and fails. With `ambit://briefing`, the failing declared check demotes browser automation before the session begins. The agent immediately routes to a static HTTP fetcher or asks for the specific binary fix upfront.
+
 ---
 
 ## Where this sits in the stack
@@ -89,11 +106,11 @@ Ambit sits above the protocol layer and below workflow orchestration. It neither
 | Vector tool-RAG | by similarity | – | – | – | – |
 | Workflow state machines (LangGraph) | – | within one task | – | – | within one task |
 | Package managers (Nix, Homebrew) | – | for binaries | – | – | – |
-| A list of configured MCP servers | by name | – | – | – | – |
+| Flat MCP catalogs (Smithery, registries) | by name | – | – | – | – |
 | Typed decision models (Jev) | – | – | – | – | by a probability, which text in the state can move |
 | **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
 
-Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Ambit models what those binaries add up to on this host, what it costs a person to keep them working, and what an agent may do with them.
+Semantic search finds tools that sound relevant and cannot tell a working one from a broken one. A workflow graph models control flow within one task. A package manager installs binaries. Flat catalogs index servers without tracking whether their prerequisites exist on your machine. Ambit models what those tools add up to on this host, what it costs a person to keep them working, and what an agent may do with them.
 
 A typed decision model such as TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) answers whether a tool call looks safe with a calibrated probability, cheaply enough to ask on every call. Injected text can move that probability, so Ambit maps Jev as a capability and never lets it decide what an agent may do. [The FAQ](./docs/faq.md#i-use-jev-where-does-it-fit) says how the two fit together.
 
