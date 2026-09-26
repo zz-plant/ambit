@@ -18,6 +18,7 @@ function main() {
 Commands:
   setup-env <envDir> <dbPath>
   exec <envDir> <dbPath> '<requestJson>'
+    requestJson supports: { agent_id, intent, tool, capability_id, simulate: true, break_glass: true, break_glass_reason: "..." }
   verify-node <dbPath> <nodeId> <status>
   approve <dbPath> <proposalId> <approver>
   audit <dbPath> <target>
