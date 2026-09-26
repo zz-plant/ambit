@@ -23,6 +23,8 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                     ranked investments — observed burden, priced, compared
   verify [cap] [--history]   run the declared check, or show past verification
   impact <id>       what actually breaks if a capability goes away
+  doctor            setup health audit, broken tools, and token-thrash risk
+  connect [runtime] 1-click auto-config for Claude Code, Cursor, OpenCode
 
   Grouped: graph · plan · check · govern · report — try \`ambit plan\`
   help --all        every command
@@ -100,6 +102,11 @@ check — what is proven, what is permitted, what is currently broken
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
+  check doctor            audit setup health, broken tools, and token-thrash risk
+  check connect [runtime] 1-click auto-config for Claude Code, Cursor, OpenCode
+  check init-rules        inject pre-flight guidance into workspace agent rules
+  check receipt [hours]   post-session micro-receipt of tools used and saved tokens
+  check ci [--strict]     verify capability invariants for CI/CD pipelines
 
 govern — the reviewable path from proposal to applied change
   govern proposals [--pending] / govern proposal <id>

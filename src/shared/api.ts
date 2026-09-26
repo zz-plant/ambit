@@ -452,6 +452,12 @@ export interface LoopSnapshot {
   since: LoopSince | null;
   /** Asked for and never there, worst first. Heads the queue of what to reach. */
   demand: LoopDemand[];
+  /** Prevented agent token waste and context thrash from failing checks and pre-flight briefings. */
+  context_burn?: {
+    tokens_prevented: number;
+    dollars_prevented: number;
+    loops_intercepted: number;
+  };
 }
 
 export interface LoopResponse extends LoopSnapshot {

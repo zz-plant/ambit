@@ -78,6 +78,11 @@ import {
   applyProposal,
   rollbackProposal,
 } from './governance.ts';
+import { runDoctor } from './doctor.ts';
+import { runConnect } from './connect.ts';
+import { runInitRules } from './init-rules.ts';
+import { runReceipt } from './receipt.ts';
+import { runCiCheck } from './ci-check.ts';
 
 /**
  * Runs one resolved command against an open graph and reports through `emit`.
@@ -546,6 +551,48 @@ async function runCommand(
       });
       break;
     }
+    case 'doctor': {
+      emit(runDoctor(db));
+      break;
+    }
+    case 'connect': {
+      const dryRun = flags.has('--dry-run');
+      const force = flags.has('--force');
+      emit(runConnect(arg, { dryRun, force }));
+      break;
+    }
+    case 'init-rules':
+    case 'rules': {
+      const dryRun = flags.has('--dry-run');
+      const target = value('target') || arg;
+      emit(runInitRules(target, { dryRun }));
+      break;
+    }
+    case 'receipt': {
+      const hours = Number(arg) || 1;
+      emit(runReceipt(db, hours));
+      break;
+    }
+    case 'check':
+    case 'ci': {
+      if (flags.has('--ci') || cmd === 'ci' || arg === 'ci') {
+        const strict = flags.has('--strict');
+        const writeStepSummary =
+          flags.has('--markdown') || flags.has('--ci') || Boolean(process.env.GITHUB_STEP_SUMMARY);
+        const res = runCiCheck(db, { strict, writeStepSummary });
+        if (flags.has('--markdown')) {
+          emitText(res.markdown);
+        } else {
+          emit(res);
+        }
+        if (!res.ok) {
+          process.exitCode = res.exit_code;
+        }
+      } else {
+        emit(runDoctor(db));
+      }
+      break;
+    }
     default:
       console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
   }
@@ -651,7 +698,16 @@ async function main() {
   // imports, `incidents` probes a manifest — all can work before any
   // capability has been discovered — so they are exempt, and report their own
   // emptiness rather than "no graph".
-  const ledgerCommands = new Set(['work', 'usage', 'portfolio', 'incidents', 'incident']);
+  const ledgerCommands = new Set([
+    'work',
+    'usage',
+    'portfolio',
+    'incidents',
+    'incident',
+    'connect',
+    'init-rules',
+    'rules',
+  ]);
   if (cmd && !ledgerCommands.has(cmd) && cmd !== 'seed' && cmd !== 'where' && cmd !== 'help') {
     const seeded = db.prepare('SELECT COUNT(*) AS n FROM capabilities').get();
     if (!seeded?.n) {
