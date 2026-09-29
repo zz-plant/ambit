@@ -29,6 +29,19 @@ test('something that is not a browser must present the token', () => {
   expect(mayEditConfig('/api/config/mcp-snippet', '', undefined)).toBe(false);
 });
 
+test('the queue, which decides many proposals at once, needs the token without a browser', () => {
+  // The per-id decision routes are open to a local script. One request that
+  // signs up to fifty is not, and the page itself still needs nothing.
+  for (const path of ['/api/proposals/approve', '/api/proposals/reject']) {
+    expect(mayEditConfig(path, '', undefined)).toBe(false);
+    expect(mayEditConfig(path, '', 'wrong')).toBe(false);
+    expect(mayEditConfig(path, '', TOKEN)).toBe(true);
+    expect(mayEditConfig(path, '', undefined, 'same-origin')).toBe(true);
+    expect(mayEditConfig(path, 'http://localhost:3000', undefined)).toBe(true);
+    expect(mayEditConfig(path, 'https://evil.example', TOKEN)).toBe(false);
+  }
+});
+
 test('a token of the wrong length is refused, not compared', () => {
   // timingSafeEqual throws on a length mismatch; the guard has to handle that
   // rather than turning a bad header into a 500.

@@ -24,6 +24,9 @@ import {
   type LoopSince,
   type LoopSnapshot,
   type ProposalRow,
+  type QueueDecisionRequest,
+  type QueueDecisionResponse,
+  type QueueDecisionResult,
   type RejectResponse,
   type RepoScanResponse,
 } from '../../shared/api';
@@ -223,6 +226,11 @@ interface StoreState {
     actor?: string
   ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
   rejectProposal: (proposalId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Several drafts, each approved or turned down on its own; the answer is per id. */
+  decideQueue: (
+    decision: 'approve' | 'reject',
+    ids: string[]
+  ) => Promise<{ ok: boolean; results: QueueDecisionResult[]; error?: string }>;
   loadBriefing: () => Promise<void>;
   loadUnmapped: () => Promise<void>;
   loadAudit: () => Promise<void>;
@@ -408,6 +416,55 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: false, error: err?.error || 'Could not record the decision' };
     } catch (e) {
       return { ok: false, error: errorMessage(e) };
+    }
+  },
+
+  /**
+   * The queue. Live, every id travels with the hash its card was drawn from,
+   * and the engine refuses one that changed since while the rest go ahead.
+   * In the demo the drafts are marked here, as the per-id paths mark them.
+   */
+  decideQueue: async (decision: 'approve' | 'reject', ids: string[]) => {
+    const shown = get().proposals.filter(p => ids.includes(p.id) && p.status === 'draft');
+    if (get().demo || !(await backendAvailable())) {
+      const decided = new Set(shown.map(p => p.id));
+      set(state => ({
+        proposals: state.proposals.map(p =>
+          !decided.has(p.id)
+            ? p
+            : decision === 'approve'
+              ? {
+                  ...p,
+                  status: 'approved' as const,
+                  approved_by: WEB_ACTOR,
+                  approved_at: new Date().toISOString(),
+                }
+              : { ...p, status: 'rejected' as const }
+        ),
+      }));
+      return { ok: true, results: shown.map(p => ({ id: p.id, decided: true as const })) };
+    }
+    try {
+      const request: QueueDecisionRequest = {
+        items: shown.map(p => ({ id: p.id, proposalHash: p.proposal_hash ?? '' })),
+      };
+      const res = await fetch(`/api/proposals/${decision}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      const data = (await res.json()) as ApiResult<QueueDecisionResponse>;
+      if (isApiError(data) || !res.ok) {
+        return {
+          ok: false,
+          results: [],
+          error: isApiError(data) ? data.error : 'Could not record the decisions',
+        };
+      }
+      await get().loadProposals();
+      return { ok: true, results: data.results };
+    } catch (e) {
+      return { ok: false, results: [], error: errorMessage(e) };
     }
   },
 

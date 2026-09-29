@@ -27,7 +27,7 @@ import {
   loopView,
   auditView,
 } from '../engine/views.ts';
-import { approveProposal, ensureActor, rejectProposal } from '../engine/governance.ts';
+import { approveProposal, decideShown, ensureActor, rejectProposal } from '../engine/governance.ts';
 import { briefingText, TOKEN_BUDGET } from '../engine/briefing.ts';
 import {
   beginRun,
@@ -67,6 +67,8 @@ import type {
   HealthResponse,
   McpSnippetResponse,
   ProposalsResponse,
+  QueueDecisionRequest,
+  QueueDecisionResponse,
   RejectRequest,
   RejectResponse,
   TechTreeResponse,
@@ -446,6 +448,45 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
       return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
     }
     return json<LoopResponse>(withGraph(loopView));
+  }
+
+  // The queue: several drafts, each approved or turned down on its own. The
+  // actor is the web actor whatever the body says, each id is bound to the
+  // hash the page showed, and the answer is per id, since one refusal does
+  // not undo the rest. Approving never applies. Both paths are config routes
+  // (src/server/config.ts), so a request with no browser behind it needs the
+  // token: one of these decides up to fifty where the per-id routes decide one.
+  const queue =
+    pathname === '/api/proposals/approve'
+      ? 'approve'
+      : pathname === '/api/proposals/reject'
+        ? 'reject'
+        : null;
+  if (queue && method === 'POST') {
+    let body: QueueDecisionRequest;
+    try {
+      body = await readJsonBody(req);
+    } catch {
+      return json({ error: 'Invalid JSON' }, 400);
+    }
+    const result = withGraph(db => {
+      ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
+      return decideShown(db, queue, body?.items, WEB_ACTOR);
+    });
+    if ('error' in result) return json(result, 400);
+    for (const r of result.results) {
+      if (!r.decided) continue;
+      broadcast({
+        type: queue === 'approve' ? 'ProposalApproved' : 'ProposalRejected',
+        proposalId: r.id,
+        actor: WEB_ACTOR,
+      });
+    }
+    return json<QueueDecisionResponse>({
+      decision: queue === 'approve' ? 'approved' : 'rejected',
+      decided_by: WEB_ACTOR,
+      results: result.results,
+    });
   }
 
   // The browser approval broker. It approves and mints the signed artifact the

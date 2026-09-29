@@ -23,6 +23,7 @@ import { roiSummary } from './roi.ts';
 import { affordanceDomains, singlePointsOfFailure } from './inference.ts';
 import { deficits } from './planning.ts';
 import { auditStream } from './audit.ts';
+import { proposalHash } from './approval.ts';
 import {
   AUTHORITY_MODES,
   CHECK_HISTORY_RUNS,
@@ -445,6 +446,9 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
       ? (r.status as ProposalStatus)
       : 'draft',
     decision: decisionFor(r, learned),
+    // The hash an approval artifact binds, so the queue can send back what
+    // it showed and a proposal that changed since is refused, not signed.
+    proposal_hash: proposalHash(db, r),
   })) as ProposalRow[];
 }
 

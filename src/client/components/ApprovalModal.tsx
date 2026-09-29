@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ProposalDecision } from '../../shared/api';
+import type { ProposalDecision, ProposalRow, QueueDecisionResult } from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { WEB_ACTOR } from '../utils/copy';
@@ -110,6 +110,44 @@ function DecisionRows({ d }: { d: ProposalDecision }) {
   );
 }
 
+/** What the last queue decision did, one line per id. */
+interface QueueReport {
+  decision: 'approve' | 'reject';
+  results: QueueDecisionResult[];
+  error?: string;
+}
+
+/**
+ * The record of this person's decisions leans against something this draft
+ * has, so the queue starts it unticked: one click should not sign what the
+ * record says they usually refuse.
+ */
+const leansRefused = (p: ProposalRow) =>
+  Boolean(p.decision?.precedent.some(l => l.leans === 'refused'));
+
+/** The queue's answer, said once per outcome, with each refusal's reason. */
+function QueueReportLines({ report }: { report: QueueReport }) {
+  const decided = report.results.filter(r => r.decided).map(r => r.id);
+  return (
+    <div className="gov-queue-report" role="status">
+      {decided.length > 0 && (
+        <p className="gov-signed">
+          {report.decision === 'approve' ? 'Approved and signed' : 'Turned down'}:{' '}
+          {decided.join(', ')}
+        </p>
+      )}
+      {report.results.map(r =>
+        r.decided ? null : (
+          <p key={r.id} className="gov-error">
+            {r.id}: {r.refused}
+          </p>
+        )
+      )}
+      {report.error && <p className="gov-error">{report.error}</p>}
+    </div>
+  );
+}
+
 /** How the signer reads in the panel: the browser's own approvals are "you". */
 function signerLabel(actor: string | null | undefined): string {
   if (!actor || actor === WEB_ACTOR) return 'you';
@@ -120,7 +158,13 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const proposals = useAmbitStore(s => s.proposals);
   const approveProposal = useAmbitStore(s => s.approveProposal);
   const rejectProposal = useAmbitStore(s => s.rejectProposal);
+  const decideQueue = useAmbitStore(s => s.decideQueue);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  // The queue: which waiting drafts are ticked. Null until a box is touched,
+  // and until then every draft is ticked except one the record leans against.
+  const [picked, setPicked] = useState<Set<string> | null>(null);
+  const [queueBusy, setQueueBusy] = useState<'approve' | 'reject' | null>(null);
+  const [queueReport, setQueueReport] = useState<QueueReport | null>(null);
   const [copiedId, copy] = useCopied();
   const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved' | 'rejected'>('all');
   // A no in progress: which card, and the reason typed so far. The reason is
@@ -157,6 +201,28 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   };
 
   const copyApplyCmd = (id: string) => copy(id, `ambit apply ${id}`);
+
+  // Several drafts are a queue, decided together wherever they are listed:
+  // each one still signed or turned down on its own, against what it showed.
+  const drafts = proposals.filter(p => p.status === 'draft');
+  const selected = picked ?? new Set(drafts.filter(p => !leansRefused(p)).map(p => p.id));
+  const chosen = drafts.filter(p => selected.has(p.id)).map(p => p.id);
+  const showQueue = (statusTab === 'all' || statusTab === 'draft') && drafts.length >= 2;
+  const allTicked = drafts.length > 0 && chosen.length === drafts.length;
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setPicked(next);
+  };
+  const decideChosen = async (decision: 'approve' | 'reject') => {
+    setQueueBusy(decision);
+    setQueueReport(null);
+    const result = await decideQueue(decision, chosen);
+    setQueueBusy(null);
+    setQueueReport({ decision, results: result.results, error: result.error });
+    if (result.ok) setPicked(null);
+  };
 
   const filtered = proposals.filter(p => statusTab === 'all' || p.status === statusTab);
 
@@ -217,6 +283,44 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
           ))}
         </div>
 
+        {/* The queue. No comment box: an approval has no field to keep one
+            in yet, and a box whose words are dropped would be a lie. */}
+        {showQueue && (
+          <div className="gov-queue">
+            <label className="gov-queue-all">
+              <input
+                type="checkbox"
+                checked={allTicked}
+                onChange={() => setPicked(new Set(allTicked ? [] : drafts.map(p => p.id)))}
+              />
+              Select all
+            </label>
+            <span className="gov-actions">
+              <button
+                type="button"
+                className="tp-btn-sm"
+                disabled={!chosen.length || queueBusy !== null}
+                onClick={() => decideChosen('reject')}
+              >
+                {queueBusy === 'reject' ? 'Turning down…' : `Turn down ${chosen.length}`}
+              </button>
+              <button
+                type="button"
+                className="tp-btn tp-btn--primary"
+                disabled={!chosen.length || queueBusy !== null}
+                onClick={() => decideChosen('approve')}
+              >
+                {queueBusy === 'approve' ? 'Signing…' : `Approve ${chosen.length} and sign`}
+              </button>
+            </span>
+            <p className="gov-hint">
+              Each is signed or turned down on its own, as it is shown here. A proposal that changed
+              since is refused, and nothing is applied.
+            </p>
+          </div>
+        )}
+        {queueReport && <QueueReportLines report={queueReport} />}
+
         {filtered.length === 0 ? (
           <div className="gov-empty">
             {proposals.length === 0
@@ -241,7 +345,24 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   className={`gov-card ${isApproved ? 'gov-card--approved' : ''} ${isRejected ? 'gov-card--rejected' : ''}`}
                 >
                   <div className="gov-card-head">
-                    <code className="gov-id">{p.id}</code>
+                    {showQueue && p.status === 'draft' ? (
+                      <label className="gov-pick">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(p.id)}
+                          onChange={() => toggle(p.id)}
+                          aria-label={`Include ${p.id}`}
+                        />
+                        <code className="gov-id">{p.id}</code>
+                        {leansRefused(p) && (
+                          <span className="gov-pick-note">
+                            unticked to start: your record leans against it
+                          </span>
+                        )}
+                      </label>
+                    ) : (
+                      <code className="gov-id">{p.id}</code>
+                    )}
                     <span
                       className={`gov-status ${isApproved ? 'gov-status--approved' : ''} ${isRejected ? 'gov-status--rejected' : ''}`}
                     >

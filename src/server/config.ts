@@ -127,8 +127,19 @@ export function corsHeaders(origin: string): Record<string, string> {
  * Telemetry is deliberately not on this list: it is append-only observation
  * with no read-back, the agent-runtime plugin posts to it unattended, and
  * requiring a secret there would buy little and break that.
+ *
+ * The two queue routes are on it though they never touch the config. One
+ * request there signs or turns down as many as fifty proposals as the person
+ * at the browser, where the per-id routes decide one, so something with no
+ * browser behind it has to hold the token to do it.
  */
-const CONFIG_ROUTES = ['/api/config', '/api/config/apply', '/api/config/mcp-snippet'];
+const CONFIG_ROUTES = [
+  '/api/config',
+  '/api/config/apply',
+  '/api/config/mcp-snippet',
+  '/api/proposals/approve',
+  '/api/proposals/reject',
+];
 
 /** Same shape as the approval key: a 0600 file beside the agent config. */
 export function apiToken(): string {

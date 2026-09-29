@@ -11,6 +11,7 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, expect, test } from 'vitest';
@@ -49,6 +50,8 @@ beforeAll(async () => {
     OPENCODE_CONFIG: configPath,
     INFRA_MANIFEST: join(dir, 'none.json'),
     AMBIT_API_TOKEN: TOKEN,
+    // An approval signs with this, so no test reads or creates the real key.
+    AMBIT_APPROVAL_KEY: 'api-test-approval-key',
     NODE_NO_WARNINGS: '1',
   };
   execFileSync(
@@ -257,6 +260,108 @@ test('telemetry stays open, because the runtime plugin posts to it unattended', 
     body: JSON.stringify({ run: { id: 'run-test', goal: 'a task', runType: 'task' } }),
   });
   expect(r.status).toBe(200);
+});
+
+/** Drafts written into the test graph the way a propose leaves them. */
+function drafts(...ids: string[]) {
+  const db = new DatabaseSync(join(dir, 'graph.db'));
+  db.exec('PRAGMA busy_timeout = 5000');
+  const insert = db.prepare(
+    "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES (?, ?, 'draft', '[]', '{}')"
+  );
+  for (const id of ids) insert.run(id, `reach what ${id} names`);
+  db.close();
+}
+
+/** The proposals as the page reads them, and each one's shown hash. */
+async function shown(...ids: string[]) {
+  const { proposals } = await json(await fetch(`${base}/api/proposals`));
+  const byId = new Map(proposals.map((p: any) => [p.id, p]));
+  return {
+    byId,
+    items: ids.map(id => ({ id, proposalHash: (byId.get(id) as any).proposal_hash })),
+  };
+}
+
+const queue = (decision: 'approve' | 'reject', body: unknown, headers: Record<string, string>) =>
+  fetch(`${base}/api/proposals/${decision}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+
+test('approving one draft signs it as the person at the page and applies nothing', async () => {
+  drafts('prop-one');
+  const r = await fetch(`${base}/api/proposals/prop-one/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  expect(r.status).toBe(200);
+  const body = await json(r);
+  expect(body.approved_by).toBe('human:web');
+  expect(body.artifact.sig).toMatch(/^[0-9a-f]{64}$/);
+  const { byId } = await shown();
+  expect(byId.get('prop-one')).toMatchObject({ status: 'approved', applied_at: null });
+});
+
+test('the queue signs each shown draft on its own, as the web actor, and never applies', async () => {
+  drafts('prop-q1', 'prop-q2', 'prop-q3', 'prop-q4');
+  const { items } = await shown('prop-q1', 'prop-q2', 'prop-q3');
+
+  // Something with no browser behind it and no token decides nothing.
+  expect((await queue('approve', { items }, {})).status).toBe(401);
+
+  // One of them changes after the page drew it.
+  const db = new DatabaseSync(join(dir, 'graph.db'));
+  db.exec('PRAGMA busy_timeout = 5000');
+  db.prepare("UPDATE proposals SET goal = 'reach something else' WHERE id = 'prop-q2'").run();
+  db.close();
+
+  // An actor in the body is not read: the queue decides as the person at the page.
+  const r = await queue('approve', { items, actor: 'human:mallory' }, { 'X-Ambit-Token': TOKEN });
+  expect(r.status).toBe(200);
+  const body = await json(r);
+  expect(body.decided_by).toBe('human:web');
+  expect(body.results.map((x: any) => [x.id, x.decided])).toEqual([
+    ['prop-q1', true],
+    ['prop-q2', false],
+    ['prop-q3', true],
+  ]);
+  expect(body.results[1].refused).toContain('changed after it was shown');
+
+  const { byId } = await shown();
+  expect(byId.get('prop-q1')).toMatchObject({ status: 'approved', approved_by: 'human:web' });
+  expect((byId.get('prop-q1') as any).applied_at).toBeNull();
+  expect((byId.get('prop-q2') as any).status).toBe('draft');
+  expect((byId.get('prop-q4') as any).status).toBe('draft');
+});
+
+test('turning down from the queue refuses an approved proposal and keeps its approval', async () => {
+  drafts('prop-r1', 'prop-r2');
+  const first = await shown('prop-r1');
+  await queue('approve', { items: first.items }, { 'X-Ambit-Token': TOKEN });
+  const { items, byId } = await shown('prop-r1', 'prop-r2');
+  const artifact = (byId.get('prop-r1') as any).approval_artifact;
+  expect(artifact).toBeTruthy();
+
+  // The page itself, on a local origin, needs no token.
+  const r = await queue('reject', { items }, { Origin: 'http://localhost:3000' });
+  expect(r.status).toBe(200);
+  const body = await json(r);
+  expect(body.results[0]).toMatchObject({ id: 'prop-r1', decided: false });
+  expect(body.results[0].refused).toContain('drafts only');
+  expect(body.results[1]).toEqual({ id: 'prop-r2', decided: true });
+
+  const after = await shown();
+  expect(after.byId.get('prop-r1')).toMatchObject({
+    status: 'approved',
+    approval_artifact: artifact,
+  });
+  expect((after.byId.get('prop-r2') as any).status).toBe('rejected');
+
+  // A list it cannot read is refused whole.
+  expect((await queue('reject', { items: [] }, { 'X-Ambit-Token': TOKEN })).status).toBe(400);
 });
 
 test('the trail is one stream, newest first, with an outcome only where one was recorded', async () => {

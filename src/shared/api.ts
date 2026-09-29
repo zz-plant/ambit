@@ -268,6 +268,12 @@ export interface ProposalRow {
   approval_artifact?: string | null;
   economic_case?: string | null;
   decision?: ProposalDecision;
+  /**
+   * What the row hashes to, as an approval artifact binds it. The queue sends
+   * it back with each id, so a proposal that changed after it was shown is
+   * refused, not signed. Absent on a hand-written demo row.
+   */
+  proposal_hash?: string;
 }
 
 export interface ProposalsResponse {
@@ -306,6 +312,34 @@ export interface RejectResponse {
   proposal: string;
   rejected_by: string;
   reason?: string;
+}
+
+// ── POST /api/proposals/approve, POST /api/proposals/reject ──────────────────
+
+/** A draft as the page showed it: its id, and the `proposal_hash` its card was drawn from. */
+export interface ShownProposal {
+  id: string;
+  proposalHash: string;
+}
+
+/**
+ * The queue: explicit drafts, decided one by one as the web actor. There is
+ * no actor field, and none is read: whoever is at the loopback page is the
+ * person the per-id routes record too.
+ */
+export interface QueueDecisionRequest {
+  items: ShownProposal[];
+}
+
+/** One id's answer. A refusal says why; the others still went ahead. */
+export type QueueDecisionResult =
+  | { id: string; decided: true }
+  | { id: string; decided: false; refused: string };
+
+export interface QueueDecisionResponse {
+  decision: 'approved' | 'rejected';
+  decided_by: string;
+  results: QueueDecisionResult[];
 }
 
 // ── GET /api/audit ───────────────────────────────────────────────────────────
@@ -598,6 +632,8 @@ export interface ApiRoutes {
   '/api/tech-tree': TechTreeResponse;
   '/api/briefing': BriefingResponse;
   '/api/proposals': ProposalsResponse;
+  '/api/proposals/approve': QueueDecisionResponse;
+  '/api/proposals/reject': QueueDecisionResponse;
   '/api/audit': AuditResponse;
   '/api/attention': AttentionResponse;
   '/api/loop': LoopResponse;
