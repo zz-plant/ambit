@@ -19,6 +19,25 @@ import { PROVEN, REACHED_STATES } from './vocabulary.ts';
  * every non-curated name with its category and an index, for sharing the
  * shape of a setup without its contents.
  */
+
+/**
+ * The live map's colours, transcribed from the `:root` tokens in
+ * src/client/App.css under the same names. A snapshot that linked the
+ * stylesheet would no longer be one file, so it carries a copy, and
+ * consistency.test.ts fails when the two drift.
+ */
+export const SNAPSHOT_TOKENS = {
+  'bg-canvas': '#0f1013',
+  accent: '#7aa2f7',
+  'on-accent': '#0f1013',
+  'text-primary': '#e8e8ea',
+  'text-muted': '#8a8e96',
+  ok: '#56c28a',
+  error: '#ef6461',
+  'node-reached': '#263045',
+  'node-reached-ring': '#4f689c',
+} as const;
+
 export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
   const caps = db
     .prepare(
@@ -89,6 +108,7 @@ export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
     });
   });
 
+  const t = SNAPSHOT_TOKENS;
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const edgeSvg = deps
@@ -96,7 +116,7 @@ export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
     .map(d => {
       const a = pos.get(d.f)!,
         b = pos.get(d.t)!;
-      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#334155" stroke-width="0.6" ${d.hard ? '' : 'stroke-dasharray="4,3"'} opacity="0.45"/>`;
+      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${t['text-muted']}" stroke-width="0.6" ${d.hard ? '' : 'stroke-dasharray="4,3"'} opacity="0.3"/>`;
     })
     .join('\n');
 
@@ -105,23 +125,28 @@ export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
       const p = pos.get(c.id)!;
       const name = display(c);
       const label = name.length > 24 ? name.slice(0, 22) + '…' : name;
-      const fill = reached(c) ? (failing(c) ? '#7f1d1d' : '#1f7a8c') : 'none';
-      const stroke = reached(c) ? '#38bdf8' : '#475569';
+      // The map's states: reached is the quiet filled one, and a failing node
+      // keeps the fill and takes the error ring. An open ring is faded here,
+      // where the map leaves it at full strength, because the snapshot draws
+      // no next step louder than it and at this size it would outshine what
+      // is reached.
+      const fill = reached(c) ? t['node-reached'] : t['bg-canvas'];
+      const stroke = !reached(c) ? t['text-muted'] : failing(c) ? t.error : t['node-reached-ring'];
       const badge =
         reached(c) && proven(c)
-          ? `<circle cx="${p.x + R - 1}" cy="${p.y - R + 1}" r="5" fill="#059669"/><text x="${p.x + R - 1}" y="${p.y - R + 4}" text-anchor="middle" font-size="7" fill="#ecfdf5">✓</text>`
+          ? `<circle cx="${p.x + R - 1}" cy="${p.y - R + 1}" r="5" fill="${t.ok}" stroke="${t['bg-canvas']}" stroke-width="1.5"/><text x="${p.x + R - 1}" y="${p.y - R + 4}" text-anchor="middle" font-size="7" fill="${t['on-accent']}">✓</text>`
           : reached(c) && failing(c)
-            ? `<circle cx="${p.x + R - 1}" cy="${p.y - R + 1}" r="5" fill="#dc2626"/><text x="${p.x + R - 1}" y="${p.y - R + 4}" text-anchor="middle" font-size="7" fill="#fef2f2">!</text>`
+            ? `<circle cx="${p.x + R - 1}" cy="${p.y - R + 1}" r="5" fill="${t.error}" stroke="${t['bg-canvas']}" stroke-width="1.5"/><text x="${p.x + R - 1}" y="${p.y - R + 4}" text-anchor="middle" font-size="7" fill="${t['on-accent']}">!</text>`
             : '';
-      return `<circle cx="${p.x}" cy="${p.y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" opacity="${reached(c) ? 1 : 0.5}"/>${badge}
-<text x="${p.x}" y="${p.y + R + 12}" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="9.5" fill="${reached(c) ? '#cbd5e1' : '#64748b'}">${esc(label)}</text>`;
+      return `<circle cx="${p.x}" cy="${p.y}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" stroke-opacity="${reached(c) ? 1 : 0.5}"/>${badge}
+<text x="${p.x}" y="${p.y + R + 12}" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="9.5" fill="${reached(c) ? t['text-primary'] : t['text-muted']}">${esc(label)}</text>`;
     })
     .join('\n');
 
   const headers = order
     .map((k, ci) => {
       const title = k.startsWith('era:') ? eras[k.slice(4)] || `Era ${k.slice(4)}` : k;
-      return `<text x="${40 + ci * COL_W + COL_W / 2}" y="${TOP - 28}" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="11" letter-spacing="2" fill="#7dd3fc">${esc(String(title).toUpperCase())}</text>`;
+      return `<text x="${40 + ci * COL_W + COL_W / 2}" y="${TOP - 28}" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="11" letter-spacing="2" fill="${t['text-primary']}">${esc(String(title).toUpperCase())}</text>`;
     })
     .join('\n');
 
@@ -133,16 +158,16 @@ export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>An agent capability map — Ambit</title>
-<style>body{margin:0;background:#0b1120;color:#cbd5e1;font-family:ui-monospace,Menlo,monospace}
-header{padding:24px 32px 8px}h1{font-size:18px;margin:0;color:#e2e8f0}
-p{font-size:12px;color:#64748b;margin:6px 0 0}
+<style>body{margin:0;background:${t['bg-canvas']};color:${t['text-primary']};font-family:ui-monospace,Menlo,monospace}
+header{padding:24px 32px 8px}h1{font-size:18px;margin:0;color:${t['text-primary']}}
+p{font-size:12px;color:${t['text-muted']};margin:6px 0 0}
 main{overflow:auto;padding:0 16px}
-footer{padding:16px 32px 28px;font-size:12px;color:#64748b}a{color:#7dd3fc}</style></head>
+footer{padding:16px 32px 28px;font-size:12px;color:${t['text-muted']}}a{color:${t.accent}}</style></head>
 <body>
 <header><h1>An agent capability map</h1>
 <p>${reachedCount} of ${total} capabilities reached · ${provenCount} proven by a passing check · filled circles are reached, ✓ is a passing check, ! is a failing one</p></header>
 <main><svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-<rect width="${width}" height="${height}" fill="#0b1120"/>
+<rect width="${width}" height="${height}" fill="${t['bg-canvas']}"/>
 ${headers}
 ${edgeSvg}
 ${nodeSvg}
