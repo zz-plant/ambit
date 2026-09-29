@@ -1,9 +1,9 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import AppDeck, { type MapCounts } from './components/AppDeck';
+import AppDeck, { mapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
 import AuditView from './components/AuditView';
 import { dayOf, itemsAsOf, momentOf, tickAt } from './components/civ/history';
-import { isEntry, isNext, isProven, visibleItems } from './components/civ/layout';
+import { isEntry, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
@@ -292,17 +292,10 @@ export default function App() {
 
   // The header counts one population per view: the map's nodes by state, or
   // the setup's entries by whether they are enabled. It used to count both in
-  // one fraction, so the demo read "42 of 60" over a tree of 33.
-  const mapItems = visibleItems(shown);
-  const counts: MapCounts = {
-    verified: mapItems.filter(isProven).length,
-    unproven: mapItems.filter(i => i.status === 'built' && !isProven(i)).length,
-    next: mapItems.filter(i => i.status !== 'built' && isNext(i)).length,
-    blocked: mapItems.filter(i => i.status !== 'built' && !isNext(i)).length,
-  };
-  // An observation recorded before lifecycles were cannot split reached by
+  // one fraction, so the demo read "42 of 60" over a tree of 33. An
+  // observation recorded before lifecycles were cannot split reached by
   // evidence, so the header counts it whole.
-  if (tick && !tick.lifecycles) counts.reached = mapItems.filter(i => i.status === 'built').length;
+  const counts = mapCounts(visibleItems(shown), !(tick && !tick.lifecycles));
   const entries = items.filter(isEntry);
   const hasTree = items.some(i => !isEntry(i));
   const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);

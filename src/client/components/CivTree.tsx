@@ -20,6 +20,7 @@ import {
   costOf,
   edgePath,
   eraOf,
+  isFailing,
   isNext,
   isProven,
   type JointMark,
@@ -491,9 +492,9 @@ export default function CivTree({
     'Runs on a device': i => jointMark(i) === 'device',
     [GAINED_THIS_WEEK]: i => weekNames.gained.has(i.name),
     [LOST_THIS_WEEK]: i => weekNames.lost.has(i.name),
-    // The header's two halves of reached light the same way its segments read.
+    // The header's segments light the same nodes they count.
     Verified: isProven,
-    Unproven: i => i.status === 'built' && !isProven(i),
+    Unproven: i => i.status === 'built' && !isProven(i) && !isFailing(i),
     'Next step': i => i.status !== 'built' && isNext(i),
     Blocked: i => i.status !== 'built' && !isNext(i),
     Server: i => i.type === 'mcp-server',

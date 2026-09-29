@@ -198,7 +198,7 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
   renderToStaticMarkup(
     <AppDeck
       view="tree"
-      counts={{ verified: 1, unproven: 0, next: 1, blocked: 1 }}
+      counts={{ verified: 1, unproven: 0, failing: 0, next: 1, blocked: 1 }}
       entries={null}
       connected={false}
       draftCount={0}
@@ -219,7 +219,7 @@ test('the header says whose day its counts are, and draws no split nobody measur
 
   // An observation from before lifecycles were recorded: reached is one count.
   const unsplit = text(
-    deck({ counts: { verified: 0, unproven: 0, next: 1, blocked: 1, reached: 3 } })
+    deck({ counts: { verified: 0, unproven: 0, failing: 0, next: 1, blocked: 1, reached: 3 } })
   );
   expect(unsplit).toMatch(/3\s*reached/);
   expect(unsplit).not.toMatch(/verified/);

@@ -14,9 +14,15 @@ import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoProposals, demoTreeGraph } from '../store/demo';
-import { authorityMark, outageSplit } from './civ/layout';
+import {
+  authorityMark,
+  buildColumns,
+  columnProgress,
+  outageSplit,
+  visibleItems,
+} from './civ/layout';
 import { SimulationBanner } from './civ/SimulationBanner';
-import AppDeck from './AppDeck';
+import AppDeck, { mapCounts } from './AppDeck';
 import CivTree from './CivTree';
 import ApprovalModal from './ApprovalModal';
 import { RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
@@ -57,6 +63,7 @@ afterEach(() => {
     loopEmpty: false,
     backend: 'unknown',
     configMcp: {},
+    spotlight: null,
   });
 });
 
@@ -64,7 +71,7 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
   renderToStaticMarkup(
     <AppDeck
       view="tree"
-      counts={{ verified: 1, unproven: 0, next: 1, blocked: 1 }}
+      counts={{ verified: 1, unproven: 0, failing: 0, next: 1, blocked: 1 }}
       entries={null}
       connected={false}
       draftCount={0}
@@ -333,7 +340,7 @@ test('the header leads with what is verified, and each count is a control', () =
   // It read "42 of 60 reached" over a tree of 33: entries counted with nodes,
   // and the least informative state leading. Then "16 reached", with a failing
   // check counted like a passing one. Reached is split by its evidence now.
-  const html = deck({ counts: { verified: 9, unproven: 3, next: 5, blocked: 3 } });
+  const html = deck({ counts: { verified: 9, unproven: 3, failing: 0, next: 5, blocked: 3 } });
   const text = html.replace(/<[^>]+>/g, '');
   expect(text).toMatch(/9\s*verified/);
   expect(text).toMatch(/3\s*unproven/);
@@ -341,11 +348,61 @@ test('the header leads with what is verified, and each count is a control', () =
   expect(html).toContain('Highlight Next step on the map');
   expect(html).toContain('Highlight Blocked on the map');
   expect(html).not.toContain('of 20');
+  // Nothing failing is no segment at all, not a count of zero.
+  expect(text).not.toMatch(/failing/);
+
+  // A check that fails is its own segment, lit as its legend key lights it.
+  const failing = deck({ counts: { verified: 9, unproven: 2, failing: 1, next: 5, blocked: 3 } });
+  expect(failing.replace(/<[^>]+>/g, '')).toMatch(/1\s*failing/);
+  expect(failing).toContain('Highlight Failing on the map');
+  expect(failing).toContain('fig-eras-failing');
 
   // Off the map, the pill counts what that view lists.
   const setup = deck({ view: 'config', counts: null, entries: { enabled: 9, total: 11 } });
   expect(setup).toContain('9 of 11 enabled');
   expect(setup).not.toContain('Highlight');
+});
+
+test('the pill and the era headers count one map: a failing node is apart from reached', () => {
+  // Rule 6. The pill filed the demo's failing node under unproven, so it said
+  // 13 verified and 3 unproven, 16 reached, over era headers that added up to
+  // 15 reached and 1 failing.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  const nodes = visibleItems(items);
+  const { cols, colOrder } = buildColumns(nodes, connections);
+  const columns = colOrder.map(c => columnProgress(cols[c] ?? []));
+  const sum = (key: 'reached' | 'failing' | 'next' | 'blocked') =>
+    columns.reduce((n, p) => n + p[key], 0);
+
+  const counts = mapCounts(nodes);
+  expect(counts.failing).toBe(1);
+  expect(counts.verified + counts.unproven).toBe(sum('reached'));
+  expect(counts.failing).toBe(sum('failing'));
+  expect(counts.next).toBe(sum('next'));
+  expect(counts.blocked).toBe(sum('blocked'));
+  expect(counts.reached).toBeUndefined();
+
+  // An observation with no lifecycles counts reached whole, and nothing as failing.
+  expect(mapCounts(nodes, false).reached).toBe(nodes.filter(i => i.status === 'built').length);
+
+  // Each segment lights what it counts: unproven leaves the failing node dim,
+  // and failing lights it.
+  const opacityOf = (spotlight: string) => {
+    seed({ items, connections, spotlight });
+    const html = renderToStaticMarkup(
+      <CivTree
+        items={items}
+        connections={connections}
+        selectedId={null}
+        hoveredId={null}
+        onSelect={() => {}}
+        onHover={() => {}}
+      />
+    );
+    return html.match(/opacity="([\d.]+)"[^>]*aria-label="Browser Automation, possibility"/)?.[1];
+  };
+  expect(opacityOf('Unproven')).toBe('0.15');
+  expect(opacityOf('Failing')).toBe('1');
 });
 
 test('the detail panel words a status for the graph the node came from', () => {
