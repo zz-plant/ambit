@@ -95,6 +95,20 @@ export interface ConferredAction {
   ungranted?: true;
 }
 
+/** How many runs of a check `meta.history` carries, and so how many slots a strip draws. */
+export const CHECK_HISTORY_RUNS = 14;
+
+/**
+ * One run of a declared check. `id` is its row in the evidence ledger, which
+ * orders runs where a timestamp cannot, since that resolves to the second and a
+ * batch of checks lands inside one. It also orders a failure on one node against
+ * a failure on another, which a reader picking the worst of several has to do.
+ */
+export interface CheckRun {
+  id: number;
+  passed: boolean;
+}
+
 export interface TreeItemMeta {
   /** The client renders meta generically, so extra keys have to be allowed. */
   [key: string]: unknown;
@@ -117,6 +131,8 @@ export interface TreeItemMeta {
   credentials?: string[];
   /** Declared checks that ran: how many passed, of how many. */
   reliability?: { passed: number; total: number };
+  /** The last runs of its check, oldest first. Absent when none has run. */
+  history?: CheckRun[];
   /** The effective, unscoped modes: may it act, and may it look, without asking. */
   authority?: NodeAuthority;
   /** What the runtime reported failing here in the last thirty days. */

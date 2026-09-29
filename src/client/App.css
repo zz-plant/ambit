@@ -565,10 +565,11 @@ code, pre, .code, .sp-cli-cmd {
   flex-direction: column;
 }
 
-/* One entry: name, whether it is on, what a check said, what it provides. */
+/* One entry: name, whether it is on, what its checks said and how they have
+   gone, what it provides. */
 .setup-row {
   display: grid;
-  grid-template-columns: minmax(200px, 1.3fr) 90px 110px minmax(0, 2fr);
+  grid-template-columns: minmax(200px, 1.3fr) 90px 200px minmax(0, 2fr);
   align-items: center;
   gap: 14px;
   padding: 7px 8px;
@@ -618,10 +619,28 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-muted);
 }
 
+/* The verdict, the strip of runs behind it, and on a failing row the command
+   that finds out why. The verdict has a fixed width so the strips of every row
+   start at the same place. */
+.setup-row-check {
+  display: grid;
+  grid-template-columns: 96px auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 3px;
+  min-width: 0;
+}
+
 .setup-row-evidence {
   font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.setup-row-verify {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font-size: 11.5px;
 }
 
 /* What the list found, above the list: a failing check, and enabled servers
@@ -986,6 +1005,16 @@ code, pre, .code, .sp-cli-cmd {
   font-size: 12.5px;
   line-height: 1.4;
   color: var(--ok);
+}
+
+/* The runs behind the verdict above: how the check has gone, oldest to newest. */
+.sp-history {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* Never checked, or failing: the finding the panel exists for, so it gets
@@ -2524,6 +2553,41 @@ code, pre, .code, .sp-cli-cmd {
   stroke-width: 1;
 }
 
+/* ── The last runs of one check ──
+   A pass is short and a failure is tall, so the two differ in height before
+   they differ in colour: red and green are one hue to some readers, and the
+   strip has to read for them. Bars never touch, for the same reason. The
+   tokens are the page's, not the dashboard's, because a row in My Setup draws
+   this too. */
+.fig-history {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.fig-history-bar {
+  flex: none;
+  width: 4px;
+  border-radius: 1px;
+}
+
+.fig-history-bar--pass {
+  height: 6px;
+  background: var(--ok);
+}
+
+.fig-history-bar--fail {
+  height: 14px;
+  background: var(--error);
+}
+
+/* A slot the check has not filled: the old end of a short history. */
+.fig-history-bar--none {
+  height: 2px;
+  background: var(--border-bright);
+}
+
 /* ── Two marks on one axis ── */
 .fig-pair {
   display: block;
@@ -3492,7 +3556,7 @@ code, pre, .code, .sp-cli-cmd {
     grid-area: status;
   }
 
-  .setup-row-evidence {
+  .setup-row-check {
     grid-area: evidence;
   }
 

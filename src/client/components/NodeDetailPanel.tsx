@@ -18,7 +18,9 @@ import {
   unlockCascade,
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
+import { HistoryStrip } from './figures';
 import { Term } from './Term';
+import { runsOf } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 
 /**
@@ -112,6 +114,8 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
     reliability && reliability.total > 1
       ? ` · ${reliability.passed} of ${reliability.total} runs passed`
       : '';
+  // The runs behind that count, in order. None recorded means no strip.
+  const history = runsOf(item);
   const authority = item.meta?.authority as
     | { execute: string; observe?: string; ungranted?: boolean }
     | undefined;
@@ -220,6 +224,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
     'providers',
     'credentials',
     'reliability',
+    'history',
     'authority',
     'failures',
     'actions',
@@ -287,6 +292,12 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
             <code>{verifyCmd}</code>
             <span>{copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}</span>
           </button>
+        </div>
+      )}
+      {history.length > 0 && (
+        <div className="sp-history">
+          <span>Recent checks</span>
+          <HistoryStrip runs={history} of={item.name} />
         </div>
       )}
 

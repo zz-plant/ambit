@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
-import { FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
+import { CHECK_RUN, CHECK_RUN_SQL, FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
 import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
 import { ledgerSince } from './ledger.ts';
@@ -24,9 +24,11 @@ import { affordanceDomains, singlePointsOfFailure } from './inference.ts';
 import { deficits } from './planning.ts';
 import {
   AUTHORITY_MODES,
+  CHECK_HISTORY_RUNS,
   NODE_TYPES,
   PROPOSAL_STATUSES,
   type AuthorityMode,
+  type CheckRun,
   type ConferredAction,
   type FailureCount,
   type LoopAuthority,
@@ -140,6 +142,10 @@ export function techTreeView(db: Db): TechTreeResponse {
     /* a graph with no ledger yet */
   }
 
+  // The runs behind that count, so a row can draw how it went and not only how
+  // often it passed.
+  const history = checkHistory(db);
+
   const authority = effectiveAuthority(db);
   const failures = recentFailures(db);
   const granted = grantedIds(db);
@@ -206,6 +212,7 @@ export function techTreeView(db: Db): TechTreeResponse {
       providers: providersOf.get(c.id),
       credentials: credentialsOf.get(c.id),
       reliability: reliability.get(c.id),
+      history: history.get(c.id),
       authority: authorityOf(c.id, c.state, c.kind),
       failures: failures.get(c.id),
       actions: actions.get(c.id),
@@ -347,6 +354,38 @@ function recentFailures(db: Db, days = 30): Map<string, FailureCount[]> {
     }
   } catch {
     /* a database predating failure signals */
+  }
+  return out;
+}
+
+/**
+ * The last runs of each capability's check, oldest first.
+ *
+ * Ordered by ledger row and never by timestamp. `datetime('now')` resolves to
+ * the second and `ambit verify` records a whole batch inside one, so two runs
+ * of a check, or a failure here and another there, can share a time; a row id
+ * cannot. The window is per capability, so a node that is checked often does
+ * not crowd a quiet one out of the ledger's last rows. It counts the same rows
+ * `reliability` does, which is what makes the two agree while a check has run
+ * fewer times than the window holds.
+ */
+function checkHistory(db: Db, runs = CHECK_HISTORY_RUNS): Map<string, CheckRun[]> {
+  const out = new Map<string, CheckRun[]>();
+  try {
+    for (const r of db
+      .prepare(
+        `SELECT capability_id, id, action FROM (
+           SELECT capability_id, id, action,
+                  ROW_NUMBER() OVER (PARTITION BY capability_id ORDER BY id DESC) AS recency
+           FROM session_learning WHERE ${CHECK_RUN_SQL}
+         ) WHERE recency <= ? ORDER BY capability_id, id`
+      )
+      .all<{ capability_id: string; id: number; action: string }>(runs)) {
+      if (!out.has(r.capability_id)) out.set(r.capability_id, []);
+      out.get(r.capability_id)!.push({ id: r.id, passed: r.action === CHECK_RUN.passed });
+    }
+  } catch {
+    /* a graph with no ledger yet */
   }
   return out;
 }

@@ -77,6 +77,7 @@ const unstatedNode: Item = {
     owner: null,
     providers: undefined,
     reliability: undefined,
+    history: undefined,
     authority: undefined,
     failures: undefined,
   },

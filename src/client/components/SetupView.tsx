@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
+import { trailOf, verifyCommand } from '../utils/checkHistory';
 import type { Item } from '../utils/configImporter';
 import { INSTALL } from '../utils/copy';
 import { isConfigEntry, statusLabel, typeLabel } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import { eraOf, isEntry } from './civ/layout';
 import { InfrastructurePanel, RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
+import { HistoryStrip } from './figures';
 import { Term } from './Term';
 
 /**
@@ -93,6 +96,7 @@ export function SetupView({ onShow }: SetupViewProps) {
   const loadUnmapped = useAmbitStore(s => s.loadUnmapped);
   const [kind, setKind] = useState<string>('all');
   const [tab, setTab] = useState<Tab>('entries');
+  const [copied, copy] = useCopied();
 
   // Fetched when the tab is first opened, not on mount: the scans walk the
   // disk, the briefing applies any threshold whose evidence now holds, and
@@ -413,6 +417,11 @@ export function SetupView({ onShow }: SetupViewProps) {
                   {g.rows.map(item => {
                     const proves = provides.get(item.id) || [];
                     const evidence = evidenceOf(item, proves);
+                    // One strip, and it has to be about what the row calls
+                    // failing: when nodes are failing, only they are candidates.
+                    const trail = trailOf(item, evidence?.failing ?? proves);
+                    const failing = evidence?.tone === 'error';
+                    const verifyCmd = verifyCommand(trail?.node ?? evidence?.failing?.[0] ?? item);
                     const provesNothing =
                       placed &&
                       item.type === 'mcp-server' &&
@@ -451,15 +460,32 @@ export function SetupView({ onShow }: SetupViewProps) {
                             {statusLabel(item.status, item)}
                           </span>
                         )}
-                        <span
-                          className={`setup-row-evidence is-${evidence?.tone ?? 'none'}`}
-                          title={
-                            evidence?.failing
-                              ? `Failing: ${evidence.failing.map(n => n.name).join(', ')}`
-                              : undefined
-                          }
-                        >
-                          {evidence?.text ?? ''}
+                        <span className="setup-row-check">
+                          <span
+                            className={`setup-row-evidence is-${evidence?.tone ?? 'none'}`}
+                            title={
+                              evidence?.failing
+                                ? `Failing: ${evidence.failing.map(n => n.name).join(', ')}`
+                                : undefined
+                            }
+                          >
+                            {evidence?.text ?? ''}
+                          </span>
+                          {trail && <HistoryStrip runs={trail.runs} of={trail.node.name} />}
+                          {/* Where a link to the reason will go. Until the page
+                              can show why, the way to find out is the command,
+                              and the page cannot run a check. */}
+                          {failing && (
+                            <button
+                              type="button"
+                              className="tp-inline-btn setup-row-verify"
+                              onClick={() => copy(item.id, verifyCmd)}
+                              aria-label={`Copy command ${verifyCmd}`}
+                              title={`Paste it in a terminal to run the check again and read why it failed: ${verifyCmd}`}
+                            >
+                              {copied === item.id ? 'Copied ✓' : 'Copy ambit verify'}
+                            </button>
+                          )}
                         </span>
                         <span className="setup-row-provides">
                           {provesNothing && (

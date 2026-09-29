@@ -31,6 +31,18 @@ const FAILING_SQL = `lifecycle IN (${sqlList(FAILING)})`;
 const PROVEN_SQL = `lifecycle IN (${sqlList(PROVEN)})`;
 
 /**
+ * What one run of a declared check is recorded as, in `session_learning.action`.
+ *
+ * A run passed or it failed; a capability that declares no check writes no row
+ * at all. These are actions in the evidence table and not lifecycles, which is why
+ * `verified` appears here and in PROVEN with two different meanings. Whatever
+ * asks which rows are check runs takes the fragment, and whatever reads the
+ * outcome of one takes the word.
+ */
+const CHECK_RUN = { passed: 'verified', failed: 'failed' } as const;
+const CHECK_RUN_SQL = `action IN (${sqlList([CHECK_RUN.passed, CHECK_RUN.failed])})`;
+
+/**
  * The counts every summary reports, from one query.
  *
  * `ambit status`, the briefing, the MCP stats and context tools and the
@@ -114,6 +126,8 @@ export {
   REACHED_SQL,
   FAILING_SQL,
   PROVEN_SQL,
+  CHECK_RUN,
+  CHECK_RUN_SQL,
   sqlList,
   graphCounts,
   type GraphCounts,

@@ -760,6 +760,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 1,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "forbidden",
             "ungranted": true
@@ -793,6 +799,12 @@
             "passed": 0,
             "total": 1
           },
+          "history": [
+            {
+              "id": 2,
+              "passed": false
+            }
+          ],
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -894,6 +906,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 3,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -935,6 +953,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 4,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -1055,6 +1079,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 5,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "autonomous",
             "observe": "autonomous"
@@ -1106,6 +1136,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 6,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "forbidden",
             "ungranted": true
@@ -1160,6 +1196,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 7,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "forbidden",
             "ungranted": true
@@ -1294,6 +1336,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 8,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "forbidden",
             "ungranted": true
@@ -1376,6 +1424,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 9,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "forbidden",
             "ungranted": true
@@ -1545,6 +1599,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 10,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "forbidden",
             "observe": "confirm"
@@ -1620,6 +1680,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 11,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -1722,6 +1788,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 12,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "forbidden",
             "ungranted": true
@@ -1809,6 +1881,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 13,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
@@ -1865,6 +1943,12 @@
             "passed": 1,
             "total": 1
           },
+          "history": [
+            {
+              "id": 14,
+              "passed": true
+            }
+          ],
           "authority": {
             "execute": "confirm",
             "observe": "autonomous"
