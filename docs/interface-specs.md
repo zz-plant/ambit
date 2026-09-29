@@ -1,6 +1,6 @@
 # Interface specs
 
-> This is intent, not description. [The roadmap](./roadmap.md) says what each part of Ambit decided and what it still lacks. This page takes sixteen changes to the surfaces and says, for each, what it would do, what it has to read, and how anyone would know it was finished. Nothing here is built unless its section says so. The "Today" paragraphs describe the code at the time of writing, so check one against the file before relying on it.
+> This is intent, not description. [The roadmap](./roadmap.md) says what each part of Ambit decided and what it still lacks. This page takes sixteen changes to the surfaces and says, for each, what it would do, what it has to read, and how anyone would know it was finished. Nothing here is built unless its section says so. The "Today" paragraphs describe the code at the time of writing, so check one against the file before relying on it. A section that is built keeps its Today, Change and Done when as the intent, and ends with a **Built** paragraph saying what shipped and where it departs from them.
 
 ## Where these came from
 
@@ -24,26 +24,26 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 
 | ID | Change | Lands in | Size | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| [M1](#m1-collapse-to-the-neighborhood) | Collapse the map to a node's neighborhood | Map | M | Decision first |
-| [M2](#m2-a-minimap-that-carries-the-alarm) | A minimap that carries the alarm | Map | M | Ready |
-| [M3](#m3-scrub-the-frontier-through-time) | Scrub the frontier through time | Map | L | Ready live, Data first for the demo |
-| [S1](#s1-the-row-is-the-report) | A check-history strip on each row | My Setup | M | Decision first |
-| [S2](#s2-switch-tool-count-show-output) | An MCP switch, and the output of a failing check | My Setup | L | Decision first |
-| [S3](#s3-a-ladder-made-of-named-rules) | An era ladder of named rules | Map | M | Ready |
-| [S4](#s4-what-it-needs-and-is-it-met-here) | What an option needs, met here | Time & cost | L | Data first |
-| [G1](#g1-plan-first-then-apply) | Plan first, then apply | Proposals | S | Ready |
-| [G2](#g2-review-the-queue-sign-once-each) | Review the queue, sign once each | Proposals | M | Decision first |
+| [M1](#m1-collapse-to-the-neighborhood) | Collapse the map to a node's neighborhood | Map | M | Built |
+| [M2](#m2-a-minimap-that-carries-the-alarm) | A minimap that carries the alarm | Map | M | Built |
+| [M3](#m3-scrub-the-frontier-through-time) | Scrub the frontier through time | Map | L | Built |
+| [S1](#s1-the-row-is-the-report) | A check-history strip on each row | My Setup | M | Built |
+| [S2](#s2-switch-tool-count-show-output) | An MCP switch, and the output of a failing check | My Setup | L | Switch built, output decision first |
+| [S3](#s3-a-ladder-made-of-named-rules) | An era ladder of named rules | Map | M | Built |
+| [S4](#s4-what-it-needs-and-is-it-met-here) | What an option needs, met here | Time & cost | L | Reduced slice built |
+| [G1](#g1-plan-first-then-apply) | Plan first, then apply | Proposals | S | Built |
+| [G2](#g2-review-the-queue-sign-once-each) | Review the queue, sign once each | Proposals | M | Built |
 | [G3](#g3-once-here-or-never) | A scoped grant, proposed from what interrupts you | Authority | L | Decision first |
-| [G4](#g4-the-trail-one-line-per-event) | The trail, one line per event | Audit | M | Decision first |
-| [L1](#l1-spans-with-a-lane-for-you) | A run's spans with a lane for you | Time & cost | L | Data first |
-| [L2](#l2-a-ceiling-with-a-forecast-tick) | A budget ceiling with a forecast tick | Time & cost | M | Ready |
-| [L3](#l3-one-row-per-machine) | One row per machine | My Setup, Infra | L | Data first |
-| [K1](#k1-a-palette-that-speaks-verbs) | A palette that speaks verbs | Finder | M | Ready |
-| [K2](#k2-the-terminal-is-a-surface-too) | `ambit status` as a designed surface | CLI | S | Ready |
+| [G4](#g4-the-trail-one-line-per-event) | The trail, one line per event | Audit | M | First slice built |
+| [L1](#l1-spans-with-a-lane-for-you) | A run's spans with a lane for you | Time & cost | L | As-recorded slice built |
+| [L2](#l2-a-ceiling-with-a-forecast-tick) | A budget ceiling with a forecast tick | Time & cost | M | Built |
+| [L3](#l3-one-row-per-machine) | One row per machine | My Setup, Infra | L | Slice 1 built |
+| [K1](#k1-a-palette-that-speaks-verbs) | A palette that speaks verbs | Finder | M | Built |
+| [K2](#k2-the-terminal-is-a-surface-too) | `ambit status` as a designed surface | CLI | S | Built |
 
 ## Suggested order
 
-The order that follows dependency and risk, not the IDs.
+The order that follows dependency and risk, not the IDs. Everything below is built except G3, and the parts of S2, S4, G4, L1 and L3 that each **Built** paragraph names as left.
 
 1. **Nothing to decide, no schema change.** K2, G1, S3, L2 and K1. Each is a projection or a component over data that already ships. K2 regenerates the README's console blocks, and L2 wants `period_start` on the wire.
 2. **A read-only projection or route.** M2, M3 on a live graph, the first slice of G4, and S1 once its series is chosen. Each needs a `views.ts` projection, a wire type and a demo branch.
@@ -55,7 +55,7 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 ### M1. Collapse to the neighborhood
 
-*Seen in Nx's project graph. Size M. Status: decision first.*
+*Seen in Nx's project graph. Size M. Status: built, as an opt in.*
 
 **The question.** What does this one node touch, on a map too big to read at once?
 
@@ -74,9 +74,11 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** `neighbourhood` is tested per direction and depth, including edges that leave the drawn set. The counter equals total minus drawn. A link without the new keys opens today's map, and a link with them opens the same view. Escape and the pill both clear it. The outage banner still reports the full cascade.
 
+**Built.** Opt in, as recommended. The controls and the pill live in the detail panel of the selected node (`FocusControls.tsx`), not on the canvas. `neighbourhood` and the skips where position is derived are as specified, and `linkState.ts` writes `collapse`, and writes `depth` and `dir` whenever they differ from their defaults. Clearing the selection clears the focus, which is how Escape ends it. While a focus is on, the one-hop dimming is off so the kept nodes stay readable, and the simulation banner says "The focus hides N of them." when part of a cascade is out of sight. Header counts stay whole-map.
+
 ### M2. A minimap that carries the alarm
 
-*Seen in workflow canvases such as n8n and Flowise. Size M. Status: ready.*
+*Seen in workflow canvases such as n8n and Flowise. Size M. Status: built.*
 
 **The question.** Where am I on this map, and is anything wrong out of sight?
 
@@ -92,9 +94,11 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** The rectangle function is tested at several zooms and scroll offsets. A failing node outside the viewport shows red in the thumbnail, and the finding names the direction. Nothing renders when the map fits.
 
+**Built.** The thumbnail is `civ/Minimap.tsx` and its arithmetic is in `civ/viewport.ts`, which `layout.ts` had no use for. `CivTree` passes it minimal `{id, x, y, state}` nodes and not `nodePositionMap`, and the minimap subscribes to scroll and resize itself, so the tree does not re-render per scroll event (a first version re-rendered it twice in sixty scroll frames). The finding names the direction in words, "It is off-screen left.", with corners read as "top left". The thumbnail is hidden at 768px and below, where the finding still names the direction, and while a tour narrates. It draws whenever the map does not fit the window, so the hosted demo shows it at 1280x800 and hides it only at about 1360x860 and larger. The outline drags, and takes the arrow keys with Shift for a screen at a time.
+
 ### M3. Scrub the frontier through time
 
-*Seen in LangGraph Studio's time travel and n8n's execution history. Size L. Status: ready on a live graph, data first for the hosted demo.*
+*Seen in LangGraph Studio's time travel and n8n's execution history. Size L. Status: built, with a recorded series for the hosted demo.*
 
 **The question.** What could this machine do last week, and what changed since?
 
@@ -113,11 +117,13 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** The same two snapshots give the same sentence in the CLI, over MCP and on the page. Two snapshots taken in the same second give one tick that shows the later. Scrubbing to the oldest tick draws only what that snapshot held. A graph with one snapshot shows the explanation and no timeline. The demo shows a deterministic series.
 
+**Built.** `ambit history since <when> [<until>]` and the MCP tool's `until` compare any two observations, or one and now, through one function (`compareFrontiers`), and the page's sentence equals the CLI's. `GET /api/frontier` serves the series read only, one tick per second in which a snapshot was taken, the later one winning. The sentence carries no date and the page puts the UTC day in front of it, and it says "verified A to B" only when both observations recorded lifecycles. A tick recorded before lifecycles shows a single "reached" count in the header and never a zero for verified. `frontierAt` had compared ISO timestamps as strings, which put a whole day on the wrong side of a comparison. It now parses them, breaks ties on `id` in both orderings, and returns an error for a `when` or `until` it cannot read. The demo's series keeps only the ids its map draws, which grows `demo-data.json` by 38 KB, and the tour always sees the live map, with the timeline hidden while it runs. The URL's `at` is written from the store, as `lens` is. The MCP tool listing is now 19,994 of its 20,000 bytes, so the next tool added has to shorten another description.
+
 ## My Setup
 
 ### S1. The row is the report
 
-*Seen in Uptime Kuma's heartbeat bars and Sentry's issue stream. Size M. Status: decision first.*
+*Seen in Uptime Kuma's heartbeat bars and Sentry's issue stream. Size M. Status: built.*
 
 **The question.** Is this entry working, and has it been for a while?
 
@@ -131,9 +137,11 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** A row with runs draws them oldest to newest, and a failure differs from a pass in height or mark, not in hue alone. A row with none draws no strip. The demo regenerates, and `findings.test.tsx` still passes.
 
+**Built.** The decision taken is the worst node in the row, with a strip for each node in the detail panel. Each entry of `meta.history` is `{id, passed}`; the ledger row id is there so the client can rank the most recent failure across nodes without a timestamp (rule 11). The worst node is ranked failing now first, then the most recent failure by row id, then the most runs, so a row never reads "check failing" over a green strip, and when a row is failing only its failing nodes are candidates. The strip is always fourteen slots wide with a faint tick for an empty slot, and a node with no runs draws no strip. `CHECK_RUN` and `CHECK_RUN_SQL` in `vocabulary.ts` hold the two words, and the eight older copies of the list now take them. A failing row copies `ambit verify` for its failing node.
+
 ### S2. Switch, tool count, show output
 
-*Seen in the MCP panels of Cursor and VS Code. Size L, in three parts that ship separately. Status: decision first.*
+*Seen in the MCP panels of Cursor and VS Code. Size L, in three parts that ship separately. Status: part 1 built; output storage is still decision first, and the tool count is dropped.*
 
 **The question.** Why is this red, and can I turn it off without opening a file?
 
@@ -153,9 +161,11 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** A failed check with output shows its tail behind Show output, and a check with none says so. The tail never appears in a sync file, a share file, or a response to a request that is neither same-origin nor carrying the token. The switch changes an existing MCP entry and never creates one.
 
+**Built.** Part 1 only. `SetupView` draws a `<button role="switch" aria-checked>` for a tool server, offered by `canSwitchMcp` in `utils/configSwitch.ts` when a backend is live, the entry is an mcp-server, and `configMcp` holds an own key with an object value, the test `ownEntry` applies on the server. One write happens at a time, an error shows in the row, and the button uses `aria-disabled` so keyboard focus survives a write. The detail panel's existing switch is gated the same way, so the two cannot disagree. The server is unchanged: the route still answers ok for an unknown name, and a test pins that it creates nothing. `writeConfig` now copies the file to `<config>.bak` first, byte for byte and with its mode, and refuses the write when it cannot; each edit replaces the last backup, and the finding above is closed. Show output is not built, and the decision on how check output is stored and read is still open. The tool count is dropped.
+
 ### S3. A ladder made of named rules
 
-*Seen in the scorecards of Cortex, OpsLevel and Port. Size M. Status: ready.*
+*Seen in the scorecards of Cortex, OpsLevel and Port. Size M. Status: built.*
 
 **The question.** What stands between me and the next era?
 
@@ -167,9 +177,11 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** The era count and the rows agree for a graph with one failing node. A node with no time estimate shows none, not zero.
 
+**Built.** An era header opens the ladder in the detail panel (`EraLadder.tsx`). The era math lives in `civ/layout.ts` (`rungOf`, `columnProgress`, `blockedBy`, `failingNeeds`, `eraLadder`), so the header's count and the rows agree, and the panel's blocked-by sentence comes from `blockedBy`. Rows are ordered failing, next step (cheapest first), blocked, reached. `isNext` in `views.ts` stays state-only, so a next step whose prerequisite is failing keeps its state and its row says "Needs X, which is failing its check" (see Found while checking). A node with no time estimate shows none.
+
 ### S4. What it needs, and is it met here?
 
-*Seen in Smithery, Glama and PulseMCP. Size L. Status: data first; the reduced slice is ready.*
+*Seen in Smithery, Glama and PulseMCP. Size L. Status: the reduced slice is built; the rest is data first.*
 
 **The question.** Before I take this on, what does it need that I already have?
 
@@ -183,11 +195,13 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** An option with two required prerequisites, one reached, reads "1 of 2 met here" and names the missing one. An option with no `config_patch` shows no install line.
 
+**Built.** The reduced slice. `installText` in `catalog.ts` reads a way to acquire a capability's `config_patch` from the shipped tree and never from an overlay, so the page shows a patch only where the tree wrote one, and the catalog stores none. The Needs line is drawn once per opportunity and not per option, because the catalog holds no needs of its own. It names the required prerequisites, each met, missing or failing its check (`utils/needs.ts`, tested against `planFor`), and the declared credentials as declared, never marked met or missing, because nothing checks one. The demo gains an opportunity that shows it. The structured `needs` field on catalog entries is not built.
+
 ## Proposals
 
 ### G1. Plan first, then apply
 
-*Seen in Terraform's plan. Size S, or M with the binding. Status: ready for the render-only slice; the binding waits on its decision.*
+*Seen in Terraform's plan. Size S, or M with the binding. Status: built, with the binding on the queue routes of G2.*
 
 **The question.** What exactly am I about to approve, and can it be undone?
 
@@ -207,9 +221,11 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** A proposal with one step lacking an inverse shows the tally "not reversible" and marks that step. The demo's two proposals agree with their marks.
 
+**Built.** The render slice. `ProposalDecision` gains `applicable`: every step has an inverse and a `config_patch`. The panel shows a tally line above the steps, marks a step with no inverse, lists Undo and Apply as separate rows, and shows a before and after Forecast, which replaces the Saves row, with setup time moved from Costs into the tally. Both facts of the decision are shown, as recommended: "no inverse" and "cannot be applied by `ambit apply`". The button reads "Approve this proposal" with its id, and the `ambit apply` copy button is hidden where apply would refuse. The demo's steps now carry inverses that match their claims. The hash binding is built on the queue routes of G2, and the per-id approve route is unchanged. The CLI's `propose` and `approve` output still computes `applicable` from inverses only.
+
 ### G2. Review the queue, sign once each
 
-*Seen in GitHub's deployment reviews. Size M. Status: decision first.*
+*Seen in GitHub's deployment reviews. Size M. Status: built.*
 
 **The question.** Several proposals are waiting: which do I approve, and what does each cost me?
 
@@ -222,6 +238,8 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 **Rules and checks.** The security posture in AGENTS.md, item 3. SECURITY.md's four invariants are unchanged. `api.test.ts` covers reject only, so add approve and bulk cases.
 
 **Done when.** Approving three of four leaves the fourth a draft. A stale hash is refused for that id and the rest still sign. Nothing is applied.
+
+**Built.** `POST /api/proposals/approve` and `POST /api/proposals/reject` take an explicit list of drafts, at most fifty, and `decideShown` in `governance.ts` decides each id in its own transaction, bound to the `proposal_hash` the page showed, refusing one whose row changed and reporting per id. The actor is always `human:web` and a body actor is ignored. Both routes are in `CONFIG_ROUTES`, so a request with no browser behind it needs the token. The sheet lists a box per draft with select all, and its buttons read "Approve N and sign" and "Turn down N", the panel's existing word for reject. Drafts whose precedent leans refused start unticked. There is no comment field, as recommended. The sheet shows on the All and Waiting tabs when two or more drafts wait, so the hosted demo, which has one, never shows it. AGENTS.md's line about the decision routes is amended.
 
 ### G3. Once, here, or never
 
@@ -245,7 +263,7 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 ### G4. The trail, one line per event
 
-*Seen in GitHub's audit log. Size M, or L if chained or if refusals must be recorded. Status: decision first; the read-only slice is ready.*
+*Seen in GitHub's audit log. Size M, or L if chained or if refusals must be recorded. Status: the read-only slice is built; refusals and the chain are decision first.*
 
 **The question.** Who approved what, what ran, and did it hold?
 
@@ -259,11 +277,13 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Done when.** A mixed set of approvals, demotions and delegation revisions merges in true time order, and a window holding more than the old cap of 40 acts shows all of them up to the stream's limit. `actor:human:web` returns only that actor's events. An event with no recorded outcome shows none.
 
+**Built.** The first slice. `auditStream` in `audit.ts` merges the four sources under one limit applied after the merge, with 30 days and 200 events as defaults and an exact `truncated` count. `auditView` serves it at `GET /api/audit`, the Audit tab is a fourth view in `linkState.ts`, and the query bar is `utils/auditQuery.ts`. Outcome words and their tones are in `vocabulary.ts`. Approval and apply entries in `session_learning` are dropped because the proposal row already reports them, or each would show twice. A summary comes only from approval, apply and authority notes; check output and runtime failure text stay out until S2's storage decision is made. Qualifiers match exactly, ignoring case, and any other term is searched in every field shown. With no graph the route returns an empty trail and creates nothing. Refusals, "held" and a structured actor column, the second slice, are not built.
+
 ## Ledger
 
 ### L1. Spans with a lane for you
 
-*Seen in the trace views of Langfuse and LangSmith. Size L, with an as-recorded slice at M. Status: data first.*
+*Seen in the trace views of Langfuse and LangSmith. Size L, with an as-recorded slice at M. Status: the as-recorded slice is built; nesting is data first.*
 
 **The question.** Where did this run's time go, and how much of it was mine?
 
@@ -279,9 +299,11 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 
 **Done when.** A run with one timed and one untimed ask draws one amber span and one marked point, and its total counts only the timed one and says so.
 
+**Built.** The as-recorded slice. `runTimeline` in `telemetry.ts` lays out one run, `runView` wraps it, `GET /api/run[?id=]` serves it and `RunTimeline.tsx` draws it, with a demo path in `utils/demoRun.ts`. An ask with recorded seconds and no end is drawn as a filled point, and a zero with no end, which is what the control plane writes, reads as untimed. Use bars start at `used_at`, which is an assumption. The lists are capped and the totals say so. Sync is unchanged, and a test covers a run that arrives without its events. Nesting, the full slice, is not built.
+
 ### L2. A ceiling with a forecast tick
 
-*Seen in the billing pages of Vercel and OpenAI. Size M. Status: ready.*
+*Seen in the billing pages of Vercel and OpenAI. Size M. Status: built.*
 
 **The question.** Will this budget last the period?
 
@@ -297,9 +319,11 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 
 **Done when.** A budget at 60% of its ceiling after half the period shows a tick past the ceiling and a date. A budget with no recorded spend shows neither.
 
+**Built.** `budgets.ts` holds the one elapsed-period rule, and the reset, the gate and the view all read it. The wire gains `period_start`, `period_ends_on` and `forecast`, `utils/budgetBar.ts` places the marks, and the budgets branch of `views.ts` is read only and now tested. An elapsed period reads as spent nothing, as the gate reads it, and no pace is drawn under 5% of a period. The copy says "a spend is refused until the period turns over" and not "asks you again": with the ceiling spent, `canExecute` returns DENY for a spend, and ignores the budget when the call states none. The roadmap and `budgets.ts` had said it goes back to asking, and are corrected (see Decisions).
+
 ### L3. One row per machine
 
-*Seen in Tailscale's machines list. Size L. Status: data first.*
+*Seen in Tailscale's machines list. Size L. Status: slice 1 is built; tags and last seen are data first.*
 
 **The question.** Which of my machines can do what, and which have gone quiet?
 
@@ -315,11 +339,13 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 
 **Done when.** For slice 1, a manifest with two machines shows each with its modes and never with a stale seen time.
 
+**Built.** Slice 1. `machines.ts` asks the gate, with `device:<id>` as the target, for the actions the curated tree gives the capability that acts on a machine. `machineView` wraps it, the infrastructure scan route returns the modes beside each device, and the Infra tab draws the table. "The local machine only" is read as this machine's grants, applied to every device the manifest names, and never another machine's. The probe time is computed from the scan, since nothing stores a last-seen, and there is no demo path because the tab needs an engine. Tags and last seen (slice 2) and the team view (slice 3) are not built.
+
 ## Keyboard and terminal
 
 ### K1. A palette that speaks verbs
 
-*Seen in Linear, Raycast and VS Code. Size M. Status: ready.*
+*Seen in Linear, Raycast and VS Code. Size M. Status: built.*
 
 **The question.** Can I drive the map without leaving the keyboard?
 
@@ -331,9 +357,11 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 
 **Done when.** Typing "shell" lists the node and the actions for it. Enter on an outage action starts the simulation and changes nothing on disk. The verify action copies the command and runs nothing.
 
+**Built.** `utils/palette.ts` holds the registry, the search, `keyStep` and `activate`, and `Finder.tsx` is a thin view over them. The actions are outage and unlock for a node, copy the verify command, switch lens, open Proposals, and approve or turn down for a waiting proposal, which only open the panel, unfocused, because focusing the card needs an `ApprovalModal` change. There is no focus verb. The lens entries copy two one-liners from `CivTree` for availability. A source scan holds that the palette makes no network call and never calls `approveProposal` or `rejectProposal`.
+
 ### K2. The terminal is a surface too
 
-*Seen in the output of gh, uv and Vite. Size S. Status: ready.*
+*Seen in the output of gh, uv and Vite. Size S. Status: built.*
 
 **The question.** What does a first `ambit status` tell someone, and what should they type next?
 
@@ -345,7 +373,11 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 
 **Done when.** The status of a fresh install prints the aligned block with a `Next` line. Piped output is plain and carries the same content. JSON output is unchanged apart from the new field.
 
+**Built.** `cli/output.ts` gains a colour gate (`colorOn`, `terminalPalette`, `PLAIN`) and `emit(data, human?)`, and the generic formatter now returns lines, with its output for the other commands byte-identical. `renderStatus` in `cli/reports.ts` prints a summary line (reached of total, and proven), the aligned counts and a final Next line from the new `next` field, which is the last key of the JSON and holds `{command, why}`. The order is a failing check, then a draft waiting, then `ambit verify`, then the top pick of `ambit next`; when none applies the field is absent and so is the line. A `›` marks the row that wants a person, so it survives a pipe, and an empty `NO_COLOR` counts as unset. The README block keeps its 14-line window and gains a one-line tail (`capture-doc-examples.ts` takes an optional `tail`), so it ends on Next after an ellipsis.
+
 ## Decisions, with recommendations
+
+Where a spec was built, the recommendation below was taken unless its **Built** paragraph says otherwise. The decisions still open are G3's, S2's storage policy and G4's hash chain, and L3's tags and last seen wait on slice 2.
 
 | Spec | Decision | Recommended |
 | :--- | :--- | :--- |
@@ -358,13 +390,28 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 | S2 | How check output is stored and read | A 2 KB tail per run, redacted, on a route that admits only same-origin fetches or the token, never in sync or share; settle the `.bak` claim first |
 | S4 | A structured `needs` field on catalog entries | Later; ship the graph-answerable slice first |
 | L1 | Where a person's wait is recorded | Ship the as-recorded slice; the engine infers an end |
+| L2 | Whether a spent budget refuses or asks | Refuse, as the gate does, and say the next step: raise the ceiling with `ambit budget set`. The roadmap said it asks, which no code path does |
 | L3 | Where tags and last seen live | Manifest tags in `meta`, a last-probe time stored only where a probe runs |
 
 ## Found while checking
 
-Writing these against the code turned up four places where a document and the code disagree. The first two are corrected in the roadmap alongside this page. The last two are left for their owners.
+Writing these against the code turned up four places where a document and the code disagreed. Building them turned up more.
 
-- The roadmap said the ledger produces hash-chained records (section 16) and that a break-glass override writes hash-chained records (section 15). Only `delegation_records` is chained, as section 9b says. An override is a plain `break_glass` work event.
-- SECURITY.md says the visualizer's config editing writes a `.bak` first. `writeConfig` in `src/server/config.ts` does not, and only `ambit apply` and rollback do.
-- AGENTS.md says `civ/layout.ts` holds "the two cascade walks". It holds `outageSplit`, `unlockCascade` and `gapOf`, which carry simulation rules, and `cascadeDepths`, which counts downstream hops.
-- AGENTS.md describes "the two decision routes". G2's bulk approval would add a third caller of the same engine call, and the line needs amending when it lands.
+Closed:
+
+- The roadmap said the ledger produces hash-chained records (section 16) and that a break-glass override writes hash-chained records (section 15). Only `delegation_records` is chained, as section 9b says. An override is a plain `break_glass` work event. Corrected in the roadmap.
+- SECURITY.md said the visualizer's config editing writes a `.bak` first, and `writeConfig` did not. It does now, and the sentence says which file.
+- AGENTS.md said `civ/layout.ts` holds "the two cascade walks". It holds `outageSplit`, `unlockCascade` and `gapOf`, which carry simulation rules, `cascadeDepths`, which counts downstream hops, and now `neighbourhood`. The entry is amended.
+- AGENTS.md described "the two decision routes". There are four now, and the entry says what each is.
+- `frontierAt` compared ISO timestamps as strings, which put a whole day on the wrong side of a comparison. M3 fixed it.
+- The roadmap, the deep dive and `budgets.ts` said a spent budget "goes back to asking". The gate returns DENY for a spend past the ceiling. L2 corrected the copy, the roadmap and the notes.
+- Era headers are `role="button"` and come first in the DOM, which broke the hero recorder: it took the first group as a node. It skips them now.
+
+Open:
+
+- `isNext` in `views.ts` is state-only, so a next step whose prerequisite is `degraded` or `broken` still counts as a next step and is drawn as one. Rule 6 says an availability decision excludes it. The era ladder names the failing prerequisite on that row, but the map and the header count still call it a next step. Recommended: take `usable(lifecycle)` in `isNext` and regenerate the demo, which is a change to a count on the header, so it wants a person's yes.
+- `data-access` in `techtree.json` has two alternatives named "read-only database MCP", one with a patch. The catalog keeps the later, which has none, so the patch never reaches the page. `installText` refuses to show the earlier one's patch against the later, and a test holds that. Recommended: name them apart.
+- The per-id routes `/api/proposals/:id/approve` and `/api/proposals/:id/reject` still accept an actor from the body and do not require the token. The queue routes fix the actor and require it. Per-id reject also accepts an approved row and keeps its artifact, and `verifyApproval` ignores status, so a rejected approval can still be spent by the control plane.
+- The origin allowlist judges the hostname only, so a page served from any local port passes it without the token. The config routes are readable by such a page today, and S2's output route must not use it.
+- Other commands still colour a pipe: the generic formatter's default palette, `seed`, `help` and `explain` print with `C` directly. `renderStatus` is the one that follows AGENTS.md's rule 18.
+- The MCP tool listing is at 19,994 of its 20,000 bytes, and a test holds the limit. The next tool added has to shorten another.
