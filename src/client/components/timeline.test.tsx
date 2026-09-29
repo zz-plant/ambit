@@ -93,6 +93,7 @@ afterEach(() => {
     items: [],
     connections: [],
     selectedItem: null,
+    selectedEra: null,
     showDetailPanel: false,
     history: null,
     historyAt: null,
@@ -225,7 +226,7 @@ test('the header says whose day its counts are, and draws no split nobody measur
   expect(unsplit).not.toMatch(/unproven/);
 });
 
-test('the page tells one date: the timeline under the map, the header and the panel', () => {
+test('the page tells one date: the timeline under the map, the header, the panel and the ladder', () => {
   seed({
     items: [vc, ci],
     connections: EDGES,
@@ -240,9 +241,20 @@ test('the page tells one date: the timeline under the map, the header and the pa
   expect(text(html)).toContain('as of Sep 21');
   expect(text(html)).toContain('As of Sep 21, 2026, 09:00 UTC');
 
+  // An era's ladder, opened from its header, counts the header's day: on
+  // Monday version control was failing its check, so the era had none reached.
+  seed({ selectedItem: null, selectedEra: 1 });
+  const ladder = text(renderToStaticMarkup(<App />));
+  expect(ladder).toContain('0 of 1 reached · 1 failing');
+  expect(ladder).toContain('As of Sep 21, 2026, 09:00 UTC, as that observation recorded it.');
+
   // At now, the page is today's everywhere.
   seed({ historyAt: null });
   const now = text(renderToStaticMarkup(<App />));
-  expect(now).toContain('Nothing has moved since Sep 25.');
-  expect(now).not.toContain('as of');
+  expect(now).toContain('1 of 1 reached');
+  expect(now).not.toContain('As of');
+  seed({ selectedEra: null, selectedItem: vc.id });
+  const nowNode = text(renderToStaticMarkup(<App />));
+  expect(nowNode).toContain('Nothing has moved since Sep 25.');
+  expect(nowNode).not.toContain('as of');
 });

@@ -1,4 +1,5 @@
 import { useAmbitStore } from '../store/ambitStore';
+import type { Item } from '../utils/configImporter';
 import { statusLabel } from '../utils/labels';
 import { type EraLadder, eraLadder, readableSeconds, type Rung } from './civ/layout';
 import { Term } from './Term';
@@ -25,11 +26,14 @@ export function EraLadderView({
   ladder,
   onShow,
   onClose,
+  asOf,
 }: {
   ladder: EraLadder;
   /** Open a rung where it lives: the node's own panel, on the map. */
   onShow: (id: string) => void;
   onClose: () => void;
+  /** When the ladder's nodes were observed, if the map is scrubbed to the past. */
+  asOf?: string;
 }) {
   const { era, progress: p, rows } = ladder;
   const left = readableSeconds(p.seconds);
@@ -59,6 +63,12 @@ export function EraLadderView({
           ✕
         </button>
       </div>
+
+      {asOf && (
+        <p className="sp-asof" role="status">
+          As of {asOf}, as that observation recorded it.
+        </p>
+      )}
 
       <div className="sp-ladder-bar" role="img" aria-label={facts.join(', ')}>
         {p.reached > 0 && (
@@ -104,14 +114,31 @@ export function EraLadderView({
   );
 }
 
-/** The ladder for one era, read from the graph in the store. */
-export function EraLadderPanel({ era, onShow }: { era: number; onShow: (id: string) => void }) {
-  const items = useAmbitStore(s => s.items);
+/**
+ * The ladder for one era, read from the graph in the store, or from the past
+ * observation the map is scrubbed to, so the ladder and the header over the
+ * column it opened from count the same day.
+ */
+export function EraLadderPanel({
+  era,
+  onShow,
+  items: pastItems,
+  asOf,
+}: {
+  era: number;
+  onShow: (id: string) => void;
+  /** The map's items when they are not the store's: a past observation. */
+  items?: Item[];
+  asOf?: string;
+}) {
+  const storeItems = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
   const selectEra = useAmbitStore(s => s.selectEra);
-  const ladder = eraLadder(items, connections, era);
+  const ladder = eraLadder(pastItems ?? storeItems, connections, era);
   if (!ladder) return null;
-  return <EraLadderView ladder={ladder} onShow={onShow} onClose={() => selectEra(null)} />;
+  return (
+    <EraLadderView ladder={ladder} onShow={onShow} onClose={() => selectEra(null)} asOf={asOf} />
+  );
 }
 
 export default EraLadderPanel;
