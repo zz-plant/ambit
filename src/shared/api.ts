@@ -508,7 +508,7 @@ export interface LoopAuthority {
     evidence: string;
     command: string;
   }[];
-  /** Spend delegated in advance, and how much of each ceiling is used. */
+  /** Standing spend ceilings, and how much of each is used. */
   budgets: {
     capability: string;
     action: string;

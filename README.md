@@ -148,7 +148,7 @@ Homebrew installs the CLI, the engine, and the MCP server from the tagged releas
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
 | `ambit verify [id]` | Run a capability's declared check and record whether it actually works |
-| `ambit history [since]` | How the frontier moved, separating what you acquired from what emerged |
+| `ambit history [since <when> [<until>]]` | How the frontier moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
 `ambit help` covers a first session; `ambit help --all` is the full surface, grouped by what you are trying to do, and `ambit help <term>` explains one concept.

@@ -96,8 +96,8 @@ check — what is proven, what is permitted, what is currently broken
                           does not matter; confirmation is relaxed inside it and
                           a refusal never is
   check budget [set <cap> [action] --amount=$20 [--period=month] --by=<person>]
-                          standing spend that does not need a person; a spent
-                          budget refuses rather than overspends
+                          a ceiling on spend per period; a spend past it is
+                          refused, and within it the grant's own mode decides
   check can <cap> [--target X] [--spend N]   the decision API: ALLOW/CONFIRM/DENY
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services

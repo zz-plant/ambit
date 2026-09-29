@@ -535,7 +535,7 @@ const BASE_TOOLS = [
   {
     name: 'budgets',
     description:
-      'Standing budgets: what may be spent without asking, on what, and how much is left this period. A budget is delegated authority with a ceiling, so an action inside it does not need a person. Read-only from here; a person sets one on the CLI.',
+      'Standing budgets: what may be spent, on what, and how much is left this period. A spend past a ceiling is refused until the period turns over; within it the grant decides. Read-only from here; a person sets one on the CLI.',
     inputSchema: { type: 'object', properties: {} },
   },
   {

@@ -3,14 +3,14 @@
  *
  * A grant answers *may you*, and a budget answers *how much*. Ambit has had
  * budgets since the decision API needed one, and no way to set one: they could
- * only be written by the code that records spend, so the ceiling existed and
- * the delegation did not.
+ * only be written by the code that records spend, so the ceiling existed and a
+ * person had no way to set it.
  *
- * This is the difference between an agent that asks before every paid action
- * and one that has twenty dollars a month. Both are bounded; only the second
- * stops costing a person their attention. A budget is the shape of delegation
- * that fails safe: a spend past the ceiling is refused until the period turns
- * over, without anyone having to notice or intervene.
+ * A budget is the shape of limit that fails safe: a spend past the ceiling is
+ * refused until the period turns over, without anyone having to notice or
+ * intervene. Paired with an autonomous grant it is the difference between an
+ * agent that asks before every paid action and one that has twenty dollars a
+ * month, and only that pair stops costing a person their attention.
  *
  * It bounds a grant and does not widen one. Within the ceiling the grant's own
  * mode still decides, so the attention it saves is the autonomous grant's, kept
@@ -105,8 +105,8 @@ function forecastSpend(input: {
  * A period that has run out reads as spent-nothing and as having no start,
  * exactly as the gate reads it, because the reset that would start the next one
  * writes, and a page that drew a stored figure the gate ignores would disagree
- * with it. `rollPeriods` stays with `ambit budget`; nothing that serves a page
- * calls it.
+ * with it. `rollPeriods` stays with `budgetReport`, which `ambit budget` and the
+ * MCP budgets tool call; nothing that serves a page does.
  */
 function budgetStanding(
   db: Db,
@@ -191,7 +191,7 @@ function setBudget(
     !db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ? AND category = 'human'").get(humanId)
   ) {
     return {
-      error: `${humanId} is not a person in the graph. A standing budget is money delegated in advance — it has to come from someone accountable.`,
+      error: `${humanId} is not a person in the graph. A standing budget is a ceiling a person sets in advance — it has to come from someone accountable.`,
     };
   }
   if (!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(capability)) {
@@ -220,7 +220,7 @@ function setBudget(
     scope: input.scope,
     budget: `$${(cents / 100).toFixed(2)} per ${period}`,
     granted_by: humanId,
-    note: "A spend past this ceiling is refused until the period turns over, which is what makes a ceiling safer than a one-off approval. Within it the grant's own mode still decides: a budget bounds an autonomous grant and does not create one.",
+    note: "A spend past this ceiling is refused until the period turns over, for any caller that states its spend, which is what makes a ceiling safer than a one-off approval. Within it the grant's own mode still decides: a budget bounds an autonomous grant and does not create one.",
   };
 }
 
@@ -267,7 +267,7 @@ function budgetReport(db: Db) {
     .all<any>();
   if (!rows.length) {
     return {
-      note: 'No standing budgets. `ambit budget set <cap> --amount=$20 --by=<person>` delegates spending in advance, so a paid action inside the ceiling stops needing a person.',
+      note: "No standing budgets. `ambit budget set <cap> --amount=$20 --by=<person>` sets a ceiling on what may be spent in a period. A spend past it is refused until the period turns over; within it the grant's own mode still decides.",
       budgets: [],
     };
   }
@@ -296,7 +296,7 @@ function clearBudget(db: Db, capability?: string, action?: string, scope?: strin
     .prepare('DELETE FROM budgets WHERE capability_id = ? AND action = ? AND scope = ?')
     .run(id, action || 'execute', scope || '');
   return (result as any)?.changes
-    ? { cleared: id, action: action || 'execute', note: 'Spending needs a person again.' }
+    ? { cleared: id, action: action || 'execute', note: "Nothing bounds a spend on it now, and its grant's own mode decides." }
     : { error: `No budget for ${id} / ${action || 'execute'}.` };
 }
 

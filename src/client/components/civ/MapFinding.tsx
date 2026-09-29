@@ -25,7 +25,7 @@ interface MapFindingProps {
   onSpotlight?: (key: string) => void;
   /**
    * Which way the first failing node lies when it is out of sight ("left",
-   * "above right"), from the minimap. Absent when it is in view, or the whole
+   * "top right"), from the minimap. Absent when it is in view, or the whole
    * map is.
    */
   where?: string | null;
