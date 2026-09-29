@@ -1,7 +1,14 @@
 import React from 'react';
 import type { RunAsk, RunView } from '../../shared/api';
 import { useAmbitStore } from '../store/ambitStore';
-import { askMark, epoch, humanSentence, runDomain, span } from '../utils/runTimeline';
+import {
+  askMark,
+  epoch,
+  humanSentence,
+  type RunDomain,
+  runDomain,
+  span,
+} from '../utils/runTimeline';
 import { NUM } from './figures';
 
 /**
@@ -50,17 +57,20 @@ function askTitle(a: RunAsk): string {
   return `${a.gate ? 'Permission' : a.kind} · ${about ? `${about} · ` : ''}${took}`;
 }
 
-function RunChart({ run }: { run: RunView }) {
-  const { start, end, open } = runDomain(run);
+function RunChart({ run, domain }: { run: RunView; domain: RunDomain }) {
+  const { start, end, open, seconds } = domain;
   const x = (t: number) => X0 + ((t - start) / (end - start)) * (X1 - X0);
   const runStart = epoch(run.started_at) ?? start;
   // An open run is drawn to the last thing seen, and the bar is dashed to say
-  // that the end is not a time anyone stated.
-  const runEnd = epoch(run.ended_at) ?? end;
+  // that the end is not a time anyone stated. With nothing seen after its
+  // start it is a mark there, not a bar across a second nobody saw.
+  const runEnd = epoch(run.ended_at) ?? (seconds === null ? runStart : end);
   const asksDrawn = run.asks.filter(a => epoch(a.at) !== undefined);
 
   const summary = [
-    `Run of ${span((end - start) / 1000)}${open ? ', no end recorded' : ''}`,
+    seconds === null
+      ? 'Run with no end recorded, and nothing recorded after its start'
+      : `Run of ${span(seconds)}${open ? ', no end recorded' : ''}`,
     `${run.uses_total} capability ${run.uses_total === 1 ? 'use' : 'uses'}`,
     `${run.events_total} ${run.events_total === 1 ? 'event' : 'events'}`,
     `${run.asks_total} ${run.asks_total === 1 ? 'ask' : 'asks'}: ${humanSentence(run)}`,
@@ -91,9 +101,11 @@ function RunChart({ run }: { run: RunView }) {
         rx={4}
       >
         <title>
-          {open
-            ? 'No end recorded: drawn to the last thing seen'
-            : `Ran ${span((runEnd - runStart) / 1000)}`}
+          {seconds === null
+            ? 'No end recorded, and nothing recorded after the start'
+            : open
+              ? 'No end recorded: drawn to the last thing seen'
+              : `Ran ${span((runEnd - runStart) / 1000)}`}
         </title>
       </rect>
 
@@ -172,17 +184,30 @@ function RunChart({ run }: { run: RunView }) {
         );
       })}
 
-      <line className="fig-run-axis" x1={X0} y1={AXIS_Y - 8} x2={X1} y2={AXIS_Y - 8} />
-      <text className="fig-tick" x={X0} y={AXIS_Y + 6} textAnchor="start" style={NUM}>
-        {clock(start)}
-      </text>
-      <text className="fig-tick" x={(X0 + X1) / 2} y={AXIS_Y + 6} textAnchor="middle" style={NUM}>
-        {span((end - start) / 1000)}
-      </text>
-      <text className="fig-tick" x={X1} y={AXIS_Y + 6} textAnchor="end" style={NUM}>
-        {clock(end)}
-        {open ? ' (last seen)' : ''}
-      </text>
+      {/* The axis states a stretch of time. A run with none, one instant or
+          nothing after its start, has no axis: its second of width is the
+          drawing's, and the times at either end of it were invented. */}
+      {seconds ? (
+        <>
+          <line className="fig-run-axis" x1={X0} y1={AXIS_Y - 8} x2={X1} y2={AXIS_Y - 8} />
+          <text className="fig-tick" x={X0} y={AXIS_Y + 6} textAnchor="start" style={NUM}>
+            {clock(start)}
+          </text>
+          <text
+            className="fig-tick"
+            x={(X0 + X1) / 2}
+            y={AXIS_Y + 6}
+            textAnchor="middle"
+            style={NUM}
+          >
+            {span(seconds)}
+          </text>
+          <text className="fig-tick" x={X1} y={AXIS_Y + 6} textAnchor="end" style={NUM}>
+            {clock(end)}
+            {open ? ' (last seen)' : ''}
+          </text>
+        </>
+      ) : null}
     </svg>
   );
 }
@@ -300,6 +325,9 @@ export default function RunSection() {
   const data = useAmbitStore(s => s.run);
   const loadRun = useAmbitStore(s => s.loadRun);
   const sample = useAmbitStore(s => s.loopSource) === 'sample';
+  // Null when nothing in the run has a time that reads: then there is no
+  // chart, and no key to marks nobody drew.
+  const domain = data?.run ? runDomain(data.run) : null;
 
   React.useEffect(() => {
     if (!data) loadRun();
@@ -344,8 +372,8 @@ export default function RunSection() {
           <p className="fig-run-human" style={NUM}>
             {humanSentence(data.run)}
           </p>
-          <RunChart run={data.run} />
-          <RunKey />
+          {domain && <RunChart run={data.run} domain={domain} />}
+          {domain && <RunKey />}
           <AskList run={data.run} />
           {(data.run.events_total > data.run.events.length ||
             data.run.uses_total > data.run.uses.length ||
