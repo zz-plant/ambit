@@ -12,6 +12,7 @@ import { useCopied } from '../hooks/useCopied';
 import { budgetBar } from '../utils/budgetBar';
 import { type CapabilityNeeds, needsOf } from '../utils/needs';
 import { HoursSparkline, NUM, StackedBar, money } from './figures';
+import RunSection from './RunTimeline';
 import { Term } from './Term';
 
 /**
@@ -1187,6 +1188,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
         {attention.reducible.length + attention.keepers.length > 0 && (
           <InterruptionChart attention={attention} />
         )}
+
+        <RunSection />
 
         <p className="loop-foot">
           {sample

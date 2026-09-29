@@ -17,7 +17,7 @@ import { humanDigest } from './attention.ts';
 import { budgetStanding } from './budgets.ts';
 import { installText } from './catalog.ts';
 import { frontierSeries, ledgerSince } from './ledger.ts';
-import { unmappedUse } from './telemetry.ts';
+import { runTimeline, unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
@@ -46,6 +46,7 @@ import {
   type ProposalDecision,
   type ProposalRow,
   type ProposalStatus,
+  type RunResponse,
   type TechTreeResponse,
   type TreeConnection,
   type TreeItem,
@@ -1013,6 +1014,11 @@ function monthlyHours(db: Db): { month: string; hours: number; acquired?: string
     });
   }
   return out;
+}
+
+/** One run laid out in time, from what the ledger recorded; the engine's report, as served. */
+export function runView(db: Db, id?: string): RunResponse {
+  return runTimeline(db, id);
 }
 
 /** What the agents used that the map has no node for; the engine's report, as served. */

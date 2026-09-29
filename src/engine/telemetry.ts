@@ -1,10 +1,26 @@
-import type { UnmappedEntry, UnmappedResponse } from '../shared/api.ts';
+import type {
+  RunAsk,
+  RunEvent,
+  RunResponse,
+  RunSummary,
+  RunUse,
+  UnmappedEntry,
+  UnmappedResponse,
+} from '../shared/api.ts';
 import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
 import type { Migratable } from './migrate.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import { loadTechTree } from './paths.ts';
-import type { CapabilityRow, OutcomeRow, WorkEventRow, WorkRunRow } from './rows.ts';
+import type {
+  CapabilityRow,
+  CapabilityUseRow,
+  HumanInterventionRow,
+  OutcomeRow,
+  WorkEventRow,
+  WorkRunRow,
+} from './rows.ts';
+import { GATE_KINDS } from './vocabulary.ts';
 
 /**
  * The work ledger: one row per run of actual effort, the events inside it, the
@@ -284,6 +300,224 @@ function workReport(db: Migratable, limit = 20): any {
   });
 }
 
+// ─── One run, in time ─────────────────────────────────────────────────────────
+
+/** How much of a long run is sent; the totals say how much there was. */
+const MAX_EVENTS = 1000;
+const MAX_USES = 300;
+const MAX_ASKS = 200;
+
+/** Either spelling of an instant the ledger holds, read as UTC and written as ISO. */
+function isoOf(value?: string | null): string | undefined {
+  const t = toEpoch(value);
+  return t === undefined ? undefined : new Date(t).toISOString();
+}
+
+/**
+ * What one ask took, in seconds, where anything measured it.
+ *
+ * The recorded active and waiting time when there is any, else the span from
+ * the ask to its answer. Nothing otherwise, and that includes the zero a
+ * recorder writes because it cannot see the reply. A person does not take
+ * exactly no time, so a zero with no end is a recorder that did not know, and
+ * reading it as a measurement would put a wait of nothing on a page that
+ * exists to say where time went.
+ */
+function askSeconds(
+  i: Pick<HumanInterventionRow, 'started_at' | 'ended_at' | 'active_seconds' | 'waiting_seconds'>
+): number | null {
+  const recorded = Math.max(0, i.active_seconds ?? 0) + Math.max(0, i.waiting_seconds ?? 0);
+  if (recorded > 0) return recorded;
+  const from = toEpoch(i.started_at);
+  const to = toEpoch(i.ended_at);
+  return from !== undefined && to !== undefined && to >= from
+    ? Math.round((to - from) / 1000)
+    : null;
+}
+
+/**
+ * A run laid out in time, from what was recorded and no more.
+ *
+ * The run's start and end, the capabilities it used with how long each lasted,
+ * the events inside it as points, and every time a person was asked, each with
+ * what it took where a figure exists. Nothing is inferred: a bridge that could
+ * not see the reply reports the ask and no end, and the ask stays untimed
+ * here, because deciding when a person answered is the engine's to infer later
+ * and a bridge that judged would be a second copy of the rule (AGENTS.md
+ * rule 8). Untimed is a state the page draws as itself, never as zero.
+ *
+ * Which asks are permission asks comes from `GATE_KINDS`, so the page does not
+ * hold a list of its own. Events are the one table a sync file does not carry,
+ * so a run that arrived in one has uses and asks and no events.
+ *
+ * With no id it is the newest run that recorded an ask, since the page is
+ * about where a person's time went, and the newest run overall is often a
+ * session that was never asked anything.
+ */
+function runTimeline(db: Migratable, id?: string): RunResponse {
+  const nameOf = new Map(
+    db
+      .prepare('SELECT id, name FROM capabilities')
+      .all<Pick<CapabilityRow, 'id' | 'name'>>()
+      .map(c => [c.id, c.name] as const)
+  );
+
+  const recent: RunSummary[] = db
+    .prepare(
+      `SELECT r.id, r.goal, r.goal_id, r.started_at, r.ended_at,
+              (SELECT COUNT(*) FROM human_intervention WHERE run_id = r.id) AS asks,
+              (SELECT COUNT(*) FROM work_events WHERE run_id = r.id) AS events
+       FROM work_runs r ORDER BY r.started_at DESC, r.rowid DESC LIMIT 20`
+    )
+    .all<
+      Pick<WorkRunRow, 'id' | 'goal' | 'goal_id' | 'started_at' | 'ended_at'> & {
+        asks: number;
+        events: number;
+      }
+    >()
+    .map(r => ({
+      id: r.id,
+      goal: r.goal || (r.goal_id ? nameOf.get(r.goal_id) || r.goal_id : undefined),
+      started_at: isoOf(r.started_at) ?? r.started_at,
+      ended_at: isoOf(r.ended_at) ?? null,
+      asks: r.asks,
+      events: r.events,
+    }));
+  if (!recent.length) return { recent, run: null };
+
+  const wanted = id ?? (recent.find(r => r.asks > 0) ?? recent[0]).id;
+  const row = db
+    .prepare('SELECT id, goal, goal_id, started_at, ended_at, outcome FROM work_runs WHERE id = ?')
+    .get<Pick<WorkRunRow, 'id' | 'goal' | 'goal_id' | 'started_at' | 'ended_at' | 'outcome'>>(
+      wanted
+    );
+  if (!row) return { recent, run: null };
+
+  const count = (table: string) =>
+    db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE run_id = ?`).get<{ n: number }>(wanted)!.n;
+
+  // A figure of nothing is not a duration: a use that lasted zero seconds is a
+  // point in time, like one with no figure at all.
+  const measured = (s: number | null) => (s != null && s > 0 ? s : null);
+
+  const uses: RunUse[] = db
+    .prepare(
+      `SELECT capability_id, used_at, duration_seconds FROM capability_use
+       WHERE run_id = ? ORDER BY used_at DESC, id DESC LIMIT ?`
+    )
+    .all<Pick<CapabilityUseRow, 'capability_id' | 'used_at' | 'duration_seconds'>>(wanted, MAX_USES)
+    .reverse()
+    .flatMap(u => {
+      const at = isoOf(u.used_at);
+      return at
+        ? [
+            {
+              capability: nameOf.get(u.capability_id) || u.capability_id,
+              capability_id: u.capability_id,
+              at,
+              seconds: measured(u.duration_seconds),
+            },
+          ]
+        : [];
+    });
+
+  const events: RunEvent[] = db
+    .prepare(
+      `SELECT at, kind, action, actor FROM work_events
+       WHERE run_id = ? ORDER BY at DESC, id DESC LIMIT ?`
+    )
+    .all<Pick<WorkEventRow, 'at' | 'kind' | 'action' | 'actor'>>(wanted, MAX_EVENTS)
+    .reverse()
+    .flatMap(e => {
+      const at = isoOf(e.at);
+      return at
+        ? [
+            {
+              at,
+              kind: e.kind,
+              action: e.action ?? undefined,
+              actor: e.actor ?? undefined,
+            },
+          ]
+        : [];
+    });
+
+  const allAsks = db
+    .prepare(
+      `SELECT kind, actor_id, started_at, ended_at, active_seconds, waiting_seconds,
+              capability_id, action, outcome
+       FROM human_intervention WHERE run_id = ? ORDER BY id`
+    )
+    .all<
+      Pick<
+        HumanInterventionRow,
+        | 'kind'
+        | 'actor_id'
+        | 'started_at'
+        | 'ended_at'
+        | 'active_seconds'
+        | 'waiting_seconds'
+        | 'capability_id'
+        | 'action'
+        | 'outcome'
+      >
+    >(wanted);
+
+  // The total is over every ask, drawn or not, and counts only those something
+  // timed: a sum over a set that includes unmeasured waits would state a figure
+  // the ledger does not hold.
+  const human = { seconds: 0, timed: 0, untimed: 0 };
+  for (const a of allAsks) {
+    const s = askSeconds(a);
+    if (s === null) human.untimed++;
+    else {
+      human.timed++;
+      human.seconds += s;
+    }
+  }
+
+  const asks: RunAsk[] = allAsks
+    .flatMap(a => {
+      const at = isoOf(a.started_at);
+      if (!at) return [];
+      const end = isoOf(a.ended_at);
+      return [
+        {
+          kind: a.kind,
+          actor: a.actor_id,
+          at,
+          // An end before the start is a clock that disagrees, not an answer.
+          ended_at: end && end >= at ? end : null,
+          seconds: askSeconds(a),
+          gate: (GATE_KINDS as readonly string[]).includes(a.kind),
+          capability: a.capability_id ? nameOf.get(a.capability_id) || a.capability_id : undefined,
+          action: a.action ?? undefined,
+          outcome: a.outcome ?? undefined,
+        },
+      ];
+    })
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .slice(-MAX_ASKS);
+
+  return {
+    recent,
+    run: {
+      id: row.id,
+      goal: row.goal || (row.goal_id ? nameOf.get(row.goal_id) || row.goal_id : undefined),
+      started_at: isoOf(row.started_at) ?? row.started_at,
+      ended_at: isoOf(row.ended_at) ?? null,
+      outcome: row.outcome ?? undefined,
+      uses,
+      uses_total: count('capability_use'),
+      events,
+      events_total: count('work_events'),
+      asks,
+      asks_total: allAsks.length,
+      human,
+    },
+  };
+}
+
 /**
  * Where capability effort actually went, over a window.
  *
@@ -476,6 +710,7 @@ export {
   recordResource,
   recordOutcome,
   workReport,
+  runTimeline,
   usageReport,
   unmappedUse,
 };

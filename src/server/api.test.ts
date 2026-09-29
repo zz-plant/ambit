@@ -437,6 +437,66 @@ test('the frontier through time is read, one tick per observation, in the termin
   expect(foreign.status).toBe(403);
 });
 
+test('a run is served in time from what the ledger recorded, and reading it records nothing', async () => {
+  const post = (body: unknown) =>
+    fetch(`${base}/api/telemetry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  await post({ run: { id: 'run-timeline', goal: 'a timed run', runType: 'task' } });
+  await post({ event: { runId: 'run-timeline', kind: 'tool', action: 'bash', actor: 'agent' } });
+  await post({
+    use: { runId: 'run-timeline', capabilityId: 'combo:shell-execution', durationSeconds: 30 },
+  });
+  // One ask whose reply was recorded, and one the way the plugin leaves it.
+  await post({
+    intervention: {
+      runId: 'run-timeline',
+      actorId: 'human:operator',
+      kind: 'authority',
+      startedAt: '2026-09-29 10:00:00',
+      endedAt: '2026-09-29 10:02:00',
+    },
+  });
+  await post({
+    intervention: {
+      runId: 'run-timeline',
+      actorId: 'human:operator',
+      kind: 'authority',
+      action: 'bash',
+      outcome: 'asked',
+    },
+  });
+
+  const r = await fetch(`${base}/api/run?id=run-timeline`);
+  const body = await json(r);
+  expect(r.status).toBe(200);
+  expect(body.run).toMatchObject({ id: 'run-timeline', goal: 'a timed run', ended_at: null });
+  expect(body.run.uses[0]).toMatchObject({ capability: 'Shell Execution', seconds: 30 });
+  expect(body.run.events).toHaveLength(1);
+  expect(body.run.asks.map((a: any) => [a.gate, a.seconds])).toEqual([
+    [true, 120],
+    [true, null],
+  ]);
+  // One counted, one said not to be: an unmeasured ask is not a wait of nothing.
+  expect(body.run.human).toEqual({ seconds: 120, timed: 1, untimed: 1 });
+  expect(body.recent.map((s: any) => s.id)).toContain('run-timeline');
+
+  // With no id it is the newest run that recorded an ask, and it is the same one.
+  const latest = await json(await fetch(`${base}/api/run`));
+  expect(latest.run.id).toBe('run-timeline');
+
+  // A run nobody recorded is a 404 in the usual error shape.
+  const missing = await fetch(`${base}/api/run?id=nonesuch`);
+  expect(missing.status).toBe(404);
+  expect((await json(missing)).error).toContain('nonesuch');
+
+  // Reading is not writing: the same request twice sees the same ledger.
+  const again = await json(await fetch(`${base}/api/run?id=run-timeline`));
+  expect(again).toEqual(body);
+});
+
 test('an unknown path is a 404, and cannot escape dist/', async () => {
   expect((await fetch(`${base}/api/nope`)).status).toBe(404);
   const traversal = await fetch(`${base}/../../../../etc/passwd`);

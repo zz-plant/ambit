@@ -27,6 +27,7 @@ import {
   interventionHeatmap,
   loopView,
   auditView,
+  runView,
 } from '../engine/views.ts';
 import { approveProposal, decideShown, ensureActor, rejectProposal } from '../engine/governance.ts';
 import { briefingText, TOKEN_BUDGET } from '../engine/briefing.ts';
@@ -73,6 +74,7 @@ import type {
   QueueDecisionResponse,
   RejectRequest,
   RejectResponse,
+  RunResponse,
   TechTreeResponse,
   UnmappedResponse,
 } from '../shared/api.ts';
@@ -498,6 +500,19 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
       decided_by: WEB_ACTOR,
       results: result.results,
     });
+  }
+
+  // One run, in time, from what the ledger recorded. Read-only, and the same
+  // projection every surface reads. An id that names no run is a 404, and no id
+  // is the newest run that recorded an ask.
+  if (pathname === '/api/run' && method === 'GET') {
+    if (!existsSync(GRAPH_DB_PATH)) {
+      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+    }
+    const wanted = url.searchParams.get('id') || undefined;
+    const view = withGraph(db => runView(db, wanted));
+    if (wanted && !view.run) return json({ error: `No run ${wanted}.` }, 404);
+    return json<RunResponse>(view);
   }
 
   // The browser approval broker. It approves and mints the signed artifact the

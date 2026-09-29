@@ -4,6 +4,7 @@ import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
 import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
 import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
 import { importConfig, importMcpServers } from '../utils/configImporter';
+import { demoRun } from '../utils/demoRun';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import {
   DEMO_ATTENTION,
@@ -32,6 +33,7 @@ import {
   type QueueDecisionResult,
   type RejectResponse,
   type RepoScanResponse,
+  type RunResponse,
 } from '../../shared/api';
 
 /**
@@ -199,6 +201,8 @@ interface StoreState {
   rangeSince: LoopSince | null;
   /** True when the ledger exists and has recorded nothing yet. */
   loopEmpty: boolean;
+  /** One run in time, and the recent ones to pick from. Null until asked for. */
+  run: RunResponse | null;
   /** Whether an engine is answering, as far as the health probe got. */
   backend: 'unknown' | 'live' | 'static';
   /** How each repository's agent config has drifted from the global one. */
@@ -237,6 +241,8 @@ interface StoreState {
   clearSimulation: () => void;
   loadProposals: () => Promise<void>;
   loadLoop: () => Promise<void>;
+  /** A run drawn in time: the one named, or the newest that recorded an ask. */
+  loadRun: (id?: string) => Promise<void>;
   loadRepos: () => Promise<void>;
   loadInfrastructure: () => Promise<void>;
   probeBackend: () => Promise<void>;
@@ -298,6 +304,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   loopSource: null,
   rangeSince: null,
   loopEmpty: false,
+  run: null,
   backend: 'unknown',
   repos: null,
   infrastructure: null,
@@ -592,6 +599,26 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       set({ loop: snapshot, loopSource: source, loopEmpty: empty });
     } catch {
       /* the page keeps whatever it had rather than blanking */
+    }
+  },
+
+  /**
+   * One run laid out in time. The demo has runs written by hand; a live engine
+   * answers from the ledger, and a ledger with no run is a state the section
+   * says. An id is asked for by name, and an answer that is an error leaves what
+   * the page already shows.
+   */
+  loadRun: async (id?: string) => {
+    if (get().demo || !(await backendAvailable())) {
+      set({ run: demoRun(id) });
+      return;
+    }
+    try {
+      const res = await fetch(id ? `/api/run?id=${encodeURIComponent(id)}` : '/api/run');
+      const body = (await res.json()) as ApiResult<ApiRoutes['/api/run']>;
+      if (!isApiError(body)) set({ run: body });
+    } catch {
+      /* the section keeps whatever it had */
     }
   },
 

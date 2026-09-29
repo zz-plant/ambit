@@ -613,6 +613,86 @@ export interface LoopResponse extends LoopSnapshot {
   empty: boolean;
 }
 
+// ── GET /api/run ─────────────────────────────────────────────────────────────
+
+/**
+ * One run, laid out in time from what the ledger recorded and no more. Times
+ * are ISO 8601 in UTC, normalized by the engine because the ledger holds two
+ * spellings of one instant. Where nothing recorded a figure the field is null,
+ * and a surface leaves it out; an unmeasured wait is never drawn as zero.
+ */
+export interface RunAsk {
+  kind: string;
+  actor: string;
+  /** When the person was asked. */
+  at: string;
+  /** When they answered, where something recorded it. */
+  ended_at: string | null;
+  /**
+   * What the ask took, in seconds, where the ledger has a figure: the recorded
+   * active and waiting time, else the span between the two timestamps. Null
+   * when nothing measured it, including the zero a recorder writes because it
+   * cannot observe the reply.
+   */
+  seconds: number | null;
+  /** A person being asked for permission: the kinds the engine's vocabulary calls a gate. */
+  gate: boolean;
+  capability?: string;
+  action?: string;
+  outcome?: string;
+}
+
+export interface RunUse {
+  capability: string;
+  capability_id: string;
+  /** When the use was recorded; the bar drawn from it lasts `seconds`. */
+  at: string;
+  /** How long it lasted, where that was measured. */
+  seconds: number | null;
+}
+
+export interface RunEvent {
+  at: string;
+  kind: string;
+  action?: string;
+  actor?: string;
+}
+
+export interface RunView {
+  id: string;
+  goal?: string;
+  started_at: string;
+  /** Null while the run is open, and for a runtime that never reports the end. */
+  ended_at: string | null;
+  outcome?: string;
+  uses: RunUse[];
+  uses_total: number;
+  events: RunEvent[];
+  /** Events are not synced between machines, so a run that arrived in a sync file has none. */
+  events_total: number;
+  asks: RunAsk[];
+  asks_total: number;
+  /** A person's time in this run. Only asks something timed are counted in it. */
+  human: { seconds: number; timed: number; untimed: number };
+}
+
+/** One run in the list a person picks from. */
+export interface RunSummary {
+  id: string;
+  goal?: string;
+  started_at: string;
+  ended_at: string | null;
+  asks: number;
+  events: number;
+}
+
+export interface RunResponse {
+  /** Newest first. */
+  recent: RunSummary[];
+  /** The run asked for, or the newest that recorded an ask; null when there are none. */
+  run: RunView | null;
+}
+
 // ── GET /api/infrastructure/scan ─────────────────────────────────────────────
 
 export interface InfrastructureScanResponse {
@@ -688,6 +768,7 @@ export interface ApiRoutes {
   '/api/audit': AuditResponse;
   '/api/attention': AttentionResponse;
   '/api/loop': LoopResponse;
+  '/api/run': RunResponse;
   '/api/unmapped': UnmappedResponse;
   '/api/infrastructure/scan': InfrastructureScanResponse;
   '/api/repos/scan': RepoScanResponse;
