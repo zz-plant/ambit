@@ -60,7 +60,7 @@ Names and structure. A credential is a node you declared in a `credentials` bloc
 
 ### Can an agent change my configuration through Ambit?
 
-Not on its own. An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Approving and applying are not MCP tools. They run from the terminal or the map, by a person, and `ambit apply` writes a `.bak` beside any file it edits. The map also has a direct editor for entries that already exist, such as switching an MCP server off, which writes to the config on a person's click without a proposal; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
+Not on its own. An agent can read the graph, ask what a goal is missing, and *propose* a change over MCP. Approving and applying are not MCP tools. They run from the terminal or the map, by a person, and `ambit apply` writes a `.bak` beside any file it edits. The map also has a direct editor for entries that already exist, such as switching an MCP server off, which writes to the config on a person's click without a proposal, after copying the file it replaces to a `.bak`; it cannot create an entry, because an entry carries a command your runtime executes. An approval is valid only for the capability named in the proposal that was approved, so an approval to install a linter cannot be spent on a deploy.
 
 ### Where do I report a security problem?
 

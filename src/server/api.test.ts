@@ -9,7 +9,7 @@
  * of them.
  */
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -201,6 +201,33 @@ test('the config editor changes only what it is allowed to', async () => {
   expect(after.config.mcp.git.enabled).toBe(false);
   expect(after.config.agent.nonexistent).toBeUndefined();
   expect(({} as Record<string, unknown>).enabled).toBeUndefined();
+});
+
+test('an edit from the visualiser keeps the config it replaced in a .bak', async () => {
+  // SECURITY.md says the config editing writes a `.bak` first. Only `ambit
+  // apply` did, so the promise held for the terminal and not for the browser.
+  const configPath = join(dir, 'opencode.json');
+  const edit = (body: object) =>
+    fetch(`${base}/api/config/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Ambit-Token': TOKEN },
+      body: JSON.stringify(body),
+    });
+
+  // Whichever way git stands, flip it: an edit that changed nothing would
+  // leave a backup identical to the config, and prove nothing about the copy.
+  const before = readFileSync(configPath, 'utf8');
+  const was = JSON.parse(before).mcp.git.enabled;
+  expect((await edit(was ? { disableMcp: ['git'] } : { enableMcp: ['git'] })).status).toBe(200);
+
+  const after = readFileSync(configPath, 'utf8');
+  expect(JSON.parse(after).mcp.git.enabled).toBe(!was);
+  expect(readFileSync(`${configPath}.bak`, 'utf8')).toBe(before);
+
+  // Put it back, and the backup moves with the edit: it is the config before
+  // the latest one, not the first.
+  expect((await edit(was ? { enableMcp: ['git'] } : { disableMcp: ['git'] })).status).toBe(200);
+  expect(readFileSync(`${configPath}.bak`, 'utf8')).toBe(after);
 });
 
 test('telemetry stays open, because the runtime plugin posts to it unattended', async () => {

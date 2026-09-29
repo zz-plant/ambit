@@ -8,7 +8,7 @@
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export const CONFIG_PATH =
@@ -25,8 +25,28 @@ export async function readConfig(): Promise<Record<string, unknown> | null> {
   }
 }
 
+/**
+ * Writes the config, keeping what it replaces in `<config>.bak` first.
+ *
+ * SECURITY.md says the visualiser's config editing writes a `.bak` before it
+ * changes anything, as `ambit apply` does. This is where that stops being a
+ * sentence. The copy is byte for byte, so it keeps the formatting the JSON
+ * round trip below would lose, and it keeps the file's mode: a config that
+ * holds a key and is chmod 600 gets a backup no more readable than itself. Each
+ * edit replaces the last backup, so the file is always the config as it stood
+ * before the most recent edit.
+ *
+ * No config yet means nothing to keep, and the write goes ahead. A backup that
+ * cannot be made stops the write instead: an edit this server cannot undo is
+ * not one it should make.
+ */
 export async function writeConfig(data: Record<string, unknown>): Promise<boolean> {
   try {
+    try {
+      await copyFile(CONFIG_PATH, `${CONFIG_PATH}.bak`);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    }
     await writeFile(CONFIG_PATH, JSON.stringify(data, null, 2));
     return true;
   } catch {
