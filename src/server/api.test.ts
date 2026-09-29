@@ -497,6 +497,43 @@ test('a run is served in time from what the ledger recorded, and reading it reco
   expect(again).toEqual(body);
 });
 
+test('the infrastructure scan says what an agent may do on each machine it found', async () => {
+  // The manifest is read per request, so writing it here is what the next scan sees.
+  const manifest = join(dir, 'none.json');
+  writeFileSync(
+    manifest,
+    JSON.stringify({
+      devices: [
+        { id: 'nuc', name: 'NUC' },
+        { id: 'gpu-box', name: 'GPU box' },
+      ],
+    })
+  );
+  try {
+    const r = await fetch(`${base}/api/infrastructure/scan`);
+    const body = await json(r);
+    expect(r.status).toBe(200);
+    expect(typeof body.generatedAt).toBe('string');
+
+    for (const id of ['nuc', 'gpu-box']) {
+      const machine = body.machines.find((m: any) => m.id === id);
+      expect(machine.target).toBe(`device:${id}`);
+      // The seeded tree's standing grants, asked of the gate for this target.
+      const said = Object.fromEntries(machine.actions.map((a: any) => [a.name, a.decision]));
+      expect(said).toEqual({
+        install_package: 'CONFIRM',
+        read_output: 'ALLOW',
+        run_command: 'CONFIRM',
+      });
+    }
+    // Each machine in the scan is in the answer, and only the machines.
+    const devices = body.nodes.filter((n: any) => n.kind === 'device').map((n: any) => n.id);
+    expect(body.machines.map((m: any) => m.id).sort()).toEqual([...devices].sort());
+  } finally {
+    rmSync(manifest, { force: true });
+  }
+});
+
 test('an unknown path is a 404, and cannot escape dist/', async () => {
   expect((await fetch(`${base}/api/nope`)).status).toBe(404);
   const traversal = await fetch(`${base}/../../../../etc/passwd`);

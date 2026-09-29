@@ -17,6 +17,7 @@ import { humanDigest } from './attention.ts';
 import { budgetStanding } from './budgets.ts';
 import { installText } from './catalog.ts';
 import { frontierSeries, ledgerSince } from './ledger.ts';
+import { machineModes } from './machines.ts';
 import { runTimeline, unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
@@ -42,6 +43,7 @@ import {
   type LoopNext,
   type LoopResponse,
   type LoopSince,
+  type MachineModes,
   type NodeType,
   type ProposalDecision,
   type ProposalRow,
@@ -1014,6 +1016,11 @@ function monthlyHours(db: Db): { month: string; hours: number; acquired?: string
     });
   }
   return out;
+}
+
+/** What an agent may do on each machine, from the gate; the engine's answer, as served. */
+export function machineView(db: Db, ids: string[]): MachineModes[] {
+  return machineModes(db, ids);
 }
 
 /** One run laid out in time, from what the ledger recorded; the engine's report, as served. */

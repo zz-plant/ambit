@@ -366,7 +366,9 @@ export function SetupView({ onShow }: SetupViewProps) {
         </div>
 
         {tab === 'repos' && <RepoDriftPanel scan={repos} />}
-        {tab === 'infra' && <InfrastructurePanel scan={infrastructure} />}
+        {tab === 'infra' && (
+          <InfrastructurePanel scan={infrastructure} onProbe={loadInfrastructure} />
+        )}
         {tab === 'unmapped' && <UnmappedPanel report={unmapped} />}
         {tab === 'briefing' && (
           // What the agent believes about this machine, inspectable by the

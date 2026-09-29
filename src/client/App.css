@@ -4296,6 +4296,94 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--text-muted);
 }
 
+/* The infrastructure table: a status, a name, how old the reading is, and what
+   an agent may do on each machine. The mode is a word on every chip, so the
+   answer never rests on a colour. */
+.infra-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.infra-head .tp-note {
+  flex: 1;
+}
+
+.infra-table-wrap {
+  overflow-x: auto;
+}
+
+.infra-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.infra-table th,
+.infra-table td {
+  padding: 9px 14px 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.infra-table th {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.infra-table td {
+  color: var(--text-secondary);
+}
+
+.infra-kind {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.infra-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.infra-mode {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.infra-mode-word {
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.infra-mode--confirm {
+  border-color: var(--warn-line);
+}
+
+.infra-mode--deny {
+  border-color: var(--error-line);
+}
+
+.infra-mode--deny .infra-mode-word {
+  color: var(--error);
+}
+
 /* ─── DROP A CONFIG ───
    Mapping a setup with nothing installed: the file is read in the tab. The
    whole landing takes the drop, so the outline goes on the page itself. */

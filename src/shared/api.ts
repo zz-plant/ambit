@@ -695,6 +695,27 @@ export interface RunResponse {
 
 // ── GET /api/infrastructure/scan ─────────────────────────────────────────────
 
+/**
+ * What the gate answers for one action on one machine: `canExecute` with the
+ * machine as the target, so a grant scoped to it counts and one scoped
+ * elsewhere does not. CONFIRM is permitted with a person in the loop; DENY is
+ * a refusal, and `reason` says which kind.
+ */
+export interface MachineAction {
+  id: string;
+  name: string;
+  decision: 'ALLOW' | 'CONFIRM' | 'DENY';
+  reason: string;
+}
+
+export interface MachineModes {
+  /** The scan node this is about. */
+  id: string;
+  /** The graph's name for it, which is what a grant's scope is matched against. */
+  target: string;
+  actions: MachineAction[];
+}
+
 export interface InfrastructureScanResponse {
   generatedAt: string;
   source: string;
@@ -702,6 +723,8 @@ export interface InfrastructureScanResponse {
   links: InfrastructureLink[];
   findings: InfrastructureFinding[];
   summary: { online: number; degraded: number; offline: number; unknown: number };
+  /** What an agent may do on each machine the scan found. Absent from a server that predates it. */
+  machines?: MachineModes[];
 }
 
 // ── GET /api/repos/scan ──────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ import {
   interventionHeatmap,
   loopView,
   auditView,
+  machineView,
   runView,
 } from '../engine/views.ts';
 import { approveProposal, decideShown, ensureActor, rejectProposal } from '../engine/governance.ts';
@@ -68,6 +69,7 @@ import type {
   ConfigResponse,
   FrontierHistoryResponse,
   HealthResponse,
+  InfrastructureScanResponse,
   McpSnippetResponse,
   ProposalsResponse,
   QueueDecisionRequest,
@@ -579,8 +581,13 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     });
   }
 
+  // The scan is a reading taken now, and what an agent may do on each machine
+  // it found is the gate's answer for that machine, from this graph's grants.
   if (pathname === '/api/infrastructure/scan' && method === 'GET') {
-    return json(await buildInfrastructureScan());
+    const scan = await buildInfrastructureScan();
+    const devices = scan.nodes.filter(n => n.kind === 'device').map(n => n.id);
+    const machines = existsSync(GRAPH_DB_PATH) ? withGraph(db => machineView(db, devices)) : [];
+    return json<InfrastructureScanResponse>({ ...scan, machines });
   }
 
   if (pathname === '/api/repos/scan' && method === 'GET') {

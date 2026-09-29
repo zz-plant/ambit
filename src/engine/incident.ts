@@ -158,4 +158,4 @@ function resolveIncident(db: Db, serviceId?: string, outcome?: string) {
   };
 }
 
-export { incidents, resolveIncident };
+export { incidents, resolveIncident, RECOVERY_CAPABILITY };
