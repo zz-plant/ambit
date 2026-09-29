@@ -280,7 +280,14 @@ async function runCommand(
             : { error: 'Usage: ambit verify <id> --history' }
         );
       } else {
-        emit(runVerification(db, arg, value('target')));
+        const ran: any = runVerification(db, arg, value('target'));
+        emit(ran);
+        // --exit-code lets a script gate on the checks as `git diff --exit-code`
+        // lets one gate on a diff: 0 only when every check that ran passed. A
+        // capability with no check to run has proved nothing, so it exits 1
+        // with the flag as a failing check does.
+        if (flags.has('--exit-code') && !(ran.checked > 0 && ran.verified === ran.checked))
+          raiseExitCode(1);
       }
       break;
     case 'authority': {
@@ -344,6 +351,11 @@ async function runCommand(
         if (recorded !== undefined) decision.recorded_deficit = recorded;
       }
       emit(decision);
+      // --exit-code puts the decision where a shell can branch on it: 0 to go
+      // ahead, 1 to ask a person first, 2 to stop.
+      if (flags.has('--exit-code')) {
+        raiseExitCode(decision.decision === 'ALLOW' ? 0 : decision.decision === 'CONFIRM' ? 1 : 2);
+      }
       break;
     }
     case 'delegation': {

@@ -80,9 +80,11 @@ plan — what to acquire next, and whether it paid
                           a person, and which need hands
 
 check — what is proven, what is permitted, what is currently broken
-  check verify [cap] [--history] [--target=<object>]   run the declared check,
-                          or past verification; --target files the evidence
-                          against that object rather than the verb in general
+  check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
+                          declared check, or past verification; --target files
+                          the evidence against that object rather than the verb
+                          in general; --exit-code also exits 1 unless every
+                          check that ran passed
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
   check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]
@@ -98,7 +100,8 @@ check — what is proven, what is permitted, what is currently broken
   check budget [set <cap> [action] --amount=$20 [--period=month] --by=<person>]
                           a ceiling on spend per period; a spend past it is
                           refused, and within it the grant's own mode decides
-  check can <cap> [--target X] [--spend N]   the decision API: ALLOW/CONFIRM/DENY
+  check can <cap> [--target X] [--spend N] [--exit-code]   the decision API:
+                          ALLOW/CONFIRM/DENY; --exit-code also exits 0/1/2
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger

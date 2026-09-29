@@ -170,10 +170,73 @@ test('a result taken in-process leaves the exit code to whoever took it', () => 
     expect(() => capture(db, ['nonsense'])).toThrow();
     expect(said).toHaveBeenCalledWith(expect.stringContaining('Unknown command: nonsense'));
     expect(process.exitCode).toBe(before);
+    // Nor do the flags that ask for a code outright.
+    expect(capture(db, ['can', 'nothing-here', '--exit-code']).decision).toBe('DENY');
+    expect(capture(db, ['verify', 'nothing-here', '--exit-code']).error).toBeDefined();
+    expect(process.exitCode).toBe(before);
   } finally {
     said.mockRestore();
     process.exitCode = before;
     db.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('can --exit-code puts the decision in the exit code and changes nothing else', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-exit-'));
+  try {
+    run(dir, 'seed');
+    // Scoped grants on a capability the model leaves ungranted, so they are the
+    // whole story: unattended on one target, confirm on a second, refused on a third.
+    for (const [mode, scope] of [
+      ['autonomous', 'svc:ollama'],
+      ['confirm', 'svc:postgres'],
+      ['forbidden', 'device:nuc'],
+    ]) {
+      run(dir, 'authority', 'grant', 'offline-capable', mode, `--scope=${scope}`, '--by=kanav');
+    }
+
+    for (const [target, decision, code] of [
+      ['svc:ollama', 'ALLOW', 0],
+      ['svc:postgres', 'CONFIRM', 1],
+      ['device:nuc', 'DENY', 2],
+    ] as const) {
+      const ask = (...flags: string[]) =>
+        piped(dir, 'can', 'offline-capable', `--target=${target}`, '--json', ...flags);
+      const plain = ask();
+      const gated = ask('--exit-code');
+      expect(JSON.parse(gated.stdout).decision).toBe(decision);
+      expect([target, plain.status, gated.status]).toEqual([target, 0, code]);
+      // The same answer printed, the refusal recorded the same way.
+      expect(gated.stdout).toBe(plain.stdout);
+    }
+    const db = getDb(join(dir, 'graph.db'));
+    const refusals = db
+      .prepare("SELECT COUNT(*) AS n FROM failure_signals WHERE source = 'can'")
+      .get<{ n: number }>();
+    db.close();
+    expect(refusals?.n).toBe(2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('verify --exit-code exits 1 unless every check it ran passed', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-exit-'));
+  try {
+    run(dir, 'seed');
+    // Two skills an agent registered: one whose check passes, one whose fails.
+    run(dir, 'record', 'skill:holds', '--verify=true');
+    run(dir, 'record', 'skill:breaks', '--verify=false');
+    const status = (...args: string[]) => piped(dir, 'verify', ...args).status;
+
+    expect([status('skill:holds'), status('skill:breaks')]).toEqual([0, 0]);
+    expect([status('skill:holds', '--exit-code'), status('skill:breaks', '--exit-code')]).toEqual([
+      0, 1,
+    ]);
+    // Retrieval declares no check, so nothing was proved and the gate stays shut.
+    expect([status('retrieval'), status('retrieval', '--exit-code')]).toEqual([0, 1]);
+  } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
