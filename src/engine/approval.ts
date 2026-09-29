@@ -106,14 +106,19 @@ export interface VerifyResult {
 /**
  * Verifies the artifact an apply is about to rely on.
  *
- * Refusals, in order: no artifact stored, bad signature (the row was tampered
- * with after minting), expired, actor not the recorded approver. Each is a
- * hard no — an approval that no longer covers what it claims is not an
- * approval at all.
+ * Refusals, in order: turned down since, no artifact stored, bad signature (the
+ * row was tampered with after minting), expired, actor not the recorded
+ * approver. Each is a hard no — an approval that no longer covers what it
+ * claims is not an approval at all.
  */
 function verifyApproval(db: Migratable, proposalId: string, applyActor?: string): VerifyResult {
   const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { ok: false, reason: `no proposal ${proposalId}` };
+  // Turning a proposal down clears its artifact now, and a row turned down
+  // before that did not, so the status is asked as well.
+  if (row.status === 'rejected') {
+    return { ok: false, reason: 'the proposal was turned down after it was approved' };
+  }
   if (!row.approval_artifact) return { ok: false, reason: 'no approval artifact minted' };
 
   let artifact: any;

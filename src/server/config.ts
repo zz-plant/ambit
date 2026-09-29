@@ -124,6 +124,37 @@ export function isAllowedOrigin(origin: string): boolean {
   }
 }
 
+/**
+ * Whether the request was addressed to this machine by a name that means this
+ * machine.
+ *
+ * The origin check judges who *sent* a request, and a page that rebinds its own
+ * name to 127.0.0.1 is sent by no foreign origin at all: from the browser's
+ * point of view the page and this server are one origin, so it attaches no
+ * Origin to a read and `Sec-Fetch-Site: same-origin` to all of them. What such a
+ * request cannot hide is the name it used. Its Host is the attacker's, and a
+ * request for `attacker.example` has no business at a server that listens on
+ * loopback for the person at this machine. Every route answers to
+ * `localhost`, `127.0.0.1` and `[::1]` and nothing else.
+ *
+ * A request with no Host at all is not a browser's, since a browser always
+ * sends one, so it is left to the token rules below. One that names something
+ * that is not a name is refused.
+ */
+export function isAllowedHost(host: string | undefined): boolean {
+  if (host === undefined) return true;
+  // A Host header is a name and maybe a port. A URL parser would also accept
+  // credentials, a path or a fragment in front of a name that means this machine
+  // (`attacker.example:80@localhost`), so what is not a name is refused first.
+  if (!/^[a-z0-9.:[\]-]+$/i.test(host)) return false;
+  try {
+    const { hostname } = new URL(`http://${host}`);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
 export function corsHeaders(origin: string): Record<string, string> {
   const headers: Record<string, string> = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -154,8 +185,8 @@ export function corsHeaders(origin: string): Record<string, string> {
  *
  * The two queue routes are on it though they never touch the config. One
  * request there signs or turns down as many as fifty proposals as the person
- * at the browser, where the per-id routes decide one, so something with no
- * browser behind it has to hold the token to do it.
+ * at the browser, so something with no browser behind it has to hold the token
+ * to do it. The per-proposal routes are held to the same rule below.
  */
 const CONFIG_ROUTES = [
   '/api/config',
@@ -164,6 +195,18 @@ const CONFIG_ROUTES = [
   '/api/proposals/approve',
   '/api/proposals/reject',
 ];
+
+/**
+ * The per-proposal decisions, `/api/proposals/<id>/approve` and `/reject`.
+ *
+ * They were left off the list above, and the body's `actor` was honoured, so
+ * anything on the machine that could make one loopback request could sign an
+ * approval as any person the graph knew, with no browser and no token. The
+ * control plane then accepted that artifact for a production deploy. They are
+ * behind the same rule as the queue now, and decide as the person at the page.
+ * The ids differ per proposal, so this is a pattern where the list is exact names.
+ */
+const DECISION_ROUTE = /^\/api\/proposals\/[^/]+\/(approve|reject)$/;
 
 /** Same shape as the approval key: a 0600 file beside the agent config. */
 export function apiToken(): string {
@@ -211,7 +254,7 @@ export function mayEditConfig(
   header: string | undefined,
   fetchSite?: string
 ): boolean {
-  if (!CONFIG_ROUTES.includes(pathname)) return true;
+  if (!CONFIG_ROUTES.includes(pathname) && !DECISION_ROUTE.test(pathname)) return true;
   if (origin) return isAllowedOrigin(origin);
   if (fetchSite === 'same-origin' || fetchSite === 'none') return true;
   return Boolean(header) && sameToken(header as string, apiToken());

@@ -443,10 +443,13 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: true, artifact: demoApproval(proposalId, actor) };
     }
     try {
+      // The card's own hash, so a proposal that changed after it was drawn is
+      // refused. No actor goes with it: the server decides as the person at the page.
+      const proposalHash = get().proposals.find(p => p.id === proposalId)?.proposal_hash;
       const res = await fetch(`/api/proposals/${proposalId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor }),
+        body: JSON.stringify({ proposalHash }),
       });
       if (res.ok) {
         const data = (await res.json()) as ApproveResponse;
@@ -475,10 +478,11 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: true };
     }
     try {
+      const proposalHash = get().proposals.find(p => p.id === proposalId)?.proposal_hash;
       const res = await fetch(`/api/proposals/${proposalId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor: WEB_ACTOR, reason }),
+        body: JSON.stringify({ proposalHash, reason }),
       });
       if (res.ok) {
         (await res.json()) as RejectResponse;

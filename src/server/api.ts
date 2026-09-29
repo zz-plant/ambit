@@ -30,7 +30,7 @@ import {
   machineView,
   runView,
 } from '../engine/views.ts';
-import { approveProposal, decideShown, ensureActor, rejectProposal } from '../engine/governance.ts';
+import { decideDraft, decideShown, ensureActor } from '../engine/governance.ts';
 import { briefingText, TOKEN_BUDGET } from '../engine/briefing.ts';
 import {
   beginRun,
@@ -52,6 +52,7 @@ import {
   writeConfig,
   ownEntry,
   pick,
+  isAllowedHost,
   isAllowedOrigin,
   corsHeaders,
 } from './config.ts';
@@ -89,6 +90,17 @@ const WEB_ACTOR = 'human:web';
 const WEB_ACTOR_NAME = 'you, at the browser';
 const WEB_ACTOR_ROLE =
   'The person at this machine, deciding from the web view over the loopback API';
+
+/** The hash a decision names, from whatever body the request sent. */
+function shownHash(body: unknown): string | undefined {
+  const hash = (body as { proposalHash?: unknown } | null)?.proposalHash;
+  return typeof hash === 'string' ? hash : undefined;
+}
+
+/** A proposal that is not what the page showed is a conflict; the rest is a bad request. */
+function refusalStatus(kind: 'missing' | 'not-draft' | 'changed' | 'unnamed' | 'engine'): number {
+  return kind === 'not-draft' || kind === 'changed' ? 409 : 400;
+}
 
 const API_PORT = Number(process.env.AMBIT_API_PORT || 3001);
 const GRAPH_DB_PATH = resolveDbPath();
@@ -401,7 +413,10 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     }
     if (!body || typeof body !== 'object') return json({ error: 'Invalid payload' }, 400);
     const result = withGraph(db => ingestTelemetry(db, body));
-    broadcast({ type: 'WorkEvent', ...body });
+    // The body is what a runtime reported, and it does not get to say what kind
+    // of event this is: a `type` in it used to win, so anything that could post
+    // here could put a ProposalApproved on every open page's stream.
+    broadcast({ ...body, type: 'WorkEvent' });
     return json(result);
   }
 
@@ -527,22 +542,33 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // from a person the graph does not know, and the browser's person is the
   // one at this machine's loopback port, whom no config had declared, so the
   // one-click approval failed on every machine that had not typed them in.
+  //
+  // It is that person and nobody else. The body used to be allowed to name the
+  // actor, which let anything that could make a loopback request sign an
+  // approval as any person the graph knew, and the control plane accepts a
+  // signed artifact for the person it asks for. The body names the hash the
+  // card was drawn from instead, and the decision is the same guarded one the
+  // queue makes: a draft that still hashes to what was shown, decided in a
+  // transaction of its own. Like the queue it is a config route, so a request
+  // with no browser behind it needs the token (src/server/config.ts).
   const approve = pathname.match(/^\/api\/proposals\/([^/]+)\/approve$/);
   if (approve && method === 'POST') {
     const body = await readJsonBody(req).catch(() => ({}));
-    const actor = typeof body?.actor === 'string' && body.actor ? body.actor : WEB_ACTOR;
-    const result = withGraph(db => {
-      if (actor === WEB_ACTOR) ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
-      return approveProposal(db, approve[1], actor);
-    }) as any;
-    if (result.error) {
-      return json(result, /already approved/.test(result.error) ? 409 : 400);
-    }
-    broadcast({ type: 'ProposalApproved', proposalId: approve[1], actor });
+    const decided = withGraph(db => {
+      ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
+      return decideDraft(
+        db,
+        'approve',
+        { id: approve[1], proposalHash: shownHash(body) },
+        WEB_ACTOR
+      );
+    });
+    if (!decided.ok) return json({ error: decided.refused }, refusalStatus(decided.kind));
+    broadcast({ type: 'ProposalApproved', proposalId: approve[1], actor: WEB_ACTOR });
     return json<ApproveResponse>({
       proposal: approve[1],
-      approved_by: actor,
-      artifact: result.artifact,
+      approved_by: WEB_ACTOR,
+      artifact: decided.result.artifact,
     });
   }
 
@@ -552,17 +578,22 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // one-sided. The reason is optional and is the most valuable part of the row.
   const reject = pathname.match(/^\/api\/proposals\/([^/]+)\/reject$/);
   if (reject && method === 'POST') {
-    const body = (await readJsonBody(req).catch(() => ({}))) as RejectRequest;
-    const actor = typeof body?.actor === 'string' && body.actor ? body.actor : WEB_ACTOR;
+    const body = (await readJsonBody(req).catch(() => ({}))) as Partial<RejectRequest>;
     const reason =
       typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim() : undefined;
-    const result = withGraph(db => {
-      if (actor === WEB_ACTOR) ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
-      return rejectProposal(db, reject[1], actor, reason);
-    }) as any;
-    if (result.error) return json(result, /already been applied/.test(result.error) ? 409 : 400);
-    broadcast({ type: 'ProposalRejected', proposalId: reject[1], actor });
-    return json<RejectResponse>({ proposal: reject[1], rejected_by: actor, reason });
+    const decided = withGraph(db => {
+      ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
+      return decideDraft(
+        db,
+        'reject',
+        { id: reject[1], proposalHash: shownHash(body) },
+        WEB_ACTOR,
+        reason
+      );
+    });
+    if (!decided.ok) return json({ error: decided.refused }, refusalStatus(decided.kind));
+    broadcast({ type: 'ProposalRejected', proposalId: reject[1], actor: WEB_ACTOR });
+    return json<RejectResponse>({ proposal: reject[1], rejected_by: WEB_ACTOR, reason });
   }
 
   // What an agent is told at connect, shown to the person it describes the
@@ -604,6 +635,15 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://127.0.0.1:${API_PORT}`);
   const origin = req.headers.origin || '';
   const headers = corsHeaders(origin);
+
+  // Who the request was addressed to comes before who sent it. A page that
+  // rebinds its own name to this address is the same origin as this server in
+  // the browser's eyes, so no origin check can stop it, but the name it asked
+  // for is still its own. See isAllowedHost.
+  if (!isAllowedHost(req.headers.host)) {
+    res.writeHead(403, headers).end('Forbidden host');
+    return;
+  }
 
   // CORS headers only stop a browser from *reading* a cross-origin response; a
   // simple request is still delivered and executed. Reject it outright so a

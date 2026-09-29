@@ -10,8 +10,8 @@
  */
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import type { Db } from './db.ts';
-import { proposalHash } from './approval.ts';
-import { decideShown } from './governance.ts';
+import { proposalHash, verifyApproval } from './approval.ts';
+import { approveProposal, decideDraft, decideShown, rejectProposal } from './governance.ts';
 import { makeGraph } from './testing/graph.ts';
 
 const key = process.env.AMBIT_APPROVAL_KEY;
@@ -110,7 +110,7 @@ test('the queue decides drafts only, so an approved proposal keeps its approval'
     results: any[];
   };
   expect(rejected.results[0]).toMatchObject({ id: 'prop-1', decided: false });
-  expect(rejected.results[0].refused).toContain('drafts only');
+  expect(rejected.results[0].refused).toContain('only a draft can be decided');
   expect(rejected.results[1]).toEqual({ id: 'prop-2', decided: true });
   expect(row(db, 'prop-1')).toMatchObject({ status: 'approved', approval_artifact: artifact });
   expect(row(db, 'prop-2').status).toBe('rejected');
@@ -145,5 +145,96 @@ test('a list the queue cannot read is refused whole, before anything is decided'
   const stranger = decideShown(db, 'approve', one, 'human:nobody') as { results: any[] };
   expect(stranger.results[0]).toMatchObject({ id: 'prop-1', decided: false });
   expect(row(db, 'prop-1').status).toBe('draft');
+  db.close();
+});
+
+// The same guard for one proposal, which is what the card's own buttons use, and
+// what turning a proposal down does to an approval that came before it.
+
+test('one draft is decided against the hash its card showed, and refused when it is not that', () => {
+  const db = graph();
+  const [item] = shown(db, 'prop-1');
+
+  expect(decideDraft(db, 'approve', { id: 'prop-1' }, 'human:web')).toMatchObject({
+    ok: false,
+    kind: 'unnamed',
+  });
+  expect(row(db, 'prop-1').status).toBe('draft');
+
+  db.prepare("UPDATE proposals SET goal = 'reach something else' WHERE id = 'prop-1'").run();
+  expect(decideDraft(db, 'approve', item, 'human:web')).toMatchObject({
+    ok: false,
+    kind: 'changed',
+  });
+  expect(row(db, 'prop-1')).toMatchObject({ status: 'draft', approval_artifact: null });
+
+  const [again] = shown(db, 'prop-1');
+  const decided = decideDraft(db, 'approve', again, 'human:web') as { ok: true; result: any };
+  expect(decided.ok).toBe(true);
+  expect(decided.result.artifact.sig).toMatch(/^[0-9a-f]{64}$/);
+  expect(row(db, 'prop-1').status).toBe('approved');
+  db.close();
+});
+
+test('a proposal that is no longer a draft is not decided again from the page', () => {
+  // `approveProposal` alone will sign a rolled-back or applied proposal a second
+  // time, which is the CLI's business. The page decides what it showed as a draft.
+  const db = graph();
+  for (const status of ['approved', 'applied', 'rolled_back', 'rejected']) {
+    db.prepare('UPDATE proposals SET status = ? WHERE id = ?').run(status, 'prop-2');
+    const [item] = shown(db, 'prop-2');
+    for (const decision of ['approve', 'reject'] as const) {
+      expect(decideDraft(db, decision, item, 'human:web')).toMatchObject({
+        ok: false,
+        kind: 'not-draft',
+      });
+    }
+    expect(row(db, 'prop-2').status).toBe(status);
+  }
+  db.close();
+});
+
+test('a reason given when turning a draft down is recorded with the refusal', () => {
+  const db = graph();
+  const [item] = shown(db, 'prop-3');
+  expect(decideDraft(db, 'reject', item, 'human:web', 'not this quarter')).toMatchObject({
+    ok: true,
+  });
+  expect(
+    db
+      .prepare('SELECT rejected_by, reason FROM proposal_rejections WHERE proposal_id = ?')
+      .get('prop-3')
+  ).toMatchObject({ rejected_by: 'human:web', reason: 'not this quarter' });
+  db.close();
+});
+
+test('turning down an approved proposal withdraws the approval it had been given', () => {
+  // The artifact is a signed document, and apply and the control plane spend it
+  // by reading the row. A refusal that left it in place said "turned down" on
+  // the page while the artifact stayed good for its day.
+  const db = graph();
+  expect((approveProposal(db, 'prop-1', 'human:web') as any).artifact).toBeDefined();
+  expect(verifyApproval(db, 'prop-1', 'human:web')).toEqual({ ok: true });
+
+  expect((rejectProposal(db, 'prop-1', 'human:web') as any).error).toBeUndefined();
+  expect(row(db, 'prop-1')).toMatchObject({
+    status: 'rejected',
+    approval_artifact: null,
+    expires_at: null,
+  });
+  expect(verifyApproval(db, 'prop-1', 'human:web').ok).toBe(false);
+  db.close();
+});
+
+test('a proposal turned down by an earlier release, artifact and all, is still not spendable', () => {
+  const db = graph();
+  approveProposal(db, 'prop-1', 'human:web');
+  // What the earlier release left behind: rejected, and the artifact still there.
+  db.prepare("UPDATE proposals SET status = 'rejected' WHERE id = 'prop-1'").run();
+  expect(row(db, 'prop-1').approval_artifact).not.toBeNull();
+  expect(verifyApproval(db, 'prop-1', 'human:web')).toMatchObject({
+    ok: false,
+    reason: expect.stringContaining('turned down'),
+  });
   db.close();
 });
