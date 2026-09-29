@@ -19,7 +19,7 @@ import { EraLadderPanel } from './EraLadder';
 import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
-import { runsOf } from '../utils/checkHistory';
+import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 
 /**
@@ -197,7 +197,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   // The header's status takes the verdict's colour, so "Reached" is green only
   // when something proved it.
   const statusTone = item.status !== 'built' ? item.status : verdict ? verdict.tone : item.status;
-  const verifyCmd = `ambit verify ${item.id}`;
+  const verifyCmd = verifyCommand(item);
 
   const byId = new Map(items.map(i => [i.id, i]));
   // One hop each way, the same two sets the map colours: what this needs, and

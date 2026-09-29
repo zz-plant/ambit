@@ -80,7 +80,11 @@ export function trailOf(entry: Item, provided: Item[]): CheckTrail | null {
   return ranked[0] ?? null;
 }
 
-/** The one command that finds out why a check is failing. The page cannot run it. */
+/**
+ * The one command that finds out why a check is failing. The page cannot run
+ * it: a check runs where a person types it. The palette, the detail panel and
+ * a My Setup row all copy this string, so they name the same command.
+ */
 export const verifyCommand = (node: Pick<Item, 'id'>): string => `ambit verify ${node.id}`;
 
 /**

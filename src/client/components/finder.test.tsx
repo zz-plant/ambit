@@ -19,6 +19,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { ProposalRow } from '../../shared/api';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { DEMO_ATTENTION, demoConfigGraph, demoProposals, demoTreeGraph } from '../store/demo';
+import { verifyCommand } from '../utils/checkHistory';
 import type { Item } from '../utils/configImporter';
 import {
   activate,
@@ -29,7 +30,6 @@ import {
   type PaletteHandlers,
   paletteRows,
   type Row,
-  verifyCommand,
 } from '../utils/palette';
 import Finder from './Finder';
 import NodeDetailPanel from './NodeDetailPanel';

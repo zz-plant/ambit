@@ -21,6 +21,7 @@ import type { ProposalRow } from '../../shared/api';
 import { authorityMark, isEntry } from '../components/civ/layout';
 import { LENSES as LENS_NAMES } from '../components/civ/ZoomHud';
 import type { ActiveLens } from '../linkState';
+import { verifyCommand } from './checkHistory';
 import type { Item } from './configImporter';
 
 /** What an action can do to the page, supplied by the shell that owns the view. */
@@ -51,13 +52,6 @@ export interface PaletteAction {
   browse?: boolean;
   run: () => void;
 }
-
-/**
- * The command that checks one node. The detail panel offers the same string
- * to copy, and finder.test.tsx holds the two together: a check is run by
- * whoever types it, so the two places must name the same one.
- */
-export const verifyCommand = (item: Pick<Item, 'id'>): string => `ambit verify ${item.id}`;
 
 /**
  * Whether the attention lens has anything to colour: the ledger has recorded
