@@ -18,14 +18,7 @@ import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps } from '../next.ts';
 import { C, formatGeneric, type Palette } from './output.ts';
-import {
-  CHECK_RUN_SQL,
-  FAILING,
-  FAILING_SQL,
-  PROVEN,
-  REACHED_SQL,
-  graphCounts,
-} from '../vocabulary.ts';
+import { CHECK_RUN_SQL, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
 function ago(ts: string | null | undefined): string | undefined {
@@ -84,12 +77,15 @@ function checkableNames(db: any): string[] {
  * "installed is not working" is the failure this project exists to prevent.
  */
 function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
-  // Only kind='capability' carries a derived lifecycle — providers and
-  // resources are the things supplying capabilities, not claims to verify.
+  // The nodes the summary counts, which is every kind but an action. A skill an
+  // agent registered carries a check and a derived lifecycle as a curated
+  // capability does, and counting capabilities alone left a failing skill out
+  // of the row while the head counted it. An action is conferred by a
+  // capability and is counted through it, as `graphCounts` counts it.
   const rows = db
     .prepare(
       `SELECT lifecycle, COUNT(*) AS n FROM capabilities
-       WHERE kind = 'capability' AND ${REACHED_SQL} GROUP BY lifecycle`
+       WHERE kind != 'action' AND ${REACHED_SQL} GROUP BY lifecycle`
     )
     .all();
   const count = (...ls: string[]) =>
@@ -102,7 +98,8 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
   return {
     proven: count(...PROVEN),
     unproven: count('configured'),
-    failing: count(...FAILING),
+    // The summary's own count, so this row and the head cannot disagree.
+    failing: graphCounts(db).failing,
     last_check: ago(last?.t) || 'never',
     provable_now: checkable.slice(0, 8),
     note: checkable.length
@@ -215,10 +212,14 @@ function statusReport(db: any) {
 
   // Degraded means configured but not working — the decision-relevant reading
   // of "decay". A lifecycle-failing capability is a repair, not an acquisition.
+  // These are the nodes `graphCounts` counts as failing, by name, so the head,
+  // the evidence row and the line the report ends on all count one set. An
+  // action is left out as the summary leaves it out; the capability that
+  // confers it is what the report names.
   const degraded = db
     .prepare(
       `SELECT id, name, domain FROM capabilities
-       WHERE ${REACHED_SQL} AND ${FAILING_SQL} ORDER BY id`
+       WHERE kind != 'action' AND ${FAILING_SQL} ORDER BY id`
     )
     .all();
 

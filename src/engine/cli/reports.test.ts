@@ -129,6 +129,55 @@ describe('the evidence counts', () => {
   });
 });
 
+describe('one count of what is failing', () => {
+  // The head counted failing nodes of every kind but actions, the evidence row
+  // counted only curated capabilities, and the degraded list and the last line
+  // counted actions too, so one screen said three different numbers.
+  it('counts a registered skill failing its check in the head, the row and the last line', () => {
+    const report = reportOf([
+      { id: 'combo:a', name: 'Alpha', lifecycle: 'verified' },
+      {
+        id: 'skill:pdf',
+        name: 'PDF tools',
+        kind: 'provider',
+        category: 'skill',
+        lifecycle: 'broken',
+      },
+    ]);
+    const lines = renderStatus(report, PLAIN);
+    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · 1 failing · 1 degraded');
+    expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual(['  › failing         1']);
+    expect(report.next?.command).toBe('ambit verify skill:pdf');
+  });
+
+  it('reports failing actions through their capability, and names the capability', () => {
+    const report = reportOf([
+      { id: 'combo:shell-execution', name: 'Shell Execution', lifecycle: 'broken' },
+      {
+        id: 'act:shell-execution/install_package',
+        name: 'install_package',
+        kind: 'action',
+        lifecycle: 'broken',
+      },
+      {
+        id: 'act:shell-execution/run_command',
+        name: 'run_command',
+        kind: 'action',
+        lifecycle: 'degraded',
+      },
+    ]);
+    const lines = renderStatus(report, PLAIN);
+    expect(lines[1]).toBe('    1 of 1 reached · 0 proven · 1 failing · 1 degraded');
+    expect(report.failing).toBe(1);
+    expect(report.degraded?.map((d: { id: string }) => d.id)).toEqual(['combo:shell-execution']);
+    expect(evidenceRows(lines)).toContain('  › failing         1');
+    expect(report.next).toEqual({
+      command: 'ambit verify shell-execution',
+      why: 'Shell Execution is configured and failing its check',
+    });
+  });
+});
+
 describe('what the head does not say', () => {
   it('follows beneath it as it always has been drawn', () => {
     const text = renderStatus(reportOf(MIXED), PLAIN).join('\n');
