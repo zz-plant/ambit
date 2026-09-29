@@ -117,6 +117,59 @@ test('the terminal names a step between two observations in the words the timeli
   expect(cli('history', 'since', '2026-09-21 09:00:00').moved).toBe(step.moved);
 });
 
+/** Two seeds, dated Monday and Friday, with the live graph where Friday left it. */
+function mondayAndFriday() {
+  seed(LOCAL_ONLY).close();
+  const db = seed(PLUS_EMBEDDINGS);
+  const [first, second] = rows(db, 'SELECT id FROM frontier_snapshots ORDER BY id');
+  const date = db.prepare('UPDATE frontier_snapshots SET taken_at = ? WHERE id = ?');
+  date.run('2026-09-21 09:00:00', first.id);
+  date.run('2026-09-25 17:00:00', second.id);
+  db.close();
+}
+
+test('a date and a time typed without quotes are read as the one timestamp they are', () => {
+  mondayAndFriday();
+  const quoted = cli('history', 'since', '2026-09-21 09:00:00', '2026-09-25 17:00:00');
+
+  // What a shell hands over for `ambit history since 2026-09-21 09:00:00`: two
+  // words. The second used to become `until`, a time on no date, which SQLite
+  // places in the year 2000, and the answer compared Monday with itself.
+  const split = cli('history', 'since', '2026-09-21', '09:00:00');
+  expect(split.error).toBeUndefined();
+  expect(split.since).toBe('2026-09-21 09:00:00');
+  expect(split.until).toBeUndefined();
+  expect(split.moved).toBe(quoted.moved);
+
+  const both = cli('history', 'since', '2026-09-21', '09:00:00', '2026-09-25', '17:00:00');
+  expect(both.until).toBe('2026-09-25 17:00:00');
+  expect(both.moved).toBe(quoted.moved);
+});
+
+test('a time with no date, or a bare number, is not a timestamp, and the error shows one', () => {
+  mondayAndFriday();
+  for (const typed of ['10:00:00', '2026', 'now']) {
+    const answer = cli('history', 'since', typed);
+    expect(answer.error, typed).toMatch(/^Not a timestamp/);
+    // The example in the message is one that works pasted into a shell.
+    expect(answer.error).toContain('2026-09-26T10:00:00Z');
+  }
+  expect(cli('history', 'since', '2026-09-21 09:00:00', '10:00:00').error).toMatch(
+    /^Not a timestamp: 10:00:00/
+  );
+});
+
+test('an until before every observation is refused, naming the earliest', () => {
+  mondayAndFriday();
+  // `when` may still start from the first observation after it, as documented.
+  expect(cli('history', 'since', '2026-09-01').since).toBe('2026-09-21 09:00:00');
+  // `until` did the same, so a question about a time before the ledger began
+  // was quietly answered about a later one.
+  const early = cli('history', 'since', '2026-09-01', '2026-09-02');
+  expect(early.error).toContain('2026-09-02');
+  expect(early.error).toContain('2026-09-21 09:00:00');
+});
+
 test('a frontier query before any history explains itself', () => {
   const db = seed(LOCAL_ONLY);
   db.close();

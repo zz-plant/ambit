@@ -308,3 +308,38 @@ test('a step between two observations reads over MCP as the terminal prints it',
   expect(step.moved).toBe('reached 0 to 1, verified 0 to 1');
   expect(step.moved).toBe(terminal);
 });
+
+test('the tool refuses an until it cannot place, and one before the first observation', () => {
+  // A bare time parsed as a moment in the year 2000, and an `until` with no
+  // observation at or before it fell back to the earliest one after it, so
+  // both were answered about some other moment and said nothing about it.
+  const path = join(dir, 'until.db');
+  const db = getDb(path);
+  migrate(db);
+  db.prepare(
+    `INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle)
+     VALUES ('combo:vc', 'Version Control', 'devops', '', 'skill', 'locked', 'capability', 'detected')`
+  ).run();
+  recordFrontier(db, '2026-09-21 09:00:00');
+  db.close();
+
+  const replies = rpc(
+    [
+      { until: '10:00:00' },
+      { when: '2026-09-01T00:00:00Z', until: '2026-09-02T00:00:00Z' },
+      { when: '2026-09-01T00:00:00Z', until: '2026-09-21T09:00:00Z' },
+    ].map((args, i) => ({
+      jsonrpc: '2.0',
+      id: i + 1,
+      method: 'tools/call',
+      params: { name: 'ambit_since', arguments: args },
+    })),
+    path
+  );
+  const [bare, before, from] = replies.map(r => JSON.parse(r.result.content[0].text));
+  expect(bare.error).toMatch(/^Not a timestamp: 10:00:00/);
+  expect(before.error).toContain('2026-09-21 09:00:00');
+  // The earliest observation itself is in effect at its own second.
+  expect(from.error).toBeUndefined();
+  expect(from.until).toBe('2026-09-21 09:00:00');
+});

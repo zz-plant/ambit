@@ -37,7 +37,7 @@ import { nextSteps } from './next.ts';
 import { recordRefusal, signalReport } from './failures.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
 import { exportSync, importSync } from './sync.ts';
-import { ledgerHistory, ledgerSince } from './ledger.ts';
+import { ledgerHistory, ledgerSince, typedTimestamps } from './ledger.ts';
 import {
   recordDelegationState,
   delegationRecords,
@@ -420,8 +420,10 @@ async function runCommand(
       break;
     }
     case 'history':
-      if (arg === 'since') emit(ledgerSince(db, positional[1], positional[2]));
-      else emit(ledgerHistory(db));
+      if (arg === 'since') {
+        const [when, until] = typedTimestamps(positional.slice(1));
+        emit(ledgerSince(db, when, until));
+      } else emit(ledgerHistory(db));
       break;
     case 'propose': {
       const drafted = propose(db, arg, Number(positional[1]) || undefined);

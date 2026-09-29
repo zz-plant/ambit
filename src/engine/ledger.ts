@@ -35,9 +35,41 @@ interface Observation {
  * one. `taken_at` is written by `datetime('now')`, so a comparison against
  * `2026-09-26T10:00:00Z` as a string put every snapshot of that day on the
  * wrong side of it: a `T` sorts after the space the ledger writes.
+ *
+ * It has to begin with a date. SQLite also reads a bare `10:00:00` (as a time
+ * in the year 2000), a bare number (as a Julian day) and `now`, and each of
+ * those answered a question about some other moment without saying so.
  */
+const DATED = /^\d{4}-\d{2}-\d{2}(?:$|[T ])/;
+
 function secondOf(db: Db, when: string): string | null {
+  if (!DATED.test(when)) return null;
   return db.prepare('SELECT datetime(?) AS second').get(when)?.second ?? null;
+}
+
+/** What to say about a value that names no second. */
+const notATimestamp = (stated: string) =>
+  `Not a timestamp: ${stated}. A timestamp is a date, with a time and zone if wanted, such as 2026-09-26 or 2026-09-26T10:00:00Z.`;
+
+/** A date alone, and a time alone: the two words a shell makes of an unquoted timestamp. */
+const BARE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const BARE_TIME = /^\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+/**
+ * The timestamps a person typed, with each one a shell split in two joined
+ * again. `ambit history since 2026-09-26 10:00:00` arrives as two words, and
+ * read apart the second became `until`.
+ */
+function typedTimestamps(words: string[]): string[] {
+  const joined: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const next = words[i + 1];
+    if (BARE_DATE.test(words[i]) && next !== undefined && BARE_TIME.test(next)) {
+      joined.push(`${words[i]} ${next}`);
+      i++;
+    } else joined.push(words[i]);
+  }
+  return joined;
 }
 
 /** The live graph, read into the shape a snapshot stores. */
@@ -129,6 +161,18 @@ function observation(row: any): Observation {
   };
 }
 
+type Dated = Observation & { taken_at: string };
+
+/** The observation in effect at a second the ledger stores, or null before the first. */
+function inEffectAt(db: Db, stamp: string): Dated | null {
+  const row = db
+    .prepare(
+      `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots WHERE taken_at <= ? ORDER BY taken_at DESC, id DESC LIMIT 1`
+    )
+    .get(stamp);
+  return row ? (observation(row) as Dated) : null;
+}
+
 /**
  * The observation in effect at a point in time, or the earliest one after it.
  *
@@ -138,22 +182,16 @@ function observation(row: any): Observation {
  * one and a table scan gives the earlier. In effect at a second means the last
  * recorded in it; the earliest means the first recorded.
  */
-function frontierAt(db: Db, when?: string): (Observation & { taken_at: string }) | null {
+function frontierAt(db: Db, when?: string): Dated | null {
   const stamp = when ? secondOf(db, when) : null;
-  const row =
-    (stamp
-      ? db
-          .prepare(
-            `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots WHERE taken_at <= ? ORDER BY taken_at DESC, id DESC LIMIT 1`
-          )
-          .get(stamp)
-      : undefined) ||
-    db
-      .prepare(
-        `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots ORDER BY taken_at ASC, id ASC LIMIT 1`
-      )
-      .get();
-  return row ? (observation(row) as Observation & { taken_at: string }) : null;
+  const inEffect = stamp ? inEffectAt(db, stamp) : null;
+  if (inEffect) return inEffect;
+  const row = db
+    .prepare(
+      `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots ORDER BY taken_at ASC, id ASC LIMIT 1`
+    )
+    .get();
+  return row ? (observation(row) as Dated) : null;
 }
 
 /**
@@ -361,18 +399,24 @@ function movedSentence(step: {
 /**
  * What changed in the reachable frontier since a past observation: up to the
  * live graph, or up to a later observation when `until` names one.
+ *
+ * `when` may start from the earliest observation after it. `until` may not:
+ * standing in a later observation for it answers about a moment nobody named,
+ * so before the first observation it is an error that says where the ledger
+ * begins.
  */
 function ledgerSince(db: Db, when?: string, until?: string) {
   for (const stated of [when, until]) {
-    if (stated && !secondOf(db, stated)) {
-      return {
-        error: `Not a timestamp: ${stated}. Name a second, such as 2026-09-26 10:00:00 or 2026-09-26T10:00:00Z.`,
-      };
-    }
+    if (stated && !secondOf(db, stated)) return { error: notATimestamp(stated) };
   }
   const past = frontierAt(db, when);
   if (!past) return { error: 'No frontier recorded yet. Run seed at least twice.' };
-  const now = until ? frontierAt(db, until)! : frontierNow(db);
+  const now = until ? inEffectAt(db, secondOf(db, until)!) : frontierNow(db);
+  if (!now) {
+    return {
+      error: `Nothing was observed at or before ${until}. The earliest observation is ${frontierAt(db)!.taken_at}.`,
+    };
+  }
   if (now.taken_at !== null && now.taken_at < past.taken_at) {
     return {
       error: `The observation in effect at ${until} (${now.taken_at}) is earlier than the one at ${when ?? 'the start'} (${past.taken_at}).`,
@@ -458,5 +502,6 @@ export {
   compareFrontiers,
   ledgerSince,
   ledgerHistory,
+  typedTimestamps,
   type Observation,
 };
