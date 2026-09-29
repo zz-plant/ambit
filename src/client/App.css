@@ -5421,6 +5421,114 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--warn-soft);
 }
 
+/* ─── FOCUS ─── */
+/* Keeps only the selected node's neighbourhood on the map. It is off unless
+   asked for, so the button is quiet; pressed, it takes the accent, and the
+   direction, the depth and the count of what is hidden appear under it. */
+.sp-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.sp-action-btn--focus {
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 12.5px;
+}
+
+.sp-action-btn--focus:hover {
+  background: var(--accent-soft);
+}
+
+.sp-action-btn--focus[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.sp-action-btn--focus[aria-pressed='true']:hover {
+  background: var(--accent-dim);
+}
+
+.sp-focus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sp-focus-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sp-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.sp-seg-btn {
+  min-width: 32px;
+  padding: 3px 10px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.sp-seg-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sp-seg-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* How many nodes the focus hides, and the way back to all of them. */
+.sp-focus-pill {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: 5px;
+  padding: 3px 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.sp-focus-pill strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-focus-pill:hover {
+  border-color: var(--accent-line);
+  color: var(--text-primary);
+}
+
+.sp-focus-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .civ-sim-banner--gap {
   border: 1px solid var(--warn-line);
   color: var(--warn);

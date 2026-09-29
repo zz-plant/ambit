@@ -15,6 +15,7 @@ import {
   buildAdjacency,
   buildColumns,
   COL_W,
+  collapseTo,
   columnLabel,
   columnOf,
   columnProgress,
@@ -27,6 +28,7 @@ import {
   isEntry,
   isNext,
   layoutNodes,
+  neighbourhood,
   NODE_R,
   authorityMark,
   isProven,
@@ -40,6 +42,7 @@ import {
   sceneSize,
   START_X,
   START_Y,
+  stepSelection,
   unlockCascade,
   visibleItems,
   wrapLabel,
@@ -611,4 +614,147 @@ test('what a node is blocked by is three names at most, then a count of the rest
     seconds: 3000,
   });
   expect(blockedBy([target], [], 't')).toEqual({ names: [], more: 0, seconds: 0 });
+});
+
+// ── The neighbourhood of a node ──────────────────────────────────────────────
+
+/**
+ * A small graph with every shape a focus has to get right. b is the node in
+ * focus: a and x are what it needs, c and y what it enables, d is one hop past
+ * c, and s is a sibling, another thing a enables. `gone` is an entry the map
+ * does not draw, with z hanging off it: b reaches z only by passing through it.
+ *
+ *   a -> b -> c -> d
+ *   x -> b -> y
+ *   a -> s
+ *   b -> gone -> z
+ */
+const EDGES: Connection[] = [
+  { from: 'a', to: 'b', type: 'hard-dep' },
+  { from: 'x', to: 'b', type: 'hard-dep' },
+  { from: 'b', to: 'c', type: 'hard-dep' },
+  { from: 'c', to: 'd', type: 'hard-dep' },
+  { from: 'b', to: 'y', type: 'soft-dep' },
+  { from: 'a', to: 's', type: 'hard-dep' },
+  { from: 'b', to: 'gone', type: 'hard-dep' },
+  { from: 'gone', to: 'z', type: 'hard-dep' },
+];
+const DRAWN = new Set(['a', 'b', 'c', 'd', 'x', 'y', 's', 'z']);
+const around = (depth: number, direction: 'needs' | 'both' | 'enables', id = 'b') =>
+  [...neighbourhood(EDGES, id, depth, direction, DRAWN)].sort();
+
+test('what a node needs is its prerequisites, hop by hop', () => {
+  expect(around(1, 'needs')).toEqual(['a', 'b', 'x']);
+  // Nothing needs more than they do: a deeper look finds the same.
+  expect(around(3, 'needs')).toEqual(['a', 'b', 'x']);
+  // From d, needs runs back up the chain.
+  expect(around(1, 'needs', 'd')).toEqual(['c', 'd']);
+  expect(around(2, 'needs', 'd')).toEqual(['b', 'c', 'd']);
+  expect(around(3, 'needs', 'd')).toEqual(['a', 'b', 'c', 'd', 'x']);
+});
+
+test('what a node enables is its dependants, hop by hop', () => {
+  expect(around(1, 'enables')).toEqual(['b', 'c', 'y']);
+  expect(around(2, 'enables')).toEqual(['b', 'c', 'd', 'y']);
+  expect(around(3, 'enables')).toEqual(['b', 'c', 'd', 'y']);
+});
+
+test('both is the two walks together, and never a walk that ignores direction', () => {
+  expect(around(1, 'both')).toEqual(['a', 'b', 'c', 'x', 'y']);
+  expect(around(2, 'both')).toEqual(['a', 'b', 'c', 'd', 'x', 'y']);
+  // s is what a enables, a sibling of b: it is not what b needs and not what b enables.
+  expect(around(3, 'both')).not.toContain('s');
+  // It is exactly the union of the other two.
+  for (const depth of [1, 2, 3]) {
+    expect(around(depth, 'both')).toEqual(
+      [...new Set([...around(depth, 'needs'), ...around(depth, 'enables')])].sort()
+    );
+  }
+});
+
+test('a hop through a node the map does not draw is not a hop', () => {
+  // b -> gone -> z is two hops on the edge list. gone is not drawn, so z is
+  // not two hops from anything the reader can see, and z is left out.
+  expect(around(2, 'enables')).not.toContain('z');
+  expect(around(3, 'both')).not.toContain('z');
+  expect(around(3, 'both')).not.toContain('gone');
+  // Counted on the edge list alone, the same walk does reach it.
+  expect([...neighbourhood(EDGES, 'b', 2, 'enables', new Set([...DRAWN, 'gone']))]).toContain('z');
+});
+
+test('an optional edge is a hop, since the map draws it', () => {
+  expect(around(1, 'enables')).toContain('y');
+});
+
+test('a cycle ends the walk, and the node is drawn once', () => {
+  const loop: Connection[] = [...EDGES, { from: 'c', to: 'b', type: 'hard-dep' }];
+  expect([...neighbourhood(loop, 'b', 3, 'both', DRAWN)].sort()).toEqual([
+    'a',
+    'b',
+    'c',
+    'd',
+    'x',
+    'y',
+  ]);
+});
+
+test('no hops is the node alone, and a node the map does not draw has no neighbourhood', () => {
+  expect(around(0, 'both')).toEqual(['b']);
+  expect(around(1, 'both', 'gone')).toEqual([]);
+  expect(around(1, 'both', 'nonesuch')).toEqual([]);
+});
+
+test('the counter is the whole map less what is drawn, over the nodes the map draws', () => {
+  // Three eras of nodes, and an entry the map has no column for.
+  const tree = ['a', 'b', 'c', 'd', 'x', 'y', 's', 'z'].map(id => rung(id, 'built', {}, 2));
+  const entry = item('gone', { domain: 'infra' }, 'mcp-server');
+  const items = [...tree, entry];
+
+  const seen = collapseTo(items, EDGES, 'b', 1, 'both')!;
+  expect([...seen.shown].sort()).toEqual(['a', 'b', 'c', 'x', 'y']);
+  // The entry is not on the map, so it is not hidden by anything.
+  expect(seen.total).toBe(8);
+  expect(seen.hidden).toBe(seen.total - seen.shown.size);
+  expect(seen.hidden).toBe(3);
+
+  // Whatever the depth and direction, what is hidden is what is not shown.
+  for (const depth of [1, 2, 3]) {
+    for (const direction of ['needs', 'both', 'enables'] as const) {
+      const c = collapseTo(items, EDGES, 'b', depth, direction)!;
+      expect(c.hidden + c.shown.size).toBe(c.total);
+    }
+  }
+});
+
+test('an entry of My Setup has nothing on the map to collapse to', () => {
+  const items = [rung('a', 'built', {}, 2), item('gone', { domain: 'infra' }, 'mcp-server')];
+  expect(collapseTo(items, EDGES, 'gone', 2, 'both')).toBeNull();
+  expect(collapseTo(items, EDGES, 'nonesuch', 2, 'both')).toBeNull();
+});
+
+test('j and k step through the nodes, skipping any a collapse hides', () => {
+  const list = ['a', 'b', 'c', 'd'].map(id => rung(id, 'built', {}, 2));
+  // Without a collapse it is the plain walk, wrapping at both ends.
+  expect(stepSelection(list, 'a', 1)).toBe('b');
+  expect(stepSelection(list, 'd', 1)).toBe('a');
+  expect(stepSelection(list, 'a', -1)).toBe('d');
+  expect(stepSelection(list, null, 1)).toBe('a');
+  expect(stepSelection(list, null, -1)).toBe('d');
+
+  // With b and c hidden, a is followed by d, and d by a.
+  const shown = new Set(['a', 'd']);
+  expect(stepSelection(list, 'a', 1, shown)).toBe('d');
+  expect(stepSelection(list, 'd', 1, shown)).toBe('a');
+  expect(stepSelection(list, 'a', -1, shown)).toBe('d');
+  // A selection the collapse has hidden is a place to start from, not a place to stay.
+  expect(stepSelection(list, 'b', 1, shown)).toBe('a');
+});
+
+test('j and k never hand the selection back, which would clear it, and never walk an empty map', () => {
+  const list = ['a', 'b'].map(id => rung(id, 'built', {}, 2));
+  // Only the selected node is shown: there is nowhere to go.
+  expect(stepSelection(list, 'a', 1, new Set(['a']))).toBeNull();
+  expect(stepSelection(list, 'a', -1, new Set(['a']))).toBeNull();
+  expect(stepSelection([], null, 1)).toBeNull();
+  expect(stepSelection(list, null, 1, new Set())).toBeNull();
 });

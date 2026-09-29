@@ -25,7 +25,7 @@ const HOTKEYS = [
     key: '/',
     desc: 'Find a capability, on the map or in your setup, or run an action on it: an outage, an unlock, its check, a lens, Proposals',
   },
-  { key: 'J / K', desc: 'Step through the nodes on the map' },
+  { key: 'J / K', desc: 'Step through the nodes on the map, skipping any a focus hides' },
   { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
   { key: '+ / -', desc: 'Zoom in / out on the map' },
   { key: '0', desc: 'Back to actual size' },
@@ -246,6 +246,15 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   </span>
                 </div>
                 <div className="docs-action">
+                  <span className="docs-cmd">Focus</span>
+                  <span className="docs-answers">
+                    In the panel of a selected node: keeps only what it needs and enables within a
+                    few hops, and hides the rest. Choose which way and how far, and the pill says
+                    how many nodes are hidden and brings them back. Esc ends it. It is off unless
+                    you ask, and the header still counts the whole map
+                  </span>
+                </div>
+                <div className="docs-action">
                   <span className="docs-cmd">Click a legend key</span>
                   <span className="docs-answers">
                     Highlights only that kind: keystones, failing checks, next steps. The counts in
@@ -285,8 +294,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Share</span>
                   <span className="docs-answers">
-                    Copies a link to this exact view: graph, selected node, lens, filter and the
-                    moment the timeline is on
+                    Copies a link to this exact view: graph, selected node, lens, filter, focus and
+                    the moment the timeline is on
                   </span>
                 </div>
                 <div className="docs-action">

@@ -54,6 +54,9 @@ export default function App() {
   const demo = useAmbitStore(s => s.demo);
   const lens = useAmbitStore(s => s.activeLens);
   const spotlight = useAmbitStore(s => s.spotlight);
+  const collapse = useAmbitStore(s => s.collapsed);
+  const depth = useAmbitStore(s => s.collapseDepth);
+  const dir = useAmbitStore(s => s.collapseDirection);
   const proposals = useAmbitStore(s => s.proposals);
   const showApprovalModal = useAmbitStore(s => s.showApprovalModal);
   const history = useAmbitStore(s => s.history);
@@ -96,7 +99,17 @@ export default function App() {
     setShowDocs(true);
   };
 
-  useUrlSync({ view, focusId: selectedId, docsOpen: showDocs, demo, lens, at: historyAt });
+  useUrlSync({
+    view,
+    focusId: selectedId,
+    docsOpen: showDocs,
+    demo,
+    lens,
+    at: historyAt,
+    collapse,
+    depth,
+    dir,
+  });
 
   const isNarrow = useNarrow();
   // The tour runs on the demo the first time, like the card it replaces there,

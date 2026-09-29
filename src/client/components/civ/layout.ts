@@ -12,6 +12,7 @@
  * arithmetic and the graph walking, which is the part that can be wrong in
  * ways nobody would notice by looking.
  */
+import type { FocusDirection } from '../../linkState';
 import type { Connection, Item } from '../../utils/configImporter';
 
 /**
@@ -203,6 +204,98 @@ export function cascadeDepths(
     }
   }
   return depth;
+}
+
+/**
+ * The nodes a focus keeps around one node: itself, and everything within
+ * `depth` hops of it in the direction asked. `needs` follows prerequisites,
+ * `enables` follows dependants, and `both` is those two walks together. It is
+ * not a walk that ignores direction: what a node's prerequisite also enables
+ * is a sibling, and is neither what this needs nor what it enables.
+ *
+ * `within` is the set the map draws. The edge list holds edges to nodes the
+ * map never shows (the demo has 97, and 42 of them join two drawn nodes), and
+ * a hop through one of those would count a neighbourhood nobody can see, so a
+ * walk never leaves `within`. A node the map does not draw has no
+ * neighbourhood on it, and gets an empty set.
+ */
+export function neighbourhood(
+  connections: Connection[],
+  id: string,
+  depth: number,
+  direction: FocusDirection,
+  within: Set<string>
+): Set<string> {
+  const shown = new Set<string>();
+  if (!within.has(id)) return shown;
+  shown.add(id);
+  const { downstream, upstream } = buildAdjacency(connections, null);
+  const walk = (edges: Map<string, string[]>) => {
+    const seen = new Set([id]);
+    let frontier = [id];
+    for (let hop = 0; hop < depth && frontier.length; hop++) {
+      const next: string[] = [];
+      for (const current of frontier) {
+        for (const n of edges.get(current) || []) {
+          if (!within.has(n) || seen.has(n)) continue;
+          seen.add(n);
+          shown.add(n);
+          next.push(n);
+        }
+      }
+      frontier = next;
+    }
+  };
+  if (direction !== 'enables') walk(upstream);
+  if (direction !== 'needs') walk(downstream);
+  return shown;
+}
+
+/** What a collapse leaves on the map, and what it takes off. */
+export interface Collapse {
+  /** The ids the map still draws. */
+  shown: Set<string>;
+  /** How many of the map's nodes are hidden: the whole map less what is shown. */
+  hidden: number;
+  /** How many nodes the whole map draws. */
+  total: number;
+}
+
+/**
+ * The map collapsed to one node's neighbourhood, or nothing where the node is
+ * not on the map, which is an entry of My Setup and has no place to collapse to.
+ */
+export function collapseTo(
+  items: Item[],
+  connections: Connection[],
+  id: string,
+  depth: number,
+  direction: FocusDirection
+): Collapse | null {
+  const drawn = new Set(visibleItems(items).map(i => i.id));
+  if (!drawn.has(id)) return null;
+  const shown = neighbourhood(connections, id, depth, direction, drawn);
+  return { shown, hidden: drawn.size - shown.size, total: drawn.size };
+}
+
+/**
+ * Where `j` and `k` go: the next node in the list, or the previous, wrapping
+ * at the ends and skipping any that a collapse has hidden. Nothing selected
+ * starts at the first going forward and the last going back. Null where there
+ * is nowhere to go, so the selection is never handed back to the toggle that
+ * would clear it.
+ */
+export function stepSelection(
+  list: Item[],
+  selectedId: string | null,
+  step: 1 | -1,
+  shown?: Set<string> | null
+): string | null {
+  const pool = shown ? list.filter(i => shown.has(i.id)) : list;
+  if (!pool.length) return null;
+  const at = pool.findIndex(i => i.id === selectedId);
+  const to = at < 0 ? (step === 1 ? 0 : pool.length - 1) : (at + step + pool.length) % pool.length;
+  return pool[to].id === selectedId ? null : pool[to].id;
 }
 
 /** The edge kinds that mean "supplies", as the engine names them. */

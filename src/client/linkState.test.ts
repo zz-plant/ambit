@@ -84,3 +84,66 @@ test('a lens nothing can render is not accepted from the address bar', () => {
   expect(readLinkState('?lens=infrared').lens).toBe('default');
   expect(readLinkState('?lens=attention').lens).toBe('attention');
 });
+
+// ── Collapsing the map to a node's neighbourhood ─────────────────────────────
+
+test('a collapse survives the round trip, with its depth and its direction', () => {
+  const state = {
+    focusId: 'combo:shell-execution',
+    collapse: true,
+    depth: 3,
+    dir: 'needs',
+  } as const;
+  expect(roundTrip(state)).toMatchObject(state);
+  expect(roundTrip({ ...state, depth: 1, dir: 'enables' })).toMatchObject({
+    collapse: true,
+    depth: 1,
+    dir: 'enables',
+  });
+});
+
+test('a link carries a collapse only as far as it differs from the default', () => {
+  expect(writeLinkState({ ...base, collapse: true })).toBe('?view=tree&collapse=1');
+  // Two hops, both ways, is what a collapse means with nothing said.
+  expect(writeLinkState({ ...base, collapse: true, depth: 2, dir: 'both' })).toBe(
+    '?view=tree&collapse=1'
+  );
+  expect(writeLinkState({ ...base, collapse: true, depth: 3, dir: 'enables' })).toBe(
+    '?view=tree&collapse=1&depth=3&dir=enables'
+  );
+  // Off is not written, and a caller that never collapses writes what it always did.
+  expect(writeLinkState({ ...base, collapse: false })).toBe('?view=tree');
+  expect(writeLinkState(base)).toBe('?view=tree');
+});
+
+test('a link without the collapse keys opens the map as it always did', () => {
+  for (const search of ['', '?view=tree', '?view=tree&focus=mcp:git&lens=attention']) {
+    expect(readLinkState(search)).toMatchObject({ collapse: false, depth: 2, dir: 'both' });
+  }
+  // `focus` is the selected node and never implies a collapse: an existing link is unchanged.
+  expect(readLinkState('?focus=combo:shell-execution')).toMatchObject({
+    focusId: 'combo:shell-execution',
+    collapse: false,
+  });
+  expect(writeLinkState({ ...base, focusId: 'combo:shell-execution' })).toBe(
+    '?view=tree&focus=combo%3Ashell-execution'
+  );
+});
+
+test('a link with the collapse keys opens the same view, and what cannot be read is the default', () => {
+  expect(readLinkState('?collapse=1&depth=1&dir=enables')).toMatchObject({
+    collapse: true,
+    depth: 1,
+    dir: 'enables',
+  });
+  // Depth is one of three hops, and a direction is one of three words.
+  for (const depth of ['0', '4', '-1', 'two', '', '1.5']) {
+    expect(readLinkState(`?depth=${depth}`).depth).toBe(2);
+  }
+  expect(readLinkState('?dir=sideways').dir).toBe('both');
+  expect(readLinkState('?dir=').dir).toBe('both');
+  // Only 1 turns a collapse on.
+  for (const flag of ['0', 'yes', 'true', '']) {
+    expect(readLinkState(`?collapse=${flag}`).collapse).toBe(false);
+  }
+});

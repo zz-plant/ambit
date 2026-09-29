@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { tickAt } from '../components/civ/history';
 import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
 import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
+import type { FocusDepth, FocusDirection } from '../linkState';
 import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
 import { importConfig, importMcpServers } from '../utils/configImporter';
 import { demoRun } from '../utils/demoRun';
@@ -181,6 +182,13 @@ interface StoreState {
   activeLens: ActiveLens;
   /** A legend key or a header segment, lit on its own: the one way to see a subset of the map. */
   spotlight: string | null;
+  /**
+   * The map is collapsed to the selected node's neighbourhood. It follows the
+   * selection: another node takes the collapse with it, and no selection ends it.
+   */
+  collapsed: boolean;
+  collapseDepth: FocusDepth;
+  collapseDirection: FocusDirection;
   simulationMode: SimulationMode;
   simulatedNodeId: string | null;
   simulatedCascadeIds: Set<string>;
@@ -237,6 +245,9 @@ interface StoreState {
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
   setSpotlight: (group: string | null) => void;
+  setCollapsed: (on: boolean) => void;
+  setCollapseDepth: (depth: FocusDepth) => void;
+  setCollapseDirection: (direction: FocusDirection) => void;
   startOutageSimulation: (nodeId: string) => void;
   startAcquisitionSimulation: (nodeId: string) => void;
   startGapSimulation: (nodeId: string) => void;
@@ -296,6 +307,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   showApprovalModal: false,
   activeLens: initialLink.lens,
   spotlight: null,
+  collapsed: initialLink.collapse,
+  collapseDepth: initialLink.depth,
+  collapseDirection: initialLink.dir,
   simulationMode: 'none',
   simulatedNodeId: null,
   simulatedCascadeIds: new Set<string>(),
@@ -325,11 +339,23 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   selectItem: id => {
     const s = get();
     const next = s.selectedItem === id ? null : id;
-    set({ selectedItem: next, selectedEra: null, showDetailPanel: next !== null });
+    // A collapse is to a selected node's neighbourhood: with none selected there
+    // is nothing to keep, and it must not wait to catch the next node picked.
+    set({
+      selectedItem: next,
+      selectedEra: null,
+      showDetailPanel: next !== null,
+      ...(next === null ? { collapsed: false } : {}),
+    });
   },
   selectEra: era => {
     const next = get().selectedEra === era ? null : era;
-    set({ selectedEra: next, selectedItem: null, showDetailPanel: next !== null });
+    set({
+      selectedEra: next,
+      selectedItem: null,
+      showDetailPanel: next !== null,
+      collapsed: false,
+    });
   },
   hoverItem: id => set({ hoveredItem: id }),
   setSearch: q => set({ searchQuery: q }),
@@ -343,6 +369,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     if (at) get().clearSimulation();
     set({ historyAt: at });
   },
+  setCollapsed: on => set({ collapsed: on }),
+  setCollapseDepth: depth => set({ collapseDepth: depth }),
+  setCollapseDirection: direction => set({ collapseDirection: direction }),
 
   // The walks live in civ/layout.ts, where the detail panel reads the same
   // ones to state their size before any simulation is run.
@@ -823,6 +852,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       connections: [],
       selectedItem: null,
       selectedEra: null,
+      collapsed: false,
       hoveredItem: null,
       searchQuery: '',
       showDetailPanel: false,

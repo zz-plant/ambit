@@ -5,6 +5,7 @@ import { canSwitchMcp } from '../utils/configSwitch';
 import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 import {
   blockedBy,
+  collapseTo,
   costOf,
   gapOf,
   outageImpact,
@@ -15,6 +16,7 @@ import {
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
 import { EraLadderPanel } from './EraLadder';
+import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
 import { runsOf } from '../utils/checkHistory';
@@ -82,6 +84,12 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const selectedId = useAmbitStore(s => s.selectedItem);
   const selectedEra = useAmbitStore(s => s.selectedEra);
   const selectItem = useAmbitStore(s => s.selectItem);
+  const collapsed = useAmbitStore(s => s.collapsed);
+  const collapseDepth = useAmbitStore(s => s.collapseDepth);
+  const collapseDirection = useAmbitStore(s => s.collapseDirection);
+  const setCollapsed = useAmbitStore(s => s.setCollapsed);
+  const setCollapseDepth = useAmbitStore(s => s.setCollapseDepth);
+  const setCollapseDirection = useAmbitStore(s => s.setCollapseDirection);
   const simulatedNodeId = useAmbitStore(s => s.simulatedNodeId);
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
@@ -104,6 +112,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   }
 
   const color = typeColor(item.type);
+  // What a focus on this node would leave on the map. Only a node the map draws
+  // has a neighbourhood: an entry of My Setup has no place on it.
+  const onMap = collapseTo(items, connections, item.id, collapseDepth, collapseDirection);
 
   const lifecycle = item.meta?.lifecycle as string | undefined;
   const lastChecked = item.meta?.lastChecked as string | undefined;
@@ -393,6 +404,19 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           </div>
         );
       })()}
+
+      {onMap && (
+        <FocusControls
+          on={collapsed}
+          depth={collapseDepth}
+          direction={collapseDirection}
+          hidden={onMap.hidden}
+          onToggle={() => setCollapsed(!collapsed)}
+          onDepth={setCollapseDepth}
+          onDirection={setCollapseDirection}
+          onClear={() => setCollapsed(false)}
+        />
+      )}
 
       {/* Whether it may act, apart from whether it can: the engine's effective
           mode, which no web surface used to show, and then the finer answer,

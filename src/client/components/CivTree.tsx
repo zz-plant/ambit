@@ -15,6 +15,7 @@ import {
   columnCentre,
   columnLabel,
   columnOf,
+  collapseTo,
   columnProgress,
   costOf,
   edgePath,
@@ -33,6 +34,7 @@ import {
   sceneSize,
   START_X,
   START_Y,
+  stepSelection,
   visibleItems,
   wrapLabel,
 } from './civ/layout.ts';
@@ -370,6 +372,23 @@ export default function CivTree({
 
   const filtered = useMemo(() => visibleItems(items), [items]);
 
+  // The map collapsed to the selected node's neighbourhood, when a collapse is
+  // on. It keys on the selection and never on hover, so the map does not
+  // rearrange itself under the pointer. Hidden nodes keep their places: they
+  // are skipped where they would be drawn, so the columns do not jump.
+  const collapsed = useAmbitStore(s => s.collapsed);
+  const collapseDepth = useAmbitStore(s => s.collapseDepth);
+  const collapseDirection = useAmbitStore(s => s.collapseDirection);
+  const collapse = useMemo(
+    () =>
+      collapsed && selectedId
+        ? collapseTo(filtered, connections, selectedId, collapseDepth, collapseDirection)
+        : null,
+    [collapsed, selectedId, filtered, connections, collapseDepth, collapseDirection]
+  );
+  /** Whether the map draws a node: every one, unless a collapse hides it. */
+  const shown = (id: string) => !collapse || collapse.shown.has(id);
+
   const [hoverItem, setHoverItem] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
@@ -388,17 +407,19 @@ export default function CivTree({
   );
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
+  // A simulation ignores the collapse: its counts are the whole cascade. What
+  // the banner adds is how much of it the collapse keeps off the map.
+  const hiddenBySimulation = collapse
+    ? [...simSet].filter(id => nodePositionMap.has(id) && !collapse.shown.has(id)).length
+    : 0;
   const findings = useMemo(() => mapFindings(items, connections), [items, connections]);
-  // The thumbnail's dots: every node where it sits, and where it stands.
+  // The thumbnail's dots: every node the map draws, where it sits and where it stands.
   const minimapNodes = useMemo<MinimapNode[]>(
     () =>
-      [...nodePositionMap.values()].map(p => ({
-        id: p.item.id,
-        x: p.x,
-        y: p.y,
-        state: rungOf(p.item),
-      })),
-    [nodePositionMap]
+      [...nodePositionMap.values()]
+        .filter(p => !collapse || collapse.shown.has(p.item.id))
+        .map(p => ({ id: p.item.id, x: p.x, y: p.y, state: rungOf(p.item) })),
+    [nodePositionMap, collapse]
   );
   // Which way the finding's node lies when it is out of sight, as the minimap
   // reports it. The minimap owns the scroll subscription, so this changes when
@@ -427,7 +448,7 @@ export default function CivTree({
   const focusId =
     selectedId && nodePositionMap.has(selectedId)
       ? selectedId
-      : hovered && nodePositionMap.has(hovered)
+      : hovered && nodePositionMap.has(hovered) && shown(hovered)
         ? hovered
         : null;
   const needs = useMemo(
@@ -565,7 +586,9 @@ export default function CivTree({
   // The selected node has the detail panel open beside it, which says
   // everything the tooltip would, so the tooltip is for the others.
   const hoverTarget =
-    hovered && hovered !== selectedId && nodePositionMap.has(hovered) ? hovered : null;
+    hovered && hovered !== selectedId && nodePositionMap.has(hovered) && shown(hovered)
+      ? hovered
+      : null;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
   React.useEffect(() => {
@@ -594,14 +617,14 @@ export default function CivTree({
         setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
       } else if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
         e.preventDefault();
-        const idx = filtered.findIndex(i => i.id === selectedId);
-        const nextIdx = idx < 0 ? 0 : (idx + 1) % filtered.length;
-        onSelect(filtered[nextIdx].id);
+        // A collapse hides nodes, and a key that lands on one selects what
+        // nobody can see, so the walk skips them.
+        const to = stepSelection(filtered, selectedId, 1, collapse?.shown);
+        if (to) onSelect(to);
       } else if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp') {
         e.preventDefault();
-        const idx = filtered.findIndex(i => i.id === selectedId);
-        const prevIdx = idx <= 0 ? filtered.length - 1 : idx - 1;
-        onSelect(filtered[prevIdx].id);
+        const to = stepSelection(filtered, selectedId, -1, collapse?.shown);
+        if (to) onSelect(to);
       } else if (e.key === 'Escape') {
         if (spotlight) setSpotlight(null);
         else if (simulationMode !== 'none') clearSimulation();
@@ -619,6 +642,7 @@ export default function CivTree({
     selectedId,
     onSelect,
     filtered,
+    collapse,
     spotlight,
     setSpotlight,
   ]);
@@ -734,6 +758,7 @@ export default function CivTree({
           simulatedCascadeIds={simulatedCascadeIds}
           simulatedWeakenedIds={simulatedWeakenedIds}
           items={items}
+          hiddenByFocus={hiddenBySimulation}
           clearSimulation={clearSimulation}
           leftInset={leftInset}
           rightInset={rightInset}
@@ -820,7 +845,7 @@ export default function CivTree({
           {connections.map((conn, i) => {
             const fromPos = nodePositionMap.get(conn.from);
             const toPos = nodePositionMap.get(conn.to);
-            if (!fromPos || !toPos) return null;
+            if (!fromPos || !toPos || !shown(conn.from) || !shown(conn.to)) return null;
             const isHard = conn.type === 'hard-dep';
             const isSoft = conn.type === 'soft-dep';
             const isSimLine =
@@ -834,7 +859,13 @@ export default function CivTree({
                 : focusId
                   ? intoFocus || outOfFocus
                     ? 0.95
-                    : 0.06
+                    : collapse
+                      ? // What the collapse kept is what to read, so its other
+                        // edges stay drawn and the focus's own stand out from them.
+                        isHard
+                        ? 0.4
+                        : 0.3
+                      : 0.06
                   : isHard
                     ? 0.3
                     : 0.22;
@@ -875,6 +906,8 @@ export default function CivTree({
             return (
               <g key={domain}>
                 {caps.map((item, ri) => {
+                  // Skipped, and not filtered out: the row index is the node's place.
+                  if (!shown(item.id)) return null;
                   const cy = START_Y + ri * ROW_H + NODE_R;
                   const defaultColor = typeColor(item.type);
                   const selected = item.id === selectedId;
@@ -904,7 +937,7 @@ export default function CivTree({
                   const isSpotlit = !spotlight || (SPOTLIGHTS[spotlight]?.(item) ?? true);
 
                   const dimmed =
-                    (focusId !== null && !nearFocus) ||
+                    (focusId !== null && !collapse && !nearFocus) ||
                     isSimDimmed ||
                     !isSpotlit ||
                     (isAuthorityLens && simulationMode === 'none' && !mark);
