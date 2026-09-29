@@ -54,6 +54,7 @@ import {
   verifyChain,
 } from './delegation.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
+import { resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
@@ -176,11 +177,19 @@ async function runCommand(
       if (flags.has('--prefs')) emit(preferencesReport(db, arg));
       else if (flags.has('--paths'))
         emit(arg ? pathsFor(db, arg) : { error: 'Usage: ambit goal <capability> --paths' });
-      else if (flags.has('--simulate'))
-        emit(
-          arg ? simulateFrontier(db, [arg]) : { error: 'Usage: ambit goal <capability> --simulate' }
-        );
-      else if (flags.has('--judge') || value('judge') !== undefined) {
+      else if (flags.has('--simulate')) {
+        if (!arg) emit({ error: 'Usage: ambit goal <capability> --simulate' });
+        else {
+          // An id the graph does not hold used to be "acquired" all the same:
+          // simulating `nope` reported a larger frontier for it.
+          const asked = resolveCapability(db, arg);
+          emit(
+            asked.ok
+              ? simulateFrontier(db, [asked.id])
+              : { error: asked.error, did_you_mean: asked.did_you_mean }
+          );
+        }
+      } else if (flags.has('--judge') || value('judge') !== undefined) {
         // async: asks a judgment model on this machine, and only when the
         // vocabulary could not recommend. A goal the words cover opens no socket.
         const routed = goalFor(db, arg) as any;
