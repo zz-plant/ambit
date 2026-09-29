@@ -74,7 +74,7 @@ test('the trail is a view the header offers', () => {
   );
   // The active tab is the one whose label is Audit, within one button.
   expect(html).toMatch(
-    /<button[^>]*app-deck-tab--active[^>]*>(?:(?!<\/button>)[\s\S])*<span>Audit<\/span>/
+    /<button[^>]*app-deck-tab--active[^>]*>(?:(?!<\/button>)[\s\S])*<span class="app-deck-tab-label">Audit<\/span>/
   );
 });
 

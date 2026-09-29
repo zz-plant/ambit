@@ -4150,12 +4150,47 @@ code, pre, .code, .sp-cli-cmd {
 /* Between a phone and a wide screen the header ran past the right edge,
    and the Docs button went first. The buttons keep their icons and their
    accessible names, and give up the words; the status pill keeps its words,
-   since a count without its noun says nothing. */
-@media (min-width: 769px) and (max-width: 1240px) {
+   since a count without its noun says nothing. The view tabs give up theirs
+   below that, and each keeps its name in aria-label and its tooltip. The
+   widths are the demo's header with every word drawn in the widest fallback
+   font: 1366px, and 1157px with the buttons' words gone. */
+@media (min-width: 769px) and (max-width: 1380px) {
   .app-deck-btn .app-deck-btn-label,
   .app-deck-btn .app-deck-key {
     display: none;
   }
+}
+
+@media (min-width: 769px) and (max-width: 1180px) {
+  .app-deck-nav .app-deck-tab-label {
+    display: none;
+  }
+
+  .app-deck-nav .app-deck-tab {
+    padding: 5px 10px;
+  }
+}
+
+/* What is left over goes to the status pill, which wraps its counts onto a
+   second line before anything is pushed past the edge: a live engine's
+   indicator, a failing segment and an as-of date all widen it. The deck's
+   other parts keep their size. */
+.app-deck-left {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.app-deck-left > *,
+.app-deck-center,
+.app-deck-right {
+  flex-shrink: 0;
+}
+
+.app-deck-left > .app-status-pill {
+  flex-shrink: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  row-gap: 0;
 }
 
 .app-status-seg {

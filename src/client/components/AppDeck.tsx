@@ -192,6 +192,8 @@ export default function AppDeck(p: AppDeckProps) {
             type="button"
             className={tab(p.view === 'tree')}
             onClick={() => p.onShowView('tree')}
+            // The name, for where the tab shows only its icon.
+            aria-label="Map"
             title="The curated capability tree, with your position on it"
           >
             <svg
@@ -211,12 +213,14 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="12" cy="12" r="2" />
               <path d="M5.5 10.5 L10.5 5.5 M6 12 H10" />
             </svg>
-            <span>Map</span>
+            <span className="app-deck-tab-label">Map</span>
           </button>
           <button
             type="button"
             className={tab(p.view === 'config')}
             onClick={() => p.onShowView('config')}
+            // The name, for where the tab shows only its icon.
+            aria-label="My Setup"
             title="The servers, agents and models found on this machine, and what each one provides"
           >
             <svg
@@ -236,12 +240,14 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
               <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
             </svg>
-            <span>My Setup</span>
+            <span className="app-deck-tab-label">My Setup</span>
           </button>
           <button
             type="button"
             className={tab(p.view === 'loop')}
             onClick={() => p.onShowView('loop')}
+            // The name, for where the tab shows only its icon.
+            aria-label="Time & cost"
             title="Where human attention goes, and what would pay back fastest"
           >
             <svg
@@ -259,12 +265,14 @@ export default function AppDeck(p: AppDeckProps) {
               <path d="M2 12 L6 8 L9 11 L14 4" />
               <circle cx="14" cy="4" r="1.5" fill="currentColor" />
             </svg>
-            <span>Time &amp; cost</span>
+            <span className="app-deck-tab-label">Time &amp; cost</span>
           </button>
           <button
             type="button"
             className={tab(p.view === 'audit')}
             onClick={() => p.onShowView('audit')}
+            // The name, for where the tab shows only its icon.
+            aria-label="Audit"
             title="Who approved what and what ran, one line per event"
           >
             <svg
@@ -284,7 +292,7 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="2.5" cy="8" r="0.75" fill="currentColor" />
               <circle cx="2.5" cy="12" r="0.75" fill="currentColor" />
             </svg>
-            <span>Audit</span>
+            <span className="app-deck-tab-label">Audit</span>
           </button>
         </nav>
       </div>

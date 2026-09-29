@@ -7,6 +7,8 @@
  * A test that renders the surface and looks for the way in is what keeps a
  * capability from going quiet again.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import concepts from '../../shared/concepts.json';
@@ -90,6 +92,37 @@ test('the time-and-cost view is offered on a real machine, not only in the demo'
   // The tab was rendered behind `demo &&`, so the half of the product that
   // prices your time was invisible to anyone running it on their own setup.
   expect(deck()).toContain('Time &amp; cost');
+});
+
+test('each view tab keeps its name where it shows only its icon', () => {
+  // Between a phone and a wide screen the tabs give up their words, as the
+  // buttons beside them already did, or Proposals and Docs were pushed past
+  // the right edge (at 1024px Docs started at x=1035).
+  const html = deck();
+  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit']) {
+    expect(html).toMatch(
+      new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
+    );
+  }
+  expect(html.match(/class="app-deck-tab-label"/g)).toHaveLength(4);
+});
+
+test('when the header is short of room the status pill wraps, and nothing else gives way', () => {
+  // Every other part keeps its size; the counts wrap onto a second line inside
+  // the deck's height. A live engine's indicator, a failing segment and an
+  // as-of date all widen the pill, so no breakpoint alone can promise room.
+  const css = readFileSync(join(import.meta.dirname, '..', 'App.css'), 'utf8');
+  const rule = (selector: string) =>
+    css.match(
+      new RegExp(`(?:^|\\n)${selector.replace(/[.>*]/g, m => `\\${m}`)}\\s*\\{([^}]*)\\}`)
+    )?.[1] ?? '';
+  const pill = rule('.app-deck-left > .app-status-pill');
+  expect(pill).toMatch(/flex-wrap:\s*wrap/);
+  expect(pill).toMatch(/flex-shrink:\s*1/);
+  expect(pill).toMatch(/min-width:\s*0/);
+  expect(css).toMatch(
+    /\.app-deck-left > \*,\s*\.app-deck-center,\s*\.app-deck-right\s*\{[^}]*flex-shrink:\s*0/
+  );
 });
 
 test('the deck offers a way to copy the link the URL already describes', () => {
