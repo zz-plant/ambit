@@ -7,8 +7,13 @@
  * the evidence table stamps each row to the second, and a batch of checks lands
  * inside one.
  */
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test } from 'vitest';
 import { CHECK_HISTORY_RUNS } from '../shared/api.ts';
+import { deriveLifecycles } from './assurance.ts';
+import { exportSync, importSync } from './sync.ts';
 import { daysAgo, learn, makeGraph } from './testing/graph.ts';
 import { techTreeView } from './views.ts';
 
@@ -23,11 +28,13 @@ const node = (id: string) => ({
 const item = (db: ReturnType<typeof makeGraph>, id: string) =>
   techTreeView(db).items.find(i => i.id === id)!;
 
-test('a node carries its last fourteen check runs, oldest first, in ledger order', () => {
+test('a node carries its last fourteen check runs, oldest first, in the order they ran', () => {
   const db = makeGraph({ capabilities: [node('combo:a')] });
-  // Twenty runs, each stamped a day older than the one before it. Read by time
-  // the strip would run backwards; read by row it does not, and rule 11 says
-  // to read it by row.
+  // Twenty runs, each stamped a day older than the one before it, the way rows
+  // can arrive from an import. The strip reads them by when they ran, as the
+  // lifecycle does, so the fourteen newest are the first fourteen rows. The
+  // row id only breaks a tie inside one second (rule 11), which the test
+  // below of a busy node and a quiet one holds.
   const outcomes = Array.from({ length: 20 }, (_, i) => (i % 5 === 4 ? 'failed' : 'verified'));
   for (const [i, action] of outcomes.entries()) {
     learn(db, 'combo:a', action, { at: daysAgo(i) });
@@ -37,9 +44,14 @@ test('a node carries its last fourteen check runs, oldest first, in ledger order
 
   expect(CHECK_HISTORY_RUNS).toBe(14);
   expect(history).toHaveLength(CHECK_HISTORY_RUNS);
-  // Rows 7 to 20 of the ledger: the six oldest have left the window.
-  expect(history?.map(r => r.id)).toEqual(Array.from({ length: 14 }, (_, i) => i + 7));
-  expect(history?.map(r => r.passed)).toEqual(outcomes.slice(6).map(a => a === 'verified'));
+  // Rows 14 down to 1: the six oldest runs, rows 15 to 20, have left the window.
+  expect(history?.map(r => r.id)).toEqual(Array.from({ length: 14 }, (_, i) => 14 - i));
+  expect(history?.map(r => r.passed)).toEqual(
+    outcomes
+      .slice(0, 14)
+      .reverse()
+      .map(a => a === 'verified')
+  );
 });
 
 test('only runs of a check are history, and a node with none has no history', () => {
@@ -76,6 +88,35 @@ test('a node that is checked often does not crowd out one that is checked rarely
     { id: 1, passed: false },
     { id: 2, passed: true },
   ]);
+});
+
+test('a run another machine recorded takes its place by when it ran, as the lifecycle reads it', () => {
+  // An import keeps each run's timestamp and gives it a new, higher row id.
+  // The lifecycle and `lastChecked` read runs by time and the strip read them
+  // by row, so one older failure from elsewhere made the strip end red under a
+  // node whose lifecycle said reliable.
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-history-'));
+  const file = join(dir, 'sync.json');
+  const elsewhere = makeGraph({ capabilities: [node('combo:a')] });
+  learn(elsewhere, 'combo:a', 'failed', { at: daysAgo(9) });
+  exportSync(elsewhere, file);
+  elsewhere.close();
+
+  const db = makeGraph({ capabilities: [node('combo:a')] });
+  const passes = [6, 5, 4, 3, 2, 1].map(days => daysAgo(days));
+  for (const at of passes) learn(db, 'combo:a', 'verified', { at });
+  importSync(db, file);
+  rmSync(dir, { recursive: true, force: true });
+  deriveLifecycles(db);
+  const { meta } = item(db, 'combo:a');
+  db.close();
+
+  expect(meta.lifecycle).toBe('reliable');
+  expect(meta.lastChecked).toBe(passes.at(-1));
+  // Oldest first: the failure from nine days ago, then the six passes since.
+  expect(meta.history?.map(r => r.passed)).toEqual([false, true, true, true, true, true, true]);
+  // The id stays on the wire: the failure is the newest row though not the newest run.
+  expect(meta.history?.[0].id).toBe(7);
 });
 
 test('the history and the reliability count read the same runs', () => {

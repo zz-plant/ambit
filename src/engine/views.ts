@@ -370,11 +370,20 @@ function recentFailures(db: Db, days = 30): Map<string, FailureCount[]> {
 /**
  * The last runs of each capability's check, oldest first.
  *
- * Ordered by ledger row and never by timestamp. `datetime('now')` resolves to
- * the second and `ambit verify` records a whole batch inside one, so two runs
- * of a check, or a failure here and another there, can share a time; a row id
- * cannot. The window is per capability, so a node that is checked often does
- * not crowd a quiet one out of the ledger's last rows. It counts the same rows
+ * Ordered by when each ran, as the lifecycle and `lastChecked` read them, with
+ * the row id breaking a tie. `datetime('now')` resolves to the second and
+ * `ambit verify` records a whole batch inside one, so two runs of a check can
+ * share a time, and only the row says which came last (rule 11). The row alone
+ * is not enough: `ambit sync import` keeps a run's time and gives it a new,
+ * higher id, and a strip read by row ended on an older failure from another
+ * machine under a node its lifecycle called reliable.
+ *
+ * The client's ranking of the most recent failure across nodes still compares
+ * these ids, which after an import are the order rows arrived here, so it can
+ * differ from the order the runs happened.
+ *
+ * The window is per capability, so a node that is checked often does not crowd
+ * a quiet one out of the ledger's last rows. It counts the same rows
  * `reliability` does, which is what makes the two agree while a check has run
  * fewer times than the window holds.
  */
@@ -385,9 +394,11 @@ function checkHistory(db: Db, runs = CHECK_HISTORY_RUNS): Map<string, CheckRun[]
       .prepare(
         `SELECT capability_id, id, action FROM (
            SELECT capability_id, id, action,
-                  ROW_NUMBER() OVER (PARTITION BY capability_id ORDER BY id DESC) AS recency
+                  ROW_NUMBER() OVER (
+                    PARTITION BY capability_id ORDER BY datetime(timestamp) DESC, id DESC
+                  ) AS recency
            FROM session_learning WHERE ${CHECK_RUN_SQL}
-         ) WHERE recency <= ? ORDER BY capability_id, id`
+         ) WHERE recency <= ? ORDER BY capability_id, recency DESC`
       )
       .all<{ capability_id: string; id: number; action: string }>(runs)) {
       if (!out.has(r.capability_id)) out.set(r.capability_id, []);
