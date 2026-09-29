@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { typingIn } from '../utils/keys';
 import { useLatest } from './useLatest';
 
 interface Hotkeys {
@@ -13,7 +14,7 @@ interface Hotkeys {
 }
 
 /**
- * The global hotkeys. Inside an input only Escape does anything, and there it
+ * The global hotkeys. Inside a field only Escape does anything, and there it
  * blurs the field instead of clearing the selection behind it.
  */
 export function useHotkeys(keys: Hotkeys) {
@@ -22,10 +23,7 @@ export function useHotkeys(keys: Hotkeys) {
     const onKeyDown = (e: KeyboardEvent) => {
       const k = latest.current;
       const target = e.target as HTMLElement;
-      if (
-        target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      ) {
+      if (typingIn(target)) {
         if (e.key === 'Escape') target.blur();
         return;
       }

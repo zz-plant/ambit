@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
+import { typingIn } from '../utils/keys';
 import { isRuntimeNode } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import {
@@ -594,13 +595,7 @@ export default function CivTree({
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      ) {
-        return;
-      }
+      if (typingIn(e.target)) return;
       if (e.key === '1') {
         setActiveLens('default');
       } else if (e.key === '2') {

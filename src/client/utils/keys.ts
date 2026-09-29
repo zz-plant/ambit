@@ -1,7 +1,8 @@
 /**
  * The page's rules for keys, apart from any listener that applies them: what
- * one press of Escape closes. Free of the DOM's types, so the rules are
- * checked and tested with the client's other pure code.
+ * one press of Escape closes, and where the page's own keys stand aside. Free
+ * of the DOM's types, so the rules are checked and tested with the client's
+ * other pure code.
  */
 
 /** What one press of Escape closes. */
@@ -46,4 +47,21 @@ export function escapeLayer(s: EscapeState): EscapeLayer | null {
   if (s.onMap && s.simulation) return 'simulation';
   if (s.selection) return 'selection';
   return null;
+}
+
+/**
+ * Whether a key pressed on this target is typing, or choosing in a control
+ * that takes letters and arrows: a text field, a text area, a `<select>`, or
+ * anything editable. The page's own keys leave those alone. A `<select>` was
+ * missing, so `g` on the run chooser opened Proposals.
+ */
+export function typingIn(target: unknown): boolean {
+  const el = target as { tagName?: unknown; isContentEditable?: unknown } | null;
+  if (!el) return false;
+  return (
+    el.tagName === 'INPUT' ||
+    el.tagName === 'TEXTAREA' ||
+    el.tagName === 'SELECT' ||
+    el.isContentEditable === true
+  );
 }

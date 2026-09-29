@@ -1,5 +1,6 @@
 /**
- * What one press of Escape closes.
+ * The page's rules for keys: what one press of Escape closes, and where the
+ * page's own keys stand aside.
  *
  * The shell and the map each listened for the key, and what a person got
  * depended on which listener ran first: with a selection, a simulation and a
@@ -9,7 +10,7 @@
  * is tested here by pressing until nothing is left open.
  */
 import { expect, test } from 'vitest';
-import { type EscapeLayer, type EscapeState, escapeLayer } from './keys';
+import { type EscapeLayer, type EscapeState, escapeLayer, typingIn } from './keys';
 
 const NOTHING: EscapeState = {
   docs: false,
@@ -71,4 +72,25 @@ test('off the map a spotlight and a simulation are drawn nowhere, so the selecti
 test('with nothing open, Escape closes nothing', () => {
   expect(escapeLayer(NOTHING)).toBeNull();
   expect(escapeLayer({ ...NOTHING, onMap: false })).toBeNull();
+});
+
+// ── Where the page's keys stand aside ────────────────────────────────────────
+// `g`, `?`, `/` and the map's letters and arrows are the page's everywhere a
+// key is not typing or choosing. A `<select>` was not on the list, so `g`
+// pressed on the run chooser in Time & cost opened Proposals.
+
+const target = (tagName: string, isContentEditable = false) => ({ tagName, isContentEditable });
+
+test('a field, a text area, a select and anything editable take their own keys', () => {
+  expect(typingIn(target('INPUT'))).toBe(true);
+  expect(typingIn(target('TEXTAREA'))).toBe(true);
+  expect(typingIn(target('SELECT'))).toBe(true);
+  expect(typingIn(target('DIV', true))).toBe(true);
+});
+
+test('a button, a node of the map and the page itself leave the keys to the page', () => {
+  expect(typingIn(target('BUTTON'))).toBe(false);
+  expect(typingIn(target('g'))).toBe(false);
+  expect(typingIn(target('BODY'))).toBe(false);
+  expect(typingIn(null)).toBe(false);
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import { statusLabel, typeLabel } from '../utils/labels';
 import {
@@ -73,52 +73,89 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
 
   if (!open) return null;
 
-  const choose = (row: Row) => {
-    activate(row, onShow);
-    onClose();
-  };
+  return (
+    <FinderView
+      rows={rows}
+      active={active}
+      query={query}
+      withActions={Boolean(handlers)}
+      onQuery={q => {
+        setQuery(q);
+        setActive(0);
+      }}
+      onActive={setActive}
+      onChoose={row => {
+        activate(row, onShow);
+        onClose();
+      }}
+      onClose={onClose}
+      inputRef={input}
+      listRef={list}
+    />
+  );
+}
 
+interface FinderViewProps {
+  rows: Row[];
+  /** The row Enter chooses. */
+  active: number;
+  query: string;
+  /** Whether actions are listed beside the nodes, which the box's placeholder says. */
+  withActions: boolean;
+  onQuery: (query: string) => void;
+  onActive: (index: number) => void;
+  onChoose: (row: Row) => void;
+  onClose: () => void;
+  inputRef?: Ref<HTMLInputElement>;
+  listRef?: Ref<HTMLUListElement>;
+}
+
+/**
+ * The finder as drawn. No hooks, so what a key pressed in it does can be
+ * pressed in a test, on the dialog's own handler.
+ */
+export function FinderView(p: FinderViewProps) {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a click on the backdrop closes the finder; Escape does the same from the keyboard
-    <div className="finder-overlay" onClick={onClose} role="presentation">
+    <div className="finder-overlay" onClick={p.onClose} role="presentation">
       <div
         className="finder"
         role="dialog"
         aria-modal="true"
         aria-label="Find a capability or run an action"
         onClick={e => e.stopPropagation()}
+        // Every key pressed in the finder is the finder's. Only Escape used to
+        // stop here, so with a result focused ArrowDown also stepped the
+        // selection on the map behind it, and `g` opened Proposals over it.
         onKeyDown={e => {
-          const step = keyStep(e.key, active, rows.length);
+          e.stopPropagation();
+          const step = keyStep(e.key, p.active, p.rows.length);
           if (!step) return;
           if (step.kind === 'close') {
-            e.stopPropagation();
-            onClose();
+            p.onClose();
             return;
           }
           e.preventDefault();
-          if (step.kind === 'move') setActive(step.active);
-          else if (rows[active]) choose(rows[active]);
+          if (step.kind === 'move') p.onActive(step.active);
+          else if (p.rows[p.active]) p.onChoose(p.rows[p.active]);
         }}
       >
         <input
-          ref={input}
+          ref={p.inputRef}
           className="finder-input"
           placeholder={
-            handlers
+            p.withActions
               ? 'Find a capability, or type an action…'
               : 'Find a capability, a server, an agent…'
           }
           aria-label="Find a capability or run an action"
-          value={query}
-          onChange={e => {
-            setQuery(e.target.value);
-            setActive(0);
-          }}
+          value={p.query}
+          onChange={e => p.onQuery(e.target.value)}
         />
-        <ul ref={list} className="finder-list">
-          {rows.map((row, i) => {
-            const firstOfGroup = i === 0 || groupOf(rows[i - 1]) !== groupOf(row);
-            const isActive = i === active;
+        <ul ref={p.listRef} className="finder-list">
+          {p.rows.map((row, i) => {
+            const firstOfGroup = i === 0 || groupOf(p.rows[i - 1]) !== groupOf(row);
+            const isActive = i === p.active;
             return (
               <li key={row.kind === 'action' ? `action:${row.action.id}` : row.item.id}>
                 {firstOfGroup && <div className="finder-group">{groupOf(row)}</div>}
@@ -126,8 +163,10 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
                   type="button"
                   aria-current={isActive ? 'true' : undefined}
                   className={`finder-item ${isActive ? 'is-active' : ''}`}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => choose(row)}
+                  onMouseEnter={() => p.onActive(i)}
+                  // A row reached with Tab is the one Enter chooses.
+                  onFocus={() => p.onActive(i)}
+                  onClick={() => p.onChoose(row)}
                 >
                   {row.kind === 'action' ? (
                     <>
@@ -162,7 +201,7 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
               </li>
             );
           })}
-          {rows.length === 0 && <li className="finder-empty">Nothing matches.</li>}
+          {p.rows.length === 0 && <li className="finder-empty">Nothing matches.</li>}
         </ul>
       </div>
     </div>
