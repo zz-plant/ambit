@@ -5,6 +5,7 @@
  * help text, two reports, the seeding routine, the command grouping and a
  * forty-case switch. This is the part that decides what a person sees.
  */
+import { isFailure } from '../../shared/failure.ts';
 
 const C = {
   reset: '\x1b[0m',
@@ -53,21 +54,6 @@ function terminalPalette(stream: { isTTY?: boolean } = process.stdout): Palette 
  * and parsing stdout. Null means print, which is every real invocation.
  */
 let sink: ((data: unknown) => void) | null = null;
-
-/**
- * Whether a result is a command saying it failed: `{ error: '...' }` at the top
- * level, the shape every command already fails with. An error inside a result,
- * such as one per id in the approve queue's `results`, is part of an answer
- * that otherwise stands.
- */
-function isFailure(data: unknown): boolean {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    !Array.isArray(data) &&
-    typeof (data as { error?: unknown }).error === 'string'
-  );
-}
 
 /**
  * Leaves `code` for the process to exit with once it has printed. Raised and

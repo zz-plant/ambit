@@ -5,27 +5,7 @@
  * so a change to how results are shaped, `structuredContent` was one, is a
  * change to one file rather than to forty-eight call sites.
  */
-
-/**
- * Whether an answer says the call did not work.
- *
- * The engine reports a call it cannot answer as `{ error: '...' }`, and always
- * has: it is what the CLI prints, and what the tests assert. Over MCP that
- * arrived as an ordinary success whose text happened to contain the word, so a
- * client had no field to branch on and a model had to notice. The spec's field
- * for it is `isError`, and this is the one place that sets it, by the one rule
- * the CLI's exit code uses: a top-level string `error`. An `error` nested inside
- * a report, one failing check among many, is part of a real answer and does
- * not count.
- */
-function isFailure(value: unknown): boolean {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    typeof (value as { error?: unknown }).error === 'string'
-  );
-}
+import { isFailure } from '../shared/failure.ts';
 
 /**
  * A tool result an agent can use without parsing a string.
@@ -73,4 +53,4 @@ function err(id: unknown, c: number, m: string) {
   );
 }
 
-export { isFailure, toolResult, respond, err };
+export { toolResult, respond, err };
