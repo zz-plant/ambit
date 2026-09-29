@@ -181,6 +181,41 @@ test('the series is one tick per second, oldest first, each saying what moved si
   expect(after.movedSinceLast).toBe('reached 6, verified 0 to 1');
 });
 
+test('a step that leaves newly modelled nodes out of its count says how many, so the next one chains', () => {
+  // Nodes Ambit starts to model, everything supplying which was already seen,
+  // are left out of a step's "after" so that it stays on the basis of its
+  // "before". The next step counts them in its "before", so the series read
+  // "reached 3 to 4" and then "reached 7", and nothing accounted for the 3.
+  const db = monday();
+  recordFrontier(db, MONDAY);
+  db.prepare(
+    "UPDATE capabilities SET state = 'unlocked', lifecycle = 'configured' WHERE id = ?"
+  ).run('combo:ci');
+  for (const name of ['commit', 'push', 'tag']) {
+    db.prepare(
+      `INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle)
+       VALUES (?, ?, 'devops', '', 'action', 'unlocked', 'action', 'configured')`
+    ).run(`act:vc/${name}`, name);
+    db.prepare(
+      `INSERT INTO dependencies (from_capability, to_capability, kind) VALUES ('combo:vc', ?, 'provides')`
+    ).run(`act:vc/${name}`);
+  }
+  recordFrontier(db, '2026-09-23 09:00:00');
+  db.prepare("UPDATE capabilities SET lifecycle = 'verified' WHERE id = 'combo:ci'").run();
+  recordFrontier(db, FRIDAY);
+  const { ticks } = frontierSeries(db);
+  const step = ledgerSince(db, MONDAY, '2026-09-23 09:00:00') as any;
+  db.close();
+
+  expect(step.vocabulary).toHaveLength(3);
+  expect(ticks.map(t => t.moved)).toEqual([
+    'first observation, reached 3',
+    'reached 3 to 4, 1 emergent, 3 newly modelled',
+    'reached 7, verified 1 to 2',
+  ]);
+  expect(step.moved).toBe(ticks[1].moved);
+});
+
 test('a graph with no observation has no series', () => {
   const db = monday();
   const series = frontierSeries(db);

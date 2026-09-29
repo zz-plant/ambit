@@ -338,6 +338,7 @@ function compareFrontiers(
       before: pastReached,
       after: frontierNowCount,
       emergent: emergent.length,
+      modelled: vocabulary.length,
       failing: diminished.length,
       // An observation written before lifecycles were recorded has a verified
       // count of zero by default, which is not the same as none proven.
@@ -373,11 +374,17 @@ function compareFrontiers(
  * emerged, how many were proven, and what went failing. The timeline puts a
  * date in front of it and the terminal prints it beside `since`, so it carries
  * none of its own.
+ *
+ * `modelled` counts the vocabulary: nodes Ambit started to model, left out of
+ * `after` so that it stays on the basis of `before`. The next step counts them
+ * in its own `before`, so a step that left any out says how many, or the
+ * series would jump between two sentences with nothing to account for it.
  */
 function movedSentence(step: {
   before: number | null;
   after: number;
   emergent?: number;
+  modelled?: number;
   failing?: number;
   verified?: { before: number; after: number };
 }): string {
@@ -389,6 +396,7 @@ function movedSentence(step: {
         : `reached ${step.before} to ${step.after}`,
   ];
   if (step.emergent) parts.push(`${step.emergent} emergent`);
+  if (step.modelled) parts.push(`${step.modelled} newly modelled`);
   if (step.verified && step.verified.before !== step.verified.after) {
     parts.push(`verified ${step.verified.before} to ${step.verified.after}`);
   }
