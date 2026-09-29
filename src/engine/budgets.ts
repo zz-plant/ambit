@@ -62,9 +62,14 @@ function periodElapsed(
 /** A pace measured over less than this share of a period is a few hours, not a pace. */
 const MIN_PACE_SHARE = 0.05;
 
-/** A stored timestamp, in the space form SQLite writes or as ISO, read as UTC. */
+/**
+ * A stored timestamp, in the space form SQLite writes or as ISO, read as UTC.
+ * With no zone it is UTC in either spelling, as SQLite reads it: `new Date`
+ * reads an ISO date-time with no zone as local time.
+ */
 function stampMs(stamp: string): number {
-  return new Date(stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`).getTime();
+  const text = stamp.trim().replace(' ', 'T');
+  return new Date(/T[\d:.]+$/.test(text) ? `${text}Z` : text).getTime();
 }
 
 const dateOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);

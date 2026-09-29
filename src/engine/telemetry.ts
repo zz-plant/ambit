@@ -43,10 +43,18 @@ import { GATE_KINDS } from './vocabulary.ts';
  * `prepare(...).run/get/all`.
  */
 
-/** SQLite's datetime('now') shape, which is not ISO: space, not T, no zone. */
+/**
+ * SQLite's datetime('now') shape, which is not ISO: space, not T, no zone.
+ *
+ * Either spelling with no zone is UTC, which is how SQLite reads it. Date.parse
+ * reads an ISO date-time with no zone as local time, so one stored with a `T`
+ * and no zone moved by the process's offset. `isoTime` in audit.ts reads it
+ * the same way.
+ */
 function toEpoch(value?: string | null): number | undefined {
   if (!value) return undefined;
-  const t = Date.parse(value.includes('T') ? value : value.replace(' ', 'T') + 'Z');
+  const text = value.trim().replace(' ', 'T');
+  const t = Date.parse(/T[\d:.]+$/.test(text) ? `${text}Z` : text);
   return Number.isFinite(t) ? t : undefined;
 }
 

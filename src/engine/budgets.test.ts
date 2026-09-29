@@ -133,6 +133,24 @@ describe('the pace of a period', () => {
     });
     expect(iso).toEqual(spaced);
   });
+
+  it('reads an ISO start with no zone as UTC, as SQLite does, in whatever zone the process runs', () => {
+    // Read as local time in Los Angeles, a start at 20:00 moved seven hours
+    // later and the day the ceiling is reached moved with it.
+    const zone = process.env.TZ;
+    process.env.TZ = 'America/Los_Angeles';
+    try {
+      expect(new Date('2026-09-01T20:00:00').getTimezoneOffset()).not.toBe(0);
+      const pace = { period: 'month', spentCents: 1200, budgetCents: 2000, elapsedDays: 15 };
+      const spaced = forecastSpend({ ...pace, periodStart: '2026-09-01 20:00:00' });
+      const iso = forecastSpend({ ...pace, periodStart: '2026-09-01T20:00:00' });
+      expect(spaced?.hitsCeilingOn).toBe('2026-09-26');
+      expect(iso).toEqual(spaced);
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
+  });
 });
 
 describe('one rule for a period that has run out', () => {

@@ -152,6 +152,29 @@ test('either spelling of a time comes out as one, in UTC', () => {
   expect(only.seconds).toBe(60);
 });
 
+test('an ISO time with no zone is UTC, as SQLite reads it, in whatever zone the process runs', () => {
+  // Date.parse reads an ISO date-time with no zone as local time, so under
+  // America/Los_Angeles an ask stored as 2026-09-29T10:06:00 came out at 17:06Z.
+  // Node reads TZ when a date is parsed, so setting it here is enough.
+  const zone = process.env.TZ;
+  process.env.TZ = 'America/Los_Angeles';
+  try {
+    expect(new Date('2026-09-29T10:06:00').getTimezoneOffset()).not.toBe(0);
+    const db = graph();
+    run(db, 'r1');
+    ask(db, 'r1', { startedAt: '2026-09-29T10:06:00', endedAt: '2026-09-29T10:07:00' });
+    const [only] = asksOf(db);
+    db.close();
+
+    expect(only.at).toBe('2026-09-29T10:06:00.000Z');
+    expect(only.ended_at).toBe('2026-09-29T10:07:00.000Z');
+    expect(only.seconds).toBe(60);
+  } finally {
+    if (zone === undefined) delete process.env.TZ;
+    else process.env.TZ = zone;
+  }
+});
+
 test('the permission kinds are the vocabulary gate, and nothing else is', () => {
   const db = graph();
   run(db, 'r1');
