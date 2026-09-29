@@ -402,12 +402,6 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-elevated);
 }
 
-.app-deck-btn--alert {
-  border-color: var(--warn-line);
-  color: var(--warn);
-  background: var(--warn-soft);
-}
-
 /* The two generic buttons the panels and modals share. */
 .tp-btn,
 .tp-btn-sm {
@@ -1787,8 +1781,9 @@ code, pre, .code, .sp-cli-cmd {
   cursor: pointer;
 }
 
-/* The map's headline: a failing check first, else the best next step. It sits
-   on the zoom controls' row (the HUD's own 12px), centred, and gives way to a simulation's banner. */
+/* The map's headline: a failing check first, else the best next step, with
+   the range line under it. Its first line sits on the zoom controls' row (the
+   HUD's own 12px), centred, and gives way to a simulation's banner. */
 .civ-finding-wrap {
   top: 12px;
   height: auto;
@@ -1808,10 +1803,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   justify-content: center;
   gap: 4px 10px;
-  /* Clear of the zoom controls on the left and the lens switch on the right,
-     which share its row; it wraps before it runs under either. The wider
-     reserve for both is below. */
-  max-width: max(280px, calc(100% - 420px));
+  max-width: 100%;
   padding: 4px 12px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
@@ -1820,14 +1812,26 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
 }
 
-/* The lens switch is the wider of the two, up to 231px and 12px in from the
+/* Whichever line comes first shares a row with the zoom controls on the left
+   and the lens switch on the right, and wraps before it runs under either.
+   The lens switch is the wider of the two, up to 231px and 12px in from the
    edge, and the headline's box runs from 20px in to 12px in, so a centred
-   line 474px narrower than the box keeps 6px clear of it. 420px let it run
-   21px under the switch. A phone puts the headline at the bottom edge, where
-   it shares no row. */
+   line 474px narrower than the box keeps 6px clear of it. A phone puts the
+   headline at the bottom edge, where it shares no row. */
+.civ-finding-wrap > :first-child {
+  max-width: max(280px, calc(100% - 420px));
+}
+
 @media (min-width: 721px) {
-  .civ-range {
+  .civ-finding-wrap > :first-child {
     max-width: max(240px, calc(100% - 474px));
+  }
+}
+
+/* The header's pill carries the count from 769px up. */
+@media (min-width: 769px) {
+  .civ-range-count {
+    display: none;
   }
 }
 
@@ -1991,8 +1995,7 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
 }
 
-.civ-timeline-head,
-.civ-timeline-note {
+.civ-timeline-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -4292,6 +4295,22 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .app-status-pill {
+    display: none;
+  }
+
+  /* While the tour narrates the map, nothing in the header or the zoom and
+     lens row is needed: the card has its own way out. Kept, they took the
+     map down to about 40% of the screen, and a step that named four
+     capabilities showed two of them. The brand stays, since it is what a
+     screenshot of the tour says it is. */
+  .app--touring {
+    --deck-h: 52px;
+  }
+
+  .app--touring .app-deck-center,
+  .app--touring .app-deck-right,
+  .app--touring .app-deck-left > :not(.app-brand-group),
+  .app--touring .civ-hud {
     display: none;
   }
 

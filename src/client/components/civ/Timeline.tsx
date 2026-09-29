@@ -8,7 +8,7 @@
  */
 import type { FrontierHistoryResponse } from '../../../shared/api';
 import { Term } from '../Term';
-import { beforeHistory, dayOf, momentOf, tickSecond, timelineSentence } from './history';
+import { dayOf, hasHistory, momentOf, tickSecond, timelineSentence } from './history';
 
 interface TimelineProps {
   history: FrontierHistoryResponse;
@@ -23,21 +23,7 @@ export function Timeline({ history, at, onScrub, leftInset = 0, rightInset = 0 }
   const { ticks } = history;
   const style = { paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset };
 
-  // One observation is a point, not a line: say how history begins instead.
-  if (ticks.length < 2) {
-    return (
-      <section
-        className="civ-timeline civ-timeline--before"
-        style={style}
-        aria-label="The frontier through time"
-      >
-        <p className="civ-timeline-note">
-          <Term name="frontier" />
-          <span>{beforeHistory(history)}</span>
-        </p>
-      </section>
-    );
-  }
+  if (!hasHistory(history)) return null;
 
   const index = at ? ticks.findIndex(t => tickSecond(t) === at) : -1;
   const tick = index === -1 ? null : ticks[index];

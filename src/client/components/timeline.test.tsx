@@ -130,18 +130,15 @@ test('scrubbed to a tick, it says what moved then, and offers the way back', () 
   expect(html).toContain('Back to now');
 });
 
-test('with fewer than two, it says how history begins and offers nothing to drag', () => {
-  const one = renderToStaticMarkup(
-    <Timeline history={{ ticks: [FRIDAY], movedSinceLast: null }} at={null} onScrub={() => {}} />
-  );
-  expect(one).not.toContain('type="range"');
-  expect(text(one)).toContain('One observation of the frontier so far, from Sep 25.');
-
-  const none = renderToStaticMarkup(
-    <Timeline history={{ ticks: [], movedSinceLast: null }} at={null} onScrub={() => {}} />
-  );
-  expect(none).not.toContain('type="range"');
-  expect(text(none)).toContain('No observation of the frontier yet.');
+test('with fewer than two observations there is no strip at all', () => {
+  // One is a point with nothing to scrub; a strip saying so took a row under
+  // every first look at the map.
+  for (const ticks of [[FRIDAY], []]) {
+    const html = renderToStaticMarkup(
+      <Timeline history={{ ticks, movedSinceLast: null }} at={null} onScrub={() => {}} />
+    );
+    expect(html).toBe('');
+  }
 });
 
 test('the map as Monday left it draws what Monday held, and none of what no snapshot stores', () => {

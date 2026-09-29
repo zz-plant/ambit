@@ -111,13 +111,9 @@ export function timelineSentence(history: FrontierHistoryResponse, tick: Frontie
 }
 
 /**
- * How history begins, for a machine with fewer than two ticks: there is
- * nothing to scrub between yet, and a timeline of one point would say so less
- * clearly than a sentence.
+ * Whether there is a history to draw: two observations, the fewest with
+ * anything between them. One is a point, and a full-width strip saying so sat
+ * under every first look at the map.
  */
-export function beforeHistory(history: FrontierHistoryResponse): string {
-  const first = history.ticks[0];
-  return first
-    ? `One observation of the frontier so far, from ${dayOf(first.at)}. A seed that changes it records the next, and the timeline starts there.`
-    : 'No observation of the frontier yet. A seed records one each time it changes something, and the timeline starts at the second.';
-}
+export const hasHistory = (history: FrontierHistoryResponse | null): boolean =>
+  (history?.ticks.length ?? 0) >= 2;

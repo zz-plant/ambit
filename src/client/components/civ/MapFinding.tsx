@@ -1,6 +1,10 @@
 /**
- * The map's headline: the size of the range and how it moved, then one
- * sentence on what is broken or what to reach next.
+ * The map's headline: one sentence on what is broken or what to reach next,
+ * then the size of the range, how it moved, and the worst single loss.
+ *
+ * What is broken comes first. The range line led, so the first thing read was
+ * a hypothetical ("losing Shell Execution stops 9") and the real problem, a
+ * check that is failing now, came second.
  *
  * Sits where the simulation banner sits, and gives way to it, since a running
  * simulation is its own sentence. Hidden while a node is selected: the panel
@@ -54,10 +58,12 @@ function RangeLine({
   const composed = since?.emergent.length ?? 0;
   return (
     <div className="civ-range" role="status">
-      <span>
+      {/* The header's pill says this on a wide screen; a phone hides the
+          pill, so it is said here. */}
+      <span className="civ-range-count">
         <strong>{verified}</strong> verified
       </span>
-      <span className="civ-range-sep" aria-hidden="true">
+      <span className="civ-range-sep civ-range-count" aria-hidden="true">
         ·
       </span>
       {since === undefined ? null : !since ? (
@@ -147,12 +153,6 @@ export function MapFinding({
       data-occludes-map
       style={{ paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset }}
     >
-      <RangeLine
-        findings={findings}
-        since={since}
-        onSimulate={onSimulate}
-        onSpotlight={onSpotlight}
-      />
       {failing.length > 0 ? (
         <div role="status" className="civ-finding civ-finding--bad">
           <span className="civ-finding-dot" aria-hidden="true">
@@ -181,6 +181,12 @@ export function MapFinding({
           </button>
         </div>
       ) : null}
+      <RangeLine
+        findings={findings}
+        since={since}
+        onSimulate={onSimulate}
+        onSpotlight={onSpotlight}
+      />
     </div>
   );
 }

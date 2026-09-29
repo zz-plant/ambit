@@ -722,8 +722,9 @@ export default function CivTree({
     if (!lit.length || framedFor.current === key) return;
     framedFor.current = key;
     const points = lit.flatMap(id => nodePositionMap.get(id) ?? []);
-    // The zoom and lens controls sit over the canvas's first 52px.
-    const hud = 52;
+    // The zoom and lens controls sit over the canvas's first 52px, except in
+    // the tour, which hides them on a phone.
+    const hud = narrated ? 8 : 52;
     const frame = frameScene(
       points,
       { top: hud, width: el.clientWidth - leftInset, height: el.clientHeight - hud - covered },
@@ -737,6 +738,7 @@ export default function CivTree({
     );
   }, [
     narrow,
+    narrated,
     simulationMode,
     simulatedNodeId,
     simSet,
@@ -1028,14 +1030,18 @@ export default function CivTree({
                       ? 'var(--node-reached)'
                       : defaultColor
                     : 'var(--bg-canvas)';
-                  let sc = selected
-                    ? 'var(--text-primary)'
-                    : inNeeds
-                      ? 'var(--edge-needs)'
-                      : inEnables
-                        ? 'var(--accent)'
-                        : failingNode
-                          ? 'var(--error)'
+                  // Failing outranks selection and focus: the ring outside the
+                  // node already says it is selected, and a broken node drawn in
+                  // the selection's colour read as working in the one step that
+                  // was about it being broken.
+                  let sc = failingNode
+                    ? 'var(--error)'
+                    : selected
+                      ? 'var(--text-primary)'
+                      : inNeeds
+                        ? 'var(--edge-needs)'
+                        : inEnables
+                          ? 'var(--accent)'
                           : next
                             ? 'var(--accent)'
                             : reached
@@ -1170,6 +1176,10 @@ export default function CivTree({
                           strokeWidth={2}
                         />
                       )}
+                      {/* Quiet until asked for. Five amber squares were the loudest
+                          marks on the map, louder than the one failing node, for
+                          a structural fact nobody acts on first. The legend's
+                          Keystone key, or selecting the node, draws it in full. */}
                       {isKeystone && !dimmed && (
                         <rect
                           x={-NODE_R - 6}
@@ -1179,7 +1189,7 @@ export default function CivTree({
                           rx={9}
                           fill="none"
                           stroke="var(--warn)"
-                          strokeOpacity={0.75}
+                          strokeOpacity={spotlight === 'Keystone' || selected ? 0.75 : 0.25}
                           strokeWidth={1.25}
                           strokeDasharray="4,3"
                         />
@@ -1675,10 +1685,15 @@ export default function CivTree({
         </svg>
       </div>
       {/* Where this came from, for the screenshot that loses the address bar.
-          It rides above whatever card covers the bottom of the map. */}
-      <div className="civ-source" style={{ bottom: covered + 10, left: leftInset + 8 }}>
-        Ambit · {SITE_HOST}
-      </div>
+          Only while the map is idle, which is when the whole map is what gets
+          captured: in the tour it sat on the node the story was about, and
+          while anything is lit the lit thing is the point. The saved image
+          carries the address either way. */}
+      {!narrated && simulationMode === 'none' && !selectedId && (
+        <div className="civ-source" style={{ bottom: covered + 10, left: leftInset + 8 }}>
+          Ambit · {SITE_HOST}
+        </div>
+      )}
 
       {/* Not while a tour narrates the map: its card sits where the thumbnail
           does, and the finding the thumbnail feeds is hidden then too. */}

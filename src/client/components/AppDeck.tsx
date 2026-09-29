@@ -359,7 +359,9 @@ export default function AppDeck(p: AppDeckProps) {
         )}
         <button
           type="button"
-          className={`app-deck-btn ${p.draftCount > 0 ? 'app-deck-btn--alert' : ''}`}
+          // The count carries the alert. The whole button in amber made it
+          // the loudest control on every screen, the tour's included.
+          className="app-deck-btn"
           onClick={p.onShowProposals}
           title="Changes an agent wants to make, waiting for your approval (g)"
           aria-label={p.draftCount > 0 ? `Proposals (${p.draftCount} waiting)` : 'Proposals'}

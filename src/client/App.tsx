@@ -2,7 +2,7 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import AppDeck, { mapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
 import AuditView from './components/AuditView';
-import { dayOf, itemsAsOf, momentOf, tickAt } from './components/civ/history';
+import { dayOf, hasHistory, itemsAsOf, momentOf, tickAt } from './components/civ/history';
 import { isEntry, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
@@ -384,7 +384,7 @@ export default function App() {
   const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
   // Under the map, once a series has come back. It explains itself when it
   // holds fewer than two ticks; with no engine behind the page it is absent.
-  const showTimeline = view === 'tree' && hasTree && !touring && history !== null;
+  const showTimeline = view === 'tree' && hasTree && !touring && hasHistory(history);
   const endTour = () => {
     setTourAsked(false);
     dismissGuide();
@@ -413,7 +413,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${touring ? ' app--touring' : ''}`}>
       <AppDeck
         view={view}
         counts={view === 'tree' ? counts : null}

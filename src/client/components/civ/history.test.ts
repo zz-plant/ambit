@@ -9,15 +9,7 @@
 import { expect, test } from 'vitest';
 import type { FrontierHistoryResponse, FrontierTick } from '../../../shared/api';
 import type { Connection, Item } from '../../utils/configImporter';
-import {
-  beforeHistory,
-  dayOf,
-  itemsAsOf,
-  momentOf,
-  tickAt,
-  tickSecond,
-  timelineSentence,
-} from './history';
+import { dayOf, itemsAsOf, momentOf, tickAt, tickSecond, timelineSentence } from './history';
 
 const node = (id: string, era: number, meta: Record<string, unknown>): Item => ({
   id,
@@ -124,14 +116,5 @@ test('the timeline says what moved at the tick, or since the newest one', () => 
   expect(timelineSentence(HISTORY, null)).toBe('Nothing has moved since Sep 25.');
   expect(timelineSentence({ ...HISTORY, movedSinceLast: 'reached 1, verified 0 to 1' }, null)).toBe(
     'Since Sep 25: reached 1, verified 0 to 1.'
-  );
-});
-
-test('with fewer than two observations, the page says how history begins', () => {
-  expect(beforeHistory({ ticks: [], movedSinceLast: null })).toMatch(
-    /^No observation of the frontier yet\./
-  );
-  expect(beforeHistory({ ticks: [FRIDAY], movedSinceLast: null })).toMatch(
-    /^One observation of the frontier so far, from Sep 25\./
   );
 });

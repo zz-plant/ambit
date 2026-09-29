@@ -205,3 +205,57 @@ test('the canvas starts below the headline, however many lines it wraps to', () 
     )
   ).toContain('--headline-pad:40px');
 });
+
+test('the headline leads with what is broken, and the worst loss follows it', () => {
+  // The range line led, so the first thing read was "losing Shell Execution
+  // stops 9", a hypothetical, above a check that was failing now.
+  const found = mapFindings(merged.items, merged.connections);
+  expect(found.failing.length).toBeGreaterThan(0);
+  const html = renderToStaticMarkup(
+    <MapFinding findings={found} since={null} onShow={() => {}} onPreview={() => {}} />
+  );
+  expect(html.indexOf('civ-finding--bad')).toBeGreaterThan(-1);
+  expect(html.indexOf('civ-finding--bad')).toBeLessThan(html.indexOf('civ-range'));
+  // The count the header's pill already says is marked so a wide screen drops it.
+  expect(html).toContain('civ-range-count');
+});
+
+/** The demo's tree, rendered with a node selected, or none. */
+const drawn = (selectedId: string | null, narrated = false) => {
+  seed({ items: merged.items, connections: merged.connections });
+  return renderToStaticMarkup(
+    <CivTree
+      items={merged.items}
+      connections={merged.connections}
+      selectedId={selectedId}
+      hoveredId={null}
+      onSelect={() => {}}
+      onHover={() => {}}
+      narrated={narrated}
+    />
+  );
+};
+
+/** The markup of one node's group, by the name its aria-label starts with. */
+const nodeOf = (html: string, name: string) => {
+  const at = html.indexOf(`aria-label="${name},`);
+  return html.slice(at, html.indexOf('</g>', html.indexOf('civ-node-label', at)));
+};
+
+test('a failing node keeps its red ring when it is the one selected', () => {
+  // Selection drew it in the selection's colour, so the tour's step about a
+  // broken node showed it looking like every working one.
+  const failing = mapFindings(merged.items, merged.connections).failing[0];
+  // The node's own disc is the circle that carries a fill opacity.
+  const ring = (html: string) =>
+    nodeOf(html, failing.name).match(/<circle[^>]*fill-opacity[^>]*>/)?.[0];
+  expect(ring(drawn(null))).toContain('var(--error)');
+  expect(ring(drawn(failing.id))).toContain('var(--error)');
+});
+
+test('the source line is drawn only while the map is idle', () => {
+  expect(drawn(null)).toContain('civ-source');
+  const any = merged.items.find(i => i.status === 'built' && i.type === 'possibility')!;
+  expect(drawn(any.id)).not.toContain('civ-source');
+  expect(drawn(null, true)).not.toContain('civ-source');
+});
