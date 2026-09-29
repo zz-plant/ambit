@@ -1,9 +1,9 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import AppDeck, { type MapCounts } from './components/AppDeck';
+import AppDeck, { mapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
 import AuditView from './components/AuditView';
 import { dayOf, itemsAsOf, momentOf, tickAt } from './components/civ/history';
-import { isEntry, isNext, isProven, visibleItems } from './components/civ/layout';
+import { isEntry, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
@@ -20,9 +20,10 @@ import { useHotkeys } from './hooks/useHotkeys';
 import { useToast } from './hooks/useToast';
 import { useUrlSync } from './hooks/useUrlSync';
 import { isNarrowScreen, useNarrow } from './hooks/useViewport';
-import { hostedLanding, initialView, readLinkState, type View } from './linkState';
+import { hostedLanding, initialView, linkFocus, readLinkState, type View } from './linkState';
 import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
+import { escapeLayer } from './utils/keys';
 import type { PaletteHandlers } from './utils/palette';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
@@ -65,6 +66,7 @@ export default function App() {
   const loadHistory = useAmbitStore(s => s.loadHistory);
 
   const selectItem = useAmbitStore(s => s.selectItem);
+  const selectEra = useAmbitStore(s => s.selectEra);
   const hoverItem = useAmbitStore(s => s.hoverItem);
   const loadGraph = useAmbitStore(s => s.loadGraph);
   const seedDemo = useAmbitStore(s => s.seedDemo);
@@ -75,6 +77,8 @@ export default function App() {
   const probeBackend = useAmbitStore(s => s.probeBackend);
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
   const setSpotlight = useAmbitStore(s => s.setSpotlight);
+  const setCollapsed = useAmbitStore(s => s.setCollapsed);
+  const clearSimulation = useAmbitStore(s => s.clearSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
@@ -93,10 +97,17 @@ export default function App() {
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
   const [finderOpen, setFinderOpen] = useState(false);
+  // Where the map's headline ends, so the first-run card sits below it: at
+  // 1024px it sat on the finding and covered its Show button.
+  const [headlineBottom, setHeadlineBottom] = useState<number | null>(null);
 
   const openDocs = (tab?: DocsTab) => {
     setDocsTab(tab);
     setShowDocs(true);
+  };
+  const closeDocs = () => {
+    setShowDocs(false);
+    setDocsTab(undefined);
   };
 
   useUrlSync({
@@ -143,11 +154,24 @@ export default function App() {
       setShowApprovalModal(!open);
       if (!open) loadProposals();
     },
+    // One owner, and one thing a press: see escapeLayer.
     escape: () => {
-      setFinderOpen(false);
-      setShowApprovalModal(false);
-      setShowDocs(false);
-      selectItem(null);
+      const s = useAmbitStore.getState();
+      const layer = escapeLayer({
+        docs: showDocs,
+        proposals: s.showApprovalModal,
+        finder: finderOpen,
+        onMap: view === 'tree',
+        spotlight: s.spotlight !== null,
+        simulation: s.simulationMode !== 'none',
+        selection: s.selectedItem !== null || s.selectedEra !== null,
+      });
+      if (layer === 'docs') closeDocs();
+      else if (layer === 'proposals') setShowApprovalModal(false);
+      else if (layer === 'finder') setFinderOpen(false);
+      else if (layer === 'spotlight') setSpotlight(null);
+      else if (layer === 'simulation') clearSimulation();
+      else if (layer === 'selection') selectItem(null);
     },
   });
 
@@ -170,19 +194,22 @@ export default function App() {
     if (link.view === 'audit') loadAudit();
   }, []);
 
-  // ?focus=<id> selects a node once the graph that contains it has loaded.
-  // The lookup happens outside the effect so its dependency is the found id, a
-  // string, and not `items`, whose identity changes every render.
-  const focusTarget = link.focusId ? items.find(i => i.id === link.focusId)?.id : undefined;
+  // ?focus=<id> selects a node once the graph that contains it has loaded, and
+  // ?collapse=1 collapses the map to it then, and only then. The lookup happens
+  // outside the effect so its dependencies are a string and a flag, and not
+  // `items`, whose identity changes every render.
+  const linked = linkFocus(link, items);
+  const focusTarget = linked?.id;
+  const focusCollapse = linked?.collapse ?? false;
   useEffect(() => {
+    if (!focusTarget) return;
     // `selectItem` toggles, because clicking the selected node clears it. A
     // link is not a toggle: if this effect runs again with the same target (a
     // remount, a hot reload), selecting it a second time would close the panel
     // the link was for.
-    if (focusTarget && useAmbitStore.getState().selectedItem !== focusTarget) {
-      selectItem(focusTarget);
-    }
-  }, [focusTarget, selectItem]);
+    if (useAmbitStore.getState().selectedItem !== focusTarget) selectItem(focusTarget);
+    if (focusCollapse) setCollapsed(true);
+  }, [focusTarget, focusCollapse, selectItem, setCollapsed]);
 
   /** Select something without toggling it off when it is already selected. */
   const select = (id: string) => {
@@ -222,7 +249,9 @@ export default function App() {
   const showView = (next: View) => {
     setView(next);
     // The detail panel is meaningful over the map and the list, and in the
-    // way over the figures.
+    // way over the figures. An era's ladder is the map's alone: it stayed open
+    // over My Setup, covering the right edge of the list.
+    if (next !== 'tree' && useAmbitStore.getState().selectedEra !== null) selectEra(null);
     if (next === 'loop') {
       selectItem(null);
       if (!demo) loadLoop();
@@ -292,17 +321,10 @@ export default function App() {
 
   // The header counts one population per view: the map's nodes by state, or
   // the setup's entries by whether they are enabled. It used to count both in
-  // one fraction, so the demo read "42 of 60" over a tree of 33.
-  const mapItems = visibleItems(shown);
-  const counts: MapCounts = {
-    verified: mapItems.filter(isProven).length,
-    unproven: mapItems.filter(i => i.status === 'built' && !isProven(i)).length,
-    next: mapItems.filter(i => i.status !== 'built' && isNext(i)).length,
-    blocked: mapItems.filter(i => i.status !== 'built' && !isNext(i)).length,
-  };
-  // An observation recorded before lifecycles were cannot split reached by
+  // one fraction, so the demo read "42 of 60" over a tree of 33. An
+  // observation recorded before lifecycles were cannot split reached by
   // evidence, so the header counts it whole.
-  if (tick && !tick.lifecycles) counts.reached = mapItems.filter(i => i.status === 'built').length;
+  const counts = mapCounts(visibleItems(shown), !(tick && !tick.lifecycles));
   const entries = items.filter(isEntry);
   const hasTree = items.some(i => !isEntry(i));
   const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
@@ -331,14 +353,7 @@ export default function App() {
             setView('loop');
           }}
         />
-        <DocsModal
-          isOpen={showDocs}
-          initialTab={docsTab}
-          onClose={() => {
-            setShowDocs(false);
-            setDocsTab(undefined);
-          }}
-        />
+        <DocsModal isOpen={showDocs} initialTab={docsTab} onClose={closeDocs} />
       </div>
     );
   }
@@ -394,6 +409,7 @@ export default function App() {
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
               narrated={touring}
               asOf={tick ? momentOf(tick.at) : undefined}
+              onHeadline={setHeadlineBottom}
             />
           </Suspense>
         ) : items.length > 0 ? (
@@ -427,7 +443,7 @@ export default function App() {
             onShowProposals={showProposals}
             onMapped={() => {
               endTour();
-              setView('config');
+              showView('config');
             }}
           />
         ) : (
@@ -435,7 +451,14 @@ export default function App() {
           view === 'tree' &&
           hasTree && (
             <GettingStartedGuide
-              style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
+              style={
+                isNarrow
+                  ? undefined
+                  : {
+                      right: detailOpen ? PANEL_W + 16 : 16,
+                      ...(headlineBottom === null ? {} : { top: headlineBottom + 10 }),
+                    }
+              }
               onDismiss={dismissGuide}
               onReadMore={() => {
                 openDocs('reading');
@@ -465,14 +488,7 @@ export default function App() {
         handlers={paletteHandlers}
       />
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
-      <DocsModal
-        isOpen={showDocs}
-        initialTab={docsTab}
-        onClose={() => {
-          setShowDocs(false);
-          setDocsTab(undefined);
-        }}
-      />
+      <DocsModal isOpen={showDocs} initialTab={docsTab} onClose={closeDocs} />
 
       {toast && (
         <Toast

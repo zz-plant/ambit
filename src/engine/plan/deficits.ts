@@ -6,6 +6,7 @@
  * capability blocked four times for four different reasons is a different
  * finding from one blocked four times for the same reason.
  */
+import { shellQuote } from '../../shared/shell.ts';
 import type { Db } from '../db.ts';
 import { usable } from '../assurance.ts';
 
@@ -172,11 +173,11 @@ function deficits(db: Db) {
                 : 'incidental so far',
     recommendation:
       r.times >= 3 && r.state === 'locked'
-        ? `ambit propose ${r.id.replace('combo:', '')}`
+        ? `ambit propose ${shellQuote(r.id.replace('combo:', ''))}`
         : r.times >= 3 && !usable(r.lifecycle)
-          ? `ambit verify ${r.id.replace('combo:', '')}`
+          ? `ambit verify ${shellQuote(r.id.replace('combo:', ''))}`
           : r.times >= 3 && dominant.get(r.id) === 'permission'
-            ? `ambit authority ${r.id.replace('combo:', '')}`
+            ? `ambit authority ${shellQuote(r.id.replace('combo:', ''))}`
             : undefined,
   }));
 }

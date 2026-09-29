@@ -27,7 +27,7 @@
       "term": "Required vs optional prerequisite",
       "short": "Whether a dependency gates a capability, or only helps",
       "long": "A required prerequisite must be in place or the dependent capability cannot work — a model cannot run without its provider. An optional one strengthens something without gating it. Only required prerequisites block a node from being reached; both are drawn, with optional ones fainter. The data model and the CLI call these hard and soft.",
-      "seen": "Solid vs dashed connection lines, keyed Required and Optional; and the Needs line under each way to acquire something on Time & cost"
+      "seen": "Solid vs dashed connection lines, keyed Required and Optional; and the Needs line above an opportunity's ways to acquire it on Time & cost"
     },
     {
       "key": "keystone",

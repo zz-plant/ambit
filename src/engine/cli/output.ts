@@ -5,6 +5,7 @@
  * help text, two reports, the seeding routine, the command grouping and a
  * forty-case switch. This is the part that decides what a person sees.
  */
+import { isFailure } from '../../shared/failure.ts';
 
 const C = {
   reset: '\x1b[0m',
@@ -37,9 +38,13 @@ function colorOn(
   return Boolean(stream.isTTY) && !env.NO_COLOR;
 }
 
-/** `C` where colour is welcome and `PLAIN` where it is not. */
-function terminalPalette(): Palette {
-  return colorOn() ? C : PLAIN;
+/**
+ * `C` where colour is welcome and `PLAIN` where it is not. Asked about stdout
+ * unless told the stream: a line written to stderr is painted only if stderr is
+ * a terminal, whatever stdout is.
+ */
+function terminalPalette(stream: { isTTY?: boolean } = process.stdout): Palette {
+  return colorOn(stream) ? C : PLAIN;
 }
 
 /**
@@ -51,6 +56,17 @@ function terminalPalette(): Palette {
 let sink: ((data: unknown) => void) | null = null;
 
 /**
+ * Leaves `code` for the process to exit with once it has printed. Raised and
+ * never lowered, so a command that set its own code keeps it. Never on the
+ * sink: whatever reads the result in-process is a test or a program, and the
+ * process it would mark is theirs.
+ */
+function raiseExitCode(code: number): void {
+  if (sink) return;
+  if (code > (Number(process.exitCode) || 0)) process.exitCode = code;
+}
+
+/**
  * A result that is JSON on the terminal as well — the machine-readable views
  * (`graph surface`, `graph export`, `federation export`) are consumed by other
  * programs, so they do not go through the human formatter even without --json.
@@ -60,6 +76,7 @@ function emitRaw(data: unknown, pretty = true): void {
     sink(data);
     return;
   }
+  if (isFailure(data)) raiseExitCode(1);
   console.log(pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data));
 }
 
@@ -92,12 +109,17 @@ function emitText(text: string): void {
  * turns the data into the lines a person reads. It runs on that path only:
  * the sink and --json both get the data itself, so a test and a script are
  * never reading the rendering.
+ *
+ * A result that says it failed also exits 1, printed either way. A script reads
+ * the code before any word of the answer: `ambit sync && next` used to run
+ * `next` after a usage error.
  */
 function emit(data: any, human: (data: any) => string[] = formatGeneric): void {
   if (sink) {
     sink(data);
     return;
   }
+  if (isFailure(data)) raiseExitCode(1);
   if (process.argv.includes('--json')) {
     console.log(JSON.stringify(data, null, 2));
     return;
@@ -111,8 +133,12 @@ function emit(data: any, human: (data: any) => string[] = formatGeneric): void {
  * Lines and not prints, so a command with a layout of its own can put this
  * beneath its head for whatever the head does not say, and a test can read
  * what would be shown without spying on the console.
+ *
+ * Given no palette it asks the process, like every other surface: `emit`
+ * passes none, and a default of `C` painted every pipe the generic view
+ * reached, which is most commands.
  */
-function formatGeneric(data: any, c: Palette = C): string[] {
+function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
   const lines: string[] = [];
   const say = (line: string) => void lines.push(line);
 
@@ -220,4 +246,15 @@ export function setSink(next: ((data: unknown) => void) | null): ((data: unknown
   return previous;
 }
 
-export { C, PLAIN, colorOn, emit, emitRaw, emitText, formatGeneric, terminalPalette, type Palette };
+export {
+  C,
+  PLAIN,
+  colorOn,
+  emit,
+  emitRaw,
+  emitText,
+  formatGeneric,
+  raiseExitCode,
+  terminalPalette,
+  type Palette,
+};

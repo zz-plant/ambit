@@ -65,9 +65,10 @@ export function clampToScene(view: Rect, scene: Size): Rect {
 }
 
 /**
- * Whether the whole scene is on screen. The minimap says where you are on a
- * map too big to see at once, so when this holds there is nothing to say and
- * it is not drawn. A unit of slack absorbs the rounding of the scroll extent.
+ * Whether the whole scene is inside a viewport. The minimap says where you are
+ * on a map too big to see at once, so when the scene fits the window there is
+ * nothing to say and it is not drawn. A unit of slack absorbs the rounding of
+ * the scroll extent.
  */
 export function fitsScene(view: Rect, scene: Size, slack = 1): boolean {
   return (
@@ -146,6 +147,26 @@ export function scrollForKey(
 }
 
 /**
+ * The node nearest the middle of a rectangle of the scene: where Enter on the
+ * minimap's outline puts the focus, so the part of the map it moved to is
+ * the part the keyboard carries on from. Null when there is no node.
+ */
+export function nearestNode(view: Rect, nodes: readonly (Point & { id: string })[]): string | null {
+  const cx = view.x + view.width / 2;
+  const cy = view.y + view.height / 2;
+  let best: string | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const n of nodes) {
+    const d = (n.x - cx) ** 2 + (n.y - cy) ** 2;
+    if (d < bestDistance) {
+      best = n.id;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
+/**
  * Which way a node lies from the viewport, when the whole of its circle is
  * out of sight. A node half in view is in view.
  */
@@ -187,8 +208,15 @@ export interface MinimapModel {
 }
 
 export function minimapModel(g: Geometry, scene: Size, box: Size): MinimapModel | null {
+  // Whether the map fits is a question about the scene and the window, so it
+  // is asked with the scroller at its origin. Asked where it was scrolled to,
+  // a map that overflowed by less than the offsets above it (74px at 1440 by
+  // 900) fitted at the bottom of its scroll, and the minimap vanished mid-drag
+  // and dropped out of the Tab order.
+  if (!(g.zoom > 0) || fitsScene(viewportRect({ ...g, scrollLeft: 0, scrollTop: 0 }), scene)) {
+    return null;
+  }
   const view = viewportRect(g);
-  if (!(g.zoom > 0) || fitsScene(view, scene)) return null;
   const { scale, width, height } = thumbnail(scene, box);
   const seen = clampToScene(view, scene);
   return {

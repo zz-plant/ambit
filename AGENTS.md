@@ -104,7 +104,7 @@ src/engine/approval.ts     The approval broker — signed artifacts the executor
 src/engine/delegation.ts   STD-07 revisable delegation records: which capability failed, which
                            grant rested on it, and what the grant became. The gate enforces
                            with no help from here; this explains, afterwards, to whoever asks
-src/engine/budgets.ts      Standing spend: delegated authority with a ceiling, and the one rule
+src/engine/budgets.ts      Standing spend: a ceiling a person sets on it, and the one rule
                            for when a period has elapsed, which the reset, the gate and the
                            budget view all read
 src/engine/ledger.ts       Frontier snapshots and how the frontier moved: one comparison for
@@ -119,7 +119,7 @@ src/engine/catalog.ts      The acquisition catalog — the supply side for a ran
 src/engine/roi.ts          Realized ROI — before/after windows, written back
 src/engine/audit.ts        The trail: who approved what, what ran, and whether it held;
                            `auditStream` merges its four sources, newest first, under one limit
-src/engine/machines.ts     What an agent may do on each device the manifest names: the gate asked
+src/engine/machines.ts     What an agent may do on each device the scan found: the gate asked
                            with the device as the target, read only
 src/engine/incident.ts     The incident loop — a work run per offline declared service
 src/engine/federation.ts   Signed summaries a portfolio layer reads; receipts, no merging
@@ -133,6 +133,7 @@ The distance to a capability, the projections every surface reads, and the dispa
 
 ```
 src/engine/planning.ts     The gap to a capability, and simulating closing it
+src/engine/resolve.ts      Which node an id means: normalises, and never guesses
 src/engine/plan/           deficits.ts (what keeps stopping work, and whether it is structural)
                            propose.ts (what a change would buy, as something approvable)
                            route.ts (the order of the missing steps, and who each inconveniences)
@@ -164,17 +165,22 @@ Three processes put the graph in front of something else: a browser, an agent se
 ```
 src/server/api.ts          The visualizer API and SSE stream: reads views, writes config;
                            approves and rejects proposals as the web actor, one at a time or
-                           as a queue of shown drafts; serves the briefing, the audit trail,
-                           the frontier's history and one run, all read only
+                           as a queue of shown drafts; serves the audit trail, the frontier's
+                           history and one run, read only, and the briefing, which applies any
+                           threshold a person already set
 src/server/config.ts       The agent config this server will touch: `ownEntry`, the
                            AGENT_FIELDS / COMMAND_FIELDS allow-lists, `writeConfig` (which keeps
                            the file it replaces in `<config>.bak` and refuses the write when it
                            cannot) and the token gate. It cannot create an entry
 src/server/repos.ts        How far each repository's config has drifted from the global one
 src/server/infrastructure.ts  The device and service topology, probed from INFRA_MANIFEST
-src/mcp/tools.ts           What a tool is — the catalogue, as pure data. No engine imports
-src/mcp/server.ts          What a tool does — a warm handle and the dispatch switch
-src/mcp/protocol.ts        JSON-RPC over stdio: how a result or an error leaves the process
+src/mcp/tools.ts           What a tool is — the catalogue, as pure data: each tool's schema, what it
+                           changes (annotations), and the ten-tool agent profile. No engine imports
+src/mcp/validate.ts        A call's arguments checked against the schema the tool advertised
+src/mcp/server.ts          What a tool does — a warm handle and the dispatch switch, the handshake
+                           (instructions, version negotiation, ping) and the profile it was started with
+src/mcp/protocol.ts        JSON-RPC over stdio: how a result or an error leaves the process, and
+                           which answers are `isError`
 src/control_plane/proxy.ts Autonomous control plane interceptor, DAG gate & OpenTelemetry trace logger
 src/control_plane/cli.ts   Control plane CLI execution wrapper
 ```
@@ -188,16 +194,25 @@ src/client/                React frontend
   App.tsx                  The shell: which view is showing, and how the hooks and panels fit
   linkState.ts             The URL in both directions — which view, node, lens, focus and timeline
                            moment it asks for, and how a view is written back to it. A bare visit
-                           to the hosted site is the demo, on the map. Pure, tested without a window
+                           to the hosted site is the demo, on the map. `linkFocus` says which node a
+                           link selects once the graph is read and whether to collapse to it, and
+                           `writeAddress` skips a write the browser refuses. Pure, tested without a
+                           window
   hooks/                   useViewport (narrow screens) · useHotkeys · useGraphStream (the AG-UI
                            state stream, and whether it is attached) · useUrlSync (the address bar
                            follows the view) · useGuide · useToast · useLatest · useConfigImport
-                           (a pasted or dropped config, read in the tab)
+                           (a pasted or dropped config, read in the tab) · useDialogFocus (a dialog
+                           takes the focus when it opens, keeps Tab inside, and gives it back)
   components/
     AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
-                           share, proposals, docs
+                           share, proposals, docs. `mapCounts` is the map's pill: reached, unproven,
+                           and a failing node counted apart from both. The view tabs are icons with
+                           an `aria-label` up to 1180px and the buttons up to 1380px, so every
+                           control stays on screen from 769px
     Finder.tsx             Search by name; a node opens on the map, an entry in My Setup. The same
-                           list holds actions (utils/palette.ts), and Enter runs the one chosen
+                           list holds actions (utils/palette.ts), and Enter runs the one chosen. Its
+                           hooks are apart from a hook-free `FinderView`, so a test presses keys on
+                           the dialog's own handler
     SetupView.tsx          My Setup: one row per entry, with its evidence, the strip of its last
                            check runs, a switch for a tool server the config holds, and the nodes
                            it provides; repo drift, infrastructure (with what an agent may do on
@@ -238,7 +253,7 @@ src/client/                React frontend
                            without asking, what to reach next, and the week's movement, from
                            /api/loop on a real machine and from the fixture on the hosted demo;
                            budgets draw a ceiling and a forecast tick, and an opportunity says what
-                           each way to acquire it needs
+                           its capability needs
     RunTimeline.tsx        One run in time, with a lane for the person who was asked
   store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
   store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
@@ -254,7 +269,11 @@ src/client/                React frontend
     auditQuery.ts          The Audit query bar: actor:, action:, target: and free words
     budgetBar.ts           Where a budget's fill, ceiling and forecast tick sit on its bar
     needs.ts               What a capability needs and whether each need is in place
-    runTimeline.ts         One run's lanes, and what its totals say
+    runTimeline.ts         One run's lanes, and what its totals say, and how long the record says it
+                           lasted (null when nothing does, so no length is stated and no axis drawn)
+    keys.ts                What one press of Escape closes, where the page's keys stand aside, where
+                           Tab goes in a dialog, and the shell's and the map's own keys, held apart
+                           from a modified press. Pure, free of DOM types
 ```
 
 ### Shared, scripts and plugins
@@ -270,6 +289,8 @@ src/shared/types.ts        The ontology and domain types every half agrees on
 src/shared/api.ts          The wire contract between the API server and the client. Importing it
                            is what makes a rename a compile error instead of an empty panel
 src/shared/format.ts       Timestamps, currency and relative time, formatted one way
+src/shared/shell.ts        `shellQuote`: an id made safe to put in a command someone will paste
+src/shared/nearest.ts      The few names a mistyped one was probably meant to be: it suggests, never decides
 src/shared/concepts.json   The glossary: one name per concept, read by the CLI and the map
 scripts/capture-doc-examples.ts  The marked console blocks, captured from real engine
                            runs; `--check` is what fails CI when one drifts. README is
@@ -307,8 +328,8 @@ The reviewer-facing statement of these is [SECURITY.md](./SECURITY.md); below is
 `src/server/api.ts` reads and writes `~/.config/opencode/opencode.json`, and `/api/config/apply` can enable an MCP server — a command OpenCode will later execute. Four invariants protect that, and none may be relaxed:
 
 1. **Loopback only** — `server.listen(API_PORT, '127.0.0.1')`. Never bind `0.0.0.0`; the LAN and Tailscale must not reach this.
-2. **Origin allowlist** — requests with a non-local `Origin` are rejected with 403 *before* routing. CORS response headers are not sufficient on their own: a simple request (`Content-Type: text/plain`) skips preflight and still reaches the handler, so the check must reject the request, not just omit the header.
-3. **No entry creation over HTTP** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. It copies the file to `<config>.bak` first and refuses the write when it cannot. The My Setup switch calls it to write `enabled`, and the page offers the switch only for a name the config read-out already holds. The decision routes write to the graph and never to a config: an approval mints an artifact only `ambit apply` can spend, and a rejection is a row. `/api/proposals/:id/approve` and `/api/proposals/:id/reject` decide one proposal. `/api/proposals/approve` and `/api/proposals/reject` are the queue: an explicit list of drafts, drafts only and at most fifty, each bound to the `proposal_hash` the page showed, refused on its own if the row changed, and answered per id. The queue decides as `human:web` and never reads an actor from the body, and it sits in `CONFIG_ROUTES`, so a request with no browser behind it must present the API token. All four declare the `human:web` actor through `ensureActor` before deciding, because the engine refuses a decision from a person the graph does not know and the person at a loopback port is the machine's own; declaring is not granting, and the actor holds no authority. No route runs a declared check: the page copies `ambit verify <id>` and stops, because a check is a command an agent may have registered, and a server that is meant to be a reader must not run it. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups go through `ownEntry` in `src/server/config.ts`, which requires `Object.hasOwn` and a non-null object value; a bare truth test accepts `__proto__` and pollutes every object in the process. No host addresses are hardcoded either: `GET /api/infrastructure/scan` probes only what the manifest at `INFRA_MANIFEST` names, plus the local Docker socket (`DOCKER_HOST=unix://…` or the daemon and desktop-runtime paths) with one read-only `GET /containers/json`; a TCP `DOCKER_HOST` is never probed. With neither it returns an empty scan plus one informational finding. The scan also asks the gate what this machine's grants let an agent do on each device the manifest names, which is a read and writes nothing.
+2. **Origin allowlist** — requests with a non-local `Origin` are rejected with 403 *before* routing. CORS response headers are not sufficient on their own: a simple request (`Content-Type: text/plain`) skips preflight and still reaches the handler, so the check must reject the request, not just omit the header. The `Host` is checked the same way: a request addressed to any name but `localhost`, `127.0.0.1` or `[::1]` is a 403 before routing (`isAllowedHost` in `src/server/config.ts`), because a page that rebinds its own name to loopback is the same origin as the server and passes an origin check by construction.
+3. **No entry creation over HTTP** — `/api/config/apply` may edit existing entries only, and only the fields in `AGENT_FIELDS`/`COMMAND_FIELDS`. It copies the file to `<config>.bak` first, by a copy made beside it and renamed over it so a link planted at that name is replaced and never followed, and refuses the write when it cannot. The My Setup switch calls it to write `enabled`, and the page offers the switch only for a name the config read-out already holds. The decision routes write to the graph and never to a config: an approval mints an artifact that only `ambit apply` and the control plane can spend, and a rejection is a row that withdraws it. `/api/proposals/:id/approve` and `/api/proposals/:id/reject` decide one proposal. `/api/proposals/approve` and `/api/proposals/reject` are the queue: an explicit list of at most fifty, answered per id. All four are one guarded decision (`decideDraft` in `governance.ts`): a draft only, bound to the `proposal_hash` the page showed and refused if the row changed, in a transaction of its own. All four decide as `human:web` and none reads an actor from the body, because an approval signed as any person the graph knows is one the control plane accepts, and all four are behind the token rule (`CONFIG_ROUTES` and `DECISION_ROUTE` in `src/server/config.ts`), so a request with no browser behind it must present the API token. A rejection clears the approval artifact, and `verifyApproval` refuses a rejected row. All four declare the `human:web` actor through `ensureActor` before deciding, because the engine refuses a decision from a person the graph does not know and the person at a loopback port is the machine's own; declaring is not granting, and the actor holds no authority. No route runs a declared check: the page copies `ambit verify <id>` and stops, because a check is a command an agent may have registered, and a server that is meant to be a reader must not run it. It must never gain an "add" path: an MCP entry carries a `command` OpenCode executes, so creating one over HTTP is remote code execution. Adding a server goes through `/api/config/mcp-snippet`, which returns text for the user to paste. Entry lookups go through `ownEntry` in `src/server/config.ts`, which requires `Object.hasOwn` and a non-null object value; a bare truth test accepts `__proto__` and pollutes every object in the process. No host addresses are hardcoded either: `GET /api/infrastructure/scan` probes only what the manifest at `INFRA_MANIFEST` names, plus the local Docker socket (`DOCKER_HOST=unix://…` or the daemon and desktop-runtime paths) with one read-only `GET /containers/json`; a TCP `DOCKER_HOST` is never probed. With neither it returns an empty scan plus one informational finding. The scan also asks the gate what this machine's grants let an agent do on each device the scan found, which is a read and writes nothing.
 4. **No egress you did not type** — the graph is a local SQLite file and there is no telemetry. Five commands open a socket at all: `ambit notify` and `ambit notify-approvals`, each of which refuses to send without the topic argument you type; `ambit dispatch`, which refuses without a webhook URL from `--to` or `AMBIT_APPROVAL_WEBHOOK` and sends one proposal's summary or signed artifact and never a command (`propose --dispatch` and `approve --dispatch` are the same push); `ambit incidents`, which probes the hosts that same manifest names and uploads nothing; and `ambit goal --judge`, which asks a judgment model on this machine to route a goal the vocabulary could not, only then, and only to a URL `judgeUrl` in `src/engine/judge.ts` parses as loopback with no credentials. Parse the URL, never prefix-match it: `http://127.0.0.1:1@host` passes a prefix test and is a request to `host`. Its answer is a suggestion with a probability and writes nothing. A webhook is one-way: nothing that arrives on it can mint an approval, which only `ambit approve` on a machine holding the key can do. `ambit graph capacity` opens no socket of its own: it runs `tailscale status --json`, `sysctl` and `nvidia-smi` with fixed arguments and no shell, when typed and never from the server, and the first of those asks the local daemon; it sends nothing and writes nothing. `runCommand` in `src/engine/cli.ts` is declared `async` for those alone; every other command finishes before the call returns.
 
 ## One glossary
@@ -325,7 +346,7 @@ Where the CLI and the map differ on purpose, the glossary says so instead of pic
 4. **Tracking model**: Configuration decisions, not invocation frequency. Plugin writes `built`, `removed`, `unlocked` actions — never `used` counts.
 5. **The engine counts with one vocabulary**: which states mean *reached*, which lifecycles mean *failing* or *proven*, which intervention kinds are middleware, and the counts every summary reports all live in `src/engine/vocabulary.ts`. Take the SQL fragment from there instead of spelling the list again — the summary query had five copies and the visualizer's differed, agreeing with the rest only because a third state has never been added. `CHECK_RUN_SQL` is the fragment for which ledger actions are a check run, and `CHECK_RUN` holds the two words. The same file holds the not-seeded message, which had four wordings offering three different fixes.
 6. **Availability**: `state` is structural and is what the frontier ledger records — never change it to express verification. The gate is `lifecycle`: a capability whose lifecycle is `degraded` or `broken` is configured but not working, and every availability decision (plan, simulate, goal, authority, actions, canExecute, near, combos, bottlenecks, spof, deficits, opportunities, roi, status) must exclude it via `usable(lifecycle)`. Never write a state-only availability check; it silently re-admits broken capabilities. A new snapshot column such as `lifecycles` is a schema change, and rule 2 governs it. The era ladder keeps to this: `rungOf` and `columnProgress` in `civ/layout.ts` count a node whose check is failing apart from reached and apart from blocked.
-7. **Nothing that travels may execute.** A registered skill's check is a command, so `ambit sync export` carries the skill node and not its check, and `ambit sync import` never writes `declared_checks`. The same rule already keeps `config_patch` declarative and keeps entry creation off the HTTP API: a command inside a data file is a command that runs on whoever opens it. An authority grant does not travel either — importing one would let a permissive machine widen a careful one by moving a file. What the loop page shows of a way to acquire a capability is `installText`, written from the shipped tree and never from an overlay or an imported row.
+7. **Nothing that travels may execute.** A registered skill's check is a command, so `ambit sync export` carries the skill node and not its check, and `ambit sync import` never writes `declared_checks`. The same rule already keeps `config_patch` declarative and keeps entry creation off the HTTP API: a command inside a data file is a command that runs on whoever opens it. An authority grant does not travel either — importing one would let a permissive machine widen a careful one by moving a file. What the loop page shows of a way to acquire a capability is `installText`, written from the shipped tree and never from an overlay or an imported row. Every id that enters a command Ambit prints for someone to paste goes through `shellQuote` in `src/shared/shell.ts`: an id is whatever an agent or a sync file's author typed, and `skill:x$(rm -rf ~)` pasted into a terminal is a file that travelled and then executed.
 8. **Classification belongs to the engine, not the bridge.** A telemetry bridge reports what a runtime said about a failure — exit code, message, error kind — and `src/engine/failures.ts` decides what it means. A bridge that judges for itself what counts as a permission error is a second copy of that rule, and the two will disagree within a release. A failure whose shape says nothing stays unclassified; never guess.
 9. **Authority resolution is two rules, in order.** A forbidden grant wins outright at any specificity — a narrower scope must never be a route to something refused. Among what is left, the most specific covering scope governs, ties going to the narrower mode. Never collapse this back to narrowest-wins alone: under that rule a grant saying "autonomous on staging" can never beat a standing "confirm everywhere", and the trade of blast radius for autonomy becomes inexpressible. A sandbox relaxes confirmation and never a refusal, for the same reason. `scope.effective`, the narrowest covering grant that `ambit authority scope` reports, is never a surface's answer to what may be done: ask `canExecute`, as `machines.ts` does with a device as the target.
 10. **Only checks count as failures.** Promotion counts passing checks and successful uses; a failed run is not evidence that a capability failed, and attributing a run's outcome to everything it touched would demote whatever a bad afternoon went near. Use carries no object, so it never counts toward a scoped threshold.
@@ -336,4 +357,6 @@ Where the CLI and the map differ on purpose, the glossary says so instead of pic
 15. **The plugin transcribes, it does not decide.** `plugins/ambit-tracker.js` is plain JavaScript in another program's process and cannot import the engine, so it repeats `resolveDbPath`, the two pragmas `getDb` sets, and `kindOf`. Those are transcriptions and must be kept in step; do not let them become second opinions.
 16. **An absent value is never rendered as a value.** `era`, `eraName` and `lastChecked` are optional in `TreeItemMeta` because absence is a real answer about a machine; what it looks like is the renderer's to decide. Drop a row or clause that exists only to carry the fact — the Details list filters unstated values, and the evidence banner gates its interval on the computed label, because a `lastChecked` the writing and reading clocks disagree about names none. Keep the slot and print `—` where the slot is structural: a KPI, an aligned `<dt>`. Never unify the two; each is the other's bug. The same rule at the API: `/api/loop` marks its payload `source: 'ledger'` and sets `empty: true` when nothing has been recorded, so the page explains the two telemetry bridges instead of drawing a figure of zeroes, and the hosted demo builds the same `LoopSnapshot` by hand and labels it a sample. A recorder's zero with no end is not a measurement: the control plane writes 0 for a wait it did not time, and the run view counts it as untimed. A new `meta` key goes in three places: `TreeItemMeta`, the panel's `saidElsewhere` when a figure already draws it, and `unstatedNode` in `src/client/components/absence.test.tsx`, which holds the rule.
 17. **The prose has an accent; keep it in check.** Most of what is written here was written by a machine, and a machine reaches for the same few constructions until a reader can hear them. Measured over every comment and document that ships, the em dash runs several times the 1 to 3 per thousand words of edited English, and "rather than" an order of magnitude above the 0.3 it runs there. The two want different answers. Almost every dash sits in a sentence already holding two or more commas, where it outranks them and earns its place: when they were audited, ten could become a comma without loss, and flattening the rest would read worse. "rather than" has no such defense, being one phrase standing in for "instead of", "not", "never" or a rewritten clause, so vary it. `npm run prose:check` holds a ceiling on both, which CI runs; it fails on the corpus drifting up, never on one sentence, and the numbers are meant to come down. A changelog and an incident trace are records of what was said at the time, so they are excluded and not edited.
-18. **Colour goes only to a terminal, and is never the only signal.** `colorOn` in `src/engine/cli/output.ts` allows escapes when stdout is a TTY and `NO_COLOR` is unset (an empty value counts as unset), so a pipe, a file and a CI log read what was written and not what was painted. A formatter takes a palette and returns lines, and the data sink and `--json` never see one. A row that wants a person carries a `›` that survives a pipe. `renderStatus` follows this; the generic formatter's default palette, `seed`, `help` and `explain` still colour a pipe, and move behind the gate when next touched.
+18. **Colour goes only to a terminal, and is never the only signal.** `colorOn` in `src/engine/cli/output.ts` allows escapes when stdout is a TTY and `NO_COLOR` is unset (an empty value counts as unset), so a pipe, a file and a CI log read what was written and not what was painted. A formatter takes a palette and returns lines, and the data sink and `--json` never see one. A row that wants a person carries a `›` that survives a pipe. Every surface follows this: `renderStatus`, the generic formatter, `seed`, `explain` and the first-run and unknown-command lines take their palette from `terminalPalette`, which asks stdout, or stderr for a line written there. `cli.js` is plain JavaScript and cannot import it, so it transcribes `colorOn` for its own help lines, and the two must stay in step. The same reader that sets a colour sets an exit code: a command whose answer is a top-level string `error` exits 1 (`raiseExitCode` in `output.ts`, never on the sink), an unknown command exits 2, and `--exit-code` on `can` and `verify` maps the decision or the check to a code.
+
+19. **The MCP contract is checked, not described.** A call is validated against the schema the tool advertised (`src/mcp/validate.ts`), so an argument the schema does not declare is refused with the names it does, and a new argument is declared in `tools.ts` before the server will take it. A failed call is `isError: true`, by the one rule the CLI's exit code also follows: a top-level string `error` in the answer, never one nested inside a report. A tool is annotated read-only only if calling it changes no table, and `server.test.ts` calls every tool that says so against a copy of a seeded graph and compares them all; a tool that writes a row of Ambit's own bookkeeping, as `ambit_can` and `ambit_briefing` do, is listed as a write. Every tool that takes a capability goes through `resolveCapability`, which normalises a prefix, a case or a display name and never picks between two nodes or invents one for an id the graph does not hold. The listing has a byte budget, 20,000 for all of it and 5,000 for the agent profile, so a new tool or a longer description shortens another.

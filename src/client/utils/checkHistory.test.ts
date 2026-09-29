@@ -142,3 +142,14 @@ test('the command that explains a failure is ambit verify, for that node', () =>
     'ambit verify combo:browser-automation'
   );
 });
+
+test('an id a shell would read as more than one word is quoted, so pasting it runs nothing else', () => {
+  // A skill's id is whatever the agent that registered it typed, and a sync
+  // file carries whatever its author chose.
+  expect(verifyCommand({ id: 'skill:pdf-tools$(touch PWNED)' })).toBe(
+    "ambit verify 'skill:pdf-tools$(touch PWNED)'"
+  );
+  expect(verifyCommand({ id: "skill:it's; rm -rf ~" })).toBe(
+    "ambit verify 'skill:it'\\''s; rm -rf ~'"
+  );
+});

@@ -123,15 +123,22 @@ test('the reset the store offers clears a collapse too', () => {
   expect(store()).toMatchObject({ selectedItem: null, collapsed: false });
 });
 
-test('a link that asks for a collapse opens the store collapsed, as the address bar said', async () => {
-  // The store reads the address bar once, when it is made.
+test('a link that asks for a collapse opens the store with its depth and direction, and waits for its node', async () => {
+  // The store reads the address bar once, when it is made. The collapse itself
+  // is applied with the node the link focuses (linkFocus, in App.tsx): opened
+  // collapsed with nothing selected, the first node clicked collapsed the map.
   vi.stubGlobal('location', { search: '?view=tree&collapse=1&depth=3&dir=enables' });
   vi.resetModules();
   const { useAmbitStore: opened } = await import('./ambitStore');
   expect(opened.getState()).toMatchObject({
-    collapsed: true,
+    collapsed: false,
     collapseDepth: 3,
     collapseDirection: 'enables',
+  });
+  opened.getState().selectItem('combo:model-routing');
+  expect(opened.getState()).toMatchObject({
+    selectedItem: 'combo:model-routing',
+    collapsed: false,
   });
 
   // And a link that does not is the map as it always was.

@@ -8,7 +8,13 @@
  * the two rules that keep the link short and honest.
  */
 import { expect, test } from 'vitest';
-import { readLinkState, writeLinkState, type ShareState } from './linkState';
+import {
+  linkFocus,
+  readLinkState,
+  type ShareState,
+  writeAddress,
+  writeLinkState,
+} from './linkState';
 
 const base: ShareState = {
   view: 'tree',
@@ -146,4 +152,45 @@ test('a link with the collapse keys opens the same view, and what cannot be read
   for (const flag of ['0', 'yes', 'true', '']) {
     expect(readLinkState(`?collapse=${flag}`).collapse).toBe(false);
   }
+});
+
+test('a collapse comes with a node the graph holds, or not at all', () => {
+  const graph = [{ id: 'combo:shell-execution' }, { id: 'combo:model-routing' }];
+  const read = (search: string) => linkFocus(readLinkState(search), graph);
+
+  expect(read('?view=tree&focus=combo:shell-execution&collapse=1')).toEqual({
+    id: 'combo:shell-execution',
+    collapse: true,
+  });
+  expect(read('?view=tree&focus=combo:shell-execution')).toEqual({
+    id: 'combo:shell-execution',
+    collapse: false,
+  });
+  // Nothing named, or a node this graph does not hold: nothing to select, and
+  // no collapse left waiting for the next node anyone clicks.
+  expect(read('?view=tree&collapse=1')).toBeNull();
+  expect(read('?view=tree&focus=combo:nope&collapse=1')).toBeNull();
+  // Before the graph is read there is nothing to find it in.
+  expect(linkFocus(readLinkState('?focus=combo:shell-execution&collapse=1'), [])).toBeNull();
+});
+
+test('a history write the browser refuses is skipped, and the page goes on', () => {
+  // Safari throws once a page writes history a hundred times in thirty
+  // seconds, and scrubbing a long ledger writes once per tick: the throw came
+  // out of an effect, and could take the page down with it.
+  const written: string[] = [];
+  const bar = (refuse: boolean) => ({
+    location: { search: '?view=tree', hash: '#top' },
+    history: {
+      replaceState: (_data: unknown, _unused: string, url: string) => {
+        if (refuse) throw new Error('SecurityError: too many calls to the History API');
+        written.push(url);
+      },
+    },
+  });
+  expect(() => writeAddress(bar(true), '?view=tree&at=2026-09-21T09%3A00%3A00Z')).not.toThrow();
+  writeAddress(bar(false), '?view=loop');
+  // What is already there is not written again.
+  writeAddress(bar(false), '?view=tree');
+  expect(written).toEqual(['?view=loop#top']);
 });

@@ -244,12 +244,15 @@ export function HistoryStrip({ runs, of }: { runs: CheckRun[]; of?: string }) {
 export function ReachBar({
   proven,
   reached,
+  failing = 0,
   next,
   total,
 }: {
   /** The verified part of reached, drawn solid; the rest of reached is drawn lighter. */
   proven?: number;
   reached: number;
+  /** Configured and failing its check: red after reached, as an era's header draws it. */
+  failing?: number;
   next: number;
   total: number;
 }) {
@@ -266,10 +269,20 @@ export function ReachBar({
       {solid > 0 && (
         <rect className="fig-eras-reached" x={0} y={0} width={seg(solid)} height={h} rx={1.5} />
       )}
+      {failing > 0 && (
+        <rect
+          className="fig-eras-failing"
+          x={seg(reached)}
+          y={0}
+          width={seg(failing)}
+          height={h}
+          rx={1.5}
+        />
+      )}
       {next > 0 && (
         <rect
           className="fig-eras-next"
-          x={seg(reached) + 0.5}
+          x={seg(reached + failing) + 0.5}
           y={0.5}
           width={Math.max(seg(next) - 1, 1)}
           height={h - 1}

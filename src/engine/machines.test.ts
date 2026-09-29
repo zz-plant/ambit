@@ -19,9 +19,13 @@ const ACTIONS = ['install_package', 'read_output', 'run_command'];
 const actionId = (name: string) => `act:shell-execution/${name}`;
 
 type Grant = { action: string; mode: 'autonomous' | 'confirm' | 'forbidden'; scope?: string };
+type Whole = Omit<Grant, 'action'>;
 
-/** Shell Execution with its three actions, and the given execute grants on them. */
-function graph(grants: Grant[]) {
+/**
+ * Shell Execution with its three actions, and the given execute grants on
+ * them, and on the capability itself where `whole` names any.
+ */
+function graph(grants: Grant[], whole: Whole[] = []) {
   return makeGraph({
     capabilities: [
       { id: RECOVERY_CAPABILITY, name: 'Shell Execution', category: 'combo' },
@@ -37,12 +41,20 @@ function graph(grants: Grant[]) {
       to: actionId(name),
       kind: 'provides' as const,
     })),
-    authority: grants.map(g => ({
-      capability: actionId(g.action),
-      action: 'execute',
-      mode: g.mode,
-      scope: g.scope,
-    })),
+    authority: [
+      ...grants.map(g => ({
+        capability: actionId(g.action),
+        action: 'execute',
+        mode: g.mode,
+        scope: g.scope,
+      })),
+      ...whole.map(g => ({
+        capability: RECOVERY_CAPABILITY,
+        action: 'execute',
+        mode: g.mode,
+        scope: g.scope,
+      })),
+    ],
   });
 }
 
@@ -136,6 +148,71 @@ test('a forbidden grant wins at any specificity, so a narrower scope is no way r
   db.close();
 
   expect(staging.install_package).toBe('DENY');
+});
+
+/** What the curated tree writes on the capability beside its actions' own grants. */
+const treeDefault: Whole[] = [{ mode: 'confirm' }];
+
+test('refusing the capability on one machine refuses each of its actions there, and nowhere else', () => {
+  // `ambit authority grant shell-execution forbidden --scope=device:nuc`
+  // writes to the capability, and the gate never applies a capability's grants
+  // to its actions, so `ambit incidents` said DENY on the NUC while this table
+  // still said read_output could run there unattended.
+  const db = graph(standing, [...treeDefault, { mode: 'forbidden', scope: 'device:nuc' }]);
+  const [nuc] = machineModes(db, ['nuc']);
+  const other = decisions(db, 'gpu-box');
+  db.close();
+
+  expect(nuc.actions.map(a => a.decision)).toEqual(['DENY', 'DENY', 'DENY']);
+  expect(nuc.actions.every(a => a.reason.includes('forbidden'))).toBe(true);
+  expect(other).toEqual({
+    read_output: 'ALLOW',
+    run_command: 'CONFIRM',
+    install_package: 'CONFIRM',
+  });
+});
+
+test('refusing the capability everywhere refuses its actions everywhere', () => {
+  const db = graph(standing, [{ mode: 'forbidden' }]);
+  const nuc = decisions(db, 'nuc');
+  db.close();
+
+  expect(nuc).toEqual({ read_output: 'DENY', run_command: 'DENY', install_package: 'DENY' });
+});
+
+test('a grant on the capability scoped to one machine narrows its actions there', () => {
+  const db = graph(standing, [...treeDefault, { mode: 'confirm', scope: 'device:prod' }]);
+  const prod = decisions(db, 'prod');
+  const nuc = decisions(db, 'nuc');
+  db.close();
+
+  expect(prod.read_output).toBe('CONFIRM');
+  expect(nuc.read_output).toBe('ALLOW');
+});
+
+test('a grant on the capability never makes an action freer than its own answer', () => {
+  const db = graph(standing, [...treeDefault, { mode: 'autonomous', scope: 'device:nuc' }]);
+  const nuc = decisions(db, 'nuc');
+  db.close();
+
+  expect(nuc).toEqual({ read_output: 'ALLOW', run_command: 'CONFIRM', install_package: 'CONFIRM' });
+});
+
+test('with no grant on the capability, or only the standing one, each action keeps its own answer', () => {
+  // The tree grants the capability `confirm` beside `read_output: autonomous`,
+  // a statement about that action made at the same breadth, so it stays ALLOW.
+  // And a capability no grant covers is refused for want of one, which says
+  // nothing about this machine.
+  for (const whole of [[], treeDefault]) {
+    const db = graph(standing, whole);
+    const nuc = decisions(db, 'nuc');
+    db.close();
+    expect(nuc).toEqual({
+      read_output: 'ALLOW',
+      run_command: 'CONFIRM',
+      install_package: 'CONFIRM',
+    });
+  }
 });
 
 test('a grant scoped to another machine does not cover this one, and a refusal says why', () => {

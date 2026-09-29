@@ -27,6 +27,10 @@ const sqlList = (values: readonly string[]) => values.map(v => `'${v}'`).join(',
 
 /** `state IN ('unlocked','active')`, so no surface has to spell it again. */
 const REACHED_SQL = `state IN (${sqlList(REACHED_STATES)})`;
+
+/** The same test in JavaScript, for a state read out of a stored observation. */
+const isReached = (state: string | null | undefined): boolean =>
+  (REACHED_STATES as readonly string[]).includes(state ?? '');
 const FAILING_SQL = `lifecycle IN (${sqlList(FAILING)})`;
 const PROVEN_SQL = `lifecycle IN (${sqlList(PROVEN)})`;
 
@@ -161,6 +165,7 @@ export {
   FAILING,
   PROVEN,
   REACHED_SQL,
+  isReached,
   FAILING_SQL,
   PROVEN_SQL,
   CHECK_RUN,

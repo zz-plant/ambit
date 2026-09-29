@@ -7,6 +7,8 @@
  * A test that renders the surface and looks for the way in is what keeps a
  * capability from going quiet again.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import concepts from '../../shared/concepts.json';
@@ -14,9 +16,15 @@ import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoProposals, demoTreeGraph } from '../store/demo';
-import { authorityMark, outageSplit } from './civ/layout';
+import {
+  authorityMark,
+  buildColumns,
+  columnProgress,
+  outageSplit,
+  visibleItems,
+} from './civ/layout';
 import { SimulationBanner } from './civ/SimulationBanner';
-import AppDeck from './AppDeck';
+import AppDeck, { mapCounts } from './AppDeck';
 import CivTree from './CivTree';
 import ApprovalModal from './ApprovalModal';
 import { RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
@@ -57,6 +65,7 @@ afterEach(() => {
     loopEmpty: false,
     backend: 'unknown',
     configMcp: {},
+    spotlight: null,
   });
 });
 
@@ -64,7 +73,7 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
   renderToStaticMarkup(
     <AppDeck
       view="tree"
-      counts={{ verified: 1, unproven: 0, next: 1, blocked: 1 }}
+      counts={{ verified: 1, unproven: 0, failing: 0, next: 1, blocked: 1 }}
       entries={null}
       connected={false}
       draftCount={0}
@@ -83,6 +92,40 @@ test('the time-and-cost view is offered on a real machine, not only in the demo'
   // The tab was rendered behind `demo &&`, so the half of the product that
   // prices your time was invisible to anyone running it on their own setup.
   expect(deck()).toContain('Time &amp; cost');
+});
+
+test('each view tab keeps its name where it shows only its icon', () => {
+  // Between a phone and a wide screen the tabs give up their words, as the
+  // buttons beside them already did, or Proposals and Docs were pushed past
+  // the right edge (at 1024px Docs started at x=1035).
+  const html = deck();
+  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit']) {
+    expect(html).toMatch(
+      new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
+    );
+  }
+  expect(html.match(/class="app-deck-tab-label"/g)).toHaveLength(4);
+  // And the one on screen says so: only a class marked it.
+  expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+  expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
+});
+
+test('when the header is short of room the status pill wraps, and nothing else gives way', () => {
+  // Every other part keeps its size; the counts wrap onto a second line inside
+  // the deck's height. A live engine's indicator, a failing segment and an
+  // as-of date all widen the pill, so no breakpoint alone can promise room.
+  const css = readFileSync(join(import.meta.dirname, '..', 'App.css'), 'utf8');
+  const rule = (selector: string) =>
+    css.match(
+      new RegExp(`(?:^|\\n)${selector.replace(/[.>*]/g, m => `\\${m}`)}\\s*\\{([^}]*)\\}`)
+    )?.[1] ?? '';
+  const pill = rule('.app-deck-left > .app-status-pill');
+  expect(pill).toMatch(/flex-wrap:\s*wrap/);
+  expect(pill).toMatch(/flex-shrink:\s*1/);
+  expect(pill).toMatch(/min-width:\s*0/);
+  expect(css).toMatch(
+    /\.app-deck-left > \*,\s*\.app-deck-center,\s*\.app-deck-right\s*\{[^}]*flex-shrink:\s*0/
+  );
 });
 
 test('the deck offers a way to copy the link the URL already describes', () => {
@@ -333,7 +376,7 @@ test('the header leads with what is verified, and each count is a control', () =
   // It read "42 of 60 reached" over a tree of 33: entries counted with nodes,
   // and the least informative state leading. Then "16 reached", with a failing
   // check counted like a passing one. Reached is split by its evidence now.
-  const html = deck({ counts: { verified: 9, unproven: 3, next: 5, blocked: 3 } });
+  const html = deck({ counts: { verified: 9, unproven: 3, failing: 0, next: 5, blocked: 3 } });
   const text = html.replace(/<[^>]+>/g, '');
   expect(text).toMatch(/9\s*verified/);
   expect(text).toMatch(/3\s*unproven/);
@@ -341,11 +384,61 @@ test('the header leads with what is verified, and each count is a control', () =
   expect(html).toContain('Highlight Next step on the map');
   expect(html).toContain('Highlight Blocked on the map');
   expect(html).not.toContain('of 20');
+  // Nothing failing is no segment at all, not a count of zero.
+  expect(text).not.toMatch(/failing/);
+
+  // A check that fails is its own segment, lit as its legend key lights it.
+  const failing = deck({ counts: { verified: 9, unproven: 2, failing: 1, next: 5, blocked: 3 } });
+  expect(failing.replace(/<[^>]+>/g, '')).toMatch(/1\s*failing/);
+  expect(failing).toContain('Highlight Failing on the map');
+  expect(failing).toContain('fig-eras-failing');
 
   // Off the map, the pill counts what that view lists.
   const setup = deck({ view: 'config', counts: null, entries: { enabled: 9, total: 11 } });
   expect(setup).toContain('9 of 11 enabled');
   expect(setup).not.toContain('Highlight');
+});
+
+test('the pill and the era headers count one map: a failing node is apart from reached', () => {
+  // Rule 6. The pill filed the demo's failing node under unproven, so it said
+  // 13 verified and 3 unproven, 16 reached, over era headers that added up to
+  // 15 reached and 1 failing.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  const nodes = visibleItems(items);
+  const { cols, colOrder } = buildColumns(nodes, connections);
+  const columns = colOrder.map(c => columnProgress(cols[c] ?? []));
+  const sum = (key: 'reached' | 'failing' | 'next' | 'blocked') =>
+    columns.reduce((n, p) => n + p[key], 0);
+
+  const counts = mapCounts(nodes);
+  expect(counts.failing).toBe(1);
+  expect(counts.verified + counts.unproven).toBe(sum('reached'));
+  expect(counts.failing).toBe(sum('failing'));
+  expect(counts.next).toBe(sum('next'));
+  expect(counts.blocked).toBe(sum('blocked'));
+  expect(counts.reached).toBeUndefined();
+
+  // An observation with no lifecycles counts reached whole, and nothing as failing.
+  expect(mapCounts(nodes, false).reached).toBe(nodes.filter(i => i.status === 'built').length);
+
+  // Each segment lights what it counts: unproven leaves the failing node dim,
+  // and failing lights it.
+  const opacityOf = (spotlight: string) => {
+    seed({ items, connections, spotlight });
+    const html = renderToStaticMarkup(
+      <CivTree
+        items={items}
+        connections={connections}
+        selectedId={null}
+        hoveredId={null}
+        onSelect={() => {}}
+        onHover={() => {}}
+      />
+    );
+    return html.match(/opacity="([\d.]+)"[^>]*aria-label="Browser Automation, possibility"/)?.[1];
+  };
+  expect(opacityOf('Unproven')).toBe('0.15');
+  expect(opacityOf('Failing')).toBe('1');
 });
 
 test('the detail panel words a status for the graph the node came from', () => {

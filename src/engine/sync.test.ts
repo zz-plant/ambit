@@ -39,11 +39,24 @@ describe('sync export and import round-trip', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  it('quotes a skill id in the command it tells the receiver to type', () => {
+    // The hint travels in the file, and the person who reads it pastes it.
+    const id = 'skill:notes$(touch PWNED)';
+    registerSkill(sourceDb, { id, verify: 'node --version' });
+    exportSync(sourceDb, syncFile);
+    const written = JSON.parse(readFileSync(syncFile, 'utf8'));
+    const hint = (written.checks_not_included as { reregister: string }[]).find(h =>
+      h.reregister.includes('notes')
+    );
+    expect(hint?.reregister).toBe(`ambit record 'skill:notes$(touch PWNED)' --verify="…"`);
+  });
+
   it('preserves all table rows and schema columns through round-trip', () => {
-    // 1. Capabilities & dependencies
+    // 1. Capabilities & dependencies. `unlocked` is a state the engine writes
+    // and counts as reached; `reached` is the map's word for it, not a state.
     sourceDb
       .prepare(
-        "INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle) VALUES ('test-cap', 'Test Capability', 'test', 'A test', 'skill', 'reached', 'capability', 'verified')"
+        "INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle) VALUES ('test-cap', 'Test Capability', 'test', 'A test', 'skill', 'unlocked', 'capability', 'verified')"
       )
       .run();
     sourceDb

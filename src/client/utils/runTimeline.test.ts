@@ -39,12 +39,12 @@ const ask = (over: Partial<RunAsk> = {}): RunAsk => ({
 });
 
 test('the run is drawn from its start to its end', () => {
-  expect(runDomain(run())).toEqual({ start: T0, end: T0 + 600_000, open: false });
+  expect(runDomain(run())).toEqual({ start: T0, end: T0 + 600_000, open: false, seconds: 600 });
 });
 
 test('anything recorded outside the run widens it, and a run with no end is open', () => {
   const early = run({ ended_at: null, asks: [ask({ at: at(-30) })] });
-  expect(runDomain(early)).toEqual({ start: T0 - 30_000, end: T0, open: true });
+  expect(runDomain(early)).toEqual({ start: T0 - 30_000, end: T0, open: true, seconds: 30 });
 
   // The last thing seen is where an open run is drawn to: a use with a length counts to its end.
   const used = run({
@@ -52,18 +52,33 @@ test('anything recorded outside the run widens it, and a run with no end is open
     uses: [{ capability: 'A', capability_id: 'combo:a', at: at(100), seconds: 50 }],
     events: [{ at: at(120), kind: 'tool' }],
   });
-  expect(runDomain(used)).toEqual({ start: T0, end: T0 + 150_000, open: true });
+  expect(runDomain(used)).toEqual({ start: T0, end: T0 + 150_000, open: true, seconds: 150 });
 });
 
-test('a run whose every mark is one instant still has a width to be drawn in', () => {
-  const instant = run({ ended_at: at(0) });
-  const { start, end } = runDomain(instant);
-  expect(end).toBeGreaterThan(start);
+test('a run whose every mark is one instant still has a width to be drawn in, and no length', () => {
+  // It ended the instant it started: that is a length, and it is none.
+  const instant = runDomain(run({ ended_at: at(0) }))!;
+  expect(instant.end).toBeGreaterThan(instant.start);
+  expect(instant.seconds).toBe(0);
+
+  // No end, and nothing after the start: how long it ran is not recorded, and
+  // the second of width is not a second anyone measured.
+  const started = runDomain(run({ ended_at: null }))!;
+  expect(started.end).toBeGreaterThan(started.start);
+  expect(started.seconds).toBeNull();
+});
+
+test('a run with no time that reads has nothing to be drawn against', () => {
+  // The empty domain began at zero: midnight on the first of January 1970.
+  expect(runDomain(run({ started_at: 'not a time', ended_at: null }))).toBeNull();
+  expect(
+    runDomain(run({ started_at: 'not a time', ended_at: null, asks: [ask({ at: 'nor this' })] }))
+  ).toBeNull();
 });
 
 test('a time that will not read is left out of the domain, not drawn at zero', () => {
   const skewed = run({ asks: [ask({ at: 'not a time' })] });
-  expect(runDomain(skewed).start).toBe(T0);
+  expect(runDomain(skewed)?.start).toBe(T0);
   expect(epoch('not a time')).toBeUndefined();
   expect(epoch(null)).toBeUndefined();
 });

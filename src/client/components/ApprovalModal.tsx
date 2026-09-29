@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ProposalDecision, ProposalRow, QueueDecisionResult } from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
+import { useDialogFocus } from '../hooks/useDialogFocus';
+import { trapTab } from '../utils/keys';
 import { useAmbitStore } from '../store/ambitStore';
 import { WEB_ACTOR } from '../utils/copy';
 import { NUM, money } from './figures';
@@ -171,16 +173,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   // optional and is the most valuable part of the record.
   const [declining, setDeclining] = useState<{ id: string; reason: string } | null>(null);
   const [decisionError, setDecisionError] = useState<string | null>(null);
-
-  // Escape closes it. Dismissal used to be a click on the backdrop and nothing
-  // else, which is unreachable without a pointer.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  const dialog = useDialogFocus<HTMLDivElement>(isOpen);
 
   if (!isOpen) return null;
 
@@ -243,9 +236,20 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
     <div className="uplink-modal-overlay" onClick={onClose} role="presentation">
       <div
         className="uplink-modal"
+        ref={dialog}
+        tabIndex={-1}
         style={{ maxWidth: '680px', width: '90%' }}
         onClick={e => e.stopPropagation()}
-        onKeyDown={e => e.stopPropagation()}
+        // Escape closes it from wherever the focus is inside it. Dismissal was
+        // a click on the backdrop, and then a document listener this handler
+        // hid: the key never reached it once anything inside had been clicked.
+        // Every key stops here, so the map behind does not move under it, and
+        // Tab comes round inside it.
+        onKeyDown={e => {
+          e.stopPropagation();
+          if (e.key === 'Escape') onClose();
+          else trapTab(e, document.activeElement);
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="proposals-title"

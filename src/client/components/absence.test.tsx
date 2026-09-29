@@ -30,11 +30,20 @@ import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
 
 /** What a value looks like once a renderer has stringified something absent. */
-const PLACEHOLDERS = ['undefined', 'NaN', 'Invalid Date', '[object Object]'];
+const PLACEHOLDERS = ['undefined', 'NaN', 'Invalid Date', '[object Object]', 'null', '1970'];
+
+/** A separator with nothing on one side of it, the mark of a joined part that was empty. */
+const DANGLING = /·\s*·|·\s*$|^\s*·(?!\s*$)/m;
 
 function expectNothingUnstated(html: string, surface: string) {
   for (const marker of PLACEHOLDERS) {
     expect(html.includes(marker), `${surface} rendered "${marker}"`).toBe(false);
+  }
+  // Each run of text on its own: a separator drawn alone, as a list's own
+  // element, stands between two others and is not dangling.
+  for (const run of html.split(/<[^>]+>/).map(t => t.trim())) {
+    if (run === '·') continue;
+    expect(DANGLING.test(run), `${surface} rendered a dangling separator in "${run}"`).toBe(false);
   }
 }
 

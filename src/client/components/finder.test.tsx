@@ -9,11 +9,13 @@
  * proposal is made by the buttons in the panel, so the palette only opens it.
  *
  * There is no DOM here, so what Enter does is tested where it is decided: the
- * registry, the search and the two functions the finder's key handler calls.
- * The last tests read the source, to hold that the finder goes through them.
+ * registry, the search and the two functions the finder's key handler calls,
+ * and then on the handler itself, which the finder's hook-free view carries.
+ * One test reads the source, to hold that the palette never reaches the network.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { ReactElement, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { ProposalRow } from '../../shared/api';
@@ -31,7 +33,7 @@ import {
   paletteRows,
   type Row,
 } from '../utils/palette';
-import Finder from './Finder';
+import Finder, { FinderView } from './Finder';
 import NodeDetailPanel from './NodeDetailPanel';
 
 /**
@@ -430,11 +432,100 @@ test('the palette never reaches the network, and never decides on a proposal', (
   }
 });
 
-test('the finder chooses through the functions tested here', () => {
-  // The key handler has no DOM to run under, so hold that it is the code above.
-  const source = code('./Finder.tsx');
-  expect(source).toMatch(/keyStep\(e\.key, active, rows\.length\)/);
-  expect(source).toMatch(/activate\(row, onShow\)/);
+/** Every element in a tree of elements that satisfies `match`, in document order. */
+function findAll(
+  node: ReactNode,
+  match: (el: ReactElement<Record<string, any>>) => boolean,
+  out: ReactElement<Record<string, any>>[] = []
+): ReactElement<Record<string, any>>[] {
+  if (Array.isArray(node)) {
+    for (const child of node) findAll(child, match, out);
+  } else if (node && typeof node === 'object' && 'props' in node) {
+    const el = node as ReactElement<Record<string, any>>;
+    if (match(el)) out.push(el);
+    findAll(el.props?.children, match, out);
+  }
+  return out;
+}
+
+/**
+ * The finder as drawn, with a hand on its dialog: press a key on the handler
+ * the dialog carries, and record what the finder was asked to do and whether
+ * the key went any further.
+ */
+function finderView(rows: Row[], active = 0) {
+  const asked: string[] = [];
+  const tree = FinderView({
+    rows,
+    active,
+    query: 'shell',
+    withActions: true,
+    onQuery: q => asked.push(`query ${q}`),
+    onActive: i => asked.push(`active ${i}`),
+    onChoose: row => asked.push(`choose ${idOf(row)}`),
+    onClose: () => asked.push('close'),
+  }) as ReactElement;
+  const dialog = findAll(tree, e => e.props?.role === 'dialog')[0];
+  const press = (key: string) => {
+    const seen = { stopped: false, prevented: false };
+    dialog.props.onKeyDown({
+      key,
+      stopPropagation: () => (seen.stopped = true),
+      preventDefault: () => (seen.prevented = true),
+    });
+    return seen;
+  };
+  return { asked, press, tree };
+}
+
+test('Enter on the finder chooses the active row, through the functions tested above', () => {
+  const rows = paletteRows(demo.items, buildActions(context()), 'shell');
+  const { asked, press } = finderView(rows, 1);
+  expect(press('ArrowDown')).toEqual({ stopped: true, prevented: true });
+  expect(press('ArrowUp').stopped).toBe(true);
+  expect(press('Enter')).toEqual({ stopped: true, prevented: true });
+  expect(press('Escape').stopped).toBe(true);
+  expect(asked).toEqual(['active 2', 'active 0', `choose ${idOf(rows[1])}`, 'close']);
+});
+
+test('every key pressed in the finder stays in it, the ones it has no use for too', () => {
+  // With a result focused, ArrowDown also stepped the selection on the map
+  // behind the finder, and `g` opened Proposals over it: only Escape stopped.
+  const { asked, press } = finderView(paletteRows(demo.items, buildActions(context()), 'shell'));
+  for (const key of ['g', 'G', '?', '/', 'j', 'k', '1', '2', '+', '-', '0', 'a']) {
+    expect(press(key).stopped, key).toBe(true);
+  }
+  // None of them did anything to the finder either: typing goes to the box.
+  expect(asked).toEqual([]);
+});
+
+test('Tab comes round inside the finder, and does not walk out onto the page', () => {
+  const { tree } = finderView(paletteRows(demo.items, buildActions(context()), 'shell'));
+  const dialog = findAll(tree, e => e.props?.role === 'dialog')[0];
+  const focused: number[] = [];
+  const stops = [0, 1, 2].map(i => ({ focus: () => focused.push(i) }));
+  vi.stubGlobal('document', { activeElement: stops[2] });
+  let prevented = false;
+  let stopped = false;
+  dialog.props.onKeyDown({
+    key: 'Tab',
+    shiftKey: false,
+    currentTarget: { querySelectorAll: () => stops },
+    stopPropagation: () => (stopped = true),
+    preventDefault: () => (prevented = true),
+  });
+  expect({ stopped, prevented, focused }).toEqual({ stopped: true, prevented: true, focused: [0] });
+  expect(dialog.props.tabIndex).toBe(-1);
+});
+
+test('a result reached with Tab is the one Enter chooses', () => {
+  const rows = paletteRows(demo.items, buildActions(context()), 'shell');
+  const { asked, tree } = finderView(rows);
+  const results = findAll(tree, e => e.type === 'button');
+  expect(results).toHaveLength(rows.length);
+  results[2].props.onFocus();
+  results[2].props.onClick();
+  expect(asked).toEqual(['active 2', `choose ${idOf(rows[2])}`]);
 });
 
 test('the check the palette copies is the one the detail panel offers', () => {

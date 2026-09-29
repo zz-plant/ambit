@@ -307,7 +307,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   showApprovalModal: false,
   activeLens: initialLink.lens,
   spotlight: null,
-  collapsed: initialLink.collapse,
+  // A link's `collapse` is applied with the node it focuses, once the graph
+  // holds it (linkFocus): with nothing selected there is nothing to collapse to.
+  collapsed: false,
   collapseDepth: initialLink.depth,
   collapseDirection: initialLink.dir,
   simulationMode: 'none',
@@ -361,10 +363,15 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   setSearch: q => set({ searchQuery: q }),
   toggleDetailPanel: () => set(s => ({ showDetailPanel: !s.showDetailPanel })),
   setShowApprovalModal: show => set({ showApprovalModal: show }),
-  setActiveLens: lens => set({ activeLens: lens }),
+  // No observation records attention or grants, so a lens that paints them is
+  // a lens on now: chosen while the map is scrubbed, it brings the map back.
+  // The standard lens is what a past map is drawn in, and keeps the playhead.
+  setActiveLens: lens =>
+    set(lens === 'default' ? { activeLens: lens } : { activeLens: lens, historyAt: null }),
   setSpotlight: group => set({ spotlight: group }),
   // A simulation walks the live graph, and an outage needs providers, which no
-  // snapshot stores, so scrubbing into the past ends one.
+  // snapshot stores, so scrubbing into the past ends one. Each simulation below
+  // returns the map to now for the same reason, whichever surface started it.
   setHistoryAt: at => {
     if (at) get().clearSimulation();
     set({ historyAt: at });
@@ -378,6 +385,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   startOutageSimulation: (nodeId: string) => {
     const { stops, weakened } = outageSplit(get().items, get().connections, nodeId);
     set({
+      historyAt: null,
       simulationMode: 'outage',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: stops,
@@ -387,6 +395,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startAcquisitionSimulation: (nodeId: string) =>
     set({
+      historyAt: null,
       simulationMode: 'acquisition',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: unlockCascade(get().items, get().connections, nodeId),
@@ -395,6 +404,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startGapSimulation: (nodeId: string) =>
     set({
+      historyAt: null,
       simulationMode: 'gap',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: gapOf(get().items, get().connections, nodeId).missing,
@@ -443,10 +453,13 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: true, artifact: demoApproval(proposalId, actor) };
     }
     try {
+      // The card's own hash, so a proposal that changed after it was drawn is
+      // refused. No actor goes with it: the server decides as the person at the page.
+      const proposalHash = get().proposals.find(p => p.id === proposalId)?.proposal_hash;
       const res = await fetch(`/api/proposals/${proposalId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor }),
+        body: JSON.stringify({ proposalHash }),
       });
       if (res.ok) {
         const data = (await res.json()) as ApproveResponse;
@@ -475,10 +488,11 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: true };
     }
     try {
+      const proposalHash = get().proposals.find(p => p.id === proposalId)?.proposal_hash;
       const res = await fetch(`/api/proposals/${proposalId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor: WEB_ACTOR, reason }),
+        body: JSON.stringify({ proposalHash, reason }),
       });
       if (res.ok) {
         (await res.json()) as RejectResponse;
@@ -651,12 +665,21 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       set({ run: demoRun(id) });
       return;
     }
+    // With nothing drawn yet, an answer that is not a run is a ledger with no
+    // run, and says so. An engine that predates the route answers a plain 404,
+    // and the section read "Reading the ledger…" for good.
+    const none = () => {
+      if (!get().run) set({ run: { recent: [], run: null } });
+    };
     try {
       const res = await fetch(id ? `/api/run?id=${encodeURIComponent(id)}` : '/api/run');
+      if (!res.ok) return none();
       const body = (await res.json()) as ApiResult<ApiRoutes['/api/run']>;
       if (!isApiError(body)) set({ run: body });
+      else none();
     } catch {
-      /* the section keeps whatever it had */
+      // Whatever the section already shows, it keeps.
+      none();
     }
   },
 

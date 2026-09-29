@@ -14,8 +14,15 @@ import { useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
+import CivTree from './CivTree';
 import { MapFinding } from './civ/MapFinding';
-import { mapFindings, outageImpact, outageSentence, outageSplit } from './civ/layout';
+import {
+  headlineReserve,
+  mapFindings,
+  outageImpact,
+  outageSentence,
+  outageSplit,
+} from './civ/layout';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
@@ -26,7 +33,14 @@ function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
 }
 
 afterEach(() => {
-  seed({ items: [], connections: [], selectedItem: null, loop: null, loopSource: null });
+  seed({
+    items: [],
+    connections: [],
+    selectedItem: null,
+    selectedEra: null,
+    loop: null,
+    loopSource: null,
+  });
 });
 
 const text = (html: string) => html.replace(/<[^>]+>/g, '').replace(/&#x27;|&rsquo;/g, "'");
@@ -144,4 +158,50 @@ test('the week is stated as movement, and its absence is said, never printed as 
   expect(
     render({ from: '2026-09-01', gained: [], emergent: [], lost: [], diminished: [] })
   ).toContain('no change this week');
+});
+
+test('the headline gives way to an open ladder, as it does to an open node', () => {
+  // It stayed up with a ladder open, and with the panel's inset squeezing it
+  // the range line ran under the lens switch by 21 to 45px.
+  seed({ items: merged.items, connections: merged.connections });
+  const map = () =>
+    renderToStaticMarkup(
+      <CivTree
+        items={merged.items}
+        connections={merged.connections}
+        selectedId={null}
+        hoveredId={null}
+        onSelect={() => {}}
+        onHover={() => {}}
+      />
+    );
+  expect(map()).toContain('civ-finding');
+  seed({ selectedEra: 3 });
+  expect(map()).not.toContain('civ-finding');
+  expect(map()).not.toContain('civ-range');
+});
+
+test('the canvas starts below the headline, however many lines it wraps to', () => {
+  // A line of range (33px), the gap (6px) and a line of finding (43px): the 40px
+  // the canvas always reserved. At 900px the range is two lines, at 769 three.
+  expect(headlineReserve(33 + 6 + 43)).toBe(40);
+  expect(headlineReserve(58 + 6 + 43)).toBe(65);
+  expect(headlineReserve(78 + 6 + 43)).toBe(85);
+  // A range line alone sits on the controls' row, and needs nothing below it.
+  expect(headlineReserve(33)).toBe(0);
+  // Before anything is measured, the two lines it usually is.
+  expect(headlineReserve(null)).toBe(40);
+  seed({ items: merged.items, connections: merged.connections });
+  expect(
+    renderToStaticMarkup(
+      <CivTree
+        items={merged.items}
+        connections={merged.connections}
+        selectedId={null}
+        hoveredId={null}
+        onSelect={() => {}}
+        onHover={() => {}}
+      />
+    )
+  ).toContain('--headline-pad:40px');
 });

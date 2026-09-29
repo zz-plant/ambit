@@ -1,6 +1,7 @@
 import type { Db } from './db.ts';
 import { usable } from './assurance.ts';
 import { NON_FRONTIER_KINDS } from './ontology.ts';
+import { isReached } from './vocabulary.ts';
 
 // ─── Ledger ───────────────────────────────────────────────────────────────────
 
@@ -35,9 +36,41 @@ interface Observation {
  * one. `taken_at` is written by `datetime('now')`, so a comparison against
  * `2026-09-26T10:00:00Z` as a string put every snapshot of that day on the
  * wrong side of it: a `T` sorts after the space the ledger writes.
+ *
+ * It has to begin with a date. SQLite also reads a bare `10:00:00` (as a time
+ * in the year 2000), a bare number (as a Julian day) and `now`, and each of
+ * those answered a question about some other moment without saying so.
  */
+const DATED = /^\d{4}-\d{2}-\d{2}(?:$|[T ])/;
+
 function secondOf(db: Db, when: string): string | null {
+  if (!DATED.test(when)) return null;
   return db.prepare('SELECT datetime(?) AS second').get(when)?.second ?? null;
+}
+
+/** What to say about a value that names no second. */
+const notATimestamp = (stated: string) =>
+  `Not a timestamp: ${stated}. A timestamp is a date, with a time and zone if wanted, such as 2026-09-26 or 2026-09-26T10:00:00Z.`;
+
+/** A date alone, and a time alone: the two words a shell makes of an unquoted timestamp. */
+const BARE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const BARE_TIME = /^\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+/**
+ * The timestamps a person typed, with each one a shell split in two joined
+ * again. `ambit history since 2026-09-26 10:00:00` arrives as two words, and
+ * read apart the second became `until`.
+ */
+function typedTimestamps(words: string[]): string[] {
+  const joined: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const next = words[i + 1];
+    if (BARE_DATE.test(words[i]) && next !== undefined && BARE_TIME.test(next)) {
+      joined.push(`${words[i]} ${next}`);
+      i++;
+    } else joined.push(words[i]);
+  }
+  return joined;
 }
 
 /** The live graph, read into the shape a snapshot stores. */
@@ -101,7 +134,7 @@ function recordFrontier(db: Db, at?: string): 'recorded' | 'unchanged' {
     return 'unchanged';
 
   const counted = Object.keys(now.states).filter(id => inFrontier(now.kinds?.[id]));
-  const reached = counted.filter(id => now.states[id] !== 'locked').length;
+  const reached = counted.filter(id => isReached(now.states[id])).length;
   db.prepare(
     `INSERT INTO frontier_snapshots (taken_at, reached, total, verified, states, kinds, lifecycles)
      VALUES (COALESCE(?, datetime('now')), ?, ?, ?, ?, ?, ?)`
@@ -129,31 +162,39 @@ function observation(row: any): Observation {
   };
 }
 
+type Dated = Observation & { taken_at: string };
+
+/** The observation in effect at a second the ledger stores, or null before the first. */
+function inEffectAt(db: Db, stamp: string): Dated | null {
+  const row = db
+    .prepare(
+      `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots WHERE taken_at <= ? ORDER BY taken_at DESC, id DESC LIMIT 1`
+    )
+    .get(stamp);
+  return row ? (observation(row) as Dated) : null;
+}
+
 /**
  * The observation in effect at a point in time, or the earliest one after it.
  *
  * Both orderings break ties on `id`. `taken_at` resolves to the second, so two
  * snapshots can share one, and without the tie-break which of them answered
  * was whatever order SQLite read them in: the index happened to give the later
- * one and a table scan gives the earlier. In effect at a second means the last
- * recorded in it; the earliest means the first recorded.
+ * one and a table scan gives the earlier. A second holds one observation, the
+ * last recorded in it, both for the second something was in effect at and for
+ * the earliest: that is the timeline's first tick (`frontierSeries`), so
+ * `ambit history since` with no argument starts where the page does.
  */
-function frontierAt(db: Db, when?: string): (Observation & { taken_at: string }) | null {
+function frontierAt(db: Db, when?: string): Dated | null {
   const stamp = when ? secondOf(db, when) : null;
-  const row =
-    (stamp
-      ? db
-          .prepare(
-            `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots WHERE taken_at <= ? ORDER BY taken_at DESC, id DESC LIMIT 1`
-          )
-          .get(stamp)
-      : undefined) ||
-    db
-      .prepare(
-        `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots ORDER BY taken_at ASC, id ASC LIMIT 1`
-      )
-      .get();
-  return row ? (observation(row) as Observation & { taken_at: string }) : null;
+  const inEffect = stamp ? inEffectAt(db, stamp) : null;
+  if (inEffect) return inEffect;
+  const row = db
+    .prepare(
+      `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots ORDER BY taken_at ASC, id DESC LIMIT 1`
+    )
+    .get();
+  return row ? (observation(row) as Dated) : null;
 }
 
 /**
@@ -211,7 +252,6 @@ function compareFrontiers(
   const { nameOf, provedBy } = context;
   const ids = Object.keys(now.states);
   const kindOf = (id: string) => now.kinds?.[id];
-  const isReached = (state: string | undefined) => state !== undefined && state !== 'locked';
 
   // Newly added means absent from the observation, which the snapshot answers
   // exactly. Comparing created_at against taken_at looked equivalent and was
@@ -224,8 +264,7 @@ function compareFrontiers(
   const vocabulary: any[] = [];
   for (const id of ids) {
     if (!inFrontier(kindOf(id))) continue;
-    const newlyReached =
-      isReached(now.states[id]) && (past.states[id] === 'locked' || past.states[id] === undefined);
+    const newlyReached = isReached(now.states[id]) && !isReached(past.states[id]);
     if (!newlyReached) continue;
     const proofs = provedBy.get(id) || [];
     const proofAddedSince = proofs.some(p => addedSince.has(p));
@@ -252,11 +291,7 @@ function compareFrontiers(
 
   const lost = ids
     .filter(
-      id =>
-        inFrontier(kindOf(id)) &&
-        !isReached(now.states[id]) &&
-        past.states[id] &&
-        past.states[id] !== 'locked'
+      id => inFrontier(kindOf(id)) && !isReached(now.states[id]) && isReached(past.states[id])
     )
     .map(id => ({ id, name: nameOf(id) }));
 
@@ -287,7 +322,7 @@ function compareFrontiers(
   // observation counts exactly as it always did — which is what keeps
   // `frontier_then` and `frontier_now` the same measurement.
   const pastReached = Object.entries(past.states).filter(
-    ([id, v]) => v !== 'locked' && inFrontier(past.kinds?.[id])
+    ([id, v]) => isReached(v) && inFrontier(past.kinds?.[id])
   ).length;
   // Counted on the same basis as `frontier_then`, so the two numbers mean the
   // same thing. Vocabulary additions are described and not counted; the total
@@ -300,6 +335,7 @@ function compareFrontiers(
       before: pastReached,
       after: frontierNowCount,
       emergent: emergent.length,
+      modelled: vocabulary.length,
       failing: diminished.length,
       // An observation written before lifecycles were recorded has a verified
       // count of zero by default, which is not the same as none proven.
@@ -335,11 +371,17 @@ function compareFrontiers(
  * emerged, how many were proven, and what went failing. The timeline puts a
  * date in front of it and the terminal prints it beside `since`, so it carries
  * none of its own.
+ *
+ * `modelled` counts the vocabulary: nodes Ambit started to model, left out of
+ * `after` so that it stays on the basis of `before`. The next step counts them
+ * in its own `before`, so a step that left any out says how many, or the
+ * series would jump between two sentences with nothing to account for it.
  */
 function movedSentence(step: {
   before: number | null;
   after: number;
   emergent?: number;
+  modelled?: number;
   failing?: number;
   verified?: { before: number; after: number };
 }): string {
@@ -351,6 +393,7 @@ function movedSentence(step: {
         : `reached ${step.before} to ${step.after}`,
   ];
   if (step.emergent) parts.push(`${step.emergent} emergent`);
+  if (step.modelled) parts.push(`${step.modelled} newly modelled`);
   if (step.verified && step.verified.before !== step.verified.after) {
     parts.push(`verified ${step.verified.before} to ${step.verified.after}`);
   }
@@ -361,18 +404,24 @@ function movedSentence(step: {
 /**
  * What changed in the reachable frontier since a past observation: up to the
  * live graph, or up to a later observation when `until` names one.
+ *
+ * `when` may start from the earliest observation after it. `until` may not:
+ * standing in a later observation for it answers about a moment nobody named,
+ * so before the first observation it is an error that says where the ledger
+ * begins.
  */
 function ledgerSince(db: Db, when?: string, until?: string) {
   for (const stated of [when, until]) {
-    if (stated && !secondOf(db, stated)) {
-      return {
-        error: `Not a timestamp: ${stated}. Name a second, such as 2026-09-26 10:00:00 or 2026-09-26T10:00:00Z.`,
-      };
-    }
+    if (stated && !secondOf(db, stated)) return { error: notATimestamp(stated) };
   }
   const past = frontierAt(db, when);
   if (!past) return { error: 'No frontier recorded yet. Run seed at least twice.' };
-  const now = until ? frontierAt(db, until)! : frontierNow(db);
+  const now = until ? inEffectAt(db, secondOf(db, until)!) : frontierNow(db);
+  if (!now) {
+    return {
+      error: `Nothing was observed at or before ${until}. The earliest observation is ${frontierAt(db)!.taken_at}.`,
+    };
+  }
   if (now.taken_at !== null && now.taken_at < past.taken_at) {
     return {
       error: `The observation in effect at ${until} (${now.taken_at}) is earlier than the one at ${when ?? 'the start'} (${past.taken_at}).`,
@@ -416,7 +465,7 @@ function frontierSeries(db: Db): {
         ? movedSentence({
             before: null,
             after: Object.entries(o.states).filter(
-              ([id, v]) => v !== 'locked' && inFrontier(o.kinds?.[id])
+              ([id, v]) => isReached(v) && inFrontier(o.kinds?.[id])
             ).length,
           })
         : compareFrontiers(db, observations[i - 1], o, context).moved,
@@ -458,5 +507,6 @@ export {
   compareFrontiers,
   ledgerSince,
   ledgerHistory,
+  typedTimestamps,
   type Observation,
 };

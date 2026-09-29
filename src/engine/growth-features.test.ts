@@ -108,6 +108,10 @@ describe('ambit init-rules', () => {
     const content = readFileSync(join(testDir, 'AGENTS.md'), 'utf8');
     expect(content).toContain('ambit://briefing');
     expect(content).toContain('Ambit Capability Protocol');
+    // The habit itself, for a client that does not pass the server's
+    // `instructions` on and for an agent with a shell and no MCP.
+    expect(content).toContain('`ambit_can`');
+    expect(content).toContain('ambit can <capability> --exit-code');
 
     // Second run should be idempotent
     const res2 = runInitRules('AGENTS.md', { cwd: testDir });

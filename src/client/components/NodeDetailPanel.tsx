@@ -104,10 +104,16 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const [toggling, setToggling] = React.useState(false);
   const [toggleError, setToggleError] = React.useState<string | null>(null);
 
-  // An era header opens its ladder in the same panel, where a node would be.
+  // An era header opens its ladder in the same panel, where a node would be,
+  // counted from the same observation as the header it was opened from.
   if (!item) {
     return selectedEra === null ? null : (
-      <EraLadderPanel era={selectedEra} onShow={onShow ?? selectItem} />
+      <EraLadderPanel
+        era={selectedEra}
+        onShow={onShow ?? selectItem}
+        items={pastItems}
+        asOf={asOf}
+      />
     );
   }
 

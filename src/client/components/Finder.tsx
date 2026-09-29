@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
+import { trapTab } from '../utils/keys';
 import { useAmbitStore } from '../store/ambitStore';
 import { statusLabel, typeLabel } from '../utils/labels';
 import {
@@ -47,10 +49,10 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
     if (!open) return;
     setQuery('');
     setActive(0);
-    // After the overlay has mounted, so the first keystroke lands in the box.
-    const t = setTimeout(() => input.current?.focus(), 0);
-    return () => clearTimeout(t);
   }, [open]);
+  // The box has the focus while the finder is open, so the first keystroke
+  // lands in it, and whatever had the focus gets it back when it closes.
+  const dialog = useDialogFocus<HTMLDivElement>(open, input);
 
   // The row the arrow keys are on stays in view. Once the list holds actions
   // as well as nodes it runs past the box, and a highlight nobody can see is
@@ -73,52 +75,98 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
 
   if (!open) return null;
 
-  const choose = (row: Row) => {
-    activate(row, onShow);
-    onClose();
-  };
+  return (
+    <FinderView
+      rows={rows}
+      active={active}
+      query={query}
+      withActions={Boolean(handlers)}
+      onQuery={q => {
+        setQuery(q);
+        setActive(0);
+      }}
+      onActive={setActive}
+      onChoose={row => {
+        activate(row, onShow);
+        onClose();
+      }}
+      onClose={onClose}
+      dialogRef={dialog}
+      inputRef={input}
+      listRef={list}
+    />
+  );
+}
 
+interface FinderViewProps {
+  rows: Row[];
+  /** The row Enter chooses. */
+  active: number;
+  query: string;
+  /** Whether actions are listed beside the nodes, which the box's placeholder says. */
+  withActions: boolean;
+  onQuery: (query: string) => void;
+  onActive: (index: number) => void;
+  onChoose: (row: Row) => void;
+  onClose: () => void;
+  dialogRef?: Ref<HTMLDivElement>;
+  inputRef?: Ref<HTMLInputElement>;
+  listRef?: Ref<HTMLUListElement>;
+}
+
+/**
+ * The finder as drawn. No hooks, so what a key pressed in it does can be
+ * pressed in a test, on the dialog's own handler.
+ */
+export function FinderView(p: FinderViewProps) {
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a click on the backdrop closes the finder; Escape does the same from the keyboard
-    <div className="finder-overlay" onClick={onClose} role="presentation">
+    <div className="finder-overlay" onClick={p.onClose} role="presentation">
       <div
         className="finder"
+        ref={p.dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Find a capability or run an action"
         onClick={e => e.stopPropagation()}
+        // Every key pressed in the finder is the finder's. Only Escape used to
+        // stop here, so with a result focused ArrowDown also stepped the
+        // selection on the map behind it, and `g` opened Proposals over it.
+        // Tab comes round inside it: it used to walk out onto the page.
         onKeyDown={e => {
-          const step = keyStep(e.key, active, rows.length);
+          e.stopPropagation();
+          if (e.key === 'Tab') {
+            trapTab(e, document.activeElement);
+            return;
+          }
+          const step = keyStep(e.key, p.active, p.rows.length);
           if (!step) return;
           if (step.kind === 'close') {
-            e.stopPropagation();
-            onClose();
+            p.onClose();
             return;
           }
           e.preventDefault();
-          if (step.kind === 'move') setActive(step.active);
-          else if (rows[active]) choose(rows[active]);
+          if (step.kind === 'move') p.onActive(step.active);
+          else if (p.rows[p.active]) p.onChoose(p.rows[p.active]);
         }}
       >
         <input
-          ref={input}
+          ref={p.inputRef}
           className="finder-input"
           placeholder={
-            handlers
+            p.withActions
               ? 'Find a capability, or type an action…'
               : 'Find a capability, a server, an agent…'
           }
           aria-label="Find a capability or run an action"
-          value={query}
-          onChange={e => {
-            setQuery(e.target.value);
-            setActive(0);
-          }}
+          value={p.query}
+          onChange={e => p.onQuery(e.target.value)}
         />
-        <ul ref={list} className="finder-list">
-          {rows.map((row, i) => {
-            const firstOfGroup = i === 0 || groupOf(rows[i - 1]) !== groupOf(row);
-            const isActive = i === active;
+        <ul ref={p.listRef} className="finder-list">
+          {p.rows.map((row, i) => {
+            const firstOfGroup = i === 0 || groupOf(p.rows[i - 1]) !== groupOf(row);
+            const isActive = i === p.active;
             return (
               <li key={row.kind === 'action' ? `action:${row.action.id}` : row.item.id}>
                 {firstOfGroup && <div className="finder-group">{groupOf(row)}</div>}
@@ -126,8 +174,10 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
                   type="button"
                   aria-current={isActive ? 'true' : undefined}
                   className={`finder-item ${isActive ? 'is-active' : ''}`}
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => choose(row)}
+                  onMouseEnter={() => p.onActive(i)}
+                  // A row reached with Tab is the one Enter chooses.
+                  onFocus={() => p.onActive(i)}
+                  onClick={() => p.onChoose(row)}
                 >
                   {row.kind === 'action' ? (
                     <>
@@ -162,7 +212,7 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
               </li>
             );
           })}
-          {rows.length === 0 && <li className="finder-empty">Nothing matches.</li>}
+          {p.rows.length === 0 && <li className="finder-empty">Nothing matches.</li>}
         </ul>
       </div>
     </div>

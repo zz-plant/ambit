@@ -8,7 +8,17 @@
  */
 import { afterEach, expect, test, vi } from 'vitest';
 import { asProcess } from '../testing/terminal.ts';
-import { C, PLAIN, colorOn, emit, formatGeneric, setSink, terminalPalette } from './output.ts';
+import {
+  C,
+  PLAIN,
+  colorOn,
+  emit,
+  emitRaw,
+  formatGeneric,
+  raiseExitCode,
+  setSink,
+  terminalPalette,
+} from './output.ts';
 
 /** The colour codes the text view wraps labels in, built from the escape character. */
 const ESC = String.fromCharCode(27);
@@ -90,8 +100,11 @@ test('the generic view takes its colour from the palette it is given', () => {
   expect(bare.some(line => line.includes(ESC))).toBe(false);
   // Colour is a coat over the same words.
   expect(painted.map(plain)).toEqual(bare);
-  // Every command that passes nothing keeps the colour it always had.
-  expect(formatGeneric(data)).toEqual(painted);
+  // Given nothing, as `emit` gives it for every command without a layout of
+  // its own, it paints for a terminal and for nothing else.
+  expect(asProcess(true, undefined, () => formatGeneric(data))).toEqual(painted);
+  expect(asProcess(false, undefined, () => formatGeneric(data))).toEqual(bare);
+  expect(asProcess(true, '1', () => formatGeneric(data))).toEqual(bare);
 });
 
 /**
@@ -131,4 +144,41 @@ test('a command that draws itself is drawn on the human path only', () => {
   emit({ n: 3 }, draw);
   expect(lines).toEqual(['drawn 3', '']);
   expect(draw).toHaveBeenCalledTimes(1);
+});
+
+/**
+ * `{ error }` at the top of a result is a command saying it failed, and a
+ * printed one exits 1. Only a printed one: the sink is a test or a program
+ * reading the result in-process, and the process is not the command's to mark.
+ */
+test('a failed result exits 1 on the way out, and never through the sink', () => {
+  const before = process.exitCode;
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  const codeAfter = (print: () => void, start?: number) => {
+    process.exitCode = start;
+    print();
+    return process.exitCode;
+  };
+  try {
+    expect(codeAfter(() => emit({ error: 'Usage: ambit sync' }))).toBe(1);
+    expect(codeAfter(() => emitRaw({ error: 'Usage: ambit sync' }))).toBe(1);
+    // An answer that reports an error per item still stands as an answer.
+    const queue = { refused: 1, results: [{ id: 'prop-a', error: 'No proposal prop-a.' }] };
+    expect(codeAfter(() => emit(queue))).toBeUndefined();
+    expect(codeAfter(() => emit({ decision: 'DENY', reason: 'forbidden' }))).toBeUndefined();
+    // Raised and never lowered, so a command that set its own code keeps it.
+    expect(codeAfter(() => emit({ error: 'x' }), 3)).toBe(3);
+
+    // Through the sink the code is left alone, including one a command asks
+    // for directly, as an unknown verb does.
+    const previous = setSink(() => {});
+    try {
+      expect(codeAfter(() => emit({ error: 'x' }))).toBeUndefined();
+      expect(codeAfter(() => raiseExitCode(2))).toBeUndefined();
+    } finally {
+      setSink(previous);
+    }
+  } finally {
+    process.exitCode = before;
+  }
 });

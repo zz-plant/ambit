@@ -7,10 +7,11 @@
  * column with a marker on the one that wants a person, and the last line is the
  * one thing to type next. Colour is added on top and never changes a line.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { makeGraph, type CapabilityFixture } from '../testing/graph.ts';
+import { asProcess } from '../testing/terminal.ts';
 import { C, PLAIN } from './output.ts';
-import { renderStatus, statusReport, worries } from './reports.ts';
+import { explain, renderStatus, statusReport, worries } from './reports.ts';
 
 /** The escape character, spelled out so no control character sits in the source. */
 const ESC = String.fromCharCode(27);
@@ -72,6 +73,26 @@ describe('the head of the report', () => {
   });
 });
 
+describe('the command it ends on', () => {
+  const NASTY = 'skill:pdf-tools$(touch PWNED)';
+  const lastLine = (lines: string[]) => plain(lines.filter(Boolean).at(-1) ?? '');
+
+  it('quotes an id a shell would read as more than one word', () => {
+    // The id of a registered skill is whatever its agent typed, and the line
+    // is one a person is meant to paste.
+    const last = lastLine(
+      renderStatus(reportOf([{ id: NASTY, name: 'PDF tools', lifecycle: 'broken' }]), PLAIN)
+    );
+    expect(last).toContain(`ambit verify '${NASTY}'`);
+    expect(last).not.toContain(`ambit verify ${NASTY}`);
+  });
+
+  it('leaves an ordinary id as it was', () => {
+    const last = lastLine(renderStatus(reportOf(MIXED), PLAIN));
+    expect(last).toContain('ambit verify c ');
+  });
+});
+
 describe('the evidence counts', () => {
   it('read down one column, labels on the left and values on the right', () => {
     const rows = evidenceRows(renderStatus(reportOf(MIXED), PLAIN));
@@ -106,6 +127,55 @@ describe('the evidence counts', () => {
 
   it('mark nothing when there is nothing to act on', () => {
     expect(evidenceRows(renderStatus(reportOf(ALL_PROVEN), PLAIN)).join('\n')).not.toContain('›');
+  });
+});
+
+describe('one count of what is failing', () => {
+  // The head counted failing nodes of every kind but actions, the evidence row
+  // counted only curated capabilities, and the degraded list and the last line
+  // counted actions too, so one screen said three different numbers.
+  it('counts a registered skill failing its check in the head, the row and the last line', () => {
+    const report = reportOf([
+      { id: 'combo:a', name: 'Alpha', lifecycle: 'verified' },
+      {
+        id: 'skill:pdf',
+        name: 'PDF tools',
+        kind: 'provider',
+        category: 'skill',
+        lifecycle: 'broken',
+      },
+    ]);
+    const lines = renderStatus(report, PLAIN);
+    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · 1 failing · 1 degraded');
+    expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual(['  › failing         1']);
+    expect(report.next?.command).toBe('ambit verify skill:pdf');
+  });
+
+  it('reports failing actions through their capability, and names the capability', () => {
+    const report = reportOf([
+      { id: 'combo:shell-execution', name: 'Shell Execution', lifecycle: 'broken' },
+      {
+        id: 'act:shell-execution/install_package',
+        name: 'install_package',
+        kind: 'action',
+        lifecycle: 'broken',
+      },
+      {
+        id: 'act:shell-execution/run_command',
+        name: 'run_command',
+        kind: 'action',
+        lifecycle: 'degraded',
+      },
+    ]);
+    const lines = renderStatus(report, PLAIN);
+    expect(lines[1]).toBe('    1 of 1 reached · 0 proven · 1 failing · 1 degraded');
+    expect(report.failing).toBe(1);
+    expect(report.degraded?.map((d: { id: string }) => d.id)).toEqual(['combo:shell-execution']);
+    expect(evidenceRows(lines)).toContain('  › failing         1');
+    expect(report.next).toEqual({
+      command: 'ambit verify shell-execution',
+      why: 'Shell Execution is configured and failing its check',
+    });
   });
 });
 
@@ -182,5 +252,34 @@ describe('colour', () => {
   it('puts the accent on nothing when there is nothing to act on', () => {
     const painted = renderStatus(reportOf(ALL_PROVEN), C);
     expect(painted.some(l => l.includes(C.accent))).toBe(false);
+  });
+});
+
+/**
+ * `ambit help <term>`, the glossary this module also holds. It prints for
+ * itself instead of returning lines, so it is read off the console.
+ */
+describe('the glossary', () => {
+  const shown = (tty: boolean, noColor?: string) => {
+    const lines: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((line?: unknown) => {
+      lines.push(String(line ?? ''));
+    });
+    try {
+      asProcess(tty, noColor, () => explain('frontier'));
+    } finally {
+      log.mockRestore();
+    }
+    return lines.join('\n');
+  };
+
+  it('is painted on a terminal and plain everywhere else, in the same words', () => {
+    const terminal = shown(true);
+    expect(terminal).toContain(ESC);
+    const bare = shown(false);
+    expect(bare).not.toContain(ESC);
+    expect(bare).toContain('Where you see it');
+    expect(shown(true, '1')).toBe(bare);
+    expect(plain(terminal)).toBe(bare);
   });
 });

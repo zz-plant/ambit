@@ -97,50 +97,87 @@ function shownList(shown: unknown): { list: ShownProposal[] } | { error: string 
   return { list };
 }
 
+/** Why a draft was not decided, in the words the page shows and the kind an HTTP status is chosen from. */
+interface Refusal {
+  refused: string;
+  /** `changed` and `not-draft` are the row not being what the page showed; the rest are a bad request. */
+  kind: 'missing' | 'not-draft' | 'changed' | 'unnamed' | 'engine';
+}
+
 /**
- * One id, decided in a transaction of its own, so the row cannot change
+ * One draft, decided in a transaction of its own, so the row cannot change
  * between the hash being checked and the decision being written.
+ *
+ * This is the whole of a decision made from the page, whether it names one
+ * proposal or fifty. It decides drafts only: `rejectProposal` accepts an
+ * approved row and, before it was made to revoke, kept its artifact, and
+ * `approveProposal` will sign an applied or rolled-back proposal again. And it
+ * decides against the hash the person was shown, so a card left open while the
+ * row changed underneath it decides nothing. A failure partway rolls back, so a
+ * row is never left approved with no artifact.
  */
+function decideDraft(
+  db: Db,
+  decision: 'approve' | 'reject',
+  item: { id: string; proposalHash?: string },
+  who: string,
+  reason?: string
+): { ok: true; result: any } | ({ ok: false } & Refusal) {
+  let open = false;
+  const refuse = (refused: string, kind: Refusal['kind']) => {
+    if (open) {
+      open = false;
+      db.exec('ROLLBACK');
+    }
+    return { ok: false as const, refused, kind };
+  };
+  if (!item.proposalHash) {
+    return refuse('Name the proposalHash the proposal was shown with.', 'unnamed');
+  }
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    open = true;
+    const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(item.id);
+    if (!row) return refuse(`No proposal ${item.id}.`, 'missing');
+    if (row.status !== 'draft') {
+      return refuse(`${item.id} is ${row.status}; only a draft can be decided here.`, 'not-draft');
+    }
+    if (proposalHash(db, row) !== item.proposalHash) {
+      return refuse(
+        `${item.id} changed after it was shown. Read it again before deciding.`,
+        'changed'
+      );
+    }
+    const result = (
+      decision === 'approve'
+        ? approveProposal(db, item.id, who)
+        : rejectProposal(db, item.id, who, reason)
+    ) as { error?: string };
+    if (result.error) return refuse(result.error, 'engine');
+    db.exec('COMMIT');
+    open = false;
+    return { ok: true, result };
+  } catch (e) {
+    const refused = `Not recorded: ${(e as Error)?.message || 'the write failed'}.`;
+    try {
+      return refuse(refused, 'engine');
+    } catch {
+      return { ok: false, refused, kind: 'engine' };
+    }
+  }
+}
+
+/** One id of a queue, answered in the queue's own shape. */
 function decideOne(
   db: Db,
   decision: 'approve' | 'reject',
   item: ShownProposal,
   who: string
 ): QueueDecisionResult {
-  let open = false;
-  const refuse = (refused: string): QueueDecisionResult => {
-    if (open) {
-      open = false;
-      db.exec('ROLLBACK');
-    }
-    return { id: item.id, decided: false, refused };
-  };
-  try {
-    db.exec('BEGIN IMMEDIATE');
-    open = true;
-    const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(item.id);
-    if (!row) return refuse(`No proposal ${item.id}.`);
-    if (row.status !== 'draft') {
-      return refuse(`${item.id} is ${row.status}; the queue decides drafts only.`);
-    }
-    if (proposalHash(db, row) !== item.proposalHash) {
-      return refuse(`${item.id} changed after it was shown. Read it again before deciding.`);
-    }
-    const result = (
-      decision === 'approve' ? approveProposal(db, item.id, who) : rejectProposal(db, item.id, who)
-    ) as { error?: string };
-    if (result.error) return refuse(result.error);
-    db.exec('COMMIT');
-    open = false;
-    return { id: item.id, decided: true };
-  } catch (e) {
-    const refused = `Not recorded: ${(e as Error)?.message || 'the write failed'}.`;
-    try {
-      return refuse(refused);
-    } catch {
-      return { id: item.id, decided: false, refused };
-    }
-  }
+  const decided = decideDraft(db, decision, item, who);
+  return decided.ok
+    ? { id: item.id, decided: true }
+    : { id: item.id, decided: false, refused: decided.refused };
 }
 
 /**
@@ -217,7 +254,12 @@ function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: stri
     `INSERT INTO proposal_rejections (proposal_id, rejected_by, reason) VALUES (?, ?, ?)
      ON CONFLICT(proposal_id) DO UPDATE SET rejected_by = excluded.rejected_by, reason = excluded.reason`
   ).run(proposalId, humanId, reason ?? null);
-  db.prepare("UPDATE proposals SET status = 'rejected' WHERE id = ?").run(proposalId);
+  // A refusal withdraws whatever approval came before it. The artifact stays a
+  // signed document that nothing else checks the row's status against, so it
+  // was still spendable for its day after the page said "Turned down".
+  db.prepare(
+    "UPDATE proposals SET status = 'rejected', approval_artifact = NULL, expires_at = NULL WHERE id = ?"
+  ).run(proposalId);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'rejected', 0, ?)"
   ).run(humanId, `${proposalId}: ${row.goal}${reason ? ` — ${reason}` : ''}`);
@@ -550,6 +592,7 @@ export {
   ensureActor,
   approveProposal,
   approveProposals,
+  decideDraft,
   decideShown,
   rejectProposal,
   listProposals,

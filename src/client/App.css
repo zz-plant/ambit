@@ -135,6 +135,12 @@ code, pre, .code, .sp-cli-cmd {
   outline-offset: 2px;
 }
 
+/* A dialog takes the focus itself when it opens, so it is announced by its
+   name; it is not a control, and a ring round the whole of it marks nothing. */
+[role='dialog'][tabindex='-1']:focus-visible {
+  outline: none;
+}
+
 /* Text for screen readers only: the live region that announces a selection.
    It rendered as visible text in the top-left corner while this was missing. */
 .visually-hidden {
@@ -1555,8 +1561,10 @@ code, pre, .code, .sp-cli-cmd {
   overflow: auto;
 }
 
+/* The headline's measured height, less what the canvas's own margin already
+   clears, is set inline: 40px for a line of range and a line of finding. */
 .civ-scroll--headline {
-  padding-top: 40px;
+  padding-top: var(--headline-pad, 40px);
 }
 
 @media (max-width: 720px) {
@@ -1780,7 +1788,8 @@ code, pre, .code, .sp-cli-cmd {
   justify-content: center;
   gap: 4px 10px;
   /* Clear of the zoom controls on the left and the lens switch on the right,
-     which share its row; it wraps before it runs under either. */
+     which share its row; it wraps before it runs under either. The wider
+     reserve for both is below. */
   max-width: max(280px, calc(100% - 420px));
   padding: 4px 12px;
   border-radius: var(--radius-full);
@@ -1788,6 +1797,17 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-glass);
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+/* The lens switch is the wider of the two, up to 231px and 12px in from the
+   edge, and the headline's box runs from 20px in to 12px in, so a centred
+   line 474px narrower than the box keeps 6px clear of it. 420px let it run
+   21px under the switch. A phone puts the headline at the bottom edge, where
+   it shares no row. */
+@media (min-width: 721px) {
+  .civ-range {
+    max-width: max(240px, calc(100% - 474px));
+  }
 }
 
 .civ-range strong {
@@ -1965,6 +1985,13 @@ code, pre, .code, .sp-cli-cmd {
   bottom: calc(100% + 8px);
 }
 
+/* A 24px target round the word, with the line it sits on left as it was. */
+.civ-timeline .term {
+  display: inline-block;
+  padding: 3px 0;
+  margin: -3px 0;
+}
+
 .civ-timeline-sentence {
   color: var(--text-primary);
   font-variant-numeric: tabular-nums;
@@ -1992,7 +2019,7 @@ code, pre, .code, .sp-cli-cmd {
 .civ-timeline-track {
   --thumb: 14px;
   position: relative;
-  height: 22px;
+  height: 24px;
   margin-top: 4px;
 }
 
@@ -2029,7 +2056,8 @@ code, pre, .code, .sp-cli-cmd {
   position: relative;
   display: block;
   width: 100%;
-  height: 22px;
+  /* 24px, the least a target may be (WCAG 2.5.8); it was 22. */
+  height: 24px;
   margin: 0;
   background: transparent;
   cursor: pointer;
@@ -2075,12 +2103,14 @@ code, pre, .code, .sp-cli-cmd {
   box-shadow: 0 0 0 1px var(--accent-line);
 }
 
+/* The page's focus ring, drawn round the thumb: a gap, then the accent. The
+   translucent halo it replaces came to 2.4:1 against the timeline. */
 .civ-timeline-range:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px var(--accent-line);
+  box-shadow: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--accent);
 }
 
 .civ-timeline-range:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 3px var(--accent-line);
+  box-shadow: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--accent);
 }
 
 .civ-timeline-ends {
@@ -4130,12 +4160,47 @@ code, pre, .code, .sp-cli-cmd {
 /* Between a phone and a wide screen the header ran past the right edge,
    and the Docs button went first. The buttons keep their icons and their
    accessible names, and give up the words; the status pill keeps its words,
-   since a count without its noun says nothing. */
-@media (min-width: 769px) and (max-width: 1240px) {
+   since a count without its noun says nothing. The view tabs give up theirs
+   below that, and each keeps its name in aria-label and its tooltip. The
+   widths are the demo's header with every word drawn in the widest fallback
+   font: 1366px, and 1157px with the buttons' words gone. */
+@media (min-width: 769px) and (max-width: 1380px) {
   .app-deck-btn .app-deck-btn-label,
   .app-deck-btn .app-deck-key {
     display: none;
   }
+}
+
+@media (min-width: 769px) and (max-width: 1180px) {
+  .app-deck-nav .app-deck-tab-label {
+    display: none;
+  }
+
+  .app-deck-nav .app-deck-tab {
+    padding: 5px 10px;
+  }
+}
+
+/* What is left over goes to the status pill, which wraps its counts onto a
+   second line before anything is pushed past the edge: a live engine's
+   indicator, a failing segment and an as-of date all widen it. The deck's
+   other parts keep their size. */
+.app-deck-left {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.app-deck-left > *,
+.app-deck-center,
+.app-deck-right {
+  flex-shrink: 0;
+}
+
+.app-deck-left > .app-status-pill {
+  flex-shrink: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  row-gap: 0;
 }
 
 .app-status-seg {

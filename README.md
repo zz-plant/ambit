@@ -148,7 +148,7 @@ Homebrew installs the CLI, the engine, and the MCP server from the tagged releas
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
 | `ambit verify [id]` | Run a capability's declared check and record whether it actually works |
-| `ambit history [since]` | How the frontier moved, separating what you acquired from what emerged |
+| `ambit history [since <when> [<until>]]` | How the frontier moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
 `ambit help` covers a first session; `ambit help --all` is the full surface, grouped by what you are trying to do, and `ambit help <term>` explains one concept.
@@ -237,18 +237,37 @@ $ ambit impact mcp:playwright
 
 `ambit share` builds its HTML from an allow-list — name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as "a person", and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.
 
+### From a script, or an agent's shell
+
+Output is plain when nothing is reading it as a terminal: colour is drawn only when stdout is one and `NO_COLOR` is unset, so a pipe, a file and a CI log read what was written. `--json` prints any answer as data. The exit code says whether the command worked: 0 for an answer, 1 for a command that reported an error (a usage error, an id that is not on the map), and 2 for a word that is not a command. `ambit check --ci` keeps its own codes.
+
+Two commands can gate a script the way `git diff --exit-code` does. Without the flag nothing about them changes.
+
+```bash
+ambit can shell-execution --exit-code     # 0 go ahead, 1 put it to the person, 2 stop
+ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
+```
+
+`can` maps ALLOW, CONFIRM and DENY to 0, 1 and 2, and a DENY files the deficit as it does over MCP. `verify --exit-code` also exits 1 for a capability with no check to run, since nothing was proved. A flag with a value is written `--target=svc:ollama`; the two-word form is not read.
+
 ---
 
 ## Connect it to your agent
 
 Registering Ambit as an MCP server lets an agent inspect its own toolchain and plan around what is missing.
 
-Sixty tools, each advertised once, each answering with MCP `structuredContent` alongside the text block so an agent reads a field and never parses a string. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names all sixty, grouped. (The `tt_` prefix from before the rename is still accepted, just no longer listed.)
+Sixty tools, each advertised once, each answering with MCP `structuredContent` alongside the text block so an agent reads a field and never parses a string. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names all sixty, grouped, and [says how a call is answered](./docs/deep-dive.md#how-a-call-is-answered): a call that cannot work comes back as a failed call that says what to send, and a capability may be named by its id, its bare name or its display name. (The `tt_` prefix from before the rename is still accepted, just no longer listed.)
 
 ### Claude Code
 
 ```bash
 claude mcp add ambit -- ambit mcp
+```
+
+The full listing is sixty tool descriptions, about 19.5KB of an agent's context. A session that mostly asks before it acts can list the ten tools it uses in 4.4KB instead, and nothing is hidden by it: the others still answer by name.
+
+```bash
+claude mcp add ambit -- ambit mcp --profile=agent
 ```
 
 Ambit also publishes a resource, `ambit://briefing`, which a client reads on
@@ -292,6 +311,8 @@ The habit worth teaching is a single question before an unfamiliar tool, because
 > already recorded the deficit, so do not retry it under another name.
 
 It answers from the graph without probing anything, and a refusal files itself as a deficit, which is what makes the third occurrence show up as infrastructure that should exist instead of a wall to work around again.
+
+The server sends this line itself, as the `instructions` a client receives when it connects, so a client that passes them to the model needs nothing pasted. `ambit init-rules` writes it into `CLAUDE.md`, `AGENTS.md` or `.cursorrules` for one that does not, and for an agent that has a shell and no MCP the same question is `ambit can <capability> --exit-code`.
 
 Here is the whole loop from a live run. `node --experimental-strip-types scripts/demo-agent-loop.ts` re-records it, and every frame is real engine output — a failing loop fails the recording instead of rendering a fiction.
 

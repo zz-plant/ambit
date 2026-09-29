@@ -9,11 +9,14 @@
  */
 import {
   chmodSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -67,6 +70,53 @@ test('with no config there is nothing to keep, and the write goes ahead', async 
 
   expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual({ mcp: {} });
   expect(() => statSync(backup)).toThrow(/ENOENT/);
+});
+
+test.skipIf(process.platform === 'win32')(
+  'a link planted at the backup name is replaced, and what it pointed at is left alone',
+  async () => {
+    reset();
+    const victim = join(dir, 'victim.txt');
+    writeFileSync(victim, 'not the config');
+    writeFileSync(path, '{"n":0}');
+    symlinkSync(victim, backup);
+
+    expect(await writeConfig({ n: 1 })).toBe(true);
+
+    // Copying straight to the backup name followed the link and overwrote the
+    // file it named, with the config's bytes, and left the link in place.
+    expect(readFileSync(victim, 'utf8')).toBe('not the config');
+    expect(lstatSync(backup).isSymbolicLink()).toBe(false);
+    expect(readFileSync(backup, 'utf8')).toBe('{"n":0}');
+  }
+);
+
+test.skipIf(process.platform === 'win32')(
+  'a link at the backup name that points nowhere does not stand in for "no config"',
+  async () => {
+    reset();
+    writeFileSync(path, '{"n":0}');
+    symlinkSync(join(dir, 'no-such-directory', 'bak'), backup);
+
+    // The copy failed with ENOENT for the destination, which was read as the
+    // config being absent, so the edit went ahead with nothing kept.
+    expect(await writeConfig({ n: 1 })).toBe(true);
+    expect(readFileSync(backup, 'utf8')).toBe('{"n":0}');
+  }
+);
+
+test('no temporary copy is left beside the config, after an edit or a refusal', async () => {
+  reset();
+  writeFileSync(path, '{"n":0}');
+  expect(await writeConfig({ n: 1 })).toBe(true);
+  expect(readdirSync(dir).filter(name => name.endsWith('.tmp'))).toEqual([]);
+
+  // A directory where the backup belongs makes the rename fail, after the copy
+  // beside it was made, and that copy has to go.
+  rmSync(backup);
+  mkdirSync(backup);
+  expect(await writeConfig({ n: 2 })).toBe(false);
+  expect(readdirSync(dir).filter(name => name.endsWith('.tmp'))).toEqual([]);
 });
 
 test('an edit that cannot be backed up is not made', async () => {

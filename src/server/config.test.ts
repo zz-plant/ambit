@@ -8,7 +8,7 @@
  * local process may rewrite it" was a larger grant than this server intends.
  */
 import { expect, test } from 'vitest';
-import { isAllowedOrigin, mayEditConfig, ownEntry } from './config.ts';
+import { isAllowedHost, isAllowedOrigin, mayEditConfig, ownEntry } from './config.ts';
 
 const TOKEN = 'a'.repeat(64);
 process.env.AMBIT_API_TOKEN = TOKEN;
@@ -29,10 +29,16 @@ test('something that is not a browser must present the token', () => {
   expect(mayEditConfig('/api/config/mcp-snippet', '', undefined)).toBe(false);
 });
 
-test('the queue, which decides many proposals at once, needs the token without a browser', () => {
-  // The per-id decision routes are open to a local script. One request that
-  // signs up to fifty is not, and the page itself still needs nothing.
-  for (const path of ['/api/proposals/approve', '/api/proposals/reject']) {
+test('every decision on a proposal, one or many, needs the token without a browser', () => {
+  // The per-id routes were open to a local script that named any actor it liked,
+  // and signed an approval the control plane then accepted. The page itself
+  // still needs nothing.
+  for (const path of [
+    '/api/proposals/approve',
+    '/api/proposals/reject',
+    '/api/proposals/prop-1/approve',
+    '/api/proposals/prop-1/reject',
+  ]) {
     expect(mayEditConfig(path, '', undefined)).toBe(false);
     expect(mayEditConfig(path, '', 'wrong')).toBe(false);
     expect(mayEditConfig(path, '', TOKEN)).toBe(true);
@@ -79,4 +85,32 @@ test('an absent Origin is still same-origin for everything else', () => {
   expect(isAllowedOrigin('http://localhost:3000')).toBe(true);
   expect(isAllowedOrigin('https://example.com')).toBe(false);
   expect(isAllowedOrigin('not a url')).toBe(false);
+});
+
+test('the names that mean this machine are the only ones a request may be addressed to', () => {
+  for (const host of [
+    'localhost',
+    'localhost:3001',
+    '127.0.0.1',
+    '127.0.0.1:3001',
+    '[::1]',
+    '[::1]:3001',
+    'LOCALHOST:3001',
+  ]) {
+    expect([host, isAllowedHost(host)]).toEqual([host, true]);
+  }
+  for (const host of [
+    'attacker.example',
+    'attacker.example:3001',
+    'localhost.attacker.example',
+    '127.0.0.1.attacker.example',
+    'attacker.example:3001@localhost',
+    '0.0.0.0:3001',
+    '192.168.1.20:3001',
+    'a b',
+    '',
+  ]) {
+    expect([host, isAllowedHost(host)]).toEqual([host, false]);
+  }
+  expect(isAllowedHost(undefined)).toBe(true);
 });

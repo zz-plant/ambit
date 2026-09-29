@@ -13,7 +13,7 @@ import { claudeCodeSeedInput, readClaudeCode } from '../claude-code.ts';
 import { seedFromConfig } from '../discovery.ts';
 import { discoverMcpClients } from '../mcp-clients.ts';
 import { configDefault } from '../paths.ts';
-import { C } from './output.ts';
+import { terminalPalette } from './output.ts';
 
 /**
  * Read the agent config and build the graph. One routine for `ambit seed` and
@@ -94,23 +94,30 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE kind != 'action'").get();
   const a = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE kind = 'action'").get();
   const actions = a?.cnt ? ` · ${a.cnt} actions` : '';
-  say(`${C.green}✓${C.reset} ${c?.cnt ?? 0} capabilities${C.grey}${actions}${C.reset}`);
+  // Printed by `ambit seed`, bootstrap.sh and the first run alike, any of which
+  // may be writing to a pipe or a log.
+  const paint = terminalPalette();
+  say(
+    `${paint.green}✓${paint.reset} ${c?.cnt ?? 0} capabilities${paint.grey}${actions}${paint.reset}`
+  );
   for (const source of sources) {
-    say(`${C.grey}  Seeded from ${source.label}.${C.reset}`);
+    say(`${paint.grey}  Seeded from ${source.label}.${paint.reset}`);
   }
   if (sources.length === 0) {
     // Say so rather than reporting a curated-model-only graph as if it had
     // read the environment. Silence here reads as "your stack is empty".
-    say(`${C.yellow}!${C.reset} No agent config at ${C.grey}${cfg}${C.reset}`);
+    say(`${paint.yellow}!${paint.reset} No agent config at ${paint.grey}${cfg}${paint.reset}`);
     say(
-      `${C.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${C.reset}`
+      `${paint.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${paint.reset}`
     );
-    say(`${C.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${C.reset}`);
+    say(
+      `${paint.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${paint.reset}`
+    );
     // This used to send people to an "Other configurations" section of the
     // README. There is no such section, and there was none when the line was
     // written; AGENTS.md is where the variable is actually described.
     say(
-      `${C.grey}  Another format: set CONFIG_MAPPING to a JSON mapping — see AGENTS.md.${C.reset}`
+      `${paint.grey}  Another format: set CONFIG_MAPPING to a JSON mapping — see AGENTS.md.${paint.reset}`
     );
   }
 }

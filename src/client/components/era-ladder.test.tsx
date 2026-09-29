@@ -10,7 +10,7 @@
  */
 import type { ReactElement, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, afterEach, beforeAll, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import App from '../App';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
@@ -19,6 +19,19 @@ import { ColumnHead } from './CivTree';
 import { EraLadderView } from './EraLadder';
 
 type Props = Record<string, any>;
+
+/** The props the shell last handed the deck, so a test can press a view tab's own handler. */
+const deck: { props?: Props } = {};
+vi.mock('./AppDeck', async importOriginal => {
+  const actual = await importOriginal<typeof import('./AppDeck')>();
+  return {
+    ...actual,
+    default: (props: Parameters<typeof actual.default>[0]) => {
+      deck.props = props;
+      return actual.default(props);
+    },
+  };
+});
 
 /** Every element in a tree of elements that satisfies `match`, in document order. */
 function findAll(
@@ -155,4 +168,28 @@ test('an open era is a reason for the detail panel to be open, with nothing else
 
   seed({ selectedEra: null, showDetailPanel: false });
   expect(renderToStaticMarkup(<App />)).not.toContain('app-detail-panel');
+});
+
+test('leaving the map closes an era ladder, and a node keeps its panel in My Setup', () => {
+  // The ladder stayed open over My Setup, covering the right edge of the list.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  seed({ items, connections, selectedEra: 3, showDetailPanel: true });
+  renderToStaticMarkup(<App />);
+  deck.props!.onShowView('config');
+  expect(useAmbitStore.getState()).toMatchObject({ selectedEra: null, showDetailPanel: false });
+
+  // A node's panel means the same thing over the list, so it stays.
+  seed({ selectedEra: null, selectedItem: 'combo:shell-execution', showDetailPanel: true });
+  renderToStaticMarkup(<App />);
+  deck.props!.onShowView('config');
+  expect(useAmbitStore.getState()).toMatchObject({
+    selectedItem: 'combo:shell-execution',
+    showDetailPanel: true,
+  });
+
+  // And back on the map, a ladder opened there is left alone.
+  seed({ selectedItem: null, selectedEra: 2, showDetailPanel: true });
+  renderToStaticMarkup(<App />);
+  deck.props!.onShowView('tree');
+  expect(useAmbitStore.getState().selectedEra).toBe(2);
 });

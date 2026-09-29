@@ -391,7 +391,10 @@ test('a credential is not a capability', () => {
   // Nothing `provides` a credential, so the ledger's vocabulary rule cannot
   // catch it: without the kind exclusion, declaring one on an unchanged machine
   // reads as a capability gained. The frontier must not move.
-  seed(TWO_PROVIDERS).close();
+  const first = seed(TWO_PROVIDERS);
+  // Dated apart: two seeds in one second are one observation.
+  first.prepare("UPDATE frontier_snapshots SET taken_at = '2026-09-21 09:00:00'").run();
+  first.close();
   const before = cli('history').at(-1).reached;
 
   seed(SHARED_CREDENTIAL, { name: 'config' }).close();

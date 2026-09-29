@@ -8,6 +8,21 @@ import { test, expect } from 'vitest';
 import { frontierSeries } from './ledger.ts';
 import { LOCAL_ONLY, PLUS_EMBEDDINGS, cli, rows, seed } from './testing/cli.ts';
 
+/**
+ * Two seeds, dated Monday and Friday, with the live graph where Friday left it.
+ * Two seeds a moment apart can share a second, and a second holds one
+ * observation, the last recorded in it. Dated apart, they are two.
+ */
+function mondayAndFriday() {
+  seed(LOCAL_ONLY).close();
+  const db = seed(PLUS_EMBEDDINGS);
+  const [first, second] = rows(db, 'SELECT id FROM frontier_snapshots ORDER BY id');
+  const date = db.prepare('UPDATE frontier_snapshots SET taken_at = ? WHERE id = ?');
+  date.run('2026-09-21 09:00:00', first.id);
+  date.run('2026-09-25 17:00:00', second.id);
+  db.close();
+}
+
 test('seeding records the frontier, and an unchanged re-seed does not', () => {
   seed(LOCAL_ONLY).close();
   expect(cli('history').length).toBe(1);
@@ -33,8 +48,7 @@ test('re-seeding updates derived state', () => {
 });
 
 test('the ledger separates what was acquired from what emerged', () => {
-  seed(LOCAL_ONLY).close();
-  seed(PLUS_EMBEDDINGS).close();
+  mondayAndFriday();
 
   const since = cli('history', 'since');
   expect(since.frontier_now).toBeGreaterThan(since.frontier_then);
@@ -84,8 +98,7 @@ test('an expanding vocabulary is not an expanding frontier', () => {
 });
 
 test('a real acquisition is still a gain, not vocabulary', () => {
-  seed(LOCAL_ONLY).close();
-  seed(PLUS_EMBEDDINGS).close();
+  mondayAndFriday();
   const since = cli('history', 'since');
   // Its provider is new, so this is the system changing rather than the model.
   expect(since.gained.map((g: any) => g.id)).toContain('combo:embeddings');
@@ -115,6 +128,64 @@ test('the terminal names a step between two observations in the words the timeli
   expect(step.moved).toBe(ticks[1].moved);
   // Up to now, the live graph is where the second seed left it.
   expect(cli('history', 'since', '2026-09-21 09:00:00').moved).toBe(step.moved);
+});
+
+test('a date and a time typed without quotes are read as the one timestamp they are', () => {
+  mondayAndFriday();
+  const quoted = cli('history', 'since', '2026-09-21 09:00:00', '2026-09-25 17:00:00');
+
+  // What a shell hands over for `ambit history since 2026-09-21 09:00:00`: two
+  // words. The second used to become `until`, a time on no date, which SQLite
+  // places in the year 2000, and the answer compared Monday with itself.
+  const split = cli('history', 'since', '2026-09-21', '09:00:00');
+  expect(split.error).toBeUndefined();
+  expect(split.since).toBe('2026-09-21 09:00:00');
+  expect(split.until).toBeUndefined();
+  expect(split.moved).toBe(quoted.moved);
+
+  const both = cli('history', 'since', '2026-09-21', '09:00:00', '2026-09-25', '17:00:00');
+  expect(both.until).toBe('2026-09-25 17:00:00');
+  expect(both.moved).toBe(quoted.moved);
+});
+
+test('a time with no date, or a bare number, is not a timestamp, and the error shows one', () => {
+  mondayAndFriday();
+  for (const typed of ['10:00:00', '2026', 'now']) {
+    const answer = cli('history', 'since', typed);
+    expect(answer.error, typed).toMatch(/^Not a timestamp/);
+    // The example in the message is one that works pasted into a shell.
+    expect(answer.error).toContain('2026-09-26T10:00:00Z');
+  }
+  expect(cli('history', 'since', '2026-09-21 09:00:00', '10:00:00').error).toMatch(
+    /^Not a timestamp: 10:00:00/
+  );
+});
+
+test('an until before every observation is refused, naming the earliest', () => {
+  mondayAndFriday();
+  // `when` may still start from the first observation after it, as documented.
+  expect(cli('history', 'since', '2026-09-01').since).toBe('2026-09-21 09:00:00');
+  // `until` did the same, so a question about a time before the ledger began
+  // was quietly answered about a later one.
+  const early = cli('history', 'since', '2026-09-01', '2026-09-02');
+  expect(early.error).toContain('2026-09-02');
+  expect(early.error).toContain('2026-09-21 09:00:00');
+});
+
+test('since the start begins where the timeline does when two observations share its first second', () => {
+  seed(LOCAL_ONLY).close();
+  const db = seed(PLUS_EMBEDDINGS);
+  // A second holds one observation: the timeline shows the last recorded in
+  // it. With no argument `since` started from the first recorded, so the two
+  // surfaces meant different observations by the start.
+  db.prepare("UPDATE frontier_snapshots SET taken_at = '2026-09-21 09:00:00'").run();
+  const { ticks } = frontierSeries(db);
+  db.close();
+
+  const fromStart = cli('history', 'since');
+  expect(ticks).toHaveLength(1);
+  expect(ticks[0].moved).toBe(`first observation, reached ${fromStart.frontier_then}`);
+  expect(fromStart.frontier_then).toBe(cli('history', 'since', ticks[0].taken_at).frontier_then);
 });
 
 test('a frontier query before any history explains itself', () => {

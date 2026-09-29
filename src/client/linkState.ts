@@ -123,6 +123,22 @@ export function readLinkState(search: string): LinkState {
 }
 
 /**
+ * What a link asks of the map once the graph has been read: the node to
+ * select, and whether to collapse to it. A collapse is to that node's
+ * neighbourhood, so it comes with a node the graph holds or not at all:
+ * `?collapse=1` alone, or naming a node this graph lacks, used to wait in the
+ * store and in the address bar, and the first node anyone clicked collapsed
+ * the map at once.
+ */
+export function linkFocus(
+  link: Pick<LinkState, 'focusId' | 'collapse'>,
+  items: readonly { id: string }[]
+): { id: string; collapse: boolean } | null {
+  const id = link.focusId;
+  return id && items.some(i => i.id === id) ? { id, collapse: link.collapse } : null;
+}
+
+/**
  * What a visit to the hosted site with no query string opens on.
  *
  * The published site has no engine behind it, so a bare visit used to land on
@@ -158,6 +174,27 @@ export function initialView(link: LinkState, narrow: boolean, touring = false): 
  */
 export type ShareState = Omit<LinkState, 'guideOff' | 'viewStated' | 'collapse' | 'depth' | 'dir'> &
   Partial<Pick<LinkState, 'collapse' | 'depth' | 'dir'>>;
+
+/** Where an address is written: the page's location and history, or a stand-in for them. */
+export interface AddressBar {
+  location: { search: string; hash: string };
+  history: { replaceState: (data: unknown, unused: string, url: string) => void };
+}
+
+/**
+ * Put `search` in the address bar, if it is not there already. Safari throws
+ * once a page writes history a hundred times in thirty seconds, and scrubbing
+ * a long ledger writes once per tick, so a write the browser refuses is
+ * skipped: the next change writes the address again.
+ */
+export function writeAddress(bar: AddressBar, search: string): void {
+  if (bar.location.search === search) return;
+  try {
+    bar.history.replaceState({}, '', search + bar.location.hash);
+  } catch {
+    /* the address bar catches up on the next change */
+  }
+}
 
 /**
  * The query string for a view, defaults omitted.

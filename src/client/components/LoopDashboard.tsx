@@ -508,7 +508,7 @@ function AuthorityFigure({
 
       {authority.budgets.length > 0 && (
         <div className="fig-block">
-          <h4 className="fig-subtitle">Spend delegated in advance</h4>
+          <h4 className="fig-subtitle">Spend ceilings</h4>
           <ul className="fig-bars">
             {authority.budgets.map(b => (
               <BudgetRow key={`${b.capability}/${b.action}`} budget={b} />

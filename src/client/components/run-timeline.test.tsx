@@ -259,6 +259,39 @@ test('nothing the ledger did not record reaches the page as a value', () => {
   }
 });
 
+/** A clock time, as the chart's axis prints one in any zone. */
+const CLOCK = /\d{1,2}:\d{2}:\d{2}/;
+
+test('a run with nothing recorded after its start states no length and draws no axis', () => {
+  // It read "Run of 1s" over an axis from 10:00:00 to 10:00:01 (last seen): a
+  // second the drawing's padding invented, stated as a measurement.
+  const svg = chart(draw(view({ ended_at: null })));
+  expect(svg).toContain('fig-run-bar');
+  expect(svg).not.toContain('Run of');
+  expect(svg).toContain('nothing recorded after its start');
+  expect(svg).not.toContain('last seen');
+  expect(svg).not.toContain('fig-run-axis');
+  expect(svg).not.toMatch(CLOCK);
+});
+
+test('a run that ended the instant it started says so, and draws no axis between one time and itself', () => {
+  const svg = chart(draw(view({ ended_at: at(0) })));
+  expect(text(svg)).toContain('Run of under 1s');
+  expect(svg).not.toContain('fig-run-axis');
+  expect(svg).not.toMatch(CLOCK);
+});
+
+test('a run with no time that reads draws nothing, and prints no time at all', () => {
+  // The empty domain began at zero, so the axis printed midnight.
+  const html = draw(view({ started_at: 'not a time', ended_at: null }));
+  expect(chart(html)).toBe('');
+  expect(html).not.toMatch(/\d{1,2}:\d{2}/);
+  expect(html).not.toContain('1970');
+  // What the run is, and that nobody was asked, is still said.
+  expect(text(html)).toContain('Ship the release');
+  expect(text(html)).toContain('You were not asked in this run.');
+});
+
 test('the demo draws a run with every case, and labels it a sample', () => {
   seed({ run: demoRun(), loopSource: 'sample' });
   const html = renderToStaticMarkup(<RunSection />);
@@ -277,6 +310,38 @@ test('the way in is on the Time & cost page', () => {
   const html = renderToStaticMarkup(<LoopDashboard />);
   expect(text(html)).toContain('One run, in time');
   expect(html).toContain('fig-run');
+});
+
+test('an engine with no run route is a ledger with no run, not a read that never ends', async () => {
+  // An engine older than /api/run answers 404 with a plain "Not found", which
+  // is not JSON: the section read "Reading the ledger…" for good.
+  vi.stubGlobal('fetch', async (url: string) =>
+    url.startsWith('/api/health')
+      ? { ok: true, json: async () => ({ status: 'ok' }) }
+      : {
+          ok: false,
+          status: 404,
+          json: async () => {
+            throw new SyntaxError('Unexpected token N in JSON');
+          },
+        }
+  );
+  seed({ demo: false, run: null });
+  await useAmbitStore.getState().loadRun();
+  expect(useAmbitStore.getState().run).toEqual({ recent: [], run: null });
+  // A server render reads the initial state, so what was loaded is handed to it.
+  seed({ run: useAmbitStore.getState().run });
+  expect(text(renderToStaticMarkup(<RunSection />))).toContain('No run recorded yet');
+
+  // A graph that does not exist yet answers a JSON 404: the same, said the same way.
+  vi.stubGlobal('fetch', async (url: string) =>
+    url.startsWith('/api/health')
+      ? { ok: true, json: async () => ({ status: 'ok' }) }
+      : { ok: false, status: 404, json: async () => ({ error: 'No graph yet.' }) }
+  );
+  seed({ run: null });
+  await useAmbitStore.getState().loadRun();
+  expect(useAmbitStore.getState().run).toEqual({ recent: [], run: null });
 });
 
 test('on the demo the runs are the demo’s, and a pick is answered without an engine', async () => {

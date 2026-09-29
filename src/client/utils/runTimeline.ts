@@ -16,15 +16,31 @@ export const epoch = (iso?: string | null): number | undefined => {
   return Number.isFinite(t) ? t : undefined;
 };
 
+/** Where a run's marks are drawn, and how long the record says it lasted. */
+export interface RunDomain {
+  start: number;
+  /** A second past `start` when every mark is one instant, so there is a width to draw in. */
+  end: number;
+  /** No end recorded: the bar is drawn to the last thing seen. */
+  open: boolean;
+  /**
+   * How long the record says the run lasted, in seconds: start to end, or to
+   * the last thing seen. Null when nothing says: an open run with nothing
+   * recorded after its start. The second of width is the drawing's, never this.
+   */
+  seconds: number | null;
+}
+
 /**
  * The stretch of time the run's marks are drawn over.
  *
  * From the run's start to its end, and further either way for anything the
  * ledger recorded outside them: a clock that disagrees, or a runtime that never
  * reported the end. `open` says the run has no end recorded, so the bar is
- * drawn to the last thing seen and not to a time nobody stated.
+ * drawn to the last thing seen and not to a time nobody stated. A run with no
+ * time that reads has nothing to be drawn against, and is null.
  */
-export function runDomain(run: RunView): { start: number; end: number; open: boolean } {
+export function runDomain(run: RunView): RunDomain | null {
   const points: number[] = [];
   const start = epoch(run.started_at);
   if (start !== undefined) points.push(start);
@@ -44,10 +60,19 @@ export function runDomain(run: RunView): { start: number; end: number; open: boo
     const end = epoch(a.ended_at);
     if (end !== undefined) points.push(end);
   }
-  const from = points.length ? Math.min(...points) : 0;
-  const to = points.length ? Math.max(...points) : 0;
-  // A run whose every mark falls in one instant still needs a width to draw in.
-  return { start: from, end: to > from ? to : from + 1000, open: ended === undefined };
+  // No time that reads: an empty domain began at zero, and the axis printed
+  // midnight on the first of January 1970.
+  if (!points.length) return null;
+  const from = Math.min(...points);
+  const to = Math.max(...points);
+  const open = ended === undefined;
+  return {
+    start: from,
+    // A run whose every mark falls in one instant still needs a width to draw in.
+    end: to > from ? to : from + 1000,
+    open,
+    seconds: open && to === from ? null : (to - from) / 1000,
+  };
 }
 
 /** Seconds as a person says them: "45s", "2m 10s", "1h 05m". Under a second is said so. */

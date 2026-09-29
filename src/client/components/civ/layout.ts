@@ -585,6 +585,19 @@ export function sceneSize({ cols, colOrder }: Columns): { width: number; height:
 }
 
 /**
+ * How far below the top of the canvas's scroller the canvas starts under the
+ * map's headline, in pixels: what the canvas's own top margin does not already
+ * clear. The range line shares the zoom and lens controls' row, which that
+ * margin is for, so a line of range and a line of finding (82px in all) is the
+ * 40px it always was, and each line either of them wraps to adds its own. A
+ * fixed 40px let the finding sit on the era names at 900px. Until the headline
+ * is measured it is that 40px.
+ */
+export function headlineReserve(height: number | null): number {
+  return height === null ? 40 : Math.max(0, height - 42);
+}
+
+/**
  * Reached, and its check failed: configured, and not working. The engine's
  * `usable(lifecycle)` is the same rule; the client has no engine to ask.
  */

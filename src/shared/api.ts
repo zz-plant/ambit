@@ -321,10 +321,13 @@ export interface ApprovalArtifact {
   sig: string;
 }
 
+/**
+ * A decision on one proposal names the hash its card was drawn from and no
+ * actor. The person is the one at the loopback page whatever the body says, so
+ * there is no field to claim to be someone else.
+ */
 export interface ApproveRequest {
-  actor?: string;
-  budgetCents?: number;
-  ttlHours?: number;
+  proposalHash: string;
 }
 
 export interface ApproveResponse {
@@ -334,7 +337,7 @@ export interface ApproveResponse {
 }
 
 export interface RejectRequest {
-  actor?: string;
+  proposalHash: string;
   reason?: string;
 }
 
@@ -505,7 +508,7 @@ export interface LoopAuthority {
     evidence: string;
     command: string;
   }[];
-  /** Spend delegated in advance, and how much of each ceiling is used. */
+  /** Standing spend ceilings, and how much of each is used. */
   budgets: {
     capability: string;
     action: string;

@@ -323,6 +323,23 @@ test('a broken capability stops reading as available', () => {
   expect(sim.blocked_by_degraded.map((b: any) => b.id)).toContain('combo:version-control');
 });
 
+test('simulating an id the graph does not hold is an error, not a larger frontier', () => {
+  // `--simulate nope` reported the frontier growing by whatever `nope` would
+  // unblock, which is nothing: it is not a node. The same words that would
+  // have found a real one are offered instead.
+  seed(LOCAL_ONLY).close();
+  const slip = cli('goal', 'shell-exection', '--simulate');
+  expect(slip.error).toContain('No capability "shell-exection"');
+  expect(slip.did_you_mean).toContain('combo:shell-execution');
+  expect(slip.acquired).toBeUndefined();
+  expect(slip.frontier_after).toBeUndefined();
+
+  // A name, a bare word and an id are one node.
+  const byName = cli('goal', 'Version Control', '--simulate');
+  const byId = cli('goal', 'combo:version-control', '--simulate');
+  expect(byName.frontier_after).toBe(byId.frontier_after);
+});
+
 test('a re-passing verification releases the gate', () => {
   seed(LOCAL_ONLY).close();
   recordVerification('combo:shell-execution', 'failed');
@@ -381,7 +398,10 @@ test('the ledger records demonstrated reliability beside reach', () => {
 });
 
 test('since reports a capability that stopped working', () => {
-  seed(LOCAL_ONLY).close();
+  const first = seed(LOCAL_ONLY);
+  // Dated apart: two seeds in one second are one observation.
+  first.prepare("UPDATE frontier_snapshots SET taken_at = '2026-09-21 09:00:00'").run();
+  first.close();
   recordVerification('combo:shell-execution', 'failed');
   seed(LOCAL_ONLY).close();
 

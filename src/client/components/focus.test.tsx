@@ -9,11 +9,11 @@
  * reader sees: the control and its pill, what the map draws and leaves out, and
  * what stays whole, which is the header's counts and a simulation's sentence.
  */
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { ReactElement, ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
+import App from '../App';
+import { linkFocus, readLinkState, writeLinkState } from '../linkState';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { collapseTo, outageSplit, visibleItems } from './civ/layout';
@@ -23,6 +23,33 @@ import { FocusControls } from './FocusControls';
 import NodeDetailPanel from './NodeDetailPanel';
 
 type Props = Record<string, any>;
+
+// The writer the shell hands the view to, watched: see the address bar below.
+vi.mock('../linkState', async importOriginal => {
+  const actual = await importOriginal<typeof import('../linkState')>();
+  return { ...actual, writeLinkState: vi.fn(actual.writeLinkState) };
+});
+
+const originalWindow = globalThis.window;
+const originalLocalStorage = globalThis.localStorage;
+
+beforeAll(() => {
+  const mediaQuery = { matches: false, addEventListener() {}, removeEventListener() {} };
+  Object.assign(globalThis, {
+    localStorage: { getItem: () => '1', setItem() {} },
+    window: {
+      location: { search: '?view=tree&guide=off' },
+      matchMedia: () => mediaQuery,
+      addEventListener() {},
+      removeEventListener() {},
+      innerWidth: 1440,
+    },
+  });
+});
+
+afterAll(() => {
+  Object.assign(globalThis, { window: originalWindow, localStorage: originalLocalStorage });
+});
 
 function findAll(
   node: ReactNode,
@@ -50,6 +77,7 @@ afterEach(() => {
     connections: [],
     selectedItem: null,
     selectedEra: null,
+    showDetailPanel: false,
     collapsed: false,
     collapseDepth: 2,
     collapseDirection: 'both',
@@ -339,14 +367,58 @@ test('a simulation that reaches nothing the collapse hides says nothing of it', 
 
 test('the shell hands the collapse to the address bar with the rest of the view', () => {
   // The address bar is written in an effect, which a server render never runs,
-  // so the hand-off is checked where it is made.
-  const app = readFileSync(join(import.meta.dirname, '..', 'App.tsx'), 'utf8');
-  const call = app.match(/useUrlSync\(\{([^}]*)\}\)/)?.[1] ?? '';
-  for (const key of ['view', 'focusId', 'lens', 'collapse', 'depth', 'dir']) {
-    expect(call, `useUrlSync is not given ${key}`).toContain(key);
-  }
-  // And each is read from the store's collapse, not made up.
-  expect(app).toContain('s => s.collapsed');
-  expect(app).toContain('s => s.collapseDepth');
-  expect(app).toContain('s => s.collapseDirection');
+  // so what the shell hands the writer is read off the writer itself.
+  seed({
+    items,
+    connections,
+    selectedItem: ROOT,
+    showDetailPanel: true,
+    collapsed: true,
+    collapseDepth: 1,
+    collapseDirection: 'needs',
+  });
+  vi.mocked(writeLinkState).mockClear();
+  renderToStaticMarkup(<App />);
+  expect(vi.mocked(writeLinkState).mock.lastCall?.[0]).toMatchObject({
+    view: 'tree',
+    focusId: ROOT,
+    collapse: true,
+    depth: 1,
+    dir: 'needs',
+  });
+});
+
+test('a link lands collapsed only on a node the graph holds, and the address bar says so', () => {
+  // What the shell does with a link once the graph is read: find its node
+  // (linkFocus), select it, apply the collapse, and write the view back.
+  const land = (search: string) => {
+    const link = readLinkState(search);
+    seed({ items, connections, selectedItem: null, collapsed: false });
+    const found = linkFocus(link, items);
+    if (found) {
+      useAmbitStore.getState().selectItem(found.id);
+      if (found.collapse) useAmbitStore.getState().setCollapsed(true);
+    }
+    const s = useAmbitStore.getState();
+    return writeLinkState({
+      view: link.view,
+      focusId: s.selectedItem,
+      docsOpen: false,
+      demo: false,
+      lens: 'default',
+      collapse: s.collapsed,
+      depth: link.depth,
+      dir: link.dir,
+    });
+  };
+  expect(land(`?view=tree&focus=${ROOT}&collapse=1&depth=1`)).toBe(
+    `?view=tree&focus=${encodeURIComponent(ROOT)}&collapse=1&depth=1`
+  );
+  // With no node, or one this graph lacks, the collapse is dropped from the
+  // address bar, and the first node clicked is the whole map.
+  expect(land('?view=tree&collapse=1')).toBe('?view=tree');
+  expect(land('?view=tree&focus=combo:nope&collapse=1')).toBe('?view=tree');
+  useAmbitStore.getState().selectItem('combo:model-routing');
+  expect(useAmbitStore.getState().collapsed).toBe(false);
+  expect(places(map({ selectedId: 'combo:model-routing' })).size).toBe(drawn.length);
 });

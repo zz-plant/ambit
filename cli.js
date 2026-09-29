@@ -21,9 +21,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // of the package entirely and every command failed to find the engine.
 const ROOT = __dirname;
 
-const B = '\x1b[1m',
-  R = '\x1b[0m',
-  D = '\x1b[90m';
+// Colour only on a terminal, and not when NO_COLOR is set to anything but
+// empty. This is a transcription of `colorOn` in src/engine/cli/output.ts, not
+// a second opinion: this file is plain JavaScript run by a bare `node`, which
+// cannot load the engine's TypeScript, so the test is repeated here and has to
+// match. A pipe gets the same words from both with nothing painted on them.
+const painted = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+const B = painted ? '\x1b[1m' : '',
+  R = painted ? '\x1b[0m' : '',
+  D = painted ? '\x1b[90m' : '';
 
 // A git checkout runs the TypeScript sources directly; an npm or Homebrew
 // install runs the compiled copy in dist-cli, because Node refuses to
@@ -110,9 +116,11 @@ if (cmd === 'web') {
 }
 
 // The MCP server, runnable from any install: `claude mcp add ambit -- ambit mcp`.
-// Before this, registering it meant knowing where npm put the package.
+// Before this, registering it meant knowing where npm put the package. What
+// follows `mcp` is the server's own: `ambit mcp --profile=agent` offers the
+// ten tools a working agent needs and not all sixty.
 if (cmd === 'mcp') {
-  const result = spawnSync('node', [...NODE_FLAGS, mcpEntry], { stdio: 'inherit' });
+  const result = spawnSync('node', [...NODE_FLAGS, mcpEntry, ...args], { stdio: 'inherit' });
   process.exit(result.status || 0);
 }
 
