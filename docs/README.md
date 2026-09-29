@@ -17,6 +17,7 @@
 ## Intent: ahead of the code, on purpose
 
 - [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided and what it still lacks. Nothing in it has a date or an owner.
+- [Interface specs](./interface-specs.md) — sixteen changes to the surfaces, each with what it reads, the rules it touches and what done means, and which are ready to build.
 
 ## Record: what was said at the time, not edited
 
