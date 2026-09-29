@@ -152,6 +152,33 @@ test('nothing is drawn when the whole map fits', () => {
   expect(minimapModel({ ...scroller(1, SCREEN), zoom: Number.NaN }, SCENE, BOX)).toBeNull();
 });
 
+test('whether the map fits does not depend on where it is scrolled to', () => {
+  // 780 tall: the scene and its 84px of offsets need 844, so it scrolls by 64,
+  // less than the offsets. At the bottom of that scroll the whole scene is in
+  // view, and the minimap used to vanish there, in the middle of a drag.
+  const short = { width: 1500, height: 780 };
+  const bottom = 844 - short.height;
+  for (const top of [0, bottom / 2, bottom]) {
+    const model = minimapModel(scroller(1, short, { left: 0, top }), SCENE, BOX);
+    expect(model, `scrolled ${top} down`).not.toBeNull();
+  }
+  // Scrolled to the bottom, the outline is the whole scene.
+  const atBottom = minimapModel(scroller(1, short, { left: 0, top: bottom }), SCENE, BOX)!;
+  expect(atBottom.view.height).toBeCloseTo(atBottom.height, 5);
+
+  // The same across: a scene 30 units wider than the room it has.
+  const narrow = { width: 1318, height: 900 };
+  for (const left of [0, 30]) {
+    expect(minimapModel(scroller(1, narrow, { left, top: 0 }), SCENE, BOX)).not.toBeNull();
+  }
+  // And a map that fits, fits wherever the scroller says it is.
+  for (const top of [0, 40]) {
+    expect(
+      minimapModel(scroller(1, { width: 1500, height: 900 }, { left: 0, top }), SCENE, BOX)
+    ).toBeNull();
+  }
+});
+
 test('moving the viewport to a point puts that point in the middle of the screen', () => {
   const g = scroller(1, SCREEN);
   const to = scrollForCentre({ x: 670, y: 380 }, g);
