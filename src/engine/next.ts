@@ -13,6 +13,7 @@
  * waiting on nothing else. Cost is the model's own setup estimate and whatever
  * the acquisition catalog says it bills. Neither is a guess dressed as data.
  */
+import { shellQuote } from '../shared/shell.ts';
 import type { Db } from './db.ts';
 import { usable } from './assurance.ts';
 import { deficits } from './planning.ts';
@@ -208,8 +209,8 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
         // answer "what next" would write three rows every time someone asked a
         // question. `ambit propose` is one keystroke away and is the moment a
         // person has actually chosen.
-        propose: `ambit propose ${short}`,
-        plan: `ambit goal ${short}`,
+        propose: `ambit propose ${shellQuote(short)}`,
+        plan: `ambit goal ${shellQuote(short)}`,
         // Both rankers have priced this one. Say so rather than pretending
         // this is the only reading.
         priced_case: priced.has(c.id) ? `ambit opportunity ${priced.get(c.id)}` : undefined,

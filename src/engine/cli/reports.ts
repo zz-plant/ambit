@@ -10,6 +10,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { shellQuote } from '../../shared/shell.ts';
 import { ENGINE_DIR, loadTechTree } from '../paths.ts';
 import { findBottlenecks, singlePointsOfFailure } from '../inference.ts';
 import { ledgerHistory } from '../ledger.ts';
@@ -156,7 +157,7 @@ function nextMove(
   const [first] = found.degraded;
   if (first) {
     return {
-      command: `ambit verify ${first.id.replace(/^combo:/, '')}`,
+      command: `ambit verify ${shellQuote(first.id.replace(/^combo:/, ''))}`,
       why:
         found.degraded.length === 1
           ? `${first.name} is configured and failing its check`
@@ -184,7 +185,7 @@ function nextMove(
     const top = (nextSteps(db) as any).next?.[0];
     if (top) {
       return {
-        command: `ambit goal ${top.id.replace(/^combo:/, '')}`,
+        command: `ambit goal ${shellQuote(top.id.replace(/^combo:/, ''))}`,
         why: `${top.capability} is the best next step${top.cost === 'unknown' ? '' : `, about ${top.cost}`}`,
       };
     }

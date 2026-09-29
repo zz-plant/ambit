@@ -13,6 +13,7 @@
  */
 import type { CheckRun } from '../../shared/api';
 import { isFailing } from '../components/civ/layout';
+import { shellQuote } from '../../shared/shell';
 import type { Item } from './configImporter';
 
 /**
@@ -85,7 +86,8 @@ export function trailOf(entry: Item, provided: Item[]): CheckTrail | null {
  * it: a check runs where a person types it. The palette, the detail panel and
  * a My Setup row all copy this string, so they name the same command.
  */
-export const verifyCommand = (node: Pick<Item, 'id'>): string => `ambit verify ${node.id}`;
+export const verifyCommand = (node: Pick<Item, 'id'>): string =>
+  `ambit verify ${shellQuote(node.id)}`;
 
 /**
  * What a strip says in words, for a screen reader and for the tooltip: how many

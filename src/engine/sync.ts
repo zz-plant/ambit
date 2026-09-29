@@ -28,6 +28,7 @@
  *   a file, which inverts the direction authority is supposed to travel.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
+import { shellQuote } from '../shared/shell.ts';
 import type { Db } from './db.ts';
 
 const SCHEMA_VERSION = 1;
@@ -221,7 +222,7 @@ function exportSync(db: Db, path?: string) {
       ? skills.map(s => ({
           id: s.id,
           name: s.name,
-          reregister: `ambit record ${s.id} --verify="…"`,
+          reregister: `ambit record ${shellQuote(s.id)} --verify="…"`,
         }))
       : undefined,
     excluded: [

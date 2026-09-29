@@ -72,6 +72,26 @@ describe('the head of the report', () => {
   });
 });
 
+describe('the command it ends on', () => {
+  const NASTY = 'skill:pdf-tools$(touch PWNED)';
+  const lastLine = (lines: string[]) => plain(lines.filter(Boolean).at(-1) ?? '');
+
+  it('quotes an id a shell would read as more than one word', () => {
+    // The id of a registered skill is whatever its agent typed, and the line
+    // is one a person is meant to paste.
+    const last = lastLine(
+      renderStatus(reportOf([{ id: NASTY, name: 'PDF tools', lifecycle: 'broken' }]), PLAIN)
+    );
+    expect(last).toContain(`ambit verify '${NASTY}'`);
+    expect(last).not.toContain(`ambit verify ${NASTY}`);
+  });
+
+  it('leaves an ordinary id as it was', () => {
+    const last = lastLine(renderStatus(reportOf(MIXED), PLAIN));
+    expect(last).toContain('ambit verify c ');
+  });
+});
+
 describe('the evidence counts', () => {
   it('read down one column, labels on the left and values on the right', () => {
     const rows = evidenceRows(renderStatus(reportOf(MIXED), PLAIN));
