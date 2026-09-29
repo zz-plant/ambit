@@ -234,7 +234,7 @@ The npm package is built and ready but not yet published, so there is no <code>n
 <td align="left">Run a capability&#39;s declared check and record whether it actually works</td>
 </tr>
 <tr>
-<td align="left"><code>ambit history [since]</code></td>
+<td align="left"><code>ambit history [since &lt;when&gt; [&lt;until&gt;]]</code></td>
 <td align="left">How the frontier moved, separating what you acquired from what emerged</td>
 </tr>
 <tr>
@@ -310,12 +310,22 @@ The npm package is built and ready but not yet published, so there is no <code>n
 </code></pre>
 <!-- /example --><h3 id="ambit-share--what-may-leave-the-graph-and-what-may-not"><a class="anchor" href="#ambit-share--what-may-leave-the-graph-and-what-may-not" aria-hidden="true" tabindex="-1">#</a>ambit share — what may leave the graph, and what may not</h3>
 <p><code>ambit share</code> builds its HTML from an allow-list — name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as &quot;a person&quot;, and <code>--redact</code> replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.</p>
+<h3 id="from-a-script-or-an-agents-shell"><a class="anchor" href="#from-a-script-or-an-agents-shell" aria-hidden="true" tabindex="-1">#</a>From a script, or an agent&#39;s shell</h3>
+<p>Output is plain when nothing is reading it as a terminal: colour is drawn only when stdout is one and <code>NO_COLOR</code> is unset, so a pipe, a file and a CI log read what was written. <code>--json</code> prints any answer as data. The exit code says whether the command worked: 0 for an answer, 1 for a command that reported an error (a usage error, an id that is not on the map), and 2 for a word that is not a command. <code>ambit check --ci</code> keeps its own codes.</p>
+<p>Two commands can gate a script the way <code>git diff --exit-code</code> does. Without the flag nothing about them changes.</p>
+<pre><code class="language-bash">ambit can shell-execution --exit-code     # 0 go ahead, 1 put it to the person, 2 stop
+ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
+</code></pre>
+<p><code>can</code> maps ALLOW, CONFIRM and DENY to 0, 1 and 2, and a DENY files the deficit as it does over MCP. <code>verify --exit-code</code> also exits 1 for a capability with no check to run, since nothing was proved. A flag with a value is written <code>--target=svc:ollama</code>; the two-word form is not read.</p>
 <hr>
 <h2 id="connect-it-to-your-agent"><a class="anchor" href="#connect-it-to-your-agent" aria-hidden="true" tabindex="-1">#</a>Connect it to your agent</h2>
 <p>Registering Ambit as an MCP server lets an agent inspect its own toolchain and plan around what is missing.</p>
-<p>Sixty tools, each advertised once, each answering with MCP <code>structuredContent</code> alongside the text block so an agent reads a field and never parses a string. <a href="/ambit/docs/deep-dive/#the-full-mcp-surface">The deep dive</a> names all sixty, grouped. (The <code>tt_</code> prefix from before the rename is still accepted, just no longer listed.)</p>
+<p>Sixty tools, each advertised once, each answering with MCP <code>structuredContent</code> alongside the text block so an agent reads a field and never parses a string. <a href="/ambit/docs/deep-dive/#the-full-mcp-surface">The deep dive</a> names all sixty, grouped, and <a href="/ambit/docs/deep-dive/#how-a-call-is-answered">says how a call is answered</a>: a call that cannot work comes back as a failed call that says what to send, and a capability may be named by its id, its bare name or its display name. (The <code>tt_</code> prefix from before the rename is still accepted, just no longer listed.)</p>
 <h3 id="claude-code"><a class="anchor" href="#claude-code" aria-hidden="true" tabindex="-1">#</a>Claude Code</h3>
 <pre><code class="language-bash">claude mcp add ambit -- ambit mcp
+</code></pre>
+<p>The full listing is sixty tool descriptions, about 19.5KB of an agent&#39;s context. A session that mostly asks before it acts can list the ten tools it uses in 4.4KB instead, and nothing is hidden by it: the others still answer by name.</p>
+<pre><code class="language-bash">claude mcp add ambit -- ambit mcp --profile=agent
 </code></pre>
 <p>Ambit also publishes a resource, <code>ambit://briefing</code>, which a client reads on
 connect: what is reached and proven, what is configured but failing, what is
@@ -349,6 +359,7 @@ the capability. On <code>yes</code>, act. On <code>ask</code>, put it to the per
 already recorded the deficit, so do not retry it under another name.</p>
 </blockquote>
 <p>It answers from the graph without probing anything, and a refusal files itself as a deficit, which is what makes the third occurrence show up as infrastructure that should exist instead of a wall to work around again.</p>
+<p>The server sends this line itself, as the <code>instructions</code> a client receives when it connects, so a client that passes them to the model needs nothing pasted. <code>ambit init-rules</code> writes it into <code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>.cursorrules</code> for one that does not, and for an agent that has a shell and no MCP the same question is <code>ambit can &lt;capability&gt; --exit-code</code>.</p>
 <p>Here is the whole loop from a live run. <code>node --experimental-strip-types scripts/demo-agent-loop.ts</code> re-records it, and every frame is real engine output — a failing loop fails the recording instead of rendering a fiction.</p>
 <div align="center">
 <img src="/ambit/docs/assets/agent-loop-demo.gif" alt="An agent hits a missing capability, asks Ambit why over MCP, and drafts a proposal; a person approves and applies it; the frontier moves and Local Embeddings unlocks through composition" width="920">
