@@ -20,6 +20,7 @@ import { isNarrowScreen, useNarrow } from './hooks/useViewport';
 import { hostedLanding, initialView, readLinkState, type View } from './linkState';
 import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
+import type { PaletteHandlers } from './utils/palette';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 
@@ -63,6 +64,8 @@ export default function App() {
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
   const setSpotlight = useAmbitStore(s => s.setSpotlight);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
+  const startOutage = useAmbitStore(s => s.startOutageSimulation);
+  const setActiveLens = useAmbitStore(s => s.setActiveLens);
 
   // The URL is read once; the controls own every later change.
   const [link] = useState(() =>
@@ -183,6 +186,13 @@ export default function App() {
     startAcquisition(id);
   };
 
+  /** The same, for the outage: the map, the node selected, and what stops. */
+  const showOutage = (id: string) => {
+    setView('tree');
+    select(id);
+    startOutage(id);
+  };
+
   const showView = (next: View) => {
     setView(next);
     // The detail panel is meaningful over the map and the list, and in the
@@ -211,6 +221,29 @@ export default function App() {
   const showProposals = () => {
     setShowApprovalModal(true);
     loadProposals();
+  };
+
+  /**
+   * What the finder's actions do to the page. Each one shows the map or a
+   * panel, and `view` lives here, so the finder is handed these and never sets
+   * a view itself. A check is copied and never run: the page has no route that
+   * runs one.
+   */
+  const paletteHandlers: PaletteHandlers = {
+    simulate: (id, mode) => (mode === 'outage' ? showOutage(id) : showOnMap(id)),
+    lens: lens => {
+      setView('tree');
+      setActiveLens(lens);
+    },
+    proposals: showProposals,
+    copy: async (text, notice) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setToast(notice);
+      } catch {
+        setToast(`Could not copy. Type ${text} in a terminal.`);
+      }
+    },
   };
 
   const selected = selectedId ? items.find(i => i.id === selectedId) : undefined;
@@ -361,7 +394,12 @@ export default function App() {
         </aside>
       )}
 
-      <Finder open={finderOpen} onClose={() => setFinderOpen(false)} onShow={show} />
+      <Finder
+        open={finderOpen}
+        onClose={() => setFinderOpen(false)}
+        onShow={show}
+        handlers={paletteHandlers}
+      />
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
       <DocsModal
         isOpen={showDocs}

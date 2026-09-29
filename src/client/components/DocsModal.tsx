@@ -21,7 +21,10 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const HOTKEYS = [
-  { key: '/', desc: 'Find a capability, on the map or in your setup' },
+  {
+    key: '/',
+    desc: 'Find a capability, on the map or in your setup, or run an action on it: an outage, an unlock, its check, a lens, Proposals',
+  },
   { key: 'J / K', desc: 'Step through the nodes on the map' },
   { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
   { key: '+ / -', desc: 'Zoom in / out on the map' },
