@@ -8,7 +8,8 @@
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { copyFile, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import { join } from 'node:path';
 
 export const CONFIG_PATH =
@@ -36,21 +37,44 @@ export async function readConfig(): Promise<Record<string, unknown> | null> {
  * edit replaces the last backup, so the file is always the config as it stood
  * before the most recent edit.
  *
- * No config yet means nothing to keep, and the write goes ahead. A backup that
- * cannot be made stops the write instead: an edit this server cannot undo is
- * not one it should make.
+ * The copy is made beside the backup and renamed over it. Copying straight to
+ * `<config>.bak` follows a link that is already there, so a link planted at that
+ * name made the write land wherever it pointed, and a link pointing nowhere made
+ * the copy fail in a way this function once read as "there is no config yet".
+ * A rename replaces the name itself and follows nothing.
+ *
+ * No config yet means nothing to keep, and the write goes ahead. That is decided
+ * by asking about the config, never by which step failed. A backup that cannot be
+ * made stops the write instead: an edit this server cannot undo is not one it
+ * should make.
  */
 export async function writeConfig(data: Record<string, unknown>): Promise<boolean> {
   try {
-    try {
-      await copyFile(CONFIG_PATH, `${CONFIG_PATH}.bak`);
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    if (await configExists()) {
+      const backup = `${CONFIG_PATH}.bak`;
+      const beside = `${backup}.${randomBytes(6).toString('hex')}.tmp`;
+      try {
+        await copyFile(CONFIG_PATH, beside, constants.COPYFILE_EXCL);
+        await rename(beside, backup);
+      } catch (e) {
+        await rm(beside, { force: true });
+        throw e;
+      }
     }
     await writeFile(CONFIG_PATH, JSON.stringify(data, null, 2));
     return true;
   } catch {
     return false;
+  }
+}
+
+async function configExists(): Promise<boolean> {
+  try {
+    await stat(CONFIG_PATH);
+    return true;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw e;
   }
 }
 
