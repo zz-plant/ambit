@@ -5289,6 +5289,90 @@ code, pre, .code, .sp-cli-cmd {
   font-weight: 500;
 }
 
+/* What taking the capability on needs, and how much of it is here. Drawn once
+   above the options, since every option needs the same things. Met and missing
+   are words on a tag, so the line reads without a colour. */
+.fig-needs {
+  margin: 6px 0 2px;
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.fig-needs p {
+  margin: 0;
+}
+
+.fig-needs-head strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.fig-needs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fig-tag--missing {
+  color: var(--warn);
+  border-color: var(--warn-line);
+}
+
+.fig-need-why {
+  margin-left: 6px;
+  color: var(--text-muted);
+}
+
+.fig-needs-creds {
+  margin-top: 4px;
+}
+
+/* The entry that installs an option: read it, then paste it. */
+.fig-install {
+  grid-column: 1 / -1;
+  min-width: 0;
+  font-size: 11.5px;
+}
+
+.fig-install summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.fig-install pre {
+  max-width: 100%;
+  margin: 6px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.fig-install-copy {
+  padding: 3px 9px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.fig-install-copy:hover {
+  border-color: var(--fig-data);
+  color: var(--text-primary);
+}
+
 /* ─── A MISSING SERVER, WITH ITS ENTRY READY ─── */
 .tp-inline-btn {
   display: inline-flex;

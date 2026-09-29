@@ -15,6 +15,7 @@ import { CHECK_RUN, CHECK_RUN_SQL, FAILING_SQL, graphCounts, REACHED_SQL } from 
 import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
 import { budgetStanding } from './budgets.ts';
+import { installText } from './catalog.ts';
 import { frontierSeries, ledgerSince } from './ledger.ts';
 import { unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
@@ -623,7 +624,7 @@ export function loopView(db: Db): LoopResponse {
     },
     payback_months: o.payback_months ?? null,
     confidence: o.confidence,
-    acquisition_options: favour(db, o.acquisition_options),
+    acquisition_options: withInstall(o.capability_id, favour(db, o.acquisition_options)),
   })) as LoopResponse['opportunities'];
 
   const interventions = digest.interventions ?? 0;
@@ -789,6 +790,22 @@ function favour(
   } catch {
     return options as never;
   }
+}
+
+/**
+ * Each option that has one, with the entry that installs it as text. The
+ * catalog rows carry no patch, so this is read from the curated tree beside
+ * them; an option with none is passed through as it was.
+ */
+function withInstall(
+  capabilityId: string,
+  options: LoopResponse['opportunities'][number]['acquisition_options']
+): LoopResponse['opportunities'][number]['acquisition_options'] {
+  if (!Array.isArray(options)) return options;
+  return options.map(o => {
+    const install = installText(capabilityId, o as never);
+    return install ? { ...o, install } : o;
+  });
 }
 
 /**

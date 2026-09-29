@@ -31,6 +31,25 @@ function treeStatus() {
   };
 }
 
+/**
+ * The entry the curated tree gives "nomic-embed via local runtime": text for a
+ * person to paste, the same the engine serves for that alternative. A test holds
+ * the two equal.
+ */
+const EMBEDDINGS_INSTALL = JSON.stringify(
+  {
+    provider: {
+      'nomic-embed': {
+        npm: '@ai-sdk/openai-compatible',
+        options: { baseURL: 'http://127.0.0.1:11434/v1' },
+        models: { 'nomic-embed-text': {} },
+      },
+    },
+  },
+  null,
+  2
+);
+
 const DAY = 86_400_000;
 
 /** The moment `n` days from now, as the graph stamps one, or only its day. */
@@ -152,6 +171,29 @@ export function demoSnapshot(): LoopSnapshot {
         expected: { human_hours_month_after: 0.1, savings_dollars_month: 248 },
         payback_months: 0.3,
         confidence: 'medium',
+      },
+      {
+        id: 'opp-4',
+        title: 'Acquire embeddings',
+        capability: 'Embeddings',
+        capability_id: 'combo:embeddings',
+        kind: 'deficit',
+        burden: { interventions_month: 4, human_hours_month: 0.6, attention_dollars_month: 150 },
+        proposal: { action: 'acquire combo:embeddings', setup_hours: 0.2 },
+        expected: { human_hours_month_after: 0.1, savings_dollars_month: 135 },
+        payback_months: 0.4,
+        confidence: 'medium',
+        // The two ways the curated tree gives for it, and no price for either:
+        // the tree declares none, and an unknown figure is shown as unknown.
+        acquisition_options: [
+          {
+            provider: 'nomic-embed via local runtime',
+            kind: 'build',
+            privacy: 'local',
+            install: EMBEDDINGS_INSTALL,
+          },
+          { provider: 'hosted embedding API', kind: 'buy', privacy: 'hosted' },
+        ],
       },
     ],
     roi: {

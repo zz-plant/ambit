@@ -10,6 +10,7 @@
  */
 import { expect, test } from 'vitest';
 import { setBudget } from './budgets.ts';
+import { seedCatalog } from './seed/declared.ts';
 import { makeGraph } from './testing/graph.ts';
 import { loopView } from './views.ts';
 
@@ -168,4 +169,39 @@ test('a period that has run out reads as spent-nothing, the way the gate reads i
   expect(budget.spent_dollars).toBe(0);
   expect(budget.period_start).toBeNull();
   expect(budget.forecast).toBeUndefined();
+});
+
+test('an option the curated tree gives a patch is served with its install entry as text, and no other is', () => {
+  const db = makeGraph({
+    capabilities: [
+      { id: 'combo:embeddings', name: 'Embeddings', category: 'combo', state: 'locked' },
+    ],
+  });
+  seedCatalog(db, {});
+  for (let i = 0; i < 3; i++) {
+    db.prepare(
+      `INSERT INTO human_intervention (actor_id, kind, capability_id, started_at, active_seconds, waiting_seconds)
+       VALUES ('human:kanav', 'clerical', 'combo:embeddings', datetime('now', '-2 days'), ?, 0)`
+    ).run(HOUR);
+  }
+  const options =
+    loopView(db).opportunities.find(o => o.capability_id === 'combo:embeddings')
+      ?.acquisition_options ?? [];
+  db.close();
+
+  const local = options.find(o => o.provider === 'nomic-embed via local runtime');
+  const hosted = options.find(o => o.provider === 'hosted embedding API');
+  expect(JSON.parse(local?.install ?? 'null')).toEqual({
+    provider: {
+      'nomic-embed': {
+        npm: '@ai-sdk/openai-compatible',
+        options: { baseURL: 'http://127.0.0.1:11434/v1' },
+        models: { 'nomic-embed-text': {} },
+      },
+    },
+  });
+  // The other way to acquire it has no patch, so it has no line, and the wire
+  // does not carry an empty one.
+  expect(hosted).toBeDefined();
+  expect(JSON.parse(JSON.stringify(hosted))).not.toHaveProperty('install');
 });

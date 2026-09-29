@@ -464,6 +464,12 @@ export interface LoopOpportunity {
     privacy: string;
     /** The one the record of this person's decisions favours, where it leans. */
     favoured?: boolean;
+    /**
+     * The config entry that installs it, as text for a person to paste. Present
+     * only where the curated tree gives the alternative a patch, and never
+     * something a surface runs.
+     */
+    install?: string;
   }[];
 }
 

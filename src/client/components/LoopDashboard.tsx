@@ -10,7 +10,9 @@ import type {
 } from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
 import { budgetBar } from '../utils/budgetBar';
+import { type CapabilityNeeds, needsOf } from '../utils/needs';
 import { HoursSparkline, NUM, StackedBar, money } from './figures';
+import { Term } from './Term';
 
 /**
  * The work ledger's view of a month: where human attention went, what it cost,
@@ -679,42 +681,115 @@ function SinceStrip({ since }: { since: LoopSince | null }) {
  */
 function OptionCompare({
   options,
+  needs,
 }: {
   options: NonNullable<LoopOpportunity['acquisition_options']>;
+  needs?: CapabilityNeeds | null;
 }) {
+  const [copied, copy] = useCopied();
   const priced = options.filter(o => o.total_first_year_dollars != null);
   const max = Math.max(...priced.map(o => o.total_first_year_dollars as number), 1);
   const sorted = [...options].sort(
     (a, b) => (a.total_first_year_dollars ?? Infinity) - (b.total_first_year_dollars ?? Infinity)
   );
   return (
-    <ul className="fig-options" aria-label="Ways to acquire it">
-      {sorted.map(a => (
-        <li
-          key={`${a.provider}/${a.kind}`}
-          className={`fig-option ${a.favoured ? 'is-favoured' : ''}`}
-        >
-          <span className="fig-option-cost" style={NUM}>
-            {a.total_first_year_dollars != null ? `${money(a.total_first_year_dollars)}/yr` : '—'}
-          </span>
-          <span className="fig-option-track">
-            {a.total_first_year_dollars != null && (
-              <span
-                className="fig-option-bar"
-                style={{ width: `${Math.max((a.total_first_year_dollars / max) * 100, 2)}%` }}
-              />
-            )}
-          </span>
-          <span className="fig-option-what">
-            {a.kind} · {a.provider}
-            <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
-              {a.privacy}
+    <>
+      {needs && <NeedsLine needs={needs} />}
+      <ul className="fig-options" aria-label="Ways to acquire it">
+        {sorted.map(a => (
+          <li
+            key={`${a.provider}/${a.kind}`}
+            className={`fig-option ${a.favoured ? 'is-favoured' : ''}`}
+          >
+            <span className="fig-option-cost" style={NUM}>
+              {a.total_first_year_dollars != null ? `${money(a.total_first_year_dollars)}/yr` : '—'}
             </span>
-            {a.favoured && <span className="fig-option-favoured">your record favours this</span>}
-          </span>
-        </li>
-      ))}
-    </ul>
+            <span className="fig-option-track">
+              {a.total_first_year_dollars != null && (
+                <span
+                  className="fig-option-bar"
+                  style={{ width: `${Math.max((a.total_first_year_dollars / max) * 100, 2)}%` }}
+                />
+              )}
+            </span>
+            <span className="fig-option-what">
+              {a.kind} · {a.provider}
+              <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
+                {a.privacy}
+              </span>
+              {a.favoured && <span className="fig-option-favoured">your record favours this</span>}
+            </span>
+            {/* Text to read and to paste, and nothing else: a patch names a
+                command, so a surface shows it and never runs it. */}
+            {a.install && (
+              <details className="fig-install">
+                <summary>Install: add this entry to your agent config</summary>
+                <pre>{a.install}</pre>
+                <button
+                  type="button"
+                  className="fig-install-copy"
+                  onClick={() => copy(`${a.provider}/${a.kind}`, a.install as string)}
+                >
+                  {copied === `${a.provider}/${a.kind}` ? 'Copied ✓' : 'Copy the entry'}
+                </button>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** How many prerequisites a Needs line names before it counts the rest. */
+const NEEDS_SHOWN = 5;
+
+/**
+ * What taking a capability on needs, and how much of it is here.
+ *
+ * Every option of one capability needs the same things, so this is drawn once
+ * above the options and not under each. A prerequisite is met or missing and
+ * says so in a word, missing ones first, so the line is not read through a
+ * colour; the count is the answer to "can I start this today". A declared
+ * credential is named and never marked, because nothing checks one.
+ */
+function NeedsLine({ needs }: { needs: CapabilityNeeds }) {
+  const shown = needs.required.slice(0, NEEDS_SHOWN);
+  const more = needs.required.length - shown.length;
+  if (!needs.required.length && !needs.credentials.length) return null;
+  return (
+    <div className="fig-needs">
+      {needs.required.length > 0 && (
+        <>
+          <p className="fig-needs-head" style={NUM}>
+            Needs · <Term name="prerequisite">required</Term> prerequisites:{' '}
+            <strong>
+              {needs.met} of {needs.required.length} met here
+            </strong>
+          </p>
+          <ul className="fig-needs-list" aria-label="Required prerequisites">
+            {shown.map(n => (
+              <li key={n.id} className={`fig-need ${n.met ? 'is-met' : 'is-missing'}`}>
+                {n.name}
+                <span className={`fig-tag ${n.met ? '' : 'fig-tag--missing'}`}>
+                  {n.met ? 'met' : 'missing'}
+                </span>
+                {n.why === 'check failing' && (
+                  <span className="fig-need-why">its check is failing</span>
+                )}
+              </li>
+            ))}
+            {more > 0 && <li className="fig-need fig-need--more">and {more} more</li>}
+          </ul>
+        </>
+      )}
+      {needs.credentials.length > 0 && (
+        <p className="fig-needs-creds">
+          Rests on declared credentials: {needs.credentials.map(c => c.name).join(', ')}. Ambit
+          stores no secret, so it names a credential and cannot say it works.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -726,6 +801,7 @@ function OpportunityRows({
   onShowOnMap?: (capabilityId: string) => void;
 }) {
   const items = useAmbitStore(s => s.items);
+  const connections = useAmbitStore(s => s.connections);
 
   // One scale per column, taken from the whole set rather than per row, so a
   // longer mark means more wherever the eye lands.
@@ -784,7 +860,12 @@ function OpportunityRows({
                 <span className={`fig-conf fig-conf--${o.confidence}`}>
                   {o.confidence} confidence
                 </span>
-                {o.acquisition_options && <OptionCompare options={o.acquisition_options} />}
+                {o.acquisition_options && (
+                  <OptionCompare
+                    options={o.acquisition_options}
+                    needs={needsOf(items, connections, o.capability_id ?? '')}
+                  />
+                )}
               </th>
               <td className="is-num" style={NUM}>
                 {o.burden.interventions_month}×
