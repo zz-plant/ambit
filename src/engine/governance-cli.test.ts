@@ -465,6 +465,34 @@ test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
   expect(mixed.decision).toBe('CONFIRM');
 });
 
+test('asking about a slip is not a refusal on the command line either, and files nothing', () => {
+  // `ambit can shell-exection` answered DENY and filed the typo as a deficit,
+  // which reads as "you may not run a shell". A slip is answered as one.
+  seed(LOCAL_ONLY).close();
+  const count = () => {
+    const db = getDb(join(dir, 'graph.db'));
+    const n = rows(db, 'SELECT COUNT(*) AS n FROM failure_signals')[0].n;
+    db.close();
+    return n;
+  };
+  const before = count();
+  const slip = cli('can', 'shell-exection', '--tool=bash');
+  expect(slip.error).toContain('No capability "shell-exection"');
+  expect(slip.did_you_mean).toContain('combo:shell-execution');
+  expect(slip.decision).toBeUndefined();
+  expect(count()).toBe(before);
+
+  // A wall that resembles nothing is still a wall, and is still filed.
+  const wall = cli('can', 'quantum-teleportation', '--tool=qtp');
+  expect(wall.decision).toBe('DENY');
+  expect(wall.recorded_deficit).toBeDefined();
+  expect(count()).toBeGreaterThan(before);
+
+  // A name is the id it names, and no capability is a usage error and not a stack trace.
+  expect(cli('can', 'Shell Execution', '--no-record').capability).toBe('combo:shell-execution');
+  expect(cli('can').error).toContain('Usage: ambit can <capability>');
+});
+
 test('a budget refuses a spend that would exceed it', () => {
   seed(LOCAL_ONLY).close();
   const db = getDb(join(dir, 'graph.db'));

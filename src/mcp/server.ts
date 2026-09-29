@@ -5,7 +5,7 @@ import { nearest } from '../shared/nearest.ts';
 import { err, respond, toolResult } from './protocol.ts';
 import { BASE_TOOLS, PROFILES, type Profile } from './tools.ts';
 import { checkArguments } from './validate.ts';
-import { resolveCapability, type Resolution } from '../engine/resolve.ts';
+import { capabilityToAsk, resolveCapability, type Resolution } from '../engine/resolve.ts';
 import type { Db } from '../engine/db.ts';
 import {
   getDb,
@@ -449,17 +449,10 @@ async function handleLine(line: string) {
               break;
             case 'tt_can':
               res = tt(db => {
-                const asked = resolveCapability(db, capId);
-                // An id that fits two nodes is a question about neither.
-                if (!asked.ok && asked.reason === 'ambiguous') return notFound(asked);
-                // An id that fits none, but that resembles some, is a slip and
-                // not a wall. Answering "no" would read as "you may not run a
-                // shell", and filing it would count a typo as a deficit.
-                if (!asked.ok && asked.did_you_mean.length) return notFound(asked);
-                const decision: any = canExecute(db, {
-                  ...args,
-                  capability: asked.ok ? asked.id : (capId as string),
-                });
+                // A slip is answered as one and files nothing; see the helper.
+                const asked = capabilityToAsk(db, capId);
+                if ('answer' in asked) return asked.answer;
+                const decision: any = canExecute(db, { ...args, capability: asked.ask });
                 // The point of asking before acting is that a refusal costs
                 // nothing to record. Doing it here rather than asking the
                 // agent to make a second call is what keeps the habit cheap:

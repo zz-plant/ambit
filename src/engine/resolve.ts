@@ -97,4 +97,34 @@ function resolveCapability(db: Db, given: unknown): Resolution {
   };
 }
 
-export { resolveCapability, type Resolution };
+/**
+ * The capability a permission question should be put to, or the answer to give
+ * in its place.
+ *
+ * The gate answers "no" for an id the graph does not hold, and that is right
+ * for a wall worth filing: a tool nothing supplies is exactly what a deficit is
+ * for. It is wrong for a slip. "No" to `shell-exection` reads as "you may not
+ * run a shell", and filing it counts a typo as a wall. So an id that resembles
+ * a node is answered as the slip it probably is, with the candidates and
+ * nothing recorded, and an id that resembles nothing goes to the gate as it
+ * was written. Both surfaces ask here, so the same words are the same question
+ * over MCP and in a terminal.
+ */
+function capabilityToAsk(
+  db: Db,
+  given: unknown
+): { ask: string } | { answer: { error: string; did_you_mean?: string[] } } {
+  const found = resolveCapability(db, given);
+  if (found.ok) return { ask: found.id };
+  if (found.reason === 'unknown' && found.did_you_mean.length === 0) {
+    return { ask: String(given).trim() };
+  }
+  return {
+    answer: {
+      error: found.error,
+      ...(found.did_you_mean.length ? { did_you_mean: found.did_you_mean } : {}),
+    },
+  };
+}
+
+export { capabilityToAsk, resolveCapability, type Resolution };

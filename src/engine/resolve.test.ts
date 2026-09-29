@@ -3,7 +3,7 @@
  * these hold both halves: what it accepts, and what it refuses to choose.
  */
 import { describe, expect, test } from 'vitest';
-import { resolveCapability } from './resolve.ts';
+import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { makeGraph } from './testing/graph.ts';
 
 const graph = () =>
@@ -105,5 +105,41 @@ describe('resolveCapability refuses to choose', () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.did_you_mean).toEqual(['combo:shell-execution']);
+  });
+});
+
+describe('capabilityToAsk puts the question to the right node, or answers a slip as one', () => {
+  test('an id, a bare word and a name are asked about as the node they name', () => {
+    for (const word of ['combo:shell-execution', 'shell-execution', 'Shell Execution']) {
+      expect(capabilityToAsk(graph(), word)).toEqual({ ask: 'combo:shell-execution' });
+    }
+  });
+
+  test('a wall that resembles nothing goes to the gate as it was written', () => {
+    // The gate says no, and that is worth filing: nothing supplies it.
+    expect(capabilityToAsk(graph(), '  quantum-teleportation ')).toEqual({
+      ask: 'quantum-teleportation',
+    });
+  });
+
+  test('a word that resembles a node is a slip, with the candidates and no question asked', () => {
+    const r = capabilityToAsk(graph(), 'shell-exection');
+    expect(r).toEqual({
+      answer: {
+        error: 'No capability "shell-exection" in this graph.',
+        did_you_mean: ['combo:shell-execution'],
+      },
+    });
+  });
+
+  test('a word that fits two nodes is not asked about either', () => {
+    const r = capabilityToAsk(graph(), 'ollama');
+    expect(r).toMatchObject({ answer: { error: expect.stringContaining('more than one node') } });
+  });
+
+  test('nothing given is not a question', () => {
+    expect(capabilityToAsk(graph(), undefined)).toMatchObject({
+      answer: { error: 'A capability is needed.' },
+    });
   });
 });

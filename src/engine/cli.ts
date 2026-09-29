@@ -54,7 +54,7 @@ import {
   verifyChain,
 } from './delegation.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
-import { resolveCapability } from './resolve.ts';
+import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
@@ -337,9 +337,19 @@ async function runCommand(
       break;
     }
     case 'can': {
+      if (!arg) {
+        emit({ error: 'Usage: ambit can <capability> [--target X] [--spend N] [--exit-code]' });
+        break;
+      }
+      // A slip is answered as one and files nothing; see `capabilityToAsk`.
+      const asked = capabilityToAsk(db, arg);
+      if ('answer' in asked) {
+        emit(asked.answer);
+        break;
+      }
       const decision: any = canExecute(db, {
         actor: value('actor'),
-        capability: arg,
+        capability: asked.ask,
         target: value('target'),
         spendCents: value('spend') ? Number(value('spend')) : undefined,
       });
