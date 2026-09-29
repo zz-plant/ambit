@@ -7,7 +7,7 @@
 Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop and Codex CLI into one local graph, and answers what no single config file can: what works, what is configured but broken, and what stops working if one MCP server, model or token goes away.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=6366f1)](https://github.com/zz-plant/ambit/releases/latest)
+[![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 

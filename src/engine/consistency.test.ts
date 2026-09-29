@@ -8,7 +8,7 @@
  * pointed at.
  */
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeGraph } from './testing/graph.ts';
@@ -19,6 +19,7 @@ import { exportSync, importSync } from './sync.ts';
 import { statusReport } from './cli/reports.ts';
 import { graphSummary } from './views.ts';
 import { evidenceCount } from './assure/promote.ts';
+import { shareSnapshot, SNAPSHOT_TOKENS } from './share.ts';
 
 function graph() {
   return makeGraph({
@@ -136,6 +137,28 @@ describe('what runs without a person is reported where a person looks', () => {
     setBudget(db, { capability: 'combo:a', amount: '$5', person: 'kanav' });
     const status = statusReport(db) as any;
     expect(status.unattended[0]).toMatchObject({ sandboxes: 1, standing_budgets: 1 });
+    db.close();
+  });
+});
+
+describe("a shared snapshot drawn in the map's colours", () => {
+  it('carries the same values as the stylesheet it copies', () => {
+    const css = readFileSync(join(import.meta.dirname, '..', 'client', 'App.css'), 'utf8');
+    const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
+    for (const [name, value] of Object.entries(SNAPSHOT_TOKENS)) {
+      const declared = root.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1];
+      expect(declared, `--${name}`).toBe(value);
+    }
+  });
+
+  it('draws in no colour the copy does not name', () => {
+    const db = graph();
+    const { html } = shareSnapshot(db);
+    const palette = new Set<string>(Object.values(SNAPSHOT_TOKENS));
+    const stray = [...new Set(html.match(/#[0-9a-f]{6}\b/gi) ?? [])].filter(
+      c => !palette.has(c.toLowerCase())
+    );
+    expect(stray).toEqual([]);
     db.close();
   });
 });
