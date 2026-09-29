@@ -194,16 +194,25 @@ src/client/                React frontend
   App.tsx                  The shell: which view is showing, and how the hooks and panels fit
   linkState.ts             The URL in both directions — which view, node, lens, focus and timeline
                            moment it asks for, and how a view is written back to it. A bare visit
-                           to the hosted site is the demo, on the map. Pure, tested without a window
+                           to the hosted site is the demo, on the map. `linkFocus` says which node a
+                           link selects once the graph is read and whether to collapse to it, and
+                           `writeAddress` skips a write the browser refuses. Pure, tested without a
+                           window
   hooks/                   useViewport (narrow screens) · useHotkeys · useGraphStream (the AG-UI
                            state stream, and whether it is attached) · useUrlSync (the address bar
                            follows the view) · useGuide · useToast · useLatest · useConfigImport
-                           (a pasted or dropped config, read in the tab)
+                           (a pasted or dropped config, read in the tab) · useDialogFocus (a dialog
+                           takes the focus when it opens, keeps Tab inside, and gives it back)
   components/
     AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
-                           share, proposals, docs
+                           share, proposals, docs. `mapCounts` is the map's pill: reached, unproven,
+                           and a failing node counted apart from both. The view tabs are icons with
+                           an `aria-label` up to 1180px and the buttons up to 1380px, so every
+                           control stays on screen from 769px
     Finder.tsx             Search by name; a node opens on the map, an entry in My Setup. The same
-                           list holds actions (utils/palette.ts), and Enter runs the one chosen
+                           list holds actions (utils/palette.ts), and Enter runs the one chosen. Its
+                           hooks are apart from a hook-free `FinderView`, so a test presses keys on
+                           the dialog's own handler
     SetupView.tsx          My Setup: one row per entry, with its evidence, the strip of its last
                            check runs, a switch for a tool server the config holds, and the nodes
                            it provides; repo drift, infrastructure (with what an agent may do on
@@ -260,7 +269,11 @@ src/client/                React frontend
     auditQuery.ts          The Audit query bar: actor:, action:, target: and free words
     budgetBar.ts           Where a budget's fill, ceiling and forecast tick sit on its bar
     needs.ts               What a capability needs and whether each need is in place
-    runTimeline.ts         One run's lanes, and what its totals say
+    runTimeline.ts         One run's lanes, and what its totals say, and how long the record says it
+                           lasted (null when nothing does, so no length is stated and no axis drawn)
+    keys.ts                What one press of Escape closes, where the page's keys stand aside, where
+                           Tab goes in a dialog, and the shell's and the map's own keys, held apart
+                           from a modified press. Pure, free of DOM types
 ```
 
 ### Shared, scripts and plugins
