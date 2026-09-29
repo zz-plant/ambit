@@ -8,7 +8,9 @@
  * the rule where all three read it, and the forecast the page draws from it.
  */
 import { describe, expect, it } from 'vitest';
+import { canExecute, recordSpend } from './assurance.ts';
 import {
+  budgetReport,
   budgetStanding,
   forecastSpend,
   PERIOD_DAYS,
@@ -204,5 +206,67 @@ describe('what a budget means right now, read without writing', () => {
       forecast: null,
     });
     db.close();
+  });
+});
+
+describe('recording spend in a period that has run out', () => {
+  it('starts the next period, so what it reports is what the gate, the page and the report read', () => {
+    // `recordSpend` added onto the old period's total: with 1500 of 2000
+    // spent a period ago, a spend of 1900 stored 3400 and said the budget was
+    // spent, while the gate, reading the same rule, had all 2000 left.
+    const db = graph();
+    budgetOf(db, { amount: '$20', spentCents: 1500, daysAgo: 40 });
+    const spend = recordSpend(db, 'combo:deploy', 'execute', '', 1900) as {
+      recorded: boolean;
+      remaining_cents: number;
+      note?: string;
+    };
+    const row = db
+      .prepare('SELECT budget_cents, spent_cents, period, period_start FROM budgets')
+      .get<{
+        budget_cents: number;
+        spent_cents: number;
+        period: string;
+        period_start: string;
+      }>()!;
+
+    expect(spend).toMatchObject({ recorded: true, remaining_cents: 100 });
+    expect(spend.note).toBeUndefined();
+    expect(row.spent_cents).toBe(1900);
+    expect(periodElapsed(db, row)).toBe(false);
+    expect(canExecute(db, { capability: 'combo:deploy' }).remaining_budget_cents).toBe(100);
+    expect(budgetStanding(db, row).spentCents).toBe(1900);
+    expect(budgetReport(db).budgets[0]).toMatchObject({ spent: '$19.00', remaining: '$1.00' });
+    // Rule 13: spending never writes a budget row, it only updates one.
+    expect(db.prepare('SELECT COUNT(*) AS n FROM budgets').get<{ n: number }>()?.n).toBe(1);
+    db.close();
+  });
+
+  it('starts the next period even when the last one spent nothing', () => {
+    const db = graph();
+    budgetOf(db, { amount: '$20', spentCents: 0, daysAgo: 40 });
+    recordSpend(db, 'combo:deploy', 'execute', '', 700);
+    const row = db
+      .prepare('SELECT budget_cents, spent_cents, period, period_start FROM budgets')
+      .get<{
+        budget_cents: number;
+        spent_cents: number;
+        period: string;
+        period_start: string;
+      }>()!;
+    expect(periodElapsed(db, row)).toBe(false);
+    expect(canExecute(db, { capability: 'combo:deploy' }).remaining_budget_cents).toBe(1300);
+    db.close();
+  });
+
+  it('adds to the period that is still running, as before', () => {
+    const db = graph();
+    budgetOf(db, { amount: '$20', spentCents: 1500, daysAgo: 10 });
+    const spend = recordSpend(db, 'combo:deploy', 'execute', '', 400);
+    const row = db.prepare('SELECT spent_cents FROM budgets').get<{ spent_cents: number }>()!;
+    db.close();
+
+    expect(spend).toMatchObject({ recorded: true, remaining_cents: 100 });
+    expect(row.spent_cents).toBe(1900);
   });
 });
