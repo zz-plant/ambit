@@ -142,7 +142,7 @@ Homebrew installs the CLI, the engine, and the MCP server from the tagged releas
 
 | Command | What it answers |
 | :--- | :--- |
-| `ambit status` | Environment health — what is reached, what is failing its declared check, what has a single provider, plus pending approvals |
+| `ambit status` | Environment health — what is reached and how much of it is proven, what is failing its declared check, what has a single provider, plus pending approvals, and the one command to type next |
 | `ambit goal <name>` | The path to unlock a capability, in order, with setup estimates |
 | `ambit impact <id>` | Blast radius: what breaks if this tool, model, or credential goes down |
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
@@ -163,23 +163,27 @@ The three console blocks below are captured from a run against a fixture graph b
 ```console
 $ ambit status
 
-    summary: 39/59 capabilities reached · 9 with a single provider
-    reached: 39
-    total: 59
-    verified: 0
-    failing: 0
+    39 of 59 reached · 0 proven · 9 with a single provider
+    ──────────────────────────────────────────────────────
+    proven          0
+  › unproven       15
+    failing         0
+    last check  never
+
     actions: 18/28 reached
-    evidence:
-        proven: 0
-        unproven: 15
-        failing: 0
-        last check: never
-        provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
-        note: configured is not working — ambit verify would turn 11 of the unproven into evidence
+    provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
     domains:
+      ████░░░░░░ ai-ml     5/13
+      █████████░ backend   7/8
+      ████████░░ devops    4/5
+      ██████████ frontend  1/1
     …
+
+    Next  ambit verify · turns 11 of the unproven into evidence
 ```
 <!-- /example -->
+
+The first line holds the two numbers that matter, reached and proven, and after them whatever is wrong. The `›` marks the count that wants a person, a failing check before an unproven one, and the last line is the command to type next, picked from what the report found. In a terminal the marked row and `Next` are drawn in the accent colour. Piped, or with `NO_COLOR` set, the colour goes and every line stays. `--json` prints the same report as data, with the last line as `next`.
 
 ### ambit goal — what it would take to reach something
 

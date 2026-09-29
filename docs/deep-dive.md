@@ -411,7 +411,7 @@ The table covers the commands whose answer is not obvious from the name, in the 
 | :--- | :--- |
 | **first session** — *the commands listed above the groups* | |
 | `ambit briefing` | What an agent should know before its first tool call — reached and proven, configured but failing, waiting on a person, blocked recently, worth reaching next, and what changed since the last briefing. Prose, capped near 1,200 tokens, also served as the MCP resource `ambit://briefing` |
-| `ambit status` | How are we doing — reached, verified, failing, degraded, SPOFs, recurring deficits, pending approvals, all in one report |
+| `ambit status` | How are we doing — reached, verified, failing, degraded, SPOFs, recurring deficits, pending approvals, all in one report that ends on the one command to type next. `--json` carries that as `next`, a command and the reason for it |
 | `ambit next [n]` | What to reach next and why — ranked by what has actually blocked work once the ledger has observations, and by leverage per hour of setup before then. The answer says which basis it used |
 | **graph** — *the structure, and what it would cost to lose a piece* | |
 | `ambit impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |

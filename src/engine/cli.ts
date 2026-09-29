@@ -1,9 +1,9 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
-import { C, emit, emitRaw, emitText, setSink } from './cli/output.ts';
+import { C, emit, emitRaw, emitText, setSink, terminalPalette } from './cli/output.ts';
 import { HELP, HELP_SHORT } from './cli/help.ts';
-import { explain, statusReport } from './cli/reports.ts';
+import { explain, renderStatus, statusReport } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
 import { resolveCommand } from './cli/groups.ts';
 import { shareSnapshot } from './share.ts';
@@ -157,7 +157,8 @@ async function runCommand(
       break;
     }
     case 'status':
-      emit(statusReport(db));
+      // Drawn by its own renderer for a person; the sink and --json get the data.
+      emit(statusReport(db), report => renderStatus(report, terminalPalette()));
       break;
     case 'graph': {
       // The graph is one thing with several views; none of them is a headline.
