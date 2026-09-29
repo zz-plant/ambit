@@ -52,10 +52,11 @@ describe('sync export and import round-trip', () => {
   });
 
   it('preserves all table rows and schema columns through round-trip', () => {
-    // 1. Capabilities & dependencies
+    // 1. Capabilities & dependencies. `unlocked` is a state the engine writes
+    // and counts as reached; `reached` is the map's word for it, not a state.
     sourceDb
       .prepare(
-        "INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle) VALUES ('test-cap', 'Test Capability', 'test', 'A test', 'skill', 'reached', 'capability', 'verified')"
+        "INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle) VALUES ('test-cap', 'Test Capability', 'test', 'A test', 'skill', 'unlocked', 'capability', 'verified')"
       )
       .run();
     sourceDb

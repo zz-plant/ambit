@@ -1,6 +1,7 @@
 import type { Db } from './db.ts';
 import { usable } from './assurance.ts';
 import { NON_FRONTIER_KINDS } from './ontology.ts';
+import { isReached } from './vocabulary.ts';
 
 // ─── Ledger ───────────────────────────────────────────────────────────────────
 
@@ -133,7 +134,7 @@ function recordFrontier(db: Db, at?: string): 'recorded' | 'unchanged' {
     return 'unchanged';
 
   const counted = Object.keys(now.states).filter(id => inFrontier(now.kinds?.[id]));
-  const reached = counted.filter(id => now.states[id] !== 'locked').length;
+  const reached = counted.filter(id => isReached(now.states[id])).length;
   db.prepare(
     `INSERT INTO frontier_snapshots (taken_at, reached, total, verified, states, kinds, lifecycles)
      VALUES (COALESCE(?, datetime('now')), ?, ?, ?, ?, ?, ?)`
@@ -251,7 +252,6 @@ function compareFrontiers(
   const { nameOf, provedBy } = context;
   const ids = Object.keys(now.states);
   const kindOf = (id: string) => now.kinds?.[id];
-  const isReached = (state: string | undefined) => state !== undefined && state !== 'locked';
 
   // Newly added means absent from the observation, which the snapshot answers
   // exactly. Comparing created_at against taken_at looked equivalent and was
@@ -264,8 +264,7 @@ function compareFrontiers(
   const vocabulary: any[] = [];
   for (const id of ids) {
     if (!inFrontier(kindOf(id))) continue;
-    const newlyReached =
-      isReached(now.states[id]) && (past.states[id] === 'locked' || past.states[id] === undefined);
+    const newlyReached = isReached(now.states[id]) && !isReached(past.states[id]);
     if (!newlyReached) continue;
     const proofs = provedBy.get(id) || [];
     const proofAddedSince = proofs.some(p => addedSince.has(p));
@@ -292,11 +291,7 @@ function compareFrontiers(
 
   const lost = ids
     .filter(
-      id =>
-        inFrontier(kindOf(id)) &&
-        !isReached(now.states[id]) &&
-        past.states[id] &&
-        past.states[id] !== 'locked'
+      id => inFrontier(kindOf(id)) && !isReached(now.states[id]) && isReached(past.states[id])
     )
     .map(id => ({ id, name: nameOf(id) }));
 
@@ -327,7 +322,7 @@ function compareFrontiers(
   // observation counts exactly as it always did — which is what keeps
   // `frontier_then` and `frontier_now` the same measurement.
   const pastReached = Object.entries(past.states).filter(
-    ([id, v]) => v !== 'locked' && inFrontier(past.kinds?.[id])
+    ([id, v]) => isReached(v) && inFrontier(past.kinds?.[id])
   ).length;
   // Counted on the same basis as `frontier_then`, so the two numbers mean the
   // same thing. Vocabulary additions are described and not counted; the total
@@ -470,7 +465,7 @@ function frontierSeries(db: Db): {
         ? movedSentence({
             before: null,
             after: Object.entries(o.states).filter(
-              ([id, v]) => v !== 'locked' && inFrontier(o.kinds?.[id])
+              ([id, v]) => isReached(v) && inFrontier(o.kinds?.[id])
             ).length,
           })
         : compareFrontiers(db, observations[i - 1], o, context).moved,
