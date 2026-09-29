@@ -7,68 +7,89 @@
 }
 
 :root {
-  /* Modern Refined Slate & Dark Canvas Palette */
-  --bg-canvas: #090d16;
-  --bg-deep: #090d16;
-  --bg-surface: #111827;
-  --bg-elevated: #1e293b;
-  --bg-glass: rgba(17, 24, 39, 0.88);
-  --bg-hover: rgba(255, 255, 255, 0.04);
+  color-scheme: dark;
+  --deck-h: 52px;
 
-  /* Primary Accent — Indigo & Electric Blue */
-  --accent: #6366f1;
-  --accent-dim: #4f46e5;
-  --accent-soft: rgba(99, 102, 241, 0.12);
-  --on-accent: #ffffff;
+  /* Ink, not navy. A near-neutral dark with a trace of warmth, so the only
+     colour on the page is colour that means something. The last palette was
+     a framework's defaults (slate grounds, an indigo accent, two radial glows
+     behind everything) and read as one. */
+  --bg-canvas: #0f1013;
+  --bg-deep: #0f1013;
+  --bg-surface: #16171b;
+  --bg-elevated: #1d1f24;
+  --bg-glass: #131418;
+  --bg-hover: rgba(255, 255, 255, 0.045);
 
-  /* Semantic Status Colors */
-  --ok: #10b981;
-  --warn: #f59e0b;
-  --error: #f43f5e;
-  --error-deep: #e11d48;
+  /* One accent, a soft blue that reads on the dark ground as text (7.5:1) and
+     carries dark text when it is a fill (7.5:1 the other way). White on a
+     saturated indigo was 4.5:1 at best and glared at the size of a button. */
+  --accent: #7aa2f7;
+  --accent-dim: #6b93e8;
+  --accent-soft: rgba(122, 162, 247, 0.13);
+  --accent-line: rgba(122, 162, 247, 0.45);
+  --on-accent: #0f1013;
+
+  /* Semantic status colours, a step softer than the signal colours they
+     replace. Each clears 5:1 on the canvas and carries dark text as a fill. */
+  --ok: #56c28a;
+  --warn: #e0a94a;
+  --error: #ef6461;
+  --error-deep: #d8504d;
+  --ok-soft: rgba(86, 194, 138, 0.1);
+  --warn-soft: rgba(224, 169, 74, 0.1);
+  --error-soft: rgba(239, 100, 97, 0.1);
+  --error-line: rgba(239, 100, 97, 0.45);
+  --warn-line: rgba(224, 169, 74, 0.45);
+  --ok-line: rgba(86, 194, 138, 0.45);
 
   /* The two directions an edge runs from the node in focus. What it needs is
-     drawn in teal, what it enables in the accent; the detail panel keys its
-     two lists with the same pair. Teal is otherwise the device kind, which
-     the map rarely draws. */
-  --edge-needs: #14b8a6;
+     drawn in violet, what it enables in the accent; the detail panel keys its
+     two lists with the same pair. It was teal, one step from the green that
+     means a check passed, and the two sat side by side on every node. */
+  --edge-needs: #b89af0;
+
+  /* A reached node: the quietest filled state on the map. The accent mixed
+     into the ground, so reached reads as done and the next steps, drawn in
+     the accent itself, are what the eye goes to. */
+  --node-reached: #263045;
+  --node-reached-ring: #4f689c;
 
   /* The attention lens: one hue, four steps, brighter with more. A magnitude
-     wants a sequential ramp, not two colours split at a threshold — and on a
+     wants a sequential ramp, not two colours split at a threshold, and on a
      dark ground more-is-brighter is the direction that reads. Every step
-     clears 3:1 against the canvas (3.87, 6.10, 9.05, 11.64) and the steps are
+     clears 3:1 against the canvas (4.2, 6.5, 9.7, 12.5) and the steps are
      monotonic in luminance, which is what makes the order legible without the
      legend. */
-  --heat-1: #b45309;
-  --heat-2: #d97706;
-  --heat-3: #f59e0b;
-  --heat-4: #fbbf24;
+  --heat-1: #a3691f;
+  --heat-2: #c98a2c;
+  --heat-3: #e8b04b;
+  --heat-4: #f5cd6e;
 
   /* One colour per kind of node. The map, the detail panel, the list and the
      docs all read these, so a server is the same amber everywhere. */
   --type-framework: var(--accent);
-  --type-server: #f59e0b;
-  --type-agent: #ec4899;
-  --type-skill: #10b981;
-  --type-provider: #0284c7;
-  --type-model: #3b82f6;
-  --type-combo: #8b5cf6;
-  --type-tool: #d97706;
-  --type-device: #14b8a6;
-  --type-network: #0ea5e9;
-  --type-other: #7b8799;
+  --type-server: #e0a94a;
+  --type-agent: #e58bb4;
+  --type-skill: #56c28a;
+  --type-provider: #4fb0d6;
+  --type-model: #8c9cf2;
+  --type-combo: #a58cf0;
+  --type-tool: #d28a4f;
+  --type-device: #4db6a8;
+  --type-network: #5aa7d6;
+  --type-other: #8a8e96;
 
-  /* Crisp, Subtle Borders */
   --border: rgba(255, 255, 255, 0.08);
   --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-bright: rgba(255, 255, 255, 0.14);
+  --border-bright: rgba(255, 255, 255, 0.13);
   --border-hover: rgba(255, 255, 255, 0.2);
 
-  /* Typography. Muted text sits on the darkest ground at 5.3:1; the previous
-     value was 4.1:1, under the AA floor for the 10–11px labels it is used on. */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #7b8799;
+  /* Typography. Off-white, not white, for the long reads; muted text clears
+     5:1 on every ground it sits on, elevated included. */
+  --text-primary: #e8e8ea;
+  --text-secondary: #a4a7ae;
+  --text-muted: #8a8e96;
 
   --radius-xs: 4px;
   --radius-sm: 6px;
@@ -77,17 +98,17 @@
   --radius-lg: 12px;
   --radius-full: 9999px;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Menlo', Consolas, monospace;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Menlo', Consolas, monospace;
   --font: var(--font-sans);
 
-  --fs-base: 13.5px;
+  --fs-base: 14px;
   --lh-body: 1.5;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.35);
-  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 
 html, body, #root {
@@ -144,15 +165,12 @@ code, pre, .code, .sp-cli-cmd {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 90%, rgba(14, 165, 233, 0.04) 0%, transparent 50%),
-    var(--bg-canvas);
+  background: var(--bg-canvas);
 }
 
 .app-scene {
   position: absolute;
-  top: 50px;
+  top: var(--deck-h);
   bottom: 0;
   left: 0;
   right: 0;
@@ -164,10 +182,8 @@ code, pre, .code, .sp-cli-cmd {
   top: 0;
   left: 0;
   right: 0;
-  height: 50px;
+  height: var(--deck-h);
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -224,7 +240,7 @@ code, pre, .code, .sp-cli-cmd {
 /* The key beside the Search button, in the same grey as the tooltips. */
 .app-deck-key {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
@@ -238,14 +254,14 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-full);
   background: var(--warn);
   color: var(--bg-canvas);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 16px;
   text-align: center;
 }
 
 .app-status-pill {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.04);
@@ -279,7 +295,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12.5px;
   cursor: pointer;
   border-radius: var(--radius-xs);
   transition: color 0.12s ease;
@@ -326,7 +342,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   padding: 4px 12px;
   cursor: pointer;
@@ -366,7 +382,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-family: var(--font-sans);
   font-weight: 500;
   border-radius: var(--radius-sm);
@@ -381,9 +397,9 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-deck-btn--alert {
-  border-color: rgba(245, 158, 11, 0.4);
+  border-color: var(--warn-line);
   color: var(--warn);
-  background: rgba(245, 158, 11, 0.08);
+  background: var(--warn-soft);
 }
 
 /* The two generic buttons the panels and modals share. */
@@ -402,13 +418,13 @@ code, pre, .code, .sp-cli-cmd {
 .tp-btn {
   height: 32px;
   padding: 0 14px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .tp-btn-sm {
   height: 26px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   background: var(--bg-surface);
 }
@@ -476,7 +492,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .setup-subtitle {
   margin-top: 4px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.5;
   color: var(--text-muted);
   max-width: 560px;
@@ -497,7 +513,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   padding: 4px 12px;
   cursor: pointer;
@@ -532,13 +548,13 @@ code, pre, .code, .sp-cli-cmd {
   align-items: baseline;
   gap: 8px;
   margin-bottom: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .setup-group-n {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -577,7 +593,7 @@ code, pre, .code, .sp-cli-cmd {
   min-width: 0;
   text-align: left;
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--text-primary);
   background: none;
@@ -594,16 +610,16 @@ code, pre, .code, .sp-cli-cmd {
 
 .setup-row-glyph {
   flex: none;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .setup-row-kind {
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--text-muted);
 }
 
 .setup-row-evidence {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -619,31 +635,44 @@ code, pre, .code, .sp-cli-cmd {
   gap: 6px;
 }
 
+/* A finding is a line with a mark, not a callout box with a coloured edge:
+   two of them stacked read as a page of warnings. */
 .setup-finding {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border-left: 3px solid;
-  font-size: 13.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  font-size: 14px;
   line-height: 1.45;
   color: var(--text-secondary);
+}
+
+.setup-finding::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translateY(-1px);
 }
 
 .setup-finding strong {
   color: var(--text-primary);
 }
 
-.setup-finding--bad {
-  border-color: var(--error);
-  background: rgba(244, 63, 94, 0.08);
+.setup-finding--bad::before {
+  background: var(--error);
 }
 
-.setup-finding--warn {
-  border-color: var(--warn);
-  background: rgba(245, 158, 11, 0.07);
+.setup-finding--warn::before {
+  background: var(--warn);
 }
 
 .setup-row-idle {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--warn);
 }
 
@@ -669,7 +698,7 @@ code, pre, .code, .sp-cli-cmd {
 /* A node this entry provides, as a link onto the map. */
 .setup-chip {
   font-family: var(--font-sans);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
@@ -699,7 +728,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 13px;
   font-family: var(--font-sans);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -722,7 +751,7 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px;
   border-radius: var(--radius-xs);
   display: flex;
@@ -749,7 +778,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
@@ -771,7 +800,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .tp-match-count {
   margin: -8px 0 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -811,13 +840,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .tp-item-name {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .tp-item-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -830,7 +859,7 @@ code, pre, .code, .sp-cli-cmd {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
@@ -845,7 +874,8 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .tp-badge--built::before {
-  background: var(--type-combo);
+  background: var(--node-reached);
+  box-shadow: inset 0 0 0 1.5px var(--node-reached-ring);
 }
 
 .tp-badge--specified {
@@ -868,20 +898,18 @@ code, pre, .code, .sp-cli-cmd {
 .tp-empty {
   padding: 24px 0;
   text-align: center;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
 /* ─── NODE DETAIL PANEL (INSPECTOR) ─── */
 .star-panel {
   position: absolute;
-  top: 50px;
+  top: var(--deck-h);
   bottom: 0;
   right: 0;
   width: 340px;
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -919,7 +947,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-class {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -948,14 +976,14 @@ code, pre, .code, .sp-cli-cmd {
   align-items: baseline;
   gap: 6px;
   margin: 0 0 4px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: var(--warn);
 }
 
 .sp-evidence {
   margin: 0 0 4px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: var(--ok);
 }
@@ -970,13 +998,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-verdict--warn {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: rgba(245, 158, 11, 0.08);
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
 }
 
 .sp-verdict--bad {
-  border-color: rgba(244, 63, 94, 0.55);
-  background: rgba(244, 63, 94, 0.1);
+  border-color: var(--error-line);
+  background: var(--error-soft);
 }
 
 .sp-verdict-title {
@@ -996,7 +1024,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-verdict-body {
   margin: 4px 0 10px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -1013,17 +1041,17 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .sp-verdict-btn:hover {
-  background: #4338ca;
+  background: var(--accent);
 }
 
 .sp-verdict-btn code {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1032,7 +1060,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-note {
   margin: 8px 0 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -1041,7 +1069,7 @@ code, pre, .code, .sp-cli-cmd {
 /* What depends on it, the panel's second finding: body size, not a footnote. */
 .sp-impact {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.45;
   color: var(--text-primary);
 }
@@ -1056,7 +1084,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1077,7 +1105,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-desc {
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -1124,7 +1152,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   background: var(--bg-surface);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1150,21 +1178,21 @@ code, pre, .code, .sp-cli-cmd {
 .sp-action-btn--outage {
   border: 1px solid var(--error);
   color: var(--error);
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .sp-action-btn--outage:hover {
-  background: rgba(244, 63, 94, 0.08);
+  background: var(--error-soft);
 }
 
 .sp-action-btn--unlock {
   border: 1px solid var(--ok);
   color: var(--ok);
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .sp-action-btn--unlock:hover {
-  background: rgba(16, 185, 129, 0.08);
+  background: var(--ok-soft);
 }
 
 .sp-cli-actions {
@@ -1184,7 +1212,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-cli-cmd {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1197,7 +1225,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 10.5px;
+  font-size: 11.5px;
   padding: 2px 8px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -1212,8 +1240,8 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-cli-copy-btn--copied {
   color: var(--ok);
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.1);
+  border-color: var(--ok-line);
+  background: var(--ok-soft);
   font-weight: 600;
 }
 
@@ -1237,7 +1265,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   gap: 8px;
   padding: 3px 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
   cursor: pointer;
 }
 
@@ -1263,7 +1291,7 @@ code, pre, .code, .sp-cli-cmd {
   margin-left: auto;
   padding-left: 8px;
   color: var(--text-muted);
-  font-size: 10.5px;
+  font-size: 11.5px;
   white-space: nowrap;
 }
 
@@ -1272,7 +1300,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.6;
 }
 
@@ -1351,8 +1379,6 @@ code, pre, .code, .sp-cli-cmd {
   gap: 2px;
   padding: 3px;
   background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -1367,7 +1393,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -1391,7 +1417,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -1405,7 +1431,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .civ-lens-hud .app-deck-tab {
   padding: 3px 10px;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 /* Laid under the HUD like the HUD itself: a zero-height strip, so the banner
@@ -1476,21 +1502,19 @@ code, pre, .code, .sp-cli-cmd {
   max-width: 100%;
   padding: 6px 14px;
   border-radius: var(--radius-full);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--shadow-md);
 }
 
 .civ-sim-banner--outage {
-  border: 1px solid rgba(244, 63, 94, 0.5);
+  border: 1px solid var(--error-line);
   color: var(--error);
 }
 
 .civ-sim-banner--acquisition {
-  border: 1px solid rgba(16, 185, 129, 0.5);
+  border: 1px solid var(--ok-line);
   color: var(--ok);
 }
 
@@ -1501,7 +1525,7 @@ code, pre, .code, .sp-cli-cmd {
   color: currentColor;
   padding: 2px 10px;
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1534,9 +1558,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 
@@ -1576,17 +1598,17 @@ code, pre, .code, .sp-cli-cmd {
 .civ-range-sim {
   margin-left: 8px;
   padding: 1px 10px;
-  border: 1px solid rgba(244, 63, 94, 0.55);
+  border: 1px solid var(--error-line);
   border-radius: var(--radius-full);
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12.5px;
   cursor: pointer;
 }
 
 .civ-range-sim:hover {
-  background: rgba(244, 63, 94, 0.15);
+  background: var(--error-soft);
 }
 
 .civ-finding {
@@ -1597,12 +1619,10 @@ code, pre, .code, .sp-cli-cmd {
   max-width: 100%;
   padding: 8px 10px 8px 16px;
   border-radius: var(--radius-full);
-  border: 1px solid rgba(99, 102, 241, 0.55);
+  border: 1px solid var(--accent-line);
   background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   box-shadow: var(--shadow-md);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -1612,8 +1632,8 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .civ-finding--bad {
-  border-color: rgba(244, 63, 94, 0.6);
-  background: rgba(60, 14, 26, 0.9);
+  border-color: var(--error-line);
+  background: #231416;
 }
 
 .civ-finding-dot {
@@ -1625,7 +1645,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: 50%;
   background: var(--error);
   color: var(--on-accent);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -1638,13 +1658,13 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .civ-finding-btn:hover {
-  background: #4338ca;
+  background: var(--accent);
 }
 
 .civ-finding--bad .civ-finding-btn {
@@ -1661,7 +1681,7 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .civ-finding {
-    font-size: 12px;
+    font-size: 13px;
     border-radius: var(--radius-lg);
   }
 }
@@ -1676,12 +1696,10 @@ code, pre, .code, .sp-cli-cmd {
   max-width: 560px;
   padding: 10px 14px;
   background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-bright);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-primary);
   line-height: 1.45;
 }
@@ -1704,54 +1722,48 @@ code, pre, .code, .sp-cli-cmd {
   overflow-y: auto;
 }
 
+/* One left-aligned column. Centring every line, headline to footer links,
+   made the page read as a template; a column with a left edge reads as a
+   page someone wrote, and on a phone it is the only layout that does not
+   ragged-centre a paragraph. */
 .app-welcome-hero {
   margin: auto;
-  max-width: 760px;
+  max-width: 600px;
   width: 100%;
-  text-align: center;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 18px;
+  align-items: stretch;
+  gap: 20px;
 }
 
 .app-welcome-brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 10px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.2px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 /* The question a visitor already has, as the headline. The product name
    moved up into the brand line: nobody arrives asking what Ambit is called. */
 .app-welcome-title {
-  font-size: 34px;
-  line-height: 1.18;
-  font-weight: 700;
-  letter-spacing: -0.6px;
+  font-size: 36px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
-  max-width: 640px;
   text-wrap: balance;
+  margin-top: 8px;
 }
 
-.app-welcome-tagline {
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--text-secondary);
-  max-width: 460px;
-}
-
-/* What it is, in concrete nouns: the tagline says what it is for, and a
-   visitor's first question is whether it reads the tool they use. */
+/* What it is, in concrete nouns: a visitor's first question is whether it
+   reads the tool they use. */
 .app-welcome-lede {
-  font-size: 13.5px;
+  font-size: 16px;
   line-height: 1.6;
-  color: var(--text-muted);
-  max-width: 560px;
-  margin-top: -8px;
+  color: var(--text-secondary);
+  text-wrap: pretty;
 }
 
 /* The install line, for a visitor who is already convinced. */
@@ -1759,7 +1771,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   align-items: stretch;
   max-width: 100%;
-  margin-top: 6px;
+  margin-top: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
@@ -1767,10 +1779,11 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-welcome-cmd {
-  padding: 8px 12px;
+  flex: 1 1 auto;
+  padding: 10px 12px;
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-secondary);
+  font-size: 13px;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow-x: auto;
   min-width: 0;
@@ -1778,13 +1791,13 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-welcome-copy {
   flex-shrink: 0;
-  padding: 0 12px;
+  padding: 0 14px;
   border: none;
   border-left: 1px solid var(--border);
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -1796,102 +1809,80 @@ code, pre, .code, .sp-cli-cmd {
 .app-welcome-more {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px 18px;
-  font-size: 12.5px;
+  gap: 6px 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 14px;
 }
 
 .app-welcome-more a {
-  color: var(--accent);
+  color: var(--text-secondary);
   text-decoration: none;
 }
 
 .app-welcome-more a:hover {
   color: var(--text-primary);
   text-decoration: underline;
-}
-
-@media (max-width: 720px) {
-  .app-welcome {
-    padding: 16px 12px;
-  }
-
-  .app-welcome-hero {
-    gap: 12px;
-  }
-
-  .app-welcome-title {
-    font-size: 24px;
-  }
-
-  .app-welcome-fact {
-    gap: 12px;
-    padding: 12px 14px;
-    font-size: 13px;
-  }
-
-  .app-welcome-fact-figure {
-    font-size: 32px;
-  }
-
-  .app-welcome-tagline {
-    font-size: 13.5px;
-    padding: 0 8px;
-  }
+  text-underline-offset: 3px;
 }
 
 /* One number from the sample, and a button that shows it happening. It is
-   the loudest thing on the page because it is the fastest way to the claim. */
+   the first thing to do on the page because it is the fastest way to the
+   claim; the number carries the red, and the card around it stays quiet. */
 .app-welcome-fact {
   display: flex;
   align-items: center;
-  gap: 16px;
-  max-width: 560px;
-  padding: 14px 20px;
+  gap: 18px;
+  padding: 16px 18px;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid var(--border-bright);
+  background: var(--bg-surface);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.5;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .app-welcome-fact:hover {
-  background: rgba(239, 68, 68, 0.14);
-  border-color: var(--error);
-  transform: translateY(-1px);
+  background: var(--bg-elevated);
+  border-color: var(--accent-line);
 }
 
 .app-welcome-fact-figure {
   flex-shrink: 0;
-  font-size: 40px;
-  font-weight: 700;
+  min-width: 1ch;
+  font-size: 44px;
+  font-weight: 600;
   line-height: 1;
   color: var(--error);
   font-variant-numeric: tabular-nums;
 }
 
-.app-welcome-fact-text strong {
-  color: var(--text-primary);
+.app-welcome-fact-go {
+  display: block;
+  margin-top: 6px;
+  font-weight: 600;
+  color: var(--accent);
   white-space: nowrap;
+}
+
+.app-welcome-fact:hover .app-welcome-fact-go {
+  color: var(--text-primary);
 }
 
 .app-welcome-yours {
   width: 100%;
-  max-width: 560px;
-  text-align: left;
+  margin-top: 4px;
 }
 
 .app-welcome-yours h2 {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 0 0 10px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  text-align: center;
 }
 
 .app-welcome-link {
@@ -1899,37 +1890,53 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--text-secondary);
   cursor: pointer;
   text-decoration: none;
-  transition: all 0.15s ease;
-}
-
-.app-welcome-more .app-welcome-link {
-  font-size: 12.5px;
-  color: var(--accent);
 }
 
 .app-welcome-more .app-welcome-link:hover {
   color: var(--text-primary);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .app-welcome-local {
-  font-size: 12px;
+  margin-top: -10px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--text-muted);
 }
 
-.app-welcome-local code {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  padding: 2px 8px;
-  border-radius: var(--radius-xs);
-  color: var(--text-secondary);
-  font-size: 11.5px;
+@media (max-width: 720px) {
+  .app-welcome {
+    padding: 24px 16px;
+  }
+
+  .app-welcome-hero {
+    gap: 16px;
+  }
+
+  .app-welcome-title {
+    font-size: 27px;
+    margin-top: 4px;
+  }
+
+  .app-welcome-lede {
+    font-size: 15px;
+  }
+
+  .app-welcome-fact {
+    gap: 14px;
+    padding: 14px;
+    font-size: 14px;
+  }
+
+  .app-welcome-fact-figure {
+    font-size: 36px;
+  }
 }
 
 /* ─── MODAL DIALOGS (GOVERNANCE / DOCS) ─── */
@@ -1937,8 +1944,6 @@ code, pre, .code, .sp-cli-cmd {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1950,10 +1955,11 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-surface);
   border: 1px solid var(--border-bright);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 20px 20px 16px;
   box-shadow: var(--shadow-modal);
   display: flex;
   flex-direction: column;
+  max-height: min(820px, calc(100dvh - 40px));
 }
 
 .gov-tabs {
@@ -1968,7 +1974,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
@@ -1988,44 +1994,34 @@ code, pre, .code, .sp-cli-cmd {
 .gov-empty {
   padding: 32px 0;
   text-align: center;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.5;
   color: var(--text-muted);
 }
 
+/* The list takes whatever height the dialog has left and scrolls; the cards
+   inside it keep their own height. They were flex items with overflow
+   hidden, which lets a flex item shrink below its content, so each card was
+   squeezed to fit the list and cut its steps off mid-line. */
 .gov-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: 14px;
-  max-height: 460px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
 
 .gov-card {
-  position: relative;
+  flex-shrink: 0;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px 14px 18px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow: hidden;
-}
-
-.gov-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 3px;
-  background: var(--warn);
-}
-
-.gov-card--approved::before {
-  background: var(--ok);
 }
 
 .gov-card-head {
@@ -2037,26 +2033,26 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-id {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
 .gov-status {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   padding: 2px 9px;
   border-radius: var(--radius-full);
   color: var(--warn);
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border: 1px solid var(--warn-line);
 }
 
 .gov-status--approved {
   color: var(--ok);
-  border-color: rgba(16, 185, 129, 0.4);
+  border-color: var(--ok-line);
 }
 
 .gov-goal {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
@@ -2079,7 +2075,7 @@ code, pre, .code, .sp-cli-cmd {
   gap: 8px;
   padding-left: 8px;
   border-left: 2px solid var(--accent-dim);
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .gov-step code {
@@ -2087,7 +2083,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-step-via {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -2102,13 +2098,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-signed {
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--ok);
 }
 
 .gov-hint {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
@@ -2122,8 +2118,6 @@ code, pre, .code, .sp-cli-cmd {
   right: 16px;
   max-width: 340px;
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-bright);
   border-radius: var(--radius-md);
   padding: 14px 16px;
@@ -2139,7 +2133,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-guide-head strong {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -2149,17 +2143,17 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .app-guide-steps {
   padding-left: 18px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 11.5px;
+  gap: 8px;
+  font-size: 13.5px;
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .app-guide-more {
@@ -2167,7 +2161,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   border: none;
   color: var(--accent);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   cursor: pointer;
   padding: 0;
@@ -2211,15 +2205,6 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* The page's sentence: the saving, in the page's largest type. */
-.loop-kicker {
-  margin: 0 0 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
 .loop-lead {
   margin: 0;
   font-size: 28px;
@@ -2239,10 +2224,10 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px 16px;
-  margin-top: 12px;
-  padding: 10px 12px 10px 14px;
-  border: 1px solid rgba(99, 102, 241, 0.45);
-  border-radius: var(--radius-sm);
+  margin-top: 16px;
+  padding: 12px 14px 12px 16px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
   background: var(--accent-soft);
 }
 
@@ -2267,22 +2252,22 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .fig-cta:hover {
-  background: #4338ca;
+  background: var(--accent);
 }
 
 .loop-subtitle {
-  margin-top: 4px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--text-muted);
-  max-width: 520px;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 640px;
 }
 
 .loop-section-head {
@@ -2295,7 +2280,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .loop-section-title {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -2311,7 +2296,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
@@ -2342,20 +2327,20 @@ code, pre, .code, .sp-cli-cmd {
    carries a written label. Colour is the last encoding here, never the only
    one. */
 .loop-dashboard {
-  --fig-data: #818cf8;
-  --fig-data-soft: rgba(129, 140, 248, 0.32);
-  --fig-context: #64748b;
-  --fig-good: #10b981;
-  --fig-bad: #f43f5e;
+  --fig-data: var(--accent);
+  --fig-data-soft: rgba(122, 162, 247, 0.26);
+  --fig-context: #6b7079;
+  --fig-good: var(--ok);
+  --fig-bad: var(--error);
   --fig-track: rgba(255, 255, 255, 0.07);
   --fig-rule: rgba(255, 255, 255, 0.14);
 }
 
 .fig {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 16px 18px 14px;
+  padding: 18px 20px 16px;
   margin: 0 0 18px;
 }
 
@@ -2368,14 +2353,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-caption-title {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  letter-spacing: 0.01em;
 }
 
 .fig-caption-note {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -2398,9 +2382,10 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* Configured and not working: an alert across the page, above the figures. */
+/* The ground stays the card's own; the border and the title carry the red.
+   A card washed pink read as an error state for the whole page. */
 .fig--alert {
-  border-color: rgba(244, 63, 94, 0.55);
-  background: rgba(244, 63, 94, 0.07);
+  border-color: var(--error-line);
   margin-bottom: 18px;
 }
 
@@ -2410,7 +2395,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig--alert .fig-key-label {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-primary);
 }
 
@@ -2437,7 +2422,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-kpi-unit {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
   letter-spacing: 0;
@@ -2445,7 +2430,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-kpi-second {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   margin-top: 2px;
@@ -2497,14 +2482,14 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-spark-label {
   fill: var(--text-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 /* The name of the thing that landed, above the drop it explains. */
 .fig-spark-note {
   fill: var(--text-secondary);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -2514,19 +2499,19 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-eras-reached {
-  fill: var(--fig-data, #818cf8);
+  fill: var(--fig-data, var(--accent));
 }
 
 /* Reached with no passing check: the same hue, at half the weight. */
 .fig-eras-unproven {
-  fill: var(--fig-data, #818cf8);
+  fill: var(--fig-data, var(--accent));
   opacity: 0.4;
 }
 
 /* The frontier: outlined, because it is what could be reached, not what is. */
 .fig-eras-next {
   fill: none;
-  stroke: var(--fig-data, #818cf8);
+  stroke: var(--fig-data, var(--accent));
   stroke-width: 1;
 }
 
@@ -2564,7 +2549,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-tick {
   fill: var(--text-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2614,7 +2599,7 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: 10px 28px 1fr;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -2669,7 +2654,7 @@ code, pre, .code, .sp-cli-cmd {
 .fig-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .fig-table th,
@@ -2681,7 +2666,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-table thead th {
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -2693,7 +2678,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-th-unit {
   display: block;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -2710,7 +2695,7 @@ code, pre, .code, .sp-cli-cmd {
 .fig-th-scale {
   display: flex;
   justify-content: space-between;
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -2740,14 +2725,14 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-row-title {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 3px;
 }
 
 .fig-conf {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.03em;
   color: var(--text-muted);
 }
@@ -2783,7 +2768,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-inline-label {
   fill: var(--text-primary);
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 
@@ -2809,7 +2794,7 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
   padding: 5px 10px;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -2822,7 +2807,7 @@ code, pre, .code, .sp-cli-cmd {
 .fig-legend {
   display: flex;
   gap: 16px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--text-muted);
   margin: 10px 0 0;
 }
@@ -2856,13 +2841,13 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-bar-name {
   grid-area: name;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .fig-tag {
-  font-size: 9.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -2894,12 +2879,12 @@ code, pre, .code, .sp-cli-cmd {
   background: repeating-linear-gradient(
     135deg,
     var(--fig-context) 0 3px,
-    rgba(100, 116, 139, 0.35) 3px 6px
+    rgba(138, 142, 150, 0.3) 3px 6px
   );
 }
 
 .fig-bar-value {
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-primary);
   margin-left: 8px;
@@ -2909,13 +2894,13 @@ code, pre, .code, .sp-cli-cmd {
 .fig-bar-count {
   grid-area: count;
   text-align: right;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
 .fig-bar-note {
   grid-area: note;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--text-muted);
   line-height: 1.45;
 }
@@ -2948,7 +2933,7 @@ code, pre, .code, .sp-cli-cmd {
   position: absolute;
   top: 2px;
   transform: translateX(-50%);
-  font-size: 9.5px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
@@ -2991,7 +2976,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .loop-foot {
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.6;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
@@ -3004,7 +2989,7 @@ code, pre, .code, .sp-cli-cmd {
   padding: 1px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* ─── LOADING & ERROR STATES ─── */
@@ -3016,7 +3001,7 @@ code, pre, .code, .sp-cli-cmd {
   justify-content: center;
   gap: 12px;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .app-loading-ring {
@@ -3036,7 +3021,7 @@ code, pre, .code, .sp-cli-cmd {
   padding: 32px;
   text-align: center;
   color: var(--error);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 /* ─── DOCS MODAL STYLES ─── */
@@ -3044,8 +3029,6 @@ code, pre, .code, .sp-cli-cmd {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3057,9 +3040,9 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-surface);
   border: 1px solid var(--border-bright);
   border-radius: var(--radius-lg);
-  width: 90%;
+  width: 100%;
   max-width: 720px;
-  max-height: 85vh;
+  max-height: min(860px, calc(100dvh - 40px));
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-modal);
@@ -3067,11 +3050,11 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .docs-header {
-  padding: 18px 20px 14px;
+  flex-shrink: 0;
+  padding: 18px 20px 12px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border);
 }
 
 .docs-title {
@@ -3081,7 +3064,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .docs-subtitle {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -3101,37 +3084,44 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
 }
 
+/* Underlined tabs: the row was a strip of boxed buttons over a tinted band,
+   and it shrank with the panel until the labels were cut in half. */
 .docs-tabs {
+  flex-shrink: 0;
   display: flex;
-  gap: 4px;
-  padding: 8px 20px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: rgba(0, 0, 0, 0.15);
+  gap: 20px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.docs-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .docs-tab {
-  padding: 5px 12px;
-  border-radius: var(--radius-xs);
-  border: 1px solid transparent;
+  padding: 10px 0 9px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13.5px;
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.12s ease;
+  transition: color 0.12s ease, border-color 0.12s ease;
 }
 
 .docs-tab:hover {
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .docs-tab.is-active {
-  background: var(--bg-elevated);
   color: var(--text-primary);
-  border-color: var(--border);
+  border-bottom-color: var(--accent);
 }
 
 .docs-body {
@@ -3143,46 +3133,49 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .docs-lede {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .docs-concept {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
+.docs-concept:last-child {
+  border-bottom: none;
+}
+
 .docs-concept-head {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 2px 8px;
 }
 
 .docs-concept-term {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .docs-concept-short {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
 .docs-concept-long {
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--text-secondary);
 }
 
 .docs-concept-seen {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -3192,20 +3185,20 @@ code, pre, .code, .sp-cli-cmd {
    empty spans, and the shortcut keys were styled inline. The rules that did
    exist were for two tables nothing rendered. */
 .docs-h3 {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
   margin-top: 4px;
 }
 
 .docs-p {
-  font-size: 12.5px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--text-secondary);
 }
 
 .docs-muted {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -3219,7 +3212,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -3239,7 +3232,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   justify-content: center;
   color: var(--on-accent);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -3260,21 +3253,21 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: 160px minmax(0, 1fr);
   gap: 12px;
   align-items: baseline;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .docs-action code.docs-cmd {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--accent);
 }
 
 .docs-cmd-inline {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--accent);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -3285,7 +3278,7 @@ code, pre, .code, .sp-cli-cmd {
 .docs-kbd {
   justify-self: start;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
   background: var(--bg-elevated);
@@ -3307,14 +3300,6 @@ code, pre, .code, .sp-cli-cmd {
   opacity: 1;
 }
 
-.fig-kpi-icon {
-  display: inline-block;
-  vertical-align: -2px;
-  margin-right: 6px;
-  color: var(--accent);
-  opacity: 0.9;
-}
-
 .civ-sim-icon {
   display: inline-block;
   flex-shrink: 0;
@@ -3329,12 +3314,6 @@ code, pre, .code, .sp-cli-cmd {
   display: block;
   margin-left: auto;
   margin-right: auto;
-}
-
-.sp-modal-icon,
-.docs-header-icon {
-  flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .docs-title-wrap {
@@ -3388,24 +3367,43 @@ code, pre, .code, .sp-cli-cmd {
     flex-shrink: 0;
   }
 
-  /* The row scrolls sideways rather than clipping: on a 375px screen the
-     controls used to run past the right edge with overflow visible, so two of
-     the three lenses were simply gone. With the lenses moved onto the map the
-     view tabs fit in the scrolling row, so they are reachable on a phone. The
-     status pill, the one purely informational element, gives up its width. */
-  .app-deck-center {
-    flex: 0 0 auto;
+  /* Two rows on a phone. The single row scrolled sideways, and at 390px
+     Proposals and Docs sat past the right edge where nothing said they
+     were; a count of waiting proposals nobody can see is no count. The
+     brand and the actions keep the top row, and the three views get the
+     whole width under it, where a thumb finds them. */
+  :root {
+    --deck-h: 96px;
   }
 
   .app-deck {
-    overflow-x: auto;
-    justify-content: flex-start;
-    gap: 8px;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 8px 8px;
+    padding: 8px 12px;
   }
 
-  .app-deck-left,
+  .app-deck-left {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   .app-deck-right {
     flex: 0 0 auto;
+  }
+
+  .app-deck-center {
+    order: 3;
+    flex: 1 0 100%;
+  }
+
+  .app-deck-nav {
+    width: 100%;
+  }
+
+  .app-deck-nav .app-deck-tab {
+    flex: 1 1 0;
+    justify-content: center;
   }
 
   .app-status-pill {
@@ -3447,7 +3445,7 @@ code, pre, .code, .sp-cli-cmd {
 
   .civ-lens-hud .app-deck-tab {
     padding: 3px 8px;
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .tp-filter-chips {
@@ -3496,8 +3494,8 @@ code, pre, .code, .sp-cli-cmd {
 
 @media (max-width: 560px) {
   .app-deck {
-    padding: 0 8px;
-    gap: 4px;
+    padding: 6px 10px;
+    gap: 6px;
   }
 
   .app-deck-btn-label {
@@ -3505,8 +3503,9 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .app-deck-btn {
-    padding: 0 8px;
-    min-width: 32px;
+    height: 36px;
+    padding: 0 9px;
+    min-width: 36px;
   }
 
   .app-deck-key {
@@ -3514,13 +3513,13 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .app-brand {
-    font-size: 13.5px;
+    font-size: 14px;
   }
 
   .app-deck-tab {
-    padding: 4px 7px;
-    font-size: 11px;
-    gap: 4px;
+    padding: 6px 8px;
+    font-size: 13px;
+    gap: 6px;
   }
 
   .fig-kpis {
@@ -3536,7 +3535,7 @@ code, pre, .code, .sp-cli-cmd {
 
 /* ── Scrollbars ────────────────────────────────────────────────────────────
    Nothing styled these, so every scrolling panel drew the platform default:
-   on this palette a bright grey slab against #090d16, heavy enough to read as
+   on this palette a bright grey slab against the canvas, heavy enough to read as
    chrome rather than as an affordance. The containers that scroll do need to —
    the capability list is 2,600px tall and the tree is wider than any window —
    so the bars stay, quietly.
@@ -3588,7 +3587,7 @@ code, pre, .code, .sp-cli-cmd {
   padding: 3px 9px;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -3598,7 +3597,7 @@ code, pre, .code, .sp-cli-cmd {
   height: 6px;
   border-radius: 50%;
   background: var(--ok);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 3px var(--ok-soft);
 }
 
 /* A lens the ledger has nothing for is offered, disabled, with the reason
@@ -3628,7 +3627,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-full);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -3647,7 +3646,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-switch--on {
-  border-color: rgba(16, 185, 129, 0.5);
+  border-color: var(--ok-line);
   color: var(--ok);
 }
 
@@ -3657,7 +3656,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-toggle-note {
   margin: 6px 0 0;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
   color: var(--text-muted);
 }
@@ -3670,7 +3669,7 @@ code, pre, .code, .sp-cli-cmd {
 .tp-note {
   margin: 0;
   padding: 0 0 10px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.5;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-subtle);
@@ -3679,7 +3678,7 @@ code, pre, .code, .sp-cli-cmd {
 .tp-finding {
   margin: 0;
   padding: 8px 14px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.45;
   color: var(--text-secondary);
   border-left: 2px solid var(--border-bright);
@@ -3730,7 +3729,7 @@ code, pre, .code, .sp-cli-cmd {
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -3745,7 +3744,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .setup-unplaced code {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-primary);
 }
 
@@ -3768,7 +3767,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -3783,7 +3782,7 @@ code, pre, .code, .sp-cli-cmd {
   gap: 12px;
 }
 
-/* The darker accent: white on --accent is 4.46:1, just under AA for text this size. */
+/* The filled accent with dark text, as every primary button carries it. */
 .intake-btn {
   height: 32px;
   padding: 0 16px;
@@ -3792,13 +3791,21 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
 }
 
+.intake-btn:not(:disabled):hover {
+  background: var(--accent);
+}
+
+/* Empty box, nothing to map: a quiet outline, not the accent at half
+   opacity, which read as a broken button. */
 .intake-btn:disabled {
-  opacity: 0.45;
+  background: transparent;
+  border-color: var(--border-bright);
+  color: var(--text-muted);
   cursor: default;
 }
 
@@ -3807,19 +3814,19 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--accent);
   cursor: pointer;
 }
 
 .intake-error {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--error);
 }
 
 .intake-where summary {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -3834,7 +3841,7 @@ code, pre, .code, .sp-cli-cmd {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
   gap: 8px;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .intake-where dt {
@@ -3848,14 +3855,14 @@ code, pre, .code, .sp-cli-cmd {
 
 .intake-where code {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
 
 .intake-note {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -3875,25 +3882,25 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-tour-count {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
 
 .app-tour-title {
-  margin: 0 0 6px;
-  font-size: 16px;
+  margin: 0 0 8px;
+  font-size: 17px;
   line-height: 1.3;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
+  text-wrap: balance;
 }
 
 .app-tour-body {
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
   color: var(--text-secondary);
 }
 
@@ -3903,7 +3910,7 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--accent);
   cursor: pointer;
@@ -3929,7 +3936,7 @@ code, pre, .code, .sp-cli-cmd {
   min-width: 0;
   padding: 7px 10px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow-x: auto;
@@ -3943,13 +3950,13 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 12.5px;
   cursor: pointer;
 }
 
 .app-tour-note {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -3978,28 +3985,37 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-tour-back {
-  height: 30px;
+  height: 32px;
   padding: 0 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: 13.5px;
   cursor: pointer;
 }
 
 .app-tour-next {
-  height: 30px;
+  height: 32px;
   padding: 0 16px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.app-tour-next:hover {
+  background: var(--accent);
+}
+
+.app-tour-back:hover {
+  color: var(--text-primary);
+  border-color: var(--border-bright);
 }
 
 /* ─── LOOP PAGE: THE STATES THAT ARE NOT A FIGURE ─── */
@@ -4007,7 +4023,7 @@ code, pre, .code, .sp-cli-cmd {
   margin: 20px 0 0;
   padding-left: 20px;
   max-width: 620px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.7;
   color: var(--text-secondary);
 }
@@ -4018,19 +4034,19 @@ code, pre, .code, .sp-cli-cmd {
 
 .loop-empty-steps code {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-primary);
 }
 
 .fig-note {
   margin: 8px 0 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.5;
   color: var(--text-muted);
 }
 
 .fig-row-none {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
@@ -4081,20 +4097,20 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .term-pop-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--text-primary);
 }
 
 .term-pop-short {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .term-pop-seen {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
   color: var(--text-muted);
   display: flex;
@@ -4104,7 +4120,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .term-pop-seen-label {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -4123,8 +4139,6 @@ code, pre, .code, .sp-cli-cmd {
   justify-content: center;
   padding: 12vh 20px 20px;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
 
 .finder {
@@ -4166,7 +4180,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .finder-group {
   padding: 8px 10px 4px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -4185,7 +4199,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13.5px;
   text-align: left;
   cursor: pointer;
 }
@@ -4196,7 +4210,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .finder-item-glyph {
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .finder-item-name {
@@ -4206,14 +4220,14 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .finder-item-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .finder-empty {
   padding: 18px 10px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   text-align: center;
 }
@@ -4225,7 +4239,7 @@ code, pre, .code, .sp-cli-cmd {
   margin: 18vh auto 0;
   padding: 0 24px;
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--text-secondary);
   display: flex;
@@ -4236,7 +4250,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-map-empty code {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-primary);
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -4271,7 +4285,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-subtitle {
   margin: 0 0 8px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -4290,7 +4304,7 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: minmax(160px, 1fr) minmax(0, 1.4fr) auto;
   gap: 12px;
   align-items: center;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .fig-promote-what {
@@ -4299,7 +4313,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-promote-why {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -4341,7 +4355,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-next-rank {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   text-align: right;
@@ -4356,20 +4370,20 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-next-name {
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .fig-next-cost {
   margin-left: 8px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--text-muted);
 }
 
 .fig-next-why {
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -4379,7 +4393,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 16px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -4401,12 +4415,12 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .loop-since-part.is-data .loop-since-n {
-  color: var(--fig-data, #818cf8);
+  color: var(--fig-data, var(--accent));
 }
 
 .loop-since-note {
   width: 100%;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--text-muted);
 }
 
@@ -4415,7 +4429,7 @@ code, pre, .code, .sp-cli-cmd {
   margin: 0;
   display: grid;
   gap: 4px;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .gov-decision-row {
@@ -4426,7 +4440,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .gov-decision dt {
   padding-top: 1px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -4439,17 +4453,44 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
 }
 
+/* On a phone the label goes above its value: beside it, a 72px column left
+   each value a few words a line. The same for a step and what supplies it. */
+@media (max-width: 560px) {
+  .uplink-modal {
+    padding: 16px 14px 12px;
+  }
+
+  .gov-card {
+    padding: 14px;
+  }
+
+  .gov-decision {
+    gap: 8px;
+  }
+
+  .gov-decision-row {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+
+  .gov-step {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+  }
+}
+
 /* ─── THE PANEL'S REASONS AND MOVES ─── */
 /* What a node needs beyond the agent: who approves it, who supplies it, what
    it runs on. A heading and one line per clause. */
 .sp-joint {
   margin: 10px 0 0;
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--text-secondary);
 }
 
 .sp-joint-hd {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -4463,7 +4504,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-authority {
   margin: 0 0 4px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -4474,7 +4515,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-failure {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.5;
   color: var(--error);
 }
@@ -4482,15 +4523,15 @@ code, pre, .code, .sp-cli-cmd {
 .sp-action-btn--gap {
   border: 1px solid var(--warn);
   color: var(--warn);
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .sp-action-btn--gap:hover {
-  background: rgba(245, 158, 11, 0.08);
+  background: var(--warn-soft);
 }
 
 .civ-sim-banner--gap {
-  border: 1px solid rgba(245, 158, 11, 0.5);
+  border: 1px solid var(--warn-line);
   color: var(--warn);
 }
 
@@ -4518,7 +4559,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-decline-label {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -4528,7 +4569,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .gov-error {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--error);
 }
 
@@ -4552,7 +4593,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
@@ -4589,7 +4630,7 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: minmax(140px, 1fr) minmax(0, 1.6fr) auto;
   gap: 12px;
   align-items: center;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .fig-demand-name {
@@ -4598,7 +4639,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-demand-why {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
@@ -4610,7 +4651,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--text-muted);
 }
 
@@ -4681,7 +4722,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .tp-inline-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
 }
 
@@ -4693,7 +4734,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--text-secondary);
   white-space: pre-wrap;

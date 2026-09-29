@@ -6,6 +6,16 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.4.1...main)
 
+### A palette of its own, a map whose edges meet its nodes, and a header that fits a phone
+
+The interface wore a CSS framework's defaults: slate grounds, an indigo accent, two radial glows behind every view and frosted glass on every panel, set in Inter at eleven and twelve pixels. It reads as generated because it was. The ground is now a near-neutral ink, the accent a soft blue that carries dark text as a fill, the status colours a step softer, and the type is IBM Plex a size larger throughout. The glows and the blur are gone.
+
+Every edge on the map was drawn 24 units left of the nodes it joined: `layoutNodes` placed edges at one x and the renderer drew circles at another, so each line entered its circle off centre. Both now read one `columnCentre`. Reached nodes are a quiet filled disc in place of a sea of violet with a white dot in each, a next step is the bright ring, a blocked node keeps a legible name instead of fading to three quarters, and edges are grey until a node is in focus. On a phone the map opened at 40%, where a name is four pixels tall; it opens at a readable scale and scrolls, and a simulation scrolls to where it starts.
+
+At 390px the header scrolled sideways and Proposals and Docs sat past the edge with nothing to say they were there. A phone gets two rows: the brand and the actions, then the three views across the full width. The proposal cards were flex items with `overflow: hidden`, so each was squeezed to fit the list and cut its steps off mid-line; the Docs tabs were squeezed the same way until their labels were cut in half. The header's verified count held a glossary button inside its own button, which React reported on every load.
+
+The copy lost what gave it away: an uppercase eyebrow over the Time & cost headline, an icon before every card title, callout boxes with coloured left edges, Title Case in the demo's proposals, "Record the no", hotkey docs that listed two lenses of three, a Docs page that called the columns "areas of work" when they are eras, and descriptions joined to their hints with a second dash.
+
 ### Every view says what it found before it shows the evidence
 
 The interface computed what mattered and then printed it in its quietest type. On the map every reached node was the same saturated disc, the next steps that are its recommendations were thin outlines with a nine-pixel cost, and blocked nodes were faded until they could barely be read. Reached is now the quietest filled state, a next step carries the heaviest ring with its cost in the accent colour, a blocked node is a dashed gap that stays legible, and a failing node is ringed in red. One line over the map states the finding: a capability configured and failing its check, or failing that, the next step that reaches the most, with a button that previews it.

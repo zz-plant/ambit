@@ -30,7 +30,7 @@ export const DOMAIN_ORDER = [
 ];
 
 /** Geometry. The node radius and the column and row pitch, in scene units. */
-export const NODE_R = 28;
+export const NODE_R = 22;
 export const COL_W = 170;
 export const ROW_H = 105;
 export const START_X = 90;
@@ -441,6 +441,13 @@ function orderRows(cols: Record<string, Item[]>, colOrder: string[], connections
   }
 }
 
+/**
+ * The x a column's nodes sit on: the middle of its band. The renderer drew
+ * nodes here while this placed the edges 24 units to the left of it, so every
+ * edge on the map entered its circle off centre. One function, both readers.
+ */
+export const columnCentre = (ci: number): number => START_X + ci * COL_W + COL_W / 2 - 16;
+
 export interface Placed {
   x: number;
   y: number;
@@ -451,7 +458,7 @@ export interface Placed {
 export function layoutNodes({ cols, colOrder }: Columns): Map<string, Placed> {
   const map = new Map<string, Placed>();
   colOrder.forEach((column, ci) => {
-    const cx = START_X + ci * COL_W + COL_W / 2 - 40;
+    const cx = columnCentre(ci);
     (cols[column] || []).forEach((item, ri) => {
       map.set(item.id, { x: cx, y: START_Y + ri * ROW_H + NODE_R, item });
     });

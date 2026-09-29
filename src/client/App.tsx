@@ -29,7 +29,7 @@ const PANEL_W = 340;
 const Loading = () => (
   <div className="app-loading">
     <div className="app-loading-ring" />
-    <p>Loading capability graph…</p>
+    <p>Loading the map…</p>
   </div>
 );
 
@@ -99,13 +99,13 @@ export default function App() {
       // with no explanation reads as a glitch.
       loadGraph();
       loadLoop();
-      setToast('The graph changed underneath — reloaded.');
+      setToast('The graph was rebuilt, so the map has reloaded.');
     },
     // A browser approval becomes a notice to act on, with the exact command
     // the terminal would run.
     proposalApproved: id =>
       setToast(
-        `Approved: ${id} — review with \`ambit proposal ${id}\`, apply with \`ambit apply ${id}\`.`
+        `Approved ${id}. Review it with \`ambit proposal ${id}\`, then apply it with \`ambit apply ${id}\`.`
       ),
   });
 
@@ -204,7 +204,7 @@ export default function App() {
       await navigator.clipboard.writeText(window.location.href);
       setToast('Link copied. It opens on this view.');
     } catch {
-      setToast('Copy the address bar — it is a link to this view.');
+      setToast('Could not copy. The address bar is a link to this view.');
     }
   };
 
@@ -353,7 +353,9 @@ export default function App() {
         )}
       </div>
 
-      {detailOpen && (
+      {/* On a phone the panel is a bottom sheet, and so is the tour card: while
+          the tour narrates the node, the sheet under it said the same thing. */}
+      {detailOpen && !(touring && isNarrow) && (
         <aside className="app-detail-panel" aria-label="Capability details">
           <NodeDetailPanel onShow={show} />
         </aside>

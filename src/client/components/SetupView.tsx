@@ -172,6 +172,10 @@ export function SetupView({ onShow }: SetupViewProps) {
                 <code>{INSTALL}</code>
               </div>
             )}
+            <p className="setup-subtitle">
+              {enabled} of {entries.length} entries enabled. One row per server, agent, model or
+              command your configs declare, with its latest check and what it adds to the map.
+            </p>
             {(failingEntries.length > 0 || idle.length > 0) && tab === 'entries' && (
               <ul className="setup-findings">
                 {failingEntries.length > 0 && (
@@ -190,11 +194,6 @@ export function SetupView({ onShow }: SetupViewProps) {
                 )}
               </ul>
             )}
-            <p className="setup-subtitle">
-              {enabled} of {entries.length} entries enabled. Each row is one thing your agent
-              configs declare, with what the engine has proved about it and the capabilities it
-              provides.
-            </p>
           </div>
           {backend === 'live' && (
             <div className="setup-tabs" role="tablist" aria-label="What this machine has">

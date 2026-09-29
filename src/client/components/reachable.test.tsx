@@ -9,6 +9,7 @@
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
+import concepts from '../../shared/concepts.json';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
@@ -174,13 +175,13 @@ test('nothing fragile draws no finding', () => {
 test("a machine's own figures are not labelled as samples", () => {
   seed({ loop: demoSnapshot(), loopSource: 'ledger', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
-  expect(html).toContain('Where the time goes');
-  expect(html).not.toContain('Sample data');
+  expect(html).toContain('a year no longer spent stepping in');
+  expect(html).not.toContain('sample data');
 });
 
 test('the demo says which of its numbers are illustration', () => {
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
-  expect(renderToStaticMarkup(<LoopDashboard />)).toContain('Sample data');
+  expect(renderToStaticMarkup(<LoopDashboard />)).toContain('This is sample data');
 });
 
 test('a priced opportunity offers the map only when the node is on the graph in front of you', () => {
@@ -228,8 +229,12 @@ test('a tech-tree node offers no config switch: it names no config entry', () =>
 
 test('a house word carries its own definition, from the one glossary', () => {
   // The definition and the word were in different places: a glossary behind a
-  // button, and "reached" on screen for a reader who had not opened it.
-  expect(deck()).toContain('class="term"');
+  // button, and "reached" on screen for a reader who had not opened it. In the
+  // header it rides on the count's tooltip: the count is a button, and the
+  // glossary popover is one too, which cannot nest inside it.
+  const evidence = concepts.concepts.find(c => c.key === 'evidence')!;
+  expect(deck()).toContain(evidence.short);
+  expect(deck()).not.toContain('class="term"');
 });
 
 test('the header leads with what is verified, and each count is a control', () => {

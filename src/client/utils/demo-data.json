@@ -851,7 +851,7 @@
         "name": "Context Compaction",
         "type": "possibility",
         "status": "specified",
-        "description": "Long sessions summarize instead of falling over at the context limit — Enable session compaction so long-running work survives the window",
+        "description": "Long sessions summarize instead of falling over at the context limit. Enable session compaction so long-running work survives the window",
         "position": {
           "x": 0,
           "y": 0,
@@ -964,7 +964,7 @@
         "name": "Embeddings",
         "type": "possibility",
         "status": "specified",
-        "description": "Text can be turned into vectors — the prerequisite for any retrieval — Configure an embedding model; a small local one is usually enough",
+        "description": "Text can be turned into vectors — the prerequisite for any retrieval. Configure an embedding model; a small local one is usually enough",
         "position": {
           "x": 0,
           "y": 0,
@@ -992,7 +992,7 @@
         "name": "Evaluation",
         "type": "possibility",
         "status": "specified",
-        "description": "Agent output measured against known-good cases rather than judged by vibes — Collect cases where the agent failed and turn them into a suite you can re-run",
+        "description": "Agent output measured against known-good cases rather than judged by vibes. Collect cases where the agent failed and turn them into a suite you can re-run",
         "position": {
           "x": 0,
           "y": 0,
@@ -1013,7 +1013,7 @@
         "name": "Extended Context",
         "type": "possibility",
         "status": "specified",
-        "description": "A model configured well past the default window, so long files and sessions survive — Set an explicit context limit per model — most runtimes silently default to 4K and truncate",
+        "description": "A model configured well past the default window, so long files and sessions survive. Set an explicit context limit per model — most runtimes silently default to 4K and truncate",
         "position": {
           "x": 0,
           "y": 0,
@@ -1118,7 +1118,7 @@
         "name": "Local Embeddings",
         "type": "possibility",
         "status": "specified",
-        "description": "Retrieval that never sends your text to a third party — Run the embedding model locally — nomic-embed or bge-small are small enough",
+        "description": "Retrieval that never sends your text to a third party. Run the embedding model locally — nomic-embed or bge-small are small enough",
         "position": {
           "x": 0,
           "y": 0,
@@ -1172,7 +1172,7 @@
         "name": "Local Tool Calling",
         "type": "possibility",
         "status": "specified",
-        "description": "A local model that reliably emits tool calls — the threshold where local models stop being chat toys and start doing agent work — Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls — many local models claim support and fail in practice",
+        "description": "A local model that reliably emits tool calls — the threshold where local models stop being chat toys and start doing agent work. Pull a tool-capable local model (Qwen coder, Hermes, Command-R) and verify it emits tool calls — many local models claim support and fail in practice",
         "position": {
           "x": 0,
           "y": 0,
@@ -1193,7 +1193,7 @@
         "name": "Local Typed Judgment",
         "type": "possibility",
         "status": "specified",
-        "description": "Typed decisions from a model on your own hardware, so the state it judges never leaves the machine — Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it",
+        "description": "Typed decisions from a model on your own hardware, so the state it judges never leaves the machine. Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it",
         "position": {
           "x": 0,
           "y": 0,
@@ -1214,7 +1214,7 @@
         "name": "Model Routing",
         "type": "possibility",
         "status": "specified",
-        "description": "More than one model available, with agents pinned to the right tier for their work — Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning",
+        "description": "More than one model available, with agents pinned to the right tier for their work. Pin cheap models to mechanical subagents and reserve the expensive tier for hard reasoning",
         "position": {
           "x": 0,
           "y": 0,
@@ -1309,7 +1309,7 @@
         "name": "Offline Capable",
         "type": "possibility",
         "status": "specified",
-        "description": "The full loop — inference, tools, retrieval — runs with the network off — Verify the agent still completes a real task with the network disabled",
+        "description": "The full loop — inference, tools, retrieval — runs with the network off. Verify the agent still completes a real task with the network disabled",
         "position": {
           "x": 0,
           "y": 0,
@@ -1330,7 +1330,7 @@
         "name": "Parallel Execution",
         "type": "possibility",
         "status": "specified",
-        "description": "Several agents working at once on independent pieces — Split a broad task across subagents that do not touch the same files",
+        "description": "Several agents working at once on independent pieces. Split a broad task across subagents that do not touch the same files",
         "position": {
           "x": 0,
           "y": 0,
@@ -1388,7 +1388,7 @@
         "name": "Private Data Handling",
         "type": "possibility",
         "status": "specified",
-        "description": "Sensitive material is processed only by models you control — Route work touching sensitive data to local models by policy, not by habit",
+        "description": "Sensitive material is processed only by models you control. Route work touching sensitive data to local models by policy, not by habit",
         "position": {
           "x": 0,
           "y": 0,
@@ -1413,7 +1413,7 @@
         "name": "Retrieval",
         "type": "possibility",
         "status": "specified",
-        "description": "The agent pulls relevant context on demand instead of being handed everything up front — Wire retrieval into a skill or agent so context is fetched rather than pasted",
+        "description": "The agent pulls relevant context on demand instead of being handed everything up front. Wire retrieval into a skill or agent so context is fetched rather than pasted",
         "position": {
           "x": 0,
           "y": 0,
@@ -1479,7 +1479,7 @@
         "name": "Scheduled Work",
         "type": "possibility",
         "status": "specified",
-        "description": "Agents that run on a schedule or a trigger, without you starting them — Move a recurring check onto a schedule instead of remembering to run it",
+        "description": "Agents that run on a schedule or a trigger, without you starting them. Move a recurring check onto a schedule instead of remembering to run it",
         "position": {
           "x": 0,
           "y": 0,
@@ -1574,7 +1574,7 @@
         "name": "Self-Hosted Stack",
         "type": "possibility",
         "status": "specified",
-        "description": "Your own hardware serving models and tools to your agents — Move inference onto a machine you own and reach it over a private network",
+        "description": "Your own hardware serving models and tools to your agents. Move inference onto a machine you own and reach it over a private network",
         "position": {
           "x": 0,
           "y": 0,
@@ -1649,7 +1649,7 @@
         "name": "Skill Library",
         "type": "possibility",
         "status": "specified",
-        "description": "Reusable procedures the agent loads on demand, so expertise is not retyped per session — Write a SKILL.md for a workflow you explain more than twice",
+        "description": "Reusable procedures the agent loads on demand, so expertise is not retyped per session. Write a SKILL.md for a workflow you explain more than twice",
         "position": {
           "x": 0,
           "y": 0,
@@ -1763,7 +1763,7 @@
         "name": "Vector Store",
         "type": "possibility",
         "status": "specified",
-        "description": "Somewhere to keep and search those vectors — Add a vector store — pgvector or a local LanceDB is enough to start",
+        "description": "Somewhere to keep and search those vectors. Add a vector store — pgvector or a local LanceDB is enough to start",
         "position": {
           "x": 0,
           "y": 0,

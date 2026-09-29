@@ -15,20 +15,20 @@ type Tab = DocsTab;
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'concepts', label: 'Concepts' },
-  { id: 'reading', label: 'Reading the Map' },
-  { id: 'doing', label: 'Common Actions' },
+  { id: 'reading', label: 'Reading the map' },
+  { id: 'doing', label: 'What you can do' },
   { id: 'hotkeys', label: 'Shortcuts' },
 ];
 
 const HOTKEYS = [
   { key: '/', desc: 'Find a capability, on the map or in your setup' },
   { key: 'J / K', desc: 'Step through the nodes on the map' },
-  { key: '1 - 2', desc: 'Switch lens (1: Standard, 2: Attention)' },
+  { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
   { key: '+ / -', desc: 'Zoom in / out on the map' },
   { key: '0', desc: 'Back to actual size' },
   { key: 'G', desc: 'Open proposals' },
   { key: '?', desc: 'Open this guide' },
-  { key: 'ESC', desc: 'Clear the selection, or close whatever is open' },
+  { key: 'Esc', desc: 'Clear the selection, or close whatever is open' },
 ];
 
 /** Drawn from the same label map the map and the panels read, so a rename
@@ -45,24 +45,30 @@ const NODE_TYPES = [
 const ACTIONS = [
   {
     cmd: 'ambit status',
-    answers: 'How is the environment doing? (frontier, verified, failing, spofs)',
+    answers: 'What is reached, what is verified, what is failing, and what rests on one provider',
   },
-  { cmd: 'ambit verify', answers: 'Run executable checks to prove capabilities are working' },
-  { cmd: 'ambit authority', answers: 'What may run unattended vs what requires confirmation?' },
+  { cmd: 'ambit verify', answers: "Run each capability's check and record the result" },
+  {
+    cmd: 'ambit authority',
+    answers: 'What an agent may do without asking, and what needs a person',
+  },
   {
     cmd: 'ambit goal "<intent>"',
-    answers: 'Route a natural language goal to concrete capability plans',
+    answers: 'Describe a goal in plain words and get the capabilities it needs',
   },
   {
     cmd: 'ambit opportunities',
-    answers: 'Ranked high-ROI capability upgrades based on observed friction',
+    answers: 'What to set up next, ranked by how much of your time it would save',
   },
   {
     cmd: 'ambit impact <id>',
-    answers: 'What breaks downstream if a tool or credential disappears?',
+    answers: 'What stops working if a tool or credential goes away',
   },
-  { cmd: 'ambit propose <cap>', answers: 'Draft a safe, reviewable capability acquisition' },
-  { cmd: 'ambit approve / apply', answers: 'Human-gated execution with signed approval receipts' },
+  {
+    cmd: 'ambit propose <cap>',
+    answers: 'Write a change down as a proposal for a person to approve',
+  },
+  { cmd: 'ambit approve / apply', answers: 'Sign an approval, then apply the change it covers' },
 ];
 
 export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProps) {
@@ -95,23 +101,9 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
       >
         <div className="docs-header">
           <div className="docs-title-wrap">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="docs-header-icon"
-              aria-hidden="true"
-            >
-              <path d="M3 4 C3 3.2 3.7 2.5 4.5 2.5 H9.5 V17.5 H4.5 C3.7 17.5 3 16.8 3 16 Z M17 4 C17 3.2 16.3 2.5 15.5 2.5 H10.5 V17.5 H15.5 C16.3 17.5 17 16.8 17 16 Z" />
-            </svg>
             <div>
-              <h2 className="docs-title">How to read this</h2>
-              <p className="docs-subtitle">Your setup, placed on a tree of agent capabilities</p>
+              <h2 className="docs-title">Guide</h2>
+              <p className="docs-subtitle">What the map shows, and what you can do with it</p>
             </div>
           </div>
           <button type="button" className="docs-close" onClick={onClose} aria-label="Close">
@@ -138,8 +130,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
           {tab === 'concepts' && (
             <>
               <p className="docs-lede">
-                {concepts.concepts.length} terms carry all the meaning here, in the order you meet
-                them. Everything the tool says is built from them.
+                The {concepts.concepts.length} words the map and the CLI use, in the order you meet
+                them.
               </p>
               {concepts.concepts.map(c => (
                 <div key={c.key} className="docs-concept">
@@ -157,7 +149,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
           {tab === 'reading' && (
             <>
               <p className="docs-lede">
-                Columns are areas of work. Height is roughly how far up the tree something sits.
+                Each column is an era, from the foundations on the left to what depends on them on
+                the right.
               </p>
               <h3 className="docs-h3">The circles</h3>
               <div className="docs-list">
@@ -167,7 +160,7 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                       {n.sym}
                     </span>
                     <span>
-                      <strong>{n.label}</strong> — {n.desc}
+                      <strong>{n.label}</strong>: {n.desc}
                     </span>
                   </div>
                 ))}
@@ -176,10 +169,10 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
               {/* One section for the three states, in the legend's order. It
                   was two: "Solid vs outlined" and, further down, "The states",
                   saying the same thing about the same circles. */}
-              <h3 className="docs-h3">Solid, outlined, faded</h3>
+              <h3 className="docs-h3">Filled, outlined, dashed</h3>
               <p className="docs-p">
-                A solid circle is reached. An outlined one is a next step: its prerequisites are
-                met, and its setup cost sits beside it. A faded one is blocked, with a prerequisite
+                A filled circle is reached. An outlined one is a next step: its prerequisites are
+                met, and its setup cost sits beside it. A dashed one is blocked, with a prerequisite
                 missing.
               </p>
 
@@ -188,13 +181,13 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-row">
                   <span className="docs-line-solid" />
                   <span>
-                    <strong>Required</strong> — without it the dependent capability cannot work
+                    <strong>Required</strong>: without it the dependent capability cannot work
                   </span>
                 </div>
                 <div className="docs-row">
                   <span className="docs-line-dashed" />
                   <span>
-                    <strong>Optional</strong> — helps, but does not gate
+                    <strong>Optional</strong>: helps, but does not gate
                   </span>
                 </div>
               </div>
@@ -204,8 +197,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
 
               <h3 className="docs-h3">Which way an edge runs</h3>
               <p className="docs-p">
-                Select a node and its edges are drawn apart: what it needs in teal, what it enables
-                in indigo, one hop each way. The simulations follow the edges all the way.
+                Select a node and its edges are drawn apart: what it needs in violet, what it
+                enables in blue, one hop each way. The simulations follow the edges all the way.
               </p>
 
               <h3 className="docs-h3">The map and My Setup</h3>
@@ -225,15 +218,15 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Click a node</span>
                   <span className="docs-answers">
-                    What depends on it, whether its check passes, and a simulation — an outage for a
+                    What depends on it, whether its check passes, and a simulation: an outage for a
                     node you have, what it would unlock for one you do not
                   </span>
                 </div>
                 <div className="docs-action">
                   <span className="docs-cmd">Click a legend key</span>
                   <span className="docs-answers">
-                    Highlights only that kind — keystones, failing checks, next steps. The three
-                    counts in the header do the same. Esc clears it
+                    Highlights only that kind: keystones, failing checks, next steps. The counts in
+                    the header do the same. Esc clears it
                   </span>
                 </div>
                 <div className="docs-action">
@@ -268,7 +261,7 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
 
               <h3 className="docs-h3">In the terminal</h3>
               <p className="docs-p docs-muted">
-                Everything below is also on this page or under it, and the output is easier to keep.
+                The same answers from the CLI, as text you can keep or pipe.
               </p>
               <div className="docs-list">
                 {ACTIONS.map(a => (
@@ -293,7 +286,7 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
 
           {tab === 'hotkeys' && (
             <>
-              <p className="docs-lede">Everything on the map has a key.</p>
+              <p className="docs-lede">These work anywhere on the page, except while typing.</p>
               <div className="docs-list">
                 {HOTKEYS.map(h => (
                   <div key={h.key} className="docs-action">

@@ -23,8 +23,8 @@ export default function GettingStartedGuide({ style, onDismiss, onReadMore }: Gu
           simulation: what stops working without it.
         </li>
         <li>
-          <strong>Click a faded one</strong> — those are not reached — and the simulation runs the
-          other way: everything it would unlock.
+          <strong>Click one that is not reached yet</strong>, outlined or dashed, and the simulation
+          runs the other way: everything it would unlock.
         </li>
         <li>
           <strong>Click a key in the legend</strong> to highlight just that kind.{' '}
@@ -32,7 +32,7 @@ export default function GettingStartedGuide({ style, onDismiss, onReadMore }: Gu
         </li>
       </ol>
       <button type="button" className="app-guide-more" onClick={onReadMore}>
-        Every term, defined →
+        The full guide →
       </button>
     </div>
   );
