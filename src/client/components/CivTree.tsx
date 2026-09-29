@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
 import { typingIn } from '../utils/keys';
@@ -21,6 +21,7 @@ import {
   costOf,
   edgePath,
   eraOf,
+  headlineReserve,
   isFailing,
   isNext,
   isProven,
@@ -69,6 +70,8 @@ interface CivTreeProps {
    * week and its simulations.
    */
   asOf?: string;
+  /** Told where the headline's bottom edge is, so a card laid over the map can sit below it. */
+  onHeadline?: (bottom: number) => void;
 }
 
 /**
@@ -306,6 +309,7 @@ export default function CivTree({
   rightInset = 0,
   narrated = false,
   asOf,
+  onHeadline,
 }: CivTreeProps) {
   const requestedLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
@@ -429,6 +433,27 @@ export default function CivTree({
   const [where, setWhere] = useState<string | null>(null);
   // The headline is two rows when there is a finding under the range line.
   const headlined = Boolean(!narrated && !asOf && (findings.failing.length || findings.best));
+  // Its height, measured, so the canvas starts below it however many lines its
+  // rows wrap to. A fixed 40px reserved one line of each, and at 900px the
+  // range line wraps and the finding sat on the era names, which are controls.
+  // The last measure is kept while a panel hides the headline, so the map does
+  // not move when a node is opened.
+  const [headlineBox, setHeadlineBox] = useState<{ height: number; bottom: number } | null>(null);
+  const measureHeadline = React.useCallback((el: HTMLDivElement | null) => {
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const next = { height: el.offsetHeight, bottom: el.offsetTop + el.offsetHeight };
+      setHeadlineBox(prev =>
+        prev && prev.height === next.height && prev.bottom === next.bottom ? prev : next
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const headlinePad = headlineReserve(headlineBox?.height ?? null);
+  useEffect(() => {
+    if (headlineBox) onHeadline?.(headlineBox.bottom);
+  }, [headlineBox, onHeadline]);
   const rangeSince = useAmbitStore(s => s.rangeSince);
   // The ledger reports the week by name; the tree's names are unique.
   const weekNames = useMemo(
@@ -755,8 +780,11 @@ export default function CivTree({
         />
       )}
 
-      {!narrated && !asOf && simulationMode === 'none' && !selectedId && (
+      {/* Hidden while a panel is open, a node's or an era's ladder: the panel
+          is then what is being read, and the headline sat on the lens switch. */}
+      {!narrated && !asOf && simulationMode === 'none' && !selectedId && selectedEra === null && (
         <MapFinding
+          wrapRef={measureHeadline}
           findings={findings}
           since={rangeSince}
           onShow={id => onSelect(id)}
@@ -780,7 +808,7 @@ export default function CivTree({
         ref={containerRef}
         // The headline is two rows when there is a finding under the range
         // line; the canvas starts below the second, so the era headers stay
-        // readable.
+        // readable and pressable, however far the rows wrap.
         className={`civ-scroll ${headlined ? 'civ-scroll--headline' : ''}`}
         // Dragging to pan is a pointer affordance layered over the canvas. The
         // a11y warning on this element is expected and left visible: every node
@@ -791,11 +819,14 @@ export default function CivTree({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        style={{
-          paddingLeft: leftInset,
-          cursor: isDragging ? 'grabbing' : 'default',
-          userSelect: isDragging ? 'none' : 'auto',
-        }}
+        style={
+          {
+            paddingLeft: leftInset,
+            cursor: isDragging ? 'grabbing' : 'default',
+            userSelect: isDragging ? 'none' : 'auto',
+            '--headline-pad': `${headlinePad}px`,
+          } as React.CSSProperties
+        }
       >
         {/* Main SVG Vector Canvas */}
         <svg
@@ -1602,7 +1633,7 @@ export default function CivTree({
           nodes={minimapNodes}
           watch={findings.failing[0]?.id}
           onWhere={setWhere}
-          layoutKey={String(headlined)}
+          layoutKey={`${headlined}:${headlinePad}`}
           leftInset={leftInset}
           rightInset={rightInset}
         />

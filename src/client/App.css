@@ -1561,8 +1561,10 @@ code, pre, .code, .sp-cli-cmd {
   overflow: auto;
 }
 
+/* The headline's measured height, less what the canvas's own margin already
+   clears, is set inline: 40px for a line of range and a line of finding. */
 .civ-scroll--headline {
-  padding-top: 40px;
+  padding-top: var(--headline-pad, 40px);
 }
 
 @media (max-width: 720px) {
@@ -1786,7 +1788,8 @@ code, pre, .code, .sp-cli-cmd {
   justify-content: center;
   gap: 4px 10px;
   /* Clear of the zoom controls on the left and the lens switch on the right,
-     which share its row; it wraps before it runs under either. */
+     which share its row; it wraps before it runs under either. The wider
+     reserve for both is below. */
   max-width: max(280px, calc(100% - 420px));
   padding: 4px 12px;
   border-radius: var(--radius-full);
@@ -1794,6 +1797,17 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-glass);
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+/* The lens switch is the wider of the two, up to 231px and 12px in from the
+   edge, and the headline's box runs from 20px in to 12px in, so a centred
+   line 474px narrower than the box keeps 6px clear of it. 420px let it run
+   21px under the switch. A phone puts the headline at the bottom edge, where
+   it shares no row. */
+@media (min-width: 721px) {
+  .civ-range {
+    max-width: max(240px, calc(100% - 474px));
+  }
 }
 
 .civ-range strong {

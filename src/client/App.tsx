@@ -97,6 +97,9 @@ export default function App() {
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
   const [finderOpen, setFinderOpen] = useState(false);
+  // Where the map's headline ends, so the first-run card sits below it: at
+  // 1024px it sat on the finding and covered its Show button.
+  const [headlineBottom, setHeadlineBottom] = useState<number | null>(null);
 
   const openDocs = (tab?: DocsTab) => {
     setDocsTab(tab);
@@ -406,6 +409,7 @@ export default function App() {
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
               narrated={touring}
               asOf={tick ? momentOf(tick.at) : undefined}
+              onHeadline={setHeadlineBottom}
             />
           </Suspense>
         ) : items.length > 0 ? (
@@ -447,7 +451,14 @@ export default function App() {
           view === 'tree' &&
           hasTree && (
             <GettingStartedGuide
-              style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
+              style={
+                isNarrow
+                  ? undefined
+                  : {
+                      right: detailOpen ? PANEL_W + 16 : 16,
+                      ...(headlineBottom === null ? {} : { top: headlineBottom + 10 }),
+                    }
+              }
               onDismiss={dismissGuide}
               onReadMore={() => {
                 openDocs('reading');

@@ -6,6 +6,7 @@
  * simulation is its own sentence. Hidden while a node is selected: the panel
  * is then the thing being read.
  */
+import type { Ref } from 'react';
 import type { LoopSince } from '../../../shared/api';
 import type { Item } from '../../utils/configImporter';
 import { costOf, type MapFindings } from './layout';
@@ -31,6 +32,8 @@ interface MapFindingProps {
   where?: string | null;
   leftInset?: number;
   rightInset?: number;
+  /** The headline's box, which the map measures to start its canvas below it. */
+  wrapRef?: Ref<HTMLDivElement>;
 }
 
 /**
@@ -133,11 +136,13 @@ export function MapFinding({
   where,
   leftInset = 0,
   rightInset = 0,
+  wrapRef,
 }: MapFindingProps) {
   const { failing, best } = findings;
   const cost = best ? costOf(best.item) : '';
   return (
     <div
+      ref={wrapRef}
       className="civ-sim-wrap civ-finding-wrap"
       style={{ paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset }}
     >
