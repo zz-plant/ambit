@@ -110,9 +110,11 @@ if (cmd === 'web') {
 }
 
 // The MCP server, runnable from any install: `claude mcp add ambit -- ambit mcp`.
-// Before this, registering it meant knowing where npm put the package.
+// Before this, registering it meant knowing where npm put the package. What
+// follows `mcp` is the server's own: `ambit mcp --profile=agent` offers the
+// ten tools a working agent needs and not all sixty.
 if (cmd === 'mcp') {
-  const result = spawnSync('node', [...NODE_FLAGS, mcpEntry], { stdio: 'inherit' });
+  const result = spawnSync('node', [...NODE_FLAGS, mcpEntry, ...args], { stdio: 'inherit' });
   process.exit(result.status || 0);
 }
 
