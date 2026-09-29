@@ -1,6 +1,6 @@
 /**
- * The page's rules for keys: what one press of Escape closes, and where the
- * page's own keys stand aside.
+ * The page's rules for keys: what one press of Escape closes, where the page's
+ * own keys stand aside, and where Tab goes inside a dialog.
  *
  * The shell and the map each listened for the key, and what a person got
  * depended on which listener ran first: with a selection, a simulation and a
@@ -10,7 +10,14 @@
  * is tested here by pressing until nothing is left open.
  */
 import { expect, test } from 'vitest';
-import { type EscapeLayer, type EscapeState, escapeLayer, typingIn } from './keys';
+import {
+  type EscapeLayer,
+  type EscapeState,
+  escapeLayer,
+  trapTab,
+  typingIn,
+  wrapTab,
+} from './keys';
 
 const NOTHING: EscapeState = {
   docs: false,
@@ -93,4 +100,68 @@ test('a button, a node of the map and the page itself leave the keys to the page
   expect(typingIn(target('g'))).toBe(false);
   expect(typingIn(target('BODY'))).toBe(false);
   expect(typingIn(null)).toBe(false);
+});
+
+// ── Tab inside a dialog ──────────────────────────────────────────────────────
+// Proposals and the docs opened with the focus left on the page behind them,
+// so Tab walked the map's seventy-odd stops before it reached either, and the
+// finder let Tab walk out of it onto the page. Taking the focus and giving it
+// back happen in an effect (useDialogFocus), which this suite has no DOM to
+// run; where Tab goes is decided here, on stand-ins for the dialog.
+
+test('Tab comes round from the last stop to the first, and Shift+Tab the other way', () => {
+  expect(wrapTab(2, 3, false)).toBe(0);
+  expect(wrapTab(0, 3, true)).toBe(2);
+  // From the dialog itself, where it starts: on is the first stop, back is the last.
+  expect(wrapTab(-1, 3, false)).toBeNull();
+  expect(wrapTab(-1, 3, true)).toBe(2);
+});
+
+test('inside the run of stops the browser takes the step, which stays inside', () => {
+  expect(wrapTab(0, 3, false)).toBeNull();
+  expect(wrapTab(1, 3, false)).toBeNull();
+  expect(wrapTab(1, 3, true)).toBeNull();
+  expect(wrapTab(2, 3, true)).toBeNull();
+});
+
+test('a dialog with nothing to stop on keeps the focus itself', () => {
+  expect(wrapTab(-1, 0, false)).toBe(-1);
+  expect(wrapTab(-1, 0, true)).toBe(-1);
+});
+
+/** A dialog holding three controls, and a record of where the focus was put. */
+function dialogOf(n = 3) {
+  const focused: string[] = [];
+  const stops = Array.from({ length: n }, (_, i) => ({ focus: () => focused.push(`stop ${i}`) }));
+  const dialog = {
+    querySelectorAll: () => stops,
+    focus: () => focused.push('dialog'),
+  };
+  const press = (active: unknown, shiftKey = false, key = 'Tab') => {
+    let prevented = false;
+    trapTab(
+      { key, shiftKey, currentTarget: dialog, preventDefault: () => (prevented = true) },
+      active
+    );
+    return prevented;
+  };
+  return { stops, focused, press };
+}
+
+test('the dialog puts the focus where Tab comes round to, and takes the key', () => {
+  const { stops, focused, press } = dialogOf();
+  expect(press(stops[2])).toBe(true);
+  expect(press(stops[0], true)).toBe(true);
+  expect(focused).toEqual(['stop 0', 'stop 2']);
+});
+
+test('a step inside, and any other key, are left alone', () => {
+  const { stops, focused, press } = dialogOf();
+  expect(press(stops[0])).toBe(false);
+  expect(press(stops[2], false, 'ArrowDown')).toBe(false);
+  expect(focused).toEqual([]);
+
+  const empty = dialogOf(0);
+  expect(empty.press(null)).toBe(true);
+  expect(empty.focused).toEqual(['dialog']);
 });

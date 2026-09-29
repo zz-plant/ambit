@@ -492,11 +492,30 @@ test('every key pressed in the finder stays in it, the ones it has no use for to
   // With a result focused, ArrowDown also stepped the selection on the map
   // behind the finder, and `g` opened Proposals over it: only Escape stopped.
   const { asked, press } = finderView(paletteRows(demo.items, buildActions(context()), 'shell'));
-  for (const key of ['g', 'G', '?', '/', 'j', 'k', '1', '2', '+', '-', '0', 'Tab', 'a']) {
+  for (const key of ['g', 'G', '?', '/', 'j', 'k', '1', '2', '+', '-', '0', 'a']) {
     expect(press(key).stopped, key).toBe(true);
   }
   // None of them did anything to the finder either: typing goes to the box.
   expect(asked).toEqual([]);
+});
+
+test('Tab comes round inside the finder, and does not walk out onto the page', () => {
+  const { tree } = finderView(paletteRows(demo.items, buildActions(context()), 'shell'));
+  const dialog = findAll(tree, e => e.props?.role === 'dialog')[0];
+  const focused: number[] = [];
+  const stops = [0, 1, 2].map(i => ({ focus: () => focused.push(i) }));
+  vi.stubGlobal('document', { activeElement: stops[2] });
+  let prevented = false;
+  let stopped = false;
+  dialog.props.onKeyDown({
+    key: 'Tab',
+    shiftKey: false,
+    currentTarget: { querySelectorAll: () => stops },
+    stopPropagation: () => (stopped = true),
+    preventDefault: () => (prevented = true),
+  });
+  expect({ stopped, prevented, focused }).toEqual({ stopped: true, prevented: true, focused: [0] });
+  expect(dialog.props.tabIndex).toBe(-1);
 });
 
 test('a result reached with Tab is the one Enter chooses', () => {

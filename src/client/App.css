@@ -135,6 +135,12 @@ code, pre, .code, .sp-cli-cmd {
   outline-offset: 2px;
 }
 
+/* A dialog takes the focus itself when it opens, so it is announced by its
+   name; it is not a control, and a ring round the whole of it marks nothing. */
+[role='dialog'][tabindex='-1']:focus-visible {
+  outline: none;
+}
+
 /* Text for screen readers only: the live region that announces a selection.
    It rendered as visible text in the top-left corner while this was missing. */
 .visually-hidden {

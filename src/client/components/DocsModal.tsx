@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import concepts from '../../shared/concepts.json';
+import { useDialogFocus } from '../hooks/useDialogFocus';
+import { trapTab } from '../utils/keys';
 import { typeLabel } from '../utils/labels';
 import { typeColor } from '../utils/typeColors';
 
@@ -83,6 +85,7 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
+  const dialog = useDialogFocus<HTMLDivElement>(isOpen);
 
   if (!isOpen) return null;
 
@@ -91,6 +94,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
     <div className="docs-overlay" onClick={onClose} role="presentation">
       <div
         className="docs-panel"
+        ref={dialog}
+        tabIndex={-1}
         onClick={e => e.stopPropagation()}
         // Escape closes it from inside; from outside, the shell's Escape
         // closes it first. It used to listen on the document as well, so one
@@ -98,14 +103,18 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
         onKeyDown={e => {
           e.stopPropagation();
           if (e.key === 'Escape') onClose();
+          else trapTab(e, document.activeElement);
         }}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="docs-title"
       >
         <div className="docs-header">
           <div className="docs-title-wrap">
             <div>
-              <h2 className="docs-title">Guide</h2>
+              <h2 id="docs-title" className="docs-title">
+                Guide
+              </h2>
               <p className="docs-subtitle">What the map shows, and what you can do with it</p>
             </div>
           </div>

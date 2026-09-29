@@ -1,4 +1,6 @@
 import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
+import { trapTab } from '../utils/keys';
 import { useAmbitStore } from '../store/ambitStore';
 import { statusLabel, typeLabel } from '../utils/labels';
 import {
@@ -47,10 +49,10 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
     if (!open) return;
     setQuery('');
     setActive(0);
-    // After the overlay has mounted, so the first keystroke lands in the box.
-    const t = setTimeout(() => input.current?.focus(), 0);
-    return () => clearTimeout(t);
   }, [open]);
+  // The box has the focus while the finder is open, so the first keystroke
+  // lands in it, and whatever had the focus gets it back when it closes.
+  const dialog = useDialogFocus<HTMLDivElement>(open, input);
 
   // The row the arrow keys are on stays in view. Once the list holds actions
   // as well as nodes it runs past the box, and a highlight nobody can see is
@@ -89,6 +91,7 @@ export default function Finder({ open, onClose, onShow, handlers }: FinderProps)
         onClose();
       }}
       onClose={onClose}
+      dialogRef={dialog}
       inputRef={input}
       listRef={list}
     />
@@ -106,6 +109,7 @@ interface FinderViewProps {
   onActive: (index: number) => void;
   onChoose: (row: Row) => void;
   onClose: () => void;
+  dialogRef?: Ref<HTMLDivElement>;
   inputRef?: Ref<HTMLInputElement>;
   listRef?: Ref<HTMLUListElement>;
 }
@@ -120,6 +124,8 @@ export function FinderView(p: FinderViewProps) {
     <div className="finder-overlay" onClick={p.onClose} role="presentation">
       <div
         className="finder"
+        ref={p.dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Find a capability or run an action"
@@ -127,8 +133,13 @@ export function FinderView(p: FinderViewProps) {
         // Every key pressed in the finder is the finder's. Only Escape used to
         // stop here, so with a result focused ArrowDown also stepped the
         // selection on the map behind it, and `g` opened Proposals over it.
+        // Tab comes round inside it: it used to walk out onto the page.
         onKeyDown={e => {
           e.stopPropagation();
+          if (e.key === 'Tab') {
+            trapTab(e, document.activeElement);
+            return;
+          }
           const step = keyStep(e.key, p.active, p.rows.length);
           if (!step) return;
           if (step.kind === 'close') {
