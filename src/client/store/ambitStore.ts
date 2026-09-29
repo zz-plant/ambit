@@ -9,6 +9,7 @@ import {
   demoApproval,
   demoAudit,
   demoConfigGraph,
+  demoHistory,
   demoProposals,
   demoTreeGraph,
 } from './demo';
@@ -19,6 +20,7 @@ import {
   type ApproveResponse,
   type AuditResponse,
   type BriefingResponse,
+  type FrontierHistoryResponse,
   type UnmappedResponse,
   type InfrastructureScanResponse,
   type LoopSince,
@@ -206,6 +208,11 @@ interface StoreState {
   audit: AuditResponse | null;
   /** The global config's MCP entries by name, so a repo missing one can be handed the entry. */
   configMcp: Record<string, Record<string, unknown>>;
+  /**
+   * The frontier through time, one tick per recorded observation. Null where
+   * nothing can answer: no engine, or one that predates the route.
+   */
+  history: FrontierHistoryResponse | null;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
@@ -234,6 +241,7 @@ interface StoreState {
   loadBriefing: () => Promise<void>;
   loadUnmapped: () => Promise<void>;
   loadAudit: () => Promise<void>;
+  loadHistory: () => Promise<void>;
   /** The paste-ready entry for one MCP server, from the endpoint that composes it. */
   snippetFor: (name: string) => Promise<string | null>;
   loadAttentionData: () => Promise<void>;
@@ -285,6 +293,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   unmapped: null,
   audit: null,
   configMcp: {},
+  history: null,
 
   setItems: (items, connections) => set({ items, connections }),
 
@@ -506,6 +515,26 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     }
   },
 
+  /**
+   * The frontier through time, for the map's timeline. The demo has a series
+   * of its own, recorded on fixed dates; a live engine answers from its ledger.
+   * Without an engine the map offers no timeline, since nothing recorded one.
+   */
+  loadHistory: async () => {
+    if (get().demo) {
+      set({ history: demoHistory() });
+      return;
+    }
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/frontier');
+      // "Open the demo" may have been pressed while this was in flight.
+      if (data && !get().demo) set({ history: data });
+    } catch {
+      /* the map keeps whatever it had */
+    }
+  },
+
   snippetFor: async (name: string) => {
     const entry = get().configMcp[name];
     if (!entry || !(await backendAvailable())) return null;
@@ -644,6 +673,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       loopEmpty: false,
       rangeSince: demoSnapshot().since,
       attentionInterventions: DEMO_ATTENTION,
+      history: demoHistory(),
     }),
 
   updateItem: (id, updates) =>

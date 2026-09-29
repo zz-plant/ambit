@@ -219,6 +219,36 @@ export interface TechTreeResponse {
   since?: LoopSince | null;
 }
 
+// ── GET /api/frontier ────────────────────────────────────────────────────────
+
+/**
+ * One observation of the frontier, as the ledger recorded it: each
+ * capability's state, and its kind and lifecycle where the row carries them.
+ * A snapshot stores no names, eras, edges, authority or evidence times, so the
+ * map draws a tick with today's names, eras and edges and none of the rest.
+ */
+export interface FrontierTick {
+  /** The second it was taken, UTC, as the ledger stores it. */
+  at: string;
+  states: Record<string, string>;
+  /** Null on observations recorded before kinds were. */
+  kinds: Record<string, string> | null;
+  /** Null on observations recorded before lifecycles were. */
+  lifecycles: Record<string, string> | null;
+  /** What moved since the tick before, in the words `ambit history since` prints. */
+  moved: string;
+}
+
+/**
+ * The frontier through time: one tick per second a snapshot was taken, oldest
+ * first. Snapshots that share a second are one tick, showing the later.
+ */
+export interface FrontierHistoryResponse {
+  ticks: FrontierTick[];
+  /** What moved between the newest tick and the live graph; null when nothing did. */
+  movedSinceLast: string | null;
+}
+
 // ── GET /api/proposals, POST /api/proposals/:id/approve ──────────────────────
 
 /**
@@ -630,6 +660,7 @@ export interface ApiRoutes {
   '/api/config/apply': ConfigApplyResponse;
   '/api/config/mcp-snippet': McpSnippetResponse;
   '/api/tech-tree': TechTreeResponse;
+  '/api/frontier': FrontierHistoryResponse;
   '/api/briefing': BriefingResponse;
   '/api/proposals': ProposalsResponse;
   '/api/proposals/approve': QueueDecisionResponse;

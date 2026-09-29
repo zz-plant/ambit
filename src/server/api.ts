@@ -20,6 +20,7 @@ import { migrate } from '../engine/migrate.ts';
 import { resolveDbPath } from '../shared/db-path.ts';
 import {
   techTreeView,
+  frontierHistoryView,
   unmappedView,
   graphSummary,
   recentProposals,
@@ -64,6 +65,7 @@ import type {
   ConfigApplyRequest,
   ConfigApplyResponse,
   ConfigResponse,
+  FrontierHistoryResponse,
   HealthResponse,
   McpSnippetResponse,
   ProposalsResponse,
@@ -407,6 +409,15 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
       );
     }
     return json<TechTreeResponse>(withGraph(techTreeView));
+  }
+
+  // The frontier through time, for the map's timeline. Read only: every tick
+  // is an observation the ledger already recorded, and nothing here writes one.
+  if (pathname === '/api/frontier' && method === 'GET') {
+    if (!existsSync(GRAPH_DB_PATH)) {
+      return json<FrontierHistoryResponse>({ ticks: [], movedSinceLast: null });
+    }
+    return json<FrontierHistoryResponse>(withGraph(frontierHistoryView));
   }
 
   // What was used and is not on the map. Read-only: the overlay it carries is

@@ -15,10 +15,12 @@ import { expect, test } from 'vitest';
 import { NODE_TYPES } from '../shared/api.ts';
 import { actionsReport, canExecute } from './assurance.ts';
 import { applyProposal, approveProposal } from './governance.ts';
+import { recordFrontier } from './ledger.ts';
 import { loadTechTree } from './paths.ts';
 import { addEvent, beginRun } from './telemetry.ts';
 import { type CapabilityFixture, makeGraph } from './testing/graph.ts';
 import {
+  frontierHistoryView,
   unmappedView,
   graphSummary,
   interventionHeatmap,
@@ -413,6 +415,51 @@ test("the tree carries the week's movement, and says nothing before a second obs
   db.close();
   // One seed is one observation: there is no week to compare against yet.
   expect(view.since).toBeNull();
+});
+
+test('the frontier through time holds what a snapshot holds, and the step between ticks', () => {
+  const db = makeGraph({
+    capabilities: [
+      {
+        id: 'combo:shell',
+        name: 'Shell',
+        category: 'combo',
+        kind: 'capability',
+        state: 'locked',
+        lifecycle: 'unknown',
+      },
+    ],
+  });
+  // Nothing recorded is no series, which the page explains.
+  expect(frontierHistoryView(db)).toEqual({ ticks: [], movedSinceLast: null });
+
+  recordFrontier(db, '2026-09-21 09:00:00');
+  db.prepare("UPDATE capabilities SET state = 'unlocked', lifecycle = 'verified'").run();
+  recordFrontier(db, '2026-09-25 17:00:00');
+  const view = frontierHistoryView(db);
+  db.close();
+
+  expect(view.ticks.map(t => t.at)).toEqual(['2026-09-21 09:00:00', '2026-09-25 17:00:00']);
+  // State, kind and lifecycle per id, and nothing a snapshot does not store:
+  // no authority, no providers, no evidence times.
+  expect(Object.keys(view.ticks[0]).sort()).toEqual([
+    'at',
+    'kinds',
+    'lifecycles',
+    'moved',
+    'states',
+  ]);
+  expect(view.ticks[0]).toMatchObject({
+    states: { 'combo:shell': 'locked' },
+    kinds: { 'combo:shell': 'capability' },
+    moved: 'first observation, reached 0',
+  });
+  expect(view.ticks[1]).toMatchObject({
+    states: { 'combo:shell': 'unlocked' },
+    lifecycles: { 'combo:shell': 'verified' },
+    moved: 'reached 0 to 1, verified 0 to 1',
+  });
+  expect(view.movedSinceLast).toBeNull();
 });
 
 test('what the agents used and the map has no node for, with an overlay to paste', () => {

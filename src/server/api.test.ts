@@ -15,6 +15,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, expect, test } from 'vitest';
+import { getDb } from '../engine/db.ts';
+import { recordFrontier } from '../engine/ledger.ts';
 
 /** `Response.json()` is `unknown` under TypeScript 7; these read fields off it. */
 const json = async (r: Response): Promise<any> => await r.json();
@@ -387,6 +389,52 @@ test('the trail is one stream, newest first, with an outcome only where one was 
 
   // It reads the ledger and writes nothing, so there is nothing to POST to.
   expect((await fetch(`${base}/api/audit`, { method: 'POST' })).status).toBe(404);
+});
+
+test('the frontier through time is read, one tick per observation, in the terminal’s words', async () => {
+  const r = await fetch(`${base}/api/frontier`);
+  const body = await json(r);
+  expect(r.status).toBe(200);
+  // The seed recorded one observation, and the first says so.
+  expect(body.ticks).toHaveLength(1);
+  expect(body.ticks[0].moved).toMatch(/^first observation, reached \d+$/);
+  expect(Object.keys(body.ticks[0].states).length).toBeGreaterThan(0);
+  expect('movedSinceLast' in body).toBe(true);
+
+  // An observation dated before the seed's is a second tick, and the step
+  // between the two reads as `ambit history since` prints it.
+  const db = getDb(join(dir, 'graph.db'));
+  recordFrontier(db, '2026-01-01 00:00:00');
+  db.close();
+  const after = await json(await fetch(`${base}/api/frontier`));
+  expect(after.ticks).toHaveLength(2);
+  const [first, second] = after.ticks;
+  expect(first.at).toBe('2026-01-01 00:00:00');
+  const terminal = JSON.parse(
+    execFileSync(
+      'node',
+      [
+        '--experimental-sqlite',
+        join(ROOT, 'src', 'engine', 'engine.ts'),
+        'history',
+        'since',
+        first.at,
+        second.at,
+        '--json',
+      ],
+      {
+        env: { ...process.env, AMBIT_DB: join(dir, 'graph.db'), NODE_NO_WARNINGS: '1' },
+        encoding: 'utf8',
+      }
+    )
+  );
+  expect(second.moved).toBe(terminal.moved);
+
+  // Reading history is still behind the origin rule every route is.
+  const foreign = await fetch(`${base}/api/frontier`, {
+    headers: { Origin: 'https://evil.example' },
+  });
+  expect(foreign.status).toBe(403);
 });
 
 test('an unknown path is a 404, and cannot escape dist/', async () => {

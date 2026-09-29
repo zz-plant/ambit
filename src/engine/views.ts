@@ -14,7 +14,7 @@ import { PROVISION_EDGES } from './ontology.ts';
 import { CHECK_RUN, CHECK_RUN_SQL, FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
 import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
-import { ledgerSince } from './ledger.ts';
+import { frontierSeries, ledgerSince } from './ledger.ts';
 import { unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
@@ -34,6 +34,7 @@ import {
   type CheckRun,
   type ConferredAction,
   type FailureCount,
+  type FrontierHistoryResponse,
   type LoopAuthority,
   type LoopDemand,
   type LoopNext,
@@ -424,6 +425,31 @@ export function graphSummary(db: Db): { reached: number; total: number; observat
     /* ledger predates this database */
   }
   return { reached, total, observations };
+}
+
+/**
+ * The frontier through time, for the map's timeline: one tick per second a
+ * snapshot was taken, each with what the snapshot holds and what moved since
+ * the tick before. The sentence is the ledger's, so a step reads on the page
+ * as `ambit history since` prints it.
+ */
+export function frontierHistoryView(db: Db): FrontierHistoryResponse {
+  try {
+    const { ticks, movedSinceLast } = frontierSeries(db);
+    return {
+      ticks: ticks.map(t => ({
+        at: t.taken_at,
+        states: t.states,
+        kinds: t.kinds,
+        lifecycles: t.lifecycles,
+        moved: t.moved,
+      })),
+      movedSinceLast,
+    };
+  } catch {
+    // A database predating the ledger has no history, which the page explains.
+    return { ticks: [], movedSinceLast: null };
+  }
 }
 
 /** Proposals for the approval UI: the full rows, newest first, each with its decision context. */

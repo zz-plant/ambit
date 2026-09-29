@@ -8,7 +8,12 @@
  * Everything here is the fixture half. Nothing here talks to the network, and
  * the store's job is to choose between this module and the API.
  */
-import type { AuditEvent, AuditResponse, ProposalRow } from '../../shared/api';
+import type {
+  AuditEvent,
+  AuditResponse,
+  FrontierHistoryResponse,
+  ProposalRow,
+} from '../../shared/api';
 import { type OutageImpact, outageImpact, outageSplit } from '../components/civ/layout';
 import type { Connection, Item } from '../utils/configImporter';
 import { WEB_ACTOR } from '../utils/copy';
@@ -63,6 +68,21 @@ export const COLD_OPEN_PLAIN = 'their MCP servers';
 export function coldOpen(items: Item[], connections: Connection[]): OutageImpact | null {
   if (!items.some(i => i.id === COLD_OPEN_OUTAGE)) return null;
   return outageImpact(items, outageSplit(items, connections, COLD_OPEN_OUTAGE));
+}
+
+/**
+ * The frontier through time on the demo's machine, in the shape /api/frontier
+ * serves. generate-demo-data.ts records it on fixed dates, so the timeline
+ * shows the same series on every build; a fixture without one is a machine
+ * with no history yet.
+ */
+export function demoHistory(): FrontierHistoryResponse {
+  return (
+    (demoData as { history?: FrontierHistoryResponse }).history ?? {
+      ticks: [],
+      movedSinceLast: null,
+    }
+  );
 }
 
 /** The config view's fixture: a flat list of discovered entries. */
