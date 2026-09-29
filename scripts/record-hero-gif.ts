@@ -640,6 +640,11 @@ async function main() {
       nodes.slice(0, 40).map(n => n.getAttribute('aria-label')).join(' | '));
   })()`);
   console.log(`  selected ${picked}`);
+  // The recorder's click leaves the node focused with the keyboard ring drawn
+  // round it, which a pointer click in a browser does not, so the README's
+  // selected node wore a box no reader clicking it would see. Selection is
+  // store state and survives the blur.
+  await cdp.eval(`document.activeElement?.blur?.(); true`);
   await sleep(1100);
   await hold(1.6, 'one capability selected');
 
