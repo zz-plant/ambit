@@ -20,8 +20,25 @@ import { isNarrowScreen, useNarrow } from './hooks/useViewport';
 import { hostedLanding, initialView, readLinkState, type View } from './linkState';
 import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
+import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg } from './utils/shareCard';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
+
+/** An SVG document drawn onto a canvas, at its own size, as a PNG. */
+function svgToPng(svg: string, width: number, height: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('no image'))), 'image/png');
+    };
+    img.onerror = () => reject(new Error('the card did not draw'));
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  });
+}
 
 /** The width of the detail panel. */
 const PANEL_W = 340;
@@ -208,6 +225,43 @@ export default function App() {
     }
   };
 
+  // The map's finding as a portrait image: the share sheet on a phone, where
+  // it goes straight to a post or a message, and a download elsewhere.
+  const saveImage = async () => {
+    const st = useAmbitStore.getState();
+    const card = buildCard(items, connections, {
+      mode: st.simulationMode,
+      rootId: st.simulatedNodeId,
+      cascade: st.simulatedCascadeIds,
+      weakened: st.simulatedWeakenedIds,
+    });
+    if (!card) {
+      setToast('The map has no finding to put in an image yet.');
+      return;
+    }
+    try {
+      const png = await svgToPng(cardSvg(card), CARD_W, CARD_H);
+      const file = new File([png], cardFileName(card), { type: 'image/png' });
+      if (isNarrow && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] });
+          return;
+        } catch (e) {
+          if ((e as Error).name === 'AbortError') return;
+        }
+      }
+      const url = URL.createObjectURL(png);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setToast(`Saved ${file.name}.`);
+    } catch {
+      setToast('The image could not be drawn in this browser.');
+    }
+  };
+
   const showProposals = () => {
     setShowApprovalModal(true);
     loadProposals();
@@ -280,6 +334,7 @@ export default function App() {
         onSearch={() => setFinderOpen(true)}
         onShowView={showView}
         onShare={share}
+        onSaveImage={view === 'tree' && hasTree ? saveImage : undefined}
         onShowProposals={showProposals}
         onShowDocs={() => openDocs()}
       />

@@ -153,7 +153,12 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
   };
 
   return (
-    <section className="app-guide app-tour" style={style} aria-label="A tour of the demo">
+    <section
+      className="app-guide app-tour"
+      style={style}
+      aria-label="A tour of the demo"
+      data-occludes-map
+    >
       <div className="app-guide-head">
         <span className="app-tour-count">
           {index + 1} of {steps.length}

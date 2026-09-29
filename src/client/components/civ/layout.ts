@@ -447,11 +447,18 @@ export interface Placed {
   item: Item;
 }
 
+/**
+ * The x of a column's nodes. The renderer drew nodes 24px right of where the
+ * edges were aimed, so every edge ended beside its node instead of in it; both
+ * read this now.
+ */
+export const columnX = (ci: number): number => START_X + ci * COL_W + COL_W / 2 - 16;
+
 /** Where each node sits in the scene, by column then row. */
 export function layoutNodes({ cols, colOrder }: Columns): Map<string, Placed> {
   const map = new Map<string, Placed>();
   colOrder.forEach((column, ci) => {
-    const cx = START_X + ci * COL_W + COL_W / 2 - 40;
+    const cx = columnX(ci);
     (cols[column] || []).forEach((item, ri) => {
       map.set(item.id, { x: cx, y: START_Y + ri * ROW_H + NODE_R, item });
     });
@@ -653,4 +660,74 @@ export function mapFindings(items: Item[], connections: Connection[]): MapFindin
     if (stops > (weakest?.stops ?? 0)) weakest = { item, stops };
   }
   return { failing, best, verified: tree.filter(isProven).length, weakest };
+}
+
+/**
+ * What a running simulation implies, in one sentence: the banner says it, and
+ * the saved image leads with it, so the two cannot disagree about a count.
+ */
+export function simulationSentence(
+  mode: string,
+  name: string,
+  cascade: Set<string>,
+  weakened: Set<string> | undefined,
+  items: Item[]
+): string {
+  const n = cascade.size;
+  const plural = (count: number) => (count === 1 ? 'capability' : 'capabilities');
+  if (mode === 'outage') {
+    const outage = outageSentence(name, outageImpact(items, { stops: cascade, weakened }));
+    return outage.before + outage.count + outage.after;
+  }
+  if (mode === 'gap') {
+    // The gap's price: the setup time of everything in it, added up.
+    const seconds = items
+      .filter(i => cascade.has(i.id))
+      .reduce((t, i) => t + (Number(i.meta?.setupSeconds) || 0), 0);
+    return `Reaching ${name} needs ${n} more ${plural(n)} first${
+      seconds ? `, about ${readableSeconds(seconds)} of setup` : ''
+    }.`;
+  }
+  return `Adding ${name} would make ${n} more ${plural(n)} reachable.`;
+}
+
+/** A zoom and the scroll offsets that put a set of scene points in view. */
+export interface Framing {
+  zoom: number;
+  left: number;
+  top: number;
+}
+
+/**
+ * The zoom and scroll that frame `points` inside the part of the canvas a
+ * person can see: `view` is that part, measured from the scroller's top-left,
+ * so a card laid over the bottom of the map shrinks it. Fitting the whole tree
+ * to a phone left its labels at four pixels; framing only what is lit keeps
+ * them legible. When even the floor is too wide, the frame starts at the
+ * leftmost point, since a cascade spreads rightward from its origin.
+ */
+export function frameScene(
+  points: { x: number; y: number }[],
+  view: { top: number; width: number; height: number },
+  opts: { min: number; max: number; pad?: number; inset?: number }
+): Framing | null {
+  if (!points.length || view.width <= 0 || view.height <= 0) return null;
+  const pad = opts.pad ?? NODE_R + 40;
+  const inset = opts.inset ?? 0;
+  const xs = points.map(p => p.x);
+  const ys = points.map(p => p.y);
+  const minX = Math.min(...xs) - pad;
+  const maxX = Math.max(...xs) + pad;
+  // Labels hang below a node, so the box reaches further down than up.
+  const minY = Math.min(...ys) - pad;
+  const maxY = Math.max(...ys) + pad + 24;
+  const fit = Math.min(view.width / (maxX - minX), view.height / (maxY - minY));
+  const zoom = +Math.max(opts.min, Math.min(opts.max, fit)).toFixed(2);
+  const wide = (maxX - minX) * zoom > view.width;
+  const tall = (maxY - minY) * zoom > view.height;
+  const left = wide ? minX * zoom + inset : ((minX + maxX) / 2) * zoom + inset - view.width / 2;
+  const top = tall
+    ? minY * zoom - view.top
+    : ((minY + maxY) / 2) * zoom - view.top - view.height / 2;
+  return { zoom, left: Math.max(0, Math.round(left)), top: Math.max(0, Math.round(top)) };
 }

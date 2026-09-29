@@ -20,6 +20,7 @@ import {
   domainOf,
   edgePath,
   eraOf,
+  frameScene,
   isEntry,
   isNext,
   layoutNodes,
@@ -224,7 +225,7 @@ test('nodes step across by column and down by row', () => {
   const b = placed.get('b')!;
   const c = placed.get('c')!;
 
-  expect(a.x).toBe(START_X + COL_W / 2 - 40);
+  expect(a.x).toBe(START_X + COL_W / 2 - 16);
   expect(a.y).toBe(START_Y + NODE_R);
   expect(b.x).toBe(a.x); // same column
   expect(b.y).toBe(a.y + ROW_H); // next row
@@ -438,4 +439,34 @@ test('a joint mark is a person or a device, and a recurring cost is neither', ()
   expect(jointMark(withStructure(['physical', 'institutional']))).toBe('person');
   expect(jointMark(withStructure(['economic']))).toBeUndefined();
   expect(jointMark(item('y'))).toBeUndefined();
+});
+
+test('framing zooms to fit what is lit, centred in the part of the canvas in view', () => {
+  const view = { top: 50, width: 375, height: 400 };
+  const f = frameScene([{ x: 500, y: 300 }], view, { min: 0.7, max: 1.1 })!;
+  expect(f.zoom).toBe(1.1);
+  // The point lands in the middle of the visible band, not of the scroller.
+  expect(500 * f.zoom - f.left).toBeCloseTo(view.width / 2, -1);
+  expect(300 * f.zoom - f.top).toBeGreaterThan(view.top);
+  expect(300 * f.zoom - f.top).toBeLessThan(view.top + view.height);
+});
+
+test('framing never zooms below the floor, and then starts at the leftmost point', () => {
+  const points = [
+    { x: 400, y: 100 },
+    { x: 2000, y: 100 },
+  ];
+  const f = frameScene(points, { top: 0, width: 375, height: 400 }, { min: 0.7, max: 1.1 })!;
+  expect(f.zoom).toBe(0.7);
+  // The origin of a cascade is on screen even when its end is not.
+  const originOnScreen = 400 * f.zoom - f.left;
+  expect(originOnScreen).toBeGreaterThan(0);
+  expect(originOnScreen).toBeLessThan(375);
+});
+
+test('framing nothing, or into no space, is no framing', () => {
+  expect(frameScene([], { top: 0, width: 375, height: 400 }, { min: 0.7, max: 1 })).toBeNull();
+  expect(
+    frameScene([{ x: 1, y: 1 }], { top: 0, width: 375, height: 0 }, { min: 0.7, max: 1 })
+  ).toBeNull();
 });

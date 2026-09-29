@@ -1294,6 +1294,27 @@ code, pre, .code, .sp-cli-cmd {
   outline-offset: -2px;
 }
 
+/* The product's address, low in the map's corner, for the screenshot that
+   leaves the address bar behind. On a plate of its own, since it often sits
+   over a row of names. Never in the way of a click. */
+.civ-source {
+  position: absolute;
+  z-index: 5;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  user-select: none;
+  transition: bottom 0.2s;
+}
+
 /* ─── CANVAS HUD & CONTROLS ─── */
 /* The canvas scrolls inside .civ-scroll; the controls are laid over it and
    never move. The zoom controls sit left, the lenses right, so neither covers
@@ -3362,8 +3383,9 @@ code, pre, .code, .sp-cli-cmd {
 /* Between a phone and a wide screen the header ran past the right edge,
    and the Docs button went first. The buttons keep their icons and their
    accessible names, and give up the words; the status pill keeps its words,
-   since a count without its noun says nothing. */
-@media (min-width: 769px) and (max-width: 1240px) {
+   since a count without its noun says nothing. The Image button moved the
+   point where the words stop fitting from 1240px to about 1320px. */
+@media (min-width: 769px) and (max-width: 1360px) {
   .app-deck-btn .app-deck-btn-label,
   .app-deck-btn .app-deck-key {
     display: none;
@@ -3406,10 +3428,48 @@ code, pre, .code, .sp-cli-cmd {
     flex: 0 0 auto;
   }
 
+  /* The row scrolls, but it is a navigation bar, not content: its scrollbar
+     read as a grey slab under the header in every phone screenshot. A fade on
+     whichever edge has more says the same thing without the bar, and the
+     tab it clips reads as continuing instead of broken. */
   .app-deck {
     overflow-x: auto;
     justify-content: flex-start;
     gap: 8px;
+    scrollbar-width: none;
+  }
+
+  .app-deck::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-deck[data-more='end'] {
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+
+  .app-deck[data-more='start'] {
+    mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent);
+  }
+
+  .app-deck[data-more='both'] {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 32px,
+      #000 calc(100% - 32px),
+      transparent
+    );
+  }
+
+  /* A screenshot is recompressed by whatever carries it, and the map's
+     faintest marks go first. The names get a size a phone can read at the
+     zoom it frames to, and what is dimmed stays dimmed but survives. */
+  .civ-node-label {
+    font-size: 13px;
+  }
+
+  .civ-node--dim {
+    opacity: 0.4;
   }
 
   .app-deck-left,

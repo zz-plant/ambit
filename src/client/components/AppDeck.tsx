@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { View } from '../linkState';
 import { BrandMark } from './BrandMark';
 import { ReachBar } from './figures';
@@ -31,6 +32,8 @@ interface AppDeckProps {
   onSearch: () => void;
   onShowView: (view: View) => void;
   onShare: () => void;
+  /** On the map: save what it shows as an image made to be posted. */
+  onSaveImage?: () => void;
   onShowProposals: () => void;
   onShowDocs: () => void;
 }
@@ -53,13 +56,41 @@ const SEGMENTS: [keyof MapCounts, string][] = [
 ];
 
 /** The top bar: search, brand, the count for this view, the view tabs, share, proposals, docs. */
+/**
+ * Which edge of a scrolling row has more past it, for the fade that stands in
+ * for its scrollbar: 'start', 'end', 'both', or nothing when it all fits.
+ */
+function useOverflowEdge<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mark = () => {
+      const before = el.scrollLeft > 2;
+      const after = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+      const more = before && after ? 'both' : before ? 'start' : after ? 'end' : '';
+      if (more) el.dataset.more = more;
+      else delete el.dataset.more;
+    };
+    mark();
+    el.addEventListener('scroll', mark, { passive: true });
+    window.addEventListener('resize', mark);
+    return () => {
+      el.removeEventListener('scroll', mark);
+      window.removeEventListener('resize', mark);
+    };
+  });
+  return ref;
+}
+
 export default function AppDeck(p: AppDeckProps) {
+  const deck = useOverflowEdge<HTMLElement>();
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
   const total = p.counts
     ? p.counts.verified + p.counts.unproven + p.counts.next + p.counts.blocked
     : 0;
   return (
-    <header className="app-deck">
+    <header className="app-deck" ref={deck}>
       <div className="app-deck-left">
         <div className="app-brand-group">
           <BrandMark size={18} className="app-brand-mark" />
@@ -237,6 +268,33 @@ export default function AppDeck(p: AppDeckProps) {
           </svg>
           <span className="app-deck-btn-label">Share</span>
         </button>
+        {p.onSaveImage && (
+          <button
+            type="button"
+            className="app-deck-btn"
+            onClick={p.onSaveImage}
+            title="Save what the map shows as an image sized for posting"
+            aria-label="Save as image"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-deck-icon"
+              aria-hidden="true"
+            >
+              <rect x="2" y="3" width="12" height="10" rx="1.5" />
+              <circle cx="6" cy="6.5" r="1.2" />
+              <path d="M2.5 12 L6.5 8.5 L9 10.5 L11 9 L13.5 11" />
+            </svg>
+            <span className="app-deck-btn-label">Image</span>
+          </button>
+        )}
         <button
           type="button"
           className={`app-deck-btn ${p.draftCount > 0 ? 'app-deck-btn--alert' : ''}`}

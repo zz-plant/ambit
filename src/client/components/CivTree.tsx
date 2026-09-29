@@ -13,9 +13,11 @@ import {
   COL_W,
   columnLabel,
   columnOf,
+  columnX,
   costOf,
   edgePath,
   eraOf,
+  frameScene,
   isNext,
   isProven,
   type JointMark,
@@ -35,6 +37,8 @@ import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.t
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
+import { useBottomOcclusion, useNarrow } from '../hooks/useViewport';
+import { SITE_HOST } from '../utils/copy';
 
 interface CivTreeProps {
   /** Pixels of the scene covered by the docked panel, so column one is visible. */
@@ -505,8 +509,13 @@ export default function CivTree({
     setSpotlight,
   ]);
 
-  // Center node in view when selected
+  const narrow = useNarrow();
+  // The bottom of the canvas a tour card or a bottom sheet is covering.
+  const covered = useBottomOcclusion(containerRef);
+
+  // Center node in view when selected. A phone frames it instead, below.
   React.useEffect(() => {
+    if (narrow) return;
     if (selectedId && nodePositionMap.has(selectedId)) {
       const pos = nodePositionMap.get(selectedId)!;
       if (containerRef.current) {
@@ -520,7 +529,7 @@ export default function CivTree({
         });
       }
     }
-  }, [selectedId, zoom, nodePositionMap]);
+  }, [narrow, selectedId, zoom, nodePositionMap]);
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
@@ -528,15 +537,75 @@ export default function CivTree({
   // right edge with nothing to say it was there, and in the setup view every
   // edge to the runtime column ran off the canvas towards a node nobody could
   // see. Fits once per dataset; the zoom controls own it after that.
+  //
+  // A phone fits the height instead: seven columns across 375px put the labels
+  // at four pixels, legible to nobody and in no screenshot. The columns run
+  // off to the right, cut mid-column so it is plain there is more, and the
+  // canvas opens on the column the map's finding is about.
   const fittedFor = React.useRef<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fits once per dataset. The finding and the placement are read at that moment; following them would re-fit the map under someone who has since zoomed it.
   React.useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el || fittedFor.current === contentWidth) return;
     fittedFor.current = contentWidth;
+    if (narrow) {
+      const zoomed = Math.max(0.6, Math.min(1, +(el.clientHeight / contentHeight).toFixed(2)));
+      setZoom(zoomed);
+      const about = findings.failing[0] ?? findings.best?.item;
+      const pos = about && nodePositionMap.get(about.id);
+      if (pos)
+        requestAnimationFrame(() => {
+          el.scrollLeft = Math.max(0, pos.x * zoomed - el.clientWidth / 2);
+        });
+      return;
+    }
     const available = el.clientWidth - leftInset - 16;
     if (available <= 0) return;
     setZoom(Math.max(0.4, Math.min(1, +(available / contentWidth).toFixed(2))));
-  }, [contentWidth, leftInset]);
+  }, [contentWidth, contentHeight, leftInset, narrow]);
+
+  // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
+  // selected node with what it needs and enables. Framed into the part of the
+  // canvas not under a card, at a zoom where the names can be read.
+  const framedFor = React.useRef('');
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!narrow || !el) return;
+    const lit =
+      simulationMode !== 'none'
+        ? [...simSet]
+        : selectedId
+          ? [selectedId, ...needs, ...enables]
+          : [];
+    const key = `${simulationMode}:${simulatedNodeId}:${selectedId}:${covered}`;
+    if (!lit.length || framedFor.current === key) return;
+    framedFor.current = key;
+    const points = lit.flatMap(id => nodePositionMap.get(id) ?? []);
+    // The zoom and lens controls sit over the canvas's first 52px.
+    const hud = 52;
+    const frame = frameScene(
+      points,
+      { top: hud, width: el.clientWidth - leftInset, height: el.clientHeight - hud - covered },
+      { min: 0.7, max: 1.1, inset: leftInset }
+    );
+    if (!frame) return;
+    setZoom(frame.zoom);
+    // After the zoom lands, so the offsets are measured against the new size.
+    requestAnimationFrame(() =>
+      el.scrollTo({ left: frame.left, top: frame.top, behavior: 'smooth' })
+    );
+  }, [
+    narrow,
+    simulationMode,
+    simulatedNodeId,
+    simSet,
+    selectedId,
+    needs,
+    enables,
+    covered,
+    nodePositionMap,
+    leftInset,
+  ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (
@@ -770,7 +839,7 @@ export default function CivTree({
           {/* Nodes */}
           {colOrder.map((domain, ci) => {
             const caps = cols[domain] || [];
-            const cx = START_X + ci * COL_W + COL_W / 2 - 16;
+            const cx = columnX(ci);
             return (
               <g key={domain}>
                 {caps.map((item, ri) => {
@@ -907,7 +976,13 @@ export default function CivTree({
                       key={item.id}
                       transform={`translate(${cx}, ${cy})`}
                       opacity={baseOpacity}
-                      className={isSimRoot || isSimAffected ? 'civ-sim-hit' : undefined}
+                      className={
+                        isSimRoot || isSimAffected
+                          ? 'civ-sim-hit'
+                          : dimmed && isSpotlit
+                            ? 'civ-node--dim'
+                            : undefined
+                      }
                       tabIndex={0}
                       role="button"
                       aria-pressed={selected}
@@ -1094,6 +1169,7 @@ export default function CivTree({
                       <text
                         y={NODE_R + 16}
                         textAnchor="middle"
+                        className="civ-node-label"
                         fill={dimmed ? 'var(--text-muted)' : 'var(--text-primary)'}
                         fontSize={11.5}
                         fontWeight={500}
@@ -1446,6 +1522,11 @@ export default function CivTree({
             )}
           </g>
         </svg>
+      </div>
+      {/* Where this came from, for the screenshot that loses the address bar.
+          It rides above whatever card covers the bottom of the map. */}
+      <div className="civ-source" style={{ bottom: covered + 10, left: leftInset + 8 }}>
+        Ambit · {SITE_HOST}
       </div>
     </div>
   );
