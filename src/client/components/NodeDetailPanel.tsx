@@ -1,13 +1,8 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import type { Connection, Item } from '../utils/configImporter';
-import {
-  typeLabel,
-  statusLabel,
-  metaKeyLabel,
-  isConfigEntry,
-  isRuntimeNode,
-} from '../utils/labels';
+import { canSwitchMcp } from '../utils/configSwitch';
+import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 import {
   costOf,
   gapOf,
@@ -82,6 +77,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
   const startGap = useAmbitStore(s => s.startGapSimulation);
   const clearSim = useAmbitStore(s => s.clearSimulation);
   const backend = useAmbitStore(s => s.backend);
+  const configMcp = useAmbitStore(s => s.configMcp);
   const toggleMcpEnabled = useAmbitStore(s => s.toggleMcpEnabled);
 
   const item = items.find(i => i.id === selectedId);
@@ -435,10 +431,11 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         entry that is already there: `enabled: true|false`. Creating an entry
         stays a hand edit, because an MCP entry carries a command the runtime
         executes — see the security posture in AGENTS.md. Offered only where it
-        means something: an entry read out of the config, with an engine behind
-        the page to write it back.
+        means something: an entry the config names, with an engine behind the
+        page to write it back. The route answers ok for a name it has no entry
+        for, so an entry another runtime declared would flip and flip back.
       */}
-      {backend === 'live' && item.type === 'mcp-server' && isConfigEntry(item) && (
+      {canSwitchMcp(item, backend, configMcp) && (
         <div className="sp-toggle-row">
           <div>
             <button

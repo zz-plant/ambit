@@ -55,6 +55,7 @@ afterEach(() => {
     loopSource: null,
     loopEmpty: false,
     backend: 'unknown',
+    configMcp: {},
   });
 });
 
@@ -208,8 +209,14 @@ test('a priced opportunity offers the map only when the node is on the graph in 
   expect(renderToStaticMarkup(<LoopDashboard />)).not.toContain('fig-row-btn');
 });
 
+/** What the global config holds for the servers these tests draw. */
+const CONFIG_MCP = {
+  git: { type: 'local', command: ['git-mcp'], enabled: true },
+  github: { type: 'remote', url: 'https://example.test/mcp', enabled: false },
+};
+
 test('the config switch appears only where an engine can write the config', () => {
-  seed({ items: [server], selectedItem: server.id, backend: 'static' });
+  seed({ items: [server], selectedItem: server.id, backend: 'static', configMcp: CONFIG_MCP });
   expect(renderToStaticMarkup(<NodeDetailPanel />)).not.toContain('sp-switch');
 
   seed({ backend: 'live' });
@@ -223,8 +230,92 @@ test('a tech-tree node offers no config switch: it names no config entry', () =>
     items: [{ ...server, meta: { ...server.meta, era: 3, state: 'unlocked' } }],
     selectedItem: server.id,
     backend: 'live',
+    configMcp: CONFIG_MCP,
   });
   expect(renderToStaticMarkup(<NodeDetailPanel />)).not.toContain('sp-switch');
+});
+
+test('a server the config does not name gets no switch, in the panel or in the list', () => {
+  // The route answers ok for a name it has no entry for and changes nothing, so
+  // a server another runtime declared would flip, reload and flip back, having
+  // said it worked. The switch is offered for what the config holds.
+  seed({
+    items: [server],
+    selectedItem: server.id,
+    backend: 'live',
+    configMcp: { elsewhere: { type: 'local', enabled: true } },
+  });
+  expect(renderToStaticMarkup(<NodeDetailPanel />)).not.toContain('sp-switch');
+  const list = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  expect(list).not.toContain('role="switch"');
+  // Nothing to explain, so nothing explained.
+  expect(list).not.toContain('switch writes');
+});
+
+/** One row of My Setup's markup, by the name it shows. */
+function setupRow(html: string, name: string): string {
+  const row = html.split('class="setup-row ').find(r => r.includes(`<span>${name}</span>`));
+  if (!row) throw new Error(`no row for ${name}`);
+  return row;
+}
+
+test('My Setup switches the tool servers the config names, and nothing else', () => {
+  const github: Item = { ...server, id: 'mcp:github', name: 'github', status: 'specified' };
+  // A server the config does not name, on and off: nothing to write to.
+  const strange: Item = { ...server, id: 'mcp:strange', name: 'strange' };
+  const strangeOff: Item = {
+    ...strange,
+    id: 'mcp:strange-off',
+    name: 'strange-off',
+    status: 'specified',
+  };
+  // Other kinds have no enabled state to switch.
+  const reviewer: Item = {
+    ...server,
+    id: 'agent:reviewer',
+    name: 'reviewer',
+    type: 'agent',
+    meta: { domain: 'meta' },
+  };
+  const bash: Item = { ...server, id: 'tool:bash', name: 'bash', type: 'tool' };
+  seed({
+    backend: 'live',
+    configMcp: CONFIG_MCP,
+    items: [server, github, strange, strangeOff, reviewer, bash],
+  });
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+
+  // Two switches, and both are real buttons that carry their state.
+  expect(html.match(/role="switch"/g)).toHaveLength(2);
+  expect(html).toMatch(/<button[^>]*role="switch" aria-checked="true"/);
+  expect(html).toMatch(/<button[^>]*role="switch" aria-checked="false"/);
+  expect(setupRow(html, 'git')).toMatch(/role="switch" aria-checked="true"/);
+  expect(setupRow(html, 'github')).toMatch(/role="switch" aria-checked="false"/);
+  expect(setupRow(html, 'git')).toContain('aria-label="Enabled in your config: git"');
+
+  // The switch says what the badge would have, so the row does not say it twice.
+  expect(setupRow(html, 'github')).not.toContain('Disabled');
+  // Where there is no switch, the exception is still written.
+  expect(setupRow(html, 'strange')).not.toContain('role="switch"');
+  expect(setupRow(html, 'strange-off')).toContain('Disabled');
+  expect(setupRow(html, 'reviewer')).not.toContain('role="switch"');
+  expect(setupRow(html, 'bash')).not.toContain('role="switch"');
+
+  // What a switch does is written once, where there is one.
+  const text = html.replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'");
+  expect(text).toContain("A tool server's switch writes enabled to your agent config");
+  expect(text).toContain('Restart the runtime');
+});
+
+test('the list offers no switch where no engine can write the config', () => {
+  seed({ backend: 'static', configMcp: CONFIG_MCP, items: [server] });
+  const list = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  expect(list).not.toContain('role="switch"');
+  expect(list).not.toContain('switch writes');
+  // The hosted demo has no engine either, and shows no switch on any row.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  seed({ backend: 'static', items, connections, configMcp: {} });
+  expect(renderToStaticMarkup(<SetupView onShow={() => {}} />)).not.toContain('role="switch"');
 });
 
 test('a house word carries its own definition, from the one glossary', () => {

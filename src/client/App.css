@@ -734,6 +734,61 @@ code, pre, .code, .sp-cli-cmd {
   border-color: var(--accent);
 }
 
+/* The enable switch on a tool server's row: the detail panel's edit, one click
+   from the list. The knob's side says the state as the colour does, so it reads
+   without either. The pseudo-element is a larger target than the drawn track,
+   which is 18px tall. */
+.setup-switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.setup-switch::before {
+  content: '';
+  position: absolute;
+  inset: -4px -3px;
+}
+
+.setup-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.setup-switch--on {
+  border-color: var(--ok-line);
+  background: var(--ok-soft);
+}
+
+.setup-switch--on .setup-switch-knob {
+  transform: translateX(12px);
+  background: var(--ok);
+}
+
+.setup-switch[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* A write that did not happen, said in the row that asked for it. */
+.setup-row-error {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--error);
+}
+
 .tp-search-wrap {
   position: relative;
   width: 100%;
@@ -3552,7 +3607,8 @@ code, pre, .code, .sp-cli-cmd {
     grid-area: name;
   }
 
-  .setup-row .tp-badge {
+  .setup-row .tp-badge,
+  .setup-switch {
     grid-area: status;
   }
 

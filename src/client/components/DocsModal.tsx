@@ -206,9 +206,10 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <strong>The map</strong> is the curated tree with your position on it.{' '}
                 <strong>My Setup</strong> is what was found in your agent configs, one row per
                 entry, each with what its latest check said, a strip of how the last fourteen checks
-                went (a failure is taller than a pass), and the nodes on the map it provides. On the
-                map, rows in a column are ordered so a node sits near what it connects to; height on
-                its own means nothing there.
+                went (a failure is taller than a pass), and the nodes on the map it provides. A tool
+                server your config names also has a switch, which writes <code>enabled</code> to
+                that config. On the map, rows in a column are ordered so a node sits near what it
+                connects to; height on its own means nothing there.
               </p>
             </>
           )}

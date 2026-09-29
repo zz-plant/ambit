@@ -230,6 +230,26 @@ test('an edit from the visualiser keeps the config it replaced in a .bak', async
   expect(readFileSync(`${configPath}.bak`, 'utf8')).toBe(after);
 });
 
+test('switching a server the config does not have changes nothing and creates nothing', async () => {
+  // The page offers its switch only for servers the config holds, because this
+  // route answers ok for a name it has no entry for. That answer is a no-op and
+  // has to stay one: an entry an HTTP request could create is an entry that a
+  // runtime would later execute.
+  const configPath = join(dir, 'opencode.json');
+  const before = JSON.parse(readFileSync(configPath, 'utf8'));
+  for (const body of [{ enableMcp: ['nonesuch'] }, { disableMcp: ['nonesuch'] }]) {
+    const r = await fetch(`${base}/api/config/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Ambit-Token': TOKEN },
+      body: JSON.stringify(body),
+    });
+    expect(r.status).toBe(200);
+  }
+  const after = JSON.parse(readFileSync(configPath, 'utf8'));
+  expect(after.mcp.nonesuch).toBeUndefined();
+  expect(after.mcp).toEqual(before.mcp);
+});
+
 test('telemetry stays open, because the runtime plugin posts to it unattended', async () => {
   const r = await fetch(`${base}/api/telemetry`, {
     method: 'POST',
