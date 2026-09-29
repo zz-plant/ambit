@@ -577,7 +577,10 @@ async function main() {
    */
   const labelSize = () =>
     cdp.eval(`(() => {
-      const groups = [...document.querySelectorAll('g[role="button"][aria-label]')];
+      // An era header is role=button too, and comes first in the document. It
+      // has no circle, so asking for one leaves the nodes and keys this measures.
+      const groups = [...document.querySelectorAll('g[role="button"][aria-label]')]
+        .filter(g => g.querySelector('circle[r]'));
       if (!groups.length) throw new Error('no capability nodes in the tree');
 
       const circle = groups[0].querySelector('circle[r]');
