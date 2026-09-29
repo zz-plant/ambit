@@ -100,18 +100,18 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **Today.** A frontier snapshot stores counts plus JSON maps from capability id to state, kind and lifecycle (`frontier_snapshots`; kind and lifecycle are null on older rows). It stores no edges, names, eras, authority or evidence times, and its counts are not the map's counts. Only a seed writes a snapshot, and only when something changed. `verify` writes none, so the newest snapshot can trail the live graph. `ledgerSince` in `src/engine/ledger.ts` diffs one snapshot against the live `capabilities` table, and `ledgerHistory` reads the series for the CLI and MCP. No snapshot-to-snapshot diff and no HTTP route exists. "Emergent" and "went failing" (`diminished`) are already defined there.
 
-**The change.** A timeline under the map, one tick per snapshot, and a playhead that redraws the map as it was. States and next steps come from the snapshot. Names, eras and edges come from the current tree, because past edges are not stored. One sentence says what moved: "Sep 26: reached 12 to 14, 1 emergent, 1 went failing."
+**The change.** A timeline under the map, one tick per distinct second in which a snapshot was taken, and a playhead that redraws the map as it was. States and next steps come from the snapshot. Names, eras and edges come from the current tree, because past edges are not stored. One sentence says what moved: "Sep 26: reached 12 to 14, 1 emergent, 1 went failing."
 
 - A `views.ts` projection returns the series (the server writes no SQL), with a wire type and an `ApiRoutes` entry in `src/shared/api.ts`, and a `loadHistory` in the store with a live path and a demo path.
 - A pair diff in `ledger.ts`, so the CLI, MCP and the page share one definition of a step.
 - What a snapshot cannot supply is dropped while scrubbing and never printed as zero (rule 16). That covers authority, attention and providers, and with them the outage simulation.
 - The timeline is offered with two or more snapshots. With fewer, the page says how history begins.
-- The playhead is a timestamp in the URL (`at`), not a snapshot id, so a link works on another machine. An unknown value falls back to live.
+- The playhead is a timestamp in the URL (`at`), not a snapshot id, so a link works on another machine, and an unknown value falls back to live. `taken_at` has one-second resolution (`datetime('now')`), so `at` names a second and not a row. Snapshots that share a second collapse to the last of them. `frontierAt` needs `id` tie-breaks to make that deterministic: its two `taken_at` orderings break ties by nothing, unlike the `ORDER BY taken_at DESC, id DESC` in `recordFrontier`. Rule 11 names the same hazard.
 - The detail panel and the header count read live items today. Thread the scrubbed items through, or label them "as of".
 
 **Rules and checks.** Rules 5 and 6: failing is `usable(lifecycle)`, and `state` stays structural. Rules 2 and 12 if a column is added. The demo has no history in `demo-data.json`, so a series needs deliberate `recordFrontier` calls on fixed dates, or `demo:check` fails. Tests: `linkState.test.ts`, `api.test.ts`, `views.test.ts` and the ledger tests.
 
-**Done when.** The same two snapshots give the same sentence in the CLI, over MCP and on the page. Scrubbing to the oldest tick draws only what that snapshot held. A graph with one snapshot shows the explanation and no timeline. The demo shows a deterministic series.
+**Done when.** The same two snapshots give the same sentence in the CLI, over MCP and on the page. Two snapshots taken in the same second give one tick that shows the later. Scrubbing to the oldest tick draws only what that snapshot held. A graph with one snapshot shows the explanation and no timeline. The demo shows a deterministic series.
 
 ## My Setup
 
@@ -142,16 +142,16 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 **The change.**
 
 1. **A switch for MCP servers.** Reuse `enableMcp` and `disableMcp`. Creation stays impossible. Gate on `configMcp`, because an unknown name currently returns ok as a no-op. Size S, and ready once the `.bak` question below is settled.
-2. **Show output.** A nullable `session_learning.output` added through `ADDED_COLUMNS` (rule 2), capped and redacted, left out of `TABLES` in `sync.ts` and out of `share`. It is read over a new entry in `CONFIG_ROUTES` (exact match, token gated), because `/api/tech-tree` needs no token. The route never re-runs a check. `verifyCheck` starts reading `out.error`.
+2. **Show output.** A nullable `session_learning.output` added through `ADDED_COLUMNS` (rule 2), capped and redacted, left out of `TABLES` in `sync.ts` and out of `share`. It is read over its own route, and that route needs a stricter gate than `CONFIG_ROUTES` gives. `mayEditConfig` admits any request whose `Origin` is a local host on any port, and any same-origin browser fetch, before it looks at `X-Ambit-Token`, and `corsHeaders` reflects those origins. So a config route is readable by any page served from a local port, as `GET /api/config` is today. Check output can hold more than the config does, so this route admits a same-origin fetch or the token and never the origin allowlist. The page stays same-origin in production and in dev, where Vite proxies `/api`, so it keeps working. The route never re-runs a check. `verifyCheck` starts reading `out.error`.
 3. **Tool count.** Drop it. If a number is wanted, `provides.length` is how many nodes the entry supplies.
 
-**Decision.** The storage policy for check output: the cap, the redaction, the retention, and who can read it. `docs/faq.md` and `schema.sql` both say the graph holds names and structure, so reword them in the same change.
+**Decision.** The storage policy for check output: the cap, the redaction, the retention, and the gate on the read route. `docs/faq.md` and `schema.sql` both say the graph holds names and structure, so reword them in the same change.
 
 **A finding to settle first.** SECURITY.md says the visualizer's config editing writes a `.bak` first. `writeConfig` in `src/server/config.ts` does not. Only `ambit apply` and rollback do (`governance.ts`). Fix the code or the sentence before a second control that writes config ships.
 
 **Rules and checks.** Rules 2, 5, 7 (the output is text and is never run), 11 and 16. `reachable.test.tsx` pins switch gating, and `findings.test.tsx` pins "check failing" and "check passed".
 
-**Done when.** A failed check with output shows its tail behind Show output, and a check with none says so. The tail never appears in a sync file, a share file or an unauthenticated route. The switch changes an existing MCP entry and never creates one.
+**Done when.** A failed check with output shows its tail behind Show output, and a check with none says so. The tail never appears in a sync file, a share file, or a response to a request that is neither same-origin nor carrying the token. The switch changes an existing MCP entry and never creates one.
 
 ### S3. A ladder made of named rules
 
@@ -249,15 +249,15 @@ M2 has the weakest case at today's 35 nodes, and the roadmap plans for hundreds.
 
 **The question.** Who approved what, what ran, and did it hold?
 
-**Today.** `ambit audit` and the audit MCP tool are the only readers, and no `/api` route exists. `auditRecent` returns three newest-first lists capped at 40, 20 and 20. Acts carry a session, an action, `capability_id` as the target, a time and a note, with no actor field and no outcome. The person is inside `capability_id` for approvals and free text or absent elsewhere. Narrowing is recorded as a demotion and a delegation revision. Apply refusals are not recorded, and "held" is computed at promotion time. Only `delegation_records` is hash-chained. Timestamps mix ISO with a `T` and SQLite's space form, so a string sort misorders them.
+**Today.** `ambit audit` and the audit MCP tool are the only readers, and no `/api` route exists. `auditRecent` returns three newest-first lists, of acts, proposals and runs, capped at 40, 20 and 20 over a window of days. Acts carry a session, an action, `capability_id` as the target, a time and a note, with no actor field and no outcome. The person is inside `capability_id` for approvals and free text or absent elsewhere. A demotion is an act. A delegation revision lives only in `delegation_records` (read by `delegationRecords`) and appears in none of the three lists. Apply refusals are not recorded, and "held" is computed at promotion time. `delegation_records` is also the only hash-chained table. Timestamps mix ISO with a `T` and SQLite's space form, so a string sort misorders them.
 
-**The change.** The first slice is one stream from the three lists, newest first, with the time normalized, the actor parsed where present, the verb from `action`, the target from `capability_id`, and an outcome only where one was recorded, such as "signed" or "grant narrowed". A query bar takes `actor:`, `action:` and `target:` qualifiers, parsed in the client on the first colon only, since an actor id contains colons. The second slice records refusals and "held" and gives an event a structured actor column.
+**The change.** The first slice is one stream, newest first, from four sources read directly in `audit.ts`: acts, proposals (an event for each of `created_at`, `approved_at` and `applied_at`), runs (started and ended) and `delegationRecords`. One limit applies after the merge, because merging lists that were each capped on their own drops events from the older end. Each event has its time normalized, the actor parsed where present, the verb from `action`, the target from `capability_id`, and an outcome only where one was recorded, such as "signed" or "grant narrowed". A query bar takes `actor:`, `action:` and `target:` qualifiers, parsed in the client on the first colon only, since an actor id contains colons. The second slice records refusals and "held" and gives an event a structured actor column.
 
 **Decision.** What the hash chain covers.
 
 **Rules and checks.** Rule 2, rule 5 (outcome words live in `vocabulary.ts`) and rule 16 (no empty outcome cell). It needs a projection in `views.ts`, since the server writes no SQL, a wire type and `ApiRoutes` entry, and a `VIEWS` entry in `linkState.ts`. `reports-cli.test.ts` pins today's audit shape.
 
-**Done when.** A mixed set of approvals, demotions and delegation revisions merges in true time order. `actor:human:web` returns only that actor's events. An event with no recorded outcome shows none.
+**Done when.** A mixed set of approvals, demotions and delegation revisions merges in true time order, and a window holding more than the old cap of 40 acts shows all of them up to the stream's limit. `actor:human:web` returns only that actor's events. An event with no recorded outcome shows none.
 
 ## Ledger
 
@@ -355,7 +355,7 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 | G3 | Record the asking command, add a watermarked grant verb, and decide whether a click may widen | Record first, then CLI only with no web route |
 | G4 | What the hash chain covers | Delegation records only; record the rest as plain rows |
 | S1 | One series for an entry that provides several nodes | The worst node in the row, one strip per node in the panel |
-| S2 | How check output is stored and read | A 2 KB tail per run, redacted, on a token-gated route, never in sync or share; settle the `.bak` claim first |
+| S2 | How check output is stored and read | A 2 KB tail per run, redacted, on a route that admits only same-origin fetches or the token, never in sync or share; settle the `.bak` claim first |
 | S4 | A structured `needs` field on catalog entries | Later; ship the graph-answerable slice first |
 | L1 | Where a person's wait is recorded | Ship the as-recorded slice; the engine infers an end |
 | L3 | Where tags and last seen live | Manifest tags in `meta`, a last-probe time stored only where a probe runs |
