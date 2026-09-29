@@ -9,8 +9,13 @@
  * This is the difference between an agent that asks before every paid action
  * and one that has twenty dollars a month. Both are bounded; only the second
  * stops costing a person their attention. A budget is the shape of delegation
- * that fails safe — when it is spent, the answer goes back to asking, without
- * anyone having to notice or intervene.
+ * that fails safe: a spend past the ceiling is refused until the period turns
+ * over, without anyone having to notice or intervene.
+ *
+ * It bounds a grant and does not widen one. Within the ceiling the grant's own
+ * mode still decides, so the attention it saves is the autonomous grant's, kept
+ * from running away; a `confirm` action still asks. `canExecute` reads the
+ * ceiling only when the call states a spend.
  */
 import type { Db } from './db.ts';
 
@@ -215,7 +220,7 @@ function setBudget(
     scope: input.scope,
     budget: `$${(cents / 100).toFixed(2)} per ${period}`,
     granted_by: humanId,
-    note: 'Spending within this no longer needs a person. When it is spent the answer goes back to asking, which is what makes a ceiling safer than a one-off approval.',
+    note: "A spend past this ceiling is refused until the period turns over, which is what makes a ceiling safer than a one-off approval. Within it the grant's own mode still decides: a budget bounds an autonomous grant and does not create one.",
   };
 }
 
@@ -283,7 +288,7 @@ function budgetReport(db: Db) {
   };
 }
 
-/** Withdraws a budget. The action goes back to asking. */
+/** Withdraws a budget. Nothing bounds a spend on the action after that, and its grant's own mode decides. */
 function clearBudget(db: Db, capability?: string, action?: string, scope?: string) {
   if (!capability) return { error: 'Usage: ambit budget clear <capability> [action] [--scope=X]' };
   const id = capability.includes(':') ? capability : `combo:${capability}`;

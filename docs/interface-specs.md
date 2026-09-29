@@ -319,7 +319,7 @@ The full slice (L) adds nesting, which needs a parent id or an event-to-use link
 
 **Done when.** A budget at 60% of its ceiling after half the period shows a tick past the ceiling and a date. A budget with no recorded spend shows neither.
 
-**Built.** `budgets.ts` holds the one elapsed-period rule, and the reset, the gate and the view all read it. The wire gains `period_start`, `period_ends_on` and `forecast`, `utils/budgetBar.ts` places the marks, and the budgets branch of `views.ts` is read only and now tested. An elapsed period reads as spent nothing, as the gate reads it, and no pace is drawn under 5% of a period. The copy says "a spend is refused until the period turns over" and not "asks you again": with the ceiling spent, `canExecute` returns DENY for a spend, and ignores the budget when the call states none. The roadmap and `budgets.ts` had said it goes back to asking, and are corrected (see Decisions).
+**Built.** `budgets.ts` holds the one elapsed-period rule, and the reset, the gate and the view all read it. The wire gains `period_start`, `period_ends_on` and `forecast`, `utils/budgetBar.ts` places the marks, and the budgets branch of `views.ts` is read only and now tested. An elapsed period reads as spent nothing, as the gate reads it, and no pace is drawn under 5% of a period. The copy says "a spend is refused until the period turns over" and not "asks you again": with the ceiling spent, `canExecute` returns DENY for a spend, and ignores the budget when the call states none. The roadmap, the deep dive and the notes in `budgets.ts` and `decide.ts` had said it goes back to asking, and are corrected (see Decisions and Found while checking).
 
 ### L3. One row per machine
 
@@ -404,7 +404,7 @@ Closed:
 - AGENTS.md said `civ/layout.ts` holds "the two cascade walks". It holds `outageSplit`, `unlockCascade` and `gapOf`, which carry simulation rules, `cascadeDepths`, which counts downstream hops, and now `neighbourhood`. The entry is amended.
 - AGENTS.md described "the two decision routes". There are four now, and the entry says what each is.
 - `frontierAt` compared ISO timestamps as strings, which put a whole day on the wrong side of a comparison. M3 fixed it.
-- The roadmap, the deep dive and `budgets.ts` said a spent budget "goes back to asking". The gate returns DENY for a spend past the ceiling. L2 corrected the copy, the roadmap and the notes.
+- The roadmap, the deep dive and `budgets.ts` said a spent budget "goes back to asking". The gate returns DENY for a spend past the ceiling. L2 corrected the page's copy, and the roadmap, the deep dive and the notes in `budgets.ts` and `decide.ts` are corrected with it.
 - Era headers are `role="button"` and come first in the DOM, which broke the hero recorder: it took the first group as a node. It skips them now.
 
 Open:
@@ -414,4 +414,5 @@ Open:
 - The per-id routes `/api/proposals/:id/approve` and `/api/proposals/:id/reject` still accept an actor from the body and do not require the token. The queue routes fix the actor and require it. Per-id reject also accepts an approved row and keeps its artifact, and `verifyApproval` ignores status, so a rejected approval can still be spent by the control plane.
 - The origin allowlist judges the hostname only, so a page served from any local port passes it without the token. The config routes are readable by such a page today, and S2's output route must not use it.
 - Other commands still colour a pipe: the generic formatter's default palette, `seed`, `help` and `explain` print with `C` directly. `renderStatus` is the one that follows AGENTS.md's rule 18.
+- A budget bounds and does not delegate. Probed on a fresh graph with a $1 budget on Shell Execution, `canExecute` answers CONFIRM at 50 cents and with no spend stated, and DENY at 1 cent once the dollar is spent. So `ambit budget set` could not truthfully say that spending within the ceiling "no longer needs a person": that holds only beside an autonomous grant, which the budget then bounds. The wording is corrected. Whether a budget should relax confirmation within its ceiling is a decision for a person, because it widens what runs unattended (rules 9 and 11).
 - The MCP tool listing is at 19,994 of its 20,000 bytes, and a test holds the limit. The next tool added has to shorten another.

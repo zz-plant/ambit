@@ -446,7 +446,7 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
     remaining_cents: remaining,
     note:
       remaining <= 0
-        ? 'The budget is spent. This action asks a person again until the period turns over.'
+        ? 'The budget is spent. A spend past the ceiling is refused until the period turns over.'
         : undefined,
   };
 }
