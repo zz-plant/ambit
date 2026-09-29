@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
-import { emit, emitRaw, emitText, setSink, terminalPalette } from './cli/output.ts';
+import { emit, emitRaw, emitText, raiseExitCode, setSink, terminalPalette } from './cli/output.ts';
 import { HELP, HELP_SHORT } from './cli/help.ts';
 import { explain, renderStatus, statusReport } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
@@ -606,8 +606,12 @@ async function runCommand(
       break;
     }
     default: {
-      const paint = terminalPalette();
-      console.log(`${paint.red}Unknown: ${cmd}${paint.reset}`);
+      // On stderr, so a caller reading stdout for an answer is not handed this
+      // as one, and exiting 2, the code a usage error conventionally gets, so a
+      // script can tell a mistyped verb from a command that ran and failed.
+      const paint = terminalPalette(process.stderr);
+      console.error(`${paint.red}Unknown command: ${cmd}. Try: ambit help${paint.reset}`);
+      raiseExitCode(2);
     }
   }
 }

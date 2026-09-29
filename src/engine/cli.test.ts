@@ -3,14 +3,17 @@
  * verbs, so the test that matters is that both spellings dispatch identically
  * and that nothing anyone has already typed stops working.
  *
- * After it, what a pipe receives: the other thing that is only real across a
- * process boundary, and the way an agent running `ambit` in a subshell reads it.
+ * After it, what a pipe receives and the exit code: the other things that are
+ * only real across a process boundary, and the way an agent running `ambit` in
+ * a subshell reads it.
  */
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { capture } from './cli.ts';
+import { getDb, migrate } from './db.ts';
 
 const ENGINE = join(import.meta.dirname, 'engine.ts');
 
@@ -121,6 +124,56 @@ test('nothing a pipe receives is painted', () => {
       expect([argv.join(' '), out.includes(ESC)]).toEqual([argv.join(' '), false]);
     }
   } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the exit code says what the words say', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-exit-'));
+  try {
+    // Seeded first, so the first-run report is no part of what follows.
+    run(dir, 'seed');
+
+    // A verb nothing knows is a usage error, said on stderr so stdout is empty.
+    const unknown = piped(dir, 'nonsense');
+    expect([unknown.status, unknown.stdout]).toEqual([2, '']);
+    expect(unknown.stderr).toContain('Unknown command: nonsense');
+    // The same through the wrapper, which is what an agent runs.
+    expect(piped(dir, WRAPPER, 'nonsense').status).toBe(2);
+
+    // A command that answered with an error exits 1, and --json prints the
+    // bytes it always printed.
+    const usage = piped(dir, 'sync', '--json');
+    expect(usage.status).toBe(1);
+    const error = 'Usage: ambit sync export [path] | ambit sync import <path>';
+    expect(usage.stdout).toBe(`${JSON.stringify({ error }, null, 2)}\n`);
+    expect(piped(dir, 'goal', '--paths').status).toBe(1);
+
+    // An answer exits 0.
+    expect(piped(dir, 'where').status).toBe(0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a result taken in-process leaves the exit code to whoever took it', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-exit-'));
+  const db = getDb(join(dir, 'graph.db'));
+  migrate(db);
+  const before = process.exitCode;
+  const said = vi.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    expect(Number(before) || 0).toBe(0);
+    expect(capture(db, ['sync']).error).toContain('Usage');
+    expect(process.exitCode).toBe(before);
+    // An unknown verb reports no result, so the seam throws; the code stays.
+    expect(() => capture(db, ['nonsense'])).toThrow();
+    expect(said).toHaveBeenCalledWith(expect.stringContaining('Unknown command: nonsense'));
+    expect(process.exitCode).toBe(before);
+  } finally {
+    said.mockRestore();
+    process.exitCode = before;
+    db.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
