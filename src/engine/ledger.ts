@@ -179,8 +179,10 @@ function inEffectAt(db: Db, stamp: string): Dated | null {
  * Both orderings break ties on `id`. `taken_at` resolves to the second, so two
  * snapshots can share one, and without the tie-break which of them answered
  * was whatever order SQLite read them in: the index happened to give the later
- * one and a table scan gives the earlier. In effect at a second means the last
- * recorded in it; the earliest means the first recorded.
+ * one and a table scan gives the earlier. A second holds one observation, the
+ * last recorded in it, both for the second something was in effect at and for
+ * the earliest: that is the timeline's first tick (`frontierSeries`), so
+ * `ambit history since` with no argument starts where the page does.
  */
 function frontierAt(db: Db, when?: string): Dated | null {
   const stamp = when ? secondOf(db, when) : null;
@@ -188,7 +190,7 @@ function frontierAt(db: Db, when?: string): Dated | null {
   if (inEffect) return inEffect;
   const row = db
     .prepare(
-      `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots ORDER BY taken_at ASC, id ASC LIMIT 1`
+      `SELECT ${OBSERVATION_COLUMNS} FROM frontier_snapshots ORDER BY taken_at ASC, id DESC LIMIT 1`
     )
     .get();
   return row ? (observation(row) as Dated) : null;

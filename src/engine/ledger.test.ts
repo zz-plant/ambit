@@ -123,8 +123,9 @@ test('two snapshots in the same second resolve to the later, whichever plan SQLi
   db.exec('DROP INDEX idx_frontier_taken');
 
   expect(frontierAt(db, FRIDAY)?.states['combo:embeddings']).toBe('unlocked');
-  // The earliest observation is the first recorded.
-  expect(frontierAt(db)?.states['combo:embeddings']).toBeUndefined();
+  // The earliest observation is the same one: the last recorded in the
+  // earliest second, which is also the series' first tick below.
+  expect(frontierAt(db)?.states['combo:embeddings']).toBe('unlocked');
 
   const { ticks } = frontierSeries(db);
   db.close();

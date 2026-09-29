@@ -381,7 +381,10 @@ test('the ledger records demonstrated reliability beside reach', () => {
 });
 
 test('since reports a capability that stopped working', () => {
-  seed(LOCAL_ONLY).close();
+  const first = seed(LOCAL_ONLY);
+  // Dated apart: two seeds in one second are one observation.
+  first.prepare("UPDATE frontier_snapshots SET taken_at = '2026-09-21 09:00:00'").run();
+  first.close();
   recordVerification('combo:shell-execution', 'failed');
   seed(LOCAL_ONLY).close();
 
