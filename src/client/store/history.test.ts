@@ -8,8 +8,10 @@
  */
 import { afterEach, expect, test } from 'vitest';
 import type { FrontierHistoryResponse } from '../../shared/api';
-import { useAmbitStore } from './ambitStore';
-import { demoHistory } from './demo';
+import { tickSecond } from '../components/civ/history';
+import { outageSplit } from '../components/civ/layout';
+import { mergeGraphs, useAmbitStore } from './ambitStore';
+import { demoConfigGraph, demoHistory, demoTreeGraph } from './demo';
 
 const LEDGER: FrontierHistoryResponse = {
   ticks: [
@@ -43,7 +45,16 @@ function engine(routes: Record<string, unknown>) {
   return asked;
 }
 
-afterEach(() => useAmbitStore.setState({ history: null, historyAt: null, demo: false }));
+afterEach(() =>
+  useAmbitStore.setState({
+    history: null,
+    historyAt: null,
+    demo: false,
+    items: [],
+    connections: [],
+    activeLens: 'default',
+  })
+);
 
 test('the demo answers from its own series and asks no engine', async () => {
   globalThis.fetch = (async () => {
@@ -89,6 +100,53 @@ test('the demo keeps a playhead on one of its own ticks, and drops any other', (
   useAmbitStore.setState({ historyAt: '2026-01-01T00:00:00Z' });
   useAmbitStore.getState().seedDemo();
   expect(useAmbitStore.getState().historyAt).toBeNull();
+});
+
+test('a simulation started while the map is scrubbed plays on now, the graph it walked', () => {
+  // The finder's "Simulate an outage of…" and Time & cost's "Show it on the
+  // map" both start one while the playhead can be in the past. The cascade is
+  // the live graph's, so a map left on Aug 17 drew today's cascade over Aug
+  // 17's states, beside a panel saying simulations wait for now.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  const past = tickSecond(demoHistory().ticks[1]);
+  const store = () => useAmbitStore.getState();
+  useAmbitStore.setState({ items, connections, history: demoHistory() });
+
+  for (const start of [
+    () => store().startOutageSimulation('combo:shell-execution'),
+    () => store().startAcquisitionSimulation('combo:embeddings'),
+    () => store().startGapSimulation('combo:embeddings'),
+  ]) {
+    useAmbitStore.setState({ historyAt: past });
+    start();
+    expect(store().historyAt).toBeNull();
+    expect(store().simulationMode).not.toBe('none');
+  }
+  // The outage the banner counts is the live one.
+  useAmbitStore.setState({ historyAt: past });
+  store().startOutageSimulation('combo:shell-execution');
+  expect(store().simulatedCascadeIds).toEqual(
+    outageSplit(items, connections, 'combo:shell-execution').stops
+  );
+  store().clearSimulation();
+});
+
+test('a lens no observation can paint returns the map to now, and the standard one does not', () => {
+  const past = tickSecond(demoHistory().ticks[1]);
+  useAmbitStore.setState({ history: demoHistory(), historyAt: past, activeLens: 'default' });
+  // Attention and grants are not in a snapshot: chosen from the finder while
+  // scrubbed, the lens used to be written to the URL and change nothing.
+  useAmbitStore.getState().setActiveLens('attention');
+  expect(useAmbitStore.getState()).toMatchObject({ activeLens: 'attention', historyAt: null });
+
+  useAmbitStore.setState({ historyAt: past });
+  useAmbitStore.getState().setActiveLens('authority');
+  expect(useAmbitStore.getState().historyAt).toBeNull();
+
+  // The past is drawn in the standard lens, so asking for it keeps the playhead.
+  useAmbitStore.setState({ historyAt: past });
+  useAmbitStore.getState().setActiveLens('default');
+  expect(useAmbitStore.getState()).toMatchObject({ activeLens: 'default', historyAt: past });
 });
 
 test('scrubbing into the past ends a simulation, which walks the live graph', () => {

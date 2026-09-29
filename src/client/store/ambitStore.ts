@@ -361,10 +361,15 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   setSearch: q => set({ searchQuery: q }),
   toggleDetailPanel: () => set(s => ({ showDetailPanel: !s.showDetailPanel })),
   setShowApprovalModal: show => set({ showApprovalModal: show }),
-  setActiveLens: lens => set({ activeLens: lens }),
+  // No observation records attention or grants, so a lens that paints them is
+  // a lens on now: chosen while the map is scrubbed, it brings the map back.
+  // The standard lens is what a past map is drawn in, and keeps the playhead.
+  setActiveLens: lens =>
+    set(lens === 'default' ? { activeLens: lens } : { activeLens: lens, historyAt: null }),
   setSpotlight: group => set({ spotlight: group }),
   // A simulation walks the live graph, and an outage needs providers, which no
-  // snapshot stores, so scrubbing into the past ends one.
+  // snapshot stores, so scrubbing into the past ends one. Each simulation below
+  // returns the map to now for the same reason, whichever surface started it.
   setHistoryAt: at => {
     if (at) get().clearSimulation();
     set({ historyAt: at });
@@ -378,6 +383,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   startOutageSimulation: (nodeId: string) => {
     const { stops, weakened } = outageSplit(get().items, get().connections, nodeId);
     set({
+      historyAt: null,
       simulationMode: 'outage',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: stops,
@@ -387,6 +393,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startAcquisitionSimulation: (nodeId: string) =>
     set({
+      historyAt: null,
       simulationMode: 'acquisition',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: unlockCascade(get().items, get().connections, nodeId),
@@ -395,6 +402,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startGapSimulation: (nodeId: string) =>
     set({
+      historyAt: null,
       simulationMode: 'gap',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: gapOf(get().items, get().connections, nodeId).missing,
