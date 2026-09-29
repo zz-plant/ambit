@@ -118,7 +118,8 @@ govern — the reviewable path from proposal to applied change
                           for a draft, the signed artifact once approved.
                           AMBIT_APPROVAL_WEBHOOK is the standing target;
                           propose and approve take --dispatch to push as they go
-  govern history [since <when>]   how the frontier moved
+  govern history [since <when> [<until>]]   how the frontier moved, up to now
+                          or up to a later observation
   govern audit [run-…|prop-…|human:name|days]   the trail — who approved
                           what, what ran, and whether it held
   govern delegation [verify] [--record] [--export] [--limit=N]   grants that

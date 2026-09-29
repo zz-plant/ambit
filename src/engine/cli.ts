@@ -420,7 +420,7 @@ async function runCommand(
       break;
     }
     case 'history':
-      if (arg === 'since') emit(ledgerSince(db, positional[1]));
+      if (arg === 'since') emit(ledgerSince(db, positional[1], positional[2]));
       else emit(ledgerHistory(db));
       break;
     case 'propose': {

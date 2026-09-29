@@ -233,6 +233,7 @@ A calibrated classifier is a capability, not an authority. Typed decision models
 
 ```
 ambit history since
+  moved:     reached 13 to 19, 3 emergent
   frontier then: 13
   frontier now:  19
   gained:    Embeddings · Local Embeddings · nomic-embed-text
@@ -247,6 +248,7 @@ A fourth class, **vocabulary**, exists to keep `gained`, `emergent` and `lost` h
 
 ```
 ambit history since
+  moved:     reached 21
   frontier then: 21
   frontier now:  21
   vocabulary: 12   act:shell-execution/run_command · act:file-editing/write_file · …
@@ -393,7 +395,7 @@ check      verify [cap] [--history] [--target=<object>]
 govern     proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
            reject <id> <person> ["why"]
            apply <id> · rollback <id> · dispatch <id> [--to=<url>]
-           history [since <when>]
+           history [since <when> [<until>]]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest <file>
            delegation object|answer|objections · delegation source add|sources|pull
@@ -438,7 +440,7 @@ The table covers the commands whose answer is not obvious from the name, in the 
 | **govern** — *the reviewable path from proposal to applied change* | |
 | `ambit proposals --pending` | The drafts waiting on a decision, each with cost, bill and what it unlocks — so approving is one sitting rather than one interruption per proposal |
 | `ambit reject <id> <person> ["why"]` | A refusal, recorded. Approval was always written to the graph and refusal was not, so nothing could learn the shape of a no |
-| `ambit history since <when>` | What became reachable since a past date — and what emerged rather than being added? |
+| `ambit history since <when> [<until>]` | What became reachable since a past date, and what emerged with nothing added? Up to now, or up to a later observation, with the step in one sentence |
 | `ambit audit <run-…\|prop-…\|human:name\|days>` | The trail: who approved what, what ran, against what target, under which grant, and whether it held |
 | `ambit dispatch <id> [--to=<url>]` | Push a proposal to Slack, Discord, Telegram, ntfy or a JSON endpoint: the decision for a draft, the signed artifact once approved. One-way; the reply is `ambit approve` on a machine that holds the key |
 | **report** — *what the system cost to operate* | |

@@ -3,6 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { getDb } from '../engine/db.ts';
+import { ledgerSince, recordFrontier } from '../engine/ledger.ts';
+import { migrate } from '../engine/migrate.ts';
 
 const ENGINE = join(import.meta.dirname, '..', 'engine', 'engine.ts');
 const SERVER = join(import.meta.dirname, 'server.ts');
@@ -34,10 +37,10 @@ beforeAll(() => {
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 /** Drive the server over stdio the way a client does. */
-function rpc(requests: object[]): any[] {
+function rpc(requests: object[], db = join(dir, 'graph.db')): any[] {
   const out = execFileSync('node', ['--experimental-sqlite', SERVER], {
     input: requests.map(r => JSON.stringify(r)).join('\n') + '\n',
-    env: { ...process.env, TOOLCHAIN_DB: join(dir, 'graph.db') },
+    env: { ...process.env, TOOLCHAIN_DB: db },
     encoding: 'utf8',
   });
   return out
@@ -268,4 +271,40 @@ test('ambit_goal routes goals and accepts judge option', () => {
   const judgedAnswer = replyJudged.result.structuredContent;
   expect(judgedAnswer).toBeDefined();
   expect(judgedAnswer.judged).toBeDefined();
+});
+
+test('a step between two observations reads over MCP as the terminal prints it', () => {
+  // The map's timeline, `ambit history since <from> <until>` and this tool
+  // are one comparison, so one pair of snapshots is one sentence everywhere.
+  const path = join(dir, 'week.db');
+  const db = getDb(path);
+  migrate(db);
+  db.prepare(
+    `INSERT INTO capabilities (id, name, domain, description, category, state, kind, lifecycle)
+     VALUES ('combo:vc', 'Version Control', 'devops', '', 'skill', 'locked', 'capability', 'detected')`
+  ).run();
+  recordFrontier(db, '2026-09-21 09:00:00');
+  db.prepare("UPDATE capabilities SET state = 'unlocked', lifecycle = 'verified'").run();
+  recordFrontier(db, '2026-09-25 17:00:00');
+  const terminal = (ledgerSince(db, '2026-09-21 09:00:00', '2026-09-25 17:00:00') as any).moved;
+  db.close();
+
+  const [reply] = rpc(
+    [
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+          name: 'ambit_since',
+          arguments: { when: '2026-09-21T09:00:00Z', until: '2026-09-25T17:00:00Z' },
+        },
+      },
+    ],
+    path
+  );
+  const step = JSON.parse(reply.result.content[0].text);
+  expect(step.until).toBe('2026-09-25 17:00:00');
+  expect(step.moved).toBe('reached 0 to 1, verified 0 to 1');
+  expect(step.moved).toBe(terminal);
 });
