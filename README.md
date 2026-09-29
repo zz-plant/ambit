@@ -62,7 +62,7 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 <div align="center">
 <img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
-<br><sub>Filled nodes are reached · Heavy rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
+<br><sub>Filled nodes are reached · Bright rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
 </div>
 
 ---

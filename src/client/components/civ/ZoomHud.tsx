@@ -54,9 +54,21 @@ export function ZoomHud({
   const fit = () => {
     const el = containerRef.current;
     if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const fitRatio = Math.min(rect.width / contentWidth, rect.height / contentHeight);
-    setZoom(Math.max(0.4, Math.min(1.5, +(fitRatio * 0.95).toFixed(2))));
+    // The room the canvas actually has: the scroller less its padding (the
+    // headline's, and the panel insets) and the canvas's own top margin (the
+    // HUD's). Dividing the scroller's whole height left the legend under the
+    // bottom edge, on screen and in the README's picture of the whole tree.
+    const box = getComputedStyle(el);
+    const svg = el.querySelector('svg');
+    const px = (v: string | undefined) => Number.parseFloat(v ?? '') || 0;
+    const width = el.clientWidth - px(box.paddingLeft) - px(box.paddingRight);
+    const height =
+      el.clientHeight -
+      px(box.paddingTop) -
+      px(box.paddingBottom) -
+      px(svg ? getComputedStyle(svg).marginTop : undefined);
+    const fitRatio = Math.min(width / contentWidth, height / contentHeight);
+    setZoom(Math.max(0.4, Math.min(1.5, +(fitRatio * 0.97).toFixed(2))));
     el.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
   };
 
