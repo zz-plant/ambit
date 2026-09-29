@@ -6,11 +6,15 @@ import { WEB_ACTOR } from '../utils/copy';
 import { NUM, money } from './figures';
 
 /**
- * What a step may be called, and what supplies it. An engine step is
- * `{id, name, chosen, …}`; the demo's hand-written ones are `{action,
- * provider}`. Either reads as a name and what supplies it.
+ * What a step may be called, what supplies it, and whether it can be undone.
+ * An engine step is `{id, name, chosen, inverse, …}`; the demo's hand-written
+ * ones are `{action, provider, …}`. Either reads as a name and what supplies
+ * it. The inverse used to be dropped here, so the panel could say a proposal
+ * was not reversible and never which step was the reason.
  */
-type StepLike = Partial<Record<'id' | 'name' | 'action' | 'key' | 'chosen' | 'provider', string>>;
+type StepLike = Partial<
+  Record<'id' | 'name' | 'action' | 'key' | 'chosen' | 'provider', string>
+> & { inverse?: unknown };
 
 /** The stored steps are a JSON string; anything that is not a list of them is no steps. */
 function parseSteps(steps: string): StepLike[] {
@@ -22,36 +26,65 @@ function parseSteps(steps: string): StepLike[] {
   }
 }
 
+/** Setup time the way a person says it: minutes under an hour. */
+const setupLabel = (hours: number) => (hours < 1 ? `${Math.round(hours * 60)}m` : `${hours}h`);
+
 /**
- * The four things a decision needs, in a fixed order: what it saves, what it
- * costs, whether it can be undone, and how this person has decided on things
- * like it before. The card showed the goal and the steps; the engine had
- * stored all four and the browser drew none.
+ * The plan in one line, above its steps: how many, whether they can be
+ * undone, whether a person has to do one, and the setup time. A setup of zero
+ * is steps that stated none, so it is left out, not printed as a time.
+ */
+function planTally(count: number, d?: ProposalDecision): string {
+  const parts = [`${count} ${count === 1 ? 'step' : 'steps'}`];
+  if (d) {
+    parts.push(d.reversible ? 'reversible' : 'not reversible');
+    if (d.requires_person) parts.push('needs a person');
+    if (d.setup_hours > 0) parts.push(`${setupLabel(d.setup_hours)} of setup`);
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * What a decision needs, in a fixed order: what it is forecast to save, what
+ * it costs, whether it can be undone, whether `ambit apply` can run it, and
+ * how this person has decided on things like it before. Undo and Apply are
+ * two facts on purpose: every step can carry an inverse and apply still
+ * refuse a step that is not a config change, so one word cannot say both.
  */
 function DecisionRows({ d }: { d: ProposalDecision }) {
   const tenth = (n: number) => Math.round(n * 10) / 10;
   const rows: [string, string][] = [
     [
-      'Saves',
+      'Forecast',
       d.forecast
-        ? `${tenth(d.forecast.hours_month_now - d.forecast.hours_month_after)}h a month · ${money(
-            d.forecast.savings_dollars_month
-          )} a month · ${d.forecast.confidence} confidence`
+        ? `${tenth(d.forecast.hours_month_now)}h a month now, ${tenth(
+            d.forecast.hours_month_after
+          )}h after · saves ${money(d.forecast.savings_dollars_month)} a month · ${
+            d.forecast.confidence
+          } confidence`
         : 'nothing forecast: no recurring interruption was recorded against it',
     ],
     [
       'Costs',
-      `${d.setup_hours}h of setup · ${d.recurring ? `${d.recurring} recurring` : 'no recurring cost'}${
+      `${d.recurring ? `${d.recurring} recurring` : 'no recurring cost'}${
         d.privacy ? ` · ${d.privacy}` : ''
       }`,
     ],
     [
       'Undo',
       d.reversible
-        ? 'every step is a config change with an inverse; apply rolls back on a failed check'
+        ? 'every step has an inverse, computed before anything runs'
         : d.requires_person
-          ? 'a step is work only a person can do, so this stays a document'
-          : 'a step has no computed inverse, so this stays a document',
+          ? 'a step is work only a person can do, so it has no inverse'
+          : 'a step has no computed inverse',
+    ],
+    [
+      'Apply',
+      d.applicable
+        ? 'every step is a config change with an inverse; apply rolls back on a failed check'
+        : d.reversible
+          ? 'cannot be applied by ambit apply: a step is not a config change, and apply edits only configuration'
+          : 'cannot be applied by ambit apply, which runs nothing without an inverse, so this stays a document',
     ],
   ];
   if (d.unlocks.length) rows.push(['Unlocks', d.unlocks.join(', ')]);
@@ -229,18 +262,24 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   {parsedSteps.length > 0 && (
                     <div className="gov-steps">
                       <div className="sp-section-label">
-                        {parsedSteps.length} {parsedSteps.length === 1 ? 'step' : 'steps'}
+                        {planTally(parsedSteps.length, p.decision)}
                       </div>
                       {/* An engine step is {id, name, chosen, …}; the demo's
                           hand-written ones are {action, provider}. Either reads
                           as a name and what supplies it; a step shaped some third
-                          way used to print as its own JSON. */}
+                          way used to print as its own JSON. A step with nothing
+                          to undo it says so, in words. */}
                       {parsedSteps.map((step, idx) => (
                         <div key={idx} className="gov-step">
                           <code>{step.name || step.action || step.key || step.id || 'step'}</code>
-                          {(step.chosen || step.provider) && (
-                            <span className="gov-step-via">via {step.chosen || step.provider}</span>
-                          )}
+                          <span className="gov-step-side">
+                            {(step.chosen || step.provider) && (
+                              <span className="gov-step-via">
+                                via {step.chosen || step.provider}
+                              </span>
+                            )}
+                            {!step.inverse && <span className="gov-step-mark">no inverse</span>}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -274,7 +313,9 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                         <span className="gov-signed">
                           Signed by {signerLabel(p.approved_by)} · receipt verified
                         </span>
-                        {p.status !== 'applied' && (
+                        {/* Not offered where the Apply row says apply refuses
+                            it: a command copied to be refused is no help. */}
+                        {p.status !== 'applied' && p.decision?.applicable !== false && (
                           <button
                             type="button"
                             className="tp-btn-sm"
@@ -314,13 +355,18 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                           >
                             Turn down
                           </button>
+                          {/* It names what it approves: with several cards
+                              open, "approve" alone does not say which. */}
                           <button
                             type="button"
                             className="tp-btn tp-btn--primary"
                             disabled={approvingId === p.id}
                             onClick={() => handleApprove(p.id)}
+                            aria-label={
+                              approvingId === p.id ? undefined : `Approve this proposal, ${p.id}`
+                            }
                           >
-                            {approvingId === p.id ? 'Signing…' : 'Approve and sign'}
+                            {approvingId === p.id ? 'Signing…' : 'Approve this proposal'}
                           </button>
                         </span>
                       </>

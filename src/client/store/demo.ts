@@ -102,9 +102,17 @@ export function demoProposals(): ProposalRow[] {
       created_at: new Date(Date.now() - 3600000).toISOString(),
       goal: 'Deploy the billing hotfix to the staging cluster',
       status: 'draft',
+      // None of these is a config change, so none has an inverse, and the
+      // decision below says so: not reversible, and not something `ambit
+      // apply` runs.
       steps: JSON.stringify([
         { action: 'verify_kubeconfig', provider: 'tool:kubectl', status: 'pending' },
-        { action: 'apply_k8s_manifest', provider: 'tool:kubectl', status: 'pending' },
+        {
+          action: 'apply_k8s_manifest',
+          provider: 'tool:kubectl',
+          status: 'pending',
+          requires_person: true,
+        },
         { action: 'run_smoke_tests', provider: 'skill:vitest', status: 'pending' },
       ]),
       // The decision context a live row gets from its stored steps, simulation
@@ -112,8 +120,8 @@ export function demoProposals(): ProposalRow[] {
       decision: {
         setup_hours: 0.5,
         reversible: false,
+        applicable: false,
         requires_person: true,
-        recurring: 'none',
         privacy: 'local',
         forecast: {
           hours_month_now: 0.7,
@@ -130,16 +138,25 @@ export function demoProposals(): ProposalRow[] {
       created_at: new Date(Date.now() - 86400000).toISOString(),
       goal: 'Add pgvector to the local Postgres, for offline retrieval',
       status: 'approved',
+      // A config patch with its inverse written beside it, the shape a live
+      // step stores and the only one `ambit apply` runs. The panel reads only
+      // that both are there.
       steps: JSON.stringify([
-        { action: 'enable_extension', provider: 'tool:postgres', status: 'done' },
+        {
+          action: 'enable_extension',
+          provider: 'tool:postgres',
+          status: 'done',
+          config_patch: { mcp: { pgvector: { type: 'local', enabled: true } } },
+          inverse: { remove: ['mcp.pgvector'] },
+        },
       ]),
       approved_by: WEB_ACTOR,
       approved_at: new Date(Date.now() - 72000000).toISOString(),
       decision: {
         setup_hours: 0.5,
         reversible: true,
+        applicable: true,
         requires_person: false,
-        recurring: 'none',
         privacy: 'local',
         forecast: {
           hours_month_now: 1.1,

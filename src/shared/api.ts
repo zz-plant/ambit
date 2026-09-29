@@ -229,8 +229,14 @@ export interface TechTreeResponse {
  */
 export interface ProposalDecision {
   setup_hours: number;
-  /** Every step is a config change with a computed inverse. */
+  /** Every step carries a computed inverse. */
   reversible: boolean;
+  /**
+   * Every step is a config patch with an inverse, which is what `ambit apply`
+   * needs before it runs anything. A step can carry an inverse and no patch,
+   * as a control-plane draft does: it reads reversible, and apply refuses it.
+   */
+  applicable: boolean;
   /** Some step describes work only a person can do. */
   requires_person: boolean;
   recurring?: string;

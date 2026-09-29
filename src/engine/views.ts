@@ -489,9 +489,11 @@ function decisionFor(
   return {
     setup_hours:
       Math.round((steps.reduce((t, s) => t + (Number(s.setup_seconds) || 0), 0) / 3600) * 10) / 10,
-    // Every step reversible is the only shape `ambit apply` will run; the
-    // demo's hand-written steps carry no inverse and stay a document, honestly.
+    // Two facts, kept apart. `applyProposal` refuses a step with no inverse,
+    // and then a step with no config patch: a control-plane draft carries an
+    // inverse and no patch, so it reads reversible and is still refused.
     reversible: steps.length > 0 && steps.every(s => Boolean(s.inverse)),
+    applicable: steps.length > 0 && steps.every(s => Boolean(s.inverse) && Boolean(s.config_patch)),
     requires_person: steps.some(s => Boolean(s.requires_person)),
     recurring: recurring || undefined,
     privacy: steps.map(s => s.privacy).find((p: unknown) => typeof p === 'string') || undefined,

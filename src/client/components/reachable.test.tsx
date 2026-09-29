@@ -376,11 +376,11 @@ test('the governance half is on the page: authority, next steps, and the week', 
 });
 
 test('a proposal card carries what deciding on it needs', () => {
-  // Saves, costs, undo, unlocks, precedent: stored by the engine, shown by
+  // Forecast, costs, undo, unlocks, precedent: stored by the engine, shown by
   // nothing. The card had the goal and the steps.
   seed({ proposals: demoProposals() });
   const html = renderToStaticMarkup(<ApprovalModal isOpen onClose={() => {}} />);
-  expect(html).toContain('Saves');
+  expect(html).toContain('Forecast');
   expect(html).toContain('Costs');
   expect(html).toContain('Undo');
   expect(html).toContain('every step is a config change with an inverse');
@@ -506,7 +506,7 @@ test('a proposal can be turned down from the panel, with the reason the next dra
   seed({ proposals: demoProposals() });
   const html = renderToStaticMarkup(<ApprovalModal isOpen onClose={() => {}} />);
   expect(html).toContain('Turn down');
-  expect(html).toContain('Approve and sign');
+  expect(html).toContain('Approve this proposal');
 });
 
 test('the ways to acquire a capability are compared, with the record\u2019s leaning marked', () => {

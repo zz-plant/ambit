@@ -2180,6 +2180,25 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-muted);
 }
 
+.gov-step-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* A step nothing can undo. The word carries it and the outline marks it, so
+   the colour is never the only sign. */
+.gov-step-mark {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--warn-line);
+  color: var(--warn);
+  white-space: nowrap;
+}
+
 .gov-foot {
   display: flex;
   justify-content: space-between;
