@@ -25,6 +25,7 @@ import {
   grabOffset,
   type MinimapModel,
   minimapModel,
+  nearestNode,
   offscreenLabel,
   type Point,
   scrollForCentre,
@@ -147,11 +148,13 @@ export function MinimapView({
             />
           ))}
         </svg>
+        {/* A name, and how to use it apart: the name was the whole sentence. */}
         <button
           type="button"
           className="civ-minimap-view"
           ref={viewRef}
-          aria-label="Viewport on the map. Drag it, or use the arrow keys to move the view; Shift moves a screen at a time, Home and End go to the corners."
+          aria-label="Part of the map in view"
+          aria-describedby="civ-minimap-help"
           onKeyDown={onKeyDown}
           style={{
             left: model.view.left,
@@ -160,6 +163,10 @@ export function MinimapView({
             height: model.view.height,
           }}
         />
+        <span id="civ-minimap-help" className="visually-hidden">
+          Drag it, or use the arrow keys to move the view; Shift moves a screen at a time, Home and
+          End go to the corners, and Enter goes into the map there.
+        </span>
       </div>
     </section>
   );
@@ -288,6 +295,17 @@ export function Minimap({
       onKeyDown={e => {
         const el = containerRef.current;
         if (!el) return;
+        // Enter goes into the map where the outline is: the focus moves to the
+        // node nearest its middle, and the keyboard carries on from there. It
+        // did nothing, from a control that is a button.
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          const id = nearestNode(clampToScene(viewportRect(readGeometry(el, zoom)), scene), nodes);
+          const node = id ? el.querySelector<SVGGElement>(`[data-node="${CSS.escape(id)}"]`) : null;
+          node?.focus({ preventScroll: true });
+          return;
+        }
         const to = scrollForKey(e.key, e.shiftKey, readGeometry(el, zoom));
         if (!to) return;
         // The map takes the arrow keys to step between nodes; here they move the view.

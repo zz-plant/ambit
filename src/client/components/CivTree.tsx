@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
-import { typingIn } from '../utils/keys';
+import { mapKey, typingIn } from '../utils/keys';
 import { isRuntimeNode } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import {
@@ -621,30 +621,25 @@ export default function CivTree({
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (typingIn(e.target)) return;
-      if (e.key === '1') {
-        setActiveLens('default');
-      } else if (e.key === '2') {
-        if (attentionAvailable) setActiveLens('attention');
-      } else if (e.key === '3') {
-        if (authorityAvailable) setActiveLens('authority');
-      } else if (e.key === '0') {
+      // A key held with Ctrl, Cmd or Alt is the browser's: see mapKey.
+      const key = mapKey(e);
+      if (!key) return;
+      if (key.kind === 'lens') {
+        const available =
+          key.lens === 'default' ||
+          (key.lens === 'attention' && attentionAvailable) ||
+          (key.lens === 'authority' && authorityAvailable);
+        if (available) setActiveLens(key.lens);
+      } else if (key.kind === 'zoom') {
         e.preventDefault();
-        setZoom(1);
-      } else if (e.key === '+' || e.key === '=') {
-        e.preventDefault();
-        setZoom(z => Math.min(2.5, +(z + 0.15).toFixed(2)));
-      } else if (e.key === '-' || e.key === '_') {
-        e.preventDefault();
-        setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
-      } else if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
+        if (key.to === 'actual') setZoom(1);
+        else if (key.to === 'in') setZoom(z => Math.min(2.5, +(z + 0.15).toFixed(2)));
+        else setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
+      } else {
         e.preventDefault();
         // A collapse hides nodes, and a key that lands on one selects what
         // nobody can see, so the walk skips them.
-        const to = stepSelection(filtered, selectedId, 1, collapse?.shown);
-        if (to) onSelect(to);
-      } else if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const to = stepSelection(filtered, selectedId, -1, collapse?.shown);
+        const to = stepSelection(filtered, selectedId, key.by, collapse?.shown);
         if (to) onSelect(to);
       }
       // Escape is the shell's, which peels the spotlight, the simulation and
@@ -1072,6 +1067,7 @@ export default function CivTree({
                       role="button"
                       aria-pressed={selected}
                       aria-label={`${item.name}, ${item.type}`}
+                      data-node={item.id}
                       onClick={() => onSelect(selected ? null : item.id)}
                       onKeyDown={e => {
                         if (e.key !== 'Enter' && e.key !== ' ') return;

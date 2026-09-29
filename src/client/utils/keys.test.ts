@@ -14,6 +14,8 @@ import {
   type EscapeLayer,
   type EscapeState,
   escapeLayer,
+  mapKey,
+  pageKey,
   trapTab,
   typingIn,
   wrapTab,
@@ -164,4 +166,32 @@ test('a step inside, and any other key, are left alone', () => {
   const empty = dialogOf(0);
   expect(empty.press(null)).toBe(true);
   expect(empty.focused).toEqual(['dialog']);
+});
+
+// ── A key held with Ctrl, Cmd or Alt is the browser's ────────────────────────
+// The map took Ctrl+= as its own zoom and Ctrl+J as a step, and `g` with any
+// modifier opened Proposals, each with the browser's own action stopped.
+
+const press = (
+  key: string,
+  held: Partial<Record<'ctrlKey' | 'metaKey' | 'altKey', boolean>> = {}
+) => ({
+  key,
+  ctrlKey: false,
+  metaKey: false,
+  altKey: false,
+  shiftKey: false,
+  ...held,
+});
+
+test('the page and the map take their keys plain, and leave a modified one to the browser', () => {
+  expect(mapKey(press('='))).toEqual({ kind: 'zoom', to: 'in' });
+  expect(mapKey(press('j'))).toEqual({ kind: 'step', by: 1 });
+  expect(pageKey(press('g'))).toBe('proposals');
+  expect(pageKey(press('/'))).toBe('search');
+  for (const held of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
+    for (const key of ['=', '+', '-', '0', 'j', 'k', '1'])
+      expect(mapKey(press(key, held))).toBeUndefined();
+    for (const key of ['g', 'G', '/', '?']) expect(pageKey(press(key, held))).toBeUndefined();
+  }
 });

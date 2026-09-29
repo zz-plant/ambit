@@ -105,6 +105,9 @@ test('each view tab keeps its name where it shows only its icon', () => {
     );
   }
   expect(html.match(/class="app-deck-tab-label"/g)).toHaveLength(4);
+  // And the one on screen says so: only a class marked it.
+  expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+  expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
 });
 
 test('when the header is short of room the status pill wraps, and nothing else gives way', () => {

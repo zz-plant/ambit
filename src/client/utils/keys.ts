@@ -1,9 +1,11 @@
 /**
  * The page's rules for keys, apart from any listener that applies them: what
- * one press of Escape closes, where the page's own keys stand aside, and where
- * Tab goes inside a dialog. Free of the DOM's types, so the rules are checked
- * and tested with the client's other pure code.
+ * one press of Escape closes, where the page's own keys stand aside, where Tab
+ * goes inside a dialog, and what the shell's keys and the map's are. Free of
+ * the DOM's types, so the rules are checked and tested with the client's
+ * other pure code.
  */
+import type { ActiveLens } from '../linkState';
 
 /** What one press of Escape closes. */
 export type EscapeLayer =
@@ -114,4 +116,69 @@ export function trapTab(e: TabEvent, active: unknown): void {
   if (to === null) return;
   e.preventDefault();
   (to === -1 ? dialog : stops[to]).focus();
+}
+
+/** What a key press carries that the page's keys are decided on. */
+export interface KeyPress {
+  key: string;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
+  shiftKey: boolean;
+}
+
+/**
+ * A key held with Ctrl, Cmd or Alt is the browser's or the system's: zoom the
+ * page, find the next match, open the downloads. The map took Ctrl+= and
+ * Ctrl+- as its own zoom, Ctrl+J as a step, and `g` with any of them opened
+ * Proposals, each with the browser's own action stopped.
+ */
+const held = (e: KeyPress) => e.ctrlKey || e.metaKey || e.altKey;
+
+/** The shell's own keys, pressed anywhere but in a field. */
+export type PageKey = 'search' | 'docs' | 'proposals' | 'escape';
+
+export function pageKey(e: KeyPress): PageKey | undefined {
+  if (held(e)) return undefined;
+  if (e.key === '/' && !e.shiftKey) return 'search';
+  if (e.key === '?' || e.key === '/') return 'docs';
+  if (e.key === 'g' || e.key === 'G') return 'proposals';
+  if (e.key === 'Escape') return 'escape';
+  return undefined;
+}
+
+/** The map's own keys: a lens, the zoom, and a step through the nodes. */
+export type MapKey =
+  | { kind: 'lens'; lens: ActiveLens }
+  | { kind: 'zoom'; to: 'in' | 'out' | 'actual' }
+  | { kind: 'step'; by: 1 | -1 };
+
+export function mapKey(e: KeyPress): MapKey | undefined {
+  if (held(e)) return undefined;
+  switch (e.key) {
+    case '1':
+      return { kind: 'lens', lens: 'default' };
+    case '2':
+      return { kind: 'lens', lens: 'attention' };
+    case '3':
+      return { kind: 'lens', lens: 'authority' };
+    case '0':
+      return { kind: 'zoom', to: 'actual' };
+    case '+':
+    case '=':
+      return { kind: 'zoom', to: 'in' };
+    case '-':
+    case '_':
+      return { kind: 'zoom', to: 'out' };
+    case 'j':
+    case 'J':
+    case 'ArrowDown':
+      return { kind: 'step', by: 1 };
+    case 'k':
+    case 'K':
+    case 'ArrowUp':
+      return { kind: 'step', by: -1 };
+    default:
+      return undefined;
+  }
 }

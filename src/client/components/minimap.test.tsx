@@ -111,8 +111,12 @@ test('the outline is a control the keyboard can reach, and it says how to move i
   const html = draw();
   // A button takes focus and needs no tabindex; the label is what says what the arrows do.
   expect(html).toMatch(/<button[^>]*class="civ-minimap-view"/);
+  // A short name, and how to use it as its description: the name was the sentence.
+  expect(html).toContain('aria-label="Part of the map in view"');
+  expect(html).toMatch(/aria-describedby="civ-minimap-help"[\s\S]*id="civ-minimap-help"/);
   expect(html).toContain('use the arrow keys to move the view');
-  expect(html).toContain('Home and End');
+  expect(html).toContain('Home');
+  expect(html).toContain('Enter goes into the map there');
 });
 
 test('the outline is drawn where the model puts it', () => {

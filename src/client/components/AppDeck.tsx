@@ -191,6 +191,7 @@ export default function AppDeck(p: AppDeckProps) {
           <button
             type="button"
             className={tab(p.view === 'tree')}
+            aria-current={p.view === 'tree' ? 'page' : undefined}
             onClick={() => p.onShowView('tree')}
             // The name, for where the tab shows only its icon.
             aria-label="Map"
@@ -218,6 +219,7 @@ export default function AppDeck(p: AppDeckProps) {
           <button
             type="button"
             className={tab(p.view === 'config')}
+            aria-current={p.view === 'config' ? 'page' : undefined}
             onClick={() => p.onShowView('config')}
             // The name, for where the tab shows only its icon.
             aria-label="My Setup"
@@ -245,6 +247,7 @@ export default function AppDeck(p: AppDeckProps) {
           <button
             type="button"
             className={tab(p.view === 'loop')}
+            aria-current={p.view === 'loop' ? 'page' : undefined}
             onClick={() => p.onShowView('loop')}
             // The name, for where the tab shows only its icon.
             aria-label="Time & cost"
@@ -270,6 +273,7 @@ export default function AppDeck(p: AppDeckProps) {
           <button
             type="button"
             className={tab(p.view === 'audit')}
+            aria-current={p.view === 'audit' ? 'page' : undefined}
             onClick={() => p.onShowView('audit')}
             // The name, for where the tab shows only its icon.
             aria-label="Audit"

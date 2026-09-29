@@ -15,6 +15,7 @@ import {
   type Geometry,
   grabOffset,
   minimapModel,
+  nearestNode,
   offscreen,
   offscreenLabel,
   type Size,
@@ -278,4 +279,15 @@ test('the failing node of the demo is off-screen left once the map is scrolled p
   expect(at(1200, 0)).toBe('left');
   expect(at(0, 600)).toBe('above');
   expect(at(1200, 600)).toBe('top left');
+});
+
+test('Enter on the outline goes to the node nearest its middle', () => {
+  const nodes = [
+    { id: 'a', x: 100, y: 100 },
+    { id: 'b', x: 600, y: 400 },
+    { id: 'c', x: 1200, y: 700 },
+  ];
+  expect(nearestNode({ x: 400, y: 200, width: 400, height: 400 }, nodes)).toBe('b');
+  expect(nearestNode({ x: 0, y: 0, width: 200, height: 200 }, nodes)).toBe('a');
+  expect(nearestNode({ x: 0, y: 0, width: 200, height: 200 }, [])).toBeNull();
 });

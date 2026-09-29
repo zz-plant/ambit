@@ -147,6 +147,26 @@ export function scrollForKey(
 }
 
 /**
+ * The node nearest the middle of a rectangle of the scene: where Enter on the
+ * minimap's outline puts the focus, so the part of the map it moved to is
+ * the part the keyboard carries on from. Null when there is no node.
+ */
+export function nearestNode(view: Rect, nodes: readonly (Point & { id: string })[]): string | null {
+  const cx = view.x + view.width / 2;
+  const cy = view.y + view.height / 2;
+  let best: string | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const n of nodes) {
+    const d = (n.x - cx) ** 2 + (n.y - cy) ** 2;
+    if (d < bestDistance) {
+      best = n.id;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
+/**
  * Which way a node lies from the viewport, when the whole of its circle is
  * out of sight. A node half in view is in view.
  */

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { typingIn } from '../utils/keys';
+import { pageKey, typingIn } from '../utils/keys';
 import { useLatest } from './useLatest';
 
 interface Hotkeys {
@@ -27,16 +27,18 @@ export function useHotkeys(keys: Hotkeys) {
         if (e.key === 'Escape') target.blur();
         return;
       }
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      // A key held with Ctrl, Cmd or Alt is the browser's: see pageKey.
+      const key = pageKey(e);
+      if (key === 'search') {
         e.preventDefault();
         k.openSearch();
-      } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      } else if (key === 'docs') {
         e.preventDefault();
         k.toggleDocs();
-      } else if (e.key === 'g' || e.key === 'G') {
+      } else if (key === 'proposals') {
         e.preventDefault();
         k.toggleGovernance();
-      } else if (e.key === 'Escape') {
+      } else if (key === 'escape') {
         k.escape();
       }
     };
