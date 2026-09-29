@@ -225,7 +225,7 @@ This lets technical capability accumulate without silently broadening delegated 
 
 Authority is recorded per action, and from two sources. The curated model says what an action is like in general; the runtime that would execute it says what it permits here — Hermes publishes `approvals.mode` and `approvals.cron_mode`, Claude Code publishes `permissions.defaultMode`, and both adapters pass them through. Where the two disagree the narrower wins, and `ambit authority` names which source narrowed it. A runtime's setting is stored once against the runtime and reaches every capability it contributes and every action those confer; `ambit authority` and the gate behind `ambit can`, `apply` and the control plane resolve it through the same reach, so the report can never be stricter than what is enforced.
 
-Enforcement lands where it matters. `ambit can <cap> [--target X] [--spend N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. The one limit worth stating: enforcement is on Ambit's own apply path, not yet interposed between every runtime and every tool — the runtime adapters are the next boundary.
+Enforcement lands where it matters. `ambit can <cap> [--target=X] [--spend=N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. The one limit worth stating: enforcement is on Ambit's own apply path, not yet interposed between every runtime and every tool — the runtime adapters are the next boundary.
 
 A calibrated classifier is a capability, not an authority. Typed decision models such as TypeSafe's Jev are cheap and fast enough to screen every tool call, and harnesses now use them that way. They are welcome on the map as Typed Judgment, and a runtime may consult one before it asks `ambit can`. They never stand in for the grant. A probability read from state an agent fetched can be steered by whoever wrote that state, which is the failure a grant a person set in advance does not have.
 
@@ -394,7 +394,7 @@ check      verify [cap] [--history] [--target=<object>]
            authority promote [<cap> <action> --after=N --window=30d --scope=X --by=<person>]
            authority grant <cap> <mode> [--ttl=30m] [--scope=X] [--by=<person>]
            authority sandbox [<target> --by=<person>] · budget [set|clear]
-           can <cap> [--target X] [--spend N] · credentials
+           can <cap> [--target=X] [--spend=N] · credentials
            incidents · incident resolve <svc> <outcome>
 govern     proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
            reject <id> <person> ["why"]
@@ -493,6 +493,20 @@ Sixty tools in six groups:
 Widening authority is a person's act throughout. An agent can ask; it can never approve or apply, and an agent that could grant itself more would make the distinction meaningless.
 
 One resource sits beside the tools: `ambit://briefing`, which a client reads on connect. A tool has to be thought of; a resource arrives unasked, which is the only way it reaches the agent that does not know Ambit is there — the one that most needs to be told what is already broken.
+
+### How a call is answered
+
+An agent that connects is told what Ambit is: the server's `instructions` carry the one habit, ask `ambit_can` before a tool you have not used, so a client that passes them to the model shows it unasked. The protocol version is the one the client asked for when the server speaks it (2024-11-05 and 2025-06-18), and `ping` is answered.
+
+Every tool says, before it is called, whether it changes anything. Forty-six are annotated read-only, and a test holds that claim against the database: each is called against a copy of a seeded graph and no table may differ afterwards. `ambit_can`, `ambit_briefing` and `ambit_context` are listed as writes, because `can` files a refusal as a deficit and the other two move the mark that says what changed since you were last told. `ambit_verify` and `ambit_register_skill` run a command that was declared in the graph, and claim no safety.
+
+Every call is checked against the schema the tool advertised before it reaches the engine. One that cannot work comes back as a failed call the model can read, `isError: true` with the `error` and what the tool `takes`, where it used to arrive as an SQLite bind error, a CLI usage line or a TypeError. The check is lenient where the meaning is not in doubt (`null` for an omitted argument, `"14"` for 14, `capability_id` for `capId`) and refuses the rest, including an argument the tool does not take. Dropping it silently made `ambit_verify` with a misspelt name run every declared check. A failed call is one rule on both surfaces, a top-level string `error`, which is also what makes the CLI exit 1. An `error` inside a report, one failing check among many, is part of a real answer and does not count. An unknown tool is a protocol error (-32602) that names the one probably meant.
+
+A capability is named by its id, its id without the kind (`shell-execution`) or its name (`Shell Execution`), and one resolver, `resolveCapability`, decides what that means for every tool that takes one. It normalises and never guesses. A word that fits no node, or fits two, comes back as `did_you_mean` with the candidates, because an id picked on an agent's behalf can be a different capability under a different grant. `ambit_can` treats a near miss as a slip: it answers with the candidates and files no deficit, since a "no" to `shell-exection` reads as "you may not run a shell".
+
+Two smaller choices keep answers small. The text half of a result is compact JSON, since a client may send both halves to a model and indentation was about a quarter of them. `ambit_authority` returns who may act alone, who must ask and what is forbidden, about 0.7KB, and the row for every grant, about 10KB more on a seeded machine, only for `detail: true`.
+
+`ambit mcp --profile=agent`, or `AMBIT_MCP_PROFILE=agent`, lists ten tools (`ambit_briefing`, `ambit_can`, `ambit_next`, `ambit_impact`, `ambit_plan`, `ambit_goal`, `ambit_verify`, `ambit_record_failure`, `ambit_propose`, `ambit_register_skill`) in 4.4KB where the full listing is 19.5KB. It changes the listing and nothing else: every tool still answers by name, and what may be done is decided by the graph's grants and never by which tools an agent was shown. A name it does not know stops the server from starting, because falling back to sixty tools would answer a typo with the thing the flag was typed to avoid.
 
 ### The map, and what it is allowed to do
 
