@@ -307,9 +307,25 @@ function runOutcome(word: string): AuditOutcome {
  * `approved_at` and an act, applying writes `applied_at` and an act, and
  * reading both would list one decision twice. The row is the one kept: it
  * carries the artifact that makes an approval signed.
+ *
+ * The row holds only the latest of each, though. A proposal applied and rolled
+ * back can be approved again, which overwrites `approved_by` and
+ * `approved_at`, so the act is dropped only where the row states that very
+ * act: its proposal (the note leads with the id and a colon), its second, its
+ * approver, and the newest act of its kind for that proposal, since a second
+ * can hold two of them (rule 11). Every earlier approval and apply stays.
  */
-const STATED_BY_THE_PROPOSAL = `NOT ((session_id = 'approval' AND action = 'approved')
-  OR (session_id = 'apply' AND action = 'applied'))`;
+const STATED_BY_THE_PROPOSAL = `NOT EXISTS (
+  SELECT 1 FROM proposals p
+  WHERE substr(s.notes, 1, length(p.id) + 1) = p.id || ':'
+    AND ((s.session_id = 'approval' AND s.action = 'approved'
+          AND s.capability_id = p.approved_by
+          AND datetime(s.timestamp) = datetime(p.approved_at))
+      OR (s.session_id = 'apply' AND s.action = 'applied'
+          AND datetime(s.timestamp) = datetime(p.applied_at)))
+    AND s.id = (SELECT MAX(o.id) FROM session_learning o
+                WHERE o.session_id = s.session_id AND o.action = s.action
+                  AND substr(o.notes, 1, length(p.id) + 1) = p.id || ':'))`;
 
 /**
  * The sessions whose notes Ambit writes from its own records: a decision, an
@@ -327,7 +343,7 @@ type ActRow = Pick<
 function actEvents(db: Db, window: string, take: number): AuditEvent[] {
   const rows = db
     .prepare(
-      `SELECT id, session_id, capability_id, action, notes, object, timestamp FROM session_learning
+      `SELECT id, session_id, capability_id, action, notes, object, timestamp FROM session_learning s
        WHERE datetime(timestamp) >= datetime('now', ?) AND ${STATED_BY_THE_PROPOSAL}
        ORDER BY datetime(timestamp) DESC, id DESC LIMIT ?`
     )
