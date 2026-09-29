@@ -45,6 +45,12 @@ test('the three views are the three words the URL has always used', () => {
   expect(readLinkState('?view=sideways').view).toBe('config');
 });
 
+test('the trail is a view a link can open', () => {
+  expect(writeLinkState({ ...base, view: 'audit' })).toBe('?view=audit');
+  expect(roundTrip({ view: 'audit' }).view).toBe('audit');
+  expect(readLinkState('?view=audit').viewStated).toBe(true);
+});
+
 test('a link says whether it named a view, so a narrow screen can choose', () => {
   expect(readLinkState('?view=tree').viewStated).toBe(true);
   expect(readLinkState('?demo=1').viewStated).toBe(false);

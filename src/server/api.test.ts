@@ -259,6 +259,31 @@ test('telemetry stays open, because the runtime plugin posts to it unattended', 
   expect(r.status).toBe(200);
 });
 
+test('the trail is one stream, newest first, with an outcome only where one was recorded', async () => {
+  const post = (body: unknown) =>
+    fetch(`${base}/api/telemetry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  await post({ run: { id: 'run-audit', goal: 'audit me', runType: 'task' } });
+  await post({ end: { runId: 'run-audit', outcome: 'completed' } });
+
+  const r = await fetch(`${base}/api/audit`);
+  const body = await json(r);
+  expect(r.status).toBe(200);
+  expect(body.days).toBe(30);
+  const times = body.events.map((e: any) => e.at);
+  expect(times).toEqual([...times].sort().reverse());
+  const of = (action: string) =>
+    body.events.find((e: any) => e.target === 'run-audit' && e.action === action);
+  expect(of('ended').outcome).toEqual({ word: 'completed', tone: 'good' });
+  expect('outcome' in of('started')).toBe(false);
+
+  // It reads the ledger and writes nothing, so there is nothing to POST to.
+  expect((await fetch(`${base}/api/audit`, { method: 'POST' })).status).toBe(404);
+});
+
 test('an unknown path is a 404, and cannot escape dist/', async () => {
   expect((await fetch(`${base}/api/nope`)).status).toBe(404);
   const traversal = await fetch(`${base}/../../../../etc/passwd`);

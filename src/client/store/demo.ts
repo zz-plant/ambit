@@ -8,7 +8,7 @@
  * Everything here is the fixture half. Nothing here talks to the network, and
  * the store's job is to choose between this module and the API.
  */
-import type { ProposalRow } from '../../shared/api';
+import type { AuditEvent, AuditResponse, ProposalRow } from '../../shared/api';
 import { type OutageImpact, outageImpact, outageSplit } from '../components/civ/layout';
 import type { Connection, Item } from '../utils/configImporter';
 import { WEB_ACTOR } from '../utils/copy';
@@ -172,6 +172,81 @@ export function demoProposals(): ProposalRow[] {
       },
     },
   ];
+}
+
+/**
+ * The trail the audit view shows in the demo, in the shape `/api/audit`
+ * serves: the two proposals above, a check run that found Browser Automation
+ * failing and the grant it narrowed, and an incident run. Written by hand like
+ * the rest, and labelled a sample where it is drawn.
+ */
+export function demoAudit(): AuditResponse {
+  const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+  const hour = 3_600_000;
+  const events: AuditEvent[] = [
+    {
+      id: 'prop-deploy-staging-42#proposed',
+      at: ago(hour),
+      action: 'proposed',
+      target: 'prop-deploy-staging-42',
+      summary: 'Deploy the billing hotfix to the staging cluster',
+    },
+    {
+      id: 'ambit:revision:demo',
+      at: ago(3 * hour - 1000),
+      actor: 'ambit',
+      action: 'revision',
+      target: 'combo:browser-automation/execute',
+      summary: 'Browser Automation asks a person before it runs until its check passes again.',
+      outcome: { word: 'grant narrowed', tone: 'bad' },
+    },
+    {
+      id: 'act:demo-failed',
+      at: ago(3 * hour),
+      action: 'failed',
+      target: 'combo:browser-automation',
+      outcome: { word: 'check failed', tone: 'bad' },
+    },
+    {
+      id: 'act:demo-verified',
+      at: ago(3 * hour + 1000),
+      action: 'verified',
+      target: 'combo:version-control',
+      outcome: { word: 'check passed', tone: 'good' },
+    },
+    {
+      id: 'prop-offline-semantic-search#approved',
+      at: ago(20 * hour),
+      actor: WEB_ACTOR,
+      action: 'approved',
+      target: 'prop-offline-semantic-search',
+      summary: 'Add pgvector to the local Postgres, for offline retrieval',
+      outcome: { word: 'signed', tone: 'good' },
+    },
+    {
+      id: 'prop-offline-semantic-search#proposed',
+      at: ago(24 * hour),
+      action: 'proposed',
+      target: 'prop-offline-semantic-search',
+      summary: 'Add pgvector to the local Postgres, for offline retrieval',
+    },
+    {
+      id: 'run-demo-ollama#ended',
+      at: ago(47 * hour),
+      action: 'ended',
+      target: 'run-demo-ollama',
+      summary: 'Restart the Ollama service',
+      outcome: { word: 'resolved', tone: 'good' },
+    },
+    {
+      id: 'run-demo-ollama#started',
+      at: ago(48 * hour),
+      action: 'started',
+      target: 'run-demo-ollama',
+      summary: 'Restart the Ollama service',
+    },
+  ];
+  return { days: 30, limit: 200, events, truncated: false };
 }
 
 /**

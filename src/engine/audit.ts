@@ -1,5 +1,8 @@
 import type { Db } from './db.ts';
+import type { AuditEvent, AuditOutcome, AuditResponse } from '../shared/api.ts';
 import { canExecute } from './assurance.ts';
+import { delegationRecords } from './delegation.ts';
+import { ACT_OUTCOMES, AUDIT_OUTCOMES, RUN_FAILED, RUN_SUCCEEDED } from './vocabulary.ts';
 import type {
   CapabilityRow,
   CapabilityUseRow,
@@ -262,6 +265,248 @@ function auditRecent(db: Db, days: number) {
   };
 }
 
+// ─── The trail as one stream ─────────────────────────────────────────────────
+
+/** How far back the stream reads unless asked otherwise, and how much it returns. */
+const STREAM_DAYS = 30;
+const STREAM_LIMIT = 200;
+const STREAM_MAX = 1000;
+
+/**
+ * A stored time as ISO 8601 in UTC, or undefined when it will not parse.
+ *
+ * The ledger holds two forms. `datetime('now')` writes `2026-09-29 14:02:11`,
+ * UTC with no zone, and a delegation record carries ISO with a `T`. Sorted as
+ * text the two misorder, because a space sorts before a `T`, so the stream
+ * compares instants and never strings.
+ */
+function isoTime(stamp: unknown): string | undefined {
+  if (typeof stamp !== 'string' || !stamp.trim()) return undefined;
+  let text = stamp.trim().replace(' ', 'T');
+  // No zone is SQLite's own form, and SQLite's times are UTC.
+  if (/T[\d:.]+$/.test(text)) text += 'Z';
+  const ms = Date.parse(text);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined;
+}
+
+const outcomeOf = (key: keyof typeof AUDIT_OUTCOMES): AuditOutcome => ({ ...AUDIT_OUTCOMES[key] });
+
+/** A run's own word for how it ended, marked only where the vocabulary knows it. */
+function runOutcome(word: string): AuditOutcome {
+  const known = word.toLowerCase();
+  const tone = RUN_SUCCEEDED.includes(known)
+    ? 'good'
+    : RUN_FAILED.includes(known)
+      ? 'bad'
+      : 'neutral';
+  return { word, tone };
+}
+
+/**
+ * The two acts a proposal row already states. Approving writes the row's
+ * `approved_at` and an act, applying writes `applied_at` and an act, and
+ * reading both would list one decision twice. The row is the one kept: it
+ * carries the artifact that makes an approval signed.
+ */
+const STATED_BY_THE_PROPOSAL = `NOT ((session_id = 'approval' AND action = 'approved')
+  OR (session_id = 'apply' AND action = 'applied'))`;
+
+/**
+ * The sessions whose notes Ambit writes from its own records: a decision, an
+ * apply, a grant. A check's notes hold the tail of what its command printed,
+ * and a reported failure's hold what a runtime said. Neither is served here,
+ * because how check output may leave the graph is still an open decision.
+ */
+const NOTED_SESSIONS = new Set(['approval', 'apply', 'authority']);
+
+type ActRow = Pick<
+  SessionLearningRow,
+  'id' | 'session_id' | 'capability_id' | 'action' | 'notes' | 'timestamp'
+> & { object: string | null };
+
+function actEvents(db: Db, window: string, take: number): AuditEvent[] {
+  const rows = db
+    .prepare(
+      `SELECT id, session_id, capability_id, action, notes, object, timestamp FROM session_learning
+       WHERE datetime(timestamp) >= datetime('now', ?) AND ${STATED_BY_THE_PROPOSAL}
+       ORDER BY datetime(timestamp) DESC, id DESC LIMIT ?`
+    )
+    .all<ActRow>(window, take);
+  const events: AuditEvent[] = [];
+  for (const a of rows) {
+    const at = isoTime(a.timestamp);
+    if (!at) continue;
+    // A person in `capability_id` is who acted: an approval, a rejection, an
+    // apply, a sandbox. The note then leads with the proposal it was about,
+    // and a sandbox names its target in `object`.
+    const person = a.capability_id.startsWith('human:');
+    const note = NOTED_SESSIONS.has(a.session_id) ? a.notes?.trim() || undefined : undefined;
+    const about = note?.match(/^(prop-[^\s:]+):?\s*([\s\S]*)$/);
+    const outcome = ACT_OUTCOMES[a.action];
+    events.push({
+      id: `act:${a.id}`,
+      at,
+      actor: person ? a.capability_id : undefined,
+      action: a.action,
+      target: person ? (about?.[1] ?? a.object ?? undefined) : a.capability_id,
+      summary: about ? about[2] || undefined : note,
+      outcome: outcome ? outcomeOf(outcome) : undefined,
+    });
+  }
+  return events;
+}
+
+/** A proposal is up to three events: proposed, approved, applied. */
+function proposalEvents(db: Db, window: string, take: number): AuditEvent[] {
+  const rows = db
+    .prepare(
+      `SELECT * FROM (
+         SELECT id, goal, 'proposed' AS verb, 0 AS step, created_at AS at,
+                NULL AS actor, 0 AS signed
+           FROM proposals WHERE datetime(created_at) >= datetime('now', ?)
+         UNION ALL
+         SELECT id, goal, 'approved', 1, approved_at, approved_by,
+                approval_artifact IS NOT NULL
+           FROM proposals WHERE datetime(approved_at) >= datetime('now', ?)
+         UNION ALL
+         SELECT id, goal, 'applied', 2, applied_at, NULL, 0
+           FROM proposals WHERE datetime(applied_at) >= datetime('now', ?)
+       ) ORDER BY datetime(at) DESC, step DESC LIMIT ?`
+    )
+    .all<{
+      id: string;
+      goal: string;
+      verb: string;
+      at: string;
+      actor: string | null;
+      signed: number;
+    }>(window, window, window, take);
+  const events: AuditEvent[] = [];
+  for (const p of rows) {
+    const at = isoTime(p.at);
+    if (!at) continue;
+    events.push({
+      id: `${p.id}#${p.verb}`,
+      at,
+      actor: p.actor ?? undefined,
+      action: p.verb,
+      target: p.id,
+      summary: p.goal || undefined,
+      // An approval mints its artifact as it is recorded; one stored beside
+      // it is the recorded fact that it was signed.
+      outcome: p.signed ? outcomeOf('signed') : undefined,
+    });
+  }
+  return events;
+}
+
+/** A run is two events: it started, and it ended with whatever word its producer wrote. */
+function runEvents(db: Db, window: string, take: number): AuditEvent[] {
+  const rows = db
+    .prepare(
+      `SELECT * FROM (
+         SELECT id, goal, goal_id, 'started' AS verb, 0 AS step, started_at AS at, NULL AS outcome
+           FROM work_runs WHERE datetime(started_at) >= datetime('now', ?)
+         UNION ALL
+         SELECT id, goal, goal_id, 'ended', 1, ended_at, outcome
+           FROM work_runs WHERE datetime(ended_at) >= datetime('now', ?)
+       ) ORDER BY datetime(at) DESC, step DESC LIMIT ?`
+    )
+    .all<Pick<WorkRunRow, 'id' | 'goal' | 'goal_id' | 'outcome'> & { verb: string; at: string }>(
+      window,
+      window,
+      take
+    );
+  const events: AuditEvent[] = [];
+  for (const r of rows) {
+    const at = isoTime(r.at);
+    if (!at) continue;
+    events.push({
+      id: `${r.id}#${r.verb}`,
+      at,
+      action: r.verb,
+      target: r.id,
+      summary: r.goal || r.goal_id || undefined,
+      outcome: r.outcome ? runOutcome(r.outcome) : undefined,
+    });
+  }
+  return events;
+}
+
+/**
+ * The delegation records, which no list of the trail used to carry. A revision
+ * that took a grant down to asking says so; the answer to an objection says
+ * which way it went.
+ */
+function delegationEvents(db: Db, days: number, take: number): AuditEvent[] {
+  const since = Date.now() - days * 86_400_000;
+  const events: AuditEvent[] = [];
+  for (const record of delegationRecords(db, take).reverse()) {
+    const at = isoTime(record.time?.recorded_at);
+    if (!at || Date.parse(at) < since) continue;
+    const content = record.content ?? {};
+    const narrowed =
+      record.kind === 'revision' &&
+      typeof content.mode_now === 'string' &&
+      content.mode_now !== content.mode_declared;
+    const answered =
+      content.disposition === 'upheld' || content.disposition === 'refused'
+        ? outcomeOf(content.disposition)
+        : undefined;
+    events.push({
+      id: record.record_id,
+      at,
+      actor: record.actor?.id || undefined,
+      action: record.kind,
+      target: record.subject || undefined,
+      summary: record.summary || undefined,
+      outcome: narrowed ? outcomeOf('narrowed') : answered,
+    });
+  }
+  return events;
+}
+
+/** A source this database predates reads as no events, not as a failed trail. */
+function guarded(read: () => AuditEvent[]): AuditEvent[] {
+  try {
+    return read();
+  } catch {
+    return [];
+  }
+}
+
+const bounded = (value: number | undefined, fallback: number, max: number) =>
+  Number.isFinite(value) && (value as number) >= 1
+    ? Math.min(Math.floor(value as number), max)
+    : fallback;
+
+/**
+ * The trail as one stream: who approved what, what ran, and what came of it,
+ * newest first, from four sources read here directly.
+ *
+ * `auditRecent` answers the same window as three lists, capped at 40, 20 and
+ * 20 on their own, so a busy week lost its older events before anything was
+ * merged, and a delegation revision appeared in none of them. Here each
+ * source reads one more than the limit, the merge sorts on the instant, and
+ * the limit is applied once, afterwards, so `truncated` is exact. With no
+ * graph at all it is an empty trail over the same window.
+ */
+function auditStream(db: Db | null, opts: { days?: number; limit?: number } = {}): AuditResponse {
+  const days = bounded(opts.days, STREAM_DAYS, 3650);
+  const limit = bounded(opts.limit, STREAM_LIMIT, STREAM_MAX);
+  const window = `-${days} days`;
+  const take = limit + 1;
+  const merged = db
+    ? [
+        ...guarded(() => actEvents(db, window, take)),
+        ...guarded(() => proposalEvents(db, window, take)),
+        ...guarded(() => runEvents(db, window, take)),
+        ...guarded(() => delegationEvents(db, days, take)),
+      ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+    : [];
+  return { days, limit, events: merged.slice(0, limit), truncated: merged.length > limit };
+}
+
 function auditFor(db: Db, target?: string) {
   if (!target) return auditRecent(db, 7);
   if (/^run-/.test(target)) return auditRun(db, target);
@@ -271,4 +516,4 @@ function auditFor(db: Db, target?: string) {
   return { error: 'Usage: ambit audit <run-…|prop-…|human:name|days>' };
 }
 
-export { auditFor, auditRun, auditProposal, auditActor, auditRecent };
+export { auditFor, auditRun, auditProposal, auditActor, auditRecent, auditStream };

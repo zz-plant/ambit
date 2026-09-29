@@ -119,6 +119,43 @@ const KEEPER_KINDS = new Set(['judgment', 'knowledge']);
 /** The middleware kinds that are a person being asked for permission. */
 const GATE_KINDS = ['authority', 'approval', 'permission block'] as const;
 
+/**
+ * What the audit trail says came of an event, where the ledger recorded it.
+ *
+ * The tone is whether it went the way it was meant to, and the page draws it
+ * as a shape beside the word, so an outcome is never told by colour alone. An
+ * event whose record states no result is given no outcome at all.
+ */
+const AUDIT_OUTCOMES = {
+  signed: { word: 'signed', tone: 'good' },
+  passed: { word: 'check passed', tone: 'good' },
+  failed: { word: 'check failed', tone: 'bad' },
+  widened: { word: 'grant widened', tone: 'good' },
+  narrowed: { word: 'grant narrowed', tone: 'bad' },
+  upheld: { word: 'objection upheld', tone: 'neutral' },
+  refused: { word: 'objection refused', tone: 'neutral' },
+} as const;
+
+/**
+ * The acts whose verb is itself a result, and the outcome each one records: a
+ * check writes `verified` or `failed`, and a grant that moved on evidence
+ * writes `promoted` or `demoted`.
+ */
+const ACT_OUTCOMES: Readonly<Record<string, keyof typeof AUDIT_OUTCOMES>> = {
+  verified: 'passed',
+  failed: 'failed',
+  promoted: 'widened',
+  demoted: 'narrowed',
+};
+
+/**
+ * How a run's recorded outcome reads. A producer writes its own word, such as
+ * `completed`, `resolved` or `blocked_unauthorized`. A word on neither list
+ * is shown as written and marked neither way: the trail does not guess.
+ */
+const RUN_SUCCEEDED = ['success', 'succeeded', 'completed', 'resolved', 'recovered', 'achieved'];
+const RUN_FAILED = ['failure', 'failed', 'error', 'abandoned', 'blocked_unauthorized'];
+
 export {
   REACHED_STATES,
   FAILING,
@@ -136,4 +173,8 @@ export {
   MIDDLEWARE_KINDS,
   KEEPER_KINDS,
   GATE_KINDS,
+  AUDIT_OUTCOMES,
+  ACT_OUTCOMES,
+  RUN_SUCCEEDED,
+  RUN_FAILED,
 };

@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import AppDeck, { type MapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
+import AuditView from './components/AuditView';
 import { isEntry, isNext, isProven, visibleItems } from './components/civ/layout';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
@@ -60,6 +61,7 @@ export default function App() {
   const loadProposals = useAmbitStore(s => s.loadProposals);
   const loadAttentionData = useAmbitStore(s => s.loadAttentionData);
   const loadLoop = useAmbitStore(s => s.loadLoop);
+  const loadAudit = useAmbitStore(s => s.loadAudit);
   const probeBackend = useAmbitStore(s => s.probeBackend);
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
   const setSpotlight = useAmbitStore(s => s.setSpotlight);
@@ -142,6 +144,8 @@ export default function App() {
       loadLoop();
       loadGraph();
     }
+    // A link to the trail opens on it, so it is read now, not on a tab click.
+    if (link.view === 'audit') loadAudit();
   }, []);
 
   // ?focus=<id> selects a node once the graph that contains it has loaded.
@@ -200,6 +204,10 @@ export default function App() {
     if (next === 'loop') {
       selectItem(null);
       if (!demo) loadLoop();
+    }
+    if (next === 'audit') {
+      selectItem(null);
+      loadAudit();
     }
   };
 
@@ -329,6 +337,8 @@ export default function App() {
         )}
         {view === 'loop' ? (
           <LoopDashboard onShowOnMap={showOnMap} />
+        ) : view === 'audit' ? (
+          <AuditView />
         ) : view === 'config' ? (
           <SetupView onShow={show} />
         ) : items.length > 0 && hasTree ? (

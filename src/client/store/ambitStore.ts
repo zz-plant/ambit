@@ -7,6 +7,7 @@ import { demoSnapshot } from '../utils/demoSnapshot';
 import {
   DEMO_ATTENTION,
   demoApproval,
+  demoAudit,
   demoConfigGraph,
   demoProposals,
   demoTreeGraph,
@@ -16,6 +17,7 @@ import {
   type ApiResult,
   type ApiRoutes,
   type ApproveResponse,
+  type AuditResponse,
   type BriefingResponse,
   type UnmappedResponse,
   type InfrastructureScanResponse,
@@ -197,6 +199,8 @@ interface StoreState {
   briefing: BriefingResponse | null;
   /** What the agents used that no node on the map accounts for. */
   unmapped: UnmappedResponse | null;
+  /** The trail, one line per event: from the ledger, or the demo's sample. */
+  audit: AuditResponse | null;
   /** The global config's MCP entries by name, so a repo missing one can be handed the entry. */
   configMcp: Record<string, Record<string, unknown>>;
 
@@ -221,6 +225,7 @@ interface StoreState {
   rejectProposal: (proposalId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>;
   loadBriefing: () => Promise<void>;
   loadUnmapped: () => Promise<void>;
+  loadAudit: () => Promise<void>;
   /** The paste-ready entry for one MCP server, from the endpoint that composes it. */
   snippetFor: (name: string) => Promise<string | null>;
   loadAttentionData: () => Promise<void>;
@@ -270,6 +275,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   infrastructure: null,
   briefing: null,
   unmapped: null,
+  audit: null,
   configMcp: {},
 
   setItems: (items, connections) => set({ items, connections }),
@@ -422,6 +428,24 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       if (data) set({ unmapped: data });
     } catch {
       /* the tab keeps its empty state */
+    }
+  },
+
+  /**
+   * The trail. The demo's is the demo's whether or not an engine answers, as
+   * its proposals are; live, a failed read keeps what the view had.
+   */
+  loadAudit: async () => {
+    if (get().demo) {
+      set({ audit: demoAudit() });
+      return;
+    }
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/audit');
+      if (data) set({ audit: data });
+    } catch {
+      /* the view keeps whatever it had */
     }
   },
 

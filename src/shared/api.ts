@@ -308,6 +308,46 @@ export interface RejectResponse {
   reason?: string;
 }
 
+// ── GET /api/audit ───────────────────────────────────────────────────────────
+
+/**
+ * What came of an event, where the ledger recorded it. The word is the
+ * engine's; the tone is whether it went as meant, which the page draws as a
+ * shape beside the word.
+ */
+export interface AuditOutcome {
+  word: string;
+  tone: 'good' | 'bad' | 'neutral';
+}
+
+/** One line of the trail. */
+export interface AuditEvent {
+  id: string;
+  /** ISO 8601 in UTC, whichever form the row stored. */
+  at: string;
+  /** Who acted, where the record names someone. */
+  actor?: string;
+  /** What happened: the verb the record stores. */
+  action: string;
+  /** What it happened to. */
+  target?: string;
+  summary?: string;
+  /** Only where one was recorded. An event that states no result shows none. */
+  outcome?: AuditOutcome;
+}
+
+/**
+ * The trail, one line per event: acts, proposals, runs and delegation records
+ * merged newest first, and cut once, after the merge, at `limit`.
+ */
+export interface AuditResponse {
+  days: number;
+  limit: number;
+  events: AuditEvent[];
+  /** The window held more events than the limit let through. */
+  truncated: boolean;
+}
+
 // ── GET /api/briefing ────────────────────────────────────────────────────────
 
 /** What an agent is told at connect, shown to the person it describes the machine to. */
@@ -558,6 +598,7 @@ export interface ApiRoutes {
   '/api/tech-tree': TechTreeResponse;
   '/api/briefing': BriefingResponse;
   '/api/proposals': ProposalsResponse;
+  '/api/audit': AuditResponse;
   '/api/attention': AttentionResponse;
   '/api/loop': LoopResponse;
   '/api/unmapped': UnmappedResponse;

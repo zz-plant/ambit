@@ -22,11 +22,13 @@ import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
 import { affordanceDomains, singlePointsOfFailure } from './inference.ts';
 import { deficits } from './planning.ts';
+import { auditStream } from './audit.ts';
 import {
   AUTHORITY_MODES,
   CHECK_HISTORY_RUNS,
   NODE_TYPES,
   PROPOSAL_STATUSES,
+  type AuditResponse,
   type AuthorityMode,
   type CheckRun,
   type ConferredAction,
@@ -510,6 +512,19 @@ function decisionFor(
       .filter(Boolean),
     precedent: learned.filter(l => traits.has(l.trait)),
   };
+}
+
+/**
+ * The audit trail the page reads: one stream, newest first, from the four
+ * sources `ambit audit` reads as separate lists. The merge lives in audit.ts
+ * beside the CLI's reports, so both read the ledger one way. No graph yet is
+ * an empty trail, which the page explains, not an error.
+ */
+export function auditView(
+  db: Db | null,
+  opts: { days?: number; limit?: number } = {}
+): AuditResponse {
+  return auditStream(db, opts);
 }
 
 /** How often a person had to step in, per capability — the heatmap's input. */

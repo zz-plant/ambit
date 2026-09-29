@@ -25,6 +25,7 @@ import {
   recentProposals,
   interventionHeatmap,
   loopView,
+  auditView,
 } from '../engine/views.ts';
 import { approveProposal, ensureActor, rejectProposal } from '../engine/governance.ts';
 import { briefingText, TOKEN_BUDGET } from '../engine/briefing.ts';
@@ -57,6 +58,7 @@ import type {
   ApiError,
   ApproveResponse,
   AttentionResponse,
+  AuditResponse,
   BriefingResponse,
   LoopResponse,
   ConfigApplyRequest,
@@ -416,6 +418,19 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   if (pathname === '/api/proposals' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) return json<ProposalsResponse>({ proposals: [] });
     return json<ProposalsResponse>({ proposals: withGraph(db => recentProposals(db)) as never });
+  }
+
+  // The trail, one line per event. Read-only: it projects the ledger and
+  // writes nothing, and a check's printed output is not part of it. Asking
+  // before any graph exists must not create one, so that is an empty trail.
+  if (pathname === '/api/audit' && method === 'GET') {
+    const opts = {
+      days: Number(url.searchParams.get('days')) || undefined,
+      limit: Number(url.searchParams.get('limit')) || undefined,
+    };
+    return json<AuditResponse>(
+      existsSync(GRAPH_DB_PATH) ? withGraph(db => auditView(db, opts)) : auditView(null, opts)
+    );
   }
 
   if (pathname === '/api/attention' && method === 'GET') {

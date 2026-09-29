@@ -251,6 +251,13 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   </span>
                 </div>
                 <div className="docs-action">
+                  <span className="docs-cmd">Audit</span>
+                  <span className="docs-answers">
+                    Who approved what and what ran, one line per event, newest first. Narrow it with
+                    actor:, action: and target:, or any word
+                  </span>
+                </div>
+                <div className="docs-action">
                   <span className="docs-cmd">Share</span>
                   <span className="docs-answers">
                     Copies a link to this exact view: graph, selected node, lens and filter

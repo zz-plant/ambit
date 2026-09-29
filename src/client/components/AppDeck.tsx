@@ -212,6 +212,31 @@ export default function AppDeck(p: AppDeckProps) {
             </svg>
             <span>Time &amp; cost</span>
           </button>
+          <button
+            type="button"
+            className={tab(p.view === 'audit')}
+            onClick={() => p.onShowView('audit')}
+            title="Who approved what and what ran, one line per event"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-tab-icon"
+              aria-hidden="true"
+            >
+              <path d="M6 4 H14 M6 8 H14 M6 12 H14" />
+              <circle cx="2.5" cy="4" r="0.75" fill="currentColor" />
+              <circle cx="2.5" cy="8" r="0.75" fill="currentColor" />
+              <circle cx="2.5" cy="12" r="0.75" fill="currentColor" />
+            </svg>
+            <span>Audit</span>
+          </button>
         </nav>
       </div>
 

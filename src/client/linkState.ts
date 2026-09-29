@@ -9,11 +9,11 @@
  */
 
 /**
- * The three views. `tree` is the map, `config` is My Setup, `loop` is Time &
- * cost. The words are the URL's, kept so that links written before the setup
- * view stopped being a second map still open where they did.
+ * The views. `tree` is the map, `config` is My Setup, `loop` is Time & cost,
+ * `audit` is the trail. The words are the URL's, kept so that links written
+ * before the setup view stopped being a second map still open where they did.
  */
-export const VIEWS = ['tree', 'config', 'loop'] as const;
+export const VIEWS = ['tree', 'config', 'loop', 'audit'] as const;
 export type View = (typeof VIEWS)[number];
 
 /**
