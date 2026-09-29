@@ -14,6 +14,7 @@ import {
   columnCentre,
   columnLabel,
   columnOf,
+  columnProgress,
   costOf,
   edgePath,
   eraOf,
@@ -24,6 +25,7 @@ import {
   layoutNodes,
   mapFindings,
   NODE_R,
+  type Progress,
   readableSeconds,
   ROW_H,
   sceneSize,
@@ -145,27 +147,26 @@ type LegendKey =
  * columns: the bar's full width is the largest era, so a short bar is a small
  * era and not a poorly-filled one. Beside the count, what finishing the
  * column would cost in setup time.
+ *
+ * Reached leaves out a node whose check failed, which is configured and not
+ * working, so the count agrees with the rungs of the era's ladder. That node
+ * is a red segment of the bar, between what is reached and what is next.
  */
 function ColumnCount({
   column,
-  list,
+  progress,
   largest,
   x,
 }: {
   column: string;
-  list: Item[];
+  progress: Progress;
   largest: number;
   x: number;
 }) {
-  const reached = list.filter(i => i.status === 'built').length;
-  const next = list.filter(i => i.status !== 'built' && isNext(i)).length;
-  const left = readableSeconds(
-    list
-      .filter(i => i.status !== 'built')
-      .reduce((t, i) => t + (Number(i.meta?.setupSeconds) || 0), 0)
-  );
-  const barW = ((COL_W - 64) * list.length) / largest;
-  const unit = list.length ? barW / list.length : 0;
+  const { reached, failing, next, total } = progress;
+  const left = readableSeconds(progress.seconds);
+  const barW = ((COL_W - 64) * total) / largest;
+  const unit = total ? barW / total : 0;
   const bx = x + COL_W / 2 - 16 - barW / 2;
   const by = START_Y - 11;
   return (
@@ -180,23 +181,109 @@ function ColumnCount({
         style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
       >
         {column.startsWith('era:') ? `Era ${column.slice(4)} · ` : ''}
-        {reached} of {list.length}
+        {reached} of {total}
         {left ? ` · ${left} left` : ''}
       </text>
       <rect className="fig-eras-track" x={bx} y={by} width={barW} height={3} rx={1} />
       {reached > 0 && (
         <rect className="fig-eras-reached" x={bx} y={by} width={unit * reached} height={3} rx={1} />
       )}
+      {failing > 0 && (
+        <rect
+          className="fig-eras-failing"
+          x={bx + unit * reached}
+          y={by}
+          width={unit * failing}
+          height={3}
+          rx={1}
+        />
+      )}
       {next > 0 && (
         <rect
           className="fig-eras-next"
-          x={bx + unit * reached}
+          x={bx + unit * (reached + failing)}
           y={by}
           width={unit * next}
           height={3}
           rx={1}
         />
       )}
+    </g>
+  );
+}
+
+/**
+ * A column's header: its name and count. On the tree it is also a control,
+ * since an era has a ladder to open and a domain has nothing behind its name.
+ * No hooks, so the wiring can be tested by calling it.
+ */
+export function ColumnHead({
+  column,
+  index,
+  label,
+  progress,
+  largest,
+  term,
+  openEra,
+  onOpen,
+}: {
+  /** `era:3`, or a domain. */
+  column: string;
+  index: number;
+  label: string;
+  progress: Progress;
+  largest: number;
+  /** The glossary entry the hover tooltip defines: an era on the tree, a domain elsewhere. */
+  term: 'era' | 'domain';
+  /** The era whose ladder is open, if any. */
+  openEra: number | null;
+  onOpen: (era: number) => void;
+}) {
+  const x = START_X + index * COL_W;
+  const era = column.startsWith('era:') ? Number(column.slice(4)) : undefined;
+  const head = (
+    <>
+      <text
+        className="civ-era-name"
+        x={columnCentre(index)}
+        y={START_Y - 27}
+        textAnchor="middle"
+        fill="var(--text-primary)"
+        fontSize={12.5}
+        fontWeight={600}
+        style={{ fontFamily: 'var(--font-sans)' }}
+      >
+        <title>{termTitle(term)}</title>
+        {label}
+      </text>
+      <ColumnCount column={column} progress={progress} largest={largest} x={x} />
+    </>
+  );
+  if (era === undefined) return head;
+
+  const open = () => onOpen(era);
+  const pressed = openEra === era;
+  const who = label === `Era ${era}` ? label : `${label}, era ${era}`;
+  const facts = `${progress.reached} of ${progress.total} reached${
+    progress.failing ? `, ${progress.failing} failing` : ''
+  }`;
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: SVG element groups cannot be HTML buttons
+    <g
+      role="button"
+      tabIndex={0}
+      className={`civ-era-head${pressed ? ' civ-era-head--open' : ''}`}
+      aria-pressed={pressed}
+      aria-label={`${who}: ${facts}. Show its ladder`}
+      onClick={open}
+      onKeyDown={e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        open();
+      }}
+    >
+      <rect x={x - 8} y={START_Y - 45} width={COL_W - 16} height={42} fill="transparent" />
+      {head}
     </g>
   );
 }
@@ -215,6 +302,9 @@ export default function CivTree({
 }: CivTreeProps) {
   const requestedLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
+  // The era whose ladder is open, so its header reads as pressed.
+  const selectedEra = useAmbitStore(s => s.selectedEra);
+  const selectEra = useAmbitStore(s => s.selectEra);
   // Owned by the store so the header's segments light the same keys the
   // legend does; see AppDeck.tsx.
   const spotlight = useAmbitStore(s => s.spotlight);
@@ -689,30 +779,27 @@ export default function CivTree({
           <title>Capability tree: what this setup can do, by era</title>
           {/* Era column bands with clean headers */}
           {colOrder.map((d, i) => {
-            const x = START_X + i * COL_W;
+            const list = cols[d] || [];
             return (
               <g key={`band-${d}`}>
                 <rect
-                  x={x - 8}
+                  x={START_X + i * COL_W - 8}
                   y={START_Y - 45}
                   width={COL_W - 16}
                   height={contentHeight - START_Y - 20}
                   fill="rgba(255, 255, 255, 0.018)"
                   rx={12}
                 />
-                <text
-                  x={columnCentre(i)}
-                  y={START_Y - 27}
-                  textAnchor="middle"
-                  fill="var(--text-primary)"
-                  fontSize={12.5}
-                  fontWeight={600}
-                  style={{ fontFamily: 'var(--font-sans)' }}
-                >
-                  <title>{termTitle(isTreeView ? 'era' : 'domain')}</title>
-                  {columnLabel(d, cols[d] || [])}
-                </text>
-                <ColumnCount column={d} list={cols[d] || []} largest={largestColumn} x={x} />
+                <ColumnHead
+                  column={d}
+                  index={i}
+                  label={columnLabel(d, list)}
+                  progress={columnProgress(list)}
+                  largest={largestColumn}
+                  term={isTreeView ? 'era' : 'domain'}
+                  openEra={selectedEra}
+                  onOpen={selectEra}
+                />
               </g>
             );
           })}

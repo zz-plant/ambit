@@ -494,6 +494,166 @@ export const isProven = (item: Item): boolean =>
   item.status === 'built' && ['verified', 'reliable'].includes(String(item.meta?.lifecycle ?? ''));
 
 /**
+ * Where a node stands on its era's ladder. Failing is a state of its own:
+ * `status` is structural, and a reached node whose check failed is configured
+ * and not working. The era header counted it as reached and read "5 of 5"
+ * over a column with a red node in it.
+ */
+export type RungState = 'reached' | 'failing' | 'next' | 'blocked';
+
+export const rungOf = (item: Item): RungState =>
+  item.status === 'built'
+    ? isFailing(item)
+      ? 'failing'
+      : 'reached'
+    : isNext(item)
+      ? 'next'
+      : 'blocked';
+
+/** A column's nodes by state. The era header draws this and the ladder lists it, so they cannot disagree. */
+export interface Progress {
+  total: number;
+  /** Reached, with a check that has not failed. */
+  reached: number;
+  failing: number;
+  next: number;
+  blocked: number;
+  /** Setup time of everything not yet reached, in seconds. Zero when nothing carries an estimate. */
+  seconds: number;
+}
+
+export function columnProgress(list: Item[]): Progress {
+  const progress: Progress = {
+    total: list.length,
+    reached: 0,
+    failing: 0,
+    next: 0,
+    blocked: 0,
+    seconds: 0,
+  };
+  for (const item of list) {
+    progress[rungOf(item)] += 1;
+    if (item.status !== 'built') progress.seconds += Number(item.meta?.setupSeconds) || 0;
+  }
+  return progress;
+}
+
+/**
+ * What a blocked node waits for, in the words the panel and the ladder share:
+ * the prerequisites it names directly come first, three at most, then a count
+ * of the rest, then the setup time all of them add up to.
+ */
+export function blockedBy(
+  items: Item[],
+  connections: Connection[],
+  id: string,
+  gap = gapOf(items, connections, id)
+): { names: string[]; more: number; seconds: number } {
+  const byId = new Map(items.map(i => [i.id, i]));
+  const missing = [...gap.missing];
+  const direct = missing.filter(p => connections.some(c => c.from === p && c.to === id));
+  const named = (direct.length ? direct : missing).slice(0, 3);
+  return {
+    names: named.map(p => byId.get(p)?.name || p),
+    more: missing.length - named.length,
+    seconds: gap.seconds,
+  };
+}
+
+/**
+ * The required prerequisites of a node that are reached and failing. `next`
+ * from the engine's tree is state-only: a node whose prerequisite is
+ * configured and not working still reads as a next step, where the engine's
+ * own `ambit next` counts that prerequisite as missing. The ladder keeps the
+ * state the map draws and says what is wrong underneath it.
+ */
+export function failingNeeds(items: Item[], connections: Connection[], id: string): Item[] {
+  const byId = new Map(items.map(i => [i.id, i]));
+  const out: Item[] = [];
+  for (const c of connections) {
+    if (c.to !== id || c.type !== 'hard-dep') continue;
+    const from = byId.get(c.from);
+    if (from && isFailing(from) && !out.includes(from)) out.push(from);
+  }
+  return out;
+}
+
+/** "A", "A and B", "A, B and C". */
+const listOf = (names: string[]): string =>
+  names.length < 2
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
+/** One line of a ladder: a node, where it stands, and the one fact that explains it. */
+export interface Rung {
+  item: Item;
+  state: RungState;
+  /** A next step's setup time as the map writes it beside the node. Absent when none is recorded. */
+  estimate?: string;
+  /** What it waits for, or what is wrong with it. Absent for a node that is reached and passing. */
+  detail?: string;
+}
+
+export interface EraLadder {
+  era: number;
+  name: string;
+  progress: Progress;
+  rows: Rung[];
+}
+
+/** The order of a ladder: what needs attention first, then what is done. */
+const RUNG_RANK: Record<RungState, number> = { failing: 0, next: 1, blocked: 2, reached: 3 };
+
+/**
+ * An era as a ladder of its nodes: how far up it you are, and for each rung
+ * either that it is reached, or what it takes. Failing comes first, then the
+ * next steps cheapest first, then blocked, then reached. A rung with no
+ * estimate has none to show, and sorts after those that do.
+ */
+export function eraLadder(items: Item[], connections: Connection[], era: number): EraLadder | null {
+  const list = items.filter(i => eraOf(i) === era);
+  if (!list.length) return null;
+  const cost = (i: Item) => Number(i.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
+  const rows = list.map((item): Rung => {
+    const state = rungOf(item);
+    const stuck =
+      state === 'reached' || state === 'failing' ? [] : failingNeeds(items, connections, item.id);
+    const clauses: string[] = [];
+    if (state === 'failing') clauses.push('Configured, but not working');
+    if (state === 'blocked') {
+      const { names, more, seconds } = blockedBy(items, connections, item.id);
+      if (names.length) {
+        clauses.push(
+          `Waits for ${names.join(', ')}${more > 0 ? ` and ${more} more` : ''}${
+            seconds ? `, about ${readableSeconds(seconds)} of setup first` : ''
+          }`
+        );
+      }
+    }
+    if (stuck.length) {
+      clauses.push(
+        `Needs ${listOf(stuck.map(i => i.name))}, which ${stuck.length === 1 ? 'is' : 'are'} failing ${
+          stuck.length === 1 ? 'its check' : 'their checks'
+        }`
+      );
+    }
+    return {
+      item,
+      state,
+      estimate: state === 'next' ? costOf(item) || undefined : undefined,
+      detail: clauses.length ? clauses.join('; ') : undefined,
+    };
+  });
+  rows.sort(
+    (a, b) =>
+      RUNG_RANK[a.state] - RUNG_RANK[b.state] ||
+      (a.state === 'next' ? cost(a.item) - cost(b.item) || 0 : 0) ||
+      a.item.name.localeCompare(b.item.name)
+  );
+  return { era, name: columnLabel(`era:${era}`, list), progress: columnProgress(list), rows };
+}
+
+/**
  * An outage's `stops`, split by what each node was doing before it. `stopped`
  * was reached and passing its check, and is the only part that stops working.
  * `broken` was reached and already failing, so the outage takes nothing from

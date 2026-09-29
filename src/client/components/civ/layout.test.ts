@@ -11,15 +11,19 @@
 import { expect, test } from 'vitest';
 import type { Connection, Item } from '../../utils/configImporter';
 import {
+  blockedBy,
   buildAdjacency,
   buildColumns,
   COL_W,
   columnLabel,
   columnOf,
+  columnProgress,
   costOf,
   domainOf,
   edgePath,
+  eraLadder,
   eraOf,
+  failingNeeds,
   isEntry,
   isNext,
   layoutNodes,
@@ -32,6 +36,7 @@ import {
   outageSentence,
   outageSplit,
   ROW_H,
+  rungOf,
   sceneSize,
   START_X,
   START_Y,
@@ -438,4 +443,172 @@ test('a joint mark is a person or a device, and a recurring cost is neither', ()
   expect(jointMark(withStructure(['physical', 'institutional']))).toBe('person');
   expect(jointMark(withStructure(['economic']))).toBeUndefined();
   expect(jointMark(item('y'))).toBeUndefined();
+});
+
+// ── The era ladder ───────────────────────────────────────────────────────────
+
+/** A node of an era: reached or not, with whatever else the test is about. */
+const rung = (
+  id: string,
+  status: 'built' | 'specified',
+  meta: Record<string, unknown> = {},
+  era = 3
+): Item => ({ ...item(id, { era, ...meta }), status }) as Item;
+
+test('a reached node whose check failed is failing, and never reached', () => {
+  expect(rungOf(rung('a', 'built', { lifecycle: 'verified' }))).toBe('reached');
+  // Unproven is still reached: only a failed check moves a node out of it.
+  expect(rungOf(rung('a', 'built', { lifecycle: 'configured' }))).toBe('reached');
+  expect(rungOf(rung('a', 'built', { lifecycle: 'degraded' }))).toBe('failing');
+  expect(rungOf(rung('a', 'built', { lifecycle: 'broken' }))).toBe('failing');
+  expect(rungOf(rung('n', 'specified', { next: true }))).toBe('next');
+  expect(rungOf(rung('b', 'specified', { next: false }))).toBe('blocked');
+  // A node not reached has no check to fail, whatever its lifecycle says.
+  expect(rungOf(rung('b', 'specified', { lifecycle: 'broken' }))).toBe('blocked');
+});
+
+test('the era count and the rungs agree for an era with one failing node', () => {
+  const era = [
+    rung('a', 'built', { lifecycle: 'verified', setupSeconds: 300 }),
+    rung('b', 'built', { lifecycle: 'configured', setupSeconds: 300 }),
+    rung('c', 'built', { lifecycle: 'broken', setupSeconds: 900 }),
+    rung('d', 'specified', { next: true, setupSeconds: 600 }),
+    rung('e', 'specified', { next: false, setupSeconds: 1200 }),
+  ];
+  const progress = columnProgress(era);
+  // The header used to read 3 of 5 here, counting the failing node as reached.
+  // Setup time left is what is not reached: a node that is built has been set up.
+  expect(progress).toEqual({
+    total: 5,
+    reached: 2,
+    failing: 1,
+    next: 1,
+    blocked: 1,
+    seconds: 1800,
+  });
+
+  const ladder = eraLadder(era, [], 3)!;
+  expect(ladder.progress).toEqual(progress);
+  const count = (state: string) => ladder.rows.filter(r => r.state === state).length;
+  expect(count('reached')).toBe(progress.reached);
+  expect(count('failing')).toBe(progress.failing);
+  expect(count('next')).toBe(progress.next);
+  expect(count('blocked')).toBe(progress.blocked);
+  expect(ladder.rows).toHaveLength(progress.total);
+});
+
+test('the rungs put what needs attention first: failing, then next steps cheapest first, blocked, reached', () => {
+  const era = [
+    rung('reached-b', 'built', { lifecycle: 'verified' }),
+    rung('blocked', 'specified'),
+    rung('next-slow', 'specified', { next: true, setupSeconds: 1800 }),
+    rung('next-unpriced', 'specified', { next: true, setupSeconds: 0 }),
+    rung('failing', 'built', { lifecycle: 'degraded' }),
+    rung('next-fast', 'specified', { next: true, setupSeconds: 300 }),
+    rung('reached-a', 'built', { lifecycle: 'verified' }),
+  ];
+  expect(eraLadder(era, [], 3)!.rows.map(r => r.item.id)).toEqual([
+    'failing',
+    'next-fast',
+    'next-slow',
+    'next-unpriced',
+    'blocked',
+    'reached-a',
+    'reached-b',
+  ]);
+});
+
+test('a rung with no estimate shows none, and one with an estimate writes it as the map does', () => {
+  const era = [
+    rung('priced', 'specified', { next: true, setupSeconds: 600 }),
+    rung('hours', 'specified', { next: true, setupSeconds: 7200 }),
+    rung('zero', 'specified', { next: true, setupSeconds: 0 }),
+    rung('unset', 'specified', { next: true }),
+    rung('done', 'built', { setupSeconds: 900 }),
+  ];
+  const rows = new Map(eraLadder(era, [], 3)!.rows.map(r => [r.item.id, r]));
+  expect(rows.get('priced')!.estimate).toBe('10m');
+  expect(rows.get('hours')!.estimate).toBe('2h');
+  // The tree records zero for a node nobody has priced, and zero minutes would be a claim.
+  expect(rows.get('zero')!.estimate).toBeUndefined();
+  expect(rows.get('unset')!.estimate).toBeUndefined();
+  // What is reached has nothing left to estimate.
+  expect(rows.get('done')!.estimate).toBeUndefined();
+});
+
+test('a blocked rung names what it waits for, direct prerequisites first, and prices the gap', () => {
+  // c needs b, and b needs a; neither is reached, and b is what to reach first.
+  const era = [
+    rung('a', 'specified', { next: true, setupSeconds: 600 }, 2),
+    rung('b', 'specified', { setupSeconds: 900 }, 2),
+    rung('c', 'specified', { setupSeconds: 300 }, 3),
+  ];
+  const deps: Connection[] = [
+    { from: 'a', to: 'b', type: 'hard-dep' },
+    { from: 'b', to: 'c', type: 'hard-dep' },
+  ];
+  const c = eraLadder(era, deps, 3)!.rows[0];
+  expect(c.state).toBe('blocked');
+  expect(c.detail).toBe('Waits for b and 1 more, about 25m of setup first');
+
+  // A gap nobody has priced names what it waits for and no time.
+  const unpriced = [rung('x', 'specified', {}, 2), rung('y', 'specified', {}, 3)];
+  const edge: Connection[] = [{ from: 'x', to: 'y', type: 'hard-dep' }];
+  expect(eraLadder(unpriced, edge, 3)!.rows[0].detail).toBe('Waits for x');
+
+  // An optional prerequisite gates nothing, so a node behind only one waits for nothing named.
+  const soft: Connection[] = [{ from: 'x', to: 'y', type: 'soft-dep' }];
+  expect(eraLadder(unpriced, soft, 3)!.rows[0].detail).toBeUndefined();
+});
+
+test('a next step whose prerequisite is failing stays a next step, and says what is wrong under it', () => {
+  // The tree's `next` is state-only, so it reads this node as one step away
+  // while a prerequisite is configured and not working.
+  const items = [
+    rung('p', 'built', { lifecycle: 'broken' }, 2),
+    rung('q', 'built', { lifecycle: 'degraded' }, 2),
+    rung('ok', 'built', { lifecycle: 'verified' }, 2),
+    rung('n', 'specified', { next: true }, 3),
+  ];
+  const edges: Connection[] = [
+    { from: 'p', to: 'n', type: 'hard-dep' },
+    { from: 'ok', to: 'n', type: 'hard-dep' },
+  ];
+  const one = eraLadder(items, edges, 3)!.rows[0];
+  expect(one.state).toBe('next');
+  expect(one.detail).toBe('Needs p, which is failing its check');
+
+  const two = eraLadder(items, [...edges, { from: 'q', to: 'n', type: 'hard-dep' }], 3)!.rows[0];
+  expect(two.detail).toBe('Needs p and q, which are failing their checks');
+
+  // An optional prerequisite gates nothing, so its failure is not a reason.
+  expect(failingNeeds(items, [{ from: 'p', to: 'n', type: 'soft-dep' }], 'n')).toEqual([]);
+  // And a passing one is not named.
+  expect(failingNeeds(items, [{ from: 'ok', to: 'n', type: 'hard-dep' }], 'n')).toEqual([]);
+});
+
+test('the failing rung says the node is configured and not working, and a reached one says nothing', () => {
+  const failing = eraLadder([rung('f', 'built', { lifecycle: 'broken' })], [], 3)!.rows[0];
+  expect(failing.state).toBe('failing');
+  expect(failing.detail).toBe('Configured, but not working');
+  const reached = eraLadder([rung('r', 'built', { lifecycle: 'verified' })], [], 3)!.rows[0];
+  expect(reached.detail).toBeUndefined();
+});
+
+test('an era with no nodes has no ladder, and is named as the tree names it or by its number', () => {
+  expect(eraLadder([rung('a', 'built', {}, 2)], [], 5)).toBeNull();
+  expect(eraLadder([rung('a', 'built', { eraName: 'Memory' }, 4)], [], 4)!.name).toBe('Memory');
+  expect(eraLadder([rung('a', 'built', {}, 4)], [], 4)!.name).toBe('Era 4');
+});
+
+test('what a node is blocked by is three names at most, then a count of the rest', () => {
+  const many = ['a', 'b', 'c', 'd', 'e'].map(id => rung(id, 'specified', { setupSeconds: 600 }, 2));
+  const target = rung('t', 'specified', {}, 3);
+  const deps: Connection[] = many.map(m => ({ from: m.id, to: 't', type: 'hard-dep' }));
+  expect(blockedBy([...many, target], deps, 't')).toEqual({
+    names: ['a', 'b', 'c'],
+    more: 2,
+    seconds: 3000,
+  });
+  expect(blockedBy([target], [], 't')).toEqual({ names: [], more: 0, seconds: 0 });
 });

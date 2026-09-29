@@ -172,6 +172,8 @@ interface StoreState {
   items: Item[];
   connections: Connection[];
   selectedItem: string | null;
+  /** An era whose ladder is open in the detail panel, in place of a node. */
+  selectedEra: number | null;
   hoveredItem: string | null;
   searchQuery: string;
   showDetailPanel: boolean;
@@ -265,6 +267,8 @@ interface StoreState {
   loadAttentionData: () => Promise<void>;
   setItems: (items: Item[], connections: Connection[]) => void;
   selectItem: (id: string | null) => void;
+  /** Open an era's ladder, or close it when it is already open. A node and an era are never selected together. */
+  selectEra: (era: number | null) => void;
   hoverItem: (id: string | null) => void;
   setSearch: (q: string) => void;
   toggleDetailPanel: () => void;
@@ -285,6 +289,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   items: [],
   connections: [],
   selectedItem: null,
+  selectedEra: null,
   hoveredItem: null,
   searchQuery: '',
   showDetailPanel: false,
@@ -320,7 +325,11 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   selectItem: id => {
     const s = get();
     const next = s.selectedItem === id ? null : id;
-    set({ selectedItem: next, showDetailPanel: next !== null });
+    set({ selectedItem: next, selectedEra: null, showDetailPanel: next !== null });
+  },
+  selectEra: era => {
+    const next = get().selectedEra === era ? null : era;
+    set({ selectedEra: next, selectedItem: null, showDetailPanel: next !== null });
   },
   hoverItem: id => set({ hoveredItem: id }),
   setSearch: q => set({ searchQuery: q }),
@@ -813,6 +822,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       items: [],
       connections: [],
       selectedItem: null,
+      selectedEra: null,
       hoveredItem: null,
       searchQuery: '',
       showDetailPanel: false,

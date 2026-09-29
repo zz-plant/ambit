@@ -13,7 +13,7 @@
       "term": "Era",
       "short": "How far up the tree a capability sits",
       "long": "The tech tree runs through seven eras: Foundation, Model Access, Tool Use, Memory, Autonomy, Assurance, Sovereignty. Later eras depend on earlier ones — you cannot run fully offline before you have a local runtime. Eras describe ordering, not importance.",
-      "seen": "Column headers on the Tech Tree"
+      "seen": "Column headers on the map. Click one to open the era as a ladder"
     },
     {
       "key": "state",

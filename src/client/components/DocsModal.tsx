@@ -229,6 +229,14 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   </span>
                 </div>
                 <div className="docs-action">
+                  <span className="docs-cmd">Click an era</span>
+                  <span className="docs-answers">
+                    Opens its ladder: how far up the era you are, then each node as reached, a next
+                    step with its setup time, or blocked with what it waits for. A node whose check
+                    is failing is listed as failing, and is not counted as reached
+                  </span>
+                </div>
+                <div className="docs-action">
                   <span className="docs-cmd">Click a legend key</span>
                   <span className="docs-answers">
                     Highlights only that kind: keystones, failing checks, next steps. The counts in

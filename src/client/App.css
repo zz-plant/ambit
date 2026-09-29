@@ -1406,6 +1406,139 @@ code, pre, .code, .sp-cli-cmd {
   outline-offset: -2px;
 }
 
+/* ─── ERA LADDER ─── */
+/* An era's header opens this in the detail panel: a bar for how far up it you
+   are, then one rung per node. The rung's mark is the map's own circle for
+   the state, so the shape says it without the colour: filled is reached, a
+   ring is a next step, dashed is blocked, and a red disc with a bang is a
+   reached node whose check failed. */
+.sp-ladder-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--fig-track, rgba(255, 255, 255, 0.07));
+}
+
+.sp-ladder-seg {
+  display: block;
+  height: 100%;
+}
+
+.sp-ladder-seg--reached {
+  background: var(--fig-data, var(--accent));
+}
+
+.sp-ladder-seg--failing {
+  background: var(--error);
+}
+
+.sp-ladder-seg--next {
+  box-shadow: inset 0 0 0 1px var(--fig-data, var(--accent));
+}
+
+.sp-ladder-facts {
+  margin: 8px 0 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.sp-ladder {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-rung {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: baseline;
+  column-gap: 10px;
+  width: 100%;
+  padding: 7px 6px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sp-rung:hover {
+  background: var(--bg-hover);
+}
+
+.sp-rung:focus-visible {
+  outline-offset: -2px;
+}
+
+.sp-rung-mark {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  color: var(--on-accent);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.sp-rung--reached .sp-rung-mark {
+  background: var(--node-reached);
+  border: 1.5px solid var(--node-reached-ring);
+}
+
+.sp-rung--next .sp-rung-mark {
+  border: 2px solid var(--accent);
+}
+
+.sp-rung--blocked .sp-rung-mark {
+  border: 1.25px dashed var(--text-muted);
+}
+
+.sp-rung--failing .sp-rung-mark {
+  background: var(--error);
+}
+
+.sp-rung-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.sp-rung--blocked .sp-rung-name,
+.sp-rung--reached .sp-rung-name {
+  color: var(--text-secondary);
+}
+
+.sp-rung-state {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.sp-rung--next .sp-rung-state {
+  color: var(--accent);
+}
+
+.sp-rung--failing .sp-rung-state {
+  color: var(--error);
+}
+
+.sp-rung-detail {
+  grid-column: 2 / -1;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 /* ─── CANVAS HUD & CONTROLS ─── */
 /* The canvas scrolls inside .civ-scroll; the controls are laid over it and
    never move. The zoom controls sit left, the lenses right, so neither covers
@@ -1454,6 +1587,17 @@ code, pre, .code, .sp-cli-cmd {
 .civ-tree-svg {
   display: block;
   margin-top: 44px;
+}
+
+/* An era's header is a control: it opens the era's ladder in the detail panel.
+   Pressed, its name takes the accent, the way an open panel's node does. */
+.civ-era-head {
+  cursor: pointer;
+}
+
+.civ-era-head:hover .civ-era-name,
+.civ-era-head--open .civ-era-name {
+  fill: var(--accent);
 }
 
 .civ-zoom-hud,
@@ -2996,6 +3140,11 @@ code, pre, .code, .sp-cli-cmd {
 .fig-eras-unproven {
   fill: var(--fig-data, var(--accent));
   opacity: 0.4;
+}
+
+/* Reached, and its check failed: configured, not working. Never part of reached. */
+.fig-eras-failing {
+  fill: var(--error);
 }
 
 /* The frontier: outlined, because it is what could be reached, not what is. */

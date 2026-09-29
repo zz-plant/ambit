@@ -46,6 +46,7 @@ export default function App() {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
   const selectedId = useAmbitStore(s => s.selectedItem);
+  const selectedEra = useAmbitStore(s => s.selectedEra);
   const hoveredId = useAmbitStore(s => s.hoveredItem);
   const showDetailPanel = useAmbitStore(s => s.showDetailPanel);
   const loading = useAmbitStore(s => s.loading);
@@ -274,7 +275,7 @@ export default function App() {
 
   const selected = selectedId ? shown.find(i => i.id === selectedId) : undefined;
   // A node the observation on screen did not hold has no panel to open.
-  const detailOpen = Boolean(showDetailPanel && selectedId && selected);
+  const detailOpen = Boolean(showDetailPanel && ((selectedId && selected) || selectedEra !== null));
 
   // The header counts one population per view: the map's nodes by state, or
   // the setup's entries by whether they are enabled. It used to count both in

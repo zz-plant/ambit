@@ -4,6 +4,7 @@ import type { Connection, Item } from '../utils/configImporter';
 import { canSwitchMcp } from '../utils/configSwitch';
 import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 import {
+  blockedBy,
   costOf,
   gapOf,
   outageImpact,
@@ -13,6 +14,7 @@ import {
   unlockCascade,
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
+import { EraLadderPanel } from './EraLadder';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
 import { runsOf } from '../utils/checkHistory';
@@ -78,6 +80,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const items = pastItems ?? storeItems;
   const connections = useAmbitStore(s => s.connections);
   const selectedId = useAmbitStore(s => s.selectedItem);
+  const selectedEra = useAmbitStore(s => s.selectedEra);
   const selectItem = useAmbitStore(s => s.selectItem);
   const simulatedNodeId = useAmbitStore(s => s.simulatedNodeId);
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
@@ -93,7 +96,12 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const [toggling, setToggling] = React.useState(false);
   const [toggleError, setToggleError] = React.useState<string | null>(null);
 
-  if (!item) return null;
+  // An era header opens its ladder in the same panel, where a node would be.
+  if (!item) {
+    return selectedEra === null ? null : (
+      <EraLadderPanel era={selectedEra} onShow={onShow ?? selectItem} />
+    );
+  }
 
   const color = typeColor(item.type);
 
@@ -322,13 +330,12 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         // Only what was working is said to stop; the banner says the same.
         const outage = split ? outageSentence('this', outageImpact(items, split), true) : null;
         const missing = gap ? [...gap.missing] : [];
-        // Name the direct ones first: they are what to reach, the rest is
-        // what those need in turn.
-        const direct = missing.filter(id => needs.some(n => n.node.id === id));
-        const named = (direct.length ? direct : missing)
-          .slice(0, 3)
-          .map(id => byId.get(id)?.name || id);
-        const more = missing.length - named.length;
+        // The direct ones are named first: they are what to reach, the rest is
+        // what those need in turn. The ladder for the node's era says it the
+        // same way, from the same function.
+        const { names: named, more } = gap
+          ? blockedBy(items, connections, item.id, gap)
+          : { names: [], more: 0 };
 
         return (
           <div className="sp-sim-group">

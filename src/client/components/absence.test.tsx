@@ -176,6 +176,7 @@ afterEach(() => {
     items: [],
     connections: [],
     selectedItem: null,
+    selectedEra: null,
     loop: null,
     loopSource: null,
     loopEmpty: false,
@@ -192,6 +193,39 @@ test('the detail panel states nothing about a node that recorded nothing', () =>
   });
 
   expectNothingUnstated(renderToStaticMarkup(<NodeDetailPanel />), 'NodeDetailPanel');
+});
+
+test('the era ladder states nothing about a node that recorded nothing', () => {
+  // A tree whose nodes carry an era and nothing else: no era name, no setup
+  // time, no lifecycle, no evidence. Every rung still has to read as a rung.
+  const bare = (id: string, status: 'built' | 'specified', next: boolean): Item => ({
+    ...unstatedNode,
+    id,
+    name: id,
+    status,
+    meta: {
+      era: 2,
+      eraName: undefined,
+      setupSeconds: undefined,
+      next,
+      lifecycle: undefined,
+      lastChecked: undefined,
+    },
+  });
+  seed({
+    items: [bare('a', 'built', false), bare('b', 'specified', true), bare('c', 'specified', false)],
+    connections: [
+      { from: 'a', to: 'b', type: 'hard-dep' },
+      { from: 'b', to: 'c', type: 'hard-dep' },
+    ],
+    selectedEra: 2,
+    showDetailPanel: true,
+  });
+
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+
+  expect(html).toContain('sp-ladder');
+  expectNothingUnstated(html, 'the era ladder');
 });
 
 test('my setup states nothing about an entry that recorded nothing', () => {
