@@ -258,9 +258,18 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   </span>
                 </div>
                 <div className="docs-action">
+                  <span className="docs-cmd">Timeline</span>
+                  <span className="docs-answers">
+                    Under the map, once two observations are recorded. Drag the playhead or step it
+                    with the arrow keys, and the map redraws as that observation left it, with
+                    today's names and edges. Lenses and simulations wait for now
+                  </span>
+                </div>
+                <div className="docs-action">
                   <span className="docs-cmd">Share</span>
                   <span className="docs-answers">
-                    Copies a link to this exact view: graph, selected node, lens and filter
+                    Copies a link to this exact view: graph, selected node, lens, filter and the
+                    moment the timeline is on
                   </span>
                 </div>
                 <div className="docs-action">

@@ -29,6 +29,13 @@ const prerequisiteLabel = (conn: Connection) =>
 interface NodeDetailPanelProps {
   /** Show a neighbour where it lives: a node on the map, an entry in My Setup. */
   onShow?: (id: string) => void;
+  /** The map's items when they are not the store's: a past observation, scrubbed to. */
+  items?: Item[];
+  /**
+   * When those items were observed. The panel says so, and offers nothing
+   * that acts on the graph as it is now: a simulation, the config switch.
+   */
+  asOf?: string;
 }
 
 /**
@@ -66,8 +73,9 @@ function LinkList({
   );
 }
 
-export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
-  const items = useAmbitStore(s => s.items);
+export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPanelProps = {}) {
+  const storeItems = useAmbitStore(s => s.items);
+  const items = pastItems ?? storeItems;
   const connections = useAmbitStore(s => s.connections);
   const selectedId = useAmbitStore(s => s.selectedItem);
   const selectItem = useAmbitStore(s => s.selectItem);
@@ -264,6 +272,13 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         </button>
       </div>
 
+      {asOf && (
+        <p className="sp-asof" role="status">
+          As of {asOf}, as that observation recorded it. A snapshot keeps no grants or providers, so
+          simulations wait for now.
+        </p>
+      )}
+
       {isKeystone && (
         <p className="sp-keystone">
           <span aria-hidden="true">★</span>
@@ -300,6 +315,9 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
       {/* The impact in one line, then the simulation that draws it: an outage
           for a reached node; the gap, and an unlock, for one that is not. */}
       {(() => {
+        // A past observation stores no providers, so it has no impact to
+        // state and nothing to simulate.
+        if (asOf) return null;
         const isSimulated = simulatedNodeId === item.id;
         // Only what was working is said to stop; the banner says the same.
         const outage = split ? outageSentence('this', outageImpact(items, split), true) : null;
@@ -435,7 +453,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         page to write it back. The route answers ok for a name it has no entry
         for, so an entry another runtime declared would flip and flip back.
       */}
-      {canSwitchMcp(item, backend, configMcp) && (
+      {!asOf && canSwitchMcp(item, backend, configMcp) && (
         <div className="sp-toggle-row">
           <div>
             <button

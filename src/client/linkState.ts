@@ -47,6 +47,28 @@ export interface LinkState {
   /** `?guide=off`: never show the first-run guide, for screenshots. */
   guideOff: boolean;
   lens: ActiveLens;
+  /**
+   * `?at=`: the second of the observation the map is scrubbed to, in UTC, or
+   * null for now. A timestamp and not a snapshot id, so a link works on
+   * another machine holding the same ledger. Optional, so a state written
+   * before the timeline existed still describes a view.
+   */
+  at?: string | null;
+}
+
+/**
+ * A timestamp as the one second it names, `2026-09-26T10:00:00Z`, or null when
+ * it names none. The ledger writes `2026-09-26 10:00:00`, a link may carry
+ * either form, and a date that does not exist is not rolled into one that
+ * does: an unknown value is how a link falls back to now.
+ */
+export function readSecond(value: string | null | undefined): string | null {
+  const m = value?.trim().match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})Z?$/);
+  if (!m) return null;
+  const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`;
+  const time = Date.parse(iso);
+  if (!Number.isFinite(time)) return null;
+  return `${new Date(time).toISOString().slice(0, 19)}Z` === iso ? iso : null;
 }
 
 const oneOf = <T extends string>(allowed: readonly T[], value: string | null, fallback: T): T =>
@@ -67,6 +89,7 @@ export function readLinkState(search: string): LinkState {
     demo,
     guideOff: params.get('guide') === 'off',
     lens: oneOf(LENSES, params.get('lens'), 'default'),
+    at: readSecond(params.get('at')),
   };
 }
 
@@ -117,5 +140,6 @@ export function writeLinkState(state: ShareState): string {
   if (state.focusId) params.set('focus', state.focusId);
   if (state.docsOpen) params.set('docs', 'open');
   if (state.lens !== 'default') params.set('lens', state.lens);
+  if (state.at) params.set('at', state.at);
   return '?' + params.toString();
 }

@@ -43,7 +43,7 @@ function engine(routes: Record<string, unknown>) {
   return asked;
 }
 
-afterEach(() => useAmbitStore.setState({ history: null, demo: false }));
+afterEach(() => useAmbitStore.setState({ history: null, historyAt: null, demo: false }));
 
 test('the demo answers from its own series and asks no engine', async () => {
   globalThis.fetch = (async () => {
@@ -65,4 +65,36 @@ test('an engine that serves no history leaves the map without a timeline', async
   engine({});
   await useAmbitStore.getState().loadHistory();
   expect(useAmbitStore.getState().history).toBeNull();
+});
+
+test('a playhead no tick has falls back to now once the series arrives', async () => {
+  engine({ '/api/frontier': LEDGER });
+  // A link from another machine, whose ledger has a second this one does not.
+  useAmbitStore.setState({ historyAt: '2026-01-01T00:00:00Z' });
+  await useAmbitStore.getState().loadHistory();
+  expect(useAmbitStore.getState().historyAt).toBeNull();
+
+  useAmbitStore.setState({ historyAt: '2026-09-21T09:00:00Z' });
+  await useAmbitStore.getState().loadHistory();
+  expect(useAmbitStore.getState().historyAt).toBe('2026-09-21T09:00:00Z');
+});
+
+test('the demo keeps a playhead on one of its own ticks, and drops any other', () => {
+  const [first] = demoHistory().ticks;
+  const second = `${first.at.replace(' ', 'T')}Z`;
+  useAmbitStore.setState({ historyAt: second });
+  useAmbitStore.getState().seedDemo();
+  expect(useAmbitStore.getState().historyAt).toBe(second);
+
+  useAmbitStore.setState({ historyAt: '2026-01-01T00:00:00Z' });
+  useAmbitStore.getState().seedDemo();
+  expect(useAmbitStore.getState().historyAt).toBeNull();
+});
+
+test('scrubbing into the past ends a simulation, which walks the live graph', () => {
+  useAmbitStore.setState({ simulationMode: 'outage', simulatedNodeId: 'combo:shell' });
+  useAmbitStore.getState().setHistoryAt('2026-09-21T09:00:00Z');
+  expect(useAmbitStore.getState().simulationMode).toBe('none');
+  expect(useAmbitStore.getState().simulatedNodeId).toBeNull();
+  expect(useAmbitStore.getState().historyAt).toBe('2026-09-21T09:00:00Z');
 });

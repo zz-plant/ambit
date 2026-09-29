@@ -1,8 +1,10 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import AppDeck, { type MapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
 import AuditView from './components/AuditView';
+import { dayOf, itemsAsOf, momentOf, tickAt } from './components/civ/history';
 import { isEntry, isNext, isProven, visibleItems } from './components/civ/layout';
+import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
 import GettingStartedGuide from './components/GettingStartedGuide';
@@ -53,6 +55,10 @@ export default function App() {
   const spotlight = useAmbitStore(s => s.spotlight);
   const proposals = useAmbitStore(s => s.proposals);
   const showApprovalModal = useAmbitStore(s => s.showApprovalModal);
+  const history = useAmbitStore(s => s.history);
+  const historyAt = useAmbitStore(s => s.historyAt);
+  const setHistoryAt = useAmbitStore(s => s.setHistoryAt);
+  const loadHistory = useAmbitStore(s => s.loadHistory);
 
   const selectItem = useAmbitStore(s => s.selectItem);
   const hoverItem = useAmbitStore(s => s.hoverItem);
@@ -89,7 +95,7 @@ export default function App() {
     setShowDocs(true);
   };
 
-  useUrlSync({ view, focusId: selectedId, docsOpen: showDocs, demo, lens });
+  useUrlSync({ view, focusId: selectedId, docsOpen: showDocs, demo, lens, at: historyAt });
 
   const isNarrow = useNarrow();
   // The tour runs on the demo the first time, like the card it replaces there,
@@ -104,6 +110,7 @@ export default function App() {
       // with no explanation reads as a glitch.
       loadGraph();
       loadLoop();
+      loadHistory();
       setToast('The graph was rebuilt, so the map has reloaded.');
     },
     // A browser approval becomes a notice to act on, with the exact command
@@ -143,6 +150,7 @@ export default function App() {
     if (!link.demo) {
       loadLoop();
       loadGraph();
+      loadHistory();
     }
     // A link to the trail opens on it, so it is read now, not on a tab click.
     if (link.view === 'audit') loadAudit();
@@ -254,22 +262,39 @@ export default function App() {
     },
   };
 
-  const selected = selectedId ? items.find(i => i.id === selectedId) : undefined;
-  const detailOpen = Boolean(showDetailPanel && selectedId);
+  // The map as a past observation left it, while the playhead is off now:
+  // only on the map, and not while the tour narrates the map as it is. The
+  // header, the map and the panel all read `shown`, so they tell one date.
+  const tick =
+    view === 'tree' && !(demo && (tourAsked || showGuide)) ? tickAt(history, historyAt) : null;
+  const shown = useMemo(
+    () => (tick ? itemsAsOf(items, connections, tick) : items),
+    [tick, items, connections]
+  );
+
+  const selected = selectedId ? shown.find(i => i.id === selectedId) : undefined;
+  // A node the observation on screen did not hold has no panel to open.
+  const detailOpen = Boolean(showDetailPanel && selectedId && selected);
 
   // The header counts one population per view: the map's nodes by state, or
   // the setup's entries by whether they are enabled. It used to count both in
   // one fraction, so the demo read "42 of 60" over a tree of 33.
-  const mapItems = visibleItems(items);
+  const mapItems = visibleItems(shown);
   const counts: MapCounts = {
     verified: mapItems.filter(isProven).length,
     unproven: mapItems.filter(i => i.status === 'built' && !isProven(i)).length,
     next: mapItems.filter(i => i.status !== 'built' && isNext(i)).length,
     blocked: mapItems.filter(i => i.status !== 'built' && !isNext(i)).length,
   };
+  // An observation recorded before lifecycles were cannot split reached by
+  // evidence, so the header counts it whole.
+  if (tick && !tick.lifecycles) counts.reached = mapItems.filter(i => i.status === 'built').length;
   const entries = items.filter(isEntry);
   const hasTree = items.some(i => !isEntry(i));
   const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
+  // Under the map, once a series has come back. It explains itself when it
+  // holds fewer than two ticks; with no engine behind the page it is absent.
+  const showTimeline = view === 'tree' && hasTree && !touring && history !== null;
   const endTour = () => {
     setTourAsked(false);
     dismissGuide();
@@ -323,9 +348,10 @@ export default function App() {
         onShare={share}
         onShowProposals={showProposals}
         onShowDocs={() => openDocs()}
+        asOf={tick ? dayOf(tick.at) : undefined}
       />
 
-      <div className="app-scene">
+      <div className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}>
         {loading && !items.length && <Loading />}
         {error && (
           <div className="app-error">
@@ -344,7 +370,7 @@ export default function App() {
         ) : items.length > 0 && hasTree ? (
           <Suspense fallback={<Loading />}>
             <CivTree
-              items={items}
+              items={shown}
               connections={connections}
               selectedId={selectedId}
               hoveredId={hoveredId}
@@ -353,6 +379,7 @@ export default function App() {
               leftInset={8}
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
               narrated={touring}
+              asOf={tick ? momentOf(tick.at) : undefined}
             />
           </Suspense>
         ) : items.length > 0 ? (
@@ -370,6 +397,15 @@ export default function App() {
             </button>
           </div>
         ) : null}
+        {showTimeline && history && (
+          <Timeline
+            history={history}
+            at={tick ? historyAt : null}
+            onScrub={setHistoryAt}
+            leftInset={8}
+            rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
+          />
+        )}
         {touring ? (
           <Tour
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
@@ -400,7 +436,11 @@ export default function App() {
           the tour narrates the node, the sheet under it said the same thing. */}
       {detailOpen && !(touring && isNarrow) && (
         <aside className="app-detail-panel" aria-label="Capability details">
-          <NodeDetailPanel onShow={show} />
+          <NodeDetailPanel
+            onShow={show}
+            items={tick ? shown : undefined}
+            asOf={tick ? momentOf(tick.at) : undefined}
+          />
         </aside>
       )}
 

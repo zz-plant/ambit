@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { tickAt } from '../components/civ/history';
 import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
 import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
 import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
@@ -85,6 +86,10 @@ export function mergeGraphs(tree: Graph | null, config: Graph | null): Graph {
 
 /** What the address bar asks for, read once at startup. */
 const initialLink = readLinkState(currentSearch());
+
+/** The playhead, if a tick of this series has its second; otherwise now. */
+const knownAt = (history: FrontierHistoryResponse, at: string | null) =>
+  tickAt(history, at) ? at : null;
 
 /**
  * A typed GET against the API. The store used to call `await res.json()` and
@@ -213,6 +218,13 @@ interface StoreState {
    * nothing can answer: no engine, or one that predates the route.
    */
   history: FrontierHistoryResponse | null;
+  /**
+   * The playhead: the second of the tick the map is scrubbed to, as the URL's
+   * `at` writes it, or null for now. Kept until the series arrives, and then
+   * dropped if no tick has that second.
+   */
+  historyAt: string | null;
+  setHistoryAt: (at: string | null) => void;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
@@ -294,6 +306,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   audit: null,
   configMcp: {},
   history: null,
+  historyAt: initialLink.at ?? null,
 
   setItems: (items, connections) => set({ items, connections }),
 
@@ -308,6 +321,12 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   setShowApprovalModal: show => set({ showApprovalModal: show }),
   setActiveLens: lens => set({ activeLens: lens }),
   setSpotlight: group => set({ spotlight: group }),
+  // A simulation walks the live graph, and an outage needs providers, which no
+  // snapshot stores, so scrubbing into the past ends one.
+  setHistoryAt: at => {
+    if (at) get().clearSimulation();
+    set({ historyAt: at });
+  },
 
   // The walks live in civ/layout.ts, where the detail panel reads the same
   // ones to state their size before any simulation is run.
@@ -522,14 +541,14 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    */
   loadHistory: async () => {
     if (get().demo) {
-      set({ history: demoHistory() });
+      set({ history: demoHistory(), historyAt: knownAt(demoHistory(), get().historyAt) });
       return;
     }
     if (!(await backendAvailable())) return;
     try {
       const data = await getJson('/api/frontier');
       // "Open the demo" may have been pressed while this was in flight.
-      if (data && !get().demo) set({ history: data });
+      if (data && !get().demo) set({ history: data, historyAt: knownAt(data, get().historyAt) });
     } catch {
       /* the map keeps whatever it had */
     }
@@ -674,6 +693,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       rangeSince: demoSnapshot().since,
       attentionInterventions: DEMO_ATTENTION,
       history: demoHistory(),
+      historyAt: knownAt(demoHistory(), get().historyAt),
     }),
 
   updateItem: (id, updates) =>

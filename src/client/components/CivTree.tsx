@@ -54,6 +54,12 @@ interface CivTreeProps {
    * banner's Done would end a step out from under the tour.
    */
   narrated?: boolean;
+  /**
+   * The items are a past observation, taken at this moment. What no snapshot
+   * stores stays off the map: the attention lens, and the headline with its
+   * week and its simulations.
+   */
+  asOf?: string;
 }
 
 /**
@@ -205,6 +211,7 @@ export default function CivTree({
   leftInset = 0,
   rightInset = 0,
   narrated = false,
+  asOf,
 }: CivTreeProps) {
   const requestedLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
@@ -253,7 +260,7 @@ export default function CivTree({
   // A lens with no data to colour falls back to the standard map, and the
   // HUD offers it disabled with the reason. The map used to go grey with a
   // note over it.
-  const attentionAvailable = attentionMax > 0;
+  const attentionAvailable = !asOf && attentionMax > 0;
   const authorityAvailable = React.useMemo(
     () => items.some(i => authorityMark(i) !== undefined),
     [items]
@@ -602,6 +609,11 @@ export default function CivTree({
         authorityAvailable={authorityAvailable}
         leftInset={leftInset}
         rightInset={rightInset}
+        lensNote={
+          asOf
+            ? 'An observation of the frontier records states and checks, not attention or authority. Back to now to use this lens.'
+            : undefined
+        }
       />
 
       {!narrated && (
@@ -618,7 +630,7 @@ export default function CivTree({
         />
       )}
 
-      {!narrated && simulationMode === 'none' && !selectedId && (
+      {!narrated && !asOf && simulationMode === 'none' && !selectedId && (
         <MapFinding
           findings={findings}
           since={rangeSince}
@@ -644,7 +656,9 @@ export default function CivTree({
         // line; the canvas starts below the second, so the era headers stay
         // readable.
         className={`civ-scroll ${
-          !narrated && (findings.failing.length || findings.best) ? 'civ-scroll--headline' : ''
+          !narrated && !asOf && (findings.failing.length || findings.best)
+            ? 'civ-scroll--headline'
+            : ''
         }`}
         // Dragging to pan is a pointer affordance layered over the canvas. The
         // a11y warning on this element is expected and left visible: every node
@@ -1153,9 +1167,11 @@ export default function CivTree({
               // circle reads as scenery until something says otherwise. A click
               // opens the panel that offers the one this node can run: an outage
               // on a node you have, an unlock on one you do not.
-              const hint = unreached
-                ? 'Click: details, and simulate unlocking it'
-                : 'Click: details, and simulate an outage';
+              const hint = asOf
+                ? 'Click: details, as of this observation'
+                : unreached
+                  ? 'Click: details, and simulate unlocking it'
+                  : 'Click: details, and simulate an outage';
               const hintH = 17;
               const boxH = headH + keyH + descH + enablesH + hintH + 12;
 
