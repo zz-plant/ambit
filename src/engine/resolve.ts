@@ -77,17 +77,25 @@ function resolveCapability(db: Db, given: unknown): Resolution {
   }
 
   // Nothing fits. Offer what resembles it, once per node however many of its
-  // spellings matched.
-  const labels = new Map<string, string>();
+  // spellings matched. A provider often shares its display name with the
+  // combo it supplies, so a label can belong to several nodes, and the combo is
+  // listed first: it is the node a bare word has always meant.
+  const labels = new Map<string, string[]>();
   for (const r of rows) {
     if (r.kind === 'action') continue;
-    for (const label of [r.id, bodyOf(r.id), r.name])
-      if (!labels.has(label)) labels.set(label, r.id);
+    for (const label of [r.id, bodyOf(r.id), r.name]) {
+      const owners = labels.get(label) ?? [];
+      if (!owners.includes(r.id)) owners.push(r.id);
+      labels.set(label, owners);
+    }
   }
   const close: string[] = [];
   for (const label of nearest(word, [...labels.keys()], 12)) {
-    const id = labels.get(label) as string;
-    if (!close.includes(id)) close.push(id);
+    const owners = [...(labels.get(label) as string[])].sort(
+      (x, y) =>
+        Number(y.startsWith('combo:')) - Number(x.startsWith('combo:')) || x.length - y.length
+    );
+    for (const id of owners) if (!close.includes(id)) close.push(id);
   }
   return {
     ok: false,

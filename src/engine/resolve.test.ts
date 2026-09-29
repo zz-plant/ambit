@@ -10,6 +10,8 @@ const graph = () =>
   makeGraph({
     capabilities: [
       { id: 'combo:shell-execution', name: 'Shell Execution', category: 'combo' },
+      // A provider that goes by the same display name as the combo it supplies.
+      { id: 'tool:bash', name: 'Shell Execution', kind: 'provider' },
       { id: 'combo:version-control', name: 'Version Control', category: 'combo' },
       { id: 'act:shell-execution/run_command', name: 'run_command', kind: 'action' },
       // Two nodes that share a word: a combo and a provider of it.
@@ -104,7 +106,16 @@ describe('resolveCapability refuses to choose', () => {
     const r = resolveCapability(graph(), 'shell');
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.did_you_mean).toEqual(['combo:shell-execution']);
+    expect(r.did_you_mean).toEqual(['combo:shell-execution', 'tool:bash']);
+  });
+
+  test('offers the combo before a provider that shares its name', () => {
+    // The label "Shell Execution" belongs to both. Keeping the first node to
+    // claim it put the provider ahead of the capability the word means.
+    const r = resolveCapability(graph(), 'shell-exection');
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.did_you_mean).toEqual(['combo:shell-execution', 'tool:bash']);
   });
 });
 
@@ -127,7 +138,7 @@ describe('capabilityToAsk puts the question to the right node, or answers a slip
     expect(r).toEqual({
       answer: {
         error: 'No capability "shell-exection" in this graph.',
-        did_you_mean: ['combo:shell-execution'],
+        did_you_mean: ['combo:shell-execution', 'tool:bash'],
       },
     });
   });
