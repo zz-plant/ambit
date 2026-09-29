@@ -17,7 +17,14 @@ import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps } from '../next.ts';
 import { C, formatGeneric, type Palette } from './output.ts';
-import { FAILING, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
+import {
+  CHECK_RUN_SQL,
+  FAILING,
+  FAILING_SQL,
+  PROVEN,
+  REACHED_SQL,
+  graphCounts,
+} from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
 function ago(ts: string | null | undefined): string | undefined {
@@ -88,9 +95,7 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
     rows.filter((r: any) => ls.includes(r.lifecycle)).reduce((s: number, r: any) => s + r.n, 0);
 
   const last = db
-    .prepare(
-      "SELECT MAX(timestamp) AS t FROM session_learning WHERE action IN ('verified','failed')"
-    )
+    .prepare(`SELECT MAX(timestamp) AS t FROM session_learning WHERE ${CHECK_RUN_SQL}`)
     .get();
 
   return {

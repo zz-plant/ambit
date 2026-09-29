@@ -13,7 +13,7 @@
 import type { Db } from '../db.ts';
 import { periodElapsed } from '../budgets.ts';
 import { usable } from './lifecycle.ts';
-import { FAILING } from '../vocabulary.ts';
+import { CHECK_RUN_SQL, FAILING } from '../vocabulary.ts';
 import type { AuthorityRow, CapabilityRow } from '../rows.ts';
 import { runtimesReaching } from './reach.ts';
 
@@ -397,7 +397,7 @@ function objectEvidence(db: Db, capability: string, action: string, object: stri
                 SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
                 MAX(timestamp) AS last_seen
          FROM session_learning
-         WHERE capability_id IN (?, ?) AND object = ? AND action IN ('verified','failed')`
+         WHERE capability_id IN (?, ?) AND object = ? AND ${CHECK_RUN_SQL}`
       )
       .get(capability, `act:${capability.replace('combo:', '')}/${action}`, object);
     if (!row?.passes && !row?.failures) return undefined;

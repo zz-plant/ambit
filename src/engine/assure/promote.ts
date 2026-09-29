@@ -18,7 +18,7 @@
  */
 import type { Db } from '../db.ts';
 import type { AuthorityRow } from '../rows.ts';
-import { GATE_KINDS } from '../vocabulary.ts';
+import { CHECK_RUN_SQL, GATE_KINDS } from '../vocabulary.ts';
 
 /** "three passing checks and two successful uses", or whichever half exists. */
 function describeEvidence(e: { passes: number; uses: number }): string {
@@ -193,7 +193,7 @@ function evidenceCount(db: Db, capability: string, days: number, scope?: string)
          SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
          MAX(timestamp) AS last_seen
        FROM session_learning
-       WHERE capability_id = ? AND action IN ('verified','failed')
+       WHERE capability_id = ? AND ${CHECK_RUN_SQL}
          AND timestamp >= datetime('now', ?)
          AND (? IS NULL OR object = ? OR (object IS NOT NULL AND object LIKE ? || '%'))`
     )

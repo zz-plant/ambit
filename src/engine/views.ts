@@ -128,7 +128,7 @@ export function techTreeView(db: Db): TechTreeResponse {
     db
       .prepare(
         `SELECT capability_id, action, MAX(timestamp) AS at FROM session_learning
-       WHERE action IN ('verified','failed') GROUP BY capability_id`
+       WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
       .all()
       .map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
@@ -142,7 +142,7 @@ export function techTreeView(db: Db): TechTreeResponse {
       .prepare(
         `SELECT capability_id, SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passed,
                 COUNT(*) AS total
-         FROM session_learning WHERE action IN ('verified', 'failed') GROUP BY capability_id`
+         FROM session_learning WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
       .all<{ capability_id: string; passed: number; total: number }>()) {
       reliability.set(r.capability_id, { passed: r.passed, total: r.total });

@@ -14,6 +14,7 @@ import { evaluatePromotions } from './promote.ts';
 import { pullDelegationSources, recordDelegationState } from '../delegation.ts';
 import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
+import { CHECK_RUN_SQL } from '../vocabulary.ts';
 
 /**
  * A check declared outside the curated model — §12.5.
@@ -125,7 +126,7 @@ function evidenceFor(db: Db, id: string) {
   return db
     .prepare(
       `SELECT action, outcome_score, notes, timestamp FROM session_learning
-       WHERE capability_id = ? AND action IN ('verified','failed')
+       WHERE capability_id = ? AND ${CHECK_RUN_SQL}
        ORDER BY timestamp DESC LIMIT 10`
     )
     .all(id);
