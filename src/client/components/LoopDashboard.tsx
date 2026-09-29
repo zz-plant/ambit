@@ -117,23 +117,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   return (
     <figure className="fig fig--assurance">
       <figcaption className="fig-caption">
-        <span className="fig-caption-title">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="fig-kpi-icon"
-            aria-hidden="true"
-          >
-            <path d="M8 2 L13 4 V8 C13 11.5 8 14 8 14 C8 14 3 11.5 3 8 V4 Z" />
-            <path d="M6 8 L7.5 9.5 L10.5 6.5" />
-          </svg>
-          What the graph can prove
-        </span>
+        <span className="fig-caption-title">What the graph can prove</span>
         <span className="fig-caption-note" style={NUM}>
           {status.verified} of {status.total} proved
           {status.total > 0 ? ` · ${Math.round((status.verified / status.total) * 100)}%` : ''}
@@ -169,25 +153,8 @@ function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   return (
     <figure className={`fig fig--assurance ${alarm ? 'fig--alert' : ''}`}>
       <figcaption className="fig-caption">
-        <span className="fig-caption-title">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="fig-kpi-icon"
-            aria-hidden="true"
-          >
-            <path d="M8 2 L14 13 H2 Z" />
-            <line x1="8" y1="6" x2="8" y2="9" />
-            <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
-          </svg>
-          What could break
-        </span>
-        <span className="fig-caption-note">from the graph, not the ledger</span>
+        <span className="fig-caption-title">What could break</span>
+        <span className="fig-caption-note">read from the map</span>
       </figcaption>
       <ul className="fig-key">
         {rows.map(r => (
@@ -519,7 +486,7 @@ function NextFigure({
         <span className="fig-caption-title">What to reach next</span>
         <span className="fig-caption-note">
           {observed || demanded.length
-            ? 'ranked by what has blocked work, then by leverage'
+            ? 'ranked by what has blocked work, then by what it opens up'
             : 'ranked by what each unblocks per hour of setup; nothing has blocked work yet'}
         </span>
       </figcaption>
@@ -536,9 +503,9 @@ function NextFigure({
               <span className="fig-demand-why" style={NUM}>
                 stopped work {d.times}× ·{' '}
                 {d.failing
-                  ? 'configured and failing: re-verify it, do not re-add it'
+                  ? 'configured and failing: check it again, do not add it again'
                   : d.structural
-                    ? 'the same cause every time: this is an acquisition'
+                    ? 'the same cause every time, so it needs something new'
                     : 'not yet recurring'}
               </span>
               {onShowOnMap && items.some(i => i.id === d.id) && (
@@ -902,11 +869,10 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
       <div className="loop-inner">
         <div className="loop-hero">
           <div>
-            <p className="loop-kicker">Where the time goes</p>
             {saved ? (
               <h2 className="loop-lead" style={NUM}>
-                <strong>{roi.hours_per_year}h</strong> of a person&rsquo;s time saved,{' '}
-                <strong>{money(roi.dollars_per_year)}</strong> a year.
+                <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in,
+                worth <strong>{money(roi.dollars_per_year)}</strong>.
               </h2>
             ) : (
               <h2 className="loop-title">Where the time goes</h2>
@@ -926,9 +892,9 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               </div>
             )}
             <p className="loop-subtitle">
-              Every time a person had to step in, recorded against the capability that needed them.
-              Priced, and ranked by what would pay back fastest.
-              {sample ? ' Sample data.' : ' Read from this machine\u2019s ledger.'}
+              Each time someone had to step in for an agent is logged against the capability it was
+              waiting on, priced, and ranked by how soon fixing it would pay back.
+              {sample ? ' This is sample data.' : ' Read from this machine\u2019s ledger.'}
             </p>
             <SinceStrip since={since} />
           </div>
@@ -939,24 +905,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
         <div className="fig-kpis">
           <figure className="fig fig--kpi fig--wide">
             <figcaption className="fig-caption">
-              <span className="fig-caption-title">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  className="fig-kpi-icon"
-                  aria-hidden="true"
-                >
-                  <circle cx="8" cy="8" r="6" />
-                  <path d="M8 4.5 V8 L10.5 9.5" />
-                </svg>
-                Hours a person spent in the loop
-              </span>
-              <span className="fig-caption-note">the shaded band is the saving</span>
+              <span className="fig-caption-title">Hours spent stepping in</span>
+              <span className="fig-caption-note">shaded: the saving</span>
             </figcaption>
             {/* A ledger with runs and no interventions drew "0h saved, $0 a
                 year", which reads as a measurement of a machine that costs
@@ -988,23 +938,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
           <figure className="fig fig--kpi">
             <figcaption className="fig-caption">
-              <span className="fig-caption-title">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  className="fig-kpi-icon"
-                  aria-hidden="true"
-                >
-                  <circle cx="8" cy="8" r="6" strokeDasharray="3 2" />
-                  <circle cx="8" cy="8" r="2" fill="currentColor" />
-                </svg>
-                Forecast against what happened
-              </span>
+              <span className="fig-caption-title">Forecast against what happened</span>
               <span className="fig-caption-note">{roi.verdict}</span>
             </figcaption>
             {roi.forecast ? (

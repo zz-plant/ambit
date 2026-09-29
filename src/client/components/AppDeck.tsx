@@ -1,7 +1,7 @@
 import type { View } from '../linkState';
 import { BrandMark } from './BrandMark';
 import { ReachBar } from './figures';
-import { Term } from './Term';
+import { termTitle } from './Term';
 
 /**
  * The map's nodes, counted over the nodes alone. Reached is split by the
@@ -104,12 +104,17 @@ export default function AppDeck(p: AppDeckProps) {
                 className={`app-status-seg app-status-seg--${key} ${p.spotlight === group ? 'is-active' : ''}`}
                 aria-pressed={p.spotlight === group}
                 onClick={() => p.onSpotlight(p.spotlight === group ? null : group)}
+                // The definition rides on the tooltip: a glossary popover is a
+                // button, and a button inside this one is invalid markup that
+                // React reported on every load.
                 title={
-                  p.spotlight === group ? 'Show every node again' : `Highlight ${group} on the map`
+                  p.spotlight === group
+                    ? 'Show every node again'
+                    : `Highlight ${group} on the map${key === 'verified' ? `. ${termTitle('evidence')}` : ''}`
                 }
               >
                 <span className="app-status-n">{p.counts![key]}</span>
-                {key === 'verified' ? <Term name="evidence">verified</Term> : group.toLowerCase()}
+                {group.toLowerCase()}
               </button>
             ))}
           </div>

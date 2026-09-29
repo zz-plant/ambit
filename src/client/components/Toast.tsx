@@ -11,7 +11,7 @@ export default function Toast({ message, onDismiss, onViewProposals }: ToastProp
     <div role="status" className="ambit-toast">
       <span>{message}</span>
       <div style={{ display: 'flex', gap: '6px', marginTop: '8px', justifyContent: 'flex-end' }}>
-        {message.includes('Approved:') && (
+        {message.startsWith('Approved ') && (
           <button
             type="button"
             className="tp-btn-sm"

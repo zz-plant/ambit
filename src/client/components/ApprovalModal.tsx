@@ -152,22 +152,6 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         aria-labelledby="proposals-title"
       >
         <div className="sp-hdr">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="var(--accent)"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="sp-modal-icon"
-            aria-hidden="true"
-          >
-            <path d="M4 3 H13 L17 7 V17 H4 Z" />
-            <path d="M12 3 V7 H16" />
-            <path d="M7 11 H13 M7 14 H11" strokeWidth="1.4" />
-          </svg>
           <div className="sp-title-group">
             <h2 id="proposals-title" className="sp-designation">
               Proposals
@@ -265,7 +249,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   {isDeclining && (
                     <div className="gov-decline">
                       <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
-                        Why not? Optional, and what the next draft learns from.
+                        Why not? Optional. The next draft reads it.
                       </label>
                       <input
                         id={`decline-${p.id}`}
@@ -302,7 +286,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                       </>
                     ) : isRejected ? (
                       <span className="gov-hint">
-                        Recorded. A no teaches the next draft what to choose instead.
+                        Turned down. The next draft takes the reason into account.
                       </span>
                     ) : isDeclining ? (
                       <>
@@ -314,7 +298,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                           Keep it waiting
                         </button>
                         <button type="button" className="tp-btn" onClick={handleReject}>
-                          Record the no
+                          Turn it down
                         </button>
                       </>
                     ) : (

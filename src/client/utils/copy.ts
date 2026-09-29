@@ -1,12 +1,11 @@
 /**
  * The few strings that have to read the same everywhere.
  *
- * The tagline appeared in six places in six wordings — README, landing page,
- * page title, package description, citation, agent guide. This is the one the
- * README leads with, and the others now quote it.
+ * The tagline used to live here too, for the landing page. The landing now
+ * leads with its question and a sentence naming the runtimes it reads, and a
+ * second subtitle under the headline said the same thing less concretely, so
+ * the tagline stays where it is quoted from: the README.
  */
-export const TAGLINE =
-  'What you, your agents, and your machines can jointly do — and where your own time is going.';
 
 /** The one-line install the README leads with, quoted by the landing and the tour. */
 export const INSTALL = 'brew install zz-plant/tap/ambit && ambit';

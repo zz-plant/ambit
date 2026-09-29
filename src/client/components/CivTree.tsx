@@ -11,6 +11,7 @@ import {
   buildColumns,
   cascadeDepths,
   COL_W,
+  columnCentre,
   columnLabel,
   columnOf,
   costOf,
@@ -168,7 +169,7 @@ function ColumnCount({
         y={START_Y - 16}
         textAnchor="middle"
         fill="var(--text-muted)"
-        fontSize={9.5}
+        fontSize={10.5}
         fontWeight={500}
         style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
       >
@@ -416,7 +417,7 @@ export default function CivTree({
           ]
         : isTreeView
           ? [
-              { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
+              { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
               { kind: 'ring', label: 'Next step' },
               { kind: 'faded', label: 'Blocked' },
               { kind: 'square', label: 'Keystone' },
@@ -505,10 +506,13 @@ export default function CivTree({
     setSpotlight,
   ]);
 
-  // Center node in view when selected
+  // Centre the node in view: the selection, or else where a simulation
+  // started. On a wide screen the whole map is in view and this is a no-op; on
+  // a phone the cascade would otherwise play out off to the side.
+  const centreOn = selectedId ?? (simulationMode !== 'none' ? simulatedNodeId : null);
   React.useEffect(() => {
-    if (selectedId && nodePositionMap.has(selectedId)) {
-      const pos = nodePositionMap.get(selectedId)!;
+    if (centreOn && nodePositionMap.has(centreOn)) {
+      const pos = nodePositionMap.get(centreOn)!;
       if (containerRef.current) {
         const container = containerRef.current;
         const targetScrollLeft = pos.x * zoom - container.clientWidth / 2;
@@ -520,7 +524,7 @@ export default function CivTree({
         });
       }
     }
-  }, [selectedId, zoom, nodePositionMap]);
+  }, [centreOn, zoom, nodePositionMap]);
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
@@ -535,7 +539,11 @@ export default function CivTree({
     fittedFor.current = contentWidth;
     const available = el.clientWidth - leftInset - 16;
     if (available <= 0) return;
-    setZoom(Math.max(0.4, Math.min(1, +(available / contentWidth).toFixed(2))));
+    // A phone fits the whole tree at about 0.3, where a node's name is four
+    // pixels tall. There the map opens at a scale its names can be read at,
+    // two columns or so across, and scrolls sideways; Fit still shows it all.
+    const floor = el.clientWidth < 700 ? 0.72 : 0.4;
+    setZoom(Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2))));
   }, [contentWidth, leftInset]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -665,13 +673,6 @@ export default function CivTree({
           }}
         >
           <title>Capability tree: what this setup can do, by era</title>
-          <defs>
-            <linearGradient id="columnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.03)" />
-              <stop offset="100%" stopColor="rgba(255, 255, 255, 0.005)" />
-            </linearGradient>
-          </defs>
-
           {/* Era column bands with clean headers */}
           {colOrder.map((d, i) => {
             const x = START_X + i * COL_W;
@@ -681,28 +682,17 @@ export default function CivTree({
                   x={x - 8}
                   y={START_Y - 45}
                   width={COL_W - 16}
-                  height={contentHeight - START_Y + 20}
-                  fill="url(#columnGrad)"
-                  stroke="var(--border)"
-                  strokeWidth={1}
-                  rx={10}
-                />
-                <rect
-                  x={x - 8}
-                  y={START_Y - 45}
-                  width={COL_W - 16}
-                  height={40}
-                  fill="rgba(255, 255, 255, 0.02)"
-                  rx={10}
+                  height={contentHeight - START_Y - 20}
+                  fill="rgba(255, 255, 255, 0.018)"
+                  rx={12}
                 />
                 <text
-                  x={x + COL_W / 2 - 16}
-                  y={START_Y - 29}
+                  x={columnCentre(i)}
+                  y={START_Y - 27}
                   textAnchor="middle"
                   fill="var(--text-primary)"
-                  fontSize={12}
+                  fontSize={12.5}
                   fontWeight={600}
-                  letterSpacing={0.5}
                   style={{ fontFamily: 'var(--font-sans)' }}
                 >
                   <title>{termTitle(isTreeView ? 'era' : 'domain')}</title>
@@ -734,7 +724,9 @@ export default function CivTree({
                   ? intoFocus || outOfFocus
                     ? 0.95
                     : 0.06
-                  : 0.35;
+                  : isHard
+                    ? 0.3
+                    : 0.22;
             const strokeColor = isSimLine
               ? simulationMode === 'outage'
                 ? 'var(--error)'
@@ -745,11 +737,9 @@ export default function CivTree({
                 ? 'var(--edge-needs)'
                 : outOfFocus
                   ? 'var(--accent)'
-                  : isHard
-                    ? 'rgba(99, 102, 241, 0.6)'
-                    : isSoft
-                      ? 'rgba(148, 163, 184, 0.4)'
-                      : 'var(--warn)';
+                  : isHard || isSoft
+                    ? 'var(--text-muted)'
+                    : 'var(--warn)';
 
             return (
               <path
@@ -759,7 +749,7 @@ export default function CivTree({
                 d={edgePath(fromPos.x, fromPos.y, toPos.x, toPos.y)}
                 fill="none"
                 stroke={strokeColor}
-                strokeWidth={isSimLine ? 2.5 : intoFocus || outOfFocus ? 2 : isHard ? 1.5 : 1}
+                strokeWidth={isSimLine ? 2.5 : intoFocus || outOfFocus ? 2 : isHard ? 1.25 : 1}
                 strokeDasharray={isHard ? 'none' : isSoft ? '4,4' : '3,3'}
                 strokeLinecap="round"
                 opacity={op}
@@ -770,7 +760,7 @@ export default function CivTree({
           {/* Nodes */}
           {colOrder.map((domain, ci) => {
             const caps = cols[domain] || [];
-            const cx = START_X + ci * COL_W + COL_W / 2 - 16;
+            const cx = columnCentre(ci);
             return (
               <g key={domain}>
                 {caps.map((item, ri) => {
@@ -807,29 +797,28 @@ export default function CivTree({
                     isSimDimmed ||
                     !isSpotlit ||
                     (isAuthorityLens && simulationMode === 'none' && !mark);
+                  // Blocked is not faded: the dashed ring and the muted label say
+                  // it, and a node drawn at three quarters with a grey label on
+                  // top came out near 3:1, too faint to read the name.
                   const baseOpacity =
-                    isSimRoot || isSimAffected
-                      ? 1
-                      : !isSpotlit
-                        ? 0.15
-                        : dimmed
-                          ? 0.25
-                          : reached || next
-                            ? 1
-                            : 0.75;
+                    isSimRoot || isSimAffected ? 1 : !isSpotlit ? 0.15 : dimmed ? 0.25 : 1;
                   const failingNode = reached && ['degraded', 'broken'].includes(lifecycleOf(item));
 
                   // Reached is done, so it is the quietest filled state; a next
                   // step is the recommendation, so it is the loudest ring on the
                   // map; blocked is drawn as a gap, dashed and legible, and not
                   // faded to where it could not be read.
+                  // A node of the tree is drawn in the state's colours; any other
+                  // kind keeps its type's colour, since a list of kinds is what
+                  // that map is for.
+                  const treeNode = item.type === 'possibility';
                   let nodeFill = reached
-                    ? defaultColor
-                    : next
-                      ? 'var(--accent-soft)'
-                      : 'var(--bg-canvas)';
+                    ? treeNode
+                      ? 'var(--node-reached)'
+                      : defaultColor
+                    : 'var(--bg-canvas)';
                   let sc = selected
-                    ? 'var(--on-accent)'
+                    ? 'var(--text-primary)'
                     : inNeeds
                       ? 'var(--edge-needs)'
                       : inEnables
@@ -839,13 +828,15 @@ export default function CivTree({
                           : next
                             ? 'var(--accent)'
                             : reached
-                              ? defaultColor
+                              ? treeNode
+                                ? 'var(--node-reached-ring)'
+                                : defaultColor
                               : 'var(--text-muted)';
                   let sw =
                     selected || inNeeds || inEnables || failingNode
-                      ? 2.5
+                      ? 2.25
                       : next
-                        ? 3
+                        ? 2.25
                         : reached
                           ? 1.5
                           : 1.25;
@@ -853,7 +844,7 @@ export default function CivTree({
                   if (simulationMode === 'outage') {
                     if (isSimRoot) {
                       nodeFill = 'var(--error)';
-                      sc = 'var(--on-accent)';
+                      sc = 'var(--text-primary)';
                       sw = 2.5;
                     } else if (isSimAffected) {
                       // Red for what stops; amber for what keeps another
@@ -865,7 +856,7 @@ export default function CivTree({
                   } else if (simulationMode === 'gap') {
                     if (isSimRoot) {
                       nodeFill = 'var(--accent)';
-                      sc = 'var(--on-accent)';
+                      sc = 'var(--text-primary)';
                       sw = 2.5;
                     } else if (isSimAffected) {
                       nodeFill = 'var(--warn)';
@@ -875,7 +866,7 @@ export default function CivTree({
                   } else if (simulationMode === 'acquisition') {
                     if (isSimRoot) {
                       nodeFill = 'var(--accent)';
-                      sc = 'var(--on-accent)';
+                      sc = 'var(--text-primary)';
                       sw = 2.5;
                     } else if (isSimAffected) {
                       nodeFill = 'var(--ok)';
@@ -898,7 +889,11 @@ export default function CivTree({
                     sw = 2;
                   }
 
-                  const sym = mark ? AUTHORITY_SYM[mark] : typeSymbol(item.type);
+                  const sym = mark
+                    ? AUTHORITY_SYM[mark]
+                    : item.type === 'possibility'
+                      ? ''
+                      : typeSymbol(item.type);
                   const lines = wrapLabel(item.name);
 
                   return (
@@ -959,25 +954,26 @@ export default function CivTree({
                       )}
                       {isKeystone && !dimmed && (
                         <rect
-                          x={-NODE_R - 4}
-                          y={-NODE_R - 4}
-                          width={(NODE_R + 4) * 2}
-                          height={(NODE_R + 4) * 2}
-                          rx={8}
+                          x={-NODE_R - 6}
+                          y={-NODE_R - 6}
+                          width={(NODE_R + 6) * 2}
+                          height={(NODE_R + 6) * 2}
+                          rx={9}
                           fill="none"
-                          stroke="rgba(245, 158, 11, 0.85)"
-                          strokeWidth={2}
-                          strokeDasharray="5,3"
+                          stroke="var(--warn)"
+                          strokeOpacity={0.75}
+                          strokeWidth={1.25}
+                          strokeDasharray="4,3"
                         />
                       )}
 
                       {selected && (
                         <circle
-                          r={NODE_R + 7}
+                          r={NODE_R + 5}
                           fill="none"
                           stroke="var(--accent)"
                           strokeWidth={2}
-                          opacity={0.8}
+                          opacity={0.7}
                         />
                       )}
 
@@ -990,9 +986,9 @@ export default function CivTree({
                           x={NODE_R + 6}
                           y={-NODE_R + 4}
                           textAnchor="start"
-                          fill="#a5b4fc"
+                          fill="var(--accent)"
                           fontSize={11.5}
-                          fontWeight={700}
+                          fontWeight={600}
                           fontFamily="var(--font-sans)"
                         >
                           {costOf(item)}
@@ -1004,6 +1000,7 @@ export default function CivTree({
                         fill={nodeFill}
                         fillOpacity={
                           reached &&
+                          !treeNode &&
                           simulationMode === 'none' &&
                           !isAttentionHot &&
                           !mark &&
@@ -1018,33 +1015,34 @@ export default function CivTree({
                             ? '5,4'
                             : undefined
                         }
-                        opacity={0.95}
                       />
-                      <text
-                        y={4}
-                        textAnchor="middle"
-                        fill={
-                          reached
-                            ? 'var(--on-accent)'
-                            : dimmed
+                      {sym && (
+                        <text
+                          y={4.5}
+                          textAnchor="middle"
+                          fill={
+                            mark === 'ungranted'
                               ? 'var(--text-muted)'
-                              : 'var(--on-accent)'
-                        }
-                        fontSize={14}
-                        fontWeight={700}
-                      >
-                        {sym}
-                      </text>
+                              : mark || reached
+                                ? 'var(--on-accent)'
+                                : 'var(--text-muted)'
+                          }
+                          fontSize={13}
+                          fontWeight={700}
+                        >
+                          {sym}
+                        </text>
+                      )}
 
                       {reached &&
                         !dimmed &&
                         ['verified', 'reliable'].includes(item.meta?.lifecycle as string) && (
-                          <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                          <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
                             <circle
-                              r={6}
+                              r={6.5}
                               fill="var(--ok)"
                               stroke="var(--bg-canvas)"
-                              strokeWidth={1.5}
+                              strokeWidth={2}
                             />
                             <text
                               y={3}
@@ -1060,12 +1058,12 @@ export default function CivTree({
                       {reached &&
                         !dimmed &&
                         ['degraded', 'broken'].includes(item.meta?.lifecycle as string) && (
-                          <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                          <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
                             <circle
-                              r={6}
+                              r={6.5}
                               fill="var(--error)"
                               stroke="var(--bg-canvas)"
-                              strokeWidth={1.5}
+                              strokeWidth={2}
                             />
                             <text
                               y={3}
@@ -1092,15 +1090,19 @@ export default function CivTree({
                           on the first keeps the element's text the whole name,
                           which the recorder matches against the aria-label. */}
                       <text
-                        y={NODE_R + 16}
+                        y={NODE_R + 17}
                         textAnchor="middle"
-                        fill={dimmed ? 'var(--text-muted)' : 'var(--text-primary)'}
-                        fontSize={11.5}
-                        fontWeight={500}
+                        fill={
+                          dimmed || (!reached && !next && !isSimAffected && !isSimRoot)
+                            ? 'var(--text-muted)'
+                            : 'var(--text-primary)'
+                        }
+                        fontSize={12}
+                        fontWeight={reached || next ? 500 : 400}
                         fontFamily="var(--font-sans)"
                       >
                         {lines.map((line, li) => (
-                          <tspan key={line} x={0} dy={li === 0 ? 0 : 12}>
+                          <tspan key={line} x={0} dy={li === 0 ? 0 : 14}>
                             {li < lines.length - 1 ? `${line} ` : line}
                           </tspan>
                         ))}
@@ -1142,7 +1144,7 @@ export default function CivTree({
               const downCount = (downstream.get(ni.id) || []).length;
               const isKey = downCount >= 3 || isRuntimeNode(ni);
 
-              const W = 220;
+              const W = 236;
               const headH = 22;
               const keyH = isKey ? 18 : 0;
               const descH = lines.length * 15;
@@ -1157,7 +1159,7 @@ export default function CivTree({
               const hintH = 17;
               const boxH = headH + keyH + descH + enablesH + hintH + 12;
 
-              const tx = START_X + di * COL_W + COL_W / 2 - 16 + NODE_R + 10;
+              const tx = columnCentre(di) + NODE_R + 10;
               const ty = START_Y + ai * ROW_H + NODE_R - 10;
 
               return (
@@ -1168,26 +1170,26 @@ export default function CivTree({
                     width={W}
                     height={boxH}
                     rx={8}
-                    fill="var(--bg-surface)"
-                    stroke="var(--border)"
+                    fill="var(--bg-elevated)"
+                    stroke="var(--border-bright)"
                     strokeWidth={1}
                   />
                   <text
                     x={12}
                     y={16}
                     fill="var(--text-primary)"
-                    fontSize={12}
+                    fontSize={12.5}
                     fontWeight={600}
                     fontFamily="var(--font-sans)"
                   >
-                    {unreached ? 'Not reached yet' : ni.name}
+                    {ni.name}
                   </text>
                   {isKey && (
                     <text
                       x={12}
                       y={headH + 12}
                       fill="var(--warn)"
-                      fontSize={10}
+                      fontSize={11}
                       fontWeight={600}
                       fontFamily="var(--font-sans)"
                     >
@@ -1200,7 +1202,7 @@ export default function CivTree({
                       x={12}
                       y={headH + keyH + 12 + i * 15}
                       fill="var(--text-secondary)"
-                      fontSize={11}
+                      fontSize={11.5}
                       fontFamily="var(--font-sans)"
                     >
                       {line}
@@ -1211,7 +1213,7 @@ export default function CivTree({
                       x={12}
                       y={headH + keyH + descH + 15}
                       fill="var(--text-muted)"
-                      fontSize={10.5}
+                      fontSize={11}
                       fontWeight={600}
                       fontFamily="var(--font-sans)"
                     >
@@ -1231,7 +1233,7 @@ export default function CivTree({
                         x={14}
                         y={headH + keyH + descH + 30 + i * 15}
                         fill="var(--text-primary)"
-                        fontSize={11}
+                        fontSize={11.5}
                         fontFamily="var(--font-sans)"
                       >
                         {label}
@@ -1243,7 +1245,7 @@ export default function CivTree({
                       x={14}
                       y={boxH - hintH - 6}
                       fill="var(--text-muted)"
-                      fontSize={10}
+                      fontSize={11}
                       fontFamily="var(--font-sans)"
                     >
                       +{hoverDownstream.length - 4} more
@@ -1253,7 +1255,7 @@ export default function CivTree({
                     x={12}
                     y={boxH - 7}
                     fill="var(--accent)"
-                    fontSize={10}
+                    fontSize={11}
                     fontFamily="var(--font-sans)"
                   >
                     {hint}
@@ -1333,12 +1335,20 @@ export default function CivTree({
                         opacity={0.9}
                         stroke={
                           isLegendActive
-                            ? 'var(--on-accent)'
+                            ? 'var(--text-primary)'
                             : l.color === 'var(--bg-canvas)'
                               ? 'var(--text-muted)'
-                              : 'none'
+                              : l.color === 'var(--node-reached)'
+                                ? 'var(--node-reached-ring)'
+                                : 'none'
                         }
-                        strokeWidth={isLegendActive ? 2 : l.color === 'var(--bg-canvas)' ? 1.25 : 0}
+                        strokeWidth={
+                          isLegendActive
+                            ? 2
+                            : l.color === 'var(--bg-canvas)' || l.color === 'var(--node-reached)'
+                              ? 1.25
+                              : 0
+                        }
                       />
                       {l.sym && (
                         <text
@@ -1355,12 +1365,7 @@ export default function CivTree({
                   )}
                   {l.kind === 'joint' && <JointIcon mark={l.mark} />}
                   {l.kind === 'ring' && (
-                    <circle
-                      r={7}
-                      fill="var(--accent-soft)"
-                      stroke="var(--accent)"
-                      strokeWidth={2.5}
-                    />
+                    <circle r={7} fill="var(--bg-canvas)" stroke="var(--accent)" strokeWidth={2} />
                   )}
                   {l.kind === 'faded' && (
                     <circle
@@ -1379,8 +1384,9 @@ export default function CivTree({
                       height={16}
                       rx={3}
                       fill="none"
-                      stroke="rgba(245, 158, 11, 0.7)"
-                      strokeWidth={1.5}
+                      stroke="var(--warn)"
+                      strokeOpacity={0.75}
+                      strokeWidth={1.25}
                       strokeDasharray="3,2"
                     />
                   )}
@@ -1391,7 +1397,7 @@ export default function CivTree({
                       y1={0}
                       x2={10}
                       y2={0}
-                      stroke={l.color ?? (l.dashed ? 'var(--text-muted)' : 'var(--accent)')}
+                      stroke={l.color ?? 'var(--text-muted)'}
                       strokeWidth={1.5}
                       strokeDasharray={l.dashed ? '4,3' : 'none'}
                     />
@@ -1400,12 +1406,12 @@ export default function CivTree({
                     x={l.kind === 'label' ? 0 : 12}
                     y={3.5}
                     fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
-                    fontSize={10.5}
+                    fontSize={11.5}
                     fontWeight={isLegendActive ? 600 : 400}
                     fontFamily="var(--font-sans)"
-                    // Dotted, not solid: it marks the key as operable without
-                    // claiming to be a hyperlink to somewhere else.
-                    textDecoration={clickable ? 'underline dotted' : undefined}
+                    // No underline: SVG text drew the dotted one solid, so every
+                    // key read as a hyperlink. The pointer, the hover tooltip and
+                    // the hint at the end of the row say a key can be pressed.
                   >
                     {l.label}
                   </text>
@@ -1427,8 +1433,8 @@ export default function CivTree({
                   setSpotlight(null);
                 }}
               >
-                <text y={3.5} fill="var(--accent)" fontSize={10.5} fontFamily="var(--font-sans)">
-                  {spotlight} only — show all (Esc)
+                <text y={3.5} fill="var(--accent)" fontSize={11.5} fontFamily="var(--font-sans)">
+                  Showing {spotlight} only · show all (Esc)
                 </text>
               </g>
             ) : (
@@ -1437,10 +1443,10 @@ export default function CivTree({
                   transform={`translate(${legendEnd}, 8)`}
                   y={3.5}
                   fill="var(--text-muted)"
-                  fontSize={10.5}
+                  fontSize={11.5}
                   fontFamily="var(--font-sans)"
                 >
-                  click a key to highlight
+                  Click a key to highlight it
                 </text>
               )
             )}

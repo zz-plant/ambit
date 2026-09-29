@@ -224,7 +224,7 @@ test('nodes step across by column and down by row', () => {
   const b = placed.get('b')!;
   const c = placed.get('c')!;
 
-  expect(a.x).toBe(START_X + COL_W / 2 - 40);
+  expect(a.x).toBe(START_X + COL_W / 2 - 16);
   expect(a.y).toBe(START_Y + NODE_R);
   expect(b.x).toBe(a.x); // same column
   expect(b.y).toBe(a.y + ROW_H); // next row

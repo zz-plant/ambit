@@ -100,7 +100,7 @@ export function demoProposals(): ProposalRow[] {
     {
       id: 'prop-deploy-staging-42',
       created_at: new Date(Date.now() - 3600000).toISOString(),
-      goal: 'Deploy Billing Service Hotfix to Staging Cluster',
+      goal: 'Deploy the billing hotfix to the staging cluster',
       status: 'draft',
       steps: JSON.stringify([
         { action: 'verify_kubeconfig', provider: 'tool:kubectl', status: 'pending' },
@@ -128,7 +128,7 @@ export function demoProposals(): ProposalRow[] {
     {
       id: 'prop-offline-semantic-search',
       created_at: new Date(Date.now() - 86400000).toISOString(),
-      goal: 'Acquire pgvector extension on local Postgres for offline RAG',
+      goal: 'Add pgvector to the local Postgres, for offline retrieval',
       status: 'approved',
       steps: JSON.stringify([
         { action: 'enable_extension', provider: 'tool:postgres', status: 'done' },
