@@ -66,6 +66,7 @@ export default function App() {
   const loadHistory = useAmbitStore(s => s.loadHistory);
 
   const selectItem = useAmbitStore(s => s.selectItem);
+  const selectEra = useAmbitStore(s => s.selectEra);
   const hoverItem = useAmbitStore(s => s.hoverItem);
   const loadGraph = useAmbitStore(s => s.loadGraph);
   const seedDemo = useAmbitStore(s => s.seedDemo);
@@ -245,7 +246,9 @@ export default function App() {
   const showView = (next: View) => {
     setView(next);
     // The detail panel is meaningful over the map and the list, and in the
-    // way over the figures.
+    // way over the figures. An era's ladder is the map's alone: it stayed open
+    // over My Setup, covering the right edge of the list.
+    if (next !== 'tree' && useAmbitStore.getState().selectedEra !== null) selectEra(null);
     if (next === 'loop') {
       selectItem(null);
       if (!demo) loadLoop();
@@ -436,7 +439,7 @@ export default function App() {
             onShowProposals={showProposals}
             onMapped={() => {
               endTour();
-              setView('config');
+              showView('config');
             }}
           />
         ) : (
