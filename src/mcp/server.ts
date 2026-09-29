@@ -72,6 +72,7 @@ import {
   observedReport,
   pendingProposals,
 } from '../engine/engine.ts';
+import { judgeGoal } from '../engine/judge.ts';
 import { REACHED_SQL, graphCounts, notSeeded } from '../engine/vocabulary.ts';
 
 const DB_PATH = resolveDbPath();
@@ -138,7 +139,7 @@ let buf = '';
 // the first message in a chunk was ever answered — and a client that batches
 // initialize with tools/list, or whose requests simply arrive coalesced, would
 // hang waiting for a response that was never going to come.
-function handleLine(line: string) {
+async function handleLine(line: string) {
   if (!line.trim()) return;
   try {
     const msg = JSON.parse(line);
@@ -258,7 +259,13 @@ function handleLine(line: string) {
               res = tt(db => planFor(db, capId));
               break;
             case 'tt_goal':
-              res = tt(db => goalFor(db, args.goal));
+              if (args?.judge) {
+                const base = tt(db => goalFor(db, args.goal));
+                const judged = await judgeGoal(args.goal, { url: args.judgeUrl });
+                res = { ...base, judged };
+              } else {
+                res = tt(db => goalFor(db, args.goal));
+              }
               break;
             case 'tt_paths':
               res = tt(db => pathsFor(db, capId));
@@ -467,10 +474,22 @@ function handleLine(line: string) {
   } catch {}
 }
 
+let queue: Promise<unknown> = Promise.resolve();
+
 process.stdin.on('data', chunk => {
   buf += chunk.toString();
   const lines = buf.split('\n');
   buf = lines.pop() || '';
-  for (const line of lines) handleLine(line);
+  for (const line of lines) {
+    queue = queue.then(() => handleLine(line));
+  }
 });
-process.stdin.on('end', () => process.exit(0));
+
+process.stdin.on('end', async () => {
+  if (buf.trim()) {
+    queue = queue.then(() => handleLine(buf));
+    buf = '';
+  }
+  await queue;
+  process.exit(0);
+});

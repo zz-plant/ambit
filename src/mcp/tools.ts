@@ -122,13 +122,21 @@ const BASE_TOOLS = [
   {
     name: 'goal',
     description:
-      'Route a free-form goal (a sentence, not an id) to the capabilities that plausibly cover it, ranked, each with its plan delta. Use this when the user wants something and neither of you knows the capability id.',
+      'Route a free-form goal sentence to covering capabilities, ranked, each with its plan delta.',
     inputSchema: {
       type: 'object',
       properties: {
         goal: {
           type: 'string',
-          description: 'What the user wants to be able to do, in their words',
+          description: 'What the user wants to do, in words',
+        },
+        judge: {
+          type: 'boolean',
+          description: 'Route unmatched goal via local judgment model',
+        },
+        judgeUrl: {
+          type: 'string',
+          description: 'Optional loopback judge URL',
         },
       },
       required: ['goal'],

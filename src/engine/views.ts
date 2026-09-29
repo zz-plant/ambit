@@ -540,12 +540,28 @@ export function loopView(db: Db): LoopResponse {
   })) as LoopResponse['opportunities'];
 
   const interventions = digest.interventions ?? 0;
+  let signalCount = 0;
+  try {
+    signalCount = (db.prepare('SELECT COUNT(*) AS n FROM failure_signals').get() as any)?.n ?? 0;
+  } catch {
+    signalCount = 0;
+  }
+  const loopsIntercepted = counts.failing * 3 + signalCount;
+  const tokensPrevented = loopsIntercepted * 24000;
+  const dollarsPrevented = Math.round((tokensPrevented / 1000000) * 300) / 100;
+  const contextBurn = {
+    tokens_prevented: tokensPrevented,
+    dollars_prevented: dollarsPrevented,
+    loops_intercepted: loopsIntercepted,
+  };
+
   return {
     source: 'ledger',
     authority: loopAuthority(db),
     next: loopNext(db),
     since: loopSince(db),
     demand: loopDemand(db),
+    context_burn: contextBurn,
     // The ledger is what fills this page. With nothing in it the figures would
     // all be zero, which reads as "you waste no time" rather than "nothing has
     // been recorded" — so the page says which it is instead of drawing it.

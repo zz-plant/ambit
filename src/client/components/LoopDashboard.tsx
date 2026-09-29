@@ -959,6 +959,40 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             )}
           </figure>
 
+          {loop.context_burn && (
+            <figure className="fig fig--kpi">
+              <figcaption className="fig-caption">
+                <span className="fig-caption-title">
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    className="fig-kpi-icon"
+                    aria-hidden="true"
+                  >
+                    <circle cx="8" cy="8" r="6" />
+                    <path d="M8 5v3l2 2" />
+                  </svg>
+                  Context burn prevented
+                </span>
+                <span className="fig-caption-note">
+                  {loop.context_burn.loops_intercepted} loops intercepted
+                </span>
+              </figcaption>
+              <div className="fig-kpi-value" style={NUM}>
+                {money(loop.context_burn.dollars_prevented)}
+                <span className="fig-kpi-unit"> saved</span>{' '}
+                <span className="fig-kpi-second">
+                  {Math.round(loop.context_burn.tokens_prevented / 1000)}k tokens
+                </span>
+              </div>
+            </figure>
+          )}
+
           <AssuranceBar status={status} />
           {!(status.degraded?.length > 0) && <Fragility status={status} />}
         </div>

@@ -7,6 +7,7 @@ import { canExecute } from '../engine/assurance.ts';
 import { beginRun, endRun, addEvent, recordIntervention, recordUse } from '../engine/telemetry.ts';
 import { verifyApproval } from '../engine/approval.ts';
 import { auditFor } from '../engine/audit.ts';
+import { analyzeImpact } from '../engine/inference.ts';
 
 /**
  * The seam between the control plane and a real system.
@@ -56,6 +57,9 @@ export interface AgentExecutionRequest {
   payload?: Record<string, any>;
   hmac_approval_token?: string | null;
   run_id?: string;
+  simulate?: boolean;
+  break_glass?: boolean;
+  break_glass_reason?: string;
 }
 
 export interface OpenTelemetrySpan {
@@ -90,6 +94,8 @@ export interface ControlPlaneResult {
   state_unchanged: boolean;
   pre_state: SimulatedEnvironment;
   post_state: SimulatedEnvironment;
+  blast_radius?: any;
+  break_glass_used?: boolean;
 }
 
 /**
@@ -305,6 +311,45 @@ export function executeThroughControlPlane(
     },
   });
 
+  // Pre-execution dry-run blast radius simulation
+  if (request.simulate) {
+    const blastRadius = analyzeImpact(db, capabilityId);
+    spanEvents.push({
+      name: 'blast_radius_simulation',
+      timestamp: new Date().toISOString(),
+      attributes: {
+        capability_id: capabilityId,
+        decayed_count: blastRadius?.decayed?.length ?? 0,
+        combos_at_risk_count: blastRadius?.combos_at_risk?.length ?? 0,
+      },
+    });
+    endRun(db, runId, 'simulated');
+    const endTime = new Date().toISOString();
+    return {
+      ok: true,
+      status_code: 'SIMULATED',
+      exit_code: 0,
+      trace: {
+        trace_id: traceId,
+        span_id: spanId,
+        name: 'control_plane.simulate',
+        start_time: startTime,
+        end_time: endTime,
+        attributes: {
+          'agent.id': request.agent_id,
+          'target.capability': capabilityId,
+          simulated: true,
+        },
+        events: spanEvents,
+        status: { code: 'OK' },
+      },
+      state_unchanged: true,
+      pre_state: preState,
+      post_state: preState,
+      blast_radius: blastRadius,
+    };
+  }
+
   // 2. Authority & Decision Evaluation
   const decision = canExecute(db, {
     actor: request.agent_id,
@@ -341,6 +386,35 @@ export function executeThroughControlPlane(
         blockedReason = `Approval ${proposalId} does not cover ${capabilityId}; it authorises a different proposal`;
         missingAuthorizationNode = 'human:security-lead';
       }
+    }
+  }
+
+  // Emergency Break-Glass evaluation
+  let breakGlassUsed = false;
+  if (request.break_glass) {
+    if (!request.break_glass_reason?.trim()) {
+      blockedReason =
+        'Emergency break-glass invoked without required justification (break_glass_reason)';
+      missingAuthorizationNode = 'human:security-lead';
+    } else {
+      breakGlassUsed = true;
+      blockedReason = null;
+      addEvent(db, runId, {
+        kind: 'break_glass',
+        actor: request.agent_id,
+        capabilityId,
+        action,
+        detail: `Emergency break-glass override: ${request.break_glass_reason.trim()}`,
+      });
+      spanEvents.push({
+        name: 'break_glass_override',
+        timestamp: new Date().toISOString(),
+        attributes: {
+          reason: request.break_glass_reason.trim(),
+          actor: request.agent_id,
+          original_decision: decision.decision,
+        },
+      });
     }
   }
 
@@ -485,7 +559,9 @@ export function executeThroughControlPlane(
   const postState = adapter.apply({
     production_version: request.payload?.target_version || 'v2.0.0',
     last_deployed_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    last_deployed_by: `agent:${request.agent_id} [authorized-by:human:security-lead]`,
+    last_deployed_by: breakGlassUsed
+      ? `agent:${request.agent_id} [break-glass: ${request.break_glass_reason?.trim()}]`
+      : `agent:${request.agent_id} [authorized-by:human:security-lead]`,
     active_containers: ['web-prod-v2-1', 'web-prod-v2-2'],
   });
 
@@ -497,6 +573,7 @@ export function executeThroughControlPlane(
     attributes: {
       new_version: postState.production_version,
       deployed_by: postState.last_deployed_by,
+      break_glass_used: breakGlassUsed,
     },
   });
 
@@ -508,9 +585,12 @@ export function executeThroughControlPlane(
     end_time: new Date().toISOString(),
     attributes: {
       'ambit.decision': 'ALLOW',
-      'ambit.status_code': 'AMBIT_EXECUTION_AUTHORIZED',
+      'ambit.status_code': breakGlassUsed
+        ? 'AMBIT_EXECUTION_BREAK_GLASS'
+        : 'AMBIT_EXECUTION_AUTHORIZED',
       'ambit.capability_id': capabilityId,
       'ambit.applied_version': postState.production_version,
+      'ambit.break_glass': breakGlassUsed,
     },
     events: spanEvents,
     status: {
@@ -522,12 +602,13 @@ export function executeThroughControlPlane(
 
   return {
     ok: true,
-    status_code: 'AMBIT_EXECUTION_AUTHORIZED',
+    status_code: breakGlassUsed ? 'AMBIT_EXECUTION_BREAK_GLASS' : 'AMBIT_EXECUTION_AUTHORIZED',
     exit_code: 0,
     trace: span,
     audit_summary: auditSummary,
     state_unchanged: false,
     pre_state: preState,
     post_state: postState,
+    break_glass_used: breakGlassUsed,
   };
 }

@@ -241,3 +241,31 @@ test('usage answers what was used and is not on the map when asked', () => {
   expect(answer.unmapped).toEqual([]);
   expect(answer.note).toContain('ambit-telemetry.js');
 });
+
+test('ambit_goal routes goals and accepts judge option', () => {
+  const [replyStandard] = rpc([
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'ambit_goal', arguments: { goal: 'run offline without third party APIs' } },
+    },
+  ]);
+  const standardAnswer = replyStandard.result.structuredContent;
+  expect(standardAnswer).toBeDefined();
+
+  const [replyJudged] = rpc([
+    {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: {
+        name: 'ambit_goal',
+        arguments: { goal: 'unmatched unusual requirement', judge: true },
+      },
+    },
+  ]);
+  const judgedAnswer = replyJudged.result.structuredContent;
+  expect(judgedAnswer).toBeDefined();
+  expect(judgedAnswer.judged).toBeDefined();
+});

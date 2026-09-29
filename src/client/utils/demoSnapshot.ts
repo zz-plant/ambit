@@ -253,5 +253,10 @@ export function demoSnapshot(): LoopSnapshot {
       lost: [],
       diminished: treeStatus().degraded,
     },
+    context_burn: {
+      tokens_prevented: 144000,
+      dollars_prevented: 43.2,
+      loops_intercepted: 6,
+    },
   };
 }

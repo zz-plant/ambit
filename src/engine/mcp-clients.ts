@@ -3,7 +3,16 @@ import { join } from 'node:path';
 import { defaultMapping } from './seed/writers.ts';
 
 export interface McpClientSeed {
-  runtime: 'cursor' | 'windsurf' | 'gemini-cli' | 'claude-desktop' | 'codex';
+  runtime:
+    | 'cursor'
+    | 'windsurf'
+    | 'gemini-cli'
+    | 'claude-desktop'
+    | 'codex'
+    | 'cline'
+    | 'roo-code'
+    | 'continue'
+    | 'zed';
   label: string;
   path: string;
   config: { mcp: Record<string, unknown> };
@@ -59,6 +68,32 @@ function readMcpServersJson(raw: string): Record<string, unknown> | null {
   return parsed.mcpServers;
 }
 
+/** Continue's configuration, reading either mcpServers or experimental MCP servers. */
+function readContinueJson(raw: string): Record<string, unknown> | null {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const servers = parsed?.mcpServers || parsed?.experimental?.modelContextProtocolServers;
+  if (!servers || typeof servers !== 'object') return null;
+  return servers;
+}
+
+/** Zed's settings, reading the context_servers table. */
+function readZedJson(raw: string): Record<string, unknown> | null {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const servers = parsed?.context_servers;
+  if (!servers || typeof servers !== 'object') return null;
+  return servers;
+}
+
 const CLIENTS = [
   {
     runtime: 'cursor' as const,
@@ -97,6 +132,81 @@ const CLIENTS = [
     env: 'CODEX_MCP_CONFIG',
     paths: (home: string) => [join(home, '.codex', 'config.toml')],
     read: readCodexToml,
+  },
+  {
+    runtime: 'cline' as const,
+    label: 'Cline',
+    env: 'CLINE_MCP_CONFIG',
+    paths: (home: string) => [
+      join(
+        home,
+        'Library',
+        'Application Support',
+        'Code',
+        'User',
+        'globalStorage',
+        'saoudrizwan.claude-dev',
+        'settings',
+        'cline_mcp_settings.json'
+      ),
+      join(
+        home,
+        '.config',
+        'Code',
+        'User',
+        'globalStorage',
+        'saoudrizwan.claude-dev',
+        'settings',
+        'cline_mcp_settings.json'
+      ),
+    ],
+    read: readMcpServersJson,
+  },
+  {
+    runtime: 'roo-code' as const,
+    label: 'Roo Code',
+    env: 'ROO_CODE_MCP_CONFIG',
+    paths: (home: string) => [
+      join(
+        home,
+        'Library',
+        'Application Support',
+        'Code',
+        'User',
+        'globalStorage',
+        'rooveterinaryinc.roo-cline',
+        'settings',
+        'cline_mcp_settings.json'
+      ),
+      join(
+        home,
+        '.config',
+        'Code',
+        'User',
+        'globalStorage',
+        'rooveterinaryinc.roo-cline',
+        'settings',
+        'cline_mcp_settings.json'
+      ),
+    ],
+    read: readMcpServersJson,
+  },
+  {
+    runtime: 'continue' as const,
+    label: 'Continue',
+    env: 'CONTINUE_MCP_CONFIG',
+    paths: (home: string) => [join(home, '.continue', 'config.json')],
+    read: readContinueJson,
+  },
+  {
+    runtime: 'zed' as const,
+    label: 'Zed',
+    env: 'ZED_MCP_CONFIG',
+    paths: (home: string) => [
+      join(home, '.config', 'zed', 'settings.json'),
+      join(home, 'Library', 'Application Support', 'Zed', 'settings.json'),
+    ],
+    read: readZedJson,
   },
 ];
 

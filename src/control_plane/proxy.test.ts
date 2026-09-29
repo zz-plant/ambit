@@ -304,3 +304,55 @@ test('a block leaves the environment byte-identical, hash included', () => {
   const after = readSimulatedEnvironment(envDir);
   expect(after).toEqual(before);
 });
+
+// ── Simulation and Break-Glass ───────────────────────────────────────────────
+
+test('pre-execution dry-run blast radius simulation returns impact without modifying state', () => {
+  const before = readSimulatedEnvironment(envDir);
+  const result = executeThroughControlPlane(db, envDir, {
+    ...DEPLOY,
+    simulate: true,
+  });
+
+  expect(result.ok).toBe(true);
+  expect(result.status_code).toBe('SIMULATED');
+  expect(result.state_unchanged).toBe(true);
+  expect(result.blast_radius).toBeDefined();
+  expect(Array.isArray(result.blast_radius.decayed)).toBe(true);
+  expect(Array.isArray(result.blast_radius.combos_at_risk)).toBe(true);
+  expect(readSimulatedEnvironment(envDir)).toEqual(before);
+});
+
+test('emergency break-glass without justification is rejected', () => {
+  const before = readSimulatedEnvironment(envDir);
+  const result = executeThroughControlPlane(db, envDir, {
+    ...DEPLOY,
+    break_glass: true,
+    break_glass_reason: '',
+  });
+
+  expect(result.ok).toBe(false);
+  expect(result.intercept_reason).toContain('without required justification');
+  expect(readSimulatedEnvironment(envDir)).toEqual(before);
+});
+
+test('emergency break-glass with justification permits execution and writes audit record', () => {
+  const before = readSimulatedEnvironment(envDir);
+  const result = executeThroughControlPlane(db, envDir, {
+    ...DEPLOY,
+    break_glass: true,
+    break_glass_reason: 'Sev-1 hotfix for auth vulnerability CVE-2026-9999',
+  });
+
+  expect(result.ok).toBe(true);
+  expect(result.status_code).toBe('AMBIT_EXECUTION_BREAK_GLASS');
+  expect(result.break_glass_used).toBe(true);
+
+  const after = readSimulatedEnvironment(envDir);
+  expect(after.production_version).toBe('v2.0.0');
+  expect(after.last_deployed_by).toContain('CVE-2026-9999');
+  expect(after.immutable_hash).not.toBe(before.immutable_hash);
+
+  const events = result.audit_summary.events;
+  expect(events.some((e: any) => e.kind === 'break_glass')).toBe(true);
+});
