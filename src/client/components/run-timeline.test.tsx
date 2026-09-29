@@ -312,6 +312,38 @@ test('the way in is on the Time & cost page', () => {
   expect(html).toContain('fig-run');
 });
 
+test('an engine with no run route is a ledger with no run, not a read that never ends', async () => {
+  // An engine older than /api/run answers 404 with a plain "Not found", which
+  // is not JSON: the section read "Reading the ledger…" for good.
+  vi.stubGlobal('fetch', async (url: string) =>
+    url.startsWith('/api/health')
+      ? { ok: true, json: async () => ({ status: 'ok' }) }
+      : {
+          ok: false,
+          status: 404,
+          json: async () => {
+            throw new SyntaxError('Unexpected token N in JSON');
+          },
+        }
+  );
+  seed({ demo: false, run: null });
+  await useAmbitStore.getState().loadRun();
+  expect(useAmbitStore.getState().run).toEqual({ recent: [], run: null });
+  // A server render reads the initial state, so what was loaded is handed to it.
+  seed({ run: useAmbitStore.getState().run });
+  expect(text(renderToStaticMarkup(<RunSection />))).toContain('No run recorded yet');
+
+  // A graph that does not exist yet answers a JSON 404: the same, said the same way.
+  vi.stubGlobal('fetch', async (url: string) =>
+    url.startsWith('/api/health')
+      ? { ok: true, json: async () => ({ status: 'ok' }) }
+      : { ok: false, status: 404, json: async () => ({ error: 'No graph yet.' }) }
+  );
+  seed({ run: null });
+  await useAmbitStore.getState().loadRun();
+  expect(useAmbitStore.getState().run).toEqual({ recent: [], run: null });
+});
+
 test('on the demo the runs are the demo’s, and a pick is answered without an engine', async () => {
   seed({ demo: true });
   await useAmbitStore.getState().loadRun();

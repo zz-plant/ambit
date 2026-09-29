@@ -175,6 +175,27 @@ export function initialView(link: LinkState, narrow: boolean, touring = false): 
 export type ShareState = Omit<LinkState, 'guideOff' | 'viewStated' | 'collapse' | 'depth' | 'dir'> &
   Partial<Pick<LinkState, 'collapse' | 'depth' | 'dir'>>;
 
+/** Where an address is written: the page's location and history, or a stand-in for them. */
+export interface AddressBar {
+  location: { search: string; hash: string };
+  history: { replaceState: (data: unknown, unused: string, url: string) => void };
+}
+
+/**
+ * Put `search` in the address bar, if it is not there already. Safari throws
+ * once a page writes history a hundred times in thirty seconds, and scrubbing
+ * a long ledger writes once per tick, so a write the browser refuses is
+ * skipped: the next change writes the address again.
+ */
+export function writeAddress(bar: AddressBar, search: string): void {
+  if (bar.location.search === search) return;
+  try {
+    bar.history.replaceState({}, '', search + bar.location.hash);
+  } catch {
+    /* the address bar catches up on the next change */
+  }
+}
+
 /**
  * The query string for a view, defaults omitted.
  *

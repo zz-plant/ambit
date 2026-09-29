@@ -665,12 +665,21 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       set({ run: demoRun(id) });
       return;
     }
+    // With nothing drawn yet, an answer that is not a run is a ledger with no
+    // run, and says so. An engine that predates the route answers a plain 404,
+    // and the section read "Reading the ledger…" for good.
+    const none = () => {
+      if (!get().run) set({ run: { recent: [], run: null } });
+    };
     try {
       const res = await fetch(id ? `/api/run?id=${encodeURIComponent(id)}` : '/api/run');
+      if (!res.ok) return none();
       const body = (await res.json()) as ApiResult<ApiRoutes['/api/run']>;
       if (!isApiError(body)) set({ run: body });
+      else none();
     } catch {
-      /* the section keeps whatever it had */
+      // Whatever the section already shows, it keeps.
+      none();
     }
   },
 

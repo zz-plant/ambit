@@ -8,7 +8,13 @@
  * the two rules that keep the link short and honest.
  */
 import { expect, test } from 'vitest';
-import { linkFocus, readLinkState, writeLinkState, type ShareState } from './linkState';
+import {
+  linkFocus,
+  readLinkState,
+  type ShareState,
+  writeAddress,
+  writeLinkState,
+} from './linkState';
 
 const base: ShareState = {
   view: 'tree',
@@ -166,4 +172,25 @@ test('a collapse comes with a node the graph holds, or not at all', () => {
   expect(read('?view=tree&focus=combo:nope&collapse=1')).toBeNull();
   // Before the graph is read there is nothing to find it in.
   expect(linkFocus(readLinkState('?focus=combo:shell-execution&collapse=1'), [])).toBeNull();
+});
+
+test('a history write the browser refuses is skipped, and the page goes on', () => {
+  // Safari throws once a page writes history a hundred times in thirty
+  // seconds, and scrubbing a long ledger writes once per tick: the throw came
+  // out of an effect, and could take the page down with it.
+  const written: string[] = [];
+  const bar = (refuse: boolean) => ({
+    location: { search: '?view=tree', hash: '#top' },
+    history: {
+      replaceState: (_data: unknown, _unused: string, url: string) => {
+        if (refuse) throw new Error('SecurityError: too many calls to the History API');
+        written.push(url);
+      },
+    },
+  });
+  expect(() => writeAddress(bar(true), '?view=tree&at=2026-09-21T09%3A00%3A00Z')).not.toThrow();
+  writeAddress(bar(false), '?view=loop');
+  // What is already there is not written again.
+  writeAddress(bar(false), '?view=tree');
+  expect(written).toEqual(['?view=loop#top']);
 });
