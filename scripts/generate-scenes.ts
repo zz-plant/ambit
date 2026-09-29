@@ -47,8 +47,14 @@ const TAGLINE =
 // three accent colours averaged into one grey, and what was left was a dark
 // smudge on a dark tab bar. Hence the two rules here. The mark is mass, not
 // line art, so it survives being four times smaller than it is drawn; and it
-// sits on an indigo plate, so the brand colour is what a tab shows instead of
-// a black square that disappears into the browser's own chrome.
+// sits on a plate of the brand colour, so that colour is what a tab shows
+// instead of a black square that disappears into the browser's own chrome.
+//
+// The plate is the page's accent, flat, and the A is cut from it in the
+// ground colour: the dark-on-accent of a filled button in App.css, which is
+// the only way the page puts the accent under anything. It was a gradient of
+// indigo into sky with a white A, the last palette's colours, and once the page
+// moved off them the mark was the one thing on it still wearing them.
 
 /** Vertices of the A. The crossbar meets the legs at 70% of the letter's height. */
 const APEX = { x: 32, y: 12 };
@@ -78,28 +84,28 @@ function mark(paint: string): string {
     <circle cx="${FEET[1].x}" cy="${FEET[1].y}" r="7.5" fill="${paint}"/>`;
 }
 
-/** Indigo to blue, across the plate. */
-const PLATE_GRADIENT = `<linearGradient id="plate" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#4f46e5"/>
-      <stop offset="100%" stop-color="#0284c7"/>
-    </linearGradient>`;
-
-/** The mark's own gradient, for the times it sits unplated on the dark ground. */
-const MARK_GRADIENT = `<linearGradient id="mk" x1="13" y1="51" x2="51" y2="12" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#818cf8"/>
-      <stop offset="100%" stop-color="#38bdf8"/>
-    </linearGradient>`;
+/**
+ * `--accent` and `--bg-canvas` in src/client/App.css. The files written here
+ * cannot read a stylesheet, so a palette change there means a change here and
+ * a regeneration; BrandMark.tsx reads the tokens and follows on its own.
+ */
+const ACCENT = '#7aa2f7';
+const CANVAS = '#0f1013';
 
 /**
- * The plated icon. `radius` is the plate's corner rounding: 14 for a favicon,
- * 0 for the iOS touch icon, which iOS masks to its own squircle and which
- * shows a pale seam if it arrives pre-rounded.
+ * The mark on its plate, in 64 units. `radius` is the plate's corner rounding:
+ * 14 everywhere but the iOS touch icon, which iOS masks to its own squircle and
+ * which shows a pale seam if it arrives pre-rounded.
  */
+function plated(radius: number): string {
+  return `<rect width="64" height="64" rx="${radius}" fill="${ACCENT}"/>
+    ${mark(CANVAS)}`;
+}
+
+/** The plated mark as a standalone file. */
 function icon(radius: number): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-    <defs>${PLATE_GRADIENT}</defs>
-    <rect width="64" height="64" rx="${radius}" fill="url(#plate)"/>
-    ${mark('#ffffff')}
+    ${plated(radius)}
   </svg>`;
 }
 
@@ -120,10 +126,11 @@ function icon(radius: number): string {
 // the product's screenshot at a size where no screenshot is legible is a fake,
 // and the real screenshots are in the README where they have room.
 
-const INK = '#f8fafc';
-const SUB = '#a8b3c7';
-const QUIET = '#6b7a93';
-const RED = '#f43f5e';
+/** The page's own text and error tokens, so a card reads as a crop of the page. */
+const INK = '#e8e8ea'; // --text-primary
+const SUB = '#a4a7ae'; // --text-secondary
+const QUIET = '#8a8e96'; // --text-muted
+const RED = '#ef6461'; // --error
 
 /** Text is data here: a title with an ampersand would otherwise end the SVG. */
 const xml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -192,7 +199,7 @@ function graph(opacity = 1): string {
     const soft = t.frontier;
     parts.push(
       `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}" stroke="${
-        hot ? 'rgba(244,63,94,0.70)' : soft ? 'rgba(148,163,184,0.30)' : 'rgba(129,140,248,0.50)'
+        hot ? 'rgba(239,100,97,0.70)' : soft ? 'rgba(138,142,150,0.30)' : 'rgba(122,162,247,0.50)'
       }" stroke-width="${hot ? 4 : soft ? 2.5 : 3.5}"${soft ? ' stroke-dasharray="8 7"' : ''} stroke-linecap="round"/>`
     );
   }
@@ -200,42 +207,37 @@ function graph(opacity = 1): string {
     if (n.down) continue;
     parts.push(
       n.frontier
-        ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="none" stroke="rgba(148,163,184,0.62)" stroke-width="3.2" stroke-dasharray="9 6.5"/>`
+        ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="none" stroke="rgba(138,142,150,0.62)" stroke-width="3.2" stroke-dasharray="9 6.5"/>`
         : n.lost
-          ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="#3b1220" stroke="${RED}" stroke-width="4"/>`
-          : `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="#6366f1"/>`
+          ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="#3c2123" stroke="${RED}" stroke-width="4"/>`
+          : `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="${ACCENT}"/>`
     );
   }
-  // The failed node last, over its own edges: lit red, crossed out.
+  // The failed node last, over its own edges: lit red, crossed out in the
+  // ground colour, as the page's status fills carry dark text.
   const d = NODES.down;
   parts.push(`<circle cx="${d.x}" cy="${d.y}" r="100" fill="url(#downGlow)"/>
     <circle cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${RED}"/>
-    <path d="M${d.x - 13} ${d.y - 13} L${d.x + 13} ${d.y + 13} M${d.x + 13} ${d.y - 13} L${d.x - 13} ${d.y + 13}" stroke="#fff" stroke-width="7" stroke-linecap="round"/>`);
+    <path d="M${d.x - 13} ${d.y - 13} L${d.x + 13} ${d.y + 13} M${d.x + 13} ${d.y - 13} L${d.x - 13} ${d.y + 13}" stroke="${CANVAS}" stroke-width="7" stroke-linecap="round"/>`);
   return `<g opacity="${opacity}">${parts.join('\n    ')}</g>`;
 }
 
-/** The ground every card shares: the dark gradient, two glows, and the red one. */
+/**
+ * The ground every card shares: the page's flat ink, and the red glow behind
+ * the failure. An indigo glow used to sit behind the headline too; the page
+ * dropped its own glows with the palette, as colour that meant nothing.
+ */
 const GROUND = `<defs>
-      ${MARK_GRADIENT}
-      <linearGradient id="bg" x1="0" y1="0" x2="0" y2="640" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#0c1222"/>
-        <stop offset="100%" stop-color="#080b13"/>
-      </linearGradient>
-      <radialGradient id="glowA" cx="0.12" cy="0.08" r="0.62">
-        <stop offset="0%" stop-color="rgba(99,102,241,0.20)"/>
-        <stop offset="100%" stop-color="rgba(99,102,241,0)"/>
-      </radialGradient>
       <radialGradient id="downGlow">
-        <stop offset="0%" stop-color="rgba(244,63,94,0.38)"/>
-        <stop offset="100%" stop-color="rgba(244,63,94,0)"/>
+        <stop offset="0%" stop-color="rgba(239,100,97,0.38)"/>
+        <stop offset="100%" stop-color="rgba(239,100,97,0)"/>
       </radialGradient>
     </defs>
-    <rect width="1280" height="640" fill="url(#bg)"/>
-    <rect width="1280" height="640" fill="url(#glowA)"/>`;
+    <rect width="1280" height="640" fill="${CANVAS}"/>`;
 
 /** The mark and the name, small: the card is about the question, not the brand. */
-const BRAND = `<g transform="translate(80, 62) scale(0.62)">${mark('url(#mk)')}</g>
-    <text x="132" y="96" font-family="${FONT}" font-size="36" font-weight="700" fill="${INK}" letter-spacing="-0.8">Ambit</text>`;
+const BRAND = `<g transform="translate(80, 62) scale(0.62)">${plated(14)}</g>
+    <text x="134" y="96" font-family="${FONT}" font-size="36" font-weight="700" fill="${INK}" letter-spacing="-0.8">Ambit</text>`;
 
 function socialCard(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
@@ -256,8 +258,8 @@ function socialCard(): string {
       <tspan x="80" y="464">your agents can actually do.</tspan>
     </text>
 
-    <rect x="80" y="548" width="352" height="56" rx="28" fill="#4f46e5"/>
-    <text x="256" y="585" font-family="${FONT}" font-size="26" font-weight="650" fill="#ffffff" text-anchor="middle">Try the live demo →</text>
+    <rect x="80" y="548" width="352" height="56" rx="28" fill="${ACCENT}"/>
+    <text x="256" y="585" font-family="${FONT}" font-size="26" font-weight="650" fill="${CANVAS}" text-anchor="middle">Try the live demo →</text>
     <text x="456" y="585" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">open source, runs locally</text>
   </svg>`;
 }
@@ -279,7 +281,7 @@ function docCard(page: Page): string {
     ${GROUND}
     ${graph(0.35)}
     ${BRAND}
-    <text x="80" y="${top - 70}" font-family="${FONT}" font-size="26" font-weight="700" fill="#818cf8" letter-spacing="3">DOCS</text>
+    <text x="80" y="${top - 70}" font-family="${FONT}" font-size="26" font-weight="700" fill="${ACCENT}" letter-spacing="3">DOCS</text>
     <text font-family="${FONT}" font-size="64" font-weight="750" fill="${INK}" letter-spacing="-1.6">
       ${lines.map((l, i) => `<tspan x="80" y="${top + i * 76}">${xml(l)}</tspan>`).join('\n      ')}
     </text>
@@ -305,60 +307,50 @@ function sourceSheet(): string {
   const ladder = [16, 32, 64, 180]
     .map(size => {
       const g = `<g transform="translate(${x}, ${LADDER_BASE - size}) scale(${size / 64})">
-      <rect width="64" height="64" rx="14" fill="url(#plate)"/>
-      ${mark('#ffffff')}
+      ${plated(14)}
     </g>
-    <text x="${x + size / 2}" y="${LADDER_BASE + 22}" text-anchor="middle" font-family="${FONT}" font-size="11" fill="#7b8799">${size}px</text>`;
+    <text x="${x + size / 2}" y="${LADDER_BASE + 22}" text-anchor="middle" font-family="${FONT}" font-size="11" fill="${QUIET}">${size}px</text>`;
       x += size + 40;
       return g;
     })
     .join('\n    ');
 
   const swatches = [
-    ['#4f46e5', 'plate from'],
-    ['#0284c7', 'plate to'],
-    ['#818cf8', 'mark from'],
-    ['#38bdf8', 'mark to'],
-    ['#090d16', 'ground'],
+    [ACCENT, 'plate · --accent'],
+    [CANVAS, 'mark · --bg-canvas'],
   ]
     .map(
       (
         [hex, label],
         i
       ) => `<rect x="${40 + i * 116}" y="596" width="100" height="34" rx="6" fill="${hex}" stroke="rgba(255,255,255,0.12)"/>
-    <text x="${40 + i * 116}" y="648" font-family="${FONT}" font-size="10.5" fill="#94a3b8">${label}</text>
-    <text x="${40 + i * 116}" y="664" font-family="${FONT}" font-size="10.5" fill="#61708a">${hex}</text>`
+    <text x="${40 + i * 116}" y="648" font-family="${FONT}" font-size="10.5" fill="${SUB}">${label}</text>
+    <text x="${40 + i * 116}" y="664" font-family="${FONT}" font-size="10.5" fill="${QUIET}">${hex}</text>`
     )
     .join('\n    ');
 
   const treatment = (tx: number, art: string, title: string, use: string) =>
     `<g transform="translate(${tx}, 112) scale(1.5)">${art}</g>
-    <text x="${tx}" y="248" font-family="${FONT}" font-size="11.5" font-weight="600" fill="#cbd5e1">${title}</text>
-    <text x="${tx}" y="266" font-family="${FONT}" font-size="11" fill="#61708a">${use}</text>`;
+    <text x="${tx}" y="248" font-family="${FONT}" font-size="11.5" font-weight="600" fill="${SUB}">${title}</text>
+    <text x="${tx}" y="266" font-family="${FONT}" font-size="11" fill="${QUIET}">${use}</text>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="720" viewBox="0 0 640 720">
-    <defs>${PLATE_GRADIENT}${MARK_GRADIENT}</defs>
-    <rect width="640" height="720" fill="#090d16"/>
+    <rect width="640" height="720" fill="${CANVAS}"/>
 
-    <text x="40" y="56" font-family="${FONT}" font-size="13" font-weight="600" fill="#f8fafc" letter-spacing="1.4">AMBIT — MARK</text>
-    <text x="40" y="80" font-family="${FONT}" font-size="11.5" fill="#7b8799">An A whose three vertices are graph nodes. Mass, not line art, so it holds at 16px.</text>
+    <text x="40" y="56" font-family="${FONT}" font-size="13" font-weight="600" fill="${INK}" letter-spacing="1.4">AMBIT — MARK</text>
+    <text x="40" y="80" font-family="${FONT}" font-size="11.5" fill="${QUIET}">An A whose three vertices are graph nodes. Mass, not line art, so it holds at 16px.</text>
 
-    ${treatment(40, mark('url(#mk)'), 'unplated', 'on the dark ground: the card, and in-app')}
-    ${treatment(
-      260,
-      `<rect width="64" height="64" rx="14" fill="url(#plate)"/>${mark('#ffffff')}`,
-      'plated',
-      'favicon and touch icon'
-    )}
+    ${treatment(40, plated(14), 'rounded', 'favicon, the page header, the link cards')}
+    ${treatment(260, plated(0), 'square', 'touch icon: iOS masks it to its own shape')}
 
-    <text x="40" y="306" font-family="${FONT}" font-size="11.5" font-weight="600" fill="#cbd5e1">Shipped sizes</text>
-    <text x="40" y="324" font-family="${FONT}" font-size="11" fill="#61708a">16px is a browser tab, 32px a bookmark, 180px an iOS home screen.</text>
+    <text x="40" y="306" font-family="${FONT}" font-size="11.5" font-weight="600" fill="${SUB}">Shipped sizes</text>
+    <text x="40" y="324" font-family="${FONT}" font-size="11" fill="${QUIET}">16px is a browser tab, 32px a bookmark, 180px an iOS home screen.</text>
     ${ladder}
 
-    <text x="40" y="582" font-family="${FONT}" font-size="11.5" font-weight="600" fill="#cbd5e1">Palette</text>
+    <text x="40" y="582" font-family="${FONT}" font-size="11.5" font-weight="600" fill="${SUB}">Palette</text>
     ${swatches}
 
-    <text x="40" y="700" font-family="${FONT}" font-size="11" fill="#61708a">${TAGLINE}</text>
+    <text x="40" y="700" font-family="${FONT}" font-size="11" fill="${QUIET}">${TAGLINE}</text>
   </svg>`;
 }
 
