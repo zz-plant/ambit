@@ -16,3 +16,9 @@ export const INSTALL = 'brew install zz-plant/tap/ambit && ambit';
  * as the web surface and the panel shows that as "you".
  */
 export const WEB_ACTOR = 'human:web';
+
+/**
+ * Where the product lives, as a screenshot of it should say. A cropped image
+ * loses the address bar, so the map and the saved image carry this instead.
+ */
+export const SITE_HOST = 'zz-plant.github.io/ambit';

@@ -10,7 +10,7 @@ interface GuideProps {
 /** The three-step first-run card, shown once over the map. */
 export default function GettingStartedGuide({ style, onDismiss, onReadMore }: GuideProps) {
   return (
-    <div className="app-guide" style={style}>
+    <div className="app-guide" style={style} data-occludes-map>
       <div className="app-guide-head">
         <strong>Reading the map</strong>
         <button type="button" className="app-guide-close" onClick={onDismiss} aria-label="Dismiss">

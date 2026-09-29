@@ -1412,6 +1412,27 @@ code, pre, .code, .sp-cli-cmd {
   outline-offset: -2px;
 }
 
+/* The product's address, low in the map's corner, for the screenshot that
+   leaves the address bar behind. On a plate of its own, since it often sits
+   over a row of names. Never in the way of a click. */
+.civ-source {
+  position: absolute;
+  z-index: 5;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: var(--text-secondary);
+  pointer-events: none;
+  user-select: none;
+  transition: bottom 0.2s;
+}
+
 /* ─── ERA LADDER ─── */
 /* An era's header opens this in the detail panel: a bar for how far up it you
    are, then one rung per node. The rung's mark is the map's own circle for
@@ -4163,8 +4184,9 @@ code, pre, .code, .sp-cli-cmd {
    since a count without its noun says nothing. The view tabs give up theirs
    below that, and each keeps its name in aria-label and its tooltip. The
    widths are the demo's header with every word drawn in the widest fallback
-   font: 1366px, and 1157px with the buttons' words gone. */
-@media (min-width: 769px) and (max-width: 1380px) {
+   font: 1366px, and 1157px with the buttons' words gone; the map's Image
+   button adds 89px to both. */
+@media (min-width: 769px) and (max-width: 1460px) {
   .app-deck-btn .app-deck-btn-label,
   .app-deck-btn .app-deck-key {
     display: none;
@@ -4279,6 +4301,17 @@ code, pre, .code, .sp-cli-cmd {
     left: 16px;
     right: 16px !important;
     max-width: none;
+  }
+
+  /* A screenshot is recompressed by whatever carries it, and the map's
+     faintest marks go first. The names get a size a phone can read at the
+     zoom it frames to, and what is dimmed stays dimmed but survives. */
+  .civ-node-label {
+    font-size: 13px;
+  }
+
+  .civ-node--dim {
+    opacity: 0.4;
   }
 
   .civ-hud {

@@ -7,7 +7,7 @@
  * edges, the nodes and a tooltip in one 1,067-line return.
  */
 import type { Item } from '../../utils/configImporter';
-import { outageImpact, outageSentence, readableSeconds } from './layout';
+import { simulationSentence } from './layout';
 
 interface SimulationBannerProps {
   simulationMode: string;
@@ -46,29 +46,13 @@ export function SimulationBanner({
 }: SimulationBannerProps) {
   if (simulationMode === 'none') return null;
 
-  const name = simulatedItem?.name || simulatedNodeId;
-  const n = simulatedCascadeIds.size;
-  const plural = (count: number) => (count === 1 ? 'capability' : 'capabilities');
-  // The gap's price: the setup time of everything in it, added up.
-  const seconds = items
-    .filter(i => simulatedCascadeIds.has(i.id))
-    .reduce((t, i) => t + (Number(i.meta?.setupSeconds) || 0), 0);
-  // An outage says only what was working stops; the rest of the red is named
-  // for what it was. `outageSentence` is the detail panel's sentence too.
-  const outage =
-    simulationMode === 'outage'
-      ? outageSentence(
-          name ?? '',
-          outageImpact(items, { stops: simulatedCascadeIds, weakened: simulatedWeakenedIds })
-        )
-      : null;
-  const text = outage
-    ? outage.before + outage.count + outage.after
-    : simulationMode === 'gap'
-      ? `Reaching ${name} needs ${n} more ${plural(n)} first${
-          seconds ? `, about ${readableSeconds(seconds)} of setup` : ''
-        }.`
-      : `Adding ${name} would make ${n} more ${plural(n)} reachable.`;
+  const text = simulationSentence(
+    simulationMode,
+    simulatedItem?.name || simulatedNodeId || '',
+    simulatedCascadeIds,
+    simulatedWeakenedIds,
+    items
+  );
 
   return (
     <div

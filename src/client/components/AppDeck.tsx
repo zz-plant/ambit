@@ -59,6 +59,8 @@ interface AppDeckProps {
   onSearch: () => void;
   onShowView: (view: View) => void;
   onShare: () => void;
+  /** On the map: save what it shows as an image made to be posted. */
+  onSaveImage?: () => void;
   onShowProposals: () => void;
   onShowDocs: () => void;
   /** The day of the observation the map is scrubbed to; the counts are that day's. */
@@ -328,6 +330,33 @@ export default function AppDeck(p: AppDeckProps) {
           </svg>
           <span className="app-deck-btn-label">Share</span>
         </button>
+        {p.onSaveImage && (
+          <button
+            type="button"
+            className="app-deck-btn"
+            onClick={p.onSaveImage}
+            title="Save what the map shows as an image sized for posting"
+            aria-label="Save as image"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-deck-icon"
+              aria-hidden="true"
+            >
+              <rect x="2" y="3" width="12" height="10" rx="1.5" />
+              <circle cx="6" cy="6.5" r="1.2" />
+              <path d="M2.5 12 L6.5 8.5 L9 10.5 L11 9 L13.5 11" />
+            </svg>
+            <span className="app-deck-btn-label">Image</span>
+          </button>
+        )}
         <button
           type="button"
           className={`app-deck-btn ${p.draftCount > 0 ? 'app-deck-btn--alert' : ''}`}

@@ -21,6 +21,7 @@ import {
   costOf,
   edgePath,
   eraOf,
+  frameScene,
   headlineReserve,
   isFailing,
   isNext,
@@ -46,6 +47,8 @@ import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
+import { useBottomOcclusion, useNarrow } from '../hooks/useViewport';
+import { SITE_HOST } from '../utils/copy';
 
 interface CivTreeProps {
   /** Pixels of the scene covered by the docked panel, so column one is visible. */
@@ -657,11 +660,16 @@ export default function CivTree({
     collapse,
   ]);
 
+  const narrow = useNarrow();
+  // The bottom of the canvas a tour card or a bottom sheet is covering.
+  const covered = useBottomOcclusion(containerRef);
+
   // Centre the node in view: the selection, or else where a simulation
   // started. On a wide screen the whole map is in view and this is a no-op; on
-  // a phone the cascade would otherwise play out off to the side.
+  // a phone the framing below does it instead, fitted around the cards.
   const centreOn = selectedId ?? (simulationMode !== 'none' ? simulatedNodeId : null);
   React.useEffect(() => {
+    if (narrow) return;
     if (centreOn && nodePositionMap.has(centreOn)) {
       const pos = nodePositionMap.get(centreOn)!;
       if (containerRef.current) {
@@ -675,7 +683,7 @@ export default function CivTree({
         });
       }
     }
-  }, [centreOn, zoom, nodePositionMap]);
+  }, [narrow, centreOn, zoom, nodePositionMap]);
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
@@ -696,6 +704,49 @@ export default function CivTree({
     const floor = el.clientWidth < 700 ? 0.72 : 0.4;
     setZoom(Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2))));
   }, [contentWidth, leftInset]);
+
+  // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
+  // selected node with what it needs and enables. Framed into the part of the
+  // canvas not under a card, at a zoom where the names can be read.
+  const framedFor = React.useRef('');
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!narrow || !el) return;
+    const lit =
+      simulationMode !== 'none'
+        ? [...simSet]
+        : selectedId
+          ? [selectedId, ...needs, ...enables]
+          : [];
+    const key = `${simulationMode}:${simulatedNodeId}:${selectedId}:${covered}`;
+    if (!lit.length || framedFor.current === key) return;
+    framedFor.current = key;
+    const points = lit.flatMap(id => nodePositionMap.get(id) ?? []);
+    // The zoom and lens controls sit over the canvas's first 52px.
+    const hud = 52;
+    const frame = frameScene(
+      points,
+      { top: hud, width: el.clientWidth - leftInset, height: el.clientHeight - hud - covered },
+      { min: 0.7, max: 1.1, inset: leftInset }
+    );
+    if (!frame) return;
+    setZoom(frame.zoom);
+    // After the zoom lands, so the offsets are measured against the new size.
+    requestAnimationFrame(() =>
+      el.scrollTo({ left: frame.left, top: frame.top, behavior: 'smooth' })
+    );
+  }, [
+    narrow,
+    simulationMode,
+    simulatedNodeId,
+    simSet,
+    selectedId,
+    needs,
+    enables,
+    covered,
+    nodePositionMap,
+    leftInset,
+  ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (
@@ -1062,7 +1113,13 @@ export default function CivTree({
                       key={item.id}
                       transform={`translate(${cx}, ${cy})`}
                       opacity={baseOpacity}
-                      className={isSimRoot || isSimAffected ? 'civ-sim-hit' : undefined}
+                      className={
+                        isSimRoot || isSimAffected
+                          ? 'civ-sim-hit'
+                          : dimmed && isSpotlit
+                            ? 'civ-node--dim'
+                            : undefined
+                      }
                       tabIndex={0}
                       role="button"
                       aria-pressed={selected}
@@ -1253,6 +1310,7 @@ export default function CivTree({
                       <text
                         y={NODE_R + 17}
                         textAnchor="middle"
+                        className="civ-node-label"
                         fill={
                           dimmed || (!reached && !next && !isSimAffected && !isSimRoot)
                             ? 'var(--text-muted)'
@@ -1615,6 +1673,11 @@ export default function CivTree({
             )}
           </g>
         </svg>
+      </div>
+      {/* Where this came from, for the screenshot that loses the address bar.
+          It rides above whatever card covers the bottom of the map. */}
+      <div className="civ-source" style={{ bottom: covered + 10, left: leftInset + 8 }}>
+        Ambit · {SITE_HOST}
       </div>
 
       {/* Not while a tour narrates the map: its card sits where the thumbnail

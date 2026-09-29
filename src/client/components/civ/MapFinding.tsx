@@ -144,6 +144,7 @@ export function MapFinding({
     <div
       ref={wrapRef}
       className="civ-sim-wrap civ-finding-wrap"
+      data-occludes-map
       style={{ paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset }}
     >
       <RangeLine

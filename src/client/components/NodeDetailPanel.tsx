@@ -265,7 +265,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const setup = item.status === 'built' ? '' : costOf(item);
 
   return (
-    <div className="star-panel">
+    <div className="star-panel" data-occludes-map>
       <div className="sp-grab-bar" aria-hidden="true" />
       <div className="sp-hdr">
         <span className="sp-sig" style={{ color }} aria-hidden="true">
