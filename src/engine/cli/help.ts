@@ -100,7 +100,7 @@ check — what is proven, what is permitted, what is currently broken
   check budget [set <cap> [action] --amount=$20 [--period=month] --by=<person>]
                           a ceiling on spend per period; a spend past it is
                           refused, and within it the grant's own mode decides
-  check can <cap> [--target X] [--spend N] [--exit-code]   the decision API:
+  check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
                           ALLOW/CONFIRM/DENY; --exit-code also exits 0/1/2
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services
@@ -164,4 +164,16 @@ report — what the system cost to operate
 
   help [term]       this list, or one concept explained`;
 
-export { HELP, HELP_SHORT };
+/**
+ * What one group owns, as `help --all` prints it.
+ *
+ * `ambit help` ends "try `ambit plan`", and a group named with no verb after it
+ * was an unknown command, so the one piece of advice the short help gives led
+ * to an error. Sections are separated by a blank line and none contains one,
+ * so the group's is the chunk that opens with its name.
+ */
+function groupHelp(group: string): string {
+  return HELP.split('\n\n').find(part => part.startsWith(`${group} — `)) ?? HELP_SHORT;
+}
+
+export { HELP, HELP_SHORT, groupHelp };

@@ -2,10 +2,10 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
 import { emit, emitRaw, emitText, raiseExitCode, setSink, terminalPalette } from './cli/output.ts';
-import { HELP, HELP_SHORT } from './cli/help.ts';
+import { HELP, HELP_SHORT, groupHelp } from './cli/help.ts';
 import { explain, renderStatus, statusReport } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
-import { resolveCommand } from './cli/groups.ts';
+import { GROUPS, resolveCommand } from './cli/groups.ts';
 import { shareSnapshot } from './share.ts';
 import {
   discoverCombos,
@@ -338,7 +338,7 @@ async function runCommand(
     }
     case 'can': {
       if (!arg) {
-        emit({ error: 'Usage: ambit can <capability> [--target X] [--spend N] [--exit-code]' });
+        emit({ error: 'Usage: ambit can <capability> [--target=X] [--spend=N] [--exit-code]' });
         break;
       }
       // A slip is answered as one and files nothing; see `capabilityToAsk`.
@@ -628,6 +628,13 @@ async function runCommand(
       break;
     }
     default: {
+      // A group named with no verb after it lists what it owns, which is what
+      // `ambit help` tells the reader to try. `graph` and `check` are commands
+      // of their own and never reach here.
+      if (cmd in GROUPS) {
+        emitText(groupHelp(cmd));
+        break;
+      }
       // On stderr, so a caller reading stdout for an answer is not handed this
       // as one, and exiting 2, the code a usage error conventionally gets, so a
       // script can tell a mistyped verb from a command that ran and failed.

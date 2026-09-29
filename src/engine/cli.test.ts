@@ -156,6 +156,30 @@ test('the exit code says what the words say', () => {
   }
 });
 
+test('a group named on its own lists what it owns, as `ambit help` says to try', () => {
+  // `ambit help` ends "try `ambit plan`", which was an unknown command.
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-group-'));
+  try {
+    run(dir, 'seed');
+    for (const [group, verb] of [
+      ['plan', 'plan propose <cap>'],
+      ['govern', 'govern approve <id>'],
+      ['report', 'report signals [days]'],
+    ]) {
+      const r = piped(dir, group);
+      expect(r.status, group).toBe(0);
+      expect(r.stdout, group).toContain(verb);
+      expect(r.stdout, group).not.toContain('Unknown');
+      // Only its own section, not the whole list.
+      expect(r.stdout, group).not.toContain('check verify');
+    }
+    // A word that is no group is still no command.
+    expect(piped(dir, 'planning').status).toBe(2);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('a result taken in-process leaves the exit code to whoever took it', () => {
   const dir = mkdtempSync(join(tmpdir(), 'ambit-exit-'));
   const db = getDb(join(dir, 'graph.db'));
