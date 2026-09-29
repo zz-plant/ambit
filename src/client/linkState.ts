@@ -123,6 +123,22 @@ export function readLinkState(search: string): LinkState {
 }
 
 /**
+ * What a link asks of the map once the graph has been read: the node to
+ * select, and whether to collapse to it. A collapse is to that node's
+ * neighbourhood, so it comes with a node the graph holds or not at all:
+ * `?collapse=1` alone, or naming a node this graph lacks, used to wait in the
+ * store and in the address bar, and the first node anyone clicked collapsed
+ * the map at once.
+ */
+export function linkFocus(
+  link: Pick<LinkState, 'focusId' | 'collapse'>,
+  items: readonly { id: string }[]
+): { id: string; collapse: boolean } | null {
+  const id = link.focusId;
+  return id && items.some(i => i.id === id) ? { id, collapse: link.collapse } : null;
+}
+
+/**
  * What a visit to the hosted site with no query string opens on.
  *
  * The published site has no engine behind it, so a bare visit used to land on

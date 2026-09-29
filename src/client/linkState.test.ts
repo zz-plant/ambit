@@ -8,7 +8,7 @@
  * the two rules that keep the link short and honest.
  */
 import { expect, test } from 'vitest';
-import { readLinkState, writeLinkState, type ShareState } from './linkState';
+import { linkFocus, readLinkState, writeLinkState, type ShareState } from './linkState';
 
 const base: ShareState = {
   view: 'tree',
@@ -146,4 +146,24 @@ test('a link with the collapse keys opens the same view, and what cannot be read
   for (const flag of ['0', 'yes', 'true', '']) {
     expect(readLinkState(`?collapse=${flag}`).collapse).toBe(false);
   }
+});
+
+test('a collapse comes with a node the graph holds, or not at all', () => {
+  const graph = [{ id: 'combo:shell-execution' }, { id: 'combo:model-routing' }];
+  const read = (search: string) => linkFocus(readLinkState(search), graph);
+
+  expect(read('?view=tree&focus=combo:shell-execution&collapse=1')).toEqual({
+    id: 'combo:shell-execution',
+    collapse: true,
+  });
+  expect(read('?view=tree&focus=combo:shell-execution')).toEqual({
+    id: 'combo:shell-execution',
+    collapse: false,
+  });
+  // Nothing named, or a node this graph does not hold: nothing to select, and
+  // no collapse left waiting for the next node anyone clicks.
+  expect(read('?view=tree&collapse=1')).toBeNull();
+  expect(read('?view=tree&focus=combo:nope&collapse=1')).toBeNull();
+  // Before the graph is read there is nothing to find it in.
+  expect(linkFocus(readLinkState('?focus=combo:shell-execution&collapse=1'), [])).toBeNull();
 });

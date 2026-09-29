@@ -20,7 +20,7 @@ import { useHotkeys } from './hooks/useHotkeys';
 import { useToast } from './hooks/useToast';
 import { useUrlSync } from './hooks/useUrlSync';
 import { isNarrowScreen, useNarrow } from './hooks/useViewport';
-import { hostedLanding, initialView, readLinkState, type View } from './linkState';
+import { hostedLanding, initialView, linkFocus, readLinkState, type View } from './linkState';
 import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
 import { escapeLayer } from './utils/keys';
@@ -76,6 +76,7 @@ export default function App() {
   const probeBackend = useAmbitStore(s => s.probeBackend);
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
   const setSpotlight = useAmbitStore(s => s.setSpotlight);
+  const setCollapsed = useAmbitStore(s => s.setCollapsed);
   const clearSimulation = useAmbitStore(s => s.clearSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
@@ -189,19 +190,22 @@ export default function App() {
     if (link.view === 'audit') loadAudit();
   }, []);
 
-  // ?focus=<id> selects a node once the graph that contains it has loaded.
-  // The lookup happens outside the effect so its dependency is the found id, a
-  // string, and not `items`, whose identity changes every render.
-  const focusTarget = link.focusId ? items.find(i => i.id === link.focusId)?.id : undefined;
+  // ?focus=<id> selects a node once the graph that contains it has loaded, and
+  // ?collapse=1 collapses the map to it then, and only then. The lookup happens
+  // outside the effect so its dependencies are a string and a flag, and not
+  // `items`, whose identity changes every render.
+  const linked = linkFocus(link, items);
+  const focusTarget = linked?.id;
+  const focusCollapse = linked?.collapse ?? false;
   useEffect(() => {
+    if (!focusTarget) return;
     // `selectItem` toggles, because clicking the selected node clears it. A
     // link is not a toggle: if this effect runs again with the same target (a
     // remount, a hot reload), selecting it a second time would close the panel
     // the link was for.
-    if (focusTarget && useAmbitStore.getState().selectedItem !== focusTarget) {
-      selectItem(focusTarget);
-    }
-  }, [focusTarget, selectItem]);
+    if (useAmbitStore.getState().selectedItem !== focusTarget) selectItem(focusTarget);
+    if (focusCollapse) setCollapsed(true);
+  }, [focusTarget, focusCollapse, selectItem, setCollapsed]);
 
   /** Select something without toggling it off when it is already selected. */
   const select = (id: string) => {

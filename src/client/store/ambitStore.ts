@@ -307,7 +307,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   showApprovalModal: false,
   activeLens: initialLink.lens,
   spotlight: null,
-  collapsed: initialLink.collapse,
+  // A link's `collapse` is applied with the node it focuses, once the graph
+  // holds it (linkFocus): with nothing selected there is nothing to collapse to.
+  collapsed: false,
   collapseDepth: initialLink.depth,
   collapseDirection: initialLink.dir,
   simulationMode: 'none',
