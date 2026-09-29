@@ -11,8 +11,9 @@
  * permission is not a tie to break arbitrarily.
  */
 import type { Db } from '../db.ts';
+import { periodElapsed } from '../budgets.ts';
 import { usable } from './lifecycle.ts';
-import { FAILING } from '../vocabulary.ts';
+import { CHECK_RUN_SQL, FAILING } from '../vocabulary.ts';
 import type { AuthorityRow, CapabilityRow } from '../rows.ts';
 import { runtimesReaching } from './reach.ts';
 
@@ -365,17 +366,6 @@ function canExecute(
   };
 }
 
-/** Whether a budget's period has rolled over since it was last reset. */
-function periodElapsed(db: Db, budget: { period?: string; period_start?: string | null }): boolean {
-  if (!budget.period_start) return false;
-  const days: Record<string, number> = { day: 1, week: 7, month: 30, quarter: 91, year: 365 };
-  const span = days[budget.period || 'month'] ?? 30;
-  const elapsed = db
-    .prepare("SELECT (julianday('now') - julianday(?)) AS days")
-    .get(budget.period_start)?.days;
-  return typeof elapsed === 'number' && elapsed >= span;
-}
-
 /** The declared sandbox covering a target, if one does. */
 function sandboxCovering(db: Db, target: string) {
   try {
@@ -407,7 +397,7 @@ function objectEvidence(db: Db, capability: string, action: string, object: stri
                 SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
                 MAX(timestamp) AS last_seen
          FROM session_learning
-         WHERE capability_id IN (?, ?) AND object = ? AND action IN ('verified','failed')`
+         WHERE capability_id IN (?, ?) AND object = ? AND ${CHECK_RUN_SQL}`
       )
       .get(capability, `act:${capability.replace('combo:', '')}/${action}`, object);
     if (!row?.passes && !row?.failures) return undefined;
@@ -456,7 +446,7 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
     remaining_cents: remaining,
     note:
       remaining <= 0
-        ? 'The budget is spent. This action asks a person again until the period turns over.'
+        ? 'The budget is spent. A spend past the ceiling is refused until the period turns over.'
         : undefined,
   };
 }

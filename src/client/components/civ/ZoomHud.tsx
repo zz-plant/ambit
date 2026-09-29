@@ -36,6 +36,11 @@ interface ZoomHudProps {
   leftInset?: number;
   /** Pixels the detail panel covers on the right. */
   rightInset?: number;
+  /**
+   * Why a data lens is off when the reason is not that nothing was recorded:
+   * the map is a past observation, which records neither attention nor grants.
+   */
+  lensNote?: string;
 }
 
 export function ZoomHud({
@@ -50,6 +55,7 @@ export function ZoomHud({
   authorityAvailable = true,
   leftInset = 0,
   rightInset = 0,
+  lensNote,
 }: ZoomHudProps) {
   const fit = () => {
     const el = containerRef.current;
@@ -168,11 +174,13 @@ export function ZoomHud({
               disabled={unavailable}
               onClick={() => onSetLens(lens)}
               title={
-                unavailable && lens === 'authority'
-                  ? 'No reached capability carries an authority mode yet. Run ambit seed, and ambit authority lists what may act without asking.'
-                  : unavailable
-                    ? 'Nothing recorded yet. This lens shades each capability by how often you had to step in; copy plugins/ambit-tracker.js into ~/.config/opencode/plugins/ and it fills from your own sessions.'
-                    : `${label} lens (${hotkey})`
+                unavailable && lensNote
+                  ? lensNote
+                  : unavailable && lens === 'authority'
+                    ? 'No reached capability carries an authority mode yet. Run ambit seed, and ambit authority lists what may act without asking.'
+                    : unavailable
+                      ? 'Nothing recorded yet. This lens shades each capability by how often you had to step in; copy plugins/ambit-tracker.js into ~/.config/opencode/plugins/ and it fills from your own sessions.'
+                      : `${label} lens (${hotkey})`
               }
             >
               {label}

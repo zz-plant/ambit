@@ -23,6 +23,12 @@ interface MapFindingProps {
   /** Run the outage simulation the weakest point names. */
   onSimulate?: (id: string) => void;
   onSpotlight?: (key: string) => void;
+  /**
+   * Which way the first failing node lies when it is out of sight ("left",
+   * "above right"), from the minimap. Absent when it is in view, or the whole
+   * map is.
+   */
+  where?: string | null;
   leftInset?: number;
   rightInset?: number;
 }
@@ -124,6 +130,7 @@ export function MapFinding({
   onPreview,
   onSimulate,
   onSpotlight,
+  where,
   leftInset = 0,
   rightInset = 0,
 }: MapFindingProps) {
@@ -148,6 +155,9 @@ export function MapFinding({
           <span>
             <strong>{names(failing)}</strong> {failing.length === 1 ? 'is' : 'are'} configured but
             failing {failing.length === 1 ? 'its check' : 'their checks'}.
+            {where
+              ? ` ${failing.length === 1 ? 'It is' : 'The first is'} off-screen ${where}.`
+              : ''}
           </span>
           <button type="button" className="civ-finding-btn" onClick={() => onShow(failing[0].id)}>
             Show

@@ -4,8 +4,10 @@ import { getDb, type Db } from './db.ts';
 import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
 import { seedFromConfig } from './discovery.ts';
-import { mintApproval, verifyApproval } from './approval.ts';
+import { mintApproval, proposalHash, verifyApproval } from './approval.ts';
 import { pendingDrafts } from './attention.ts';
+import type { ProposalRow } from './rows.ts';
+import type { QueueDecisionResult, ShownProposal } from '../shared/api.ts';
 
 /**
  * The inverse of a declarative config patch: remove exactly what it adds.
@@ -69,6 +71,95 @@ function approveProposals(db: Db, ids: string[], who?: string) {
       ? 'Each carries its own signed artifact. Apply them one at a time — apply verifies, and rolls back the one that fails rather than the batch.'
       : undefined,
   };
+}
+
+/** The most one queue decision may name: a sitting, not a sweep. */
+const QUEUE_MAX = 50;
+
+/** The list as sent, or why it cannot be decided at all. */
+function shownList(shown: unknown): { list: ShownProposal[] } | { error: string } {
+  if (!Array.isArray(shown) || !shown.length) {
+    return { error: 'Name each proposal: items: [{ id, proposalHash }, …].' };
+  }
+  if (shown.length > QUEUE_MAX) return { error: `At most ${QUEUE_MAX} proposals in one decision.` };
+  const list: ShownProposal[] = [];
+  const seen = new Set<string>();
+  for (const item of shown) {
+    const id = item?.id;
+    const hash = item?.proposalHash;
+    if (typeof id !== 'string' || !id || typeof hash !== 'string' || !hash) {
+      return { error: 'Each proposal needs its id and the proposalHash it was shown with.' };
+    }
+    if (seen.has(id)) return { error: `${id} is named twice.` };
+    seen.add(id);
+    list.push({ id, proposalHash: hash });
+  }
+  return { list };
+}
+
+/**
+ * One id, decided in a transaction of its own, so the row cannot change
+ * between the hash being checked and the decision being written.
+ */
+function decideOne(
+  db: Db,
+  decision: 'approve' | 'reject',
+  item: ShownProposal,
+  who: string
+): QueueDecisionResult {
+  let open = false;
+  const refuse = (refused: string): QueueDecisionResult => {
+    if (open) {
+      open = false;
+      db.exec('ROLLBACK');
+    }
+    return { id: item.id, decided: false, refused };
+  };
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    open = true;
+    const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(item.id);
+    if (!row) return refuse(`No proposal ${item.id}.`);
+    if (row.status !== 'draft') {
+      return refuse(`${item.id} is ${row.status}; the queue decides drafts only.`);
+    }
+    if (proposalHash(db, row) !== item.proposalHash) {
+      return refuse(`${item.id} changed after it was shown. Read it again before deciding.`);
+    }
+    const result = (
+      decision === 'approve' ? approveProposal(db, item.id, who) : rejectProposal(db, item.id, who)
+    ) as { error?: string };
+    if (result.error) return refuse(result.error);
+    db.exec('COMMIT');
+    open = false;
+    return { id: item.id, decided: true };
+  } catch (e) {
+    const refused = `Not recorded: ${(e as Error)?.message || 'the write failed'}.`;
+    try {
+      return refuse(refused);
+    } catch {
+      return { id: item.id, decided: false, refused };
+    }
+  }
+}
+
+/**
+ * Decides several drafts a person was shown, each against the hash they saw.
+ *
+ * The web queue sends explicit ids, never "everything waiting", each with the
+ * hash its card was drawn from. Each id is decided on its own: one that
+ * changed after it was shown is refused and the rest go ahead, and a failure
+ * partway leaves the earlier ones decided, so the answer is one line per id.
+ *
+ * Drafts only, both ways. `rejectProposal` accepts an approved row and keeps
+ * its artifact, which the control plane still spends, and `approveProposal`
+ * would re-sign an applied or rolled-back one. Approving here is that same
+ * call, unchanged: an artifact only apply can spend, and no authority widened.
+ */
+function decideShown(db: Db, decision: 'approve' | 'reject', shown: unknown, who: string) {
+  const items = shownList(shown);
+  if ('error' in items) return items;
+  return { results: items.list.map(item => decideOne(db, decision, item, who)) };
 }
 
 /**
@@ -459,6 +550,7 @@ export {
   ensureActor,
   approveProposal,
   approveProposals,
+  decideShown,
   rejectProposal,
   listProposals,
   pendingProposals,

@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
+import { trailOf, verifyCommand } from '../utils/checkHistory';
 import type { Item } from '../utils/configImporter';
+import { canSwitchMcp, flipMcp } from '../utils/configSwitch';
 import { INSTALL } from '../utils/copy';
 import { isConfigEntry, statusLabel, typeLabel } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import { eraOf, isEntry } from './civ/layout';
 import { InfrastructurePanel, RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
+import { HistoryStrip } from './figures';
 import { Term } from './Term';
 
 /**
@@ -91,8 +95,30 @@ export function SetupView({ onShow }: SetupViewProps) {
   const loadBriefing = useAmbitStore(s => s.loadBriefing);
   const unmapped = useAmbitStore(s => s.unmapped);
   const loadUnmapped = useAmbitStore(s => s.loadUnmapped);
+  const configMcp = useAmbitStore(s => s.configMcp);
+  const toggleMcpEnabled = useAmbitStore(s => s.toggleMcpEnabled);
   const [kind, setKind] = useState<string>('all');
   const [tab, setTab] = useState<Tab>('entries');
+  const [copied, copy] = useCopied();
+  // Which server is being written, if any. One write at a time: the route reads
+  // the config, changes it and writes it back, and two in flight would each
+  // start from a config that lacks the other's change.
+  const [switching, setSwitching] = useState<string | null>(null);
+  // Said in the row that was clicked, where the person is looking, and not at
+  // the top of a list that may have scrolled away.
+  const [switchError, setSwitchError] = useState<{ name: string; message: string } | null>(null);
+
+  const flip = async (item: Item) => {
+    if (switching !== null) return;
+    setSwitching(item.name);
+    setSwitchError(null);
+    try {
+      const message = await flipMcp(item, toggleMcpEnabled);
+      if (message) setSwitchError({ name: item.name, message });
+    } finally {
+      setSwitching(null);
+    }
+  };
 
   // Fetched when the tab is first opened, not on mount: the scans walk the
   // disk, the briefing applies any threshold whose evidence now holds, and
@@ -135,6 +161,9 @@ export function SetupView({ onShow }: SetupViewProps) {
     .filter(g => g.rows.length > 0);
   const other = shown.filter(i => !KINDS.some(k => k.type === i.type));
   const enabled = entries.filter(i => i.status === 'built').length;
+  // Whether any row can be switched, so the note about what a switch does is
+  // written only where there is a switch to explain.
+  const anySwitch = entries.some(i => canSwitchMcp(i, backend, configMcp));
 
   // What the list has to say, before anyone reads a row: what is failing, and
   // what is enabled but puts nothing on the map, which is either dead weight or
@@ -176,6 +205,13 @@ export function SetupView({ onShow }: SetupViewProps) {
               {enabled} of {entries.length} entries enabled. One row per server, agent, model or
               command your configs declare, with its latest check and what it adds to the map.
             </p>
+            {anySwitch && tab === 'entries' && (
+              <p className="setup-subtitle setup-switch-note">
+                A tool server's switch writes <code>enabled</code> to your agent config and keeps
+                the file it replaces as a <code>.bak</code>. Restart the runtime for it to take
+                effect.
+              </p>
+            )}
             {(failingEntries.length > 0 || idle.length > 0) && tab === 'entries' && (
               <ul className="setup-findings">
                 {failingEntries.length > 0 && (
@@ -330,7 +366,9 @@ export function SetupView({ onShow }: SetupViewProps) {
         </div>
 
         {tab === 'repos' && <RepoDriftPanel scan={repos} />}
-        {tab === 'infra' && <InfrastructurePanel scan={infrastructure} />}
+        {tab === 'infra' && (
+          <InfrastructurePanel scan={infrastructure} onProbe={loadInfrastructure} />
+        )}
         {tab === 'unmapped' && <UnmappedPanel report={unmapped} />}
         {tab === 'briefing' && (
           // What the agent believes about this machine, inspectable by the
@@ -413,11 +451,18 @@ export function SetupView({ onShow }: SetupViewProps) {
                   {g.rows.map(item => {
                     const proves = provides.get(item.id) || [];
                     const evidence = evidenceOf(item, proves);
+                    // One strip, and it has to be about what the row calls
+                    // failing: when nodes are failing, only they are candidates.
+                    const trail = trailOf(item, evidence?.failing ?? proves);
+                    const failing = evidence?.tone === 'error';
+                    const verifyCmd = verifyCommand(trail?.node ?? evidence?.failing?.[0] ?? item);
                     const provesNothing =
                       placed &&
                       item.type === 'mcp-server' &&
                       item.status === 'built' &&
                       !proves.length;
+                    const switchable = canSwitchMcp(item, backend, configMcp);
+                    const on = item.status === 'built';
                     const selected = selectedId === item.id;
                     return (
                       <div
@@ -443,23 +488,57 @@ export function SetupView({ onShow }: SetupViewProps) {
                           )}
                         </button>
                         {/* Only the exception is written: "Enabled" on every row
-                            was a column of the same word. */}
-                        {item.status === 'built' ? (
+                            was a column of the same word. A tool server the
+                            config names has a switch instead, which says the
+                            same thing by where its knob is and can change it. */}
+                        {switchable ? (
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={on}
+                            className={`setup-switch ${on ? 'setup-switch--on' : ''}`}
+                            // Not `disabled`: that would drop the keyboard's place in
+                            // the list on every write.
+                            aria-disabled={switching !== null ? true : undefined}
+                            aria-label={`Enabled in your config: ${item.name}`}
+                            title={`Switching this ${on ? 'off' : 'on'} writes enabled: ${!on} to your agent config. Restart the runtime for it to take effect.`}
+                            onClick={() => flip(item)}
+                          >
+                            <span className="setup-switch-knob" aria-hidden="true" />
+                          </button>
+                        ) : item.status === 'built' ? (
                           <span className="tp-badge" />
                         ) : (
                           <span className={`tp-badge tp-badge--${item.status}`}>
                             {statusLabel(item.status, item)}
                           </span>
                         )}
-                        <span
-                          className={`setup-row-evidence is-${evidence?.tone ?? 'none'}`}
-                          title={
-                            evidence?.failing
-                              ? `Failing: ${evidence.failing.map(n => n.name).join(', ')}`
-                              : undefined
-                          }
-                        >
-                          {evidence?.text ?? ''}
+                        <span className="setup-row-check">
+                          <span
+                            className={`setup-row-evidence is-${evidence?.tone ?? 'none'}`}
+                            title={
+                              evidence?.failing
+                                ? `Failing: ${evidence.failing.map(n => n.name).join(', ')}`
+                                : undefined
+                            }
+                          >
+                            {evidence?.text ?? ''}
+                          </span>
+                          {trail && <HistoryStrip runs={trail.runs} of={trail.node.name} />}
+                          {/* Where a link to the reason will go. Until the page
+                              can show why, the way to find out is the command,
+                              and the page cannot run a check. */}
+                          {failing && (
+                            <button
+                              type="button"
+                              className="tp-inline-btn setup-row-verify"
+                              onClick={() => copy(item.id, verifyCmd)}
+                              aria-label={`Copy command ${verifyCmd}`}
+                              title={`Paste it in a terminal to run the check again and read why it failed: ${verifyCmd}`}
+                            >
+                              {copied === item.id ? 'Copied ✓' : 'Copy ambit verify'}
+                            </button>
+                          )}
                         </span>
                         <span className="setup-row-provides">
                           {provesNothing && (
@@ -477,6 +556,11 @@ export function SetupView({ onShow }: SetupViewProps) {
                             </button>
                           ))}
                         </span>
+                        {switchError?.name === item.name && (
+                          <span className="setup-row-error" role="alert">
+                            {switchError.message}
+                          </span>
+                        )}
                       </div>
                     );
                   })}

@@ -20,13 +20,17 @@ import { migrate } from '../engine/migrate.ts';
 import { resolveDbPath } from '../shared/db-path.ts';
 import {
   techTreeView,
+  frontierHistoryView,
   unmappedView,
   graphSummary,
   recentProposals,
   interventionHeatmap,
   loopView,
+  auditView,
+  machineView,
+  runView,
 } from '../engine/views.ts';
-import { approveProposal, ensureActor, rejectProposal } from '../engine/governance.ts';
+import { approveProposal, decideShown, ensureActor, rejectProposal } from '../engine/governance.ts';
 import { briefingText, TOKEN_BUDGET } from '../engine/briefing.ts';
 import {
   beginRun,
@@ -57,16 +61,22 @@ import type {
   ApiError,
   ApproveResponse,
   AttentionResponse,
+  AuditResponse,
   BriefingResponse,
   LoopResponse,
   ConfigApplyRequest,
   ConfigApplyResponse,
   ConfigResponse,
+  FrontierHistoryResponse,
   HealthResponse,
+  InfrastructureScanResponse,
   McpSnippetResponse,
   ProposalsResponse,
+  QueueDecisionRequest,
+  QueueDecisionResponse,
   RejectRequest,
   RejectResponse,
+  RunResponse,
   TechTreeResponse,
   UnmappedResponse,
 } from '../shared/api.ts';
@@ -405,6 +415,15 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     return json<TechTreeResponse>(withGraph(techTreeView));
   }
 
+  // The frontier through time, for the map's timeline. Read only: every tick
+  // is an observation the ledger already recorded, and nothing here writes one.
+  if (pathname === '/api/frontier' && method === 'GET') {
+    if (!existsSync(GRAPH_DB_PATH)) {
+      return json<FrontierHistoryResponse>({ ticks: [], movedSinceLast: null });
+    }
+    return json<FrontierHistoryResponse>(withGraph(frontierHistoryView));
+  }
+
   // What was used and is not on the map. Read-only: the overlay it carries is
   // text for a person to paste, and nothing here writes a file.
   if (pathname === '/api/unmapped' && method === 'GET') {
@@ -416,6 +435,19 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   if (pathname === '/api/proposals' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) return json<ProposalsResponse>({ proposals: [] });
     return json<ProposalsResponse>({ proposals: withGraph(db => recentProposals(db)) as never });
+  }
+
+  // The trail, one line per event. Read-only: it projects the ledger and
+  // writes nothing, and a check's printed output is not part of it. Asking
+  // before any graph exists must not create one, so that is an empty trail.
+  if (pathname === '/api/audit' && method === 'GET') {
+    const opts = {
+      days: Number(url.searchParams.get('days')) || undefined,
+      limit: Number(url.searchParams.get('limit')) || undefined,
+    };
+    return json<AuditResponse>(
+      existsSync(GRAPH_DB_PATH) ? withGraph(db => auditView(db, opts)) : auditView(null, opts)
+    );
   }
 
   if (pathname === '/api/attention' && method === 'GET') {
@@ -431,6 +463,58 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
       return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
     }
     return json<LoopResponse>(withGraph(loopView));
+  }
+
+  // The queue: several drafts, each approved or turned down on its own. The
+  // actor is the web actor whatever the body says, each id is bound to the
+  // hash the page showed, and the answer is per id, since one refusal does
+  // not undo the rest. Approving never applies. Both paths are config routes
+  // (src/server/config.ts), so a request with no browser behind it needs the
+  // token: one of these decides up to fifty where the per-id routes decide one.
+  const queue =
+    pathname === '/api/proposals/approve'
+      ? 'approve'
+      : pathname === '/api/proposals/reject'
+        ? 'reject'
+        : null;
+  if (queue && method === 'POST') {
+    let body: QueueDecisionRequest;
+    try {
+      body = await readJsonBody(req);
+    } catch {
+      return json({ error: 'Invalid JSON' }, 400);
+    }
+    const result = withGraph(db => {
+      ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
+      return decideShown(db, queue, body?.items, WEB_ACTOR);
+    });
+    if ('error' in result) return json(result, 400);
+    for (const r of result.results) {
+      if (!r.decided) continue;
+      broadcast({
+        type: queue === 'approve' ? 'ProposalApproved' : 'ProposalRejected',
+        proposalId: r.id,
+        actor: WEB_ACTOR,
+      });
+    }
+    return json<QueueDecisionResponse>({
+      decision: queue === 'approve' ? 'approved' : 'rejected',
+      decided_by: WEB_ACTOR,
+      results: result.results,
+    });
+  }
+
+  // One run, in time, from what the ledger recorded. Read-only, and the same
+  // projection every surface reads. An id that names no run is a 404, and no id
+  // is the newest run that recorded an ask.
+  if (pathname === '/api/run' && method === 'GET') {
+    if (!existsSync(GRAPH_DB_PATH)) {
+      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+    }
+    const wanted = url.searchParams.get('id') || undefined;
+    const view = withGraph(db => runView(db, wanted));
+    if (wanted && !view.run) return json({ error: `No run ${wanted}.` }, 404);
+    return json<RunResponse>(view);
   }
 
   // The browser approval broker. It approves and mints the signed artifact the
@@ -497,8 +581,13 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     });
   }
 
+  // The scan is a reading taken now, and what an agent may do on each machine
+  // it found is the gate's answer for that machine, from this graph's grants.
   if (pathname === '/api/infrastructure/scan' && method === 'GET') {
-    return json(await buildInfrastructureScan());
+    const scan = await buildInfrastructureScan();
+    const devices = scan.nodes.filter(n => n.kind === 'device').map(n => n.id);
+    const machines = existsSync(GRAPH_DB_PATH) ? withGraph(db => machineView(db, devices)) : [];
+    return json<InfrastructureScanResponse>({ ...scan, machines });
   }
 
   if (pathname === '/api/repos/scan' && method === 'GET') {

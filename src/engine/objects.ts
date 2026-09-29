@@ -20,6 +20,7 @@
  * object; this reads it as one.
  */
 import type { Db } from './db.ts';
+import { CHECK_RUN_SQL } from './vocabulary.ts';
 import { scopeCovers, sandboxCovering } from './assure/decide.ts';
 
 /** Every object named anywhere: in a grant's scope, a sandbox, or evidence. */
@@ -156,7 +157,7 @@ function attachObject(db: Db, capabilityId: string, object: string): number {
   const row = db
     .prepare(
       `SELECT id FROM session_learning
-       WHERE capability_id = ? AND action IN ('verified','failed') AND object IS NULL
+       WHERE capability_id = ? AND ${CHECK_RUN_SQL} AND object IS NULL
        ORDER BY id DESC LIMIT 1`
     )
     .get<{ id: number }>(capabilityId);

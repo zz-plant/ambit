@@ -427,7 +427,7 @@ async function handleLine(line: string) {
               });
               break;
             case 'tt_since':
-              res = tt(db => ledgerSince(db, args?.when));
+              res = tt(db => ledgerSince(db, args?.when, args?.until));
               break;
             case 'tt_ledger':
               res = tt(db => ledgerHistory(db));

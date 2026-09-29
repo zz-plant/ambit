@@ -21,8 +21,11 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const HOTKEYS = [
-  { key: '/', desc: 'Find a capability, on the map or in your setup' },
-  { key: 'J / K', desc: 'Step through the nodes on the map' },
+  {
+    key: '/',
+    desc: 'Find a capability, on the map or in your setup, or run an action on it: an outage, an unlock, its check, a lens, Proposals',
+  },
+  { key: 'J / K', desc: 'Step through the nodes on the map, skipping any a focus hides' },
   { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
   { key: '+ / -', desc: 'Zoom in / out on the map' },
   { key: '0', desc: 'Back to actual size' },
@@ -201,12 +204,24 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 enables in blue, one hop each way. The simulations follow the edges all the way.
               </p>
 
+              <h3 className="docs-h3">The minimap</h3>
+              <p className="docs-p">
+                When the map is bigger than the window, a thumbnail at the bottom right shows all of
+                it: a dot for every node, the failing ones in red, and the part on screen outlined.
+                Drag the outline to move around, or tab to it and use the arrow keys, with Shift for
+                a screen at a time. It is not drawn when the whole map fits, and the line over the
+                map says which way a failing node lies when it is out of sight.
+              </p>
+
               <h3 className="docs-h3">The map and My Setup</h3>
               <p className="docs-p">
                 <strong>The map</strong> is the curated tree with your position on it.{' '}
                 <strong>My Setup</strong> is what was found in your agent configs, one row per
-                entry, each with the nodes on the map it provides. Rows in a column are ordered so a
-                node sits near what it connects to; height on its own means nothing.
+                entry, each with what its latest check said, a strip of how the last fourteen checks
+                went (a failure is taller than a pass), and the nodes on the map it provides. A tool
+                server your config names also has a switch, which writes <code>enabled</code> to
+                that config. On the map, rows in a column are ordered so a node sits near what it
+                connects to; height on its own means nothing there.
               </p>
             </>
           )}
@@ -220,6 +235,23 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   <span className="docs-answers">
                     What depends on it, whether its check passes, and a simulation: an outage for a
                     node you have, what it would unlock for one you do not
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Click an era</span>
+                  <span className="docs-answers">
+                    Opens its ladder: how far up the era you are, then each node as reached, a next
+                    step with its setup time, or blocked with what it waits for. A node whose check
+                    is failing is listed as failing, and is not counted as reached
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Focus</span>
+                  <span className="docs-answers">
+                    In the panel of a selected node: keeps only what it needs and enables within a
+                    few hops, and hides the rest. Choose which way and how far, and the pill says
+                    how many nodes are hidden and brings them back. Esc ends it. It is off unless
+                    you ask, and the header still counts the whole map
                   </span>
                 </div>
                 <div className="docs-action">
@@ -245,9 +277,25 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   </span>
                 </div>
                 <div className="docs-action">
+                  <span className="docs-cmd">Audit</span>
+                  <span className="docs-answers">
+                    Who approved what and what ran, one line per event, newest first. Narrow it with
+                    actor:, action: and target:, or any word
+                  </span>
+                </div>
+                <div className="docs-action">
+                  <span className="docs-cmd">Timeline</span>
+                  <span className="docs-answers">
+                    Under the map, once two observations are recorded. Drag the playhead or step it
+                    with the arrow keys, and the map redraws as that observation left it, with
+                    today's names and edges. Lenses and simulations wait for now
+                  </span>
+                </div>
+                <div className="docs-action">
                   <span className="docs-cmd">Share</span>
                   <span className="docs-answers">
-                    Copies a link to this exact view: graph, selected node, lens and filter
+                    Copies a link to this exact view: graph, selected node, lens, filter, focus and
+                    the moment the timeline is on
                   </span>
                 </div>
                 <div className="docs-action">

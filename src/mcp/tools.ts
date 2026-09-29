@@ -383,15 +383,10 @@ const BASE_TOOLS = [
   {
     name: 'since',
     description:
-      'What entered the reachable frontier since a past observation, separating what was acquired from what emerged through composition',
+      'What entered the reachable frontier from `when` (default: the earliest observation) to `until` (default: now), both ISO timestamps, separating what was acquired from what emerged through composition',
     inputSchema: {
       type: 'object',
-      properties: {
-        when: {
-          type: 'string',
-          description: 'ISO timestamp; defaults to the earliest observation',
-        },
-      },
+      properties: { when: { type: 'string' }, until: { type: 'string' } },
     },
   },
   {

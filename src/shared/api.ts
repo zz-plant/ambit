@@ -95,6 +95,20 @@ export interface ConferredAction {
   ungranted?: true;
 }
 
+/** How many runs of a check `meta.history` carries, and so how many slots a strip draws. */
+export const CHECK_HISTORY_RUNS = 14;
+
+/**
+ * One run of a declared check. `id` is its row in the evidence ledger, which
+ * orders runs where a timestamp cannot, since that resolves to the second and a
+ * batch of checks lands inside one. It also orders a failure on one node against
+ * a failure on another, which a reader picking the worst of several has to do.
+ */
+export interface CheckRun {
+  id: number;
+  passed: boolean;
+}
+
 export interface TreeItemMeta {
   /** The client renders meta generically, so extra keys have to be allowed. */
   [key: string]: unknown;
@@ -117,6 +131,8 @@ export interface TreeItemMeta {
   credentials?: string[];
   /** Declared checks that ran: how many passed, of how many. */
   reliability?: { passed: number; total: number };
+  /** The last runs of its check, oldest first. Absent when none has run. */
+  history?: CheckRun[];
   /** The effective, unscoped modes: may it act, and may it look, without asking. */
   authority?: NodeAuthority;
   /** What the runtime reported failing here in the last thirty days. */
@@ -203,6 +219,36 @@ export interface TechTreeResponse {
   since?: LoopSince | null;
 }
 
+// ── GET /api/frontier ────────────────────────────────────────────────────────
+
+/**
+ * One observation of the frontier, as the ledger recorded it: each
+ * capability's state, and its kind and lifecycle where the row carries them.
+ * A snapshot stores no names, eras, edges, authority or evidence times, so the
+ * map draws a tick with today's names, eras and edges and none of the rest.
+ */
+export interface FrontierTick {
+  /** The second it was taken, UTC, as the ledger stores it. */
+  at: string;
+  states: Record<string, string>;
+  /** Null on observations recorded before kinds were. */
+  kinds: Record<string, string> | null;
+  /** Null on observations recorded before lifecycles were. */
+  lifecycles: Record<string, string> | null;
+  /** What moved since the tick before, in the words `ambit history since` prints. */
+  moved: string;
+}
+
+/**
+ * The frontier through time: one tick per second a snapshot was taken, oldest
+ * first. Snapshots that share a second are one tick, showing the later.
+ */
+export interface FrontierHistoryResponse {
+  ticks: FrontierTick[];
+  /** What moved between the newest tick and the live graph; null when nothing did. */
+  movedSinceLast: string | null;
+}
+
 // ── GET /api/proposals, POST /api/proposals/:id/approve ──────────────────────
 
 /**
@@ -213,8 +259,14 @@ export interface TechTreeResponse {
  */
 export interface ProposalDecision {
   setup_hours: number;
-  /** Every step is a config change with a computed inverse. */
+  /** Every step carries a computed inverse. */
   reversible: boolean;
+  /**
+   * Every step is a config patch with an inverse, which is what `ambit apply`
+   * needs before it runs anything. A step can carry an inverse and no patch,
+   * as a control-plane draft does: it reads reversible, and apply refuses it.
+   */
+  applicable: boolean;
   /** Some step describes work only a person can do. */
   requires_person: boolean;
   recurring?: string;
@@ -246,6 +298,12 @@ export interface ProposalRow {
   approval_artifact?: string | null;
   economic_case?: string | null;
   decision?: ProposalDecision;
+  /**
+   * What the row hashes to, as an approval artifact binds it. The queue sends
+   * it back with each id, so a proposal that changed after it was shown is
+   * refused, not signed. Absent on a hand-written demo row.
+   */
+  proposal_hash?: string;
 }
 
 export interface ProposalsResponse {
@@ -284,6 +342,74 @@ export interface RejectResponse {
   proposal: string;
   rejected_by: string;
   reason?: string;
+}
+
+// ── POST /api/proposals/approve, POST /api/proposals/reject ──────────────────
+
+/** A draft as the page showed it: its id, and the `proposal_hash` its card was drawn from. */
+export interface ShownProposal {
+  id: string;
+  proposalHash: string;
+}
+
+/**
+ * The queue: explicit drafts, decided one by one as the web actor. There is
+ * no actor field, and none is read: whoever is at the loopback page is the
+ * person the per-id routes record too.
+ */
+export interface QueueDecisionRequest {
+  items: ShownProposal[];
+}
+
+/** One id's answer. A refusal says why; the others still went ahead. */
+export type QueueDecisionResult =
+  | { id: string; decided: true }
+  | { id: string; decided: false; refused: string };
+
+export interface QueueDecisionResponse {
+  decision: 'approved' | 'rejected';
+  decided_by: string;
+  results: QueueDecisionResult[];
+}
+
+// ── GET /api/audit ───────────────────────────────────────────────────────────
+
+/**
+ * What came of an event, where the ledger recorded it. The word is the
+ * engine's; the tone is whether it went as meant, which the page draws as a
+ * shape beside the word.
+ */
+export interface AuditOutcome {
+  word: string;
+  tone: 'good' | 'bad' | 'neutral';
+}
+
+/** One line of the trail. */
+export interface AuditEvent {
+  id: string;
+  /** ISO 8601 in UTC, whichever form the row stored. */
+  at: string;
+  /** Who acted, where the record names someone. */
+  actor?: string;
+  /** What happened: the verb the record stores. */
+  action: string;
+  /** What it happened to. */
+  target?: string;
+  summary?: string;
+  /** Only where one was recorded. An event that states no result shows none. */
+  outcome?: AuditOutcome;
+}
+
+/**
+ * The trail, one line per event: acts, proposals, runs and delegation records
+ * merged newest first, and cut once, after the merge, at `limit`.
+ */
+export interface AuditResponse {
+  days: number;
+  limit: number;
+  events: AuditEvent[];
+  /** The window held more events than the limit let through. */
+  truncated: boolean;
 }
 
 // ── GET /api/briefing ────────────────────────────────────────────────────────
@@ -338,6 +464,12 @@ export interface LoopOpportunity {
     privacy: string;
     /** The one the record of this person's decisions favours, where it leans. */
     favoured?: boolean;
+    /**
+     * The config entry that installs it, as text for a person to paste. Present
+     * only where the curated tree gives the alternative a patch, and never
+     * something a surface runs.
+     */
+    install?: string;
   }[];
 }
 
@@ -378,8 +510,22 @@ export interface LoopAuthority {
     capability: string;
     action: string;
     ceiling_dollars: number;
+    /** Spent this period. Zero once the period has run out, as the gate reads it. */
     spent_dollars: number;
     period: string;
+    /**
+     * When this period began, as the graph stamps it (UTC). Absent before a
+     * period is recorded, and once one has run out and nothing has started the next.
+     */
+    period_start?: string | null;
+    /** The day the period turns over. Absent with `period_start`. */
+    period_ends_on?: string | null;
+    /**
+     * Where the period lands at the pace so far, and the day that pace reaches
+     * the ceiling. Absent while nothing is recorded as spent, or too little of
+     * the period has run for a pace: no tick and no date are drawn from nothing.
+     */
+    forecast?: { lands_dollars: number; hits_ceiling_on?: string };
   }[];
   /** Targets declared as places where acting does not matter. */
   sandboxes: string[];
@@ -467,7 +613,108 @@ export interface LoopResponse extends LoopSnapshot {
   empty: boolean;
 }
 
+// ── GET /api/run ─────────────────────────────────────────────────────────────
+
+/**
+ * One run, laid out in time from what the ledger recorded and no more. Times
+ * are ISO 8601 in UTC, normalized by the engine because the ledger holds two
+ * spellings of one instant. Where nothing recorded a figure the field is null,
+ * and a surface leaves it out; an unmeasured wait is never drawn as zero.
+ */
+export interface RunAsk {
+  kind: string;
+  actor: string;
+  /** When the person was asked. */
+  at: string;
+  /** When they answered, where something recorded it. */
+  ended_at: string | null;
+  /**
+   * What the ask took, in seconds, where the ledger has a figure: the recorded
+   * active and waiting time, else the span between the two timestamps. Null
+   * when nothing measured it, including the zero a recorder writes because it
+   * cannot observe the reply.
+   */
+  seconds: number | null;
+  /** A person being asked for permission: the kinds the engine's vocabulary calls a gate. */
+  gate: boolean;
+  capability?: string;
+  action?: string;
+  outcome?: string;
+}
+
+export interface RunUse {
+  capability: string;
+  capability_id: string;
+  /** When the use was recorded; the bar drawn from it lasts `seconds`. */
+  at: string;
+  /** How long it lasted, where that was measured. */
+  seconds: number | null;
+}
+
+export interface RunEvent {
+  at: string;
+  kind: string;
+  action?: string;
+  actor?: string;
+}
+
+export interface RunView {
+  id: string;
+  goal?: string;
+  started_at: string;
+  /** Null while the run is open, and for a runtime that never reports the end. */
+  ended_at: string | null;
+  outcome?: string;
+  uses: RunUse[];
+  uses_total: number;
+  events: RunEvent[];
+  /** Events are not synced between machines, so a run that arrived in a sync file has none. */
+  events_total: number;
+  asks: RunAsk[];
+  asks_total: number;
+  /** A person's time in this run. Only asks something timed are counted in it. */
+  human: { seconds: number; timed: number; untimed: number };
+}
+
+/** One run in the list a person picks from. */
+export interface RunSummary {
+  id: string;
+  goal?: string;
+  started_at: string;
+  ended_at: string | null;
+  asks: number;
+  events: number;
+}
+
+export interface RunResponse {
+  /** Newest first. */
+  recent: RunSummary[];
+  /** The run asked for, or the newest that recorded an ask; null when there are none. */
+  run: RunView | null;
+}
+
 // ── GET /api/infrastructure/scan ─────────────────────────────────────────────
+
+/**
+ * What the gate answers for one action on one machine: `canExecute` with the
+ * machine as the target, so a grant scoped to it counts and one scoped
+ * elsewhere does not. CONFIRM is permitted with a person in the loop; DENY is
+ * a refusal, and `reason` says which kind.
+ */
+export interface MachineAction {
+  id: string;
+  name: string;
+  decision: 'ALLOW' | 'CONFIRM' | 'DENY';
+  reason: string;
+}
+
+export interface MachineModes {
+  /** The scan node this is about. */
+  id: string;
+  /** The graph's name for it, which is what a grant's scope is matched against. */
+  target: string;
+  actions: MachineAction[];
+}
 
 export interface InfrastructureScanResponse {
   generatedAt: string;
@@ -476,6 +723,8 @@ export interface InfrastructureScanResponse {
   links: InfrastructureLink[];
   findings: InfrastructureFinding[];
   summary: { online: number; degraded: number; offline: number; unknown: number };
+  /** What an agent may do on each machine the scan found. Absent from a server that predates it. */
+  machines?: MachineModes[];
 }
 
 // ── GET /api/repos/scan ──────────────────────────────────────────────────────
@@ -534,10 +783,15 @@ export interface ApiRoutes {
   '/api/config/apply': ConfigApplyResponse;
   '/api/config/mcp-snippet': McpSnippetResponse;
   '/api/tech-tree': TechTreeResponse;
+  '/api/frontier': FrontierHistoryResponse;
   '/api/briefing': BriefingResponse;
   '/api/proposals': ProposalsResponse;
+  '/api/proposals/approve': QueueDecisionResponse;
+  '/api/proposals/reject': QueueDecisionResponse;
+  '/api/audit': AuditResponse;
   '/api/attention': AttentionResponse;
   '/api/loop': LoopResponse;
+  '/api/run': RunResponse;
   '/api/unmapped': UnmappedResponse;
   '/api/infrastructure/scan': InfrastructureScanResponse;
   '/api/repos/scan': RepoScanResponse;

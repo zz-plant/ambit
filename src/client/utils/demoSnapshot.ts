@@ -32,6 +32,32 @@ function treeStatus() {
 }
 
 /**
+ * The entry the curated tree gives "nomic-embed via local runtime": text for a
+ * person to paste, the same the engine serves for that alternative. A test holds
+ * the two equal.
+ */
+const EMBEDDINGS_INSTALL = JSON.stringify(
+  {
+    provider: {
+      'nomic-embed': {
+        npm: '@ai-sdk/openai-compatible',
+        options: { baseURL: 'http://127.0.0.1:11434/v1' },
+        models: { 'nomic-embed-text': {} },
+      },
+    },
+  },
+  null,
+  2
+);
+
+const DAY = 86_400_000;
+
+/** The moment `n` days from now, as the graph stamps one, or only its day. */
+const stampAt = (n: number) =>
+  new Date(Date.now() + n * DAY).toISOString().slice(0, 19).replace('T', ' ');
+const stampDay = (n: number) => stampAt(n).slice(0, 10);
+
+/**
  * The illustrative snapshot a visitor sees in LOOP view.
  *
  * Hand-authored, unlike demo-data.json beside it, and deliberately so. The
@@ -146,6 +172,29 @@ export function demoSnapshot(): LoopSnapshot {
         payback_months: 0.3,
         confidence: 'medium',
       },
+      {
+        id: 'opp-4',
+        title: 'Acquire embeddings',
+        capability: 'Embeddings',
+        capability_id: 'combo:embeddings',
+        kind: 'deficit',
+        burden: { interventions_month: 4, human_hours_month: 0.6, attention_dollars_month: 150 },
+        proposal: { action: 'acquire combo:embeddings', setup_hours: 0.2 },
+        expected: { human_hours_month_after: 0.1, savings_dollars_month: 135 },
+        payback_months: 0.4,
+        confidence: 'medium',
+        // The two ways the curated tree gives for it, and no price for either:
+        // the tree declares none, and an unknown figure is shown as unknown.
+        acquisition_options: [
+          {
+            provider: 'nomic-embed via local runtime',
+            kind: 'build',
+            privacy: 'local',
+            install: EMBEDDINGS_INSTALL,
+          },
+          { provider: 'hosted embedding API', kind: 'buy', privacy: 'hosted' },
+        ],
+      },
     ],
     roi: {
       hours_per_year: 41,
@@ -203,6 +252,13 @@ export function demoSnapshot(): LoopSnapshot {
           ceiling_dollars: 20,
           spent_dollars: 12.4,
           period: 'month',
+          // Halfway through a thirty-day month with $12.40 spent: the pace is
+          // $24.80 for the period, so the ceiling is reached about nine days
+          // from now and the month ends fifteen days from now. Dated from the
+          // day the page is opened, so the sample never forecasts the past.
+          period_start: stampAt(-15),
+          period_ends_on: stampDay(15),
+          forecast: { lands_dollars: 24.8, hits_ceiling_on: stampDay(9) },
         },
       ],
       sandboxes: ['repo:acme/playground'],

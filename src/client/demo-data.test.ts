@@ -12,6 +12,7 @@
  * hold the properties that made it worth generating.
  */
 import { expect, test } from 'vitest';
+import type { FrontierHistoryResponse } from '../shared/api';
 import demoData from './utils/demo-data.json';
 
 const config = demoData.config as { items: { id: string; type: string }[] };
@@ -34,6 +35,25 @@ test('every setup item exists in the tree — it is one machine, seen twice', ()
 test('the tree spans every era, so the demo shows the whole shape', () => {
   const eras = new Set(tree.items.map(i => i.meta?.era).filter(Boolean));
   expect(eras.size).toBe(7);
+});
+
+test('the demo has a history to scrub, on fixed dates, ending where its map is', () => {
+  // Recorded by demo:generate on dates it names, so the hosted timeline is the
+  // same on every build and demo:check can hold it.
+  const history = demoData.history as FrontierHistoryResponse;
+  const seconds = history.ticks.map(t => t.at);
+  expect(seconds.length).toBeGreaterThanOrEqual(2);
+  expect([...seconds].sort()).toEqual(seconds);
+  expect(new Set(seconds).size).toBe(seconds.length);
+  // Scrubbing to the newest tick shows the machine the demo opens on.
+  const last = history.ticks[history.ticks.length - 1];
+  for (const item of tree.items as { id: string; meta: { state?: string } }[]) {
+    expect(last.states[item.id]).toBe(item.meta.state);
+  }
+  expect(history.movedSinceLast).toBeNull();
+  // And something happens on the way that only a timeline shows.
+  expect(history.ticks.some(t => /emergent/.test(t.moved))).toBe(true);
+  expect(history.ticks.some(t => /went failing/.test(t.moved))).toBe(true);
 });
 
 test('nothing from a real machine is in a file served to the public', () => {

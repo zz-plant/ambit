@@ -51,10 +51,12 @@ afterEach(() => {
     items: [],
     connections: [],
     selectedItem: null,
+    selectedEra: null,
     loop: null,
     loopSource: null,
     loopEmpty: false,
     backend: 'unknown',
+    configMcp: {},
   });
 });
 
@@ -208,8 +210,14 @@ test('a priced opportunity offers the map only when the node is on the graph in 
   expect(renderToStaticMarkup(<LoopDashboard />)).not.toContain('fig-row-btn');
 });
 
+/** What the global config holds for the servers these tests draw. */
+const CONFIG_MCP = {
+  git: { type: 'local', command: ['git-mcp'], enabled: true },
+  github: { type: 'remote', url: 'https://example.test/mcp', enabled: false },
+};
+
 test('the config switch appears only where an engine can write the config', () => {
-  seed({ items: [server], selectedItem: server.id, backend: 'static' });
+  seed({ items: [server], selectedItem: server.id, backend: 'static', configMcp: CONFIG_MCP });
   expect(renderToStaticMarkup(<NodeDetailPanel />)).not.toContain('sp-switch');
 
   seed({ backend: 'live' });
@@ -223,8 +231,92 @@ test('a tech-tree node offers no config switch: it names no config entry', () =>
     items: [{ ...server, meta: { ...server.meta, era: 3, state: 'unlocked' } }],
     selectedItem: server.id,
     backend: 'live',
+    configMcp: CONFIG_MCP,
   });
   expect(renderToStaticMarkup(<NodeDetailPanel />)).not.toContain('sp-switch');
+});
+
+test('a server the config does not name gets no switch, in the panel or in the list', () => {
+  // The route answers ok for a name it has no entry for and changes nothing, so
+  // a server another runtime declared would flip, reload and flip back, having
+  // said it worked. The switch is offered for what the config holds.
+  seed({
+    items: [server],
+    selectedItem: server.id,
+    backend: 'live',
+    configMcp: { elsewhere: { type: 'local', enabled: true } },
+  });
+  expect(renderToStaticMarkup(<NodeDetailPanel />)).not.toContain('sp-switch');
+  const list = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  expect(list).not.toContain('role="switch"');
+  // Nothing to explain, so nothing explained.
+  expect(list).not.toContain('switch writes');
+});
+
+/** One row of My Setup's markup, by the name it shows. */
+function setupRow(html: string, name: string): string {
+  const row = html.split('class="setup-row ').find(r => r.includes(`<span>${name}</span>`));
+  if (!row) throw new Error(`no row for ${name}`);
+  return row;
+}
+
+test('My Setup switches the tool servers the config names, and nothing else', () => {
+  const github: Item = { ...server, id: 'mcp:github', name: 'github', status: 'specified' };
+  // A server the config does not name, on and off: nothing to write to.
+  const strange: Item = { ...server, id: 'mcp:strange', name: 'strange' };
+  const strangeOff: Item = {
+    ...strange,
+    id: 'mcp:strange-off',
+    name: 'strange-off',
+    status: 'specified',
+  };
+  // Other kinds have no enabled state to switch.
+  const reviewer: Item = {
+    ...server,
+    id: 'agent:reviewer',
+    name: 'reviewer',
+    type: 'agent',
+    meta: { domain: 'meta' },
+  };
+  const bash: Item = { ...server, id: 'tool:bash', name: 'bash', type: 'tool' };
+  seed({
+    backend: 'live',
+    configMcp: CONFIG_MCP,
+    items: [server, github, strange, strangeOff, reviewer, bash],
+  });
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+
+  // Two switches, and both are real buttons that carry their state.
+  expect(html.match(/role="switch"/g)).toHaveLength(2);
+  expect(html).toMatch(/<button[^>]*role="switch" aria-checked="true"/);
+  expect(html).toMatch(/<button[^>]*role="switch" aria-checked="false"/);
+  expect(setupRow(html, 'git')).toMatch(/role="switch" aria-checked="true"/);
+  expect(setupRow(html, 'github')).toMatch(/role="switch" aria-checked="false"/);
+  expect(setupRow(html, 'git')).toContain('aria-label="Enabled in your config: git"');
+
+  // The switch says what the badge would have, so the row does not say it twice.
+  expect(setupRow(html, 'github')).not.toContain('Disabled');
+  // Where there is no switch, the exception is still written.
+  expect(setupRow(html, 'strange')).not.toContain('role="switch"');
+  expect(setupRow(html, 'strange-off')).toContain('Disabled');
+  expect(setupRow(html, 'reviewer')).not.toContain('role="switch"');
+  expect(setupRow(html, 'bash')).not.toContain('role="switch"');
+
+  // What a switch does is written once, where there is one.
+  const text = html.replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'");
+  expect(text).toContain("A tool server's switch writes enabled to your agent config");
+  expect(text).toContain('Restart the runtime');
+});
+
+test('the list offers no switch where no engine can write the config', () => {
+  seed({ backend: 'static', configMcp: CONFIG_MCP, items: [server] });
+  const list = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  expect(list).not.toContain('role="switch"');
+  expect(list).not.toContain('switch writes');
+  // The hosted demo has no engine either, and shows no switch on any row.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  seed({ backend: 'static', items, connections, configMcp: {} });
+  expect(renderToStaticMarkup(<SetupView onShow={() => {}} />)).not.toContain('role="switch"');
 });
 
 test('a house word carries its own definition, from the one glossary', () => {
@@ -285,11 +377,11 @@ test('the governance half is on the page: authority, next steps, and the week', 
 });
 
 test('a proposal card carries what deciding on it needs', () => {
-  // Saves, costs, undo, unlocks, precedent: stored by the engine, shown by
+  // Forecast, costs, undo, unlocks, precedent: stored by the engine, shown by
   // nothing. The card had the goal and the steps.
   seed({ proposals: demoProposals() });
   const html = renderToStaticMarkup(<ApprovalModal isOpen onClose={() => {}} />);
-  expect(html).toContain('Saves');
+  expect(html).toContain('Forecast');
   expect(html).toContain('Costs');
   expect(html).toContain('Undo');
   expect(html).toContain('every step is a config change with an inverse');
@@ -321,6 +413,80 @@ test('a blocked node says what it is blocked by, and prices the gap', () => {
   const html = renderToStaticMarkup(<NodeDetailPanel />);
   expect(html).toContain('Blocked by Embeddings, about 10m of setup first');
   expect(html).toContain('Show the gap on the map');
+});
+
+test('an era header is a control, and it counts only what is working', () => {
+  // Tool Use read "5 of 5" while Browser Automation, in it, is reached and
+  // failing its check. The header was a label, and its ladder had no way in.
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  const html = renderToStaticMarkup(
+    <CivTree
+      items={items}
+      connections={connections}
+      selectedId={null}
+      hoveredId={null}
+      onSelect={() => {}}
+    />
+  );
+  expect(html).toContain(
+    'aria-label="Tool Use, era 3: 4 of 5 reached, 1 failing. Show its ladder"'
+  );
+  const text = html.replace(/<[^>]+>/g, '');
+  expect(text).toContain('Era 3 · 4 of 5');
+  expect(text).not.toContain('Era 3 · 5 of 5');
+  // An era with nothing failing counts as it always did.
+  expect(text).toContain('Era 1 · 4 of 4');
+  // The failing node is its own red segment of the bar, in that era alone.
+  expect(html.match(/fig-eras-failing/g)).toHaveLength(1);
+});
+
+test('an era opens as a ladder in the detail panel: reached, next step with its time, blocked by what', () => {
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  seed({ items, connections, selectedEra: 4, showDetailPanel: true });
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+
+  expect(html).toContain('<div class="sp-designation">Memory</div>');
+  expect(html).toContain('1 of 5 reached · 1 next step · about 1.1h of setup left');
+  expect(html).toContain('<span class="sp-rung-state">Next step · 10m</span>');
+  expect(html).toContain('<span class="sp-rung-state">Reached</span>');
+  expect(html).toContain('<span class="sp-rung-state">Blocked</span>');
+  expect(html).toContain('Waits for Embeddings, about 10m of setup first');
+  // One rung per node of the era, and no node's own panel beside it.
+  expect(html.match(/class="sp-rung /g)).toHaveLength(5);
+  expect(html).not.toContain('Simulate');
+});
+
+test('the ladder lists a failing node as failing, first, and never among those reached', () => {
+  const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
+  seed({ items, connections, selectedEra: 3, showDetailPanel: true });
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+
+  // The count in the header of the era and the rungs agree: four reached, one failing.
+  expect(html).toContain('4 of 5 reached · 1 failing');
+  expect(html.match(/sp-rung--reached/g)).toHaveLength(4);
+  expect(html.match(/sp-rung--failing/g)).toHaveLength(1);
+  expect(html).toContain('<span class="sp-rung-state">Failing</span>');
+  expect(html).toContain('Configured, but not working');
+  expect(html.indexOf('sp-rung--failing')).toBeLessThan(html.indexOf('sp-rung--reached'));
+});
+
+test('a rung with no estimate shows none, never a zero', () => {
+  const unpriced: Item = {
+    id: 'combo:unpriced',
+    name: 'Unpriced',
+    type: 'possibility',
+    status: 'specified',
+    description: '',
+    position: { x: 0, y: 0, z: 0 },
+    meta: { era: 4, state: 'locked', next: true, setupSeconds: 0 },
+  };
+  seed({ items: [unpriced], connections: [], selectedEra: 4, showDetailPanel: true });
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+
+  expect(html).toContain('<span class="sp-rung-state">Next step</span>');
+  expect(html).not.toMatch(/\b0\s?[mh]\b/);
+  // Nothing priced, so no total is claimed either.
+  expect(html).not.toContain('of setup left');
 });
 
 test('an outage tells what stops from what only loses a provider', () => {
@@ -415,7 +581,7 @@ test('a proposal can be turned down from the panel, with the reason the next dra
   seed({ proposals: demoProposals() });
   const html = renderToStaticMarkup(<ApprovalModal isOpen onClose={() => {}} />);
   expect(html).toContain('Turn down');
-  expect(html).toContain('Approve and sign');
+  expect(html).toContain('Approve this proposal');
 });
 
 test('the ways to acquire a capability are compared, with the record\u2019s leaning marked', () => {

@@ -8,7 +8,7 @@
  * local process may rewrite it" was a larger grant than this server intends.
  */
 import { expect, test } from 'vitest';
-import { isAllowedOrigin, mayEditConfig } from './config.ts';
+import { isAllowedOrigin, mayEditConfig, ownEntry } from './config.ts';
 
 const TOKEN = 'a'.repeat(64);
 process.env.AMBIT_API_TOKEN = TOKEN;
@@ -29,6 +29,19 @@ test('something that is not a browser must present the token', () => {
   expect(mayEditConfig('/api/config/mcp-snippet', '', undefined)).toBe(false);
 });
 
+test('the queue, which decides many proposals at once, needs the token without a browser', () => {
+  // The per-id decision routes are open to a local script. One request that
+  // signs up to fifty is not, and the page itself still needs nothing.
+  for (const path of ['/api/proposals/approve', '/api/proposals/reject']) {
+    expect(mayEditConfig(path, '', undefined)).toBe(false);
+    expect(mayEditConfig(path, '', 'wrong')).toBe(false);
+    expect(mayEditConfig(path, '', TOKEN)).toBe(true);
+    expect(mayEditConfig(path, '', undefined, 'same-origin')).toBe(true);
+    expect(mayEditConfig(path, 'http://localhost:3000', undefined)).toBe(true);
+    expect(mayEditConfig(path, 'https://evil.example', TOKEN)).toBe(false);
+  }
+});
+
 test('a token of the wrong length is refused, not compared', () => {
   // timingSafeEqual throws on a length mismatch; the guard has to handle that
   // rather than turning a bad header into a 500.
@@ -42,6 +55,23 @@ test('the routes that are not about config stay open', () => {
   for (const path of ['/api/telemetry', '/api/health', '/api/tech-tree', '/api/proposals']) {
     expect(mayEditConfig(path, '', undefined)).toBe(true);
   }
+});
+
+test('an entry is one the config owns, and a name Object.prototype supplies is not', () => {
+  // The switch edits `enabled` on an entry that is there and never makes one, so
+  // "is there" is the whole gate. The page asks the same question of its copy of
+  // the config before it offers a switch.
+  const bag = JSON.parse('{"git": {"enabled": true}, "off": null, "flag": true}');
+  expect(ownEntry(bag, 'git')).toBe(true);
+  expect(ownEntry(bag, 'nonesuch')).toBe(false);
+  for (const name of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+    expect(ownEntry(bag, name), name).toBe(false);
+  }
+  // An own key that holds no entry, and lookups that are not names at all.
+  expect(ownEntry(bag, 'off')).toBe(false);
+  expect(ownEntry(bag, 'flag')).toBe(false);
+  expect(ownEntry(bag, 42)).toBe(false);
+  expect(ownEntry(undefined, 'git')).toBe(false);
 });
 
 test('an absent Origin is still same-origin for everything else', () => {

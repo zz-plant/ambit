@@ -11,33 +11,44 @@ import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
-import { FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
+import { CHECK_RUN, CHECK_RUN_SQL, FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
 import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
-import { ledgerSince } from './ledger.ts';
-import { unmappedUse } from './telemetry.ts';
+import { budgetStanding } from './budgets.ts';
+import { installText } from './catalog.ts';
+import { frontierSeries, ledgerSince } from './ledger.ts';
+import { machineModes } from './machines.ts';
+import { runTimeline, unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
 import { affordanceDomains, singlePointsOfFailure } from './inference.ts';
 import { deficits } from './planning.ts';
+import { auditStream } from './audit.ts';
+import { proposalHash } from './approval.ts';
 import {
   AUTHORITY_MODES,
+  CHECK_HISTORY_RUNS,
   NODE_TYPES,
   PROPOSAL_STATUSES,
+  type AuditResponse,
   type AuthorityMode,
+  type CheckRun,
   type ConferredAction,
   type FailureCount,
+  type FrontierHistoryResponse,
   type LoopAuthority,
   type LoopDemand,
   type LoopNext,
   type LoopResponse,
   type LoopSince,
+  type MachineModes,
   type NodeType,
   type ProposalDecision,
   type ProposalRow,
   type ProposalStatus,
+  type RunResponse,
   type TechTreeResponse,
   type TreeConnection,
   type TreeItem,
@@ -117,7 +128,7 @@ export function techTreeView(db: Db): TechTreeResponse {
     db
       .prepare(
         `SELECT capability_id, action, MAX(timestamp) AS at FROM session_learning
-       WHERE action IN ('verified','failed') GROUP BY capability_id`
+       WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
       .all()
       .map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
@@ -131,7 +142,7 @@ export function techTreeView(db: Db): TechTreeResponse {
       .prepare(
         `SELECT capability_id, SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passed,
                 COUNT(*) AS total
-         FROM session_learning WHERE action IN ('verified', 'failed') GROUP BY capability_id`
+         FROM session_learning WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
       .all<{ capability_id: string; passed: number; total: number }>()) {
       reliability.set(r.capability_id, { passed: r.passed, total: r.total });
@@ -139,6 +150,10 @@ export function techTreeView(db: Db): TechTreeResponse {
   } catch {
     /* a graph with no ledger yet */
   }
+
+  // The runs behind that count, so a row can draw how it went and not only how
+  // often it passed.
+  const history = checkHistory(db);
 
   const authority = effectiveAuthority(db);
   const failures = recentFailures(db);
@@ -206,6 +221,7 @@ export function techTreeView(db: Db): TechTreeResponse {
       providers: providersOf.get(c.id),
       credentials: credentialsOf.get(c.id),
       reliability: reliability.get(c.id),
+      history: history.get(c.id),
       authority: authorityOf(c.id, c.state, c.kind),
       failures: failures.get(c.id),
       actions: actions.get(c.id),
@@ -352,6 +368,38 @@ function recentFailures(db: Db, days = 30): Map<string, FailureCount[]> {
 }
 
 /**
+ * The last runs of each capability's check, oldest first.
+ *
+ * Ordered by ledger row and never by timestamp. `datetime('now')` resolves to
+ * the second and `ambit verify` records a whole batch inside one, so two runs
+ * of a check, or a failure here and another there, can share a time; a row id
+ * cannot. The window is per capability, so a node that is checked often does
+ * not crowd a quiet one out of the ledger's last rows. It counts the same rows
+ * `reliability` does, which is what makes the two agree while a check has run
+ * fewer times than the window holds.
+ */
+function checkHistory(db: Db, runs = CHECK_HISTORY_RUNS): Map<string, CheckRun[]> {
+  const out = new Map<string, CheckRun[]>();
+  try {
+    for (const r of db
+      .prepare(
+        `SELECT capability_id, id, action FROM (
+           SELECT capability_id, id, action,
+                  ROW_NUMBER() OVER (PARTITION BY capability_id ORDER BY id DESC) AS recency
+           FROM session_learning WHERE ${CHECK_RUN_SQL}
+         ) WHERE recency <= ? ORDER BY capability_id, id`
+      )
+      .all<{ capability_id: string; id: number; action: string }>(runs)) {
+      if (!out.has(r.capability_id)) out.set(r.capability_id, []);
+      out.get(r.capability_id)!.push({ id: r.id, passed: r.action === CHECK_RUN.passed });
+    }
+  } catch {
+    /* a graph with no ledger yet */
+  }
+  return out;
+}
+
+/**
  * The three counts the live stream reports. Each is guarded on its own: a
  * database predating frontier_snapshots used to throw on the second query and
  * zero the counts from the first, reporting an empty graph for a full one.
@@ -384,6 +432,31 @@ export function graphSummary(db: Db): { reached: number; total: number; observat
   return { reached, total, observations };
 }
 
+/**
+ * The frontier through time, for the map's timeline: one tick per second a
+ * snapshot was taken, each with what the snapshot holds and what moved since
+ * the tick before. The sentence is the ledger's, so a step reads on the page
+ * as `ambit history since` prints it.
+ */
+export function frontierHistoryView(db: Db): FrontierHistoryResponse {
+  try {
+    const { ticks, movedSinceLast } = frontierSeries(db);
+    return {
+      ticks: ticks.map(t => ({
+        at: t.taken_at,
+        states: t.states,
+        kinds: t.kinds,
+        lifecycles: t.lifecycles,
+        moved: t.moved,
+      })),
+      movedSinceLast,
+    };
+  } catch {
+    // A database predating the ledger has no history, which the page explains.
+    return { ticks: [], movedSinceLast: null };
+  }
+}
+
 /** Proposals for the approval UI: the full rows, newest first, each with its decision context. */
 export function recentProposals(db: Db, limit = 50): ProposalRow[] {
   let rows: Record<string, any>[];
@@ -404,6 +477,9 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
       ? (r.status as ProposalStatus)
       : 'draft',
     decision: decisionFor(r, learned),
+    // The hash an approval artifact binds, so the queue can send back what
+    // it showed and a proposal that changed since is refused, not signed.
+    proposal_hash: proposalHash(db, r),
   })) as ProposalRow[];
 }
 
@@ -450,9 +526,11 @@ function decisionFor(
   return {
     setup_hours:
       Math.round((steps.reduce((t, s) => t + (Number(s.setup_seconds) || 0), 0) / 3600) * 10) / 10,
-    // Every step reversible is the only shape `ambit apply` will run; the
-    // demo's hand-written steps carry no inverse and stay a document, honestly.
+    // Two facts, kept apart. `applyProposal` refuses a step with no inverse,
+    // and then a step with no config patch: a control-plane draft carries an
+    // inverse and no patch, so it reads reversible and is still refused.
     reversible: steps.length > 0 && steps.every(s => Boolean(s.inverse)),
+    applicable: steps.length > 0 && steps.every(s => Boolean(s.inverse) && Boolean(s.config_patch)),
     requires_person: steps.some(s => Boolean(s.requires_person)),
     recurring: recurring || undefined,
     privacy: steps.map(s => s.privacy).find((p: unknown) => typeof p === 'string') || undefined,
@@ -469,6 +547,19 @@ function decisionFor(
       .filter(Boolean),
     precedent: learned.filter(l => traits.has(l.trait)),
   };
+}
+
+/**
+ * The audit trail the page reads: one stream, newest first, from the four
+ * sources `ambit audit` reads as separate lists. The merge lives in audit.ts
+ * beside the CLI's reports, so both read the ledger one way. No graph yet is
+ * an empty trail, which the page explains, not an error.
+ */
+export function auditView(
+  db: Db | null,
+  opts: { days?: number; limit?: number } = {}
+): AuditResponse {
+  return auditStream(db, opts);
 }
 
 /** How often a person had to step in, per capability — the heatmap's input. */
@@ -536,7 +627,7 @@ export function loopView(db: Db): LoopResponse {
     },
     payback_months: o.payback_months ?? null,
     confidence: o.confidence,
-    acquisition_options: favour(db, o.acquisition_options),
+    acquisition_options: withInstall(o.capability_id, favour(db, o.acquisition_options)),
   })) as LoopResponse['opportunities'];
 
   const interventions = digest.interventions ?? 0;
@@ -635,18 +726,32 @@ function loopAuthority(db: Db): LoopAuthority {
   try {
     budgets = db
       .prepare(
-        `SELECT b.capability_id, b.action, b.budget_cents, b.spent_cents, b.period, c.name
+        `SELECT b.capability_id, b.action, b.budget_cents, b.spent_cents, b.period,
+                b.period_start, c.name
          FROM budgets b LEFT JOIN capabilities c ON c.id = b.capability_id
          WHERE b.budget_cents > 0 ORDER BY b.capability_id`
       )
       .all<any>()
-      .map(b => ({
-        capability: String(b.name || b.capability_id),
-        action: String(b.action),
-        ceiling_dollars: Math.round(b.budget_cents) / 100,
-        spent_dollars: Math.round(b.spent_cents) / 100,
-        period: String(b.period || 'month'),
-      }));
+      .map(b => {
+        // Read as the gate reads it, and written nowhere: a period that has run
+        // out is spent-nothing here without the reset that would start the next.
+        const standing = budgetStanding(db, b);
+        return {
+          capability: String(b.name || b.capability_id),
+          action: String(b.action),
+          ceiling_dollars: Math.round(b.budget_cents) / 100,
+          spent_dollars: Math.round(standing.spentCents) / 100,
+          period: String(b.period || 'month'),
+          period_start: standing.periodStart,
+          period_ends_on: standing.periodEndsOn,
+          forecast: standing.forecast
+            ? {
+                lands_dollars: standing.forecast.landsCents / 100,
+                hits_ceiling_on: standing.forecast.hitsCeilingOn,
+              }
+            : undefined,
+        };
+      });
   } catch {
     /* a database predating budgets */
   }
@@ -688,6 +793,22 @@ function favour(
   } catch {
     return options as never;
   }
+}
+
+/**
+ * Each option that has one, with the entry that installs it as text. The
+ * catalog rows carry no patch, so this is read from the curated tree beside
+ * them; an option with none is passed through as it was.
+ */
+function withInstall(
+  capabilityId: string,
+  options: LoopResponse['opportunities'][number]['acquisition_options']
+): LoopResponse['opportunities'][number]['acquisition_options'] {
+  if (!Array.isArray(options)) return options;
+  return options.map(o => {
+    const install = installText(capabilityId, o as never);
+    return install ? { ...o, install } : o;
+  });
 }
 
 /**
@@ -895,6 +1016,16 @@ function monthlyHours(db: Db): { month: string; hours: number; acquired?: string
     });
   }
   return out;
+}
+
+/** What an agent may do on each machine, from the gate; the engine's answer, as served. */
+export function machineView(db: Db, ids: string[]): MachineModes[] {
+  return machineModes(db, ids);
+}
+
+/** One run laid out in time, from what the ledger recorded; the engine's report, as served. */
+export function runView(db: Db, id?: string): RunResponse {
+  return runTimeline(db, id);
 }
 
 /** What the agents used that the map has no node for; the engine's report, as served. */

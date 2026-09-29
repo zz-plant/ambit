@@ -565,10 +565,11 @@ code, pre, .code, .sp-cli-cmd {
   flex-direction: column;
 }
 
-/* One entry: name, whether it is on, what a check said, what it provides. */
+/* One entry: name, whether it is on, what its checks said and how they have
+   gone, what it provides. */
 .setup-row {
   display: grid;
-  grid-template-columns: minmax(200px, 1.3fr) 90px 110px minmax(0, 2fr);
+  grid-template-columns: minmax(200px, 1.3fr) 90px 200px minmax(0, 2fr);
   align-items: center;
   gap: 14px;
   padding: 7px 8px;
@@ -618,10 +619,28 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-muted);
 }
 
+/* The verdict, the strip of runs behind it, and on a failing row the command
+   that finds out why. The verdict has a fixed width so the strips of every row
+   start at the same place. */
+.setup-row-check {
+  display: grid;
+  grid-template-columns: 96px auto;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 3px;
+  min-width: 0;
+}
+
 .setup-row-evidence {
   font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
+}
+
+.setup-row-verify {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font-size: 11.5px;
 }
 
 /* What the list found, above the list: a failing check, and enabled servers
@@ -713,6 +732,61 @@ code, pre, .code, .sp-cli-cmd {
 .setup-chip:hover {
   color: var(--text-primary);
   border-color: var(--accent);
+}
+
+/* The enable switch on a tool server's row: the detail panel's edit, one click
+   from the list. The knob's side says the state as the colour does, so it reads
+   without either. The pseudo-element is a larger target than the drawn track,
+   which is 18px tall. */
+.setup-switch {
+  position: relative;
+  width: 30px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.setup-switch::before {
+  content: '';
+  position: absolute;
+  inset: -4px -3px;
+}
+
+.setup-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.setup-switch--on {
+  border-color: var(--ok-line);
+  background: var(--ok-soft);
+}
+
+.setup-switch--on .setup-switch-knob {
+  transform: translateX(12px);
+  background: var(--ok);
+}
+
+.setup-switch[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* A write that did not happen, said in the row that asked for it. */
+.setup-row-error {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--error);
 }
 
 .tp-search-wrap {
@@ -986,6 +1060,16 @@ code, pre, .code, .sp-cli-cmd {
   font-size: 12.5px;
   line-height: 1.4;
   color: var(--ok);
+}
+
+/* The runs behind the verdict above: how the check has gone, oldest to newest. */
+.sp-history {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* Never checked, or failing: the finding the panel exists for, so it gets
@@ -1322,6 +1406,139 @@ code, pre, .code, .sp-cli-cmd {
   outline-offset: -2px;
 }
 
+/* ─── ERA LADDER ─── */
+/* An era's header opens this in the detail panel: a bar for how far up it you
+   are, then one rung per node. The rung's mark is the map's own circle for
+   the state, so the shape says it without the colour: filled is reached, a
+   ring is a next step, dashed is blocked, and a red disc with a bang is a
+   reached node whose check failed. */
+.sp-ladder-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--fig-track, rgba(255, 255, 255, 0.07));
+}
+
+.sp-ladder-seg {
+  display: block;
+  height: 100%;
+}
+
+.sp-ladder-seg--reached {
+  background: var(--fig-data, var(--accent));
+}
+
+.sp-ladder-seg--failing {
+  background: var(--error);
+}
+
+.sp-ladder-seg--next {
+  box-shadow: inset 0 0 0 1px var(--fig-data, var(--accent));
+}
+
+.sp-ladder-facts {
+  margin: 8px 0 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.sp-ladder {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sp-rung {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: baseline;
+  column-gap: 10px;
+  width: 100%;
+  padding: 7px 6px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sp-rung:hover {
+  background: var(--bg-hover);
+}
+
+.sp-rung:focus-visible {
+  outline-offset: -2px;
+}
+
+.sp-rung-mark {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  color: var(--on-accent);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.sp-rung--reached .sp-rung-mark {
+  background: var(--node-reached);
+  border: 1.5px solid var(--node-reached-ring);
+}
+
+.sp-rung--next .sp-rung-mark {
+  border: 2px solid var(--accent);
+}
+
+.sp-rung--blocked .sp-rung-mark {
+  border: 1.25px dashed var(--text-muted);
+}
+
+.sp-rung--failing .sp-rung-mark {
+  background: var(--error);
+}
+
+.sp-rung-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.sp-rung--blocked .sp-rung-name,
+.sp-rung--reached .sp-rung-name {
+  color: var(--text-secondary);
+}
+
+.sp-rung-state {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.sp-rung--next .sp-rung-state {
+  color: var(--accent);
+}
+
+.sp-rung--failing .sp-rung-state {
+  color: var(--error);
+}
+
+.sp-rung-detail {
+  grid-column: 2 / -1;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 /* ─── CANVAS HUD & CONTROLS ─── */
 /* The canvas scrolls inside .civ-scroll; the controls are laid over it and
    never move. The zoom controls sit left, the lenses right, so neither covers
@@ -1370,6 +1587,17 @@ code, pre, .code, .sp-cli-cmd {
 .civ-tree-svg {
   display: block;
   margin-top: 44px;
+}
+
+/* An era's header is a control: it opens the era's ladder in the detail panel.
+   Pressed, its name takes the accent, the way an open panel's node does. */
+.civ-era-head {
+  cursor: pointer;
+}
+
+.civ-era-head:hover .civ-era-name,
+.civ-era-head--open .civ-era-name {
+  fill: var(--accent);
 }
 
 .civ-zoom-hud,
@@ -1692,6 +1920,267 @@ code, pre, .code, .sp-cli-cmd {
   .civ-finding {
     font-size: 13px;
     border-radius: var(--radius-lg);
+  }
+}
+
+/* ─── THE FRONTIER THROUGH TIME ─── */
+/* Under the map, in the scene's flow: the map keeps the height left over, so
+   the timeline never covers its last row or its legend. Insets for the detail
+   panel are set inline, as the HUD's are. */
+.app-scene--timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-scene--timeline > .civ-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
+.civ-timeline {
+  flex: none;
+  position: relative;
+  z-index: 20;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-glass);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.civ-timeline-head,
+.civ-timeline-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  line-height: 1.45;
+}
+
+/* The glossary popover opens upward here: below is the edge of the page. */
+.civ-timeline .term-pop {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.civ-timeline-sentence {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.civ-timeline-now {
+  margin-left: auto;
+  padding: 2px 12px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--accent-dim);
+  color: var(--on-accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.civ-timeline-now:hover {
+  background: var(--accent);
+}
+
+/* The ticks sit inside half a thumb at each end, which is where the range
+   puts its first and last stops, so a tick and the playhead line up. */
+.civ-timeline-track {
+  --thumb: 14px;
+  position: relative;
+  height: 22px;
+  margin-top: 4px;
+}
+
+.civ-timeline-ticks {
+  position: absolute;
+  inset: 0 calc(var(--thumb) / 2);
+  list-style: none;
+  pointer-events: none;
+}
+
+.civ-timeline-tick {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 10px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  transform: translateY(-50%);
+}
+
+.civ-timeline-tick.is-on {
+  height: 16px;
+  background: var(--accent);
+}
+
+.civ-timeline-tick--now {
+  width: 6px;
+  margin-left: -3px;
+  background: var(--text-secondary);
+}
+
+.civ-timeline-range {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.civ-timeline-range:focus-visible {
+  outline: none;
+}
+
+.civ-timeline-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--border-bright);
+}
+
+.civ-timeline-range::-moz-range-track {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--border-bright);
+}
+
+.civ-timeline-range::-webkit-slider-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  margin-top: calc(1px - var(--thumb) / 2);
+  border: 2px solid var(--bg-canvas);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-line);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.civ-timeline-range::-moz-range-thumb {
+  box-sizing: border-box;
+  width: var(--thumb);
+  height: var(--thumb);
+  border: 2px solid var(--bg-canvas);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-line);
+}
+
+.civ-timeline-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--accent-line);
+}
+
+.civ-timeline-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--accent-line);
+}
+
+.civ-timeline-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The header says whose day its counts are while the map is in the past. */
+.app-status-asof {
+  font-size: 11.5px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* The panel says so too, before anything it states about the node. */
+.sp-asof {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  /* A card that sits at the bottom edge on a phone rises above the timeline. */
+  .app-scene--timeline .app-guide {
+    bottom: 96px;
+  }
+}
+
+/* The minimap: the whole map as a thumbnail, with the part on screen
+   outlined. It sits at the bottom right of the canvas, left of the detail
+   panel (the inset is set inline) and above the legend row, which the map's
+   last screen ends on. It draws only when the map does not fit, and a phone
+   keeps the room: the sheet, the guide and the finding all sit at the bottom
+   there, and the finding still names a direction in words. */
+.civ-minimap {
+  position: absolute;
+  bottom: 44px;
+  z-index: 20;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  box-shadow: var(--shadow-md);
+}
+
+.civ-minimap-body {
+  position: relative;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.civ-minimap-svg {
+  display: block;
+}
+
+.civ-minimap-band {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+.civ-minimap-dot {
+  fill: var(--text-muted);
+}
+
+.civ-minimap-dot--reached {
+  fill: var(--node-reached-ring);
+}
+
+.civ-minimap-dot--next {
+  fill: var(--accent);
+}
+
+.civ-minimap-dot--failing {
+  fill: var(--error);
+}
+
+.civ-minimap-view {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+  background: var(--accent-soft);
+  cursor: grab;
+}
+
+.civ-minimap-view:active {
+  cursor: grabbing;
+}
+
+@media (max-width: 768px) {
+  .civ-minimap {
+    display: none;
   }
 }
 
@@ -2096,6 +2585,70 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-muted);
 }
 
+.gov-step-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* The queue: several waiting drafts, ticked, and decided each on its own. */
+.gov-queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.gov-queue .gov-hint {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.gov-queue-all,
+.gov-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.gov-pick-note {
+  font-size: 11.5px;
+  color: var(--warn);
+}
+
+.gov-queue-report {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gov-queue-report p {
+  margin: 0;
+}
+
+/* A step nothing can undo. The word carries it and the outline marks it, so
+   the colour is never the only sign. */
+.gov-step-mark {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 7px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--warn-line);
+  color: var(--warn);
+  white-space: nowrap;
+}
+
 .gov-foot {
   display: flex;
   justify-content: space-between;
@@ -2115,6 +2668,145 @@ code, pre, .code, .sp-cli-cmd {
 .gov-hint {
   font-size: 12.5px;
   color: var(--text-muted);
+}
+
+/* ─── THE TRAIL ─── */
+/* One line per event. The outcome is the last thing on a line and is drawn
+   only where one was recorded, so a line without one ends sooner and no
+   empty cell stands in for it. */
+.audit-view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 28px 40px;
+  background: var(--bg-deep);
+}
+
+.audit-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.audit-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+.audit-sub,
+.audit-empty {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  max-width: 640px;
+}
+
+.audit-query {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 560px;
+}
+
+.audit-hint,
+.audit-count {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.audit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+
+.audit-time {
+  min-width: 108px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.audit-what {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.audit-actor,
+.audit-target {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.audit-action {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.audit-summary {
+  flex: 1 1 200px;
+  color: var(--text-secondary);
+}
+
+.audit-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.audit-outcome--good {
+  color: var(--ok);
+  border-color: var(--ok-line);
+}
+
+.audit-outcome--bad {
+  color: var(--error);
+  border-color: var(--error-line);
+}
+
+@media (max-width: 560px) {
+  .audit-view {
+    padding: 16px 14px 32px;
+  }
+
+  .audit-time {
+    min-width: 0;
+  }
+}
+
+/* The trail made four views. On the narrowest phones the tab icons give
+   their room to the words, so the four still fit across. */
+@media (max-width: 400px) {
+  .app-deck-nav .app-tab-icon {
+    display: none;
+  }
 }
 
 /* ─── GUIDE CALLOUT ─── */
@@ -2517,11 +3209,51 @@ code, pre, .code, .sp-cli-cmd {
   opacity: 0.4;
 }
 
+/* Reached, and its check failed: configured, not working. Never part of reached. */
+.fig-eras-failing {
+  fill: var(--error);
+}
+
 /* The frontier: outlined, because it is what could be reached, not what is. */
 .fig-eras-next {
   fill: none;
   stroke: var(--fig-data, var(--accent));
   stroke-width: 1;
+}
+
+/* ── The last runs of one check ──
+   A pass is short and a failure is tall, so the two differ in height before
+   they differ in colour: red and green are one hue to some readers, and the
+   strip has to read for them. Bars never touch, for the same reason. The
+   tokens are the page's, not the dashboard's, because a row in My Setup draws
+   this too. */
+.fig-history {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.fig-history-bar {
+  flex: none;
+  width: 4px;
+  border-radius: 1px;
+}
+
+.fig-history-bar--pass {
+  height: 6px;
+  background: var(--ok);
+}
+
+.fig-history-bar--fail {
+  height: 14px;
+  background: var(--error);
+}
+
+/* A slot the check has not filled: the old end of a short history. */
+.fig-history-bar--none {
+  height: 2px;
+  background: var(--border-bright);
 }
 
 /* ── Two marks on one axis ── */
@@ -2917,6 +3649,63 @@ code, pre, .code, .sp-cli-cmd {
 .fig-bar-row.is-kept .fig-bar-note {
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* A budget against its ceiling. The fill is what is spent, the rule is the
+   ceiling, and the hollow ring is where the period lands at the pace so far,
+   drawn the way every forecast on this page is. The hatch beyond the rule says
+   "over" in a pattern, so it survives a greyscale print and forced colours. */
+.fig-budget-track {
+  grid-area: track;
+  position: relative;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--fig-track);
+}
+
+.fig-budget-fill {
+  position: absolute;
+  left: 0;
+  top: 1.5px;
+  height: 9px;
+  min-width: 3px;
+  border-radius: 4px;
+  background: var(--fig-data);
+}
+
+.fig-budget-over {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0 4px 4px 0;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(239, 100, 97, 0.34) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.fig-budget-ceiling {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text-primary);
+}
+
+.fig-budget-tick {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  box-sizing: border-box;
+  border: 2px solid var(--fig-data);
+  border-radius: 50%;
+  background: var(--bg-surface);
 }
 
 .fig-axis {
@@ -3488,11 +4277,12 @@ code, pre, .code, .sp-cli-cmd {
     grid-area: name;
   }
 
-  .setup-row .tp-badge {
+  .setup-row .tp-badge,
+  .setup-switch {
     grid-area: status;
   }
 
-  .setup-row-evidence {
+  .setup-row-check {
     grid-area: evidence;
   }
 
@@ -3720,6 +4510,94 @@ code, pre, .code, .sp-cli-cmd {
 
 .tp-badge--unknown::before {
   background: var(--text-muted);
+}
+
+/* The infrastructure table: a status, a name, how old the reading is, and what
+   an agent may do on each machine. The mode is a word on every chip, so the
+   answer never rests on a colour. */
+.infra-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.infra-head .tp-note {
+  flex: 1;
+}
+
+.infra-table-wrap {
+  overflow-x: auto;
+}
+
+.infra-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.infra-table th,
+.infra-table td {
+  padding: 9px 14px 9px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.infra-table th {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.infra-table td {
+  color: var(--text-secondary);
+}
+
+.infra-kind {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.infra-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.infra-mode {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.infra-mode-word {
+  margin-left: 6px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.infra-mode--confirm {
+  border-color: var(--warn-line);
+}
+
+.infra-mode--deny {
+  border-color: var(--error-line);
+}
+
+.infra-mode--deny .infra-mode-word {
+  color: var(--error);
 }
 
 /* ─── DROP A CONFIG ───
@@ -4052,6 +4930,10 @@ code, pre, .code, .sp-cli-cmd {
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--text-muted);
+}
+
+.fig-note code {
+  color: var(--text-secondary);
 }
 
 .fig-row-none {
@@ -4539,6 +5421,114 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--warn-soft);
 }
 
+/* ─── FOCUS ─── */
+/* Keeps only the selected node's neighbourhood on the map. It is off unless
+   asked for, so the button is quiet; pressed, it takes the accent, and the
+   direction, the depth and the count of what is hidden appear under it. */
+.sp-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.sp-action-btn--focus {
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 12.5px;
+}
+
+.sp-action-btn--focus:hover {
+  background: var(--accent-soft);
+}
+
+.sp-action-btn--focus[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.sp-action-btn--focus[aria-pressed='true']:hover {
+  background: var(--accent-dim);
+}
+
+.sp-focus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sp-focus-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sp-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.sp-seg-btn {
+  min-width: 32px;
+  padding: 3px 10px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.sp-seg-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sp-seg-btn[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* How many nodes the focus hides, and the way back to all of them. */
+.sp-focus-pill {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: 5px;
+  padding: 3px 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.sp-focus-pill strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-focus-pill:hover {
+  border-color: var(--accent-line);
+  color: var(--text-primary);
+}
+
+.sp-focus-note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .civ-sim-banner--gap {
   border: 1px solid var(--warn-line);
   color: var(--warn);
@@ -4709,6 +5699,238 @@ code, pre, .code, .sp-cli-cmd {
   margin-left: 7px;
   color: var(--fig-data);
   font-weight: 500;
+}
+
+/* What taking the capability on needs, and how much of it is here. Drawn once
+   above the options, since every option needs the same things. Met and missing
+   are words on a tag, so the line reads without a colour. */
+.fig-needs {
+  margin: 6px 0 2px;
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.fig-needs p {
+  margin: 0;
+}
+
+.fig-needs-head strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.fig-needs-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fig-tag--missing {
+  color: var(--warn);
+  border-color: var(--warn-line);
+}
+
+.fig-need-why {
+  margin-left: 6px;
+  color: var(--text-muted);
+}
+
+.fig-needs-creds {
+  margin-top: 4px;
+}
+
+/* The entry that installs an option: read it, then paste it. */
+.fig-install {
+  grid-column: 1 / -1;
+  min-width: 0;
+  font-size: 11.5px;
+}
+
+.fig-install summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.fig-install pre {
+  max-width: 100%;
+  margin: 6px 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.fig-install-copy {
+  padding: 3px 9px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.fig-install-copy:hover {
+  border-color: var(--fig-data);
+  color: var(--text-primary);
+}
+
+/* ─── ONE RUN, IN TIME ─── */
+/* Lanes for the run, what it used, what happened, and you. Amber is a person
+   being asked for permission; grey is asked for something else. A filled
+   diamond is an ask with a figure and no end, and a hollow one is an ask nobody
+   timed, so the difference is a shape as well as a fill. */
+.fig-run-pick {
+  max-width: 100%;
+  padding: 4px 8px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+}
+
+.fig-run-human {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.fig-run {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.fig-run-lane {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+
+.fig-run-bar {
+  fill: var(--fig-context);
+}
+
+/* No end was recorded, so the bar runs to the last thing seen and says so. */
+.fig-run-bar--open {
+  fill: none;
+  stroke: var(--fig-context);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.fig-run-use {
+  fill: var(--fig-data);
+}
+
+.fig-run-use-pt {
+  fill: var(--bg-surface);
+  stroke: var(--fig-data);
+  stroke-width: 1.6;
+}
+
+.fig-run-event {
+  fill: var(--text-muted);
+  opacity: 0.8;
+}
+
+.fig-run-ask--gate {
+  --ask: var(--warn);
+}
+
+.fig-run-ask--other {
+  --ask: var(--fig-context);
+}
+
+.fig-run-ask {
+  fill: var(--ask);
+}
+
+.fig-run-ask-pt {
+  stroke: var(--ask);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.fig-run-ask-pt.is-timed {
+  fill: var(--ask);
+}
+
+.fig-run-ask-pt.is-untimed {
+  fill: var(--bg-surface);
+}
+
+.fig-run-axis {
+  stroke: var(--fig-track);
+  stroke-width: 1;
+}
+
+.fig-run-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.fig-run-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.fig-run-asks {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.fig-run-asks th,
+.fig-run-asks td {
+  padding: 6px 12px 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.fig-run-asks th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.fig-tag--gate {
+  color: var(--warn);
+  border-color: var(--warn-line);
+}
+
+/* An ask nobody timed says so in words, and is never a figure of nothing. */
+.fig-run-untimed {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.fig-run-note {
+  color: var(--text-muted);
 }
 
 /* ─── A MISSING SERVER, WITH ITS ENTRY READY ─── */

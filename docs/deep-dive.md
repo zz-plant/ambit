@@ -192,6 +192,8 @@ Agent capabilities do not stop at the model boundary. A local GPU, NAS, browser 
 
 Ambit scans infrastructure from an explicit local manifest (`INFRA_MANIFEST`, default `~/.config/opencode/infrastructure.json`) and from the local Docker socket when one exists (`DOCKER_HOST=unix://…`, `/var/run/docker.sock`, or the per-user socket Docker Desktop, OrbStack, Colima and Rancher Desktop leave). The socket is read with one `GET /containers/json`: every container, running or not, becomes a service on a `device:docker` node, with its image, state, published ports and compose project. A TCP `DOCKER_HOST` is never probed, and nothing here can start or stop a container. With no manifest and no socket it returns an empty scan rather than an error — no host addresses are baked in.
 
+The Infra tab in My Setup draws that scan as a table: a status, a name, how old the reading is, and for each machine what an agent may do there. The modes are the gate's answer with the machine as the target (`device:nuc`), for the actions the tree gives Shell Execution, so they differ between machines only where a grant is scoped to one. They come from this machine's own grants, and a forbidden grant wins at any scope, as it does for `apply`. Nothing about when a machine was last seen is stored: the time on a row is the age of the scan in front of you, and a row the scan had nothing to probe says so.
+
 The manifest is not specific to servers. A device is anything that can act — a Pi, a GPU host, a robot arm, a sensor, a decoder — and they seed as first-class nodes in a `physical` domain. Devices and services seed into the engine graph itself: a device is a `resource` with a `runs_on` edge to every service hosted on it, so `ambit impact device:nuc` answers what actually breaks when the machine disappears, and a plan can point at capacity the graph counts. Whether that generalization is the right one is argued in [the affordance frontier](./affordance-frontier.md); what is implemented is that the model does not assume software.
 
 The goal is not another homelab inventory. It is to treat infrastructure as capability-bearing:
@@ -233,6 +235,7 @@ A calibrated classifier is a capability, not an authority. Typed decision models
 
 ```
 ambit history since
+  moved:     reached 13 to 19, 3 emergent
   frontier then: 13
   frontier now:  19
   gained:    Embeddings · Local Embeddings · nomic-embed-text
@@ -247,12 +250,15 @@ A fourth class, **vocabulary**, exists to keep `gained`, `emergent` and `lost` h
 
 ```
 ambit history since
+  moved:     reached 21
   frontier then: 21
   frontier now:  21
   vocabulary: 12   act:shell-execution/run_command · act:file-editing/write_file · …
 ```
 
 Without it, upgrading Ambit would read as a dozen capabilities acquired on a machine where nothing happened, which is exactly what the ledger exists not to say.
+
+The map reads the same ledger as a timeline under it. `GET /api/frontier` serves one tick per second in which a snapshot was taken; two snapshots inside one second are one tick showing the later, because a second is all a timestamp can name. Each tick carries what the snapshot holds, state, kind and lifecycle per capability, and the step since the tick before in the words `ambit history since <then> <now>` prints for the same two observations, since the terminal, MCP and the page share one comparison. Scrubbing redraws the map from the snapshot's states over today's names, eras and edges, which no snapshot stores. Grants, providers and attention are not stored either, so while the playhead is in the past the lenses that read them and the simulations stay off, never drawn from today. The playhead travels in the link as `at`, a timestamp and not a snapshot id, and a second the ledger does not hold opens on now.
 
 ---
 
@@ -393,7 +399,7 @@ check      verify [cap] [--history] [--target=<object>]
 govern     proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
            reject <id> <person> ["why"]
            apply <id> · rollback <id> · dispatch <id> [--to=<url>]
-           history [since <when>]
+           history [since <when> [<until>]]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest <file>
            delegation object|answer|objections · delegation source add|sources|pull
@@ -411,7 +417,7 @@ The table covers the commands whose answer is not obvious from the name, in the 
 | :--- | :--- |
 | **first session** — *the commands listed above the groups* | |
 | `ambit briefing` | What an agent should know before its first tool call — reached and proven, configured but failing, waiting on a person, blocked recently, worth reaching next, and what changed since the last briefing. Prose, capped near 1,200 tokens, also served as the MCP resource `ambit://briefing` |
-| `ambit status` | How are we doing — reached, verified, failing, degraded, SPOFs, recurring deficits, pending approvals, all in one report |
+| `ambit status` | How are we doing — reached, verified, failing, degraded, SPOFs, recurring deficits, pending approvals, all in one report that ends on the one command to type next. `--json` carries that as `next`, a command and the reason for it |
 | `ambit next [n]` | What to reach next and why — ranked by what has actually blocked work once the ledger has observations, and by leverage per hour of setup before then. The answer says which basis it used |
 | **graph** — *the structure, and what it would cost to lose a piece* | |
 | `ambit impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |
@@ -433,12 +439,12 @@ The table covers the commands whose answer is not obvious from the name, in the 
 | `ambit authority promote <cap> <action> --after=N --by=<person>` | The threshold that widens a grant once its evidence supports it. A person sets it once; a single failing check afterwards puts the grant back, with nobody asked |
 | `ambit authority grant <cap> <mode> --ttl=30m` | Autonomy for a window and no longer. Once expired the grant decides nothing and whatever stood before it decides again; the row is never rewritten, so it stays as the record of what was granted |
 | `ambit authority sandbox <target> --by=<person>` | Somewhere acting does not matter. Confirmation is relaxed inside it; a refusal never is, because rehearsing a forbidden action would be a way round it |
-| `ambit budget set <cap> --amount=$20 --by=<person>` | Standing spend that needs no person. When it is spent the answer goes back to asking, which is what makes a ceiling safer than approving each purchase |
+| `ambit budget set <cap> --amount=$20 --by=<person>` | A ceiling on what can be spent in a period. A spend past it is refused until the period turns over, which is what makes a ceiling safer than approving each purchase. It bounds a grant and does not widen one: within the ceiling the grant's own mode still decides |
 | `ambit incidents` | Probe the infrastructure manifest; open an incident run for every offline service with the authority decision for its recovery. `incident resolve <svc> <outcome>` closes it with MTTR |
 | **govern** — *the reviewable path from proposal to applied change* | |
 | `ambit proposals --pending` | The drafts waiting on a decision, each with cost, bill and what it unlocks — so approving is one sitting rather than one interruption per proposal |
 | `ambit reject <id> <person> ["why"]` | A refusal, recorded. Approval was always written to the graph and refusal was not, so nothing could learn the shape of a no |
-| `ambit history since <when>` | What became reachable since a past date — and what emerged rather than being added? |
+| `ambit history since <when> [<until>]` | What became reachable since a past date, and what emerged with nothing added? Up to now, or up to a later observation, with the step in the sentence the map's timeline prints |
 | `ambit audit <run-…\|prop-…\|human:name\|days>` | The trail: who approved what, what ran, against what target, under which grant, and whether it held |
 | `ambit dispatch <id> [--to=<url>]` | Push a proposal to Slack, Discord, Telegram, ntfy or a JSON endpoint: the decision for a draft, the signed artifact once approved. One-way; the reply is `ambit approve` on a machine that holds the key |
 | **report** — *what the system cost to operate* | |
@@ -494,4 +500,6 @@ The web UI (`./bootstrap.sh web`) reads the same graph the CLI reads, over `/api
 
 **Simulation is arithmetic on the graph, not on the host.** An outage walks the transitive downstream closure of the chosen node and counts what stops working; an unlock takes a locked node whose other hard prerequisites are already met and lights what becomes reachable. Neither reads a config file or writes one.
 
-**Three loopback endpoints carry governance.** `GET /api/proposals` lists drafts and their history. `POST /api/proposals/:id/approve` mints the same HMAC-signed approval artifact the terminal does, with an actor and a TTL, and never applies. `GET /api/attention` aggregates interventions per capability from the ledger. All three bind loopback and reject a non-local origin before routing, like every route.
+**Seven loopback endpoints carry governance.** `GET /api/proposals` lists drafts and their history, each with the hash an approval artifact binds. `POST /api/proposals/:id/approve` mints the same HMAC-signed approval artifact the terminal does and never applies, and `POST /api/proposals/:id/reject` records a no with its reason. `POST /api/proposals/approve` and `POST /api/proposals/reject` are the queue: an explicit list of drafts, each sent with the hash the page showed and decided on its own as the person at the browser, so one that changed since is refused while the rest go ahead. They decide drafts only, answer per id, and ask anything with no browser behind it for the local API token, since one request there decides up to fifty. `GET /api/attention` aggregates interventions per capability from the ledger. `GET /api/audit` is the trail the Audit view draws: acts, proposals, runs and delegation records merged newest first and cut once at a limit, with what a check printed left out. All seven bind loopback and reject a non-local origin before routing, like every route.
+
+**One run is drawn in time from what the ledger recorded, and no more.** `GET /api/run` lays a run out: the capabilities it used for as long as each was measured to last, its events as points, and every time a person was asked, with permission asks in amber. An ask with both its times is a span, and one without is a marked point that says it was not timed. The OpenCode plugin logs a permission prompt and cannot see the reply, so most asks have no end, and an unmeasured wait is never drawn as zero. The total of a person's time in the run counts only the asks something timed, and says so. It is read only, and it is the same projection the Time & cost page draws.

@@ -12,6 +12,7 @@
  * arithmetic and the graph walking, which is the part that can be wrong in
  * ways nobody would notice by looking.
  */
+import type { FocusDirection } from '../../linkState';
 import type { Connection, Item } from '../../utils/configImporter';
 
 /**
@@ -203,6 +204,98 @@ export function cascadeDepths(
     }
   }
   return depth;
+}
+
+/**
+ * The nodes a focus keeps around one node: itself, and everything within
+ * `depth` hops of it in the direction asked. `needs` follows prerequisites,
+ * `enables` follows dependants, and `both` is those two walks together. It is
+ * not a walk that ignores direction: what a node's prerequisite also enables
+ * is a sibling, and is neither what this needs nor what it enables.
+ *
+ * `within` is the set the map draws. The edge list holds edges to nodes the
+ * map never shows (the demo has 97, and 42 of them join two drawn nodes), and
+ * a hop through one of those would count a neighbourhood nobody can see, so a
+ * walk never leaves `within`. A node the map does not draw has no
+ * neighbourhood on it, and gets an empty set.
+ */
+export function neighbourhood(
+  connections: Connection[],
+  id: string,
+  depth: number,
+  direction: FocusDirection,
+  within: Set<string>
+): Set<string> {
+  const shown = new Set<string>();
+  if (!within.has(id)) return shown;
+  shown.add(id);
+  const { downstream, upstream } = buildAdjacency(connections, null);
+  const walk = (edges: Map<string, string[]>) => {
+    const seen = new Set([id]);
+    let frontier = [id];
+    for (let hop = 0; hop < depth && frontier.length; hop++) {
+      const next: string[] = [];
+      for (const current of frontier) {
+        for (const n of edges.get(current) || []) {
+          if (!within.has(n) || seen.has(n)) continue;
+          seen.add(n);
+          shown.add(n);
+          next.push(n);
+        }
+      }
+      frontier = next;
+    }
+  };
+  if (direction !== 'enables') walk(upstream);
+  if (direction !== 'needs') walk(downstream);
+  return shown;
+}
+
+/** What a collapse leaves on the map, and what it takes off. */
+export interface Collapse {
+  /** The ids the map still draws. */
+  shown: Set<string>;
+  /** How many of the map's nodes are hidden: the whole map less what is shown. */
+  hidden: number;
+  /** How many nodes the whole map draws. */
+  total: number;
+}
+
+/**
+ * The map collapsed to one node's neighbourhood, or nothing where the node is
+ * not on the map, which is an entry of My Setup and has no place to collapse to.
+ */
+export function collapseTo(
+  items: Item[],
+  connections: Connection[],
+  id: string,
+  depth: number,
+  direction: FocusDirection
+): Collapse | null {
+  const drawn = new Set(visibleItems(items).map(i => i.id));
+  if (!drawn.has(id)) return null;
+  const shown = neighbourhood(connections, id, depth, direction, drawn);
+  return { shown, hidden: drawn.size - shown.size, total: drawn.size };
+}
+
+/**
+ * Where `j` and `k` go: the next node in the list, or the previous, wrapping
+ * at the ends and skipping any that a collapse has hidden. Nothing selected
+ * starts at the first going forward and the last going back. Null where there
+ * is nowhere to go, so the selection is never handed back to the toggle that
+ * would clear it.
+ */
+export function stepSelection(
+  list: Item[],
+  selectedId: string | null,
+  step: 1 | -1,
+  shown?: Set<string> | null
+): string | null {
+  const pool = shown ? list.filter(i => shown.has(i.id)) : list;
+  if (!pool.length) return null;
+  const at = pool.findIndex(i => i.id === selectedId);
+  const to = at < 0 ? (step === 1 ? 0 : pool.length - 1) : (at + step + pool.length) % pool.length;
+  return pool[to].id === selectedId ? null : pool[to].id;
 }
 
 /** The edge kinds that mean "supplies", as the engine names them. */
@@ -448,6 +541,18 @@ function orderRows(cols: Record<string, Item[]>, colOrder: string[], connections
  */
 export const columnCentre = (ci: number): number => START_X + ci * COL_W + COL_W / 2 - 16;
 
+/**
+ * The faint band a column sits in, from its header down to the legend. The map
+ * draws it behind the column and the minimap draws it as the era's bar, so
+ * the thumbnail is the map's own shape.
+ */
+export const bandOf = (ci: number, sceneHeight: number) => ({
+  x: START_X + ci * COL_W - 8,
+  y: START_Y - 45,
+  width: COL_W - 16,
+  height: sceneHeight - START_Y - 20,
+});
+
 export interface Placed {
   x: number;
   y: number;
@@ -492,6 +597,166 @@ export const isFailing = (item: Item): boolean =>
  */
 export const isProven = (item: Item): boolean =>
   item.status === 'built' && ['verified', 'reliable'].includes(String(item.meta?.lifecycle ?? ''));
+
+/**
+ * Where a node stands on its era's ladder. Failing is a state of its own:
+ * `status` is structural, and a reached node whose check failed is configured
+ * and not working. The era header counted it as reached and read "5 of 5"
+ * over a column with a red node in it.
+ */
+export type RungState = 'reached' | 'failing' | 'next' | 'blocked';
+
+export const rungOf = (item: Item): RungState =>
+  item.status === 'built'
+    ? isFailing(item)
+      ? 'failing'
+      : 'reached'
+    : isNext(item)
+      ? 'next'
+      : 'blocked';
+
+/** A column's nodes by state. The era header draws this and the ladder lists it, so they cannot disagree. */
+export interface Progress {
+  total: number;
+  /** Reached, with a check that has not failed. */
+  reached: number;
+  failing: number;
+  next: number;
+  blocked: number;
+  /** Setup time of everything not yet reached, in seconds. Zero when nothing carries an estimate. */
+  seconds: number;
+}
+
+export function columnProgress(list: Item[]): Progress {
+  const progress: Progress = {
+    total: list.length,
+    reached: 0,
+    failing: 0,
+    next: 0,
+    blocked: 0,
+    seconds: 0,
+  };
+  for (const item of list) {
+    progress[rungOf(item)] += 1;
+    if (item.status !== 'built') progress.seconds += Number(item.meta?.setupSeconds) || 0;
+  }
+  return progress;
+}
+
+/**
+ * What a blocked node waits for, in the words the panel and the ladder share:
+ * the prerequisites it names directly come first, three at most, then a count
+ * of the rest, then the setup time all of them add up to.
+ */
+export function blockedBy(
+  items: Item[],
+  connections: Connection[],
+  id: string,
+  gap = gapOf(items, connections, id)
+): { names: string[]; more: number; seconds: number } {
+  const byId = new Map(items.map(i => [i.id, i]));
+  const missing = [...gap.missing];
+  const direct = missing.filter(p => connections.some(c => c.from === p && c.to === id));
+  const named = (direct.length ? direct : missing).slice(0, 3);
+  return {
+    names: named.map(p => byId.get(p)?.name || p),
+    more: missing.length - named.length,
+    seconds: gap.seconds,
+  };
+}
+
+/**
+ * The required prerequisites of a node that are reached and failing. `next`
+ * from the engine's tree is state-only: a node whose prerequisite is
+ * configured and not working still reads as a next step, where the engine's
+ * own `ambit next` counts that prerequisite as missing. The ladder keeps the
+ * state the map draws and says what is wrong underneath it.
+ */
+export function failingNeeds(items: Item[], connections: Connection[], id: string): Item[] {
+  const byId = new Map(items.map(i => [i.id, i]));
+  const out: Item[] = [];
+  for (const c of connections) {
+    if (c.to !== id || c.type !== 'hard-dep') continue;
+    const from = byId.get(c.from);
+    if (from && isFailing(from) && !out.includes(from)) out.push(from);
+  }
+  return out;
+}
+
+/** "A", "A and B", "A, B and C". */
+const listOf = (names: string[]): string =>
+  names.length < 2
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+
+/** One line of a ladder: a node, where it stands, and the one fact that explains it. */
+export interface Rung {
+  item: Item;
+  state: RungState;
+  /** A next step's setup time as the map writes it beside the node. Absent when none is recorded. */
+  estimate?: string;
+  /** What it waits for, or what is wrong with it. Absent for a node that is reached and passing. */
+  detail?: string;
+}
+
+export interface EraLadder {
+  era: number;
+  name: string;
+  progress: Progress;
+  rows: Rung[];
+}
+
+/** The order of a ladder: what needs attention first, then what is done. */
+const RUNG_RANK: Record<RungState, number> = { failing: 0, next: 1, blocked: 2, reached: 3 };
+
+/**
+ * An era as a ladder of its nodes: how far up it you are, and for each rung
+ * either that it is reached, or what it takes. Failing comes first, then the
+ * next steps cheapest first, then blocked, then reached. A rung with no
+ * estimate has none to show, and sorts after those that do.
+ */
+export function eraLadder(items: Item[], connections: Connection[], era: number): EraLadder | null {
+  const list = items.filter(i => eraOf(i) === era);
+  if (!list.length) return null;
+  const cost = (i: Item) => Number(i.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
+  const rows = list.map((item): Rung => {
+    const state = rungOf(item);
+    const stuck =
+      state === 'reached' || state === 'failing' ? [] : failingNeeds(items, connections, item.id);
+    const clauses: string[] = [];
+    if (state === 'failing') clauses.push('Configured, but not working');
+    if (state === 'blocked') {
+      const { names, more, seconds } = blockedBy(items, connections, item.id);
+      if (names.length) {
+        clauses.push(
+          `Waits for ${names.join(', ')}${more > 0 ? ` and ${more} more` : ''}${
+            seconds ? `, about ${readableSeconds(seconds)} of setup first` : ''
+          }`
+        );
+      }
+    }
+    if (stuck.length) {
+      clauses.push(
+        `Needs ${listOf(stuck.map(i => i.name))}, which ${stuck.length === 1 ? 'is' : 'are'} failing ${
+          stuck.length === 1 ? 'its check' : 'their checks'
+        }`
+      );
+    }
+    return {
+      item,
+      state,
+      estimate: state === 'next' ? costOf(item) || undefined : undefined,
+      detail: clauses.length ? clauses.join('; ') : undefined,
+    };
+  });
+  rows.sort(
+    (a, b) =>
+      RUNG_RANK[a.state] - RUNG_RANK[b.state] ||
+      (a.state === 'next' ? cost(a.item) - cost(b.item) || 0 : 0) ||
+      a.item.name.localeCompare(b.item.name)
+  );
+  return { era, name: columnLabel(`era:${era}`, list), progress: columnProgress(list), rows };
+}
 
 /**
  * An outage's `stops`, split by what each node was doing before it. `stopped`

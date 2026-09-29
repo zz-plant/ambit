@@ -1,7 +1,10 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import AppDeck, { type MapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
+import AuditView from './components/AuditView';
+import { dayOf, itemsAsOf, momentOf, tickAt } from './components/civ/history';
 import { isEntry, isNext, isProven, visibleItems } from './components/civ/layout';
+import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
 import GettingStartedGuide from './components/GettingStartedGuide';
@@ -20,6 +23,7 @@ import { isNarrowScreen, useNarrow } from './hooks/useViewport';
 import { hostedLanding, initialView, readLinkState, type View } from './linkState';
 import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
+import type { PaletteHandlers } from './utils/palette';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 
@@ -42,6 +46,7 @@ export default function App() {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
   const selectedId = useAmbitStore(s => s.selectedItem);
+  const selectedEra = useAmbitStore(s => s.selectedEra);
   const hoveredId = useAmbitStore(s => s.hoveredItem);
   const showDetailPanel = useAmbitStore(s => s.showDetailPanel);
   const loading = useAmbitStore(s => s.loading);
@@ -49,8 +54,15 @@ export default function App() {
   const demo = useAmbitStore(s => s.demo);
   const lens = useAmbitStore(s => s.activeLens);
   const spotlight = useAmbitStore(s => s.spotlight);
+  const collapse = useAmbitStore(s => s.collapsed);
+  const depth = useAmbitStore(s => s.collapseDepth);
+  const dir = useAmbitStore(s => s.collapseDirection);
   const proposals = useAmbitStore(s => s.proposals);
   const showApprovalModal = useAmbitStore(s => s.showApprovalModal);
+  const history = useAmbitStore(s => s.history);
+  const historyAt = useAmbitStore(s => s.historyAt);
+  const setHistoryAt = useAmbitStore(s => s.setHistoryAt);
+  const loadHistory = useAmbitStore(s => s.loadHistory);
 
   const selectItem = useAmbitStore(s => s.selectItem);
   const hoverItem = useAmbitStore(s => s.hoverItem);
@@ -59,10 +71,13 @@ export default function App() {
   const loadProposals = useAmbitStore(s => s.loadProposals);
   const loadAttentionData = useAmbitStore(s => s.loadAttentionData);
   const loadLoop = useAmbitStore(s => s.loadLoop);
+  const loadAudit = useAmbitStore(s => s.loadAudit);
   const probeBackend = useAmbitStore(s => s.probeBackend);
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
   const setSpotlight = useAmbitStore(s => s.setSpotlight);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
+  const startOutage = useAmbitStore(s => s.startOutageSimulation);
+  const setActiveLens = useAmbitStore(s => s.setActiveLens);
 
   // The URL is read once; the controls own every later change.
   const [link] = useState(() =>
@@ -84,7 +99,17 @@ export default function App() {
     setShowDocs(true);
   };
 
-  useUrlSync({ view, focusId: selectedId, docsOpen: showDocs, demo, lens });
+  useUrlSync({
+    view,
+    focusId: selectedId,
+    docsOpen: showDocs,
+    demo,
+    lens,
+    at: historyAt,
+    collapse,
+    depth,
+    dir,
+  });
 
   const isNarrow = useNarrow();
   // The tour runs on the demo the first time, like the card it replaces there,
@@ -99,6 +124,7 @@ export default function App() {
       // with no explanation reads as a glitch.
       loadGraph();
       loadLoop();
+      loadHistory();
       setToast('The graph was rebuilt, so the map has reloaded.');
     },
     // A browser approval becomes a notice to act on, with the exact command
@@ -138,7 +164,10 @@ export default function App() {
     if (!link.demo) {
       loadLoop();
       loadGraph();
+      loadHistory();
     }
+    // A link to the trail opens on it, so it is read now, not on a tab click.
+    if (link.view === 'audit') loadAudit();
   }, []);
 
   // ?focus=<id> selects a node once the graph that contains it has loaded.
@@ -183,6 +212,13 @@ export default function App() {
     startAcquisition(id);
   };
 
+  /** The same, for the outage: the map, the node selected, and what stops. */
+  const showOutage = (id: string) => {
+    setView('tree');
+    select(id);
+    startOutage(id);
+  };
+
   const showView = (next: View) => {
     setView(next);
     // The detail panel is meaningful over the map and the list, and in the
@@ -190,6 +226,10 @@ export default function App() {
     if (next === 'loop') {
       selectItem(null);
       if (!demo) loadLoop();
+    }
+    if (next === 'audit') {
+      selectItem(null);
+      loadAudit();
     }
   };
 
@@ -213,22 +253,62 @@ export default function App() {
     loadProposals();
   };
 
-  const selected = selectedId ? items.find(i => i.id === selectedId) : undefined;
-  const detailOpen = Boolean(showDetailPanel && selectedId);
+  /**
+   * What the finder's actions do to the page. Each one shows the map or a
+   * panel, and `view` lives here, so the finder is handed these and never sets
+   * a view itself. A check is copied and never run: the page has no route that
+   * runs one.
+   */
+  const paletteHandlers: PaletteHandlers = {
+    simulate: (id, mode) => (mode === 'outage' ? showOutage(id) : showOnMap(id)),
+    lens: lens => {
+      setView('tree');
+      setActiveLens(lens);
+    },
+    proposals: showProposals,
+    copy: async (text, notice) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setToast(notice);
+      } catch {
+        setToast(`Could not copy. Type ${text} in a terminal.`);
+      }
+    },
+  };
+
+  // The map as a past observation left it, while the playhead is off now:
+  // only on the map, and not while the tour narrates the map as it is. The
+  // header, the map and the panel all read `shown`, so they tell one date.
+  const tick =
+    view === 'tree' && !(demo && (tourAsked || showGuide)) ? tickAt(history, historyAt) : null;
+  const shown = useMemo(
+    () => (tick ? itemsAsOf(items, connections, tick) : items),
+    [tick, items, connections]
+  );
+
+  const selected = selectedId ? shown.find(i => i.id === selectedId) : undefined;
+  // A node the observation on screen did not hold has no panel to open.
+  const detailOpen = Boolean(showDetailPanel && ((selectedId && selected) || selectedEra !== null));
 
   // The header counts one population per view: the map's nodes by state, or
   // the setup's entries by whether they are enabled. It used to count both in
   // one fraction, so the demo read "42 of 60" over a tree of 33.
-  const mapItems = visibleItems(items);
+  const mapItems = visibleItems(shown);
   const counts: MapCounts = {
     verified: mapItems.filter(isProven).length,
     unproven: mapItems.filter(i => i.status === 'built' && !isProven(i)).length,
     next: mapItems.filter(i => i.status !== 'built' && isNext(i)).length,
     blocked: mapItems.filter(i => i.status !== 'built' && !isNext(i)).length,
   };
+  // An observation recorded before lifecycles were cannot split reached by
+  // evidence, so the header counts it whole.
+  if (tick && !tick.lifecycles) counts.reached = mapItems.filter(i => i.status === 'built').length;
   const entries = items.filter(isEntry);
   const hasTree = items.some(i => !isEntry(i));
   const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
+  // Under the map, once a series has come back. It explains itself when it
+  // holds fewer than two ticks; with no engine behind the page it is absent.
+  const showTimeline = view === 'tree' && hasTree && !touring && history !== null;
   const endTour = () => {
     setTourAsked(false);
     dismissGuide();
@@ -282,9 +362,10 @@ export default function App() {
         onShare={share}
         onShowProposals={showProposals}
         onShowDocs={() => openDocs()}
+        asOf={tick ? dayOf(tick.at) : undefined}
       />
 
-      <div className="app-scene">
+      <div className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}>
         {loading && !items.length && <Loading />}
         {error && (
           <div className="app-error">
@@ -296,12 +377,14 @@ export default function App() {
         )}
         {view === 'loop' ? (
           <LoopDashboard onShowOnMap={showOnMap} />
+        ) : view === 'audit' ? (
+          <AuditView />
         ) : view === 'config' ? (
           <SetupView onShow={show} />
         ) : items.length > 0 && hasTree ? (
           <Suspense fallback={<Loading />}>
             <CivTree
-              items={items}
+              items={shown}
               connections={connections}
               selectedId={selectedId}
               hoveredId={hoveredId}
@@ -310,6 +393,7 @@ export default function App() {
               leftInset={8}
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
               narrated={touring}
+              asOf={tick ? momentOf(tick.at) : undefined}
             />
           </Suspense>
         ) : items.length > 0 ? (
@@ -327,6 +411,15 @@ export default function App() {
             </button>
           </div>
         ) : null}
+        {showTimeline && history && (
+          <Timeline
+            history={history}
+            at={tick ? historyAt : null}
+            onScrub={setHistoryAt}
+            leftInset={8}
+            rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
+          />
+        )}
         {touring ? (
           <Tour
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
@@ -357,11 +450,20 @@ export default function App() {
           the tour narrates the node, the sheet under it said the same thing. */}
       {detailOpen && !(touring && isNarrow) && (
         <aside className="app-detail-panel" aria-label="Capability details">
-          <NodeDetailPanel onShow={show} />
+          <NodeDetailPanel
+            onShow={show}
+            items={tick ? shown : undefined}
+            asOf={tick ? momentOf(tick.at) : undefined}
+          />
         </aside>
       )}
 
-      <Finder open={finderOpen} onClose={() => setFinderOpen(false)} onShow={show} />
+      <Finder
+        open={finderOpen}
+        onClose={() => setFinderOpen(false)}
+        onShow={show}
+        handlers={paletteHandlers}
+      />
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
       <DocsModal
         isOpen={showDocs}

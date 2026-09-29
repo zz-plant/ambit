@@ -19,10 +19,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, expect, test } from 'vitest';
-import type { LoopSnapshot } from '../../shared/api';
+import type { FrontierTick, LoopSnapshot } from '../../shared/api';
 import type { Item } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
 import CivTree from './CivTree';
+import { itemsAsOf } from './civ/history';
+import { Timeline } from './civ/Timeline';
 import LoopDashboard from './LoopDashboard';
 import NodeDetailPanel from './NodeDetailPanel';
 import SetupView from './SetupView';
@@ -77,6 +79,7 @@ const unstatedNode: Item = {
     owner: null,
     providers: undefined,
     reliability: undefined,
+    history: undefined,
     authority: undefined,
     failures: undefined,
   },
@@ -173,6 +176,7 @@ afterEach(() => {
     items: [],
     connections: [],
     selectedItem: null,
+    selectedEra: null,
     loop: null,
     loopSource: null,
     loopEmpty: false,
@@ -189,6 +193,39 @@ test('the detail panel states nothing about a node that recorded nothing', () =>
   });
 
   expectNothingUnstated(renderToStaticMarkup(<NodeDetailPanel />), 'NodeDetailPanel');
+});
+
+test('the era ladder states nothing about a node that recorded nothing', () => {
+  // A tree whose nodes carry an era and nothing else: no era name, no setup
+  // time, no lifecycle, no evidence. Every rung still has to read as a rung.
+  const bare = (id: string, status: 'built' | 'specified', next: boolean): Item => ({
+    ...unstatedNode,
+    id,
+    name: id,
+    status,
+    meta: {
+      era: 2,
+      eraName: undefined,
+      setupSeconds: undefined,
+      next,
+      lifecycle: undefined,
+      lastChecked: undefined,
+    },
+  });
+  seed({
+    items: [bare('a', 'built', false), bare('b', 'specified', true), bare('c', 'specified', false)],
+    connections: [
+      { from: 'a', to: 'b', type: 'hard-dep' },
+      { from: 'b', to: 'c', type: 'hard-dep' },
+    ],
+    selectedEra: 2,
+    showDetailPanel: true,
+  });
+
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+
+  expect(html).toContain('sp-ladder');
+  expectNothingUnstated(html, 'the era ladder');
 });
 
 test('my setup states nothing about an entry that recorded nothing', () => {
@@ -218,6 +255,57 @@ test('the loop page states nothing the ledger did not measure', () => {
   seed({ loop: unstatedLoop, loopSource: 'ledger', loopEmpty: false });
 
   expectNothingUnstated(renderToStaticMarkup(<LoopDashboard />), 'LoopDashboard');
+});
+
+test('a past observation states only what it recorded, on the map, the panel and the timeline', () => {
+  // Written before kinds and lifecycles were recorded: states and nothing
+  // else. Today's grants, providers and check times must not fill the gap.
+  const tick: FrontierTick = {
+    at: '2026-09-21 09:00:00',
+    states: { [unstatedNode.id]: 'active', [neighbour.id]: 'active' },
+    kinds: null,
+    lifecycles: null,
+    moved: 'first observation, reached 2',
+  };
+  const later: FrontierTick = { ...tick, at: '2026-09-25 17:00:00', moved: 'reached 2' };
+  const connections = [{ from: unstatedNode.id, to: neighbour.id, type: 'hard-dep' }];
+  const past = itemsAsOf([unstatedNode, neighbour], connections, tick);
+  seed({
+    items: [unstatedNode, neighbour],
+    connections,
+    selectedItem: unstatedNode.id,
+    showDetailPanel: true,
+  });
+
+  const map = renderToStaticMarkup(
+    <CivTree
+      items={past}
+      connections={connections}
+      selectedId={unstatedNode.id}
+      hoveredId={null}
+      onSelect={() => {}}
+      onHover={() => {}}
+      asOf="Sep 21, 2026, 09:00 UTC"
+    />
+  );
+  expectNothingUnstated(map, 'CivTree as of an observation');
+  const panel = renderToStaticMarkup(
+    <NodeDetailPanel items={past} asOf="Sep 21, 2026, 09:00 UTC" />
+  );
+  expectNothingUnstated(panel, 'NodeDetailPanel as of an observation');
+  // No lifecycle recorded is no verdict either way, not "never checked".
+  expect(panel).not.toContain('Check passed');
+  expect(panel).not.toContain('never checked');
+  expectNothingUnstated(
+    renderToStaticMarkup(
+      <Timeline
+        history={{ ticks: [tick, later], movedSinceLast: null }}
+        at={null}
+        onScrub={() => {}}
+      />
+    ),
+    'Timeline'
+  );
 });
 
 /**

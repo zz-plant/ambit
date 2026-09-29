@@ -5,6 +5,7 @@
  * of a single 2,300-line file so a failure names a subject.
  */
 import { test, expect } from 'vitest';
+import { frontierSeries } from './ledger.ts';
 import { LOCAL_ONLY, PLUS_EMBEDDINGS, cli, rows, seed } from './testing/cli.ts';
 
 test('seeding records the frontier, and an unchanged re-seed does not', () => {
@@ -89,6 +90,31 @@ test('a real acquisition is still a gain, not vocabulary', () => {
   // Its provider is new, so this is the system changing rather than the model.
   expect(since.gained.map((g: any) => g.id)).toContain('combo:embeddings');
   expect(since.vocabulary.map((v: any) => v.id)).not.toContain('combo:embeddings');
+});
+
+test('the terminal names a step between two observations in the words the timeline uses', () => {
+  seed(LOCAL_ONLY).close();
+  const db = seed(PLUS_EMBEDDINGS);
+  // Two seeds a moment apart can share a second, and a second holds one
+  // observation. Dated apart, they are two.
+  const [first, second] = rows(db, 'SELECT id FROM frontier_snapshots ORDER BY id');
+  db.prepare('UPDATE frontier_snapshots SET taken_at = ? WHERE id = ?').run(
+    '2026-09-21 09:00:00',
+    first.id
+  );
+  db.prepare('UPDATE frontier_snapshots SET taken_at = ? WHERE id = ?').run(
+    '2026-09-25 17:00:00',
+    second.id
+  );
+  const { ticks } = frontierSeries(db);
+  db.close();
+
+  const step = cli('history', 'since', '2026-09-21 09:00:00', '2026-09-25 17:00:00');
+  expect(step.until).toBe('2026-09-25 17:00:00');
+  expect(step.moved).toMatch(/^reached \d+ to \d+/);
+  expect(step.moved).toBe(ticks[1].moved);
+  // Up to now, the live graph is where the second seed left it.
+  expect(cli('history', 'since', '2026-09-21 09:00:00').moved).toBe(step.moved);
 });
 
 test('a frontier query before any history explains itself', () => {

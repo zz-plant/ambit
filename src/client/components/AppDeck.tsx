@@ -14,6 +14,12 @@ export interface MapCounts {
   unproven: number;
   next: number;
   blocked: number;
+  /**
+   * Set when the map on screen is an observation that recorded no lifecycles.
+   * Reached cannot be split by evidence then, so it is one count, and verified
+   * and unproven are not drawn: a zero nobody measured is not a value.
+   */
+  reached?: number;
 }
 
 interface AppDeckProps {
@@ -33,6 +39,8 @@ interface AppDeckProps {
   onShare: () => void;
   onShowProposals: () => void;
   onShowDocs: () => void;
+  /** The day of the observation the map is scrubbed to; the counts are that day's. */
+  asOf?: string;
 }
 
 /**
@@ -52,12 +60,19 @@ const SEGMENTS: [keyof MapCounts, string][] = [
   ['blocked', 'Blocked'],
 ];
 
+/** The same count for an observation with no lifecycles, where reached is not split. */
+const UNSPLIT: [keyof MapCounts, string][] = [
+  ['reached', 'Reached'],
+  ['next', 'Next step'],
+  ['blocked', 'Blocked'],
+];
+
 /** The top bar: search, brand, the count for this view, the view tabs, share, proposals, docs. */
 export default function AppDeck(p: AppDeckProps) {
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
-  const total = p.counts
-    ? p.counts.verified + p.counts.unproven + p.counts.next + p.counts.blocked
-    : 0;
+  const unsplit = p.counts?.reached !== undefined;
+  const reached = p.counts ? (p.counts.reached ?? p.counts.verified + p.counts.unproven) : 0;
+  const total = p.counts ? reached + p.counts.next + p.counts.blocked : 0;
   return (
     <header className="app-deck">
       <div className="app-deck-left">
@@ -90,14 +105,17 @@ export default function AppDeck(p: AppDeckProps) {
           <kbd className="app-deck-key">/</kbd>
         </button>
         {p.counts && (
-          <div className="app-status-pill" title="The map by state">
+          <div
+            className="app-status-pill"
+            title={p.asOf ? `The map by state, as of ${p.asOf}` : 'The map by state'}
+          >
             <ReachBar
-              proven={p.counts.verified}
-              reached={p.counts.verified + p.counts.unproven}
+              proven={unsplit ? undefined : p.counts.verified}
+              reached={reached}
               next={p.counts.next}
               total={total}
             />
-            {SEGMENTS.map(([key, group]) => (
+            {(unsplit ? UNSPLIT : SEGMENTS).map(([key, group]) => (
               <button
                 key={key}
                 type="button"
@@ -117,6 +135,7 @@ export default function AppDeck(p: AppDeckProps) {
                 {group.toLowerCase()}
               </button>
             ))}
+            {p.asOf && <span className="app-status-asof">as of {p.asOf}</span>}
           </div>
         )}
         {p.entries && (
@@ -211,6 +230,31 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="14" cy="4" r="1.5" fill="currentColor" />
             </svg>
             <span>Time &amp; cost</span>
+          </button>
+          <button
+            type="button"
+            className={tab(p.view === 'audit')}
+            onClick={() => p.onShowView('audit')}
+            title="Who approved what and what ran, one line per event"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-tab-icon"
+              aria-hidden="true"
+            >
+              <path d="M6 4 H14 M6 8 H14 M6 12 H14" />
+              <circle cx="2.5" cy="4" r="0.75" fill="currentColor" />
+              <circle cx="2.5" cy="8" r="0.75" fill="currentColor" />
+              <circle cx="2.5" cy="12" r="0.75" fill="currentColor" />
+            </svg>
+            <span>Audit</span>
           </button>
         </nav>
       </div>
