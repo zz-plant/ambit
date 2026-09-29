@@ -3,7 +3,7 @@ import { useConfigImport } from '../hooks/useConfigImport';
 import { useCopied } from '../hooks/useCopied';
 import { mergeGraphs } from '../store/ambitStore';
 import { COLD_OPEN_PLAIN, coldOpen, demoConfigGraph, demoTreeGraph } from '../store/demo';
-import { INSTALL, TAGLINE } from '../utils/copy';
+import { INSTALL } from '../utils/copy';
 import { BrandMark } from './BrandMark';
 import ConfigIntake from './ConfigIntake';
 
@@ -89,22 +89,23 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
         <h1 className="app-welcome-title">
           When one piece of your agent setup breaks, what breaks with it?
         </h1>
-        <p className="app-welcome-tagline">{TAGLINE}</p>
         <p className="app-welcome-lede">
-          It reads the configs of {RUNTIMES.slice(0, -1).join(', ')} and {RUNTIMES.at(-1)} into one
-          map: what works, what breaks if a piece goes away, and what is worth setting up next.
+          Ambit reads the configs of {RUNTIMES.slice(0, -1).join(', ')} and {RUNTIMES.at(-1)} and
+          draws one map: what works, what stops if a piece goes away, and what is worth setting up
+          next.
         </p>
 
         <button type="button" className="app-welcome-fact" onClick={onExploreDemo}>
           <span className="app-welcome-fact-figure">{stopped}</span>
           <span className="app-welcome-fact-text">
             things a sample developer&apos;s agents do every day stop when {COLD_OPEN_PLAIN} go
-            down. <strong>Watch it happen →</strong>
+            down.
+            <strong className="app-welcome-fact-go">Watch it happen →</strong>
           </span>
         </button>
 
         <div className="app-welcome-yours">
-          <h2>Or map your own, in this tab</h2>
+          <h2>Or map your own config</h2>
           <ConfigIntake />
           {dropError && (
             <p className="intake-error" role="alert">
@@ -125,8 +126,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
           </button>
         </div>
         <p className="app-welcome-local">
-          That installs the CLI and the MCP server, and maps every runtime on the machine onto the
-          full tree.
+          Installs the CLI and the MCP server, then maps every runtime on the machine.
         </p>
         <nav className="app-welcome-more" aria-label="Read more">
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>

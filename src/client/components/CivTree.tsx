@@ -1,23 +1,29 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
+import { mapKey, typingIn } from '../utils/keys';
 import { isRuntimeNode } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 import {
   AUTHORITY_LABEL,
   type AuthorityMark,
   authorityMark,
+  bandOf,
   buildAdjacency,
   buildColumns,
   cascadeDepths,
   COL_W,
+  columnCentre,
   columnLabel,
   columnOf,
-  columnX,
+  collapseTo,
+  columnProgress,
   costOf,
   edgePath,
   eraOf,
   frameScene,
+  headlineReserve,
+  isFailing,
   isNext,
   isProven,
   type JointMark,
@@ -25,15 +31,19 @@ import {
   layoutNodes,
   mapFindings,
   NODE_R,
+  type Progress,
   readableSeconds,
   ROW_H,
+  rungOf,
   sceneSize,
   START_X,
   START_Y,
+  stepSelection,
   visibleItems,
   wrapLabel,
 } from './civ/layout.ts';
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
+import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
@@ -57,6 +67,14 @@ interface CivTreeProps {
    * banner's Done would end a step out from under the tour.
    */
   narrated?: boolean;
+  /**
+   * The items are a past observation, taken at this moment. What no snapshot
+   * stores stays off the map: the attention lens, and the headline with its
+   * week and its simulations.
+   */
+  asOf?: string;
+  /** Told where the headline's bottom edge is, so a card laid over the map can sit below it. */
+  onHeadline?: (bottom: number) => void;
 }
 
 /**
@@ -142,27 +160,26 @@ type LegendKey =
  * columns: the bar's full width is the largest era, so a short bar is a small
  * era and not a poorly-filled one. Beside the count, what finishing the
  * column would cost in setup time.
+ *
+ * Reached leaves out a node whose check failed, which is configured and not
+ * working, so the count agrees with the rungs of the era's ladder. That node
+ * is a red segment of the bar, between what is reached and what is next.
  */
 function ColumnCount({
   column,
-  list,
+  progress,
   largest,
   x,
 }: {
   column: string;
-  list: Item[];
+  progress: Progress;
   largest: number;
   x: number;
 }) {
-  const reached = list.filter(i => i.status === 'built').length;
-  const next = list.filter(i => i.status !== 'built' && isNext(i)).length;
-  const left = readableSeconds(
-    list
-      .filter(i => i.status !== 'built')
-      .reduce((t, i) => t + (Number(i.meta?.setupSeconds) || 0), 0)
-  );
-  const barW = ((COL_W - 64) * list.length) / largest;
-  const unit = list.length ? barW / list.length : 0;
+  const { reached, failing, next, total } = progress;
+  const left = readableSeconds(progress.seconds);
+  const barW = ((COL_W - 64) * total) / largest;
+  const unit = total ? barW / total : 0;
   const bx = x + COL_W / 2 - 16 - barW / 2;
   const by = START_Y - 11;
   return (
@@ -172,28 +189,114 @@ function ColumnCount({
         y={START_Y - 16}
         textAnchor="middle"
         fill="var(--text-muted)"
-        fontSize={9.5}
+        fontSize={10.5}
         fontWeight={500}
         style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
       >
         {column.startsWith('era:') ? `Era ${column.slice(4)} · ` : ''}
-        {reached} of {list.length}
+        {reached} of {total}
         {left ? ` · ${left} left` : ''}
       </text>
       <rect className="fig-eras-track" x={bx} y={by} width={barW} height={3} rx={1} />
       {reached > 0 && (
         <rect className="fig-eras-reached" x={bx} y={by} width={unit * reached} height={3} rx={1} />
       )}
+      {failing > 0 && (
+        <rect
+          className="fig-eras-failing"
+          x={bx + unit * reached}
+          y={by}
+          width={unit * failing}
+          height={3}
+          rx={1}
+        />
+      )}
       {next > 0 && (
         <rect
           className="fig-eras-next"
-          x={bx + unit * reached}
+          x={bx + unit * (reached + failing)}
           y={by}
           width={unit * next}
           height={3}
           rx={1}
         />
       )}
+    </g>
+  );
+}
+
+/**
+ * A column's header: its name and count. On the tree it is also a control,
+ * since an era has a ladder to open and a domain has nothing behind its name.
+ * No hooks, so the wiring can be tested by calling it.
+ */
+export function ColumnHead({
+  column,
+  index,
+  label,
+  progress,
+  largest,
+  term,
+  openEra,
+  onOpen,
+}: {
+  /** `era:3`, or a domain. */
+  column: string;
+  index: number;
+  label: string;
+  progress: Progress;
+  largest: number;
+  /** The glossary entry the hover tooltip defines: an era on the tree, a domain elsewhere. */
+  term: 'era' | 'domain';
+  /** The era whose ladder is open, if any. */
+  openEra: number | null;
+  onOpen: (era: number) => void;
+}) {
+  const x = START_X + index * COL_W;
+  const era = column.startsWith('era:') ? Number(column.slice(4)) : undefined;
+  const head = (
+    <>
+      <text
+        className="civ-era-name"
+        x={columnCentre(index)}
+        y={START_Y - 27}
+        textAnchor="middle"
+        fill="var(--text-primary)"
+        fontSize={12.5}
+        fontWeight={600}
+        style={{ fontFamily: 'var(--font-sans)' }}
+      >
+        <title>{termTitle(term)}</title>
+        {label}
+      </text>
+      <ColumnCount column={column} progress={progress} largest={largest} x={x} />
+    </>
+  );
+  if (era === undefined) return head;
+
+  const open = () => onOpen(era);
+  const pressed = openEra === era;
+  const who = label === `Era ${era}` ? label : `${label}, era ${era}`;
+  const facts = `${progress.reached} of ${progress.total} reached${
+    progress.failing ? `, ${progress.failing} failing` : ''
+  }`;
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: SVG element groups cannot be HTML buttons
+    <g
+      role="button"
+      tabIndex={0}
+      className={`civ-era-head${pressed ? ' civ-era-head--open' : ''}`}
+      aria-pressed={pressed}
+      aria-label={`${who}: ${facts}. Show its ladder`}
+      onClick={open}
+      onKeyDown={e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        open();
+      }}
+    >
+      <rect {...bandOf(index, 0)} height={42} fill="transparent" />
+      {head}
     </g>
   );
 }
@@ -208,9 +311,14 @@ export default function CivTree({
   leftInset = 0,
   rightInset = 0,
   narrated = false,
+  asOf,
+  onHeadline,
 }: CivTreeProps) {
   const requestedLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
+  // The era whose ladder is open, so its header reads as pressed.
+  const selectedEra = useAmbitStore(s => s.selectedEra);
+  const selectEra = useAmbitStore(s => s.selectEra);
   // Owned by the store so the header's segments light the same keys the
   // legend does; see AppDeck.tsx.
   const spotlight = useAmbitStore(s => s.spotlight);
@@ -256,7 +364,7 @@ export default function CivTree({
   // A lens with no data to colour falls back to the standard map, and the
   // HUD offers it disabled with the reason. The map used to go grey with a
   // note over it.
-  const attentionAvailable = attentionMax > 0;
+  const attentionAvailable = !asOf && attentionMax > 0;
   const authorityAvailable = React.useMemo(
     () => items.some(i => authorityMark(i) !== undefined),
     [items]
@@ -272,6 +380,23 @@ export default function CivTree({
   const { downstream, upstream } = useMemo(() => buildAdjacency(connections, null), [connections]);
 
   const filtered = useMemo(() => visibleItems(items), [items]);
+
+  // The map collapsed to the selected node's neighbourhood, when a collapse is
+  // on. It keys on the selection and never on hover, so the map does not
+  // rearrange itself under the pointer. Hidden nodes keep their places: they
+  // are skipped where they would be drawn, so the columns do not jump.
+  const collapsed = useAmbitStore(s => s.collapsed);
+  const collapseDepth = useAmbitStore(s => s.collapseDepth);
+  const collapseDirection = useAmbitStore(s => s.collapseDirection);
+  const collapse = useMemo(
+    () =>
+      collapsed && selectedId
+        ? collapseTo(filtered, connections, selectedId, collapseDepth, collapseDirection)
+        : null,
+    [collapsed, selectedId, filtered, connections, collapseDepth, collapseDirection]
+  );
+  /** Whether the map draws a node: every one, unless a collapse hides it. */
+  const shown = (id: string) => !collapse || collapse.shown.has(id);
 
   const [hoverItem, setHoverItem] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -291,7 +416,47 @@ export default function CivTree({
   );
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
+  // A simulation ignores the collapse: its counts are the whole cascade. What
+  // the banner adds is how much of it the collapse keeps off the map.
+  const hiddenBySimulation = collapse
+    ? [...simSet].filter(id => nodePositionMap.has(id) && !collapse.shown.has(id)).length
+    : 0;
   const findings = useMemo(() => mapFindings(items, connections), [items, connections]);
+  // The thumbnail's dots: every node the map draws, where it sits and where it stands.
+  const minimapNodes = useMemo<MinimapNode[]>(
+    () =>
+      [...nodePositionMap.values()]
+        .filter(p => !collapse || collapse.shown.has(p.item.id))
+        .map(p => ({ id: p.item.id, x: p.x, y: p.y, state: rungOf(p.item) })),
+    [nodePositionMap, collapse]
+  );
+  // Which way the finding's node lies when it is out of sight, as the minimap
+  // reports it. The minimap owns the scroll subscription, so this changes when
+  // the answer does and not on every scroll event.
+  const [where, setWhere] = useState<string | null>(null);
+  // The headline is two rows when there is a finding under the range line.
+  const headlined = Boolean(!narrated && !asOf && (findings.failing.length || findings.best));
+  // Its height, measured, so the canvas starts below it however many lines its
+  // rows wrap to. A fixed 40px reserved one line of each, and at 900px the
+  // range line wraps and the finding sat on the era names, which are controls.
+  // The last measure is kept while a panel hides the headline, so the map does
+  // not move when a node is opened.
+  const [headlineBox, setHeadlineBox] = useState<{ height: number; bottom: number } | null>(null);
+  const measureHeadline = React.useCallback((el: HTMLDivElement | null) => {
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const next = { height: el.offsetHeight, bottom: el.offsetTop + el.offsetHeight };
+      setHeadlineBox(prev =>
+        prev && prev.height === next.height && prev.bottom === next.bottom ? prev : next
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const headlinePad = headlineReserve(headlineBox?.height ?? null);
+  useEffect(() => {
+    if (headlineBox) onHeadline?.(headlineBox.bottom);
+  }, [headlineBox, onHeadline]);
   const rangeSince = useAmbitStore(s => s.rangeSince);
   // The ledger reports the week by name; the tree's names are unique.
   const weekNames = useMemo(
@@ -313,7 +478,7 @@ export default function CivTree({
   const focusId =
     selectedId && nodePositionMap.has(selectedId)
       ? selectedId
-      : hovered && nodePositionMap.has(hovered)
+      : hovered && nodePositionMap.has(hovered) && shown(hovered)
         ? hovered
         : null;
   const needs = useMemo(
@@ -356,9 +521,9 @@ export default function CivTree({
     'Runs on a device': i => jointMark(i) === 'device',
     [GAINED_THIS_WEEK]: i => weekNames.gained.has(i.name),
     [LOST_THIS_WEEK]: i => weekNames.lost.has(i.name),
-    // The header's two halves of reached light the same way its segments read.
+    // The header's segments light the same nodes they count.
     Verified: isProven,
-    Unproven: i => i.status === 'built' && !isProven(i),
+    Unproven: i => i.status === 'built' && !isProven(i) && !isFailing(i),
     'Next step': i => i.status !== 'built' && isNext(i),
     Blocked: i => i.status !== 'built' && !isNext(i),
     Server: i => i.type === 'mcp-server',
@@ -420,7 +585,7 @@ export default function CivTree({
           ]
         : isTreeView
           ? [
-              { kind: 'node', color: typeColor('possibility'), label: 'Reached' },
+              { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
               { kind: 'ring', label: 'Next step' },
               { kind: 'faded', label: 'Blocked' },
               { kind: 'square', label: 'Keystone' },
@@ -451,48 +616,37 @@ export default function CivTree({
   // The selected node has the detail panel open beside it, which says
   // everything the tooltip would, so the tooltip is for the others.
   const hoverTarget =
-    hovered && hovered !== selectedId && nodePositionMap.has(hovered) ? hovered : null;
+    hovered && hovered !== selectedId && nodePositionMap.has(hovered) && shown(hovered)
+      ? hovered
+      : null;
   const hoverDownstream = hoverTarget ? downstream.get(hoverTarget) || [] : [];
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      ) {
-        return;
+      if (typingIn(e.target)) return;
+      // A key held with Ctrl, Cmd or Alt is the browser's: see mapKey.
+      const key = mapKey(e);
+      if (!key) return;
+      if (key.kind === 'lens') {
+        const available =
+          key.lens === 'default' ||
+          (key.lens === 'attention' && attentionAvailable) ||
+          (key.lens === 'authority' && authorityAvailable);
+        if (available) setActiveLens(key.lens);
+      } else if (key.kind === 'zoom') {
+        e.preventDefault();
+        if (key.to === 'actual') setZoom(1);
+        else if (key.to === 'in') setZoom(z => Math.min(2.5, +(z + 0.15).toFixed(2)));
+        else setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
+      } else {
+        e.preventDefault();
+        // A collapse hides nodes, and a key that lands on one selects what
+        // nobody can see, so the walk skips them.
+        const to = stepSelection(filtered, selectedId, key.by, collapse?.shown);
+        if (to) onSelect(to);
       }
-      if (e.key === '1') {
-        setActiveLens('default');
-      } else if (e.key === '2') {
-        if (attentionAvailable) setActiveLens('attention');
-      } else if (e.key === '3') {
-        if (authorityAvailable) setActiveLens('authority');
-      } else if (e.key === '0') {
-        e.preventDefault();
-        setZoom(1);
-      } else if (e.key === '+' || e.key === '=') {
-        e.preventDefault();
-        setZoom(z => Math.min(2.5, +(z + 0.15).toFixed(2)));
-      } else if (e.key === '-' || e.key === '_') {
-        e.preventDefault();
-        setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
-      } else if (e.key === 'j' || e.key === 'J' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        const idx = filtered.findIndex(i => i.id === selectedId);
-        const nextIdx = idx < 0 ? 0 : (idx + 1) % filtered.length;
-        onSelect(filtered[nextIdx].id);
-      } else if (e.key === 'k' || e.key === 'K' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const idx = filtered.findIndex(i => i.id === selectedId);
-        const prevIdx = idx <= 0 ? filtered.length - 1 : idx - 1;
-        onSelect(filtered[prevIdx].id);
-      } else if (e.key === 'Escape') {
-        if (spotlight) setSpotlight(null);
-        else if (simulationMode !== 'none') clearSimulation();
-        else if (selectedId) onSelect(null);
-      }
+      // Escape is the shell's, which peels the spotlight, the simulation and
+      // the selection one press at a time (escapeLayer, in utils/keys.ts).
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -500,24 +654,24 @@ export default function CivTree({
     setActiveLens,
     attentionAvailable,
     authorityAvailable,
-    clearSimulation,
-    simulationMode,
     selectedId,
     onSelect,
     filtered,
-    spotlight,
-    setSpotlight,
+    collapse,
   ]);
 
   const narrow = useNarrow();
   // The bottom of the canvas a tour card or a bottom sheet is covering.
   const covered = useBottomOcclusion(containerRef);
 
-  // Center node in view when selected. A phone frames it instead, below.
+  // Centre the node in view: the selection, or else where a simulation
+  // started. On a wide screen the whole map is in view and this is a no-op; on
+  // a phone the framing below does it instead, fitted around the cards.
+  const centreOn = selectedId ?? (simulationMode !== 'none' ? simulatedNodeId : null);
   React.useEffect(() => {
     if (narrow) return;
-    if (selectedId && nodePositionMap.has(selectedId)) {
-      const pos = nodePositionMap.get(selectedId)!;
+    if (centreOn && nodePositionMap.has(centreOn)) {
+      const pos = nodePositionMap.get(centreOn)!;
       if (containerRef.current) {
         const container = containerRef.current;
         const targetScrollLeft = pos.x * zoom - container.clientWidth / 2;
@@ -529,7 +683,7 @@ export default function CivTree({
         });
       }
     }
-  }, [narrow, selectedId, zoom, nodePositionMap]);
+  }, [narrow, centreOn, zoom, nodePositionMap]);
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
@@ -537,32 +691,19 @@ export default function CivTree({
   // right edge with nothing to say it was there, and in the setup view every
   // edge to the runtime column ran off the canvas towards a node nobody could
   // see. Fits once per dataset; the zoom controls own it after that.
-  //
-  // A phone fits the height instead: seven columns across 375px put the labels
-  // at four pixels, legible to nobody and in no screenshot. The columns run
-  // off to the right, cut mid-column so it is plain there is more, and the
-  // canvas opens on the column the map's finding is about.
   const fittedFor = React.useRef<number | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: fits once per dataset. The finding and the placement are read at that moment; following them would re-fit the map under someone who has since zoomed it.
   React.useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el || fittedFor.current === contentWidth) return;
     fittedFor.current = contentWidth;
-    if (narrow) {
-      const zoomed = Math.max(0.6, Math.min(1, +(el.clientHeight / contentHeight).toFixed(2)));
-      setZoom(zoomed);
-      const about = findings.failing[0] ?? findings.best?.item;
-      const pos = about && nodePositionMap.get(about.id);
-      if (pos)
-        requestAnimationFrame(() => {
-          el.scrollLeft = Math.max(0, pos.x * zoomed - el.clientWidth / 2);
-        });
-      return;
-    }
     const available = el.clientWidth - leftInset - 16;
     if (available <= 0) return;
-    setZoom(Math.max(0.4, Math.min(1, +(available / contentWidth).toFixed(2))));
-  }, [contentWidth, contentHeight, leftInset, narrow]);
+    // A phone fits the whole tree at about 0.3, where a node's name is four
+    // pixels tall. There the map opens at a scale its names can be read at,
+    // two columns or so across, and scrolls sideways; Fit still shows it all.
+    const floor = el.clientWidth < 700 ? 0.72 : 0.4;
+    setZoom(Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2))));
+  }, [contentWidth, leftInset]);
 
   // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
   // selected node with what it needs and enables. Framed into the part of the
@@ -663,6 +804,11 @@ export default function CivTree({
         authorityAvailable={authorityAvailable}
         leftInset={leftInset}
         rightInset={rightInset}
+        lensNote={
+          asOf
+            ? 'An observation of the frontier records states and checks, not attention or authority. Back to now to use this lens.'
+            : undefined
+        }
       />
 
       {!narrated && (
@@ -673,14 +819,18 @@ export default function CivTree({
           simulatedCascadeIds={simulatedCascadeIds}
           simulatedWeakenedIds={simulatedWeakenedIds}
           items={items}
+          hiddenByFocus={hiddenBySimulation}
           clearSimulation={clearSimulation}
           leftInset={leftInset}
           rightInset={rightInset}
         />
       )}
 
-      {!narrated && simulationMode === 'none' && !selectedId && (
+      {/* Hidden while a panel is open, a node's or an era's ladder: the panel
+          is then what is being read, and the headline sat on the lens switch. */}
+      {!narrated && !asOf && simulationMode === 'none' && !selectedId && selectedEra === null && (
         <MapFinding
+          wrapRef={measureHeadline}
           findings={findings}
           since={rangeSince}
           onShow={id => onSelect(id)}
@@ -693,6 +843,7 @@ export default function CivTree({
             onSelect(id);
             startAcquisition(id);
           }}
+          where={where}
           leftInset={leftInset}
           rightInset={rightInset}
         />
@@ -703,10 +854,8 @@ export default function CivTree({
         ref={containerRef}
         // The headline is two rows when there is a finding under the range
         // line; the canvas starts below the second, so the era headers stay
-        // readable.
-        className={`civ-scroll ${
-          !narrated && (findings.failing.length || findings.best) ? 'civ-scroll--headline' : ''
-        }`}
+        // readable and pressable, however far the rows wrap.
+        className={`civ-scroll ${headlined ? 'civ-scroll--headline' : ''}`}
         // Dragging to pan is a pointer affordance layered over the canvas. The
         // a11y warning on this element is expected and left visible: every node
         // inside carries role="button", tabIndex and a key handler, so the
@@ -716,11 +865,14 @@ export default function CivTree({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
-        style={{
-          paddingLeft: leftInset,
-          cursor: isDragging ? 'grabbing' : 'default',
-          userSelect: isDragging ? 'none' : 'auto',
-        }}
+        style={
+          {
+            paddingLeft: leftInset,
+            cursor: isDragging ? 'grabbing' : 'default',
+            userSelect: isDragging ? 'none' : 'auto',
+            '--headline-pad': `${headlinePad}px`,
+          } as React.CSSProperties
+        }
       >
         {/* Main SVG Vector Canvas */}
         <svg
@@ -734,50 +886,22 @@ export default function CivTree({
           }}
         >
           <title>Capability tree: what this setup can do, by era</title>
-          <defs>
-            <linearGradient id="columnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="rgba(255, 255, 255, 0.03)" />
-              <stop offset="100%" stopColor="rgba(255, 255, 255, 0.005)" />
-            </linearGradient>
-          </defs>
-
           {/* Era column bands with clean headers */}
           {colOrder.map((d, i) => {
-            const x = START_X + i * COL_W;
+            const list = cols[d] || [];
             return (
               <g key={`band-${d}`}>
-                <rect
-                  x={x - 8}
-                  y={START_Y - 45}
-                  width={COL_W - 16}
-                  height={contentHeight - START_Y + 20}
-                  fill="url(#columnGrad)"
-                  stroke="var(--border)"
-                  strokeWidth={1}
-                  rx={10}
+                <rect {...bandOf(i, contentHeight)} fill="rgba(255, 255, 255, 0.018)" rx={12} />
+                <ColumnHead
+                  column={d}
+                  index={i}
+                  label={columnLabel(d, list)}
+                  progress={columnProgress(list)}
+                  largest={largestColumn}
+                  term={isTreeView ? 'era' : 'domain'}
+                  openEra={selectedEra}
+                  onOpen={selectEra}
                 />
-                <rect
-                  x={x - 8}
-                  y={START_Y - 45}
-                  width={COL_W - 16}
-                  height={40}
-                  fill="rgba(255, 255, 255, 0.02)"
-                  rx={10}
-                />
-                <text
-                  x={x + COL_W / 2 - 16}
-                  y={START_Y - 29}
-                  textAnchor="middle"
-                  fill="var(--text-primary)"
-                  fontSize={12}
-                  fontWeight={600}
-                  letterSpacing={0.5}
-                  style={{ fontFamily: 'var(--font-sans)' }}
-                >
-                  <title>{termTitle(isTreeView ? 'era' : 'domain')}</title>
-                  {columnLabel(d, cols[d] || [])}
-                </text>
-                <ColumnCount column={d} list={cols[d] || []} largest={largestColumn} x={x} />
               </g>
             );
           })}
@@ -788,7 +912,7 @@ export default function CivTree({
           {connections.map((conn, i) => {
             const fromPos = nodePositionMap.get(conn.from);
             const toPos = nodePositionMap.get(conn.to);
-            if (!fromPos || !toPos) return null;
+            if (!fromPos || !toPos || !shown(conn.from) || !shown(conn.to)) return null;
             const isHard = conn.type === 'hard-dep';
             const isSoft = conn.type === 'soft-dep';
             const isSimLine =
@@ -802,8 +926,16 @@ export default function CivTree({
                 : focusId
                   ? intoFocus || outOfFocus
                     ? 0.95
-                    : 0.06
-                  : 0.35;
+                    : collapse
+                      ? // What the collapse kept is what to read, so its other
+                        // edges stay drawn and the focus's own stand out from them.
+                        isHard
+                        ? 0.4
+                        : 0.3
+                      : 0.06
+                  : isHard
+                    ? 0.3
+                    : 0.22;
             const strokeColor = isSimLine
               ? simulationMode === 'outage'
                 ? 'var(--error)'
@@ -814,11 +946,9 @@ export default function CivTree({
                 ? 'var(--edge-needs)'
                 : outOfFocus
                   ? 'var(--accent)'
-                  : isHard
-                    ? 'rgba(99, 102, 241, 0.6)'
-                    : isSoft
-                      ? 'rgba(148, 163, 184, 0.4)'
-                      : 'var(--warn)';
+                  : isHard || isSoft
+                    ? 'var(--text-muted)'
+                    : 'var(--warn)';
 
             return (
               <path
@@ -828,7 +958,7 @@ export default function CivTree({
                 d={edgePath(fromPos.x, fromPos.y, toPos.x, toPos.y)}
                 fill="none"
                 stroke={strokeColor}
-                strokeWidth={isSimLine ? 2.5 : intoFocus || outOfFocus ? 2 : isHard ? 1.5 : 1}
+                strokeWidth={isSimLine ? 2.5 : intoFocus || outOfFocus ? 2 : isHard ? 1.25 : 1}
                 strokeDasharray={isHard ? 'none' : isSoft ? '4,4' : '3,3'}
                 strokeLinecap="round"
                 opacity={op}
@@ -839,10 +969,12 @@ export default function CivTree({
           {/* Nodes */}
           {colOrder.map((domain, ci) => {
             const caps = cols[domain] || [];
-            const cx = columnX(ci);
+            const cx = columnCentre(ci);
             return (
               <g key={domain}>
                 {caps.map((item, ri) => {
+                  // Skipped, and not filtered out: the row index is the node's place.
+                  if (!shown(item.id)) return null;
                   const cy = START_Y + ri * ROW_H + NODE_R;
                   const defaultColor = typeColor(item.type);
                   const selected = item.id === selectedId;
@@ -872,33 +1004,32 @@ export default function CivTree({
                   const isSpotlit = !spotlight || (SPOTLIGHTS[spotlight]?.(item) ?? true);
 
                   const dimmed =
-                    (focusId !== null && !nearFocus) ||
+                    (focusId !== null && !collapse && !nearFocus) ||
                     isSimDimmed ||
                     !isSpotlit ||
                     (isAuthorityLens && simulationMode === 'none' && !mark);
+                  // Blocked is not faded: the dashed ring and the muted label say
+                  // it, and a node drawn at three quarters with a grey label on
+                  // top came out near 3:1, too faint to read the name.
                   const baseOpacity =
-                    isSimRoot || isSimAffected
-                      ? 1
-                      : !isSpotlit
-                        ? 0.15
-                        : dimmed
-                          ? 0.25
-                          : reached || next
-                            ? 1
-                            : 0.75;
+                    isSimRoot || isSimAffected ? 1 : !isSpotlit ? 0.15 : dimmed ? 0.25 : 1;
                   const failingNode = reached && ['degraded', 'broken'].includes(lifecycleOf(item));
 
                   // Reached is done, so it is the quietest filled state; a next
                   // step is the recommendation, so it is the loudest ring on the
                   // map; blocked is drawn as a gap, dashed and legible, and not
                   // faded to where it could not be read.
+                  // A node of the tree is drawn in the state's colours; any other
+                  // kind keeps its type's colour, since a list of kinds is what
+                  // that map is for.
+                  const treeNode = item.type === 'possibility';
                   let nodeFill = reached
-                    ? defaultColor
-                    : next
-                      ? 'var(--accent-soft)'
-                      : 'var(--bg-canvas)';
+                    ? treeNode
+                      ? 'var(--node-reached)'
+                      : defaultColor
+                    : 'var(--bg-canvas)';
                   let sc = selected
-                    ? 'var(--on-accent)'
+                    ? 'var(--text-primary)'
                     : inNeeds
                       ? 'var(--edge-needs)'
                       : inEnables
@@ -908,13 +1039,15 @@ export default function CivTree({
                           : next
                             ? 'var(--accent)'
                             : reached
-                              ? defaultColor
+                              ? treeNode
+                                ? 'var(--node-reached-ring)'
+                                : defaultColor
                               : 'var(--text-muted)';
                   let sw =
                     selected || inNeeds || inEnables || failingNode
-                      ? 2.5
+                      ? 2.25
                       : next
-                        ? 3
+                        ? 2.25
                         : reached
                           ? 1.5
                           : 1.25;
@@ -922,7 +1055,7 @@ export default function CivTree({
                   if (simulationMode === 'outage') {
                     if (isSimRoot) {
                       nodeFill = 'var(--error)';
-                      sc = 'var(--on-accent)';
+                      sc = 'var(--text-primary)';
                       sw = 2.5;
                     } else if (isSimAffected) {
                       // Red for what stops; amber for what keeps another
@@ -934,7 +1067,7 @@ export default function CivTree({
                   } else if (simulationMode === 'gap') {
                     if (isSimRoot) {
                       nodeFill = 'var(--accent)';
-                      sc = 'var(--on-accent)';
+                      sc = 'var(--text-primary)';
                       sw = 2.5;
                     } else if (isSimAffected) {
                       nodeFill = 'var(--warn)';
@@ -944,7 +1077,7 @@ export default function CivTree({
                   } else if (simulationMode === 'acquisition') {
                     if (isSimRoot) {
                       nodeFill = 'var(--accent)';
-                      sc = 'var(--on-accent)';
+                      sc = 'var(--text-primary)';
                       sw = 2.5;
                     } else if (isSimAffected) {
                       nodeFill = 'var(--ok)';
@@ -967,7 +1100,11 @@ export default function CivTree({
                     sw = 2;
                   }
 
-                  const sym = mark ? AUTHORITY_SYM[mark] : typeSymbol(item.type);
+                  const sym = mark
+                    ? AUTHORITY_SYM[mark]
+                    : item.type === 'possibility'
+                      ? ''
+                      : typeSymbol(item.type);
                   const lines = wrapLabel(item.name);
 
                   return (
@@ -987,6 +1124,7 @@ export default function CivTree({
                       role="button"
                       aria-pressed={selected}
                       aria-label={`${item.name}, ${item.type}`}
+                      data-node={item.id}
                       onClick={() => onSelect(selected ? null : item.id)}
                       onKeyDown={e => {
                         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1034,25 +1172,26 @@ export default function CivTree({
                       )}
                       {isKeystone && !dimmed && (
                         <rect
-                          x={-NODE_R - 4}
-                          y={-NODE_R - 4}
-                          width={(NODE_R + 4) * 2}
-                          height={(NODE_R + 4) * 2}
-                          rx={8}
+                          x={-NODE_R - 6}
+                          y={-NODE_R - 6}
+                          width={(NODE_R + 6) * 2}
+                          height={(NODE_R + 6) * 2}
+                          rx={9}
                           fill="none"
-                          stroke="rgba(245, 158, 11, 0.85)"
-                          strokeWidth={2}
-                          strokeDasharray="5,3"
+                          stroke="var(--warn)"
+                          strokeOpacity={0.75}
+                          strokeWidth={1.25}
+                          strokeDasharray="4,3"
                         />
                       )}
 
                       {selected && (
                         <circle
-                          r={NODE_R + 7}
+                          r={NODE_R + 5}
                           fill="none"
                           stroke="var(--accent)"
                           strokeWidth={2}
-                          opacity={0.8}
+                          opacity={0.7}
                         />
                       )}
 
@@ -1065,9 +1204,9 @@ export default function CivTree({
                           x={NODE_R + 6}
                           y={-NODE_R + 4}
                           textAnchor="start"
-                          fill="#a5b4fc"
+                          fill="var(--accent)"
                           fontSize={11.5}
-                          fontWeight={700}
+                          fontWeight={600}
                           fontFamily="var(--font-sans)"
                         >
                           {costOf(item)}
@@ -1079,6 +1218,7 @@ export default function CivTree({
                         fill={nodeFill}
                         fillOpacity={
                           reached &&
+                          !treeNode &&
                           simulationMode === 'none' &&
                           !isAttentionHot &&
                           !mark &&
@@ -1093,33 +1233,34 @@ export default function CivTree({
                             ? '5,4'
                             : undefined
                         }
-                        opacity={0.95}
                       />
-                      <text
-                        y={4}
-                        textAnchor="middle"
-                        fill={
-                          reached
-                            ? 'var(--on-accent)'
-                            : dimmed
+                      {sym && (
+                        <text
+                          y={4.5}
+                          textAnchor="middle"
+                          fill={
+                            mark === 'ungranted'
                               ? 'var(--text-muted)'
-                              : 'var(--on-accent)'
-                        }
-                        fontSize={14}
-                        fontWeight={700}
-                      >
-                        {sym}
-                      </text>
+                              : mark || reached
+                                ? 'var(--on-accent)'
+                                : 'var(--text-muted)'
+                          }
+                          fontSize={13}
+                          fontWeight={700}
+                        >
+                          {sym}
+                        </text>
+                      )}
 
                       {reached &&
                         !dimmed &&
                         ['verified', 'reliable'].includes(item.meta?.lifecycle as string) && (
-                          <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                          <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
                             <circle
-                              r={6}
+                              r={6.5}
                               fill="var(--ok)"
                               stroke="var(--bg-canvas)"
-                              strokeWidth={1.5}
+                              strokeWidth={2}
                             />
                             <text
                               y={3}
@@ -1135,12 +1276,12 @@ export default function CivTree({
                       {reached &&
                         !dimmed &&
                         ['degraded', 'broken'].includes(item.meta?.lifecycle as string) && (
-                          <g transform={`translate(${NODE_R - 3}, ${-NODE_R + 3})`}>
+                          <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
                             <circle
-                              r={6}
+                              r={6.5}
                               fill="var(--error)"
                               stroke="var(--bg-canvas)"
-                              strokeWidth={1.5}
+                              strokeWidth={2}
                             />
                             <text
                               y={3}
@@ -1167,16 +1308,20 @@ export default function CivTree({
                           on the first keeps the element's text the whole name,
                           which the recorder matches against the aria-label. */}
                       <text
-                        y={NODE_R + 16}
+                        y={NODE_R + 17}
                         textAnchor="middle"
                         className="civ-node-label"
-                        fill={dimmed ? 'var(--text-muted)' : 'var(--text-primary)'}
-                        fontSize={11.5}
-                        fontWeight={500}
+                        fill={
+                          dimmed || (!reached && !next && !isSimAffected && !isSimRoot)
+                            ? 'var(--text-muted)'
+                            : 'var(--text-primary)'
+                        }
+                        fontSize={12}
+                        fontWeight={reached || next ? 500 : 400}
                         fontFamily="var(--font-sans)"
                       >
                         {lines.map((line, li) => (
-                          <tspan key={line} x={0} dy={li === 0 ? 0 : 12}>
+                          <tspan key={line} x={0} dy={li === 0 ? 0 : 14}>
                             {li < lines.length - 1 ? `${line} ` : line}
                           </tspan>
                         ))}
@@ -1218,7 +1363,7 @@ export default function CivTree({
               const downCount = (downstream.get(ni.id) || []).length;
               const isKey = downCount >= 3 || isRuntimeNode(ni);
 
-              const W = 220;
+              const W = 236;
               const headH = 22;
               const keyH = isKey ? 18 : 0;
               const descH = lines.length * 15;
@@ -1227,13 +1372,15 @@ export default function CivTree({
               // circle reads as scenery until something says otherwise. A click
               // opens the panel that offers the one this node can run: an outage
               // on a node you have, an unlock on one you do not.
-              const hint = unreached
-                ? 'Click: details, and simulate unlocking it'
-                : 'Click: details, and simulate an outage';
+              const hint = asOf
+                ? 'Click: details, as of this observation'
+                : unreached
+                  ? 'Click: details, and simulate unlocking it'
+                  : 'Click: details, and simulate an outage';
               const hintH = 17;
               const boxH = headH + keyH + descH + enablesH + hintH + 12;
 
-              const tx = START_X + di * COL_W + COL_W / 2 - 16 + NODE_R + 10;
+              const tx = columnCentre(di) + NODE_R + 10;
               const ty = START_Y + ai * ROW_H + NODE_R - 10;
 
               return (
@@ -1244,26 +1391,26 @@ export default function CivTree({
                     width={W}
                     height={boxH}
                     rx={8}
-                    fill="var(--bg-surface)"
-                    stroke="var(--border)"
+                    fill="var(--bg-elevated)"
+                    stroke="var(--border-bright)"
                     strokeWidth={1}
                   />
                   <text
                     x={12}
                     y={16}
                     fill="var(--text-primary)"
-                    fontSize={12}
+                    fontSize={12.5}
                     fontWeight={600}
                     fontFamily="var(--font-sans)"
                   >
-                    {unreached ? 'Not reached yet' : ni.name}
+                    {ni.name}
                   </text>
                   {isKey && (
                     <text
                       x={12}
                       y={headH + 12}
                       fill="var(--warn)"
-                      fontSize={10}
+                      fontSize={11}
                       fontWeight={600}
                       fontFamily="var(--font-sans)"
                     >
@@ -1276,7 +1423,7 @@ export default function CivTree({
                       x={12}
                       y={headH + keyH + 12 + i * 15}
                       fill="var(--text-secondary)"
-                      fontSize={11}
+                      fontSize={11.5}
                       fontFamily="var(--font-sans)"
                     >
                       {line}
@@ -1287,7 +1434,7 @@ export default function CivTree({
                       x={12}
                       y={headH + keyH + descH + 15}
                       fill="var(--text-muted)"
-                      fontSize={10.5}
+                      fontSize={11}
                       fontWeight={600}
                       fontFamily="var(--font-sans)"
                     >
@@ -1307,7 +1454,7 @@ export default function CivTree({
                         x={14}
                         y={headH + keyH + descH + 30 + i * 15}
                         fill="var(--text-primary)"
-                        fontSize={11}
+                        fontSize={11.5}
                         fontFamily="var(--font-sans)"
                       >
                         {label}
@@ -1319,7 +1466,7 @@ export default function CivTree({
                       x={14}
                       y={boxH - hintH - 6}
                       fill="var(--text-muted)"
-                      fontSize={10}
+                      fontSize={11}
                       fontFamily="var(--font-sans)"
                     >
                       +{hoverDownstream.length - 4} more
@@ -1329,7 +1476,7 @@ export default function CivTree({
                     x={12}
                     y={boxH - 7}
                     fill="var(--accent)"
-                    fontSize={10}
+                    fontSize={11}
                     fontFamily="var(--font-sans)"
                   >
                     {hint}
@@ -1409,12 +1556,20 @@ export default function CivTree({
                         opacity={0.9}
                         stroke={
                           isLegendActive
-                            ? 'var(--on-accent)'
+                            ? 'var(--text-primary)'
                             : l.color === 'var(--bg-canvas)'
                               ? 'var(--text-muted)'
-                              : 'none'
+                              : l.color === 'var(--node-reached)'
+                                ? 'var(--node-reached-ring)'
+                                : 'none'
                         }
-                        strokeWidth={isLegendActive ? 2 : l.color === 'var(--bg-canvas)' ? 1.25 : 0}
+                        strokeWidth={
+                          isLegendActive
+                            ? 2
+                            : l.color === 'var(--bg-canvas)' || l.color === 'var(--node-reached)'
+                              ? 1.25
+                              : 0
+                        }
                       />
                       {l.sym && (
                         <text
@@ -1431,12 +1586,7 @@ export default function CivTree({
                   )}
                   {l.kind === 'joint' && <JointIcon mark={l.mark} />}
                   {l.kind === 'ring' && (
-                    <circle
-                      r={7}
-                      fill="var(--accent-soft)"
-                      stroke="var(--accent)"
-                      strokeWidth={2.5}
-                    />
+                    <circle r={7} fill="var(--bg-canvas)" stroke="var(--accent)" strokeWidth={2} />
                   )}
                   {l.kind === 'faded' && (
                     <circle
@@ -1455,8 +1605,9 @@ export default function CivTree({
                       height={16}
                       rx={3}
                       fill="none"
-                      stroke="rgba(245, 158, 11, 0.7)"
-                      strokeWidth={1.5}
+                      stroke="var(--warn)"
+                      strokeOpacity={0.75}
+                      strokeWidth={1.25}
                       strokeDasharray="3,2"
                     />
                   )}
@@ -1467,7 +1618,7 @@ export default function CivTree({
                       y1={0}
                       x2={10}
                       y2={0}
-                      stroke={l.color ?? (l.dashed ? 'var(--text-muted)' : 'var(--accent)')}
+                      stroke={l.color ?? 'var(--text-muted)'}
                       strokeWidth={1.5}
                       strokeDasharray={l.dashed ? '4,3' : 'none'}
                     />
@@ -1476,12 +1627,12 @@ export default function CivTree({
                     x={l.kind === 'label' ? 0 : 12}
                     y={3.5}
                     fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
-                    fontSize={10.5}
+                    fontSize={11.5}
                     fontWeight={isLegendActive ? 600 : 400}
                     fontFamily="var(--font-sans)"
-                    // Dotted, not solid: it marks the key as operable without
-                    // claiming to be a hyperlink to somewhere else.
-                    textDecoration={clickable ? 'underline dotted' : undefined}
+                    // No underline: SVG text drew the dotted one solid, so every
+                    // key read as a hyperlink. The pointer, the hover tooltip and
+                    // the hint at the end of the row say a key can be pressed.
                   >
                     {l.label}
                   </text>
@@ -1503,8 +1654,8 @@ export default function CivTree({
                   setSpotlight(null);
                 }}
               >
-                <text y={3.5} fill="var(--accent)" fontSize={10.5} fontFamily="var(--font-sans)">
-                  {spotlight} only — show all (Esc)
+                <text y={3.5} fill="var(--accent)" fontSize={11.5} fontFamily="var(--font-sans)">
+                  Showing {spotlight} only · show all (Esc)
                 </text>
               </g>
             ) : (
@@ -1513,10 +1664,10 @@ export default function CivTree({
                   transform={`translate(${legendEnd}, 8)`}
                   y={3.5}
                   fill="var(--text-muted)"
-                  fontSize={10.5}
+                  fontSize={11.5}
                   fontFamily="var(--font-sans)"
                 >
-                  click a key to highlight
+                  Click a key to highlight it
                 </text>
               )
             )}
@@ -1528,6 +1679,24 @@ export default function CivTree({
       <div className="civ-source" style={{ bottom: covered + 10, left: leftInset + 8 }}>
         Ambit · {SITE_HOST}
       </div>
+
+      {/* Not while a tour narrates the map: its card sits where the thumbnail
+          does, and the finding the thumbnail feeds is hidden then too. */}
+      {!narrated && (
+        <Minimap
+          containerRef={containerRef}
+          zoom={zoom}
+          width={contentWidth}
+          height={contentHeight}
+          columns={colOrder.length}
+          nodes={minimapNodes}
+          watch={findings.failing[0]?.id}
+          onWhere={setWhere}
+          layoutKey={`${headlined}:${headlinePad}`}
+          leftInset={leftInset}
+          rightInset={rightInset}
+        />
+      )}
     </div>
   );
 }

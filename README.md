@@ -7,7 +7,7 @@
 Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop and Codex CLI into one local graph, and answers what no single config file can: what works, what is configured but broken, and what stops working if one MCP server, model or token goes away.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=6366f1)](https://github.com/zz-plant/ambit/releases/latest)
+[![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
 
@@ -62,7 +62,7 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 <div align="center">
 <img src="docs/assets/screenshot-tree.png" alt="The Ambit capability map: tools and skills drawn as connected nodes in themed eras" width="900">
-<br><sub>Filled nodes are reached · Heavy rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
+<br><sub>Filled nodes are reached · Bright rings are a next step, with their setup time · Dashed nodes are blocked, with a prerequisite missing · The line on top is what the map found</sub>
 </div>
 
 ---
@@ -142,13 +142,13 @@ Homebrew installs the CLI, the engine, and the MCP server from the tagged releas
 
 | Command | What it answers |
 | :--- | :--- |
-| `ambit status` | Environment health — what is reached, what is failing its declared check, what has a single provider, plus pending approvals |
+| `ambit status` | Environment health — what is reached and how much of it is proven, what is failing its declared check, what has a single provider, plus pending approvals, and the one command to type next |
 | `ambit goal <name>` | The path to unlock a capability, in order, with setup estimates |
 | `ambit impact <id>` | Blast radius: what breaks if this tool, model, or credential goes down |
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
 | `ambit verify [id]` | Run a capability's declared check and record whether it actually works |
-| `ambit history [since]` | How the frontier moved, separating what you acquired from what emerged |
+| `ambit history [since <when> [<until>]]` | How the frontier moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
 `ambit help` covers a first session; `ambit help --all` is the full surface, grouped by what you are trying to do, and `ambit help <term>` explains one concept.
@@ -163,23 +163,27 @@ The three console blocks below are captured from a run against a fixture graph b
 ```console
 $ ambit status
 
-    summary: 39/59 capabilities reached · 9 with a single provider
-    reached: 39
-    total: 59
-    verified: 0
-    failing: 0
+    39 of 59 reached · 0 proven · 9 with a single provider
+    ──────────────────────────────────────────────────────
+    proven          0
+  › unproven       15
+    failing         0
+    last check  never
+
     actions: 18/28 reached
-    evidence:
-        proven: 0
-        unproven: 15
-        failing: 0
-        last check: never
-        provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
-        note: configured is not working — ambit verify would turn 11 of the unproven into evidence
+    provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
     domains:
+      ████░░░░░░ ai-ml     5/13
+      █████████░ backend   7/8
+      ████████░░ devops    4/5
+      ██████████ frontend  1/1
     …
+
+    Next  ambit verify · turns 11 of the unproven into evidence
 ```
 <!-- /example -->
+
+The first line holds the two numbers that matter, reached and proven, and after them whatever is wrong. The `›` marks the count that wants a person, a failing check before an unproven one, and the last line is the command to type next, picked from what the report found. In a terminal the marked row and `Next` are drawn in the accent colour. Piped, or with `NO_COLOR` set, the colour goes and every line stays. `--json` prints the same report as data, with the last line as `next`.
 
 ### ambit goal — what it would take to reach something
 
@@ -233,18 +237,37 @@ $ ambit impact mcp:playwright
 
 `ambit share` builds its HTML from an allow-list — name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions, and economics cannot enter the file, people render as "a person", and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.
 
+### From a script, or an agent's shell
+
+Output is plain when nothing is reading it as a terminal: colour is drawn only when stdout is one and `NO_COLOR` is unset, so a pipe, a file and a CI log read what was written. `--json` prints any answer as data. The exit code says whether the command worked: 0 for an answer, 1 for a command that reported an error (a usage error, an id that is not on the map), and 2 for a word that is not a command. `ambit check --ci` keeps its own codes.
+
+Two commands can gate a script the way `git diff --exit-code` does. Without the flag nothing about them changes.
+
+```bash
+ambit can shell-execution --exit-code     # 0 go ahead, 1 put it to the person, 2 stop
+ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
+```
+
+`can` maps ALLOW, CONFIRM and DENY to 0, 1 and 2, and a DENY files the deficit as it does over MCP. `verify --exit-code` also exits 1 for a capability with no check to run, since nothing was proved. A flag with a value is written `--target=svc:ollama`; the two-word form is not read.
+
 ---
 
 ## Connect it to your agent
 
 Registering Ambit as an MCP server lets an agent inspect its own toolchain and plan around what is missing.
 
-Sixty tools, each advertised once, each answering with MCP `structuredContent` alongside the text block so an agent reads a field and never parses a string. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names all sixty, grouped. (The `tt_` prefix from before the rename is still accepted, just no longer listed.)
+Sixty tools, each advertised once, each answering with MCP `structuredContent` alongside the text block so an agent reads a field and never parses a string. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names all sixty, grouped, and [says how a call is answered](./docs/deep-dive.md#how-a-call-is-answered): a call that cannot work comes back as a failed call that says what to send, and a capability may be named by its id, its bare name or its display name. (The `tt_` prefix from before the rename is still accepted, just no longer listed.)
 
 ### Claude Code
 
 ```bash
 claude mcp add ambit -- ambit mcp
+```
+
+The full listing is sixty tool descriptions, about 19.5KB of an agent's context. A session that mostly asks before it acts can list the ten tools it uses in 4.4KB instead, and nothing is hidden by it: the others still answer by name.
+
+```bash
+claude mcp add ambit -- ambit mcp --profile=agent
 ```
 
 Ambit also publishes a resource, `ambit://briefing`, which a client reads on
@@ -289,6 +312,8 @@ The habit worth teaching is a single question before an unfamiliar tool, because
 
 It answers from the graph without probing anything, and a refusal files itself as a deficit, which is what makes the third occurrence show up as infrastructure that should exist instead of a wall to work around again.
 
+The server sends this line itself, as the `instructions` a client receives when it connects, so a client that passes them to the model needs nothing pasted. `ambit init-rules` writes it into `CLAUDE.md`, `AGENTS.md` or `.cursorrules` for one that does not, and for an agent that has a shell and no MCP the same question is `ambit can <capability> --exit-code`.
+
 Here is the whole loop from a live run. `node --experimental-strip-types scripts/demo-agent-loop.ts` re-records it, and every frame is real engine output — a failing loop fails the recording instead of rendering a fiction.
 
 <div align="center">
@@ -321,9 +346,13 @@ sequenceDiagram
 
 ## The map
 
-The web UI (`./bootstrap.sh web`) is three views over the same graph the CLI reads. The **map** is the curated tree with your position on it. **My Setup** is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides; its Briefing tab is the prose an agent is given at connect, so what the agent believes about the machine is inspectable. Its Not on the map tab lists what the agents used in the last 30 days that no node on the map accounts for, with an overlay to paste into `.ambit/techtree.json` that would put it there. **Time & cost** is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. Search (<kbd>/</kbd>) finds anything by name and opens it where it lives.
+The web UI (`./bootstrap.sh web`) is four views over the same graph the CLI reads. The **map** is the curated tree with your position on it. **My Setup** is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides; its Briefing tab is the prose an agent is given at connect, so what the agent believes about the machine is inspectable. Its Not on the map tab lists what the agents used in the last 30 days that no node on the map accounts for, with an overlay to paste into `.ambit/techtree.json` that would put it there. **Time & cost** is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. **Audit** is the trail, one line per event and newest first: proposals drafted, approved, applied and turned down, check runs, work runs, and the delegation records that say when a grant narrowed, each with what came of it where that was recorded, and a query bar that takes `actor:`, `action:` and `target:`. Search (<kbd>/</kbd>) finds anything by name and opens it where it lives, and lists actions beside what it finds: simulate an outage or an unlock, copy the command that checks a node, switch lens, open Proposals. It copies a check and never runs one, and a proposal is still decided by the buttons in its panel.
 
-Over the map, a line gives the range: how many capabilities are verified, how that moved this week, and the one piece of the setup whose loss would stop the most, with a button that simulates it. Under it, one line says what the map found before you read a node: a capability that is configured and failing its check, or else the next step that reaches the most, with a button that previews it. Select a node and its edges are drawn apart: what it needs in teal, what it enables in indigo, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take. A small person mark on a node means it needs someone: a person approves or supplies it; a device mark means it runs on one of your machines. The detail panel says who, under Joint capability. The header counts the map's nodes, leading with the reached ones that have a passing check (verified) apart from those with none or a failing one (unproven), and each count highlights its nodes, the way the legend keys do.
+Over the map, a line gives the range: how many capabilities are verified, how that moved this week, and the one piece of the setup whose loss would stop the most, with a button that simulates it. Under it, one line says what the map found before you read a node: a capability that is configured and failing its check, or else the next step that reaches the most, with a button that previews it. Select a node and its edges are drawn apart: what it needs in violet, what it enables in blue, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take. A small person mark on a node means it needs someone: a person approves or supplies it; a device mark means it runs on one of your machines. The detail panel says who, under Joint capability. The header counts the map's nodes, leading with the reached ones that have a passing check (verified) apart from those with none or a failing one (unproven), and each count highlights its nodes, the way the legend keys do. Each era's header counts what is reached and working, and it is a control: click it and the era opens in the panel as a ladder, a bar for how far up it you are and one rung per node, each either reached, a next step with its setup time, or blocked with what it waits for. A reached node whose check failed is a rung of its own, failing, and is left out of the reached count.
+
+A map bigger than the window gets a minimap at its bottom right: the whole tree as a thumbnail, a dot for each node with the failing ones red, and the part on screen outlined. Drag the outline, or focus it and use the arrow keys. It is not drawn when the whole map fits, and the line over the map says which way a failing node lies (off-screen left) when it is out of sight.
+
+On a map too crowded to read, select a node and press **Focus** in its panel: only what it needs and what it enables within a few hops stays on the map. Choose which way (needs, both, enables) and how far (one to three hops), and a pill says how many nodes are hidden and brings them back. The columns keep their places, the header still counts the whole map, and a simulation still counts its whole cascade and says how much of it the focus hides. <kbd>Esc</kbd> ends it. It is off unless asked for, and a link carries it as `collapse=1`, with `depth` and `dir` when they are not two hops both ways.
 
 The **Docs** button defines every term on the canvas; [the four above](#the-words-ambit-uses) cover most of it.
 
@@ -345,9 +374,13 @@ Select a node to open the inspector, then simulate against it. Neither mode writ
 - **Simulate unlocking** acquires a locked primitive hypothetically and lights up, in green, everything that becomes reachable because of it.
 - **Show the gap** draws what a blocked node is waiting on, every hop up, priced in setup time.
 
+### The map through time
+
+Under the map, once the ledger holds two observations, a timeline has one tick for each second a snapshot was taken. Drag the playhead, or step it with the arrow keys, and the map redraws as that snapshot left it: states and checks from then, names, eras and edges from now, because a snapshot stores none of those. One sentence says what moved at each tick, such as "Sep 26: reached 43 to 45, 1 emergent, 1 went failing", in the words `ambit history since <then> <now>` prints for the same two observations. The header's counts and the detail panel follow the playhead and say "as of". A snapshot keeps no grants, providers or attention either, so while the playhead is in the past the Attention and Authority lenses and the simulations wait for now. The playhead is a timestamp in the link, so a link to last week's map opens on it wherever the same ledger is. With fewer than two observations, the strip says how history begins.
+
 ### Approving proposals
 
-When an agent proposes an environment change over MCP, the **Proposals** panel shows what it would save, what it costs, whether every step can be undone, what it unlocks, and how you have decided on things like it before, then mints a signed approval receipt in one click, or records a no with the reason, which is what the next draft learns from. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`. When you are away from the machine, `ambit dispatch <id>` pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.
+When an agent proposes an environment change over MCP, the **Proposals** panel reads it as a plan before you sign: how many steps, which of them nothing can undo, whether `ambit apply` can run it at all, the hours a month it is forecast to take before and after, what it costs, what it unlocks, and how you have decided on things like it before. Then it mints a signed approval receipt in one click, or records a no with the reason, which is what the next draft learns from. When several drafts are waiting, tick the ones to decide and approve or turn them down together: each is still signed on its own, against the version you were shown, so one that changed since is refused while the rest go ahead, and nothing is applied. A draft your record leans against starts unticked. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`. When you are away from the machine, `ambit dispatch <id>` pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.
 
 ---
 

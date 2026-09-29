@@ -1,11 +1,11 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
-import { C, emit, emitRaw, emitText, setSink } from './cli/output.ts';
-import { HELP, HELP_SHORT } from './cli/help.ts';
-import { explain, statusReport } from './cli/reports.ts';
+import { emit, emitRaw, emitText, raiseExitCode, setSink, terminalPalette } from './cli/output.ts';
+import { HELP, HELP_SHORT, groupHelp } from './cli/help.ts';
+import { explain, renderStatus, statusReport } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
-import { resolveCommand } from './cli/groups.ts';
+import { GROUPS, resolveCommand } from './cli/groups.ts';
 import { shareSnapshot } from './share.ts';
 import {
   discoverCombos,
@@ -37,7 +37,7 @@ import { nextSteps } from './next.ts';
 import { recordRefusal, signalReport } from './failures.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
 import { exportSync, importSync } from './sync.ts';
-import { ledgerHistory, ledgerSince } from './ledger.ts';
+import { ledgerHistory, ledgerSince, typedTimestamps } from './ledger.ts';
 import {
   recordDelegationState,
   delegationRecords,
@@ -54,6 +54,7 @@ import {
   verifyChain,
 } from './delegation.ts';
 import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
+import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
@@ -157,7 +158,8 @@ async function runCommand(
       break;
     }
     case 'status':
-      emit(statusReport(db));
+      // Drawn by its own renderer for a person; the sink and --json get the data.
+      emit(statusReport(db), report => renderStatus(report, terminalPalette()));
       break;
     case 'graph': {
       // The graph is one thing with several views; none of them is a headline.
@@ -175,11 +177,19 @@ async function runCommand(
       if (flags.has('--prefs')) emit(preferencesReport(db, arg));
       else if (flags.has('--paths'))
         emit(arg ? pathsFor(db, arg) : { error: 'Usage: ambit goal <capability> --paths' });
-      else if (flags.has('--simulate'))
-        emit(
-          arg ? simulateFrontier(db, [arg]) : { error: 'Usage: ambit goal <capability> --simulate' }
-        );
-      else if (flags.has('--judge') || value('judge') !== undefined) {
+      else if (flags.has('--simulate')) {
+        if (!arg) emit({ error: 'Usage: ambit goal <capability> --simulate' });
+        else {
+          // An id the graph does not hold used to be "acquired" all the same:
+          // simulating `nope` reported a larger frontier for it.
+          const asked = resolveCapability(db, arg);
+          emit(
+            asked.ok
+              ? simulateFrontier(db, [asked.id])
+              : { error: asked.error, did_you_mean: asked.did_you_mean }
+          );
+        }
+      } else if (flags.has('--judge') || value('judge') !== undefined) {
         // async: asks a judgment model on this machine, and only when the
         // vocabulary could not recommend. A goal the words cover opens no socket.
         const routed = goalFor(db, arg) as any;
@@ -270,7 +280,14 @@ async function runCommand(
             : { error: 'Usage: ambit verify <id> --history' }
         );
       } else {
-        emit(runVerification(db, arg, value('target')));
+        const ran: any = runVerification(db, arg, value('target'));
+        emit(ran);
+        // --exit-code lets a script gate on the checks as `git diff --exit-code`
+        // lets one gate on a diff: 0 only when every check that ran passed. A
+        // capability with no check to run has proved nothing, so it exits 1
+        // with the flag as a failing check does.
+        if (flags.has('--exit-code') && !(ran.checked > 0 && ran.verified === ran.checked))
+          raiseExitCode(1);
       }
       break;
     case 'authority': {
@@ -320,9 +337,19 @@ async function runCommand(
       break;
     }
     case 'can': {
+      if (!arg) {
+        emit({ error: 'Usage: ambit can <capability> [--target=X] [--spend=N] [--exit-code]' });
+        break;
+      }
+      // A slip is answered as one and files nothing; see `capabilityToAsk`.
+      const asked = capabilityToAsk(db, arg);
+      if ('answer' in asked) {
+        emit(asked.answer);
+        break;
+      }
       const decision: any = canExecute(db, {
         actor: value('actor'),
-        capability: arg,
+        capability: asked.ask,
         target: value('target'),
         spendCents: value('spend') ? Number(value('spend')) : undefined,
       });
@@ -334,6 +361,11 @@ async function runCommand(
         if (recorded !== undefined) decision.recorded_deficit = recorded;
       }
       emit(decision);
+      // --exit-code puts the decision where a shell can branch on it: 0 to go
+      // ahead, 1 to ask a person first, 2 to stop.
+      if (flags.has('--exit-code')) {
+        raiseExitCode(decision.decision === 'ALLOW' ? 0 : decision.decision === 'CONFIRM' ? 1 : 2);
+      }
       break;
     }
     case 'delegation': {
@@ -419,8 +451,10 @@ async function runCommand(
       break;
     }
     case 'history':
-      if (arg === 'since') emit(ledgerSince(db, positional[1]));
-      else emit(ledgerHistory(db));
+      if (arg === 'since') {
+        const [when, until] = typedTimestamps(positional.slice(1));
+        emit(ledgerSince(db, when, until));
+      } else emit(ledgerHistory(db));
       break;
     case 'propose': {
       const drafted = propose(db, arg, Number(positional[1]) || undefined);
@@ -593,8 +627,21 @@ async function runCommand(
       }
       break;
     }
-    default:
-      console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
+    default: {
+      // A group named with no verb after it lists what it owns, which is what
+      // `ambit help` tells the reader to try. `graph` and `check` are commands
+      // of their own and never reach here.
+      if (cmd in GROUPS) {
+        emitText(groupHelp(cmd));
+        break;
+      }
+      // On stderr, so a caller reading stdout for an answer is not handed this
+      // as one, and exiting 2, the code a usage error conventionally gets, so a
+      // script can tell a mistyped verb from a command that ran and failed.
+      const paint = terminalPalette(process.stderr);
+      console.error(`${paint.red}Unknown command: ${cmd}. Try: ambit help${paint.reset}`);
+      raiseExitCode(2);
+    }
   }
 }
 
@@ -719,8 +766,9 @@ async function main() {
       // scripts get their answer instead of a lecture.
       const json = flags.has('--json');
       if (!json) {
+        const paint = terminalPalette();
         console.log(
-          `${C.grey}First run — reading your agent config and building the graph…${C.reset}`
+          `${paint.grey}First run — reading your agent config and building the graph…${paint.reset}`
         );
       }
       runSeed(db, mappingOverride, json);

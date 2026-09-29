@@ -25,11 +25,13 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { importConfig } from '../src/client/utils/configImporter.ts';
 import { deriveLifecycles, verifyCheck } from '../src/engine/assurance.ts';
 import { getDb } from '../src/engine/db.ts';
-import { techTreeView } from '../src/engine/views.ts';
+import { recordFrontier } from '../src/engine/ledger.ts';
+import { frontierHistoryView, techTreeView } from '../src/engine/views.ts';
+import type { FrontierHistoryResponse } from '../src/shared/api.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'src', 'client', 'utils', 'demo-data.json');
@@ -129,10 +131,148 @@ export const DEMO_EVIDENCE: Record<string, boolean> = {
   'combo:web-research': true,
 };
 
+/** Some of the fixture's entries of one kind, by name. */
+const only = <T extends Record<string, unknown>>(entries: T, names: (keyof T & string)[]) =>
+  Object.fromEntries(names.map(name => [name, entries[name]]));
+
+/** The demo's checks that pass, and the one that fails, as two stages of its history. */
+const checksThat = (passes: boolean) =>
+  Object.fromEntries(Object.entries(DEMO_EVIDENCE).filter(([, passed]) => passed === passes));
+
+/**
+ * The demo machine's history: one observation per stage, each on a fixed
+ * date, so the timeline under the map shows the same series on every build.
+ *
+ * The stages are the fixture's own parts in the order a person might have
+ * added them. The last two change no config, only evidence: the checks that
+ * pass, then the one that fails. So the series ends where the demo's map is,
+ * with a check gone failing on the way, and nothing in it describes a machine
+ * the engine would not build from this fixture.
+ */
+const HISTORY: { at: string; config?: object; checks?: Record<string, boolean> }[] = [
+  {
+    at: '2026-08-03 09:00:00',
+    config: {
+      provider: only(FIXTURE.provider, ['anthropic']),
+      agent: only(FIXTURE.agent, ['reviewer']),
+      mcp: only(FIXTURE.mcp, ['git', 'github', 'filesystem', 'fetch']),
+    },
+  },
+  {
+    at: '2026-08-17 09:00:00',
+    config: {
+      provider: only(FIXTURE.provider, ['anthropic']),
+      agent: only(FIXTURE.agent, ['reviewer', 'researcher']),
+      mcp: only(FIXTURE.mcp, [
+        'git',
+        'github',
+        'filesystem',
+        'fetch',
+        'memory',
+        'sqlite',
+        'postgres',
+        'playwright',
+      ]),
+      command: only(FIXTURE.command, ['migrate']),
+    },
+  },
+  { at: '2026-08-31 09:00:00', config: FIXTURE },
+  { at: '2026-09-14 09:00:00', checks: checksThat(true) },
+  { at: '2026-09-26 09:00:00', checks: checksThat(false) },
+];
+
+/**
+ * `ambit seed` for one stage of the history, without the observation it would
+ * record at the wall clock: each stage is dated by hand, and an observation
+ * stamped by whoever regenerated the file would put their clock in it. It
+ * runs in its own process with HOME redirected, as the demo's seed does.
+ */
+function seedUnrecorded(config: object, home: string, dbPath: string): void {
+  const configPath = join(dirname(dbPath), 'stage.json');
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+  const engine = (file: string) =>
+    JSON.stringify(pathToFileURL(join(ROOT, 'src', 'engine', file)).href);
+  const program = `
+    const { getDb } = await import(${engine('db.ts')});
+    const { migrate } = await import(${engine('migrate.ts')});
+    const { seedFromConfig } = await import(${engine('discovery.ts')});
+    const db = getDb(process.env.AMBIT_DB);
+    migrate(db);
+    seedFromConfig(db, process.env.OPENCODE_CONFIG, process.env.CONFIG_MAPPING, false);
+    db.close();
+  `;
+  execFileSync('node', ['--experimental-sqlite', '--input-type=module', '-e', program], {
+    env: {
+      ...process.env,
+      HOME: home,
+      OPENCODE_CONFIG: configPath,
+      TOOLCHAIN_DB: dbPath,
+      AMBIT_DB: dbPath,
+      CONFIG_MAPPING: MAPPING,
+      // What `ambit seed` sets while it reads an OpenCode config.
+      AMBIT_RUNTIME: process.env.AMBIT_RUNTIME || 'opencode',
+      NODE_NO_WARNINGS: '1',
+    },
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+}
+
+/**
+ * The history, recorded stage by stage and served the way /api/frontier
+ * serves it, kept to the nodes the demo's map can draw: the file ships in
+ * the bundle, and an id the map has no node for is weight with no picture.
+ */
+function buildDemoHistory(
+  work: string,
+  home: string,
+  tree: ReturnType<typeof techTreeView>
+): FrontierHistoryResponse {
+  const dbPath = join(work, 'history.db');
+  for (const stage of HISTORY) {
+    if (stage.config) seedUnrecorded(stage.config, home, dbPath);
+    const db = getDb(dbPath);
+    for (const [id, passes] of Object.entries(stage.checks ?? {})) {
+      verifyCheck(db, id, id, { command: [passes ? 'true' : 'false'] });
+    }
+    deriveLifecycles(db);
+    recordFrontier(db, stage.at);
+    db.close();
+  }
+  const db = getDb(dbPath);
+  const history = frontierHistoryView(db);
+  db.close();
+
+  // The history ends where the map is, or scrubbing to its last tick would
+  // show a different machine from the one the demo opens on.
+  const last = history.ticks[history.ticks.length - 1];
+  const apart = tree.items.filter(
+    i => last.states[i.id] !== i.meta.state || last.lifecycles?.[i.id] !== i.meta.lifecycle
+  );
+  if (apart.length || history.movedSinceLast) {
+    throw new Error(
+      `The demo's history does not end where its map is: ${apart.map(i => i.id).join(', ')}`
+    );
+  }
+
+  const drawn = new Set(tree.items.map(i => i.id));
+  const keep = (map: Record<string, string> | null) =>
+    map && Object.fromEntries(Object.entries(map).filter(([id]) => drawn.has(id)));
+  return {
+    ticks: history.ticks.map(t => ({
+      ...t,
+      states: keep(t.states) ?? {},
+      kinds: keep(t.kinds),
+      lifecycles: keep(t.lifecycles),
+    })),
+    movedSinceLast: null,
+  };
+}
+
 export function buildDemoData(): {
   fixture: typeof FIXTURE;
   config: ReturnType<typeof importConfig>;
   tree: ReturnType<typeof techTreeView>;
+  history: FrontierHistoryResponse;
 } {
   const work = mkdtempSync(join(tmpdir(), 'ambit-demo-'));
   try {
@@ -171,7 +311,12 @@ export function buildDemoData(): {
     const tree = techTreeView(db);
     db.close();
 
-    return { fixture: FIXTURE, config: importConfig(FIXTURE as never), tree };
+    return {
+      fixture: FIXTURE,
+      config: importConfig(FIXTURE as never),
+      tree,
+      history: buildDemoHistory(work, home, tree),
+    };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -200,6 +345,7 @@ export function serialise(data: ReturnType<typeof buildDemoData>): string {
         }),
         connections: byEdge(data.tree.connections),
       },
+      history: data.history,
     },
     null,
     2

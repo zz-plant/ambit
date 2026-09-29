@@ -1,14 +1,11 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import type { Connection, Item } from '../utils/configImporter';
+import { canSwitchMcp } from '../utils/configSwitch';
+import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 import {
-  typeLabel,
-  statusLabel,
-  metaKeyLabel,
-  isConfigEntry,
-  isRuntimeNode,
-} from '../utils/labels';
-import {
+  blockedBy,
+  collapseTo,
   costOf,
   gapOf,
   outageImpact,
@@ -18,7 +15,11 @@ import {
   unlockCascade,
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
+import { EraLadderPanel } from './EraLadder';
+import { FocusControls } from './FocusControls';
+import { HistoryStrip } from './figures';
 import { Term } from './Term';
+import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 
 /**
@@ -32,6 +33,13 @@ const prerequisiteLabel = (conn: Connection) =>
 interface NodeDetailPanelProps {
   /** Show a neighbour where it lives: a node on the map, an entry in My Setup. */
   onShow?: (id: string) => void;
+  /** The map's items when they are not the store's: a past observation, scrubbed to. */
+  items?: Item[];
+  /**
+   * When those items were observed. The panel says so, and offers nothing
+   * that acts on the graph as it is now: a simulation, the config switch.
+   */
+  asOf?: string;
 }
 
 /**
@@ -69,17 +77,26 @@ function LinkList({
   );
 }
 
-export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
-  const items = useAmbitStore(s => s.items);
+export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPanelProps = {}) {
+  const storeItems = useAmbitStore(s => s.items);
+  const items = pastItems ?? storeItems;
   const connections = useAmbitStore(s => s.connections);
   const selectedId = useAmbitStore(s => s.selectedItem);
+  const selectedEra = useAmbitStore(s => s.selectedEra);
   const selectItem = useAmbitStore(s => s.selectItem);
+  const collapsed = useAmbitStore(s => s.collapsed);
+  const collapseDepth = useAmbitStore(s => s.collapseDepth);
+  const collapseDirection = useAmbitStore(s => s.collapseDirection);
+  const setCollapsed = useAmbitStore(s => s.setCollapsed);
+  const setCollapseDepth = useAmbitStore(s => s.setCollapseDepth);
+  const setCollapseDirection = useAmbitStore(s => s.setCollapseDirection);
   const simulatedNodeId = useAmbitStore(s => s.simulatedNodeId);
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   const startGap = useAmbitStore(s => s.startGapSimulation);
   const clearSim = useAmbitStore(s => s.clearSimulation);
   const backend = useAmbitStore(s => s.backend);
+  const configMcp = useAmbitStore(s => s.configMcp);
   const toggleMcpEnabled = useAmbitStore(s => s.toggleMcpEnabled);
 
   const item = items.find(i => i.id === selectedId);
@@ -87,9 +104,23 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
   const [toggling, setToggling] = React.useState(false);
   const [toggleError, setToggleError] = React.useState<string | null>(null);
 
-  if (!item) return null;
+  // An era header opens its ladder in the same panel, where a node would be,
+  // counted from the same observation as the header it was opened from.
+  if (!item) {
+    return selectedEra === null ? null : (
+      <EraLadderPanel
+        era={selectedEra}
+        onShow={onShow ?? selectItem}
+        items={pastItems}
+        asOf={asOf}
+      />
+    );
+  }
 
   const color = typeColor(item.type);
+  // What a focus on this node would leave on the map. Only a node the map draws
+  // has a neighbourhood: an entry of My Setup has no place on it.
+  const onMap = collapseTo(items, connections, item.id, collapseDepth, collapseDirection);
 
   const lifecycle = item.meta?.lifecycle as string | undefined;
   const lastChecked = item.meta?.lastChecked as string | undefined;
@@ -112,6 +143,8 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
     reliability && reliability.total > 1
       ? ` · ${reliability.passed} of ${reliability.total} runs passed`
       : '';
+  // The runs behind that count, in order. None recorded means no strip.
+  const history = runsOf(item);
   const authority = item.meta?.authority as
     | { execute: string; observe?: string; ungranted?: boolean }
     | undefined;
@@ -170,7 +203,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
   // The header's status takes the verdict's colour, so "Reached" is green only
   // when something proved it.
   const statusTone = item.status !== 'built' ? item.status : verdict ? verdict.tone : item.status;
-  const verifyCmd = `ambit verify ${item.id}`;
+  const verifyCmd = verifyCommand(item);
 
   const byId = new Map(items.map(i => [i.id, i]));
   // One hop each way, the same two sets the map colours: what this needs, and
@@ -220,6 +253,7 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
     'providers',
     'credentials',
     'reliability',
+    'history',
     'authority',
     'failures',
     'actions',
@@ -263,6 +297,13 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         </button>
       </div>
 
+      {asOf && (
+        <p className="sp-asof" role="status">
+          As of {asOf}, as that observation recorded it. A snapshot keeps no grants or providers, so
+          simulations wait for now.
+        </p>
+      )}
+
       {isKeystone && (
         <p className="sp-keystone">
           <span aria-hidden="true">★</span>
@@ -289,21 +330,29 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           </button>
         </div>
       )}
+      {history.length > 0 && (
+        <div className="sp-history">
+          <span>Recent checks</span>
+          <HistoryStrip runs={history} of={item.name} />
+        </div>
+      )}
 
       {/* The impact in one line, then the simulation that draws it: an outage
           for a reached node; the gap, and an unlock, for one that is not. */}
       {(() => {
+        // A past observation stores no providers, so it has no impact to
+        // state and nothing to simulate.
+        if (asOf) return null;
         const isSimulated = simulatedNodeId === item.id;
         // Only what was working is said to stop; the banner says the same.
         const outage = split ? outageSentence('this', outageImpact(items, split), true) : null;
         const missing = gap ? [...gap.missing] : [];
-        // Name the direct ones first: they are what to reach, the rest is
-        // what those need in turn.
-        const direct = missing.filter(id => needs.some(n => n.node.id === id));
-        const named = (direct.length ? direct : missing)
-          .slice(0, 3)
-          .map(id => byId.get(id)?.name || id);
-        const more = missing.length - named.length;
+        // The direct ones are named first: they are what to reach, the rest is
+        // what those need in turn. The ladder for the node's era says it the
+        // same way, from the same function.
+        const { names: named, more } = gap
+          ? blockedBy(items, connections, item.id, gap)
+          : { names: [], more: 0 };
 
         return (
           <div className="sp-sim-group">
@@ -361,6 +410,19 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
           </div>
         );
       })()}
+
+      {onMap && (
+        <FocusControls
+          on={collapsed}
+          depth={collapseDepth}
+          direction={collapseDirection}
+          hidden={onMap.hidden}
+          onToggle={() => setCollapsed(!collapsed)}
+          onDepth={setCollapseDepth}
+          onDirection={setCollapseDirection}
+          onClear={() => setCollapsed(false)}
+        />
+      )}
 
       {/* Whether it may act, apart from whether it can: the engine's effective
           mode, which no web surface used to show, and then the finer answer,
@@ -424,10 +486,11 @@ export function NodeDetailPanel({ onShow }: NodeDetailPanelProps = {}) {
         entry that is already there: `enabled: true|false`. Creating an entry
         stays a hand edit, because an MCP entry carries a command the runtime
         executes — see the security posture in AGENTS.md. Offered only where it
-        means something: an entry read out of the config, with an engine behind
-        the page to write it back.
+        means something: an entry the config names, with an engine behind the
+        page to write it back. The route answers ok for a name it has no entry
+        for, so an entry another runtime declared would flip and flip back.
       */}
-      {backend === 'live' && item.type === 'mcp-server' && isConfigEntry(item) && (
+      {!asOf && canSwitchMcp(item, backend, configMcp) && (
         <div className="sp-toggle-row">
           <div>
             <button

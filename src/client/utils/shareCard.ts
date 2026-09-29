@@ -32,21 +32,21 @@ export const CARD_H = 1350;
 
 /** The app's dark palette, written out: an SVG drawn to a canvas cannot read CSS variables. */
 const INK = {
-  canvas: '#090d16',
-  surface: '#111827',
+  canvas: '#0f1013',
+  surface: '#16171b',
   line: 'rgba(255,255,255,0.08)',
-  text: '#f8fafc',
-  secondary: '#94a3b8',
-  muted: '#7b8799',
-  accent: '#6366f1',
-  ok: '#10b981',
-  warn: '#f59e0b',
-  error: '#f43f5e',
-  errorDeep: '#e11d48',
+  text: '#e8e8ea',
+  secondary: '#a4a7ae',
+  muted: '#8a8e96',
+  accent: '#7aa2f7',
+  ok: '#56c28a',
+  warn: '#e0a94a',
+  error: '#ef6461',
+  errorDeep: '#d8504d',
 };
 
 const FONT =
-  "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 export type CardMode = 'outage' | 'acquisition' | 'gap';
 
@@ -184,7 +184,7 @@ const esc = (s: string) =>
 function wrap(text: string, perLine: number): string[] {
   const lines: string[] = [];
   let line = '';
-  for (const word of text.split(/\s+/).filter(Boolean)) {
+  for (const word of text.split(/ +/).filter(Boolean)) {
     if (line && (line + ' ' + word).length > perLine) {
       lines.push(line);
       line = word;
@@ -209,12 +209,11 @@ export function cardSvg(card: Card): string {
       `<text x="${x}" y="${y}" font-size="${size}" fill="${fill}" font-family="${FONT}" ${extra}>${esc(body)}</text>`
     );
 
-  // Brand, top left.
+  // Brand, top left: BrandMark, drawn at 56.
   out.push(
-    `<g transform="translate(${pad},${pad})"><rect width="56" height="56" rx="13" fill="url(#brand)"/>` +
-      '<g stroke="#fff" stroke-linecap="round" transform="scale(0.875)">' +
-      '<path d="M14 50 L32 14 L50 50" stroke-width="8.5" fill="none"/><path d="M21 40 H43" stroke-width="7.5"/></g>' +
-      '<g fill="#fff" transform="scale(0.875)"><circle cx="32" cy="14" r="7.5"/><circle cx="14" cy="50" r="6.5"/><circle cx="50" cy="50" r="6.5"/></g></g>'
+    `<g transform="translate(${pad},${pad}) scale(0.875)"><rect width="64" height="64" rx="14" fill="${INK.accent}"/>` +
+      `<g stroke="${INK.canvas}" stroke-linecap="round"><path d="M13 51 L32 12" stroke-width="9.5"/><path d="M51 51 L32 12" stroke-width="9.5"/><path d="M20 40 H44" stroke-width="8.5"/></g>` +
+      `<g fill="${INK.canvas}"><circle cx="32" cy="12" r="8.5"/><circle cx="13" cy="51" r="7.5"/><circle cx="51" cy="51" r="7.5"/></g></g>`
   );
   text(pad + 76, pad + 40, 36, INK.text, 'Ambit', 'font-weight="700"');
 
@@ -325,7 +324,7 @@ export function cardSvg(card: Card): string {
 
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}">` +
-    `<defs><linearGradient id="brand" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#0284c7"/></linearGradient>` +
+    `<defs>` +
     `<radialGradient id="glow" cx="0.15" cy="0.1" r="0.9"><stop offset="0%" stop-color="${hue}" stop-opacity="0.16"/><stop offset="100%" stop-color="${hue}" stop-opacity="0"/></radialGradient></defs>` +
     `<rect width="${CARD_W}" height="${CARD_H}" fill="${INK.canvas}"/>` +
     `<rect width="${CARD_W}" height="${CARD_H}" fill="url(#glow)"/>` +

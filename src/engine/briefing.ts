@@ -59,19 +59,25 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
 
   const g = graphCounts(db);
 
-  // Actions count here even though they do not count in the reach figure. A
-  // contract action whose check fails is the finest-grained thing this model
-  // can say is broken, and a summary line that said "0 failing" above a list
-  // naming one would teach a reader to stop believing the line.
+  // A contract action whose check fails is the finest-grained thing this model
+  // can say is broken, so the list below names it. It is not counted with the
+  // capabilities, though: the figure beside "reached" is a count of those, the
+  // one `ambit status` and `ambit_stats` print, and an agent that reads two
+  // numbers for "failing" on one machine believes neither. A failing action is
+  // counted after it instead, which also keeps "0 failing" from sitting above
+  // a list that names one.
   const broken = db
     .prepare(
       `SELECT id, name, kind FROM capabilities
        WHERE ${REACHED_SQL} AND ${FAILING_SQL} ORDER BY kind, name LIMIT 5`
     )
     .all<any>();
-  const failing =
+  const failingActions =
     db
-      .prepare(`SELECT COUNT(*) AS n FROM capabilities WHERE ${REACHED_SQL} AND ${FAILING_SQL}`)
+      .prepare(
+        `SELECT COUNT(*) AS n FROM capabilities
+         WHERE kind = 'action' AND ${REACHED_SQL} AND ${FAILING_SQL}`
+      )
       .get<any>()?.n ?? 0;
 
   // A threshold a person set earlier takes effect here. The alternative is a
@@ -106,7 +112,11 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
   if (options.mark) markBriefed(db);
 
   return {
-    environment: `${g.reached}/${g.total} capabilities reached · ${g.proven} proven · ${failing} failing`,
+    environment:
+      `${g.reached}/${g.total} capabilities reached · ${g.proven} proven · ${g.failing} failing` +
+      (failingActions
+        ? ` · ${failingActions} failing ${failingActions === 1 ? 'action' : 'actions'}`
+        : ''),
     broken: broken.length ? broken.map(b => ({ id: b.id, name: b.name })) : undefined,
     waiting_on_a_person: waiting.length
       ? waiting.slice(0, 3).map(p => ({ id: p.id, goal: p.goal, status: p.status }))

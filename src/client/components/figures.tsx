@@ -20,7 +20,8 @@
  *   Ink that encodes nothing is removed. No frames, no gridlines, no fill
  *   behind a value a position already carries.
  */
-import type { LoopSnapshot } from '../../shared/api';
+import { CHECK_HISTORY_RUNS, type CheckRun, type LoopSnapshot } from '../../shared/api';
+import { describeRuns } from '../utils/checkHistory';
 
 /** Figures line up in a column only if the digits are the same width. */
 export const NUM = { fontVariantNumeric: 'tabular-nums' } as const;
@@ -199,6 +200,41 @@ export function HoursSparkline({
 }
 
 /**
+ * The last runs of one check, oldest to newest, as a row of bars.
+ *
+ * A pass is a short bar and a failure a tall one, so the difference is a height
+ * before it is a hue, and it holds where red and green are one colour. The
+ * window is always as wide as the projection sends: a slot the check has not
+ * filled yet is a faint tick at the old end, so a check that has run once reads
+ * as one run in a window of fourteen and not as one that fails often. With no
+ * run at all nothing is drawn, because a strip of empty slots would say a check
+ * exists that has never been run.
+ */
+export function HistoryStrip({ runs, of }: { runs: CheckRun[]; of?: string }) {
+  if (!runs.length) return null;
+  const shown = runs.slice(-CHECK_HISTORY_RUNS);
+  const said = describeRuns(shown, of);
+  return (
+    <span className="fig-history" role="img" aria-label={said} title={said}>
+      {Array.from({ length: CHECK_HISTORY_RUNS - shown.length }, (_, i) => (
+        <span
+          key={`none-${i}`}
+          className="fig-history-bar fig-history-bar--none"
+          aria-hidden="true"
+        />
+      ))}
+      {shown.map((r, i) => (
+        <span
+          key={`${i}:${r.id}`}
+          className={`fig-history-bar fig-history-bar--${r.passed ? 'pass' : 'fail'}`}
+          aria-hidden="true"
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
  * The whole graph as one short bar: reached, next step, not reached.
  *
  * Sits inside the status pill, where "42 of 60 reached" used to stand beside a
@@ -208,12 +244,15 @@ export function HoursSparkline({
 export function ReachBar({
   proven,
   reached,
+  failing = 0,
   next,
   total,
 }: {
   /** The verified part of reached, drawn solid; the rest of reached is drawn lighter. */
   proven?: number;
   reached: number;
+  /** Configured and failing its check: red after reached, as an era's header draws it. */
+  failing?: number;
   next: number;
   total: number;
 }) {
@@ -230,10 +269,20 @@ export function ReachBar({
       {solid > 0 && (
         <rect className="fig-eras-reached" x={0} y={0} width={seg(solid)} height={h} rx={1.5} />
       )}
+      {failing > 0 && (
+        <rect
+          className="fig-eras-failing"
+          x={seg(reached)}
+          y={0}
+          width={seg(failing)}
+          height={h}
+          rx={1.5}
+        />
+      )}
       {next > 0 && (
         <rect
           className="fig-eras-next"
-          x={seg(reached) + 0.5}
+          x={seg(reached + failing) + 0.5}
           y={0.5}
           width={Math.max(seg(next) - 1, 1)}
           height={h - 1}

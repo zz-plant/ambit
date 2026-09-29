@@ -5,6 +5,7 @@
  * of a single 2,300-line file so a failure names a subject.
  */
 import { test, expect } from 'vitest';
+import { auditStream } from './audit.ts';
 import {
   APPLIABLE,
   LOCAL_ONLY,
@@ -278,6 +279,40 @@ test('every act is recorded against the person who authorised it', () => {
   expect(acts.every(a => a.capability_id === 'human:kanav')).toBe(true);
 });
 
+test('the trail keeps an approval and an apply that a later approval replaced on the row', () => {
+  // A rolled-back proposal can be approved again, and the second approval
+  // overwrites `approved_by` and `approved_at`. The trail dropped every
+  // approval and apply act as a copy of the row, so Kanav's signed approval
+  // and the first apply vanished from it. The sequence runs inside a second
+  // or two, so acts that share one with the row must still be told apart.
+  seed({ ...APPLIABLE, actors: { kanav: { name: 'Kanav' }, ana: { name: 'Ana' } } }).close();
+  const p = cli('propose', 'web-research');
+  expect(cli('approve', p.proposal, 'kanav').error).toBeUndefined();
+  expect(cli('apply', p.proposal).applied).toBe(true);
+  expect(cli('rollback', p.proposal).rolled_back).toBe(true);
+  expect(cli('approve', p.proposal, 'ana').error).toBeUndefined();
+  expect(cli('apply', p.proposal).applied).toBe(true);
+
+  const db = getDb(join(dir, 'graph.db'));
+  const events = auditStream(db).events.filter(e => e.target === p.proposal);
+  db.close();
+  const said = (action: string) =>
+    events
+      .filter(e => e.action === action)
+      .map(e => e.actor ?? '')
+      .sort();
+
+  // Every act once: two approvals by two people, two applies, one rollback.
+  expect(said('approved')).toEqual(['human:ana', 'human:kanav']);
+  expect(said('applied')).toHaveLength(2);
+  expect(said('rolled_back')).toEqual(['human:kanav']);
+  expect(said('proposed')).toEqual(['']);
+  // The row still speaks for the approval it holds, with its signature.
+  expect(events.find(e => e.action === 'approved' && e.actor === 'human:ana')?.outcome?.word).toBe(
+    'signed'
+  );
+});
+
 // ── Free-form goals (§5) ─────────────────────────────────────────────────────
 test('a free-form goal routes to the capabilities whose words cover it', () => {
   seed(LOCAL_ONLY).close();
@@ -428,6 +463,34 @@ test('canExecute decides ALLOW / CONFIRM / DENY from covering grants', () => {
   // Without a target, both grants cover and the narrowest (confirm) wins.
   const mixed = cli('can', 'offline-capable');
   expect(mixed.decision).toBe('CONFIRM');
+});
+
+test('asking about a slip is not a refusal on the command line either, and files nothing', () => {
+  // `ambit can shell-exection` answered DENY and filed the typo as a deficit,
+  // which reads as "you may not run a shell". A slip is answered as one.
+  seed(LOCAL_ONLY).close();
+  const count = () => {
+    const db = getDb(join(dir, 'graph.db'));
+    const n = rows(db, 'SELECT COUNT(*) AS n FROM failure_signals')[0].n;
+    db.close();
+    return n;
+  };
+  const before = count();
+  const slip = cli('can', 'shell-exection', '--tool=bash');
+  expect(slip.error).toContain('No capability "shell-exection"');
+  expect(slip.did_you_mean).toContain('combo:shell-execution');
+  expect(slip.decision).toBeUndefined();
+  expect(count()).toBe(before);
+
+  // A wall that resembles nothing is still a wall, and is still filed.
+  const wall = cli('can', 'quantum-teleportation', '--tool=qtp');
+  expect(wall.decision).toBe('DENY');
+  expect(wall.recorded_deficit).toBeDefined();
+  expect(count()).toBeGreaterThan(before);
+
+  // A name is the id it names, and no capability is a usage error and not a stack trace.
+  expect(cli('can', 'Shell Execution', '--no-record').capability).toBe('combo:shell-execution');
+  expect(cli('can').error).toContain('Usage: ambit can <capability>');
 });
 
 test('a budget refuses a spend that would exceed it', () => {

@@ -19,6 +19,12 @@ interface SimulationBannerProps {
   simulatedWeakenedIds?: Set<string>;
   /** The graph, so the gap can be priced. */
   items?: Item[];
+  /**
+   * How many of the nodes a simulation lights are hidden by a focus. The counts
+   * in the sentence are the whole cascade whatever the map shows, and this says
+   * how much of it is out of sight.
+   */
+  hiddenByFocus?: number;
   clearSimulation: () => void;
   /** Pixels the capability list covers on the left, so the banner starts past it. */
   leftInset?: number;
@@ -33,6 +39,7 @@ export function SimulationBanner({
   simulatedCascadeIds,
   simulatedWeakenedIds,
   items = [],
+  hiddenByFocus = 0,
   clearSimulation,
   leftInset = 0,
   rightInset = 0,
@@ -102,7 +109,10 @@ export function SimulationBanner({
             <circle cx="8" cy="10.5" r="1" fill="currentColor" />
           </svg>
         )}
-        <span>{text}</span>
+        <span>
+          {text}
+          {hiddenByFocus > 0 ? ` The focus hides ${hiddenByFocus} of them.` : ''}
+        </span>
         <button type="button" className="civ-sim-banner-close" onClick={clearSimulation}>
           Done
         </button>

@@ -8,7 +8,12 @@
  * Everything here is the fixture half. Nothing here talks to the network, and
  * the store's job is to choose between this module and the API.
  */
-import type { ProposalRow } from '../../shared/api';
+import type {
+  AuditEvent,
+  AuditResponse,
+  FrontierHistoryResponse,
+  ProposalRow,
+} from '../../shared/api';
 import { type OutageImpact, outageImpact, outageSplit } from '../components/civ/layout';
 import type { Connection, Item } from '../utils/configImporter';
 import { WEB_ACTOR } from '../utils/copy';
@@ -65,6 +70,21 @@ export function coldOpen(items: Item[], connections: Connection[]): OutageImpact
   return outageImpact(items, outageSplit(items, connections, COLD_OPEN_OUTAGE));
 }
 
+/**
+ * The frontier through time on the demo's machine, in the shape /api/frontier
+ * serves. generate-demo-data.ts records it on fixed dates, so the timeline
+ * shows the same series on every build; a fixture without one is a machine
+ * with no history yet.
+ */
+export function demoHistory(): FrontierHistoryResponse {
+  return (
+    (demoData as { history?: FrontierHistoryResponse }).history ?? {
+      ticks: [],
+      movedSinceLast: null,
+    }
+  );
+}
+
 /** The config view's fixture: a flat list of discovered entries. */
 export function demoConfigGraph(): Graph {
   const snapshot = demoData.config as unknown as {
@@ -100,11 +120,19 @@ export function demoProposals(): ProposalRow[] {
     {
       id: 'prop-deploy-staging-42',
       created_at: new Date(Date.now() - 3600000).toISOString(),
-      goal: 'Deploy Billing Service Hotfix to Staging Cluster',
+      goal: 'Deploy the billing hotfix to the staging cluster',
       status: 'draft',
+      // None of these is a config change, so none has an inverse, and the
+      // decision below says so: not reversible, and not something `ambit
+      // apply` runs.
       steps: JSON.stringify([
         { action: 'verify_kubeconfig', provider: 'tool:kubectl', status: 'pending' },
-        { action: 'apply_k8s_manifest', provider: 'tool:kubectl', status: 'pending' },
+        {
+          action: 'apply_k8s_manifest',
+          provider: 'tool:kubectl',
+          status: 'pending',
+          requires_person: true,
+        },
         { action: 'run_smoke_tests', provider: 'skill:vitest', status: 'pending' },
       ]),
       // The decision context a live row gets from its stored steps, simulation
@@ -112,8 +140,8 @@ export function demoProposals(): ProposalRow[] {
       decision: {
         setup_hours: 0.5,
         reversible: false,
+        applicable: false,
         requires_person: true,
-        recurring: 'none',
         privacy: 'local',
         forecast: {
           hours_month_now: 0.7,
@@ -128,18 +156,27 @@ export function demoProposals(): ProposalRow[] {
     {
       id: 'prop-offline-semantic-search',
       created_at: new Date(Date.now() - 86400000).toISOString(),
-      goal: 'Acquire pgvector extension on local Postgres for offline RAG',
+      goal: 'Add pgvector to the local Postgres, for offline retrieval',
       status: 'approved',
+      // A config patch with its inverse written beside it, the shape a live
+      // step stores and the only one `ambit apply` runs. The panel reads only
+      // that both are there.
       steps: JSON.stringify([
-        { action: 'enable_extension', provider: 'tool:postgres', status: 'done' },
+        {
+          action: 'enable_extension',
+          provider: 'tool:postgres',
+          status: 'done',
+          config_patch: { mcp: { pgvector: { type: 'local', enabled: true } } },
+          inverse: { remove: ['mcp.pgvector'] },
+        },
       ]),
       approved_by: WEB_ACTOR,
       approved_at: new Date(Date.now() - 72000000).toISOString(),
       decision: {
         setup_hours: 0.5,
         reversible: true,
+        applicable: true,
         requires_person: false,
-        recurring: 'none',
         privacy: 'local',
         forecast: {
           hours_month_now: 1.1,
@@ -155,6 +192,81 @@ export function demoProposals(): ProposalRow[] {
       },
     },
   ];
+}
+
+/**
+ * The trail the audit view shows in the demo, in the shape `/api/audit`
+ * serves: the two proposals above, a check run that found Browser Automation
+ * failing and the grant it narrowed, and an incident run. Written by hand like
+ * the rest, and labelled a sample where it is drawn.
+ */
+export function demoAudit(): AuditResponse {
+  const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+  const hour = 3_600_000;
+  const events: AuditEvent[] = [
+    {
+      id: 'prop-deploy-staging-42#proposed',
+      at: ago(hour),
+      action: 'proposed',
+      target: 'prop-deploy-staging-42',
+      summary: 'Deploy the billing hotfix to the staging cluster',
+    },
+    {
+      id: 'ambit:revision:demo',
+      at: ago(3 * hour - 1000),
+      actor: 'ambit',
+      action: 'revision',
+      target: 'combo:browser-automation/execute',
+      summary: 'Browser Automation asks a person before it runs until its check passes again.',
+      outcome: { word: 'grant narrowed', tone: 'bad' },
+    },
+    {
+      id: 'act:demo-failed',
+      at: ago(3 * hour),
+      action: 'failed',
+      target: 'combo:browser-automation',
+      outcome: { word: 'check failed', tone: 'bad' },
+    },
+    {
+      id: 'act:demo-verified',
+      at: ago(3 * hour + 1000),
+      action: 'verified',
+      target: 'combo:version-control',
+      outcome: { word: 'check passed', tone: 'good' },
+    },
+    {
+      id: 'prop-offline-semantic-search#approved',
+      at: ago(20 * hour),
+      actor: WEB_ACTOR,
+      action: 'approved',
+      target: 'prop-offline-semantic-search',
+      summary: 'Add pgvector to the local Postgres, for offline retrieval',
+      outcome: { word: 'signed', tone: 'good' },
+    },
+    {
+      id: 'prop-offline-semantic-search#proposed',
+      at: ago(24 * hour),
+      action: 'proposed',
+      target: 'prop-offline-semantic-search',
+      summary: 'Add pgvector to the local Postgres, for offline retrieval',
+    },
+    {
+      id: 'run-demo-ollama#ended',
+      at: ago(47 * hour),
+      action: 'ended',
+      target: 'run-demo-ollama',
+      summary: 'Restart the Ollama service',
+      outcome: { word: 'resolved', tone: 'good' },
+    },
+    {
+      id: 'run-demo-ollama#started',
+      at: ago(48 * hour),
+      action: 'started',
+      target: 'run-demo-ollama',
+      summary: 'Restart the Ollama service',
+    },
+  ];
+  return { days: 30, limit: 200, events, truncated: false };
 }
 
 /**

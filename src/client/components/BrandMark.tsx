@@ -1,16 +1,17 @@
-import { useId } from 'react';
-
 /**
- * The Ambit mark: an A of three nodes and two edges on a gradient plate.
+ * The Ambit mark: an A of three nodes and two edges, cut in the ground colour
+ * from a plate of the accent.
  *
- * It was drawn twice, once at 18px in the deck and once at 48px on the
- * welcome screen, with the stroke weights drifting apart between the two
- * copies. Decorative wherever it appears: the word "Ambit" is always beside it.
+ * It is the React copy of `mark()` and `plated()` in scripts/generate-scenes.ts,
+ * which draw the favicon, the touch icon and the link cards, and the geometry
+ * below is that file's, number for number. This copy had drifted once already:
+ * thinner strokes, smaller nodes and its own indigo, so the header and the tab
+ * beside it showed two marks. The colours are the tokens, so the mark follows
+ * App.css where the generated files have to be regenerated.
+ *
+ * Decorative wherever it appears: the word "Ambit" is always beside it.
  */
 export function BrandMark({ size, className }: { size: number; className?: string }) {
-  // The gradient is referenced by id, and two marks on one page would
-  // otherwise share one.
-  const gradient = useId();
   return (
     <svg
       width={size}
@@ -20,20 +21,15 @@ export function BrandMark({ size, className }: { size: number; className?: strin
       className={className}
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id={gradient} x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="100%" stopColor="#0284c7" />
-        </linearGradient>
-      </defs>
-      <rect width="64" height="64" rx="14" fill={`url(#${gradient})`} />
-      <g stroke="#ffffff" strokeLinecap="round">
-        <path d="M14 50 L32 14 L50 50" strokeWidth="8.5" />
-        <path d="M21 40 H43" strokeWidth="7.5" />
+      <rect width="64" height="64" rx="14" fill="var(--accent)" />
+      <g stroke="var(--bg-canvas)" strokeLinecap="round">
+        <path d="M13 51 L32 12" strokeWidth="9.5" />
+        <path d="M51 51 L32 12" strokeWidth="9.5" />
+        <path d="M20 40 H44" strokeWidth="8.5" />
       </g>
-      <circle cx="32" cy="14" r="7.5" fill="#ffffff" />
-      <circle cx="14" cy="50" r="6.5" fill="#ffffff" />
-      <circle cx="50" cy="50" r="6.5" fill="#ffffff" />
+      <circle cx="32" cy="12" r="8.5" fill="var(--bg-canvas)" />
+      <circle cx="13" cy="51" r="7.5" fill="var(--bg-canvas)" />
+      <circle cx="51" cy="51" r="7.5" fill="var(--bg-canvas)" />
     </svg>
   );
 }

@@ -577,7 +577,10 @@ async function main() {
    */
   const labelSize = () =>
     cdp.eval(`(() => {
-      const groups = [...document.querySelectorAll('g[role="button"][aria-label]')];
+      // An era header is role=button too, and comes first in the document. It
+      // has no circle, so asking for one leaves the nodes and keys this measures.
+      const groups = [...document.querySelectorAll('g[role="button"][aria-label]')]
+        .filter(g => g.querySelector('circle[r]'));
       if (!groups.length) throw new Error('no capability nodes in the tree');
 
       const circle = groups[0].querySelector('circle[r]');
@@ -640,6 +643,11 @@ async function main() {
       nodes.slice(0, 40).map(n => n.getAttribute('aria-label')).join(' | '));
   })()`);
   console.log(`  selected ${picked}`);
+  // The recorder's click leaves the node focused with the keyboard ring drawn
+  // round it, which a pointer click in a browser does not, so the README's
+  // selected node wore a box no reader clicking it would see. Selection is
+  // store state and survives the blur.
+  await cdp.eval(`document.activeElement?.blur?.(); true`);
   await sleep(1100);
   await hold(1.6, 'one capability selected');
 

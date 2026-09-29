@@ -9,7 +9,11 @@ import type {
   LoopSnapshot,
 } from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
+import { budgetBar } from '../utils/budgetBar';
+import { type CapabilityNeeds, needsOf } from '../utils/needs';
 import { HoursSparkline, NUM, StackedBar, money } from './figures';
+import RunSection from './RunTimeline';
+import { Term } from './Term';
 
 /**
  * The work ledger's view of a month: where human attention went, what it cost,
@@ -117,23 +121,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   return (
     <figure className="fig fig--assurance">
       <figcaption className="fig-caption">
-        <span className="fig-caption-title">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="fig-kpi-icon"
-            aria-hidden="true"
-          >
-            <path d="M8 2 L13 4 V8 C13 11.5 8 14 8 14 C8 14 3 11.5 3 8 V4 Z" />
-            <path d="M6 8 L7.5 9.5 L10.5 6.5" />
-          </svg>
-          What the graph can prove
-        </span>
+        <span className="fig-caption-title">What the graph can prove</span>
         <span className="fig-caption-note" style={NUM}>
           {status.verified} of {status.total} proved
           {status.total > 0 ? ` · ${Math.round((status.verified / status.total) * 100)}%` : ''}
@@ -169,25 +157,8 @@ function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   return (
     <figure className={`fig fig--assurance ${alarm ? 'fig--alert' : ''}`}>
       <figcaption className="fig-caption">
-        <span className="fig-caption-title">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            className="fig-kpi-icon"
-            aria-hidden="true"
-          >
-            <path d="M8 2 L14 13 H2 Z" />
-            <line x1="8" y1="6" x2="8" y2="9" />
-            <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
-          </svg>
-          What could break
-        </span>
-        <span className="fig-caption-note">from the graph, not the ledger</span>
+        <span className="fig-caption-title">What could break</span>
+        <span className="fig-caption-note">read from the map</span>
       </figcaption>
       <ul className="fig-key">
         {rows.map(r => (
@@ -373,6 +344,91 @@ function InterruptionChart({ attention }: { attention: LoopSnapshot['attention']
   );
 }
 
+/** Dollars as a ceiling is declared: whole when whole, cents when not. */
+const dollars = (n: number) =>
+  `$${n.toLocaleString(undefined, {
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+/** "Oct 14", from a day the graph stamped. Nothing when the stamp will not read. */
+function dayOf(stamp?: string | null): string | undefined {
+  if (!stamp) return undefined;
+  const at = new Date(`${stamp.slice(0, 10)}T12:00:00Z`);
+  return Number.isNaN(at.getTime())
+    ? undefined
+    : at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+/**
+ * One standing budget against its ceiling.
+ *
+ * The fill is what is spent and the rule is the ceiling. The hollow ring, drawn
+ * the way this page draws every forecast, is where the period lands at the pace
+ * so far, and it is the only mark that can sit beyond the rule; the hatch there
+ * says "over" without leaning on a colour. With nothing recorded as spent there
+ * is no pace, so there is no ring and no date, and the row says so instead of
+ * drawing a forecast from zero. A spend that would not fit is refused until the
+ * period turns over, which is what `canExecute` answers, so the sentence says that.
+ */
+function BudgetRow({ budget: b }: { budget: LoopAuthority['budgets'][number] }) {
+  const bar = budgetBar(b);
+  const pct = (share: number) => `${share * 100}%`;
+  const lands = b.forecast?.lands_dollars;
+  const hits = dayOf(b.forecast?.hits_ceiling_on);
+  const turnsOver = `the period turns over${dayOf(b.period_ends_on) ? ` on ${dayOf(b.period_ends_on)}` : ''}`;
+  const reached = b.spent_dollars >= b.ceiling_dollars;
+
+  let pace: string | null = null;
+  if (reached) {
+    pace = `The ceiling is reached, so a spend is refused until ${turnsOver}.`;
+  } else if (lands != null && hits) {
+    pace = `At this pace the period lands at ${dollars(lands)} and the ceiling is reached on ${hits}. After that a spend is refused until ${turnsOver}.`;
+  } else if (lands != null) {
+    pace = `At this pace the period lands at ${dollars(lands)}, ${lands > b.ceiling_dollars ? 'past' : 'inside'} the ceiling.`;
+  } else if (b.spent_dollars > 0 && b.period_start) {
+    pace = 'Too early in the period to tell a pace.';
+  } else if (!(b.spent_dollars > 0)) {
+    pace = 'No spend recorded, so there is no pace to draw.';
+  }
+
+  const summary = `${dollars(b.spent_dollars)} spent of a ${dollars(b.ceiling_dollars)} ceiling${
+    lands != null ? `; at this pace the period lands at ${dollars(lands)}` : ''
+  }`;
+
+  return (
+    <li className="fig-bar-row fig-budget">
+      <span className="fig-bar-name">
+        {b.capability}
+        <span className="fig-tag">{b.action}</span>
+      </span>
+      <span className="fig-budget-track" role="img" aria-label={summary} title={summary}>
+        {bar.ceiling < 1 && (
+          <span className="fig-budget-over" style={{ left: pct(bar.ceiling) }} aria-hidden="true" />
+        )}
+        <span className="fig-budget-fill" style={{ width: pct(bar.fill) }} aria-hidden="true" />
+        <span
+          className="fig-budget-ceiling"
+          style={{ left: pct(bar.ceiling) }}
+          aria-hidden="true"
+        />
+        {bar.lands != null && (
+          <span
+            className="fig-budget-tick"
+            style={{ left: pct(bar.lands) }}
+            title={`Lands at ${dollars(lands ?? 0)} at this pace${bar.clipped ? ', beyond the end of this bar' : ''}`}
+            aria-hidden="true"
+          />
+        )}
+      </span>
+      <span className="fig-bar-count">a {b.period}</span>
+      <span className="fig-bar-note" style={NUM}>
+        {dollars(b.spent_dollars)} of {dollars(b.ceiling_dollars)} spent.{pace ? ` ${pace}` : ''}
+      </span>
+    </li>
+  );
+}
+
 /**
  * What may act without asking, what could, and what is spent.
  *
@@ -452,30 +508,19 @@ function AuthorityFigure({
 
       {authority.budgets.length > 0 && (
         <div className="fig-block">
-          <h4 className="fig-subtitle">Spend delegated in advance</h4>
+          <h4 className="fig-subtitle">Spend ceilings</h4>
           <ul className="fig-bars">
             {authority.budgets.map(b => (
-              <li key={`${b.capability}/${b.action}`} className="fig-bar-row">
-                <span className="fig-bar-name">
-                  {b.capability}
-                  <span className="fig-tag">{b.action}</span>
-                </span>
-                <span className="fig-bar-track">
-                  <span
-                    className="fig-bar-fill"
-                    style={{
-                      width: `${Math.min(100, (b.spent_dollars / b.ceiling_dollars) * 100)}%`,
-                    }}
-                    title={`${money(b.spent_dollars)} spent of ${money(b.ceiling_dollars)}`}
-                  />
-                  <span className="fig-bar-value" style={NUM}>
-                    {money(b.spent_dollars)} of {money(b.ceiling_dollars)}
-                  </span>
-                </span>
-                <span className="fig-bar-count">a {b.period}</span>
-              </li>
+              <BudgetRow key={`${b.capability}/${b.action}`} budget={b} />
             ))}
           </ul>
+          {authority.budgets.some(b => !(b.spent_dollars > 0)) && (
+            <p className="fig-note">
+              Nothing that ships with Ambit records spend yet. An integration records it by calling{' '}
+              <code>recordSpend</code> from the engine, and until one does a budget has no pace to
+              draw.
+            </p>
+          )}
         </div>
       )}
 
@@ -519,7 +564,7 @@ function NextFigure({
         <span className="fig-caption-title">What to reach next</span>
         <span className="fig-caption-note">
           {observed || demanded.length
-            ? 'ranked by what has blocked work, then by leverage'
+            ? 'ranked by what has blocked work, then by what it opens up'
             : 'ranked by what each unblocks per hour of setup; nothing has blocked work yet'}
         </span>
       </figcaption>
@@ -536,9 +581,9 @@ function NextFigure({
               <span className="fig-demand-why" style={NUM}>
                 stopped work {d.times}× ·{' '}
                 {d.failing
-                  ? 'configured and failing: re-verify it, do not re-add it'
+                  ? 'configured and failing: check it again, do not add it again'
                   : d.structural
-                    ? 'the same cause every time: this is an acquisition'
+                    ? 'the same cause every time, so it needs something new'
                     : 'not yet recurring'}
               </span>
               {onShowOnMap && items.some(i => i.id === d.id) && (
@@ -637,42 +682,115 @@ function SinceStrip({ since }: { since: LoopSince | null }) {
  */
 function OptionCompare({
   options,
+  needs,
 }: {
   options: NonNullable<LoopOpportunity['acquisition_options']>;
+  needs?: CapabilityNeeds | null;
 }) {
+  const [copied, copy] = useCopied();
   const priced = options.filter(o => o.total_first_year_dollars != null);
   const max = Math.max(...priced.map(o => o.total_first_year_dollars as number), 1);
   const sorted = [...options].sort(
     (a, b) => (a.total_first_year_dollars ?? Infinity) - (b.total_first_year_dollars ?? Infinity)
   );
   return (
-    <ul className="fig-options" aria-label="Ways to acquire it">
-      {sorted.map(a => (
-        <li
-          key={`${a.provider}/${a.kind}`}
-          className={`fig-option ${a.favoured ? 'is-favoured' : ''}`}
-        >
-          <span className="fig-option-cost" style={NUM}>
-            {a.total_first_year_dollars != null ? `${money(a.total_first_year_dollars)}/yr` : '—'}
-          </span>
-          <span className="fig-option-track">
-            {a.total_first_year_dollars != null && (
-              <span
-                className="fig-option-bar"
-                style={{ width: `${Math.max((a.total_first_year_dollars / max) * 100, 2)}%` }}
-              />
-            )}
-          </span>
-          <span className="fig-option-what">
-            {a.kind} · {a.provider}
-            <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
-              {a.privacy}
+    <>
+      {needs && <NeedsLine needs={needs} />}
+      <ul className="fig-options" aria-label="Ways to acquire it">
+        {sorted.map(a => (
+          <li
+            key={`${a.provider}/${a.kind}`}
+            className={`fig-option ${a.favoured ? 'is-favoured' : ''}`}
+          >
+            <span className="fig-option-cost" style={NUM}>
+              {a.total_first_year_dollars != null ? `${money(a.total_first_year_dollars)}/yr` : '—'}
             </span>
-            {a.favoured && <span className="fig-option-favoured">your record favours this</span>}
-          </span>
-        </li>
-      ))}
-    </ul>
+            <span className="fig-option-track">
+              {a.total_first_year_dollars != null && (
+                <span
+                  className="fig-option-bar"
+                  style={{ width: `${Math.max((a.total_first_year_dollars / max) * 100, 2)}%` }}
+                />
+              )}
+            </span>
+            <span className="fig-option-what">
+              {a.kind} · {a.provider}
+              <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
+                {a.privacy}
+              </span>
+              {a.favoured && <span className="fig-option-favoured">your record favours this</span>}
+            </span>
+            {/* Text to read and to paste, and nothing else: a patch names a
+                command, so a surface shows it and never runs it. */}
+            {a.install && (
+              <details className="fig-install">
+                <summary>Install: add this entry to your agent config</summary>
+                <pre>{a.install}</pre>
+                <button
+                  type="button"
+                  className="fig-install-copy"
+                  onClick={() => copy(`${a.provider}/${a.kind}`, a.install as string)}
+                >
+                  {copied === `${a.provider}/${a.kind}` ? 'Copied ✓' : 'Copy the entry'}
+                </button>
+              </details>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/** How many prerequisites a Needs line names before it counts the rest. */
+const NEEDS_SHOWN = 5;
+
+/**
+ * What taking a capability on needs, and how much of it is here.
+ *
+ * Every option of one capability needs the same things, so this is drawn once
+ * above the options and not under each. A prerequisite is met or missing and
+ * says so in a word, missing ones first, so the line is not read through a
+ * colour; the count is the answer to "can I start this today". A declared
+ * credential is named and never marked, because nothing checks one.
+ */
+function NeedsLine({ needs }: { needs: CapabilityNeeds }) {
+  const shown = needs.required.slice(0, NEEDS_SHOWN);
+  const more = needs.required.length - shown.length;
+  if (!needs.required.length && !needs.credentials.length) return null;
+  return (
+    <div className="fig-needs">
+      {needs.required.length > 0 && (
+        <>
+          <p className="fig-needs-head" style={NUM}>
+            Needs · <Term name="prerequisite">required</Term> prerequisites:{' '}
+            <strong>
+              {needs.met} of {needs.required.length} met here
+            </strong>
+          </p>
+          <ul className="fig-needs-list" aria-label="Required prerequisites">
+            {shown.map(n => (
+              <li key={n.id} className={`fig-need ${n.met ? 'is-met' : 'is-missing'}`}>
+                {n.name}
+                <span className={`fig-tag ${n.met ? '' : 'fig-tag--missing'}`}>
+                  {n.met ? 'met' : 'missing'}
+                </span>
+                {n.why === 'check failing' && (
+                  <span className="fig-need-why">its check is failing</span>
+                )}
+              </li>
+            ))}
+            {more > 0 && <li className="fig-need fig-need--more">and {more} more</li>}
+          </ul>
+        </>
+      )}
+      {needs.credentials.length > 0 && (
+        <p className="fig-needs-creds">
+          Rests on declared credentials: {needs.credentials.map(c => c.name).join(', ')}. Ambit
+          stores no secret, so it names a credential and cannot say it works.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -684,6 +802,7 @@ function OpportunityRows({
   onShowOnMap?: (capabilityId: string) => void;
 }) {
   const items = useAmbitStore(s => s.items);
+  const connections = useAmbitStore(s => s.connections);
 
   // One scale per column, taken from the whole set rather than per row, so a
   // longer mark means more wherever the eye lands.
@@ -742,7 +861,12 @@ function OpportunityRows({
                 <span className={`fig-conf fig-conf--${o.confidence}`}>
                   {o.confidence} confidence
                 </span>
-                {o.acquisition_options && <OptionCompare options={o.acquisition_options} />}
+                {o.acquisition_options && (
+                  <OptionCompare
+                    options={o.acquisition_options}
+                    needs={needsOf(items, connections, o.capability_id ?? '')}
+                  />
+                )}
               </th>
               <td className="is-num" style={NUM}>
                 {o.burden.interventions_month}×
@@ -902,11 +1026,10 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
       <div className="loop-inner">
         <div className="loop-hero">
           <div>
-            <p className="loop-kicker">Where the time goes</p>
             {saved ? (
               <h2 className="loop-lead" style={NUM}>
-                <strong>{roi.hours_per_year}h</strong> of a person&rsquo;s time saved,{' '}
-                <strong>{money(roi.dollars_per_year)}</strong> a year.
+                <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in,
+                worth <strong>{money(roi.dollars_per_year)}</strong>.
               </h2>
             ) : (
               <h2 className="loop-title">Where the time goes</h2>
@@ -926,9 +1049,9 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               </div>
             )}
             <p className="loop-subtitle">
-              Every time a person had to step in, recorded against the capability that needed them.
-              Priced, and ranked by what would pay back fastest.
-              {sample ? ' Sample data.' : ' Read from this machine\u2019s ledger.'}
+              Each time someone had to step in for an agent is logged against the capability it was
+              waiting on, priced, and ranked by how soon fixing it would pay back.
+              {sample ? ' This is sample data.' : ' Read from this machine\u2019s ledger.'}
             </p>
             <SinceStrip since={since} />
           </div>
@@ -939,24 +1062,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
         <div className="fig-kpis">
           <figure className="fig fig--kpi fig--wide">
             <figcaption className="fig-caption">
-              <span className="fig-caption-title">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  className="fig-kpi-icon"
-                  aria-hidden="true"
-                >
-                  <circle cx="8" cy="8" r="6" />
-                  <path d="M8 4.5 V8 L10.5 9.5" />
-                </svg>
-                Hours a person spent in the loop
-              </span>
-              <span className="fig-caption-note">the shaded band is the saving</span>
+              <span className="fig-caption-title">Hours spent stepping in</span>
+              <span className="fig-caption-note">shaded: the saving</span>
             </figcaption>
             {/* A ledger with runs and no interventions drew "0h saved, $0 a
                 year", which reads as a measurement of a machine that costs
@@ -988,23 +1095,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
           <figure className="fig fig--kpi">
             <figcaption className="fig-caption">
-              <span className="fig-caption-title">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  className="fig-kpi-icon"
-                  aria-hidden="true"
-                >
-                  <circle cx="8" cy="8" r="6" strokeDasharray="3 2" />
-                  <circle cx="8" cy="8" r="2" fill="currentColor" />
-                </svg>
-                Forecast against what happened
-              </span>
+              <span className="fig-caption-title">Forecast against what happened</span>
               <span className="fig-caption-note">{roi.verdict}</span>
             </figcaption>
             {roi.forecast ? (
@@ -1097,6 +1188,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
         {attention.reducible.length + attention.keepers.length > 0 && (
           <InterruptionChart attention={attention} />
         )}
+
+        <RunSection />
 
         <p className="loop-foot">
           {sample

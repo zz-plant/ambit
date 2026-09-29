@@ -1,20 +1,47 @@
-import { useEffect, useRef } from 'react';
 import type { View } from '../linkState';
+import type { Item } from '../utils/configImporter';
 import { BrandMark } from './BrandMark';
+import { isFailing, isNext, isProven } from './civ/layout';
 import { ReachBar } from './figures';
-import { Term } from './Term';
+import { termTitle } from './Term';
 
 /**
  * The map's nodes, counted over the nodes alone. Reached is split by the
  * evidence behind it: verified has a passing check, unproven is configured
- * with none, or with one that fails. The two add up to what reached used to
- * count, so the range the header leads with is the part there is proof of.
+ * with none. A node whose check fails is configured and not working, so it is
+ * counted apart and is not reached, as the era headers count it.
  */
 export interface MapCounts {
   verified: number;
   unproven: number;
+  failing: number;
   next: number;
   blocked: number;
+  /**
+   * Set when the map on screen is an observation that recorded no lifecycles.
+   * Reached cannot be split by evidence then, so it is one count, and verified
+   * and unproven are not drawn: a zero nobody measured is not a value.
+   */
+  reached?: number;
+}
+
+/**
+ * The counts the pill shows, from the nodes the map draws. The failing node
+ * was filed under unproven, so on the demo the pill said 13 verified and 3
+ * unproven, 16 reached, over era headers that added up to 15 reached and 1
+ * failing. `split` is false for an observation that recorded no lifecycles.
+ */
+export function mapCounts(nodes: Item[], split = true): MapCounts {
+  const reached = nodes.filter(i => i.status === 'built');
+  const counts: MapCounts = {
+    verified: reached.filter(isProven).length,
+    unproven: reached.filter(i => !isProven(i) && !isFailing(i)).length,
+    failing: reached.filter(isFailing).length,
+    next: nodes.filter(i => i.status !== 'built' && isNext(i)).length,
+    blocked: nodes.filter(i => i.status !== 'built' && !isNext(i)).length,
+  };
+  if (!split) counts.reached = reached.length;
+  return counts;
 }
 
 interface AppDeckProps {
@@ -36,6 +63,8 @@ interface AppDeckProps {
   onSaveImage?: () => void;
   onShowProposals: () => void;
   onShowDocs: () => void;
+  /** The day of the observation the map is scrubbed to; the counts are that day's. */
+  asOf?: string;
 }
 
 /**
@@ -51,46 +80,28 @@ interface AppDeckProps {
 const SEGMENTS: [keyof MapCounts, string][] = [
   ['verified', 'Verified'],
   ['unproven', 'Unproven'],
+  ['failing', 'Failing'],
+  ['next', 'Next step'],
+  ['blocked', 'Blocked'],
+];
+
+/** The same count for an observation with no lifecycles, where reached is not split. */
+const UNSPLIT: [keyof MapCounts, string][] = [
+  ['reached', 'Reached'],
   ['next', 'Next step'],
   ['blocked', 'Blocked'],
 ];
 
 /** The top bar: search, brand, the count for this view, the view tabs, share, proposals, docs. */
-/**
- * Which edge of a scrolling row has more past it, for the fade that stands in
- * for its scrollbar: 'start', 'end', 'both', or nothing when it all fits.
- */
-function useOverflowEdge<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const mark = () => {
-      const before = el.scrollLeft > 2;
-      const after = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
-      const more = before && after ? 'both' : before ? 'start' : after ? 'end' : '';
-      if (more) el.dataset.more = more;
-      else delete el.dataset.more;
-    };
-    mark();
-    el.addEventListener('scroll', mark, { passive: true });
-    window.addEventListener('resize', mark);
-    return () => {
-      el.removeEventListener('scroll', mark);
-      window.removeEventListener('resize', mark);
-    };
-  });
-  return ref;
-}
-
 export default function AppDeck(p: AppDeckProps) {
-  const deck = useOverflowEdge<HTMLElement>();
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
-  const total = p.counts
-    ? p.counts.verified + p.counts.unproven + p.counts.next + p.counts.blocked
-    : 0;
+  const unsplit = p.counts?.reached !== undefined;
+  const reached = p.counts ? (p.counts.reached ?? p.counts.verified + p.counts.unproven) : 0;
+  // Nothing is known to fail where no lifecycle was recorded.
+  const failing = p.counts && !unsplit ? p.counts.failing : 0;
+  const total = p.counts ? reached + failing + p.counts.next + p.counts.blocked : 0;
   return (
-    <header className="app-deck" ref={deck}>
+    <header className="app-deck">
       <div className="app-deck-left">
         <div className="app-brand-group">
           <BrandMark size={18} className="app-brand-mark" />
@@ -121,28 +132,42 @@ export default function AppDeck(p: AppDeckProps) {
           <kbd className="app-deck-key">/</kbd>
         </button>
         {p.counts && (
-          <div className="app-status-pill" title="The map by state">
+          <div
+            className="app-status-pill"
+            title={p.asOf ? `The map by state, as of ${p.asOf}` : 'The map by state'}
+          >
             <ReachBar
-              proven={p.counts.verified}
-              reached={p.counts.verified + p.counts.unproven}
+              proven={unsplit ? undefined : p.counts.verified}
+              reached={reached}
+              failing={failing}
               next={p.counts.next}
               total={total}
             />
-            {SEGMENTS.map(([key, group]) => (
-              <button
-                key={key}
-                type="button"
-                className={`app-status-seg app-status-seg--${key} ${p.spotlight === group ? 'is-active' : ''}`}
-                aria-pressed={p.spotlight === group}
-                onClick={() => p.onSpotlight(p.spotlight === group ? null : group)}
-                title={
-                  p.spotlight === group ? 'Show every node again' : `Highlight ${group} on the map`
-                }
-              >
-                <span className="app-status-n">{p.counts![key]}</span>
-                {key === 'verified' ? <Term name="evidence">verified</Term> : group.toLowerCase()}
-              </button>
-            ))}
+            {/* Failing is a segment only when something is: a zero there
+                would be a count of a problem nobody has. */}
+            {(unsplit ? UNSPLIT : SEGMENTS.filter(([key]) => key !== 'failing' || failing > 0)).map(
+              ([key, group]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`app-status-seg app-status-seg--${key} ${p.spotlight === group ? 'is-active' : ''}`}
+                  aria-pressed={p.spotlight === group}
+                  onClick={() => p.onSpotlight(p.spotlight === group ? null : group)}
+                  // The definition rides on the tooltip: a glossary popover is a
+                  // button, and a button inside this one is invalid markup that
+                  // React reported on every load.
+                  title={
+                    p.spotlight === group
+                      ? 'Show every node again'
+                      : `Highlight ${group} on the map${key === 'verified' ? `. ${termTitle('evidence')}` : ''}`
+                  }
+                >
+                  <span className="app-status-n">{p.counts![key]}</span>
+                  {group.toLowerCase()}
+                </button>
+              )
+            )}
+            {p.asOf && <span className="app-status-asof">as of {p.asOf}</span>}
           </div>
         )}
         {p.entries && (
@@ -168,7 +193,10 @@ export default function AppDeck(p: AppDeckProps) {
           <button
             type="button"
             className={tab(p.view === 'tree')}
+            aria-current={p.view === 'tree' ? 'page' : undefined}
             onClick={() => p.onShowView('tree')}
+            // The name, for where the tab shows only its icon.
+            aria-label="Map"
             title="The curated capability tree, with your position on it"
           >
             <svg
@@ -188,12 +216,15 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="12" cy="12" r="2" />
               <path d="M5.5 10.5 L10.5 5.5 M6 12 H10" />
             </svg>
-            <span>Map</span>
+            <span className="app-deck-tab-label">Map</span>
           </button>
           <button
             type="button"
             className={tab(p.view === 'config')}
+            aria-current={p.view === 'config' ? 'page' : undefined}
             onClick={() => p.onShowView('config')}
+            // The name, for where the tab shows only its icon.
+            aria-label="My Setup"
             title="The servers, agents and models found on this machine, and what each one provides"
           >
             <svg
@@ -213,12 +244,15 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="5" cy="4.5" r="0.75" fill="currentColor" />
               <circle cx="11" cy="11.5" r="0.75" fill="currentColor" />
             </svg>
-            <span>My Setup</span>
+            <span className="app-deck-tab-label">My Setup</span>
           </button>
           <button
             type="button"
             className={tab(p.view === 'loop')}
+            aria-current={p.view === 'loop' ? 'page' : undefined}
             onClick={() => p.onShowView('loop')}
+            // The name, for where the tab shows only its icon.
+            aria-label="Time & cost"
             title="Where human attention goes, and what would pay back fastest"
           >
             <svg
@@ -236,7 +270,35 @@ export default function AppDeck(p: AppDeckProps) {
               <path d="M2 12 L6 8 L9 11 L14 4" />
               <circle cx="14" cy="4" r="1.5" fill="currentColor" />
             </svg>
-            <span>Time &amp; cost</span>
+            <span className="app-deck-tab-label">Time &amp; cost</span>
+          </button>
+          <button
+            type="button"
+            className={tab(p.view === 'audit')}
+            aria-current={p.view === 'audit' ? 'page' : undefined}
+            onClick={() => p.onShowView('audit')}
+            // The name, for where the tab shows only its icon.
+            aria-label="Audit"
+            title="Who approved what and what ran, one line per event"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-tab-icon"
+              aria-hidden="true"
+            >
+              <path d="M6 4 H14 M6 8 H14 M6 12 H14" />
+              <circle cx="2.5" cy="4" r="0.75" fill="currentColor" />
+              <circle cx="2.5" cy="8" r="0.75" fill="currentColor" />
+              <circle cx="2.5" cy="12" r="0.75" fill="currentColor" />
+            </svg>
+            <span className="app-deck-tab-label">Audit</span>
           </button>
         </nav>
       </div>

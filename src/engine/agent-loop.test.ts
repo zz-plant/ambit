@@ -14,6 +14,7 @@ import { canExecute } from './assurance.ts';
 import { setPromotion, evaluatePromotions, promotionReport } from './assure/promote.ts';
 import { nextSteps } from './next.ts';
 import { briefing, briefingText } from './briefing.ts';
+import { graphCounts } from './vocabulary.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
 import { exportSync, importSync } from './sync.ts';
 import { deficits } from './planning.ts';
@@ -194,6 +195,45 @@ describe('the session briefing', () => {
     expect(text).toContain('ambit_can');
     // 1,200 tokens at four characters each, the cap the roadmap states.
     expect(text.length).toBeLessThanOrEqual(1200 * 4);
+    db.close();
+  });
+
+  it('counts failing capabilities the way status and stats do, and counts a failing action after them', () => {
+    // The line said "4 failing" beside "37/58 capabilities", where one of the
+    // four was an action that is in neither number, so it disagreed with
+    // `ambit_stats` for the same machine.
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:version-control', name: 'Version Control', lifecycle: 'broken' },
+        { id: 'combo:shell-execution', name: 'Shell Execution', lifecycle: 'verified' },
+        { id: 'act:version-control/push', name: 'push', kind: 'action', lifecycle: 'broken' },
+      ],
+    });
+    const b = briefing(db) as any;
+    expect(graphCounts(db).failing).toBe(1);
+    expect(b.environment).toBe(
+      '2/2 capabilities reached · 1 proven · 1 failing · 1 failing action'
+    );
+    // The list is still the finest-grained answer, and names both.
+    expect(b.broken.map((x: any) => x.id).sort()).toEqual([
+      'act:version-control/push',
+      'combo:version-control',
+    ]);
+    db.close();
+  });
+
+  it('does not put "0 failing" above a list that names a failing action', () => {
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:version-control', name: 'Version Control', lifecycle: 'verified' },
+        { id: 'act:version-control/push', name: 'push', kind: 'action', lifecycle: 'broken' },
+      ],
+    });
+    const b = briefing(db) as any;
+    expect(b.environment).toBe(
+      '1/1 capabilities reached · 1 proven · 0 failing · 1 failing action'
+    );
+    expect(b.broken).toHaveLength(1);
     db.close();
   });
 

@@ -1,13 +1,18 @@
 import { create } from 'zustand';
+import { tickAt } from '../components/civ/history';
 import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
 import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
+import type { FocusDepth, FocusDirection } from '../linkState';
 import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
 import { importConfig, importMcpServers } from '../utils/configImporter';
+import { demoRun } from '../utils/demoRun';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import {
   DEMO_ATTENTION,
   demoApproval,
+  demoAudit,
   demoConfigGraph,
+  demoHistory,
   demoProposals,
   demoTreeGraph,
 } from './demo';
@@ -16,14 +21,20 @@ import {
   type ApiResult,
   type ApiRoutes,
   type ApproveResponse,
+  type AuditResponse,
   type BriefingResponse,
+  type FrontierHistoryResponse,
   type UnmappedResponse,
   type InfrastructureScanResponse,
   type LoopSince,
   type LoopSnapshot,
   type ProposalRow,
+  type QueueDecisionRequest,
+  type QueueDecisionResponse,
+  type QueueDecisionResult,
   type RejectResponse,
   type RepoScanResponse,
+  type RunResponse,
 } from '../../shared/api';
 
 /**
@@ -78,6 +89,10 @@ export function mergeGraphs(tree: Graph | null, config: Graph | null): Graph {
 
 /** What the address bar asks for, read once at startup. */
 const initialLink = readLinkState(currentSearch());
+
+/** The playhead, if a tick of this series has its second; otherwise now. */
+const knownAt = (history: FrontierHistoryResponse, at: string | null) =>
+  tickAt(history, at) ? at : null;
 
 /**
  * A typed GET against the API. The store used to call `await res.json()` and
@@ -158,6 +173,8 @@ interface StoreState {
   items: Item[];
   connections: Connection[];
   selectedItem: string | null;
+  /** An era whose ladder is open in the detail panel, in place of a node. */
+  selectedEra: number | null;
   hoveredItem: string | null;
   searchQuery: string;
   showDetailPanel: boolean;
@@ -165,6 +182,13 @@ interface StoreState {
   activeLens: ActiveLens;
   /** A legend key or a header segment, lit on its own: the one way to see a subset of the map. */
   spotlight: string | null;
+  /**
+   * The map is collapsed to the selected node's neighbourhood. It follows the
+   * selection: another node takes the collapse with it, and no selection ends it.
+   */
+  collapsed: boolean;
+  collapseDepth: FocusDepth;
+  collapseDirection: FocusDirection;
   simulationMode: SimulationMode;
   simulatedNodeId: string | null;
   simulatedCascadeIds: Set<string>;
@@ -187,6 +211,8 @@ interface StoreState {
   rangeSince: LoopSince | null;
   /** True when the ledger exists and has recorded nothing yet. */
   loopEmpty: boolean;
+  /** One run in time, and the recent ones to pick from. Null until asked for. */
+  run: RunResponse | null;
   /** Whether an engine is answering, as far as the health probe got. */
   backend: 'unknown' | 'live' | 'static';
   /** How each repository's agent config has drifted from the global one. */
@@ -197,20 +223,39 @@ interface StoreState {
   briefing: BriefingResponse | null;
   /** What the agents used that no node on the map accounts for. */
   unmapped: UnmappedResponse | null;
+  /** The trail, one line per event: from the ledger, or the demo's sample. */
+  audit: AuditResponse | null;
   /** The global config's MCP entries by name, so a repo missing one can be handed the entry. */
   configMcp: Record<string, Record<string, unknown>>;
+  /**
+   * The frontier through time, one tick per recorded observation. Null where
+   * nothing can answer: no engine, or one that predates the route.
+   */
+  history: FrontierHistoryResponse | null;
+  /**
+   * The playhead: the second of the tick the map is scrubbed to, as the URL's
+   * `at` writes it, or null for now. Kept until the series arrives, and then
+   * dropped if no tick has that second.
+   */
+  historyAt: string | null;
+  setHistoryAt: (at: string | null) => void;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
   setSpotlight: (group: string | null) => void;
+  setCollapsed: (on: boolean) => void;
+  setCollapseDepth: (depth: FocusDepth) => void;
+  setCollapseDirection: (direction: FocusDirection) => void;
   startOutageSimulation: (nodeId: string) => void;
   startAcquisitionSimulation: (nodeId: string) => void;
   startGapSimulation: (nodeId: string) => void;
   clearSimulation: () => void;
   loadProposals: () => Promise<void>;
   loadLoop: () => Promise<void>;
+  /** A run drawn in time: the one named, or the newest that recorded an ask. */
+  loadRun: (id?: string) => Promise<void>;
   loadRepos: () => Promise<void>;
   loadInfrastructure: () => Promise<void>;
   probeBackend: () => Promise<void>;
@@ -219,13 +264,22 @@ interface StoreState {
     actor?: string
   ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
   rejectProposal: (proposalId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Several drafts, each approved or turned down on its own; the answer is per id. */
+  decideQueue: (
+    decision: 'approve' | 'reject',
+    ids: string[]
+  ) => Promise<{ ok: boolean; results: QueueDecisionResult[]; error?: string }>;
   loadBriefing: () => Promise<void>;
   loadUnmapped: () => Promise<void>;
+  loadAudit: () => Promise<void>;
+  loadHistory: () => Promise<void>;
   /** The paste-ready entry for one MCP server, from the endpoint that composes it. */
   snippetFor: (name: string) => Promise<string | null>;
   loadAttentionData: () => Promise<void>;
   setItems: (items: Item[], connections: Connection[]) => void;
   selectItem: (id: string | null) => void;
+  /** Open an era's ladder, or close it when it is already open. A node and an era are never selected together. */
+  selectEra: (era: number | null) => void;
   hoverItem: (id: string | null) => void;
   setSearch: (q: string) => void;
   toggleDetailPanel: () => void;
@@ -246,12 +300,18 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   items: [],
   connections: [],
   selectedItem: null,
+  selectedEra: null,
   hoveredItem: null,
   searchQuery: '',
   showDetailPanel: false,
   showApprovalModal: false,
   activeLens: initialLink.lens,
   spotlight: null,
+  // A link's `collapse` is applied with the node it focuses, once the graph
+  // holds it (linkFocus): with nothing selected there is nothing to collapse to.
+  collapsed: false,
+  collapseDepth: initialLink.depth,
+  collapseDirection: initialLink.dir,
   simulationMode: 'none',
   simulatedNodeId: null,
   simulatedCascadeIds: new Set<string>(),
@@ -265,32 +325,67 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   loopSource: null,
   rangeSince: null,
   loopEmpty: false,
+  run: null,
   backend: 'unknown',
   repos: null,
   infrastructure: null,
   briefing: null,
   unmapped: null,
+  audit: null,
   configMcp: {},
+  history: null,
+  historyAt: initialLink.at ?? null,
 
   setItems: (items, connections) => set({ items, connections }),
 
   selectItem: id => {
     const s = get();
     const next = s.selectedItem === id ? null : id;
-    set({ selectedItem: next, showDetailPanel: next !== null });
+    // A collapse is to a selected node's neighbourhood: with none selected there
+    // is nothing to keep, and it must not wait to catch the next node picked.
+    set({
+      selectedItem: next,
+      selectedEra: null,
+      showDetailPanel: next !== null,
+      ...(next === null ? { collapsed: false } : {}),
+    });
+  },
+  selectEra: era => {
+    const next = get().selectedEra === era ? null : era;
+    set({
+      selectedEra: next,
+      selectedItem: null,
+      showDetailPanel: next !== null,
+      collapsed: false,
+    });
   },
   hoverItem: id => set({ hoveredItem: id }),
   setSearch: q => set({ searchQuery: q }),
   toggleDetailPanel: () => set(s => ({ showDetailPanel: !s.showDetailPanel })),
   setShowApprovalModal: show => set({ showApprovalModal: show }),
-  setActiveLens: lens => set({ activeLens: lens }),
+  // No observation records attention or grants, so a lens that paints them is
+  // a lens on now: chosen while the map is scrubbed, it brings the map back.
+  // The standard lens is what a past map is drawn in, and keeps the playhead.
+  setActiveLens: lens =>
+    set(lens === 'default' ? { activeLens: lens } : { activeLens: lens, historyAt: null }),
   setSpotlight: group => set({ spotlight: group }),
+  // A simulation walks the live graph, and an outage needs providers, which no
+  // snapshot stores, so scrubbing into the past ends one. Each simulation below
+  // returns the map to now for the same reason, whichever surface started it.
+  setHistoryAt: at => {
+    if (at) get().clearSimulation();
+    set({ historyAt: at });
+  },
+  setCollapsed: on => set({ collapsed: on }),
+  setCollapseDepth: depth => set({ collapseDepth: depth }),
+  setCollapseDirection: direction => set({ collapseDirection: direction }),
 
   // The walks live in civ/layout.ts, where the detail panel reads the same
   // ones to state their size before any simulation is run.
   startOutageSimulation: (nodeId: string) => {
     const { stops, weakened } = outageSplit(get().items, get().connections, nodeId);
     set({
+      historyAt: null,
       simulationMode: 'outage',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: stops,
@@ -300,6 +395,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startAcquisitionSimulation: (nodeId: string) =>
     set({
+      historyAt: null,
       simulationMode: 'acquisition',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: unlockCascade(get().items, get().connections, nodeId),
@@ -308,6 +404,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startGapSimulation: (nodeId: string) =>
     set({
+      historyAt: null,
       simulationMode: 'gap',
       simulatedNodeId: nodeId,
       simulatedCascadeIds: gapOf(get().items, get().connections, nodeId).missing,
@@ -356,10 +453,13 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: true, artifact: demoApproval(proposalId, actor) };
     }
     try {
+      // The card's own hash, so a proposal that changed after it was drawn is
+      // refused. No actor goes with it: the server decides as the person at the page.
+      const proposalHash = get().proposals.find(p => p.id === proposalId)?.proposal_hash;
       const res = await fetch(`/api/proposals/${proposalId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor }),
+        body: JSON.stringify({ proposalHash }),
       });
       if (res.ok) {
         const data = (await res.json()) as ApproveResponse;
@@ -388,10 +488,11 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: true };
     }
     try {
+      const proposalHash = get().proposals.find(p => p.id === proposalId)?.proposal_hash;
       const res = await fetch(`/api/proposals/${proposalId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actor: WEB_ACTOR, reason }),
+        body: JSON.stringify({ proposalHash, reason }),
       });
       if (res.ok) {
         (await res.json()) as RejectResponse;
@@ -402,6 +503,55 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       return { ok: false, error: err?.error || 'Could not record the decision' };
     } catch (e) {
       return { ok: false, error: errorMessage(e) };
+    }
+  },
+
+  /**
+   * The queue. Live, every id travels with the hash its card was drawn from,
+   * and the engine refuses one that changed since while the rest go ahead.
+   * In the demo the drafts are marked here, as the per-id paths mark them.
+   */
+  decideQueue: async (decision: 'approve' | 'reject', ids: string[]) => {
+    const shown = get().proposals.filter(p => ids.includes(p.id) && p.status === 'draft');
+    if (get().demo || !(await backendAvailable())) {
+      const decided = new Set(shown.map(p => p.id));
+      set(state => ({
+        proposals: state.proposals.map(p =>
+          !decided.has(p.id)
+            ? p
+            : decision === 'approve'
+              ? {
+                  ...p,
+                  status: 'approved' as const,
+                  approved_by: WEB_ACTOR,
+                  approved_at: new Date().toISOString(),
+                }
+              : { ...p, status: 'rejected' as const }
+        ),
+      }));
+      return { ok: true, results: shown.map(p => ({ id: p.id, decided: true as const })) };
+    }
+    try {
+      const request: QueueDecisionRequest = {
+        items: shown.map(p => ({ id: p.id, proposalHash: p.proposal_hash ?? '' })),
+      };
+      const res = await fetch(`/api/proposals/${decision}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+      const data = (await res.json()) as ApiResult<QueueDecisionResponse>;
+      if (isApiError(data) || !res.ok) {
+        return {
+          ok: false,
+          results: [],
+          error: isApiError(data) ? data.error : 'Could not record the decisions',
+        };
+      }
+      await get().loadProposals();
+      return { ok: true, results: data.results };
+    } catch (e) {
+      return { ok: false, results: [], error: errorMessage(e) };
     }
   },
 
@@ -422,6 +572,44 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       if (data) set({ unmapped: data });
     } catch {
       /* the tab keeps its empty state */
+    }
+  },
+
+  /**
+   * The trail. The demo's is the demo's whether or not an engine answers, as
+   * its proposals are; live, a failed read keeps what the view had.
+   */
+  loadAudit: async () => {
+    if (get().demo) {
+      set({ audit: demoAudit() });
+      return;
+    }
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/audit');
+      if (data) set({ audit: data });
+    } catch {
+      /* the view keeps whatever it had */
+    }
+  },
+
+  /**
+   * The frontier through time, for the map's timeline. The demo has a series
+   * of its own, recorded on fixed dates; a live engine answers from its ledger.
+   * Without an engine the map offers no timeline, since nothing recorded one.
+   */
+  loadHistory: async () => {
+    if (get().demo) {
+      set({ history: demoHistory(), historyAt: knownAt(demoHistory(), get().historyAt) });
+      return;
+    }
+    if (!(await backendAvailable())) return;
+    try {
+      const data = await getJson('/api/frontier');
+      // "Open the demo" may have been pressed while this was in flight.
+      if (data && !get().demo) set({ history: data, historyAt: knownAt(data, get().historyAt) });
+    } catch {
+      /* the map keeps whatever it had */
     }
   },
 
@@ -463,6 +651,35 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       set({ loop: snapshot, loopSource: source, loopEmpty: empty });
     } catch {
       /* the page keeps whatever it had rather than blanking */
+    }
+  },
+
+  /**
+   * One run laid out in time. The demo has runs written by hand; a live engine
+   * answers from the ledger, and a ledger with no run is a state the section
+   * says. An id is asked for by name, and an answer that is an error leaves what
+   * the page already shows.
+   */
+  loadRun: async (id?: string) => {
+    if (get().demo || !(await backendAvailable())) {
+      set({ run: demoRun(id) });
+      return;
+    }
+    // With nothing drawn yet, an answer that is not a run is a ledger with no
+    // run, and says so. An engine that predates the route answers a plain 404,
+    // and the section read "Reading the ledger…" for good.
+    const none = () => {
+      if (!get().run) set({ run: { recent: [], run: null } });
+    };
+    try {
+      const res = await fetch(id ? `/api/run?id=${encodeURIComponent(id)}` : '/api/run');
+      if (!res.ok) return none();
+      const body = (await res.json()) as ApiResult<ApiRoutes['/api/run']>;
+      if (!isApiError(body)) set({ run: body });
+      else none();
+    } catch {
+      // Whatever the section already shows, it keeps.
+      none();
     }
   },
 
@@ -563,6 +780,8 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       loopEmpty: false,
       rangeSince: demoSnapshot().since,
       attentionInterventions: DEMO_ATTENTION,
+      history: demoHistory(),
+      historyAt: knownAt(demoHistory(), get().historyAt),
     }),
 
   updateItem: (id, updates) =>
@@ -655,6 +874,8 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       items: [],
       connections: [],
       selectedItem: null,
+      selectedEra: null,
+      collapsed: false,
       hoveredItem: null,
       searchQuery: '',
       showDetailPanel: false,

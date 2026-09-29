@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import type { Migratable } from './migrate.ts';
+import { techTreePath } from './paths.ts';
 import type { CatalogRow } from './rows.ts';
 
 /**
@@ -78,4 +80,46 @@ function catalogReport(db: Migratable, capabilityId?: string) {
   };
 }
 
-export { catalogReport };
+/**
+ * The curated tree as it ships. A project overlay is a file in the working
+ * directory, so it is not read here: see `installText`.
+ */
+function shippedTree(): any {
+  try {
+    return JSON.parse(readFileSync(techTreePath(), 'utf8'));
+  } catch {
+    return { nodes: [] };
+  }
+}
+
+/**
+ * The entry that installs one catalogued option, as text for a person to paste.
+ *
+ * Only an alternative the curated tree gave a `config_patch` has one, and the
+ * catalog does not store it: a patch names a command, and a row that carried
+ * one would travel with the graph. It is read from the tree when asked for, in
+ * the shape `/api/config/mcp-snippet` returns, and never applied by anything.
+ *
+ * It comes from the tree that ships with Ambit and never from a project
+ * overlay. An overlay is data that can arrive with a cloned repository, and the
+ * page would be offering whatever command it named as the way to install
+ * something; the overlay is documented as naming none, and this keeps it so.
+ *
+ * The row has to say it came from the tree and is reversible, which is how the
+ * seed records that the alternative had a patch. Two alternatives can share a
+ * name, and the catalog keeps the later; without that check the earlier one's
+ * patch would be shown against the other's row.
+ */
+function installText(
+  capabilityId: string,
+  option: { provider: string; source?: string; rollback?: string }
+): string | undefined {
+  if (option.source !== 'techtree' || option.rollback !== 'reversible') return undefined;
+  const node = (shippedTree().nodes || []).find((n: any) => `combo:${n.id}` === capabilityId);
+  const alternative = (node?.acquisition?.alternatives || []).find(
+    (a: any) => a.name === option.provider && a.config_patch
+  );
+  return alternative ? JSON.stringify(alternative.config_patch, null, 2) : undefined;
+}
+
+export { catalogReport, installText };

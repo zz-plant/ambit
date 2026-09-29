@@ -185,7 +185,7 @@ function authorityReport(db: Db) {
     note: 'reached means the system can perform it; mode says whether it may without asking. A degraded or broken capability is not listed as reached however its permission reads.',
     also:
       sandboxes.length || budgets.length
-        ? 'A sandbox relaxes confirmation inside itself and never a refusal; a budget is spend delegated in advance. Both widen what happens without you, and neither is a grant.'
+        ? 'A sandbox relaxes confirmation inside itself and never a refusal; a budget bounds what a grant may spend and widens nothing. Neither is a grant.'
         : undefined,
     detail,
   };

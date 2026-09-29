@@ -80,9 +80,11 @@ plan — what to acquire next, and whether it paid
                           a person, and which need hands
 
 check — what is proven, what is permitted, what is currently broken
-  check verify [cap] [--history] [--target=<object>]   run the declared check,
-                          or past verification; --target files the evidence
-                          against that object rather than the verb in general
+  check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
+                          declared check, or past verification; --target files
+                          the evidence against that object rather than the verb
+                          in general; --exit-code also exits 1 unless every
+                          check that ran passed
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
   check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]
@@ -96,9 +98,10 @@ check — what is proven, what is permitted, what is currently broken
                           does not matter; confirmation is relaxed inside it and
                           a refusal never is
   check budget [set <cap> [action] --amount=$20 [--period=month] --by=<person>]
-                          standing spend that does not need a person; a spent
-                          budget refuses rather than overspends
-  check can <cap> [--target X] [--spend N]   the decision API: ALLOW/CONFIRM/DENY
+                          a ceiling on spend per period; a spend past it is
+                          refused, and within it the grant's own mode decides
+  check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
+                          ALLOW/CONFIRM/DENY; --exit-code also exits 0/1/2
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
@@ -118,7 +121,8 @@ govern — the reviewable path from proposal to applied change
                           for a draft, the signed artifact once approved.
                           AMBIT_APPROVAL_WEBHOOK is the standing target;
                           propose and approve take --dispatch to push as they go
-  govern history [since <when>]   how the frontier moved
+  govern history [since <when> [<until>]]   how the frontier moved, up to now
+                          or up to a later observation
   govern audit [run-…|prop-…|human:name|days]   the trail — who approved
                           what, what ran, and whether it held
   govern delegation [verify] [--record] [--export] [--limit=N]   grants that
@@ -160,4 +164,16 @@ report — what the system cost to operate
 
   help [term]       this list, or one concept explained`;
 
-export { HELP, HELP_SHORT };
+/**
+ * What one group owns, as `help --all` prints it.
+ *
+ * `ambit help` ends "try `ambit plan`", and a group named with no verb after it
+ * was an unknown command, so the one piece of advice the short help gives led
+ * to an error. Sections are separated by a blank line and none contains one,
+ * so the group's is the chunk that opens with its name.
+ */
+function groupHelp(group: string): string {
+  return HELP.split('\n\n').find(part => part.startsWith(`${group} — `)) ?? HELP_SHORT;
+}
+
+export { HELP, HELP_SHORT, groupHelp };

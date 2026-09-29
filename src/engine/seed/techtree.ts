@@ -83,7 +83,11 @@ function seedTechTree(db: Db, insert: any): number {
       ? node.description
       : blocked
         ? `${node.description} — configured, but ${names(missing)} is not in place yet`
-        : `${node.description} — ${node.hint || ''}`.trim();
+        : node.hint
+          ? // Two sentences, not one with a second dash: the hint is an
+            // instruction, and it read as a clause trailing off the description.
+            `${node.description}. ${node.hint}`
+          : node.description;
 
     insert.run(
       id,

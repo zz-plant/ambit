@@ -59,3 +59,15 @@ test('the SVG is the portrait size, escapes names, and carries the address', () 
 test('an empty graph has no card', () => {
   expect(buildCard([], [], none)).toBeNull();
 });
+
+test('a number stays on the line with its noun', () => {
+  const card = buildCard(items, connections, none)!;
+  const svg = cardSvg({
+    ...card,
+    count: 4,
+    sentence:
+      'capabilities would stop working. 1 not set up yet would be cut off, and 1 was already failing.',
+  });
+  expect(svg).not.toMatch(/ \d<\/text>/);
+  expect(svg).toContain('1\u00a0not');
+});

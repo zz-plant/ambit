@@ -1,6 +1,7 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import type {
   InfrastructureScanResponse,
+  MachineModes,
   RepoScanResponse,
   UnmappedResponse,
 } from '../../shared/api';
@@ -158,7 +159,64 @@ export function RepoDriftPanel({ scan }: { scan: RepoScanResponse | null }) {
   );
 }
 
-export function InfrastructurePanel({ scan }: { scan: InfrastructureScanResponse | null }) {
+/** Re-renders on a timer, so a label computed from the clock does not go on saying "just now". */
+function useTick(ms = 15_000) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick(n => n + 1), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+}
+
+/**
+ * When the scan was taken, from the scan itself and the clock now. Nothing is
+ * stored: a "last seen" kept somewhere would be a time that goes on being true
+ * after the machine has gone quiet, and this one only ever says how old the
+ * reading in front of you is. A clock a little ahead of ours is still just now.
+ */
+function probedLabel(generatedAt: string): string | undefined {
+  const at = Date.parse(generatedAt);
+  if (!Number.isFinite(at)) return undefined;
+  return Date.now() - at < 10_000 ? 'just now' : formatRelativeTime(at);
+}
+
+/** What the gate said, in the words the map uses for the same three answers. */
+const DECISION_WORDS = { ALLOW: 'without asking', CONFIRM: 'asks first', DENY: 'refused' } as const;
+
+function MachineModesList({ machine }: { machine: MachineModes }) {
+  return (
+    <ul className="infra-modes" aria-label={`What an agent may do on ${machine.target}`}>
+      {machine.actions.map(a => (
+        <li
+          key={a.id}
+          className={`infra-mode infra-mode--${a.decision.toLowerCase()}`}
+          title={a.reason}
+        >
+          {a.name.replace(/_/g, ' ')}
+          <span className="infra-mode-word">{DECISION_WORDS[a.decision]}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The devices and services in the manifest, and the local Docker engine, as a
+ * live reading: a status, a name, how old the reading is, and for each machine
+ * what an agent may do there without asking.
+ *
+ * The modes are the gate's answer with the machine as the target, from this
+ * machine's own grants. A service is not a machine and is not asked. A row the
+ * scan had nothing to probe says so and never claims it was probed just now.
+ */
+export function InfrastructurePanel({
+  scan,
+  onProbe,
+}: {
+  scan: InfrastructureScanResponse | null;
+  onProbe?: () => void;
+}) {
+  useTick();
   if (!scan) return <PanelNote>Probing the hosts in your manifest…</PanelNote>;
   if (!scan.nodes.length) {
     return (
@@ -171,28 +229,61 @@ export function InfrastructurePanel({ scan }: { scan: InfrastructureScanResponse
   }
 
   const { online, degraded, offline, unknown } = scan.summary;
+  const probed = probedLabel(scan.generatedAt);
+  const modes = new Map((scan.machines ?? []).map(m => [m.id, m]));
   return (
     <div className="tp-list">
-      <p className="tp-note">
-        {online} online · {degraded} degraded · {offline} offline · {unknown} unknown. Probed{' '}
-        {new Date(scan.generatedAt).toLocaleTimeString()}.
-      </p>
+      <div className="infra-head">
+        <p className="tp-note">
+          {online} online · {degraded} degraded · {offline} offline · {unknown} unknown.
+          {probed ? ` Probed ${probed}.` : ''}
+        </p>
+        {onProbe && (
+          <button type="button" className="tp-inline-btn" onClick={onProbe}>
+            Probe again
+          </button>
+        )}
+      </div>
       {scan.findings.map(f => (
         <p key={f.message} className={`tp-finding tp-finding--${f.severity}`}>
           {f.message}
         </p>
       ))}
-      {scan.nodes.map(n => (
-        <div key={n.id} className="tp-item tp-item--static">
-          <div className="tp-item-hdr">
-            <span className="tp-item-name">{n.name}</span>
-            <span className={`tp-badge tp-badge--${n.status}`}>{n.status}</span>
-          </div>
-          <div className="tp-item-meta">
-            {n.kind} — {n.description}
-          </div>
-        </div>
-      ))}
+      <div className="infra-table-wrap">
+        <table className="infra-table">
+          <caption className="sr-only">
+            Devices and services, when each was probed, and what an agent may do on each machine
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Status</th>
+              <th scope="col">Name</th>
+              <th scope="col">Probed</th>
+              <th scope="col">Agents may, on this machine</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scan.nodes.map(n => {
+              const machine = modes.get(n.id);
+              return (
+                <tr key={n.id}>
+                  <td>
+                    <span className={`tp-badge tp-badge--${n.status}`}>{n.status}</span>
+                  </td>
+                  <td>
+                    <span className="tp-item-name">{n.name}</span>
+                    <span className="infra-kind">
+                      {n.kind} · {n.description}
+                    </span>
+                  </td>
+                  <td>{n.status === 'unknown' ? 'not probed' : (probed ?? '—')}</td>
+                  <td>{machine ? <MachineModesList machine={machine} /> : '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

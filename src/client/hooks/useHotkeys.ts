@@ -1,20 +1,21 @@
 import { useEffect } from 'react';
+import { pageKey, typingIn } from '../utils/keys';
 import { useLatest } from './useLatest';
 
 interface Hotkeys {
-  /** `/` — open the finder. */
+  /** `/`: open the finder. */
   openSearch: () => void;
-  /** `?` — toggle the docs overlay. */
+  /** `?`: toggle the docs overlay. */
   toggleDocs: () => void;
-  /** `g` — toggle the proposals panel. */
+  /** `g`: toggle the proposals panel. */
   toggleGovernance: () => void;
-  /** `Esc` — close whatever is open and clear the selection. */
+  /** `Esc`: close one thing, the one `escapeLayer` (utils/keys.ts) names. */
   escape: () => void;
 }
 
 /**
- * The global hotkeys. Inside an input only Escape does anything, and there it
- * blurs the field rather than clearing the selection behind it.
+ * The global hotkeys. Inside a field only Escape does anything, and there it
+ * blurs the field instead of clearing the selection behind it.
  */
 export function useHotkeys(keys: Hotkeys) {
   const latest = useLatest(keys);
@@ -22,23 +23,22 @@ export function useHotkeys(keys: Hotkeys) {
     const onKeyDown = (e: KeyboardEvent) => {
       const k = latest.current;
       const target = e.target as HTMLElement;
-      if (
-        target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      ) {
+      if (typingIn(target)) {
         if (e.key === 'Escape') target.blur();
         return;
       }
-      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      // A key held with Ctrl, Cmd or Alt is the browser's: see pageKey.
+      const key = pageKey(e);
+      if (key === 'search') {
         e.preventDefault();
         k.openSearch();
-      } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      } else if (key === 'docs') {
         e.preventDefault();
         k.toggleDocs();
-      } else if (e.key === 'g' || e.key === 'G') {
+      } else if (key === 'proposals') {
         e.preventDefault();
         k.toggleGovernance();
-      } else if (e.key === 'Escape') {
+      } else if (key === 'escape') {
         k.escape();
       }
     };

@@ -9,6 +9,7 @@
  * authority model.
  */
 import type { Db } from '../db.ts';
+import { CHECK_RUN_SQL } from '../vocabulary.ts';
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ function deriveLifecycles(db: Db): number {
     const history = db
       .prepare(
         `SELECT action FROM session_learning WHERE capability_id = ?
-         AND action IN ('verified','failed') ORDER BY timestamp DESC, id DESC LIMIT ?`
+         AND ${CHECK_RUN_SQL} ORDER BY timestamp DESC, id DESC LIMIT ?`
       )
       .all(node.id, RECENT_RUNS * 2) as { action: string }[];
     update.run(lifecycleFrom(node.state !== 'locked', provided.has(node.id), history), node.id);

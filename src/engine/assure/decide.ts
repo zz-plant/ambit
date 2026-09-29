@@ -11,8 +11,9 @@
  * permission is not a tie to break arbitrarily.
  */
 import type { Db } from '../db.ts';
+import { periodElapsed } from '../budgets.ts';
 import { usable } from './lifecycle.ts';
-import { FAILING } from '../vocabulary.ts';
+import { CHECK_RUN_SQL, FAILING } from '../vocabulary.ts';
 import type { AuthorityRow, CapabilityRow } from '../rows.ts';
 import { runtimesReaching } from './reach.ts';
 
@@ -365,17 +366,6 @@ function canExecute(
   };
 }
 
-/** Whether a budget's period has rolled over since it was last reset. */
-function periodElapsed(db: Db, budget: { period?: string; period_start?: string | null }): boolean {
-  if (!budget.period_start) return false;
-  const days: Record<string, number> = { day: 1, week: 7, month: 30, quarter: 91, year: 365 };
-  const span = days[budget.period || 'month'] ?? 30;
-  const elapsed = db
-    .prepare("SELECT (julianday('now') - julianday(?)) AS days")
-    .get(budget.period_start)?.days;
-  return typeof elapsed === 'number' && elapsed >= span;
-}
-
 /** The declared sandbox covering a target, if one does. */
 function sandboxCovering(db: Db, target: string) {
   try {
@@ -407,7 +397,7 @@ function objectEvidence(db: Db, capability: string, action: string, object: stri
                 SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
                 MAX(timestamp) AS last_seen
          FROM session_learning
-         WHERE capability_id IN (?, ?) AND object = ? AND action IN ('verified','failed')`
+         WHERE capability_id IN (?, ?) AND object = ? AND ${CHECK_RUN_SQL}`
       )
       .get(capability, `act:${capability.replace('combo:', '')}/${action}`, object);
     if (!row?.passes && !row?.failures) return undefined;
@@ -427,13 +417,23 @@ function objectEvidence(db: Db, capability: string, action: string, object: stri
  * was doing it, because a report of standing budgets reasonably skips the ones
  * with no ceiling. Spending where nothing was delegated is not a budget with no
  * room; it is an absence of a budget, and the answer says so.
+ *
+ * A spend in a period that has run out is the first of the next one, by the
+ * rule the gate, the page and `ambit budget` read (`periodElapsed`). Adding it
+ * to the old period's total reported a spent budget the gate saw as untouched.
  */
 function recordSpend(db: Db, capability: string, action: string, scope: string, cents: number) {
   const existing = db
     .prepare(
-      'SELECT id, budget_cents, spent_cents FROM budgets WHERE capability_id = ? AND action = ? AND scope = ?'
+      'SELECT id, budget_cents, spent_cents, period, period_start FROM budgets WHERE capability_id = ? AND action = ? AND scope = ?'
     )
-    .get<{ id: number; budget_cents: number; spent_cents: number }>(capability, action, scope);
+    .get<{
+      id: number;
+      budget_cents: number;
+      spent_cents: number;
+      period: string | null;
+      period_start: string | null;
+    }>(capability, action, scope);
   if (!existing) {
     return {
       capability,
@@ -443,11 +443,18 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
       note: `No budget covers ${capability} / ${action}. The spend is not tracked against a ceiling — ambit budget set ${capability.replace('combo:', '')} --amount=$N --by=<person> declares one.`,
     };
   }
-  db.prepare('UPDATE budgets SET spent_cents = spent_cents + ? WHERE id = ?').run(
-    cents,
-    existing.id
-  );
-  const remaining = existing.budget_cents - (existing.spent_cents + cents);
+  const nextPeriod = periodElapsed(db, existing);
+  if (nextPeriod) {
+    db.prepare(
+      "UPDATE budgets SET spent_cents = ?, period_start = datetime('now') WHERE id = ?"
+    ).run(cents, existing.id);
+  } else {
+    db.prepare('UPDATE budgets SET spent_cents = spent_cents + ? WHERE id = ?').run(
+      cents,
+      existing.id
+    );
+  }
+  const remaining = existing.budget_cents - ((nextPeriod ? 0 : existing.spent_cents) + cents);
   return {
     capability,
     action,
@@ -456,7 +463,7 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
     remaining_cents: remaining,
     note:
       remaining <= 0
-        ? 'The budget is spent. This action asks a person again until the period turns over.'
+        ? 'The budget is spent. A spend past the ceiling is refused until the period turns over.'
         : undefined,
   };
 }

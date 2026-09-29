@@ -4,7 +4,8 @@
  * End-to-end: each test seeds a real graph by running the engine CLI. Split out
  * of a single 2,300-line file so a failure names a subject.
  */
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
+import { runCommand } from './cli.ts';
 import {
   APPLIABLE,
   ENGINE,
@@ -24,6 +25,7 @@ import {
   join,
   recordHumanAct,
   recordIntervention,
+  recordVerification,
   rows,
   seed,
   seedWith,
@@ -31,6 +33,7 @@ import {
   writeFileSync,
   withEnv,
 } from './testing/cli.ts';
+import { asProcess } from './testing/terminal.ts';
 
 test('people are nodes, and what they supply becomes a capability', () => {
   const db = seed(WITH_PEOPLE);
@@ -388,7 +391,10 @@ test('a credential is not a capability', () => {
   // Nothing `provides` a credential, so the ledger's vocabulary rule cannot
   // catch it: without the kind exclusion, declaring one on an unchanged machine
   // reads as a capability gained. The frontier must not move.
-  seed(TWO_PROVIDERS).close();
+  const first = seed(TWO_PROVIDERS);
+  // Dated apart: two seeds in one second are one observation.
+  first.prepare("UPDATE frontier_snapshots SET taken_at = '2026-09-21 09:00:00'").run();
+  first.close();
   const before = cli('history').at(-1).reached;
 
   seed(SHARED_CREDENTIAL, { name: 'config' }).close();
@@ -622,4 +628,130 @@ test('graph unmapped answers from the ledger, and says so when there is none', (
   expect(report.seen).toBe(0);
   expect(report.unmapped).toEqual([]);
   expect(report.note).toContain('No tool use recorded in the last 30 days');
+});
+
+// ── Status: what it ends on, and how it looks ────────────────────────────────
+// The report is data. `next` is part of that data, so a script and an agent read
+// the same command a person is shown on the last line.
+test('status ends on the command that turns what is listed into evidence', () => {
+  seed(LOCAL_ONLY).close();
+  const status = cli('status');
+  expect(status.next.command).toBe('ambit verify');
+  expect(status.next.why).toMatch(/^turns \d+ of the unproven into evidence$/);
+
+  // It is the same fact the evidence note states, from the same set.
+  const count = (text: string) => Number(text.match(/(\d+) of the unproven/)?.[1]);
+  expect(count(status.next.why)).toBeGreaterThan(0);
+  expect(count(status.next.why)).toBe(count(status.evidence[0].note));
+});
+
+test('a failing check comes before a waiting draft, and a draft before more checks', () => {
+  seed(LOCAL_ONLY).close();
+  cli('propose', 'embeddings');
+  // A draft is waiting on a decision, and nothing has failed: decide first.
+  expect(cli('status').next).toEqual({
+    command: 'ambit proposals --pending',
+    why: '1 proposal is waiting on a decision',
+  });
+
+  recordVerification('combo:shell-execution', 'failed');
+  seed(LOCAL_ONLY).close(); // the lifecycle is derived from the recorded evidence
+  // Now something configured does not work, and that outranks the draft.
+  expect(cli('status').next).toEqual({
+    command: 'ambit verify shell-execution',
+    why: 'Shell Execution is configured and failing its check',
+  });
+});
+
+test('with nothing to repair, decide or check, status points at the best next step', () => {
+  seed(LOCAL_ONLY).close();
+  cli('verify'); // every declared check in the test model passes
+  const status = cli('status');
+  expect(status.evidence[0].note).toBeUndefined();
+
+  const top = cli('next').next[0];
+  expect(status.next.command).toBe(`ambit goal ${top.id.replace('combo:', '')}`);
+  expect(status.next.why).toContain(top.capability);
+});
+
+test('status keeps every field it had, and adds next at the end', () => {
+  seed(LOCAL_ONLY).close();
+  const status = cli('status');
+  expect(Object.keys(status)).toEqual([
+    'summary',
+    'reached',
+    'total',
+    'verified',
+    'failing',
+    'actions',
+    'unattended',
+    'evidence',
+    'domains',
+    'context_thrash',
+    'degraded',
+    'spofs',
+    'bottlenecks',
+    'deficits',
+    'frontier',
+    'pending',
+    'next',
+  ]);
+  // The sentence the data carries is the one it always was.
+  expect(status.summary).toMatch(/^\d+\/\d+ capabilities reached · /);
+});
+
+test('status piped is plain text, carries the same lines, and ends on Next', () => {
+  seed(LOCAL_ONLY).close();
+  // Spawned, because what a pipe receives is the question, and only a real
+  // stdout that is not a terminal can answer it.
+  const run = (...flags: string[]) =>
+    execFileSync('node', ['--experimental-sqlite', ENGINE, 'status', ...flags], {
+      env: {
+        ...process.env,
+        TOOLCHAIN_DB: join(dir, 'graph.db'),
+        AMBIT_DB: join(dir, 'graph.db'),
+        OPENCODE_CONFIG: join(dir, 'config.json'),
+      },
+      encoding: 'utf8',
+    });
+
+  const out = run();
+  expect(out).not.toContain(String.fromCharCode(27));
+  const lines = out.split('\n').filter(line => line.trim());
+  expect(lines[0]).toMatch(/^ {4}\d+ of \d+ reached · \d+ proven/);
+  expect(lines[1]).toMatch(/^ {4}─+$/);
+  expect(lines.some(line => line.startsWith('  › unproven '))).toBe(true);
+
+  // The same content as the data: the last line is `next`, and --json has it.
+  const { next } = JSON.parse(run('--json'));
+  expect(lines.at(-1)).toBe(`    Next  ${next.command} · ${next.why}`);
+});
+
+test('status is drawn in colour on a terminal and plain everywhere else', async () => {
+  seed(LOCAL_ONLY).close();
+  const drawn = async (tty: boolean, noColor?: string) => {
+    const db = getDb(join(dir, 'graph.db'));
+    const lines: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((line?: unknown) => {
+      lines.push(String(line ?? ''));
+    });
+    try {
+      // The human path: no sink, no --json. `runCommand` is what `main` calls.
+      await asProcess(tty, noColor, () => runCommand(db, 'status', [], new Set()));
+    } finally {
+      log.mockRestore();
+      db.close();
+    }
+    return lines.join('\n');
+  };
+  const esc = String.fromCharCode(27);
+
+  const terminal = await drawn(true);
+  expect(terminal).toContain(esc);
+  // The same words, painted or not.
+  const bare = await drawn(false);
+  expect(bare).not.toContain(esc);
+  expect(await drawn(true, '1')).toBe(bare);
+  expect(terminal.split(esc).length).toBeGreaterThan(1);
+  expect(terminal.replace(new RegExp(`${esc}\\[[0-9;]*m`, 'g'), '')).toBe(bare);
 });

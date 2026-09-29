@@ -13,7 +13,7 @@
       "term": "Era",
       "short": "How far up the tree a capability sits",
       "long": "The tech tree runs through seven eras: Foundation, Model Access, Tool Use, Memory, Autonomy, Assurance, Sovereignty. Later eras depend on earlier ones — you cannot run fully offline before you have a local runtime. Eras describe ordering, not importance.",
-      "seen": "Column headers on the Tech Tree"
+      "seen": "Column headers on the map. Click one to open the era as a ladder"
     },
     {
       "key": "state",
@@ -27,7 +27,7 @@
       "term": "Required vs optional prerequisite",
       "short": "Whether a dependency gates a capability, or only helps",
       "long": "A required prerequisite must be in place or the dependent capability cannot work — a model cannot run without its provider. An optional one strengthens something without gating it. Only required prerequisites block a node from being reached; both are drawn, with optional ones fainter. The data model and the CLI call these hard and soft.",
-      "seen": "Solid vs dashed connection lines, keyed Required and Optional"
+      "seen": "Solid vs dashed connection lines, keyed Required and Optional; and the Needs line above an opportunity's ways to acquire it on Time & cost"
     },
     {
       "key": "keystone",
@@ -104,7 +104,7 @@
       "term": "Frontier",
       "short": "What the system can do, as of a moment",
       "long": "Every seed records the state of every capability, so the graph can answer what was reachable at a past date rather than only now. `ambit history since` compares two of those observations. Its useful column is the emergent one: capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
-      "seen": "The line over the map (verified, and how it moved this week), the Since strip on Time & cost, ambit history, ambit history since"
+      "seen": "The line over the map (verified, and how it moved this week), the timeline under the map, which redraws it as each observation left it, the Since strip on Time & cost, ambit history, ambit history since"
     },
     {
       "key": "decay",

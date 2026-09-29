@@ -43,11 +43,20 @@ import { ROOT, seedFixtureGraph, assertNoRealData } from './lib/fixture.ts';
 
 const CHECK = process.argv.includes('--check');
 
-/** Each file that carries captured blocks, and the commands it shows, in order. */
-const TARGETS: { file: string; examples: string[][] }[] = [
+/**
+ * Each file that carries captured blocks, and the commands it shows, in order.
+ * `tail` keeps that many closing lines after the ellipsis: `status` ends on the
+ * one command to type next, which the opening lines never reach, and a block
+ * that stopped before it would leave out the line a terminal ends on.
+ */
+const TARGETS: { file: string; examples: { argv: string[]; tail?: number }[] }[] = [
   {
     file: 'README.md',
-    examples: [['status'], ['goal', 'local-embeddings'], ['impact', 'mcp:playwright']],
+    examples: [
+      { argv: ['status'], tail: 1 },
+      { argv: ['goal', 'local-embeddings'] },
+      { argv: ['impact', 'mcp:playwright'] },
+    ],
   },
 ];
 
@@ -57,12 +66,14 @@ const TARGETS: { file: string; examples: string[][] }[] = [
 const ANSI = /\u001b\[[0-9;]*m/g;
 
 /** Trim to the lines worth showing: a captured block is an illustration. */
-function excerpt(text: string, limit: number): string {
+function excerpt(text: string, limit: number, tail = 0): string {
   const lines = text.replace(ANSI, '').split('\n');
   while (lines.length && !lines[0].trim()) lines.shift();
   while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
-  if (lines.length <= limit) return lines.join('\n');
-  return [...lines.slice(0, limit), '    …'].join('\n');
+  if (lines.length <= limit + tail) return lines.join('\n');
+  return [...lines.slice(0, limit), '    …', ...(tail ? ['', ...lines.slice(-tail)] : [])].join(
+    '\n'
+  );
 }
 
 const sandbox = seedFixtureGraph('ambit-docs');
@@ -75,7 +86,7 @@ try {
     const before = readFileSync(path, 'utf8');
     let after = before;
 
-    for (const argv of target.examples) {
+    for (const { argv, tail } of target.examples) {
       const label = `ambit ${argv.join(' ')}`;
       const marker = new RegExp(
         `(<!-- example: ${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} -->\\n\`\`\`console\\n)([\\s\\S]*?)(\`\`\`\\n<!-- /example -->)`
@@ -84,7 +95,7 @@ try {
         console.warn(`  ! no block in ${target.file} for "${label}" — skipped`);
         continue;
       }
-      const out = excerpt(sandbox.engine(argv), 14);
+      const out = excerpt(sandbox.engine(argv), 14, tail);
       assertNoRealData(out);
       after = after.replace(marker, `$1$ ${label}\n\n${out}\n$3`);
       replaced++;

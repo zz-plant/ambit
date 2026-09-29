@@ -6,6 +6,7 @@
  * simulation is its own sentence. Hidden while a node is selected: the panel
  * is then the thing being read.
  */
+import type { Ref } from 'react';
 import type { LoopSince } from '../../../shared/api';
 import type { Item } from '../../utils/configImporter';
 import { costOf, type MapFindings } from './layout';
@@ -23,8 +24,16 @@ interface MapFindingProps {
   /** Run the outage simulation the weakest point names. */
   onSimulate?: (id: string) => void;
   onSpotlight?: (key: string) => void;
+  /**
+   * Which way the first failing node lies when it is out of sight ("left",
+   * "top right"), from the minimap. Absent when it is in view, or the whole
+   * map is.
+   */
+  where?: string | null;
   leftInset?: number;
   rightInset?: number;
+  /** The headline's box, which the map measures to start its canvas below it. */
+  wrapRef?: Ref<HTMLDivElement>;
 }
 
 /**
@@ -124,13 +133,16 @@ export function MapFinding({
   onPreview,
   onSimulate,
   onSpotlight,
+  where,
   leftInset = 0,
   rightInset = 0,
+  wrapRef,
 }: MapFindingProps) {
   const { failing, best } = findings;
   const cost = best ? costOf(best.item) : '';
   return (
     <div
+      ref={wrapRef}
       className="civ-sim-wrap civ-finding-wrap"
       data-occludes-map
       style={{ paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset }}
@@ -149,6 +161,9 @@ export function MapFinding({
           <span>
             <strong>{names(failing)}</strong> {failing.length === 1 ? 'is' : 'are'} configured but
             failing {failing.length === 1 ? 'its check' : 'their checks'}.
+            {where
+              ? ` ${failing.length === 1 ? 'It is' : 'The first is'} off-screen ${where}.`
+              : ''}
           </span>
           <button type="button" className="civ-finding-btn" onClick={() => onShow(failing[0].id)}>
             Show

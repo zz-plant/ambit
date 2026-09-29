@@ -1,110 +1,96 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="720" viewBox="0 0 640 720">
-    <defs><linearGradient id="plate" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#4f46e5"/>
-      <stop offset="100%" stop-color="#0284c7"/>
-    </linearGradient><linearGradient id="mk" x1="13" y1="51" x2="51" y2="12" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#818cf8"/>
-      <stop offset="100%" stop-color="#38bdf8"/>
-    </linearGradient></defs>
-    <rect width="640" height="720" fill="#090d16"/>
+    <rect width="640" height="720" fill="#0f1013"/>
 
-    <text x="40" y="56" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#f8fafc" letter-spacing="1.4">AMBIT — MARK</text>
-    <text x="40" y="80" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#7b8799">An A whose three vertices are graph nodes. Mass, not line art, so it holds at 16px.</text>
+    <text x="40" y="56" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#e8e8ea" letter-spacing="1.4">AMBIT — MARK</text>
+    <text x="40" y="80" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#8a8e96">An A whose three vertices are graph nodes. Mass, not line art, so it holds at 16px.</text>
 
-    <g transform="translate(40, 112) scale(1.5)">
-    <g stroke="url(#mk)" stroke-linecap="round" fill="none">
+    <g transform="translate(40, 112) scale(1.5)"><rect width="64" height="64" rx="14" fill="#7aa2f7"/>
+    
+    <g stroke="#0f1013" stroke-linecap="round" fill="none">
       <path d="M13 51 L32 12" stroke-width="9.5"/>
       <path d="M51 51 L32 12" stroke-width="9.5"/>
       <path d="M20 40 H44" stroke-width="8.5"/>
     </g>
-    <circle cx="32" cy="12" r="8.5" fill="url(#mk)"/>
-    <circle cx="13" cy="51" r="7.5" fill="url(#mk)"/>
-    <circle cx="51" cy="51" r="7.5" fill="url(#mk)"/></g>
-    <text x="40" y="248" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#cbd5e1">unplated</text>
-    <text x="40" y="266" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#61708a">on the dark ground: the card, and in-app</text>
-    <g transform="translate(260, 112) scale(1.5)"><rect width="64" height="64" rx="14" fill="url(#plate)"/>
-    <g stroke="#ffffff" stroke-linecap="round" fill="none">
+    <circle cx="32" cy="12" r="8.5" fill="#0f1013"/>
+    <circle cx="13" cy="51" r="7.5" fill="#0f1013"/>
+    <circle cx="51" cy="51" r="7.5" fill="#0f1013"/></g>
+    <text x="40" y="248" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#a4a7ae">rounded</text>
+    <text x="40" y="266" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">favicon, the page header, the link cards</text>
+    <g transform="translate(260, 112) scale(1.5)"><rect width="64" height="64" rx="0" fill="#7aa2f7"/>
+    
+    <g stroke="#0f1013" stroke-linecap="round" fill="none">
       <path d="M13 51 L32 12" stroke-width="9.5"/>
       <path d="M51 51 L32 12" stroke-width="9.5"/>
       <path d="M20 40 H44" stroke-width="8.5"/>
     </g>
-    <circle cx="32" cy="12" r="8.5" fill="#ffffff"/>
-    <circle cx="13" cy="51" r="7.5" fill="#ffffff"/>
-    <circle cx="51" cy="51" r="7.5" fill="#ffffff"/></g>
-    <text x="260" y="248" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#cbd5e1">plated</text>
-    <text x="260" y="266" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#61708a">favicon and touch icon</text>
+    <circle cx="32" cy="12" r="8.5" fill="#0f1013"/>
+    <circle cx="13" cy="51" r="7.5" fill="#0f1013"/>
+    <circle cx="51" cy="51" r="7.5" fill="#0f1013"/></g>
+    <text x="260" y="248" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#a4a7ae">square</text>
+    <text x="260" y="266" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">touch icon: iOS masks it to its own shape</text>
 
-    <text x="40" y="306" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#cbd5e1">Shipped sizes</text>
-    <text x="40" y="324" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#61708a">16px is a browser tab, 32px a bookmark, 180px an iOS home screen.</text>
+    <text x="40" y="306" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#a4a7ae">Shipped sizes</text>
+    <text x="40" y="324" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">16px is a browser tab, 32px a bookmark, 180px an iOS home screen.</text>
     <g transform="translate(40, 504) scale(0.25)">
-      <rect width="64" height="64" rx="14" fill="url(#plate)"/>
-      
-    <g stroke="#ffffff" stroke-linecap="round" fill="none">
+      <rect width="64" height="64" rx="14" fill="#7aa2f7"/>
+    
+    <g stroke="#0f1013" stroke-linecap="round" fill="none">
       <path d="M13 51 L32 12" stroke-width="9.5"/>
       <path d="M51 51 L32 12" stroke-width="9.5"/>
       <path d="M20 40 H44" stroke-width="8.5"/>
     </g>
-    <circle cx="32" cy="12" r="8.5" fill="#ffffff"/>
-    <circle cx="13" cy="51" r="7.5" fill="#ffffff"/>
-    <circle cx="51" cy="51" r="7.5" fill="#ffffff"/>
+    <circle cx="32" cy="12" r="8.5" fill="#0f1013"/>
+    <circle cx="13" cy="51" r="7.5" fill="#0f1013"/>
+    <circle cx="51" cy="51" r="7.5" fill="#0f1013"/>
     </g>
-    <text x="48" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#7b8799">16px</text>
+    <text x="48" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">16px</text>
     <g transform="translate(96, 488) scale(0.5)">
-      <rect width="64" height="64" rx="14" fill="url(#plate)"/>
-      
-    <g stroke="#ffffff" stroke-linecap="round" fill="none">
+      <rect width="64" height="64" rx="14" fill="#7aa2f7"/>
+    
+    <g stroke="#0f1013" stroke-linecap="round" fill="none">
       <path d="M13 51 L32 12" stroke-width="9.5"/>
       <path d="M51 51 L32 12" stroke-width="9.5"/>
       <path d="M20 40 H44" stroke-width="8.5"/>
     </g>
-    <circle cx="32" cy="12" r="8.5" fill="#ffffff"/>
-    <circle cx="13" cy="51" r="7.5" fill="#ffffff"/>
-    <circle cx="51" cy="51" r="7.5" fill="#ffffff"/>
+    <circle cx="32" cy="12" r="8.5" fill="#0f1013"/>
+    <circle cx="13" cy="51" r="7.5" fill="#0f1013"/>
+    <circle cx="51" cy="51" r="7.5" fill="#0f1013"/>
     </g>
-    <text x="112" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#7b8799">32px</text>
+    <text x="112" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">32px</text>
     <g transform="translate(168, 456) scale(1)">
-      <rect width="64" height="64" rx="14" fill="url(#plate)"/>
-      
-    <g stroke="#ffffff" stroke-linecap="round" fill="none">
+      <rect width="64" height="64" rx="14" fill="#7aa2f7"/>
+    
+    <g stroke="#0f1013" stroke-linecap="round" fill="none">
       <path d="M13 51 L32 12" stroke-width="9.5"/>
       <path d="M51 51 L32 12" stroke-width="9.5"/>
       <path d="M20 40 H44" stroke-width="8.5"/>
     </g>
-    <circle cx="32" cy="12" r="8.5" fill="#ffffff"/>
-    <circle cx="13" cy="51" r="7.5" fill="#ffffff"/>
-    <circle cx="51" cy="51" r="7.5" fill="#ffffff"/>
+    <circle cx="32" cy="12" r="8.5" fill="#0f1013"/>
+    <circle cx="13" cy="51" r="7.5" fill="#0f1013"/>
+    <circle cx="51" cy="51" r="7.5" fill="#0f1013"/>
     </g>
-    <text x="200" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#7b8799">64px</text>
+    <text x="200" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">64px</text>
     <g transform="translate(272, 340) scale(2.8125)">
-      <rect width="64" height="64" rx="14" fill="url(#plate)"/>
-      
-    <g stroke="#ffffff" stroke-linecap="round" fill="none">
+      <rect width="64" height="64" rx="14" fill="#7aa2f7"/>
+    
+    <g stroke="#0f1013" stroke-linecap="round" fill="none">
       <path d="M13 51 L32 12" stroke-width="9.5"/>
       <path d="M51 51 L32 12" stroke-width="9.5"/>
       <path d="M20 40 H44" stroke-width="8.5"/>
     </g>
-    <circle cx="32" cy="12" r="8.5" fill="#ffffff"/>
-    <circle cx="13" cy="51" r="7.5" fill="#ffffff"/>
-    <circle cx="51" cy="51" r="7.5" fill="#ffffff"/>
+    <circle cx="32" cy="12" r="8.5" fill="#0f1013"/>
+    <circle cx="13" cy="51" r="7.5" fill="#0f1013"/>
+    <circle cx="51" cy="51" r="7.5" fill="#0f1013"/>
     </g>
-    <text x="362" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#7b8799">180px</text>
+    <text x="362" y="542" text-anchor="middle" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">180px</text>
 
-    <text x="40" y="582" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#cbd5e1">Palette</text>
-    <rect x="40" y="596" width="100" height="34" rx="6" fill="#4f46e5" stroke="rgba(255,255,255,0.12)"/>
-    <text x="40" y="648" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#94a3b8">plate from</text>
-    <text x="40" y="664" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#61708a">#4f46e5</text>
-    <rect x="156" y="596" width="100" height="34" rx="6" fill="#0284c7" stroke="rgba(255,255,255,0.12)"/>
-    <text x="156" y="648" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#94a3b8">plate to</text>
-    <text x="156" y="664" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#61708a">#0284c7</text>
-    <rect x="272" y="596" width="100" height="34" rx="6" fill="#818cf8" stroke="rgba(255,255,255,0.12)"/>
-    <text x="272" y="648" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#94a3b8">mark from</text>
-    <text x="272" y="664" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#61708a">#818cf8</text>
-    <rect x="388" y="596" width="100" height="34" rx="6" fill="#38bdf8" stroke="rgba(255,255,255,0.12)"/>
-    <text x="388" y="648" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#94a3b8">mark to</text>
-    <text x="388" y="664" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#61708a">#38bdf8</text>
-    <rect x="504" y="596" width="100" height="34" rx="6" fill="#090d16" stroke="rgba(255,255,255,0.12)"/>
-    <text x="504" y="648" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#94a3b8">ground</text>
-    <text x="504" y="664" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#61708a">#090d16</text>
+    <text x="40" y="582" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#a4a7ae">Palette</text>
+    <rect x="40" y="596" width="100" height="34" rx="6" fill="#7aa2f7" stroke="rgba(255,255,255,0.12)"/>
+    <text x="40" y="648" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#a4a7ae">plate · --accent</text>
+    <text x="40" y="664" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#8a8e96">#7aa2f7</text>
+    <rect x="156" y="596" width="100" height="34" rx="6" fill="#0f1013" stroke="rgba(255,255,255,0.12)"/>
+    <text x="156" y="648" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#a4a7ae">mark · --bg-canvas</text>
+    <text x="156" y="664" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#8a8e96">#0f1013</text>
 
-    <text x="40" y="700" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#61708a">What you, your agents, and your machines can jointly do — and where your own time is going.</text>
+    <text x="40" y="700" font-family="'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#8a8e96">What you, your agents, and your machines can jointly do — and where your own time is going.</text>
   </svg>

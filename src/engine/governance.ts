@@ -4,8 +4,10 @@ import { getDb, type Db } from './db.ts';
 import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
 import { seedFromConfig } from './discovery.ts';
-import { mintApproval, verifyApproval } from './approval.ts';
+import { mintApproval, proposalHash, verifyApproval } from './approval.ts';
 import { pendingDrafts } from './attention.ts';
+import type { ProposalRow } from './rows.ts';
+import type { QueueDecisionResult, ShownProposal } from '../shared/api.ts';
 
 /**
  * The inverse of a declarative config patch: remove exactly what it adds.
@@ -71,6 +73,132 @@ function approveProposals(db: Db, ids: string[], who?: string) {
   };
 }
 
+/** The most one queue decision may name: a sitting, not a sweep. */
+const QUEUE_MAX = 50;
+
+/** The list as sent, or why it cannot be decided at all. */
+function shownList(shown: unknown): { list: ShownProposal[] } | { error: string } {
+  if (!Array.isArray(shown) || !shown.length) {
+    return { error: 'Name each proposal: items: [{ id, proposalHash }, …].' };
+  }
+  if (shown.length > QUEUE_MAX) return { error: `At most ${QUEUE_MAX} proposals in one decision.` };
+  const list: ShownProposal[] = [];
+  const seen = new Set<string>();
+  for (const item of shown) {
+    const id = item?.id;
+    const hash = item?.proposalHash;
+    if (typeof id !== 'string' || !id || typeof hash !== 'string' || !hash) {
+      return { error: 'Each proposal needs its id and the proposalHash it was shown with.' };
+    }
+    if (seen.has(id)) return { error: `${id} is named twice.` };
+    seen.add(id);
+    list.push({ id, proposalHash: hash });
+  }
+  return { list };
+}
+
+/** Why a draft was not decided, in the words the page shows and the kind an HTTP status is chosen from. */
+interface Refusal {
+  refused: string;
+  /** `changed` and `not-draft` are the row not being what the page showed; the rest are a bad request. */
+  kind: 'missing' | 'not-draft' | 'changed' | 'unnamed' | 'engine';
+}
+
+/**
+ * One draft, decided in a transaction of its own, so the row cannot change
+ * between the hash being checked and the decision being written.
+ *
+ * This is the whole of a decision made from the page, whether it names one
+ * proposal or fifty. It decides drafts only: `rejectProposal` accepts an
+ * approved row and, before it was made to revoke, kept its artifact, and
+ * `approveProposal` will sign an applied or rolled-back proposal again. And it
+ * decides against the hash the person was shown, so a card left open while the
+ * row changed underneath it decides nothing. A failure partway rolls back, so a
+ * row is never left approved with no artifact.
+ */
+function decideDraft(
+  db: Db,
+  decision: 'approve' | 'reject',
+  item: { id: string; proposalHash?: string },
+  who: string,
+  reason?: string
+): { ok: true; result: any } | ({ ok: false } & Refusal) {
+  let open = false;
+  const refuse = (refused: string, kind: Refusal['kind']) => {
+    if (open) {
+      open = false;
+      db.exec('ROLLBACK');
+    }
+    return { ok: false as const, refused, kind };
+  };
+  if (!item.proposalHash) {
+    return refuse('Name the proposalHash the proposal was shown with.', 'unnamed');
+  }
+  try {
+    db.exec('BEGIN IMMEDIATE');
+    open = true;
+    const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get<ProposalRow>(item.id);
+    if (!row) return refuse(`No proposal ${item.id}.`, 'missing');
+    if (row.status !== 'draft') {
+      return refuse(`${item.id} is ${row.status}; only a draft can be decided here.`, 'not-draft');
+    }
+    if (proposalHash(db, row) !== item.proposalHash) {
+      return refuse(
+        `${item.id} changed after it was shown. Read it again before deciding.`,
+        'changed'
+      );
+    }
+    const result = (
+      decision === 'approve'
+        ? approveProposal(db, item.id, who)
+        : rejectProposal(db, item.id, who, reason)
+    ) as { error?: string };
+    if (result.error) return refuse(result.error, 'engine');
+    db.exec('COMMIT');
+    open = false;
+    return { ok: true, result };
+  } catch (e) {
+    const refused = `Not recorded: ${(e as Error)?.message || 'the write failed'}.`;
+    try {
+      return refuse(refused, 'engine');
+    } catch {
+      return { ok: false, refused, kind: 'engine' };
+    }
+  }
+}
+
+/** One id of a queue, answered in the queue's own shape. */
+function decideOne(
+  db: Db,
+  decision: 'approve' | 'reject',
+  item: ShownProposal,
+  who: string
+): QueueDecisionResult {
+  const decided = decideDraft(db, decision, item, who);
+  return decided.ok
+    ? { id: item.id, decided: true }
+    : { id: item.id, decided: false, refused: decided.refused };
+}
+
+/**
+ * Decides several drafts a person was shown, each against the hash they saw.
+ *
+ * The web queue sends explicit ids, never "everything waiting", each with the
+ * hash its card was drawn from. Each id is decided on its own: one that
+ * changed after it was shown is refused and the rest go ahead, and a failure
+ * partway leaves the earlier ones decided, so the answer is one line per id.
+ *
+ * Drafts only, both ways. `rejectProposal` accepts an approved row and keeps
+ * its artifact, which the control plane still spends, and `approveProposal`
+ * would re-sign an applied or rolled-back one. Approving here is that same
+ * call, unchanged: an artifact only apply can spend, and no authority widened.
+ */
+function decideShown(db: Db, decision: 'approve' | 'reject', shown: unknown, who: string) {
+  const items = shownList(shown);
+  if ('error' in items) return items;
+  return { results: items.list.map(item => decideOne(db, decision, item, who)) };
+}
+
 /**
  * Declares a person the graph can hold accountable, if it does not already.
  *
@@ -126,7 +254,12 @@ function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: stri
     `INSERT INTO proposal_rejections (proposal_id, rejected_by, reason) VALUES (?, ?, ?)
      ON CONFLICT(proposal_id) DO UPDATE SET rejected_by = excluded.rejected_by, reason = excluded.reason`
   ).run(proposalId, humanId, reason ?? null);
-  db.prepare("UPDATE proposals SET status = 'rejected' WHERE id = ?").run(proposalId);
+  // A refusal withdraws whatever approval came before it. The artifact stays a
+  // signed document that nothing else checks the row's status against, so it
+  // was still spendable for its day after the page said "Turned down".
+  db.prepare(
+    "UPDATE proposals SET status = 'rejected', approval_artifact = NULL, expires_at = NULL WHERE id = ?"
+  ).run(proposalId);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'rejected', 0, ?)"
   ).run(humanId, `${proposalId}: ${row.goal}${reason ? ` — ${reason}` : ''}`);
@@ -459,6 +592,8 @@ export {
   ensureActor,
   approveProposal,
   approveProposals,
+  decideDraft,
+  decideShown,
   rejectProposal,
   listProposals,
   pendingProposals,

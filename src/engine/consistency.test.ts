@@ -8,7 +8,7 @@
  * pointed at.
  */
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeGraph } from './testing/graph.ts';
@@ -17,8 +17,9 @@ import { canExecute, recordSpend } from './assurance.ts';
 import { budgetReport, setBudget } from './budgets.ts';
 import { exportSync, importSync } from './sync.ts';
 import { statusReport } from './cli/reports.ts';
-import { graphSummary } from './views.ts';
+import { graphSummary, loopView } from './views.ts';
 import { evidenceCount } from './assure/promote.ts';
+import { shareSnapshot, SNAPSHOT_TOKENS } from './share.ts';
 
 function graph() {
   return makeGraph({
@@ -84,6 +85,48 @@ describe('recording spend', () => {
   });
 });
 
+describe('a budget read for the page', () => {
+  it('writes nothing, so loading the page cannot start a period or record a cent', () => {
+    const db = graph();
+    setBudget(db, { capability: 'combo:a', amount: '$5', person: 'kanav' });
+    // Everything a reset would touch: a period that has run out with spend in
+    // it, and a budget written before periods were recorded.
+    db.prepare(
+      "UPDATE budgets SET spent_cents = 500, period_start = datetime('now', '-40 days')"
+    ).run();
+    db.prepare(
+      "INSERT INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES ('combo:b', 'execute', '', 1000, 'week', 300)"
+    ).run();
+    const rows = () => db.prepare('SELECT * FROM budgets ORDER BY id').all();
+    const before = rows();
+
+    expect(loopView(db).authority.budgets).toHaveLength(2);
+    expect(rows()).toEqual(before);
+    db.close();
+  });
+
+  it('counts a period the way the gate counts it', () => {
+    for (const [daysAgo, spentOnPage] of [
+      [40, 0],
+      [10, 3],
+    ] as const) {
+      const db = graph();
+      setBudget(db, { capability: 'combo:a', amount: '$5', person: 'kanav' });
+      db.prepare("UPDATE budgets SET spent_cents = 300, period_start = datetime('now', ?)").run(
+        `-${daysAgo} days`
+      );
+      const left = (canExecute(db, { capability: 'combo:a', spendCents: 1 }) as any)
+        .remaining_budget_cents;
+      const page = loopView(db).authority.budgets[0];
+
+      // A month that ran out is spent-nothing to both; one that is running is spent to both.
+      expect(page.spent_dollars).toBe(spentOnPage);
+      expect(left).toBe(500 - page.spent_dollars * 100);
+      db.close();
+    }
+  });
+});
+
 describe('a sync that carries what it points at', () => {
   it('brings the runs across, so use-based evidence survives a rebuild', () => {
     const dir = mkdtempSync(join(tmpdir(), 'ambit-consistency-'));
@@ -136,6 +179,28 @@ describe('what runs without a person is reported where a person looks', () => {
     setBudget(db, { capability: 'combo:a', amount: '$5', person: 'kanav' });
     const status = statusReport(db) as any;
     expect(status.unattended[0]).toMatchObject({ sandboxes: 1, standing_budgets: 1 });
+    db.close();
+  });
+});
+
+describe("a shared snapshot drawn in the map's colours", () => {
+  it('carries the same values as the stylesheet it copies', () => {
+    const css = readFileSync(join(import.meta.dirname, '..', 'client', 'App.css'), 'utf8');
+    const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
+    for (const [name, value] of Object.entries(SNAPSHOT_TOKENS)) {
+      const declared = root.match(new RegExp(`--${name}:\\s*([^;]+);`))?.[1];
+      expect(declared, `--${name}`).toBe(value);
+    }
+  });
+
+  it('draws in no colour the copy does not name', () => {
+    const db = graph();
+    const { html } = shareSnapshot(db);
+    const palette = new Set<string>(Object.values(SNAPSHOT_TOKENS));
+    const stray = [...new Set(html.match(/#[0-9a-f]{6}\b/gi) ?? [])].filter(
+      c => !palette.has(c.toLowerCase())
+    );
+    expect(stray).toEqual([]);
     db.close();
   });
 });
