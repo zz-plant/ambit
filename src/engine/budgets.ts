@@ -301,7 +301,11 @@ function clearBudget(db: Db, capability?: string, action?: string, scope?: strin
     .prepare('DELETE FROM budgets WHERE capability_id = ? AND action = ? AND scope = ?')
     .run(id, action || 'execute', scope || '');
   return (result as any)?.changes
-    ? { cleared: id, action: action || 'execute', note: "Nothing bounds a spend on it now, and its grant's own mode decides." }
+    ? {
+        cleared: id,
+        action: action || 'execute',
+        note: "Nothing bounds a spend on it now, and its grant's own mode decides.",
+      }
     : { error: `No budget for ${id} / ${action || 'execute'}.` };
 }
 
