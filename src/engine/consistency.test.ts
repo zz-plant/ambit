@@ -17,7 +17,7 @@ import { canExecute, recordSpend } from './assurance.ts';
 import { budgetReport, setBudget } from './budgets.ts';
 import { exportSync, importSync } from './sync.ts';
 import { statusReport } from './cli/reports.ts';
-import { graphSummary } from './views.ts';
+import { graphSummary, loopView } from './views.ts';
 import { evidenceCount } from './assure/promote.ts';
 import { shareSnapshot, SNAPSHOT_TOKENS } from './share.ts';
 
@@ -82,6 +82,48 @@ describe('recording spend', () => {
     expect(spend).toMatchObject({ recorded: true, remaining_cents: 400 });
     expect(canExecute(db, { capability: 'combo:a', spendCents: 401 }).verdict).toBe('no');
     db.close();
+  });
+});
+
+describe('a budget read for the page', () => {
+  it('writes nothing, so loading the page cannot start a period or record a cent', () => {
+    const db = graph();
+    setBudget(db, { capability: 'combo:a', amount: '$5', person: 'kanav' });
+    // Everything a reset would touch: a period that has run out with spend in
+    // it, and a budget written before periods were recorded.
+    db.prepare(
+      "UPDATE budgets SET spent_cents = 500, period_start = datetime('now', '-40 days')"
+    ).run();
+    db.prepare(
+      "INSERT INTO budgets (capability_id, action, scope, budget_cents, period, spent_cents) VALUES ('combo:b', 'execute', '', 1000, 'week', 300)"
+    ).run();
+    const rows = () => db.prepare('SELECT * FROM budgets ORDER BY id').all();
+    const before = rows();
+
+    expect(loopView(db).authority.budgets).toHaveLength(2);
+    expect(rows()).toEqual(before);
+    db.close();
+  });
+
+  it('counts a period the way the gate counts it', () => {
+    for (const [daysAgo, spentOnPage] of [
+      [40, 0],
+      [10, 3],
+    ] as const) {
+      const db = graph();
+      setBudget(db, { capability: 'combo:a', amount: '$5', person: 'kanav' });
+      db.prepare("UPDATE budgets SET spent_cents = 300, period_start = datetime('now', ?)").run(
+        `-${daysAgo} days`
+      );
+      const left = (canExecute(db, { capability: 'combo:a', spendCents: 1 }) as any)
+        .remaining_budget_cents;
+      const page = loopView(db).authority.budgets[0];
+
+      // A month that ran out is spent-nothing to both; one that is running is spent to both.
+      expect(page.spent_dollars).toBe(spentOnPage);
+      expect(left).toBe(500 - page.spent_dollars * 100);
+      db.close();
+    }
   });
 });
 

@@ -14,6 +14,7 @@ import { PROVISION_EDGES } from './ontology.ts';
 import { CHECK_RUN, CHECK_RUN_SQL, FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
 import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
 import { humanDigest } from './attention.ts';
+import { budgetStanding } from './budgets.ts';
 import { frontierSeries, ledgerSince } from './ledger.ts';
 import { unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
@@ -721,18 +722,32 @@ function loopAuthority(db: Db): LoopAuthority {
   try {
     budgets = db
       .prepare(
-        `SELECT b.capability_id, b.action, b.budget_cents, b.spent_cents, b.period, c.name
+        `SELECT b.capability_id, b.action, b.budget_cents, b.spent_cents, b.period,
+                b.period_start, c.name
          FROM budgets b LEFT JOIN capabilities c ON c.id = b.capability_id
          WHERE b.budget_cents > 0 ORDER BY b.capability_id`
       )
       .all<any>()
-      .map(b => ({
-        capability: String(b.name || b.capability_id),
-        action: String(b.action),
-        ceiling_dollars: Math.round(b.budget_cents) / 100,
-        spent_dollars: Math.round(b.spent_cents) / 100,
-        period: String(b.period || 'month'),
-      }));
+      .map(b => {
+        // Read as the gate reads it, and written nowhere: a period that has run
+        // out is spent-nothing here without the reset that would start the next.
+        const standing = budgetStanding(db, b);
+        return {
+          capability: String(b.name || b.capability_id),
+          action: String(b.action),
+          ceiling_dollars: Math.round(b.budget_cents) / 100,
+          spent_dollars: Math.round(standing.spentCents) / 100,
+          period: String(b.period || 'month'),
+          period_start: standing.periodStart,
+          period_ends_on: standing.periodEndsOn,
+          forecast: standing.forecast
+            ? {
+                lands_dollars: standing.forecast.landsCents / 100,
+                hits_ceiling_on: standing.forecast.hitsCeilingOn,
+              }
+            : undefined,
+        };
+      });
   } catch {
     /* a database predating budgets */
   }

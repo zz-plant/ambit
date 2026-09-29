@@ -31,6 +31,13 @@ function treeStatus() {
   };
 }
 
+const DAY = 86_400_000;
+
+/** The moment `n` days from now, as the graph stamps one, or only its day. */
+const stampAt = (n: number) =>
+  new Date(Date.now() + n * DAY).toISOString().slice(0, 19).replace('T', ' ');
+const stampDay = (n: number) => stampAt(n).slice(0, 10);
+
 /**
  * The illustrative snapshot a visitor sees in LOOP view.
  *
@@ -203,6 +210,13 @@ export function demoSnapshot(): LoopSnapshot {
           ceiling_dollars: 20,
           spent_dollars: 12.4,
           period: 'month',
+          // Halfway through a thirty-day month with $12.40 spent: the pace is
+          // $24.80 for the period, so the ceiling is reached about nine days
+          // from now and the month ends fifteen days from now. Dated from the
+          // day the page is opened, so the sample never forecasts the past.
+          period_start: stampAt(-15),
+          period_ends_on: stampDay(15),
+          forecast: { lands_dollars: 24.8, hits_ceiling_on: stampDay(9) },
         },
       ],
       sandboxes: ['repo:acme/playground'],

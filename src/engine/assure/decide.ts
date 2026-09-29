@@ -11,6 +11,7 @@
  * permission is not a tie to break arbitrarily.
  */
 import type { Db } from '../db.ts';
+import { periodElapsed } from '../budgets.ts';
 import { usable } from './lifecycle.ts';
 import { FAILING } from '../vocabulary.ts';
 import type { AuthorityRow, CapabilityRow } from '../rows.ts';
@@ -363,17 +364,6 @@ function canExecute(
     evidence_here: input.target ? objectEvidence(db, capability, action, input.target) : undefined,
     remaining_budget_cents: remaining,
   };
-}
-
-/** Whether a budget's period has rolled over since it was last reset. */
-function periodElapsed(db: Db, budget: { period?: string; period_start?: string | null }): boolean {
-  if (!budget.period_start) return false;
-  const days: Record<string, number> = { day: 1, week: 7, month: 30, quarter: 91, year: 365 };
-  const span = days[budget.period || 'month'] ?? 30;
-  const elapsed = db
-    .prepare("SELECT (julianday('now') - julianday(?)) AS days")
-    .get(budget.period_start)?.days;
-  return typeof elapsed === 'number' && elapsed >= span;
 }
 
 /** The declared sandbox covering a target, if one does. */

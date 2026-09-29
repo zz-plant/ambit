@@ -9,6 +9,7 @@ import type {
   LoopSnapshot,
 } from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
+import { budgetBar } from '../utils/budgetBar';
 import { HoursSparkline, NUM, StackedBar, money } from './figures';
 
 /**
@@ -340,6 +341,91 @@ function InterruptionChart({ attention }: { attention: LoopSnapshot['attention']
   );
 }
 
+/** Dollars as a ceiling is declared: whole when whole, cents when not. */
+const dollars = (n: number) =>
+  `$${n.toLocaleString(undefined, {
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+/** "Oct 14", from a day the graph stamped. Nothing when the stamp will not read. */
+function dayOf(stamp?: string | null): string | undefined {
+  if (!stamp) return undefined;
+  const at = new Date(`${stamp.slice(0, 10)}T12:00:00Z`);
+  return Number.isNaN(at.getTime())
+    ? undefined
+    : at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+/**
+ * One standing budget against its ceiling.
+ *
+ * The fill is what is spent and the rule is the ceiling. The hollow ring, drawn
+ * the way this page draws every forecast, is where the period lands at the pace
+ * so far, and it is the only mark that can sit beyond the rule; the hatch there
+ * says "over" without leaning on a colour. With nothing recorded as spent there
+ * is no pace, so there is no ring and no date, and the row says so instead of
+ * drawing a forecast from zero. A spend that would not fit is refused until the
+ * period turns over, which is what `canExecute` answers, so the sentence says that.
+ */
+function BudgetRow({ budget: b }: { budget: LoopAuthority['budgets'][number] }) {
+  const bar = budgetBar(b);
+  const pct = (share: number) => `${share * 100}%`;
+  const lands = b.forecast?.lands_dollars;
+  const hits = dayOf(b.forecast?.hits_ceiling_on);
+  const turnsOver = `the period turns over${dayOf(b.period_ends_on) ? ` on ${dayOf(b.period_ends_on)}` : ''}`;
+  const reached = b.spent_dollars >= b.ceiling_dollars;
+
+  let pace: string | null = null;
+  if (reached) {
+    pace = `The ceiling is reached, so a spend is refused until ${turnsOver}.`;
+  } else if (lands != null && hits) {
+    pace = `At this pace the period lands at ${dollars(lands)} and the ceiling is reached on ${hits}. After that a spend is refused until ${turnsOver}.`;
+  } else if (lands != null) {
+    pace = `At this pace the period lands at ${dollars(lands)}, ${lands > b.ceiling_dollars ? 'past' : 'inside'} the ceiling.`;
+  } else if (b.spent_dollars > 0 && b.period_start) {
+    pace = 'Too early in the period to tell a pace.';
+  } else if (!(b.spent_dollars > 0)) {
+    pace = 'No spend recorded, so there is no pace to draw.';
+  }
+
+  const summary = `${dollars(b.spent_dollars)} spent of a ${dollars(b.ceiling_dollars)} ceiling${
+    lands != null ? `; at this pace the period lands at ${dollars(lands)}` : ''
+  }`;
+
+  return (
+    <li className="fig-bar-row fig-budget">
+      <span className="fig-bar-name">
+        {b.capability}
+        <span className="fig-tag">{b.action}</span>
+      </span>
+      <span className="fig-budget-track" role="img" aria-label={summary} title={summary}>
+        {bar.ceiling < 1 && (
+          <span className="fig-budget-over" style={{ left: pct(bar.ceiling) }} aria-hidden="true" />
+        )}
+        <span className="fig-budget-fill" style={{ width: pct(bar.fill) }} aria-hidden="true" />
+        <span
+          className="fig-budget-ceiling"
+          style={{ left: pct(bar.ceiling) }}
+          aria-hidden="true"
+        />
+        {bar.lands != null && (
+          <span
+            className="fig-budget-tick"
+            style={{ left: pct(bar.lands) }}
+            title={`Lands at ${dollars(lands ?? 0)} at this pace${bar.clipped ? ', beyond the end of this bar' : ''}`}
+            aria-hidden="true"
+          />
+        )}
+      </span>
+      <span className="fig-bar-count">a {b.period}</span>
+      <span className="fig-bar-note" style={NUM}>
+        {dollars(b.spent_dollars)} of {dollars(b.ceiling_dollars)} spent.{pace ? ` ${pace}` : ''}
+      </span>
+    </li>
+  );
+}
+
 /**
  * What may act without asking, what could, and what is spent.
  *
@@ -422,27 +508,16 @@ function AuthorityFigure({
           <h4 className="fig-subtitle">Spend delegated in advance</h4>
           <ul className="fig-bars">
             {authority.budgets.map(b => (
-              <li key={`${b.capability}/${b.action}`} className="fig-bar-row">
-                <span className="fig-bar-name">
-                  {b.capability}
-                  <span className="fig-tag">{b.action}</span>
-                </span>
-                <span className="fig-bar-track">
-                  <span
-                    className="fig-bar-fill"
-                    style={{
-                      width: `${Math.min(100, (b.spent_dollars / b.ceiling_dollars) * 100)}%`,
-                    }}
-                    title={`${money(b.spent_dollars)} spent of ${money(b.ceiling_dollars)}`}
-                  />
-                  <span className="fig-bar-value" style={NUM}>
-                    {money(b.spent_dollars)} of {money(b.ceiling_dollars)}
-                  </span>
-                </span>
-                <span className="fig-bar-count">a {b.period}</span>
-              </li>
+              <BudgetRow key={`${b.capability}/${b.action}`} budget={b} />
             ))}
           </ul>
+          {authority.budgets.some(b => !(b.spent_dollars > 0)) && (
+            <p className="fig-note">
+              Nothing that ships with Ambit records spend yet. An integration records it by calling{' '}
+              <code>recordSpend</code> from the engine, and until one does a budget has no pace to
+              draw.
+            </p>
+          )}
         </div>
       )}
 

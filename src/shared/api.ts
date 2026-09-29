@@ -504,8 +504,22 @@ export interface LoopAuthority {
     capability: string;
     action: string;
     ceiling_dollars: number;
+    /** Spent this period. Zero once the period has run out, as the gate reads it. */
     spent_dollars: number;
     period: string;
+    /**
+     * When this period began, as the graph stamps it (UTC). Absent before a
+     * period is recorded, and once one has run out and nothing has started the next.
+     */
+    period_start?: string | null;
+    /** The day the period turns over. Absent with `period_start`. */
+    period_ends_on?: string | null;
+    /**
+     * Where the period lands at the pace so far, and the day that pace reaches
+     * the ceiling. Absent while nothing is recorded as spent, or too little of
+     * the period has run for a pace: no tick and no date are drawn from nothing.
+     */
+    forecast?: { lands_dollars: number; hits_ceiling_on?: string };
   }[];
   /** Targets declared as places where acting does not matter. */
   sandboxes: string[];

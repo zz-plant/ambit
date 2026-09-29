@@ -3435,6 +3435,63 @@ code, pre, .code, .sp-cli-cmd {
   font-style: italic;
 }
 
+/* A budget against its ceiling. The fill is what is spent, the rule is the
+   ceiling, and the hollow ring is where the period lands at the pace so far,
+   drawn the way every forecast on this page is. The hatch beyond the rule says
+   "over" in a pattern, so it survives a greyscale print and forced colours. */
+.fig-budget-track {
+  grid-area: track;
+  position: relative;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--fig-track);
+}
+
+.fig-budget-fill {
+  position: absolute;
+  left: 0;
+  top: 1.5px;
+  height: 9px;
+  min-width: 3px;
+  border-radius: 4px;
+  background: var(--fig-data);
+}
+
+.fig-budget-over {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0 4px 4px 0;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(239, 100, 97, 0.34) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.fig-budget-ceiling {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text-primary);
+}
+
+.fig-budget-tick {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  box-sizing: border-box;
+  border: 2px solid var(--fig-data);
+  border-radius: 50%;
+  background: var(--bg-surface);
+}
+
 .fig-axis {
   display: grid;
   grid-template-columns: minmax(120px, 190px) 1fr;
@@ -4569,6 +4626,10 @@ code, pre, .code, .sp-cli-cmd {
   font-size: 12.5px;
   line-height: 1.5;
   color: var(--text-muted);
+}
+
+.fig-note code {
+  color: var(--text-secondary);
 }
 
 .fig-row-none {
