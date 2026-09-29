@@ -31,7 +31,10 @@ const HOTKEYS = [
   { key: '0', desc: 'Back to actual size' },
   { key: 'G', desc: 'Open proposals' },
   { key: '?', desc: 'Open this guide' },
-  { key: 'Esc', desc: 'Clear the selection, or close whatever is open' },
+  {
+    key: 'Esc',
+    desc: 'Close one thing a press: this guide, Proposals or search first, then a highlight, a simulation, and last the selection',
+  },
 ];
 
 /** Drawn from the same label map the map and the panels read, so a rename
@@ -80,15 +83,6 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
-  // Escape closes it. Dismissal used to be a click on the backdrop and nothing
-  // else, which is unreachable without a pointer.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   if (!isOpen) return null;
 
@@ -98,7 +92,13 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
       <div
         className="docs-panel"
         onClick={e => e.stopPropagation()}
-        onKeyDown={e => e.stopPropagation()}
+        // Escape closes it from inside; from outside, the shell's Escape
+        // closes it first. It used to listen on the document as well, so one
+        // press closed it and cleared the selection behind it.
+        onKeyDown={e => {
+          e.stopPropagation();
+          if (e.key === 'Escape') onClose();
+        }}
         role="dialog"
         aria-modal="true"
       >

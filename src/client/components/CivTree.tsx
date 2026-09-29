@@ -626,11 +626,9 @@ export default function CivTree({
         e.preventDefault();
         const to = stepSelection(filtered, selectedId, -1, collapse?.shown);
         if (to) onSelect(to);
-      } else if (e.key === 'Escape') {
-        if (spotlight) setSpotlight(null);
-        else if (simulationMode !== 'none') clearSimulation();
-        else if (selectedId) onSelect(null);
       }
+      // Escape is the shell's, which peels the spotlight, the simulation and
+      // the selection one press at a time (escapeLayer, in utils/keys.ts).
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -638,14 +636,10 @@ export default function CivTree({
     setActiveLens,
     attentionAvailable,
     authorityAvailable,
-    clearSimulation,
-    simulationMode,
     selectedId,
     onSelect,
     filtered,
     collapse,
-    spotlight,
-    setSpotlight,
   ]);
 
   // Centre the node in view: the selection, or else where a simulation

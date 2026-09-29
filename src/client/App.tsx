@@ -23,6 +23,7 @@ import { isNarrowScreen, useNarrow } from './hooks/useViewport';
 import { hostedLanding, initialView, readLinkState, type View } from './linkState';
 import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
+import { escapeLayer } from './utils/keys';
 import type { PaletteHandlers } from './utils/palette';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
@@ -75,6 +76,7 @@ export default function App() {
   const probeBackend = useAmbitStore(s => s.probeBackend);
   const setShowApprovalModal = useAmbitStore(s => s.setShowApprovalModal);
   const setSpotlight = useAmbitStore(s => s.setSpotlight);
+  const clearSimulation = useAmbitStore(s => s.clearSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
@@ -97,6 +99,10 @@ export default function App() {
   const openDocs = (tab?: DocsTab) => {
     setDocsTab(tab);
     setShowDocs(true);
+  };
+  const closeDocs = () => {
+    setShowDocs(false);
+    setDocsTab(undefined);
   };
 
   useUrlSync({
@@ -143,11 +149,24 @@ export default function App() {
       setShowApprovalModal(!open);
       if (!open) loadProposals();
     },
+    // One owner, and one thing a press: see escapeLayer.
     escape: () => {
-      setFinderOpen(false);
-      setShowApprovalModal(false);
-      setShowDocs(false);
-      selectItem(null);
+      const s = useAmbitStore.getState();
+      const layer = escapeLayer({
+        docs: showDocs,
+        proposals: s.showApprovalModal,
+        finder: finderOpen,
+        onMap: view === 'tree',
+        spotlight: s.spotlight !== null,
+        simulation: s.simulationMode !== 'none',
+        selection: s.selectedItem !== null || s.selectedEra !== null,
+      });
+      if (layer === 'docs') closeDocs();
+      else if (layer === 'proposals') setShowApprovalModal(false);
+      else if (layer === 'finder') setFinderOpen(false);
+      else if (layer === 'spotlight') setSpotlight(null);
+      else if (layer === 'simulation') clearSimulation();
+      else if (layer === 'selection') selectItem(null);
     },
   });
 
@@ -324,14 +343,7 @@ export default function App() {
             setView('loop');
           }}
         />
-        <DocsModal
-          isOpen={showDocs}
-          initialTab={docsTab}
-          onClose={() => {
-            setShowDocs(false);
-            setDocsTab(undefined);
-          }}
-        />
+        <DocsModal isOpen={showDocs} initialTab={docsTab} onClose={closeDocs} />
       </div>
     );
   }
@@ -458,14 +470,7 @@ export default function App() {
         handlers={paletteHandlers}
       />
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
-      <DocsModal
-        isOpen={showDocs}
-        initialTab={docsTab}
-        onClose={() => {
-          setShowDocs(false);
-          setDocsTab(undefined);
-        }}
-      />
+      <DocsModal isOpen={showDocs} initialTab={docsTab} onClose={closeDocs} />
 
       {toast && (
         <Toast

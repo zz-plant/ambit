@@ -2,19 +2,19 @@ import { useEffect } from 'react';
 import { useLatest } from './useLatest';
 
 interface Hotkeys {
-  /** `/` — open the finder. */
+  /** `/`: open the finder. */
   openSearch: () => void;
-  /** `?` — toggle the docs overlay. */
+  /** `?`: toggle the docs overlay. */
   toggleDocs: () => void;
-  /** `g` — toggle the proposals panel. */
+  /** `g`: toggle the proposals panel. */
   toggleGovernance: () => void;
-  /** `Esc` — close whatever is open and clear the selection. */
+  /** `Esc`: close one thing, the one `escapeLayer` (utils/keys.ts) names. */
   escape: () => void;
 }
 
 /**
  * The global hotkeys. Inside an input only Escape does anything, and there it
- * blurs the field rather than clearing the selection behind it.
+ * blurs the field instead of clearing the selection behind it.
  */
 export function useHotkeys(keys: Hotkeys) {
   const latest = useLatest(keys);

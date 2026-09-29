@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ProposalDecision, ProposalRow, QueueDecisionResult } from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
@@ -172,16 +172,6 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const [declining, setDeclining] = useState<{ id: string; reason: string } | null>(null);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
-  // Escape closes it. Dismissal used to be a click on the backdrop and nothing
-  // else, which is unreachable without a pointer.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   if (!isOpen) return null;
 
   const handleApprove = async (proposalId: string) => {
@@ -245,7 +235,14 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         className="uplink-modal"
         style={{ maxWidth: '680px', width: '90%' }}
         onClick={e => e.stopPropagation()}
-        onKeyDown={e => e.stopPropagation()}
+        // Escape closes it from wherever the focus is inside it. Dismissal was
+        // a click on the backdrop, and then a document listener this handler
+        // hid: the key never reached it once anything inside had been clicked.
+        // Every key stops here, so the map behind does not move under it.
+        onKeyDown={e => {
+          e.stopPropagation();
+          if (e.key === 'Escape') onClose();
+        }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="proposals-title"
