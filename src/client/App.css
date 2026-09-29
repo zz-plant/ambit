@@ -2117,6 +2117,73 @@ code, pre, .code, .sp-cli-cmd {
   }
 }
 
+/* The minimap: the whole map as a thumbnail, with the part on screen
+   outlined. It sits at the bottom right of the canvas, left of the detail
+   panel (the inset is set inline) and above the legend row, which the map's
+   last screen ends on. It draws only when the map does not fit, and a phone
+   keeps the room: the sheet, the guide and the finding all sit at the bottom
+   there, and the finding still names a direction in words. */
+.civ-minimap {
+  position: absolute;
+  bottom: 44px;
+  z-index: 20;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  box-shadow: var(--shadow-md);
+}
+
+.civ-minimap-body {
+  position: relative;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.civ-minimap-svg {
+  display: block;
+}
+
+.civ-minimap-band {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+.civ-minimap-dot {
+  fill: var(--text-muted);
+}
+
+.civ-minimap-dot--reached {
+  fill: var(--node-reached-ring);
+}
+
+.civ-minimap-dot--next {
+  fill: var(--accent);
+}
+
+.civ-minimap-dot--failing {
+  fill: var(--error);
+}
+
+.civ-minimap-view {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+  background: var(--accent-soft);
+  cursor: grab;
+}
+
+.civ-minimap-view:active {
+  cursor: grabbing;
+}
+
+@media (max-width: 768px) {
+  .civ-minimap {
+    display: none;
+  }
+}
+
 /* A transient notice from the graph stream. */
 .ambit-toast {
   position: fixed;

@@ -204,6 +204,15 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 enables in blue, one hop each way. The simulations follow the edges all the way.
               </p>
 
+              <h3 className="docs-h3">The minimap</h3>
+              <p className="docs-p">
+                When the map is bigger than the window, a thumbnail at the bottom right shows all of
+                it: a dot for every node, the failing ones in red, and the part on screen outlined.
+                Drag the outline to move around, or tab to it and use the arrow keys, with Shift for
+                a screen at a time. It is not drawn when the whole map fits, and the line over the
+                map says which way a failing node lies when it is out of sight.
+              </p>
+
               <h3 className="docs-h3">The map and My Setup</h3>
               <p className="docs-p">
                 <strong>The map</strong> is the curated tree with your position on it.{' '}

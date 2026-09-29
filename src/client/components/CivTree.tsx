@@ -7,6 +7,7 @@ import {
   AUTHORITY_LABEL,
   type AuthorityMark,
   authorityMark,
+  bandOf,
   buildAdjacency,
   buildColumns,
   cascadeDepths,
@@ -28,6 +29,7 @@ import {
   type Progress,
   readableSeconds,
   ROW_H,
+  rungOf,
   sceneSize,
   START_X,
   START_Y,
@@ -35,6 +37,7 @@ import {
   wrapLabel,
 } from './civ/layout.ts';
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
+import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
@@ -282,7 +285,7 @@ export function ColumnHead({
         open();
       }}
     >
-      <rect x={x - 8} y={START_Y - 45} width={COL_W - 16} height={42} fill="transparent" />
+      <rect {...bandOf(index, 0)} height={42} fill="transparent" />
       {head}
     </g>
   );
@@ -386,6 +389,23 @@ export default function CivTree({
 
   const nodePositionMap = useMemo(() => layoutNodes({ cols, colOrder }), [cols, colOrder]);
   const findings = useMemo(() => mapFindings(items, connections), [items, connections]);
+  // The thumbnail's dots: every node where it sits, and where it stands.
+  const minimapNodes = useMemo<MinimapNode[]>(
+    () =>
+      [...nodePositionMap.values()].map(p => ({
+        id: p.item.id,
+        x: p.x,
+        y: p.y,
+        state: rungOf(p.item),
+      })),
+    [nodePositionMap]
+  );
+  // Which way the finding's node lies when it is out of sight, as the minimap
+  // reports it. The minimap owns the scroll subscription, so this changes when
+  // the answer does and not on every scroll event.
+  const [where, setWhere] = useState<string | null>(null);
+  // The headline is two rows when there is a finding under the range line.
+  const headlined = Boolean(!narrated && !asOf && (findings.failing.length || findings.best));
   const rangeSince = useAmbitStore(s => s.rangeSince);
   // The ledger reports the week by name; the tree's names are unique.
   const weekNames = useMemo(
@@ -734,6 +754,7 @@ export default function CivTree({
             onSelect(id);
             startAcquisition(id);
           }}
+          where={where}
           leftInset={leftInset}
           rightInset={rightInset}
         />
@@ -745,11 +766,7 @@ export default function CivTree({
         // The headline is two rows when there is a finding under the range
         // line; the canvas starts below the second, so the era headers stay
         // readable.
-        className={`civ-scroll ${
-          !narrated && !asOf && (findings.failing.length || findings.best)
-            ? 'civ-scroll--headline'
-            : ''
-        }`}
+        className={`civ-scroll ${headlined ? 'civ-scroll--headline' : ''}`}
         // Dragging to pan is a pointer affordance layered over the canvas. The
         // a11y warning on this element is expected and left visible: every node
         // inside carries role="button", tabIndex and a key handler, so the
@@ -782,14 +799,7 @@ export default function CivTree({
             const list = cols[d] || [];
             return (
               <g key={`band-${d}`}>
-                <rect
-                  x={START_X + i * COL_W - 8}
-                  y={START_Y - 45}
-                  width={COL_W - 16}
-                  height={contentHeight - START_Y - 20}
-                  fill="rgba(255, 255, 255, 0.018)"
-                  rx={12}
-                />
+                <rect {...bandOf(i, contentHeight)} fill="rgba(255, 255, 255, 0.018)" rx={12} />
                 <ColumnHead
                   column={d}
                   index={i}
@@ -1556,6 +1566,24 @@ export default function CivTree({
           </g>
         </svg>
       </div>
+
+      {/* Not while a tour narrates the map: its card sits where the thumbnail
+          does, and the finding the thumbnail feeds is hidden then too. */}
+      {!narrated && (
+        <Minimap
+          containerRef={containerRef}
+          zoom={zoom}
+          width={contentWidth}
+          height={contentHeight}
+          columns={colOrder.length}
+          nodes={minimapNodes}
+          watch={findings.failing[0]?.id}
+          onWhere={setWhere}
+          layoutKey={String(headlined)}
+          leftInset={leftInset}
+          rightInset={rightInset}
+        />
+      )}
     </div>
   );
 }

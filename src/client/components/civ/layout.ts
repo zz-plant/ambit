@@ -448,6 +448,18 @@ function orderRows(cols: Record<string, Item[]>, colOrder: string[], connections
  */
 export const columnCentre = (ci: number): number => START_X + ci * COL_W + COL_W / 2 - 16;
 
+/**
+ * The faint band a column sits in, from its header down to the legend. The map
+ * draws it behind the column and the minimap draws it as the era's bar, so
+ * the thumbnail is the map's own shape.
+ */
+export const bandOf = (ci: number, sceneHeight: number) => ({
+  x: START_X + ci * COL_W - 8,
+  y: START_Y - 45,
+  width: COL_W - 16,
+  height: sceneHeight - START_Y - 20,
+});
+
 export interface Placed {
   x: number;
   y: number;
