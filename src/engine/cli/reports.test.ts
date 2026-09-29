@@ -7,10 +7,11 @@
  * column with a marker on the one that wants a person, and the last line is the
  * one thing to type next. Colour is added on top and never changes a line.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { makeGraph, type CapabilityFixture } from '../testing/graph.ts';
+import { asProcess } from '../testing/terminal.ts';
 import { C, PLAIN } from './output.ts';
-import { renderStatus, statusReport, worries } from './reports.ts';
+import { explain, renderStatus, statusReport, worries } from './reports.ts';
 
 /** The escape character, spelled out so no control character sits in the source. */
 const ESC = String.fromCharCode(27);
@@ -251,5 +252,34 @@ describe('colour', () => {
   it('puts the accent on nothing when there is nothing to act on', () => {
     const painted = renderStatus(reportOf(ALL_PROVEN), C);
     expect(painted.some(l => l.includes(C.accent))).toBe(false);
+  });
+});
+
+/**
+ * `ambit help <term>`, the glossary this module also holds. It prints for
+ * itself instead of returning lines, so it is read off the console.
+ */
+describe('the glossary', () => {
+  const shown = (tty: boolean, noColor?: string) => {
+    const lines: string[] = [];
+    const log = vi.spyOn(console, 'log').mockImplementation((line?: unknown) => {
+      lines.push(String(line ?? ''));
+    });
+    try {
+      asProcess(tty, noColor, () => explain('frontier'));
+    } finally {
+      log.mockRestore();
+    }
+    return lines.join('\n');
+  };
+
+  it('is painted on a terminal and plain everywhere else, in the same words', () => {
+    const terminal = shown(true);
+    expect(terminal).toContain(ESC);
+    const bare = shown(false);
+    expect(bare).not.toContain(ESC);
+    expect(bare).toContain('Where you see it');
+    expect(shown(true, '1')).toBe(bare);
+    expect(plain(terminal)).toBe(bare);
   });
 });

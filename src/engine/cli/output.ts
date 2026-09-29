@@ -111,8 +111,12 @@ function emit(data: any, human: (data: any) => string[] = formatGeneric): void {
  * Lines and not prints, so a command with a layout of its own can put this
  * beneath its head for whatever the head does not say, and a test can read
  * what would be shown without spying on the console.
+ *
+ * Given no palette it asks the process, like every other surface: `emit`
+ * passes none, and a default of `C` painted every pipe the generic view
+ * reached, which is most commands.
  */
-function formatGeneric(data: any, c: Palette = C): string[] {
+function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
   const lines: string[] = [];
   const say = (line: string) => void lines.push(line);
 

@@ -90,8 +90,11 @@ test('the generic view takes its colour from the palette it is given', () => {
   expect(bare.some(line => line.includes(ESC))).toBe(false);
   // Colour is a coat over the same words.
   expect(painted.map(plain)).toEqual(bare);
-  // Every command that passes nothing keeps the colour it always had.
-  expect(formatGeneric(data)).toEqual(painted);
+  // Given nothing, as `emit` gives it for every command without a layout of
+  // its own, it paints for a terminal and for nothing else.
+  expect(asProcess(true, undefined, () => formatGeneric(data))).toEqual(painted);
+  expect(asProcess(false, undefined, () => formatGeneric(data))).toEqual(bare);
+  expect(asProcess(true, '1', () => formatGeneric(data))).toEqual(bare);
 });
 
 /**

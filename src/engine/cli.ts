@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
-import { C, emit, emitRaw, emitText, setSink, terminalPalette } from './cli/output.ts';
+import { emit, emitRaw, emitText, setSink, terminalPalette } from './cli/output.ts';
 import { HELP, HELP_SHORT } from './cli/help.ts';
 import { explain, renderStatus, statusReport } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
@@ -605,8 +605,10 @@ async function runCommand(
       }
       break;
     }
-    default:
-      console.log(`${C.red}Unknown: ${cmd}${C.reset}`);
+    default: {
+      const paint = terminalPalette();
+      console.log(`${paint.red}Unknown: ${cmd}${paint.reset}`);
+    }
   }
 }
 
@@ -731,8 +733,9 @@ async function main() {
       // scripts get their answer instead of a lecture.
       const json = flags.has('--json');
       if (!json) {
+        const paint = terminalPalette();
         console.log(
-          `${C.grey}First run — reading your agent config and building the graph…${C.reset}`
+          `${paint.grey}First run — reading your agent config and building the graph…${paint.reset}`
         );
       }
       runSeed(db, mappingOverride, json);

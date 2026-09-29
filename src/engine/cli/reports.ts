@@ -17,7 +17,7 @@ import { ledgerHistory } from '../ledger.ts';
 import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps } from '../next.ts';
-import { C, formatGeneric, type Palette } from './output.ts';
+import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import { CHECK_RUN_SQL, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
@@ -400,8 +400,11 @@ function explain(wanted: string): void {
         [c.key, c.term, c.short, c.long, c.seen].join(' ').toLowerCase().includes(wanted)
       )
     : concepts;
+  // An agent asks what a term means as readily as a person does, and reads
+  // the answer through a pipe.
+  const paint = terminalPalette();
   if (picked.length === 0) {
-    console.log(`${C.yellow}No concept matching "${wanted}".${C.reset}`);
+    console.log(`${paint.yellow}No concept matching "${wanted}".${paint.reset}`);
     console.log(`Try: ${concepts.map((c: any) => c.key).join(', ')}`);
     return;
   }
@@ -420,12 +423,13 @@ function explain(wanted: string): void {
   };
   console.log('');
   for (const c of picked) {
-    console.log(`${C.bold}${c.term}${C.reset} ${C.grey}— ${c.short}${C.reset}`);
+    console.log(`${paint.bold}${c.term}${paint.reset} ${paint.grey}— ${c.short}${paint.reset}`);
     console.log(wrap(c.long));
-    console.log(`  ${C.grey}Where you see it: ${c.seen}${C.reset}`);
+    console.log(`  ${paint.grey}Where you see it: ${c.seen}${paint.reset}`);
     console.log('');
   }
-  if (!wanted) console.log(`${C.grey}ambit help <term> for one of these on its own.${C.reset}\n`);
+  if (!wanted)
+    console.log(`${paint.grey}ambit help <term> for one of these on its own.${paint.reset}\n`);
 }
 
 export {
