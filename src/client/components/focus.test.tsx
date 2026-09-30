@@ -422,3 +422,19 @@ test('a link lands collapsed only on a node the graph holds, and the address bar
   expect(useAmbitStore.getState().collapsed).toBe(false);
   expect(places(map({ selectedId: 'combo:model-routing' })).size).toBe(drawn.length);
 });
+
+test('at rest an edge across more than two eras is faint, and a short one is not', () => {
+  // Eight of the demo's edges crossed six columns and read as a tangle.
+  seed({ items, connections });
+  const edges = (html: string) =>
+    [
+      ...html.matchAll(
+        /<path d="M(-?[\d.]+),[^ ]+ C[^"]*?(-?[\d.]+),-?[\d.]+"[^>]*opacity="([\d.]+)"/g
+      ),
+    ].map(m => ({ span: Math.abs(Number(m[2]) - Number(m[1])), opacity: Number(m[3]) }));
+  const rest = edges(map({ selectedId: null }));
+  const long = rest.filter(e => e.span > 600);
+  expect(long.length).toBeGreaterThan(0);
+  for (const e of long) expect(e.opacity).toBeLessThan(0.1);
+  expect(rest.some(e => e.span < 300 && e.opacity >= 0.3)).toBe(true);
+});

@@ -979,6 +979,11 @@ export default function CivTree({
               simulationMode !== 'none' && simSet.has(conn.from) && simSet.has(conn.to);
             const intoFocus = focusId !== null && conn.to === focusId;
             const outOfFocus = focusId !== null && conn.from === focusId;
+            // At rest, an edge across more than two eras is a whisper. Eight
+            // of the demo's 43 crossed six columns and were most of what read
+            // as a tangle; which node needs which is one hover away, and the
+            // short edges between neighbours carry the shape of the tree.
+            const long = Math.abs(toPos.x - fromPos.x) > COL_W * 2.5;
             const op = isSimLine
               ? 1
               : simulationMode !== 'none'
@@ -993,9 +998,11 @@ export default function CivTree({
                         ? 0.4
                         : 0.3
                       : 0.06
-                  : isHard
-                    ? 0.3
-                    : 0.22;
+                  : long
+                    ? 0.07
+                    : isHard
+                      ? 0.3
+                      : 0.22;
             const strokeColor = isSimLine
               ? simulationMode === 'outage'
                 ? 'var(--error)'
