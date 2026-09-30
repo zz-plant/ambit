@@ -42,7 +42,7 @@ const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
  * request to `host` with credentials, and `http://127.0.0.1.example.com`.
  */
 function judgeUrl(named?: string): { url: string } | { error: string } {
-  const raw = named || process.env.AMBIT_JUDGE_URL || DEFAULT_JUDGE;
+  const raw = named || process.env.AMBIT_JUDGE_URL || sdkBaseUrl() || DEFAULT_JUDGE;
   let u: URL;
   try {
     u = new URL(raw);
@@ -55,7 +55,32 @@ function judgeUrl(named?: string): { url: string } | { error: string } {
     return {
       error: `refused ${raw}: the judge must run on this machine (http://127.0.0.1, localhost or [::1])`,
     };
-  return { url: `${u.origin}${u.pathname.replace(/\/+$/, '')}` };
+  // TypeSafe's base URLs name the host and the SDK adds `/v1`, but a clone's
+  // README may quote it with the version on; either way the path is added once.
+  return { url: `${u.origin}${u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '')}` };
+}
+
+/**
+ * Where TypeSafe's own SDKs are pointed, when that is this machine.
+ *
+ * A local clone is served by setting `TYPESAFE_BASE_URL` (or the older
+ * `JEV_BASE_URL`) and the curated tree says to, so a person who did exactly
+ * that should not have to say it to Ambit a second time. Only a loopback value
+ * is taken: the same variable usually names the hosted API, which a person set
+ * for their SDK and never typed as a place for Ambit to send a goal. A hosted
+ * value is passed over as though it were unset, never refused, because it was
+ * not addressed to this command.
+ */
+function sdkBaseUrl(): string | undefined {
+  for (const raw of [process.env.TYPESAFE_BASE_URL, process.env.JEV_BASE_URL]) {
+    if (!raw) continue;
+    try {
+      const u = new URL(raw);
+      if (u.protocol === 'http:' && LOOPBACK.has(u.hostname) && !u.username && !u.password)
+        return raw;
+    } catch {}
+  }
+  return undefined;
 }
 
 interface Judged {
@@ -108,7 +133,7 @@ async function judgeGoal(
     });
   } catch (e) {
     return {
-      error: `no judgment model answered at ${where.url} (${(e as Error).message}). Serve a local clone such as Kev, or pass --judge=<url on this machine>.`,
+      error: `no judgment model answered at ${where.url} (${(e as Error).message}). Serve a local clone such as Kev and point TYPESAFE_BASE_URL at it, or pass --judge=<url on this machine>.`,
     };
   }
   if (!res.ok) return { error: `the judge at ${where.url} answered ${res.status}` };
@@ -120,7 +145,13 @@ async function judgeGoal(
     return { error: `the judge at ${where.url} did not answer in JSON` };
   }
   const answer = data?.answers?.capability;
-  const probabilities: Record<string, number> = answer?.probabilities ?? {};
+  // Jev returns `choice` beside the distribution. A server that sends only the
+  // choice has given one answer at its stated confidence, and is read as that.
+  const probabilities: Record<string, number> =
+    answer?.probabilities ??
+    (typeof answer?.choice === 'string' && typeof answer?.confidence === 'number'
+      ? { [answer.choice]: answer.confidence }
+      : {});
   // Only an id the tree has counts. A model that returns something else has
   // not answered this question, whatever it is confident about.
   const byName = new Map(nodes.map(n => [n.id, n.name]));
@@ -139,7 +170,7 @@ async function judgeGoal(
     ...(typeof data.model === 'string' ? { model: data.model } : {}),
     ...(suggested ? { suggested } : {}),
     considered,
-    ...(typeof answer.confidence === 'number' ? { confidence: answer.confidence } : {}),
+    ...(typeof answer?.confidence === 'number' ? { confidence: answer.confidence } : {}),
     note: suggested
       ? `a suggestion from a judgment model on this machine, not a match in the vocabulary. Plan it with ambit goal ${suggested.id}`
       : 'the judgment model gave no capability even odds, so nothing is suggested; the likeliest are listed',

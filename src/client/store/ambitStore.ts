@@ -5,6 +5,7 @@ import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
 import type { FocusDepth, FocusDirection } from '../linkState';
 import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
 import { importConfig, importMcpServers } from '../utils/configImporter';
+import { normalizeOpencode, parseJsonc } from '../../shared/opencode';
 import { demoRun } from '../utils/demoRun';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import {
@@ -729,7 +730,8 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   loadFromJSON: jsonStr => {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(jsonStr);
+      // A config may be `opencode.jsonc`, comments and all.
+      parsed = parseJsonc(jsonStr);
     } catch {
       return false;
     }
@@ -756,10 +758,13 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     // the mcpServers block the other runtimes write. A file with none of
     // those is some other JSON, and drawing an empty graph from it would look
     // like a bug in the reader, not a mismatch in the file.
+    // OpenCode 2's names (`agents`, `mcp.servers`, ...) are read into the
+    // ones the importer knows, as the server does for /api/config.
+    const config = normalizeOpencode(data);
     const looksLikeConfig = ['mcp', 'agent', 'provider', 'command', 'skills'].some(
-      k => data[k] && typeof data[k] === 'object'
+      k => config[k] && typeof config[k] === 'object'
     );
-    const graph = looksLikeConfig ? importConfig(data as OpenCodeConfig) : importMcpServers(data);
+    const graph = looksLikeConfig ? importConfig(config as OpenCodeConfig) : importMcpServers(data);
     if (!graph) return false;
     if (!graph.items.length) return false;
     set({ ...graph, loading: false, error: null, demo: false });

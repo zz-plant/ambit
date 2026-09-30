@@ -126,7 +126,7 @@ A typed decision model such as TypeSafe's [Jev](https://en.wikipedia.org/wiki/Je
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet for each client. |
 
-Homebrew installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux. A checkout adds the map: `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and the skill directories `~/.agents/skills` and `~/.opencode/skills`, builds a local SQLite graph, and finishes by printing `ambit status`, which [Ask from the terminal](#ask-from-the-terminal) shows against a fixture graph. It links `ambit` into `~/.local/bin` when that is on your PATH and prints the `ln -s` line otherwise; `--dry-run` shows what it would do. Codespaces runs the same checkout in a container, so the graph is the container's and nothing touches your machine.
+Homebrew installs the CLI, the engine, and the MCP server from the tagged release, on macOS or Linux. A checkout adds the map: `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, and the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, builds a local SQLite graph, and finishes by printing `ambit status`, which [Ask from the terminal](#ask-from-the-terminal) shows against a fixture graph. It links `ambit` into `~/.local/bin` when that is on your PATH and prints the `ln -s` line otherwise; `--dry-run` shows what it would do. Codespaces runs the same checkout in a container, so the graph is the container's and nothing touches your machine.
 
 > [!NOTE]
 > The npm package is built and ready but not yet published, so there is no `npx` path yet.
@@ -293,6 +293,22 @@ every session yourself, add a hook to `~/.claude/settings.json`:
       "type": "local",
       "command": ["ambit", "mcp"],
       "enabled": true
+    }
+  }
+}
+```
+
+OpenCode 2 still reads that, and its own shape puts servers under `mcp.servers` with `disabled` in place of `enabled`. `ambit connect opencode` writes whichever shape the file is already in, and Ambit reads either, with or without comments (`opencode.jsonc`).
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "ambit": {
+        "type": "local",
+        "command": ["ambit", "mcp"],
+        "disabled": false
+      }
     }
   }
 }

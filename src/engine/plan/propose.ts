@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import type { Db } from '../db.ts';
 import { configDefault } from '../paths.ts';
+import { parseJsonc } from '../../shared/opencode.ts';
 import { usable } from '../assurance.ts';
 import { providersOf } from '../inference.ts';
 import { inverseOf } from '../governance.ts';
@@ -153,7 +154,7 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
 
   let currentConfig: any = {};
   try {
-    currentConfig = JSON.parse(readFileSync(configDefault(), 'utf8'));
+    currentConfig = parseJsonc(readFileSync(configDefault(), 'utf8'));
   } catch {
     /* no config is fine */
   }

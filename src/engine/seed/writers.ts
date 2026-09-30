@@ -70,7 +70,12 @@ function defaultMapping(
     : keys;
   return {
     config_keys,
-    skill_dirs: options.skillDirs ?? ['~/.agents/skills', '~/.opencode/skills'],
+    // OpenCode 2 keeps global skills beside its config, in `skills/`.
+    skill_dirs: options.skillDirs ?? [
+      '~/.agents/skills',
+      '~/.opencode/skills',
+      '~/.config/opencode/skills',
+    ],
   };
 }
 

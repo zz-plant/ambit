@@ -49,6 +49,7 @@ import {
   AGENT_FIELDS,
   COMMAND_FIELDS,
   readConfig,
+  readConfigFile,
   writeConfig,
   ownEntry,
   pick,
@@ -58,6 +59,7 @@ import {
 } from './config.ts';
 import { buildInfrastructureScan } from './infrastructure.ts';
 import { scanRepos } from './repos.ts';
+import { isOpencodeV2, mcpEntries } from '../shared/opencode.ts';
 import type {
   ApiError,
   ApproveResponse,
@@ -369,21 +371,42 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // deliberately cannot create one — see src/server/config.ts.
   if (pathname === '/api/config/apply' && method === 'POST') {
     const body: ConfigApplyRequest = await readJsonBody(req);
-    const raw = (await readConfig()) as any;
-    if (!raw) return json({ error: 'Config not found' }, 404);
+    const file = await readConfigFile();
+    if (!file) return json({ error: 'Config not found' }, 404);
+    if (!file.plain)
+      return json<ConfigApplyResponse>(
+        {
+          error: `${CONFIG_PATH} has comments, and writing it would delete them. Edit it by hand.`,
+        },
+        409
+      );
+    const raw = file.raw;
 
-    for (const name of body.disableMcp || []) {
-      if (ownEntry(raw.mcp, name)) raw.mcp[name].enabled = false;
+    // Into the shape the file already has: OpenCode 2 keeps servers under
+    // `mcp.servers` and says `disabled`, and a V1 field written into a V2 file
+    // is one OpenCode warns about and a person has to clean up.
+    const servers = mcpEntries(raw);
+    const setMcp = (name: string, on: boolean) => {
+      if (!ownEntry(servers.bag, name)) return;
+      const entry = (servers.bag as Record<string, any>)[name];
+      if (servers.v2 && !('enabled' in entry)) entry.disabled = !on;
+      else entry.enabled = on;
+    };
+    for (const name of body.disableMcp || []) setMcp(name, false);
+    for (const name of body.enableMcp || []) setMcp(name, true);
+
+    // An entry is edited under whichever name the file holds it by; a file with
+    // both is read with the V2 name winning, so that is the one edited.
+    const own = (v1: string, v2: string, name: unknown) =>
+      ownEntry(raw[v2], name) ? raw[v2] : ownEntry(raw[v1], name) ? raw[v1] : null;
+    const agents = body.updateAgent && own('agent', 'agents', body.updateAgent.name);
+    if (body.updateAgent && agents) {
+      Object.assign(agents[body.updateAgent.name], pick(body.updateAgent.updates, AGENT_FIELDS));
     }
-    for (const name of body.enableMcp || []) {
-      if (ownEntry(raw.mcp, name)) raw.mcp[name].enabled = true;
-    }
-    if (body.updateAgent && ownEntry(raw.agent, body.updateAgent.name)) {
-      Object.assign(raw.agent[body.updateAgent.name], pick(body.updateAgent.updates, AGENT_FIELDS));
-    }
-    if (body.updateCommand && ownEntry(raw.command, body.updateCommand.name)) {
+    const commands = body.updateCommand && own('command', 'commands', body.updateCommand.name);
+    if (body.updateCommand && commands) {
       Object.assign(
-        raw.command[body.updateCommand.name],
+        commands[body.updateCommand.name],
         pick(body.updateCommand.updates, COMMAND_FIELDS)
       );
     }
@@ -398,9 +421,16 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     const body = await readJsonBody(req);
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     if (!name) return json({ error: 'name required' }, 400);
+    // In the shape the config is already written in, so the paste fits it.
+    const file = await readConfigFile();
+    const entry = { ...body.config };
+    const snippet =
+      file && isOpencodeV2(file.raw)
+        ? { mcp: { servers: { [name]: { ...entry, disabled: false } } } }
+        : { mcp: { [name]: { ...entry, enabled: true } } };
     return json<McpSnippetResponse>({
       configPath: CONFIG_PATH,
-      snippet: JSON.stringify({ mcp: { [name]: { ...body.config, enabled: true } } }, null, 2),
+      snippet: JSON.stringify(snippet, null, 2),
     });
   }
 

@@ -6,6 +6,18 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.4.1...main)
 
+### OpenCode 2, and a Jev clone found where its SDK looks
+
+OpenCode 2 renamed most of its config and moved MCP servers under `mcp.servers`, and Ambit read a V2 file as V1. The map drew one server named "servers" and nothing else: every agent, command and provider sat under a key the seed skipped, and a model pinned as `provider/model#high` never met its model. `src/shared/opencode.ts` reads either version into the one shape every reader already used, as OpenCode itself does in memory, and the seed, the API's read-out, repo drift, the infrastructure scan and a config dropped on the page all go through it. `opencode.jsonc` is read too, comments and all, when it is the only config there.
+
+An edit goes back in the shape the file has. The My Setup switch writes `disabled` into a V2 file and `enabled` into a V1 one, `ambit connect opencode` adds `mcp.servers.ambit` to a V2 file, the snippet the page offers is in the file's shape, and `ambit apply`, `rollback` and a removal find a server where V2 keeps it. A commented file is never written back, because writing it would delete the comments: the switch answers 409 and `ambit connect` says to add the entry by hand. `ambit connect` used to replace a file it could not parse with `{}` and one entry, deleting everything a person had in it, and now leaves it as it was.
+
+The rule OpenCode states for running a shell command, `permission.bash` in V1 or a `shell` rule over `*` in V2's `permissions`, reaches the graph as the runtime's authority, as Claude Code's `defaultMode` already did. A rule for one command such as `git push *` says nothing about the rest and is not read as the general rule, and an `authority` block of Ambit's own still wins.
+
+OpenCode 2 does not run a V1 plugin, so both plugins stopped recording anything under it. Each now default-exports `{ id, setup, server }`, the pattern OpenCode's guide gives: V2 runs `setup` and V1 calls `server`. Under V2 a run is a session, a tool that exited non-zero is a failure even when the call completed, and a permission prompt is recorded when it is answered, with what the person decided and how long the agent waited, which V1 never reported. The tracker records what a `config.updated` event added or removed, by comparing what OpenCode lists before and after.
+
+`ambit goal --judge` asks a local clone that `TYPESAFE_BASE_URL` (or `JEV_BASE_URL`) already points at, which the curated tree tells a person to set and the judge did not read. Only a loopback value is taken; the hosted API in the same variable is passed over, not refused. An answer carrying only Jev's `choice` and `confidence` is read at that confidence.
+
 ### An MCP server an agent can predict, and a CLI a script can read
 
 Each of these was measured first, with a probe that called every tool with missing, misspelt and near-miss arguments, another that hashed every table around every call, and the CLI run through a pipe.
