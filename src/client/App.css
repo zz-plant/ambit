@@ -284,7 +284,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-status-pill {
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   background: var(--bg-hover);
@@ -4375,16 +4375,17 @@ code, pre, .code, .sp-cli-cmd {
    since a count without its noun says nothing. The view tabs give up theirs
    below that, and each keeps its name in aria-label and its tooltip. The
    widths are the demo's header with every word drawn in the widest fallback
-   font: 1366px, and 1157px with the buttons' words gone; the map's Image
-   button adds 89px to both. */
-@media (min-width: 769px) and (max-width: 1460px) {
+   font, measured with the 13px tabs: about 1403px, and 1262px with the
+   buttons' words gone. The map's Image button lives with the map now, so it
+   adds nothing here. */
+@media (min-width: 769px) and (max-width: 1420px) {
   .app-deck-btn .app-deck-btn-label,
   .app-deck-btn .app-deck-key {
     display: none;
   }
 }
 
-@media (min-width: 769px) and (max-width: 1180px) {
+@media (min-width: 769px) and (max-width: 1270px) {
   .app-deck-nav .app-deck-tab-label {
     display: none;
   }

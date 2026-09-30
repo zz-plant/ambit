@@ -205,9 +205,10 @@ src/client/                React frontend
                            takes the focus when it opens, keeps Tab inside, and gives it back)
   components/
     AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
-                           share, proposals, docs. `mapCounts` is the map's pill: reached, unproven,
-                           and a failing node counted apart from both. The view tabs are icons with
-                           an `aria-label` up to 1180px and the buttons up to 1380px, so every
+                           share, proposals, docs; the map's own tools sit on the map. `mapCounts`
+                           is the map's pill: reached, unproven, and a failing node counted apart
+                           from both. The view tabs are icons with
+                           an `aria-label` up to 1270px and the buttons up to 1420px, so every
                            control stays on screen from 769px
     Finder.tsx             Search by name; a node opens on the map, an entry in My Setup. The same
                            list holds actions (utils/palette.ts), and Enter runs the one chosen. Its
