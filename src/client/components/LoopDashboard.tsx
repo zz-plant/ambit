@@ -490,7 +490,7 @@ function AuthorityFigure({
                 </span>
                 <button
                   type="button"
-                  className="fig-cta"
+                  className="fig-cta fig-cta--quiet"
                   title={p.command}
                   onClick={() => copy(`${p.id}/${p.action}`, p.command)}
                 >

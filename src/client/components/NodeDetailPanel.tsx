@@ -337,92 +337,104 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         </div>
       )}
 
-      {/* The impact in one line, then the simulation that draws it: an outage
+      {/* The panel's actions in one row: a simulation and focus side by side,
+          the sentences each one depends on above and below them. */}
+      <div className="sp-act-row">
+        {/* The impact in one line, then the simulation that draws it: an outage
           for a reached node; the gap, and an unlock, for one that is not. */}
-      {(() => {
-        // A past observation stores no providers, so it has no impact to
-        // state and nothing to simulate.
-        if (asOf) return null;
-        const isSimulated = simulatedNodeId === item.id;
-        // Only what was working is said to stop; the banner says the same.
-        const outage = split ? outageSentence('this', outageImpact(items, split), true) : null;
-        const missing = gap ? [...gap.missing] : [];
-        // The direct ones are named first: they are what to reach, the rest is
-        // what those need in turn. The ladder for the node's era says it the
-        // same way, from the same function.
-        const { names: named, more } = gap
-          ? blockedBy(items, connections, item.id, gap)
-          : { names: [], more: 0 };
+        {(() => {
+          // A past observation stores no providers, so it has no impact to
+          // state and nothing to simulate.
+          if (asOf) return null;
+          const isSimulated = simulatedNodeId === item.id;
+          // Only what was working is said to stop; the banner says the same.
+          const impact = split ? outageImpact(items, split) : null;
+          const outage = impact ? outageSentence('this', impact, true) : null;
+          // An outage that stops nothing is a question worth asking, not an
+          // alarm: the red button said danger under "nothing else would stop".
+          const stops = impact?.stopped.length ?? 0;
+          const missing = gap ? [...gap.missing] : [];
+          // The direct ones are named first: they are what to reach, the rest is
+          // what those need in turn. The ladder for the node's era says it the
+          // same way, from the same function.
+          const { names: named, more } = gap
+            ? blockedBy(items, connections, item.id, gap)
+            : { names: [], more: 0 };
 
-        return (
-          <div className="sp-sim-group">
-            {item.status === 'built' ? (
-              <p className="sp-impact">
-                {outage?.before}
-                {outage?.count && <strong>{outage.count}</strong>}
-                {outage?.after}
-              </p>
-            ) : missing.length ? (
-              <p className="sp-impact">
-                Blocked by {named.join(', ')}
-                {more > 0 ? ` and ${more} more` : ''}
-                {gap?.seconds ? `, about ${readableSeconds(gap.seconds)} of setup first` : ''}.
-              </p>
-            ) : (
-              <p className="sp-impact">
-                {cascade
-                  ? `Prerequisites met. Unlocking it would make ${cascade} more ${plural(cascade)} reachable.`
-                  : 'Prerequisites met. Unlocking it reaches nothing further on its own.'}
-              </p>
-            )}
-            {isSimulated ? (
-              <button type="button" className="sp-action-btn sp-action-btn--sim" onClick={clearSim}>
-                Exit simulation
-              </button>
-            ) : item.status === 'built' ? (
-              <button
-                type="button"
-                className="sp-action-btn sp-action-btn--outage"
-                onClick={() => startOutage(item.id)}
-              >
-                Simulate an outage
-              </button>
-            ) : (
-              <>
-                {missing.length > 0 && (
-                  <button
-                    type="button"
-                    className="sp-action-btn sp-action-btn--gap"
-                    onClick={() => startGap(item.id)}
-                  >
-                    Show the gap on the map
-                  </button>
-                )}
+          return (
+            <div className="sp-sim-group">
+              {item.status === 'built' ? (
+                <p className="sp-impact">
+                  {outage?.before}
+                  {outage?.count && <strong>{outage.count}</strong>}
+                  {outage?.after}
+                </p>
+              ) : missing.length ? (
+                <p className="sp-impact">
+                  Blocked by {named.join(', ')}
+                  {more > 0 ? ` and ${more} more` : ''}
+                  {gap?.seconds ? `, about ${readableSeconds(gap.seconds)} of setup first` : ''}.
+                </p>
+              ) : (
+                <p className="sp-impact">
+                  {cascade
+                    ? `Prerequisites met. Unlocking it would make ${cascade} more ${plural(cascade)} reachable.`
+                    : 'Prerequisites met. Unlocking it reaches nothing further on its own.'}
+                </p>
+              )}
+              {isSimulated ? (
                 <button
                   type="button"
-                  className="sp-action-btn sp-action-btn--unlock"
-                  onClick={() => startAcquisition(item.id)}
+                  className="sp-action-btn sp-action-btn--sim"
+                  onClick={clearSim}
                 >
-                  Simulate unlocking this
+                  Exit simulation
                 </button>
-              </>
-            )}
-          </div>
-        );
-      })()}
+              ) : item.status === 'built' ? (
+                <button
+                  type="button"
+                  className={`sp-action-btn ${stops ? 'sp-action-btn--outage' : ''}`}
+                  onClick={() => startOutage(item.id)}
+                >
+                  Simulate an outage
+                </button>
+              ) : (
+                <>
+                  {missing.length > 0 && (
+                    <button
+                      type="button"
+                      className="sp-action-btn sp-action-btn--gap"
+                      onClick={() => startGap(item.id)}
+                    >
+                      Show the gap on the map
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="sp-action-btn sp-action-btn--unlock"
+                    onClick={() => startAcquisition(item.id)}
+                  >
+                    Simulate unlocking this
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
-      {onMap && (
-        <FocusControls
-          on={collapsed}
-          depth={collapseDepth}
-          direction={collapseDirection}
-          hidden={onMap.hidden}
-          onToggle={() => setCollapsed(!collapsed)}
-          onDepth={setCollapseDepth}
-          onDirection={setCollapseDirection}
-          onClear={() => setCollapsed(false)}
-        />
-      )}
+        {onMap && (
+          <FocusControls
+            on={collapsed}
+            depth={collapseDepth}
+            direction={collapseDirection}
+            hidden={onMap.hidden}
+            onToggle={() => setCollapsed(!collapsed)}
+            onDepth={setCollapseDepth}
+            onDirection={setCollapseDirection}
+            onClear={() => setCollapsed(false)}
+          />
+        )}
+      </div>
 
       {/* Whether it may act, apart from whether it can: the engine's effective
           mode, which no web surface used to show, and then the finer answer,

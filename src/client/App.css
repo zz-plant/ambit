@@ -1154,9 +1154,10 @@ code, pre, .code, .sp-cli-cmd {
 .sp-verdict-btn code {
   font-size: var(--fs-md);
   font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: left;
+  /* Wraps at any character: an id cut to "combo:browser-…" was a command
+     that could not be read before it was copied. */
+  overflow-wrap: anywhere;
 }
 
 .sp-note {
@@ -1240,11 +1241,26 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--error);
 }
 
-.sp-sim-group {
+/* The simulation and focus buttons share a row; the sentence above them and
+   focus's own controls below take the whole width. The two groups are laid
+   out as one grid, so neither owns the row. */
+.sp-act-row {
   margin: 8px 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 6px;
+}
+
+.sp-sim-group,
+.sp-act-row .sp-focus {
+  display: contents;
+}
+
+.sp-act-row .sp-impact,
+.sp-act-row .sp-focus-row,
+.sp-act-row .sp-focus-pill,
+.sp-act-row .sp-focus-note {
+  grid-column: 1 / -1;
 }
 
 .sp-action-btn {
@@ -1315,9 +1331,7 @@ code, pre, .code, .sp-cli-cmd {
 .sp-cli-cmd {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .sp-cli-copy-btn {
@@ -3139,6 +3153,19 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-cta:hover {
   background: var(--accent);
+}
+
+/* One filled button a view: the page's next step. A button repeated down a
+   list is the same action on each row, so it is drawn quietly; three filled
+   blue buttons within one scroll had no one of them saying "this first". */
+.fig-cta--quiet {
+  background: transparent;
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.fig-cta--quiet:hover {
+  background: var(--accent-soft);
 }
 
 .loop-subtitle {
