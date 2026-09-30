@@ -118,7 +118,13 @@ test('telemetry records a session’s tool calls, failures and answered prompts'
     error: { message: 'ECONNREFUSED' },
   });
 
-  await until(() => posts.filter(p => p.event).length === 3 && posts.some(p => p.intervention));
+  // Each failure is posted after its call's event, so wait for those too.
+  await until(
+    () =>
+      posts.filter(p => p.event).length === 3 &&
+      posts.filter(p => p.failure).length === 2 &&
+      posts.some(p => p.intervention)
+  );
   cleanup?.();
 
   // One run for the session, however many calls it made.
