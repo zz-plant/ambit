@@ -372,9 +372,15 @@ export default function RunSection() {
           <p className="fig-run-human" style={NUM}>
             {humanSentence(data.run)}
           </p>
-          {domain && <RunChart run={data.run} domain={domain} />}
-          {domain && <RunKey />}
-          <AskList run={data.run} />
+          {/* The sentence is the finding; the lanes and the asks are its
+              evidence, a click in. Drawn open, they were the page's tallest
+              section, under everything a first read was for. */}
+          <details className="fig-row-more">
+            <summary>Show the run in time</summary>
+            {domain && <RunChart run={data.run} domain={domain} />}
+            {domain && <RunKey />}
+            <AskList run={data.run} />
+          </details>
           {(data.run.events_total > data.run.events.length ||
             data.run.uses_total > data.run.uses.length ||
             data.run.asks_total > data.run.asks.length) && (

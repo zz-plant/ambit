@@ -154,13 +154,12 @@ function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   // so it is drawn as an alert across the page and not a card in the grid.
   const alarm = status.degraded?.length > 0;
 
+  // One line, not a card: the map leads with the same failing check, so this
+  // says it once more where the money is, and no louder than that.
   return (
-    <figure className={`fig fig--assurance ${alarm ? 'fig--alert' : ''}`}>
-      <figcaption className="fig-caption">
-        <span className="fig-caption-title">What could break</span>
-        <span className="fig-caption-note">read from the map</span>
-      </figcaption>
-      <ul className="fig-key">
+    <figure className={`fig fig--line ${alarm ? 'fig--alert' : ''}`}>
+      <figcaption className="sr-only">What could break</figcaption>
+      <ul className="fig-key fig-key--inline">
         {rows.map(r => (
           <li key={r.key} className="fig-key-item" title={r.names.join(', ')}>
             <span className={`fig-key-swatch fig-key-swatch--${r.key}`} aria-hidden="true" />
@@ -656,7 +655,13 @@ function SinceStrip({ since }: { since: LoopSince | null }) {
       <span className="loop-since-from">Since {from}:</span>
       {parts.length === 0 && <span className="loop-since-part">nothing moved</span>}
       {parts.map(p => (
-        <span key={p.key} className={`loop-since-part is-${p.tone}`}>
+        <span
+          key={p.key}
+          className={`loop-since-part is-${p.tone}`}
+          title={
+            p.key === 'emergent' ? 'Emergent: reached without anything new providing it' : undefined
+          }
+        >
           <span className="loop-since-n" style={NUM}>
             {p.names.length}
           </span>{' '}
@@ -664,9 +669,6 @@ function SinceStrip({ since }: { since: LoopSince | null }) {
           {p.names.length > 3 ? ` and ${p.names.length - 3} more` : ''}
         </span>
       ))}
-      {since.emergent.length > 0 && (
-        <span className="loop-since-note">emergent: reached without anything new providing it</span>
-      )}
     </p>
   );
 }
@@ -861,11 +863,21 @@ function OpportunityRows({
                 <span className={`fig-conf fig-conf--${o.confidence}`}>
                   {o.confidence} confidence
                 </span>
-                {o.acquisition_options && (
-                  <OptionCompare
-                    options={o.acquisition_options}
-                    needs={needsOf(items, connections, o.capability_id ?? '')}
-                  />
+                {/* The row is the comparison; how to get it is one click
+                    in. Drawn open, the options, their needs and their
+                    install text wrapped the name column into fragments
+                    and cut the cost lines off at "build - A…". */}
+                {o.acquisition_options && o.acquisition_options.length > 0 && (
+                  <details className="fig-row-more">
+                    <summary>
+                      {o.acquisition_options.length}{' '}
+                      {o.acquisition_options.length === 1 ? 'way' : 'ways'} to get it
+                    </summary>
+                    <OptionCompare
+                      options={o.acquisition_options}
+                      needs={needsOf(items, connections, o.capability_id ?? '')}
+                    />
+                  </details>
                 )}
               </th>
               <td className="is-num" style={NUM}>
@@ -1048,11 +1060,16 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
                 )}
               </div>
             )}
-            <p className="loop-subtitle">
-              Each time someone had to step in for an agent is logged against the capability it was
-              waiting on, priced, and ranked by how soon fixing it would pay back.
-              {sample ? ' This is sample data.' : ' Read from this machine\u2019s ledger.'}
-            </p>
+            <details className="loop-about">
+              <summary>
+                {sample ? 'This is sample data.' : 'Read from this machine\u2019s ledger.'} How it
+                is counted
+              </summary>
+              <p>
+                Each time someone had to step in for an agent is logged against the capability it
+                was waiting on, priced, and ranked by how soon fixing it would pay back.
+              </p>
+            </details>
             <SinceStrip since={since} />
           </div>
         </div>
@@ -1076,10 +1093,14 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               </p>
             ) : (
               <>
-                <div className="fig-kpi-value" style={NUM}>
-                  {roi.hours_per_year}h<span className="fig-kpi-unit"> saved</span>{' '}
-                  <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
-                </div>
+                {/* The headline says the saving when there is one; the card
+                    then draws it over time and does not say it twice. */}
+                {!saved && (
+                  <div className="fig-kpi-value" style={NUM}>
+                    {roi.hours_per_year}h<span className="fig-kpi-unit"> saved</span>{' '}
+                    <span className="fig-kpi-second">{money(roi.dollars_per_year)} a year</span>
+                  </div>
+                )}
                 {roi.monthly_hours.length > 1 ? (
                   // Drawn at the width the card now has, so its labels stay
                   // their own size instead of scaling up with the figure.

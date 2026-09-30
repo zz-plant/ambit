@@ -3305,6 +3305,52 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
 }
 
+/* What could break, as a line across the page: one row, no heading, the
+   failing check in the words the map uses. */
+.fig--line {
+  padding: 10px 16px;
+}
+
+.fig-key--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+}
+
+.fig-key--inline .fig-key-item {
+  grid-template-columns: 10px auto 1fr;
+}
+
+/* An explainer and a row's detail wait behind a summary line. */
+.loop-about,
+.fig-row-more {
+  margin-top: 10px;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+
+.loop-about summary,
+.fig-row-more summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  width: fit-content;
+}
+
+.loop-about summary:hover,
+.fig-row-more summary:hover {
+  color: var(--text-secondary);
+}
+
+.loop-about p {
+  margin: 6px 0 0;
+  max-width: 640px;
+}
+
+.fig-row-more {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+}
+
 .fig--kpi .fig-caption,
 .fig--assurance .fig-caption {
   display: block;

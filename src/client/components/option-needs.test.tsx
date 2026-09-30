@@ -173,7 +173,7 @@ test('only a patch gets an install entry, shown as text with a way to copy it', 
   ]);
 
   // One option has a patch, so one entry.
-  expect(html.match(/<details/g)).toHaveLength(1);
+  expect(html.match(/<details class="fig-install"/g)).toHaveLength(1);
   expect(html).toContain('mcp-server-fetch');
   expect(text(html)).toContain('Install: add this entry to your agent config');
   expect(text(html)).toContain('Copy the entry');
@@ -188,7 +188,8 @@ test('the install entry is text: nothing on it runs, opens or submits', () => {
       install: '{ "mcp": { "x": { "command": ["rm", "-rf", "/"] } } }',
     },
   ]);
-  const entry = html.slice(html.indexOf('<details'), html.indexOf('</details>'));
+  const from = html.indexOf('<details class="fig-install"');
+  const entry = html.slice(from, html.indexOf('</details>', from));
   expect(entry).toContain('<pre>');
   // A summary, the text and one button that copies: no link, form or frame.
   expect(entry).not.toMatch(/<(a|form|iframe|script|input)\b/);
@@ -235,6 +236,6 @@ test('the demo states what its opportunities need, and shows one entry to paste'
   // Embeddings is a next step whose one requirement is in place.
   expect(said).toContain('1 of 1 met here');
   // And one option carries an entry to paste.
-  expect(html.match(/<details/g)).toHaveLength(1);
+  expect(html.match(/<details class="fig-install"/g)).toHaveLength(1);
   expect(html).toContain('nomic-embed-text');
 });
