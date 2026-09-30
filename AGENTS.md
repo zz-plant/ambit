@@ -220,18 +220,21 @@ src/client/                React frontend
                            each machine), the agent's briefing and what was used but is on no
                            node of the map as its other tabs
     AuditView.tsx          The Audit view: the trail as one stream, newest first, with a query bar
+    ActorMark.tsx          Who acted: a shape for the kind (person, agent, machine, Ambit) and a
+                           monogram; drawn only for an id whose prefix says what it is
     WelcomeScreen.tsx      What an empty graph shows: the question, one number from the demo's
                            outage with a button that plays it, and the paste box
     ConfigIntake.tsx       Paste a config or pick the file, and where each runtime keeps it
     Tour.tsx               The demo narrated, on the hosted site's first visit: an outage that
                            spreads, a failing check, the next step, the approval gate, your config
-    figures.tsx            The sparkline, reach bar and check-run strip every surface draws the same way
+    figures.tsx            The sparkline, reach bar and check-run strip every surface draws the same
+                           way, and the seal on something signed
     Term.tsx               A house word with its definition attached — one glossary, two renderings
                            (a popover in HTML, a <title> in the SVG map)
     GettingStartedGuide.tsx  The first-run card on a real graph; the demo gets the tour instead
     Toast.tsx              A transient notice from the graph stream
     CivTree.tsx            The SVG map: era columns, one-hop highlighting of what a node needs and
-                           enables, the two simulations, an inline legend
+                           enables, the two simulations, and the callout on an outage's root
     civ/layout.ts          Column and row placement, the cascade walks (an outage, an unlock, a
                            focus's neighbourhood), the era ladder, label wrapping — pure, and
                            tested apart from the renderer
@@ -243,7 +246,8 @@ src/client/                React frontend
                            beside zoom: the key, the timeline, the saved image
     civ/MapKey.tsx         The key, opened from those tools; it opens itself under a lens
     civ/marks.tsx          The drawings the map and its key share: corner brackets for what the
-                           map points at, stripes for what refuses, the joint mark, each swatch
+                           map points at, stripes for what refuses, the joint mark, each swatch,
+                           and the spec-sheet callout
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
     civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step
     NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, needs and enables
@@ -259,7 +263,8 @@ src/client/                React frontend
                            /api/loop on a real machine and from the fixture on the hosted demo;
                            budgets draw a ceiling and a forecast tick, and an opportunity says what
                            its capability needs
-    RunTimeline.tsx        One run in time, with a lane for the person who was asked
+    RunTimeline.tsx        One run in time, with a lane for the person who was asked, and each ask
+                           as an exchange: the recorded request, and the answer or that none was
   store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
   store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
   vocabulary.test.ts       One name per concept: fails if a surface uses a retired synonym
@@ -272,6 +277,7 @@ src/client/                React frontend
     configSwitch.ts        Whether a row may offer a switch, and the flip it writes
     palette.ts             The finder's actions and how a key chooses one
     auditQuery.ts          The Audit query bar: actor:, action:, target: and free words
+    actors.ts              What an actor id names: its kind, its monogram, how it is read aloud
     budgetBar.ts           Where a budget's fill, ceiling and forecast tick sit on its bar
     needs.ts               What a capability needs and whether each need is in place
     runTimeline.ts         One run's lanes, and what its totals say, and how long the record says it

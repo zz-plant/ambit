@@ -2715,10 +2715,6 @@ code, pre, .code, .sp-cli-cmd {
 
 .gov-card {
   flex-shrink: 0;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2857,8 +2853,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-subtle);
+  padding: 0 2px;
 }
 
 .gov-signed {
@@ -5680,7 +5675,7 @@ code, pre, .code, .sp-cli-cmd {
     padding: 16px 14px 12px;
   }
 
-  .gov-card {
+  .gov-ask {
     padding: 14px;
   }
 
@@ -5871,10 +5866,6 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 /* ─── THE OTHER HALF OF A DECISION ─── */
-.gov-card--rejected::before {
-  background: var(--text-muted);
-}
-
 .gov-status--rejected {
   color: var(--text-muted);
   border-color: var(--border-bright);
@@ -6224,29 +6215,6 @@ code, pre, .code, .sp-cli-cmd {
   gap: 7px;
 }
 
-.fig-run-asks {
-  width: 100%;
-  margin-top: 12px;
-  border-collapse: collapse;
-  font-size: var(--fs-md);
-}
-
-.fig-run-asks th,
-.fig-run-asks td {
-  padding: 6px 12px 6px 0;
-  border-bottom: 1px solid var(--border-subtle);
-  text-align: left;
-  vertical-align: baseline;
-}
-
-.fig-run-asks th {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
 .fig-tag--gate {
   color: var(--warn);
   border-color: var(--warn-line);
@@ -6312,4 +6280,215 @@ code, pre, .code, .sp-cli-cmd {
    button, then the text to paste. */
 .setup-overlay {
   margin-top: 16px;
+}
+
+/* ─── VOICES ───
+   Who acted, and an ask with its answer. A mark is a shape for the kind and a
+   monogram for the name; a bubble is something one party put to another. */
+.actor-mark {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.actor-mark text {
+  font-family: var(--font-sans);
+  fill: var(--text-primary);
+}
+
+.actor-mark-shape > * {
+  stroke-width: 1.25;
+}
+
+.actor-mark--person .actor-mark-shape > * {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+}
+
+.actor-mark--agent .actor-mark-shape > * {
+  fill: color-mix(in srgb, var(--type-agent) 18%, var(--bg-surface));
+  stroke: var(--type-agent);
+}
+
+.actor-mark--machine .actor-mark-shape > * {
+  fill: color-mix(in srgb, var(--type-device) 18%, var(--bg-surface));
+  stroke: var(--type-device);
+}
+
+.actor-mark--system .actor-mark-shape > * {
+  fill: var(--bg-elevated);
+  stroke: var(--text-muted);
+}
+
+.bubble {
+  position: relative;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+
+/* The corner nearest the speaker is the square one: the bubble leans on
+   whoever said it. */
+.bubble--ask,
+.bubble--from {
+  border-bottom-left-radius: 3px;
+}
+
+.bubble--reply {
+  border-bottom-right-radius: 3px;
+  background: var(--bg-surface);
+}
+
+/* An answer nothing recorded: the reply's outline, and nothing in it but that. */
+.bubble--unheard {
+  background: transparent;
+  border-style: dashed;
+}
+
+.bubble-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.bubble-code {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+/* The run's asks, as exchanges: requests on the left, answers on the right. */
+.fig-run-asks {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.thread-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thread-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 78%;
+}
+
+.thread-line--reply {
+  align-self: flex-end;
+}
+
+/* A proposal is a request: the bubble, with the decision under it. */
+.gov-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 12px 3px;
+}
+
+.gov-card--rejected .gov-ask {
+  opacity: 0.7;
+}
+
+/* The answer, as a receipt: a torn top edge, the seal, who signed. */
+.gov-receipt {
+  order: 2;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--ok-line);
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+  --tooth: 5px;
+  -webkit-mask: linear-gradient(#000 0 0) 0 var(--tooth) / 100% 100% no-repeat,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% 0 / calc(2 * var(--tooth)) var(--tooth) repeat-x;
+  mask: linear-gradient(#000 0 0) 0 var(--tooth) / 100% 100% no-repeat,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% 0 / calc(2 * var(--tooth)) var(--tooth) repeat-x;
+}
+
+.gov-reply {
+  margin-left: auto;
+  padding: 6px 12px;
+  border: 1px dashed var(--border-bright);
+  border-radius: 12px 12px 3px 12px;
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+}
+
+.seal-edge {
+  fill: color-mix(in srgb, var(--ok) 22%, var(--bg-surface));
+  stroke: var(--ok);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.seal-face {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 0.75;
+  stroke-opacity: 0.6;
+}
+
+.seal-check {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.audit-who {
+  display: inline-flex;
+  width: 20px;
+  align-self: center;
+}
+
+.audit-outcome--signed {
+  gap: 5px;
+}
+
+.setup-briefing-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.setup-briefing-route > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.setup-briefing-message .setup-briefing-text {
+  margin-top: 0;
+}
+
+/* The map's one callout is haloed like a node's name, so an edge under it
+   stops at it. */
+.civ-callout {
+  paint-order: stroke;
+  stroke: var(--bg-canvas);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }

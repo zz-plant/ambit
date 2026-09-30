@@ -162,11 +162,16 @@ test('only permission asks are amber; an ask of another kind is grey', () => {
 
 test('every ask is also listed as text, with how long it took or that it was not timed', () => {
   const html = draw(oneTimedOneNot);
-  const list = html.match(/<table class="fig-run-asks"[\s\S]*?<\/table>/)?.[0] ?? '';
+  const list = html.match(/<ol class="fig-run-asks"[\s\S]*?<\/ol>/)?.[0] ?? '';
   expect(text(list)).toContain('2m 10s');
   expect(text(list)).toContain('not timed');
   expect(text(list)).toContain('Secret Management · read_secret');
-  expect(list.match(/<tr/g)).toHaveLength(3);
+  // One exchange per ask: the agent's request, and the person's answer.
+  expect(list.match(/<li /g)).toHaveLength(2);
+  expect(list.match(/bubble--ask/g)).toHaveLength(2);
+  // An answer nothing recorded is an empty reply that says so, never a reply.
+  expect(list.match(/bubble--unheard/g)).toHaveLength(1);
+  expect(text(list)).toContain('No answer recorded');
 });
 
 test('a run with no end says so, and is drawn to the last thing seen', () => {

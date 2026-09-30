@@ -1,3 +1,4 @@
+import { ActorMark } from './ActorMark';
 import React from 'react';
 import type { RunAsk, RunView } from '../../shared/api';
 import { useAmbitStore } from '../store/ambitStore';
@@ -259,46 +260,59 @@ function RunKey() {
 }
 
 /** The asks as text, in order: the same marks, readable without the chart. */
+/**
+ * Every ask, as the exchange it was: the agent's request on the left, the
+ * person's answer on the right, and the wait between them said on the answer.
+ *
+ * The request is what the ledger recorded, the capability and the action, and
+ * not a sentence: nothing stores the words of the prompt, and a bubble reading
+ * "May I deploy?" would be a quote Ambit wrote. An answer nothing recorded is
+ * drawn as an empty reply that says so, never as a reply.
+ */
 function AskList({ run }: { run: RunView }) {
   if (!run.asks.length) return null;
   return (
-    <table className="fig-run-asks">
-      <caption className="sr-only">Every time you were asked in this run</caption>
-      <thead>
-        <tr>
-          <th scope="col">Asked</th>
-          <th scope="col">About</th>
-          <th scope="col">Took</th>
-        </tr>
-      </thead>
-      <tbody>
-        {run.asks.map((a, i) => {
-          const t = epoch(a.at);
-          const about = [a.capability, a.action].filter(Boolean).join(' · ');
-          return (
-            <tr key={`${a.at}-${i}`}>
-              <td style={NUM}>
-                {t !== undefined ? clock(t) : ''}
-                <span className={`fig-tag ${a.gate ? 'fig-tag--gate' : ''}`}>
-                  {a.gate ? 'permission' : a.kind}
+    <ol className="fig-run-asks" aria-label="Every time you were asked in this run">
+      {run.asks.map((a, i) => {
+        const t = epoch(a.at);
+        const about = [a.capability, a.action].filter(Boolean).join(' · ');
+        const answered = a.ended_at !== null && a.seconds !== null;
+        return (
+          <li key={`${a.at}-${i}`} className="thread-pair">
+            <div className="thread-line thread-line--ask">
+              <ActorMark id="agent" decorative />
+              <div className="bubble bubble--ask">
+                <span className="bubble-meta" style={NUM}>
+                  <span className={`fig-tag ${a.gate ? 'fig-tag--gate' : ''}`}>
+                    {a.gate ? 'permission' : a.kind}
+                  </span>
+                  {t !== undefined ? clock(t) : ''}
                 </span>
-              </td>
-              <td>{about}</td>
-              <td style={NUM}>
+                {about && <code className="bubble-code">{about}</code>}
+              </div>
+            </div>
+            <div className="thread-line thread-line--reply">
+              <div className={`bubble bubble--reply${answered ? '' : ' bubble--unheard'}`}>
                 {a.seconds === null ? (
-                  <span className="fig-run-untimed">not timed</span>
+                  <span className="fig-run-untimed">No answer recorded · not timed</span>
+                ) : answered ? (
+                  <span style={NUM}>
+                    Answered after <strong>{span(a.seconds)}</strong>
+                    {a.outcome && a.outcome !== 'asked' ? ` · ${a.outcome}` : ''}
+                  </span>
                 ) : (
-                  <>
-                    {span(a.seconds)}
-                    {!a.ended_at && <span className="fig-run-note"> · no end recorded</span>}
-                  </>
+                  <span style={NUM}>
+                    {span(a.seconds)} recorded
+                    <span className="fig-run-note"> · no end recorded</span>
+                  </span>
                 )}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+              </div>
+              <ActorMark id={a.actor} decorative />
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

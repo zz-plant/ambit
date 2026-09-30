@@ -31,6 +31,7 @@ import {
   layoutNodes,
   mapFindings,
   NODE_R,
+  outageImpact,
   type Progress,
   readableSeconds,
   ROW_H,
@@ -45,7 +46,7 @@ import {
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
 import { hasHistory } from './civ/history.ts';
 import { MapKey } from './civ/MapKey.tsx';
-import { Brackets, HazardPattern, JointIcon, type LegendKey } from './civ/marks.tsx';
+import { Brackets, Callout, HazardPattern, JointIcon, type LegendKey } from './civ/marks.tsx';
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
@@ -602,6 +603,15 @@ export default function CivTree({
   // A lens paints with a scale the standard map does not use, so switching to
   // one opens the key until someone closes it; the standard map's key waits
   // to be asked for.
+  // The count the banner states, for the callout on the node that went down.
+  const outageStops = useMemo(
+    () =>
+      simulationMode === 'outage'
+        ? outageImpact(items, { stops: simulatedCascadeIds, weakened: simulatedWeakenedIds })
+            .stopped.length
+        : 0,
+    [simulationMode, items, simulatedCascadeIds, simulatedWeakenedIds]
+  );
   const [keyToggled, setKeyToggled] = useState<boolean | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new lens is what resets the choice
   useEffect(() => setKeyToggled(null), [activeLens]);
@@ -1261,6 +1271,16 @@ export default function CivTree({
                         />
                       )}
 
+                      {/* The node an outage started at, labelled on the map
+                          where the banner names it: the one callout the map
+                          draws, so it is the one place the eye goes. */}
+                      {isSimRoot && simulationMode === 'outage' && (
+                        <Callout
+                          r={NODE_R}
+                          text={outageStops ? `DOWN · STOPS ${outageStops}` : 'DOWN'}
+                          color="var(--error)"
+                        />
+                      )}
                       {selected ? (
                         <Brackets r={NODE_R} color="var(--accent)" />
                       ) : (

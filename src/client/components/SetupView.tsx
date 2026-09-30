@@ -1,3 +1,4 @@
+import { ActorMark } from './ActorMark';
 import { useEffect, useMemo, useState } from 'react';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
@@ -382,7 +383,19 @@ export function SetupView({ onShow }: SetupViewProps) {
               the order of usefulness.
             </p>
             {briefing ? (
-              <pre className="setup-briefing-text">{briefing.text}</pre>
+              // A message, and drawn as one: Ambit's, to the agent, at connect.
+              // The sender and the addressee are the two marks; the text is
+              // exactly what the agent receives.
+              <div className="setup-briefing-message">
+                <p className="setup-briefing-route">
+                  <ActorMark id="ambit" size={20} decorative />
+                  <span>
+                    Ambit <span aria-hidden="true">→</span>{' '}
+                    <ActorMark id="agent" size={16} decorative /> the agent, when it connects
+                  </span>
+                </p>
+                <pre className="setup-briefing-text bubble bubble--from">{briefing.text}</pre>
+              </div>
             ) : (
               <div className="tp-empty tp-empty--note">Composing the briefing…</div>
             )}

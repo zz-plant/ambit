@@ -173,3 +173,40 @@ export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string 
       return null;
   }
 }
+
+/**
+ * A spec-sheet callout, as the saved image draws one: a leader from the
+ * node's upper left to a short rule, and a label in capitals on the rule.
+ * Up and to the left, since the upper right carries a node's check badge and
+ * its setup cost, and the name sits below.
+ */
+export function Callout({ r, text, color }: { r: number; text: string; color: string }) {
+  const from = -r * 0.72;
+  const elbowX = -r - 12;
+  const elbowY = -r - 12;
+  const width = text.length * 6.6 + 4;
+  return (
+    <g pointerEvents="none">
+      <path
+        d={`M${from} ${from} L${elbowX} ${elbowY} H${elbowX - width}`}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.25}
+        strokeOpacity={0.8}
+      />
+      <text
+        className="civ-callout"
+        x={elbowX - 2}
+        y={elbowY - 5}
+        textAnchor="end"
+        fill={color}
+        fontSize={11}
+        fontWeight={600}
+        fontFamily="var(--font-mono)"
+        letterSpacing={0.6}
+      >
+        {text}
+      </text>
+    </g>
+  );
+}

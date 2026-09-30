@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { AuditEvent, AuditOutcome } from '../../shared/api';
 import { useAmbitStore } from '../store/ambitStore';
 import { matchesAudit, parseAuditQuery } from '../utils/auditQuery';
-import { NUM } from './figures';
+import { ActorMark } from './ActorMark';
+import { NUM, Seal } from './figures';
 
 /**
  * The trail: who approved what, what ran, and what came of it, one line per
@@ -31,11 +32,20 @@ function when(at: string): string {
 }
 
 function Outcome({ outcome }: { outcome: AuditOutcome }) {
+  // A signature is the one outcome something can verify afterwards, so it
+  // carries the seal the approval card does, not the tick a passing check has.
+  const signed = outcome.word === 'signed';
   return (
-    <span className={`audit-outcome audit-outcome--${outcome.tone}`}>
-      <span className="audit-outcome-shape" aria-hidden="true">
-        {SHAPE[outcome.tone]}
-      </span>
+    <span
+      className={`audit-outcome audit-outcome--${outcome.tone}${signed ? ' audit-outcome--signed' : ''}`}
+    >
+      {signed ? (
+        <Seal size={15} />
+      ) : (
+        <span className="audit-outcome-shape" aria-hidden="true">
+          {SHAPE[outcome.tone]}
+        </span>
+      )}
       {outcome.word}
     </span>
   );
@@ -58,6 +68,12 @@ export function AuditTrail({ events, query }: { events: AuditEvent[]; query: str
         const time = when(e.at);
         return (
           <li key={e.id} className="audit-row">
+            {/* Who, before what: a person, an agent, a machine or Ambit, told
+                by shape. A line with no recorded actor has an empty slot, so
+                the times and actions stay in one column. */}
+            <span className="audit-who">
+              <ActorMark id={e.actor} size={20} decorative />
+            </span>
             {time && (
               <time className="audit-time" dateTime={e.at} style={NUM}>
                 {time}

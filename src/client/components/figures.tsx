@@ -292,3 +292,39 @@ export function ReachBar({
     </svg>
   );
 }
+
+/**
+ * The seal on something signed: an approval the executor will verify. A
+ * scalloped disc with a check, drawn only where a signature exists, so it
+ * means one thing the way the map's stripes mean one thing. A green pill said
+ * "signed" in the same shape as "check passed".
+ */
+export function Seal({ size = 18, label }: { size?: number; label?: string }) {
+  const c = size / 2;
+  const teeth = 12;
+  const outer = c - 0.5;
+  const inner = c - 2;
+  const points = Array.from({ length: teeth * 2 }, (_, i) => {
+    const r = i % 2 ? inner : outer;
+    const a = (Math.PI * i) / teeth;
+    return `${(c + r * Math.cos(a)).toFixed(2)},${(c + r * Math.sin(a)).toFixed(2)}`;
+  }).join(' ');
+  return (
+    <svg
+      className="seal"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+    >
+      <polygon className="seal-edge" points={points} />
+      <circle className="seal-face" cx={c} cy={c} r={c - 3.5} />
+      <path
+        className="seal-check"
+        d={`M${c - size * 0.18} ${c + size * 0.01} L${c - size * 0.04} ${c + size * 0.14} L${c + size * 0.2} ${c - size * 0.13}`}
+      />
+    </svg>
+  );
+}

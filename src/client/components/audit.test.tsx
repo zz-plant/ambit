@@ -82,8 +82,10 @@ test('an outcome is a shape and a word, and an event that recorded none draws no
   const html = renderToStaticMarkup(<AuditTrail events={events} query="" />);
   const [approved, failed, proposed, rejected] = rows(html);
 
+  // A signature carries the seal, not the tick a passing check has.
   expect(approved).toContain('audit-outcome--good');
-  expect(approved).toContain('✓');
+  expect(approved).toContain('class="seal"');
+  expect(approved).not.toContain('✓');
   expect(approved).toContain('signed');
   expect(failed).toContain('audit-outcome--bad');
   expect(failed).toContain('✕');
