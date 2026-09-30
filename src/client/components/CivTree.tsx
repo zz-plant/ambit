@@ -162,7 +162,7 @@ function ColumnCount({
         y={START_Y - 16}
         textAnchor="middle"
         fill="var(--text-muted)"
-        fontSize={10.5}
+        fontSize={11}
         fontWeight={500}
         style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
       >
@@ -238,7 +238,7 @@ export function ColumnHead({
         y={START_Y - 27}
         textAnchor="middle"
         fill="var(--text-primary)"
-        fontSize={12.5}
+        fontSize={13}
         fontWeight={600}
         style={{ fontFamily: 'var(--font-sans)' }}
       >
@@ -951,7 +951,7 @@ export default function CivTree({
             const list = cols[d] || [];
             return (
               <g key={`band-${d}`}>
-                <rect {...bandOf(i, contentHeight)} fill="rgba(255, 255, 255, 0.018)" rx={12} />
+                <rect {...bandOf(i, contentHeight)} fill="var(--band)" rx={12} />
                 <ColumnHead
                   column={d}
                   index={i}
@@ -1278,7 +1278,7 @@ export default function CivTree({
                           y={-NODE_R + 4}
                           textAnchor="start"
                           fill="var(--accent)"
-                          fontSize={11.5}
+                          fontSize={12}
                           fontWeight={600}
                           fontFamily="var(--font-sans)"
                         >
@@ -1343,7 +1343,7 @@ export default function CivTree({
                               textAnchor="middle"
                               fill="var(--on-accent)"
                               fontSize={9}
-                              fontWeight={800}
+                              fontWeight={700}
                             >
                               ✓
                             </text>
@@ -1364,7 +1364,7 @@ export default function CivTree({
                               textAnchor="middle"
                               fill="var(--on-accent)"
                               fontSize={9}
-                              fontWeight={800}
+                              fontWeight={700}
                             >
                               !
                             </text>
@@ -1475,7 +1475,7 @@ export default function CivTree({
                     x={12}
                     y={16}
                     fill="var(--text-primary)"
-                    fontSize={12.5}
+                    fontSize={13}
                     fontWeight={600}
                     fontFamily="var(--font-sans)"
                   >
@@ -1499,7 +1499,7 @@ export default function CivTree({
                       x={12}
                       y={headH + keyH + 12 + i * 15}
                       fill="var(--text-secondary)"
-                      fontSize={11.5}
+                      fontSize={12}
                       fontFamily="var(--font-sans)"
                     >
                       {line}
@@ -1530,7 +1530,7 @@ export default function CivTree({
                         x={14}
                         y={headH + keyH + descH + 30 + i * 15}
                         fill="var(--text-primary)"
-                        fontSize={11.5}
+                        fontSize={12}
                         fontFamily="var(--font-sans)"
                       >
                         {label}

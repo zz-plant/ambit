@@ -102,8 +102,25 @@
   --font-mono: 'IBM Plex Mono', 'SF Mono', 'Menlo', Consolas, monospace;
   --font: var(--font-sans);
 
+  /* The type scale: eight steps, and nothing between them. There were
+     seventeen sizes, six of them a half pixel from a neighbour, and a reader
+     sees a half-pixel step as a mistake, not as a level. Weights are 400, 500,
+     600 and 700. */
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
   --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 28px;
+  --fs-3xl: 36px;
   --lh-body: 1.5;
+
+  /* What a dialog lays over the page, and the recessed ground a segmented
+     control sits in. */
+  --scrim: rgba(0, 0, 0, 0.65);
+  --bg-inset: rgba(0, 0, 0, 0.3);
+  --band: rgba(255, 255, 255, 0.018);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
@@ -222,7 +239,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-brand {
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   letter-spacing: -0.2px;
   color: var(--text-primary);
   display: flex;
@@ -246,7 +263,7 @@ code, pre, .code, .sp-cli-cmd {
 /* The key beside the Search button, in the same grey as the tooltips. */
 .app-deck-key {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
@@ -260,17 +277,17 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-full);
   background: var(--warn);
   color: var(--bg-canvas);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   line-height: 16px;
   text-align: center;
 }
 
 .app-status-pill {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-hover);
   border: 1px solid var(--border-bright);
   padding: 3px 10px;
   border-radius: var(--radius-full);
@@ -281,7 +298,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-status-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border);
   border-color: var(--border-hover);
   color: var(--text-primary);
 }
@@ -301,7 +318,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   cursor: pointer;
   border-radius: var(--radius-xs);
   transition: color 0.12s ease;
@@ -335,7 +352,7 @@ code, pre, .code, .sp-cli-cmd {
 .app-deck-nav {
   display: flex;
   gap: 3px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-inset);
   border: 1px solid var(--border);
   padding: 3px;
   border-radius: var(--radius-md);
@@ -348,7 +365,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   padding: 4px 12px;
   cursor: pointer;
@@ -388,7 +405,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-family: var(--font-sans);
   font-weight: 500;
   border-radius: var(--radius-sm);
@@ -418,13 +435,13 @@ code, pre, .code, .sp-cli-cmd {
 .tp-btn {
   height: 32px;
   padding: 0 14px;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .tp-btn-sm {
   height: 26px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   background: var(--bg-surface);
 }
@@ -484,7 +501,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .setup-title {
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: -0.3px;
   color: var(--text-primary);
@@ -492,7 +509,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .setup-subtitle {
   margin-top: 4px;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.5;
   color: var(--text-muted);
   max-width: 560px;
@@ -501,7 +518,7 @@ code, pre, .code, .sp-cli-cmd {
 .setup-tabs {
   display: flex;
   gap: 3px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-inset);
   border: 1px solid var(--border);
   padding: 3px;
   border-radius: var(--radius-md);
@@ -513,7 +530,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   padding: 4px 12px;
   cursor: pointer;
@@ -548,13 +565,13 @@ code, pre, .code, .sp-cli-cmd {
   align-items: baseline;
   gap: 8px;
   margin-bottom: 6px;
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .setup-group-n {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -594,7 +611,7 @@ code, pre, .code, .sp-cli-cmd {
   min-width: 0;
   text-align: left;
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 500;
   color: var(--text-primary);
   background: none;
@@ -611,11 +628,11 @@ code, pre, .code, .sp-cli-cmd {
 
 .setup-row-glyph {
   flex: none;
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .setup-row-kind {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -632,7 +649,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .setup-row-evidence {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -640,7 +657,7 @@ code, pre, .code, .sp-cli-cmd {
 .setup-row-verify {
   grid-column: 1 / -1;
   justify-self: start;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
 }
 
 /* What the list found, above the list: a failing check, and enabled servers
@@ -664,7 +681,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-surface);
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -691,7 +708,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .setup-row-idle {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--warn);
 }
 
@@ -717,7 +734,7 @@ code, pre, .code, .sp-cli-cmd {
 /* A node this entry provides, as a link onto the map. */
 .setup-chip {
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
@@ -785,7 +802,7 @@ code, pre, .code, .sp-cli-cmd {
 /* A write that did not happen, said in the row that asked for it. */
 .setup-row-error {
   grid-column: 1 / -1;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--error);
 }
 
@@ -802,7 +819,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-family: var(--font-sans);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -825,7 +842,7 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   padding: 4px;
   border-radius: var(--radius-xs);
   display: flex;
@@ -852,7 +869,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
@@ -874,7 +891,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .tp-match-count {
   margin: -8px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -914,13 +931,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .tp-item-name {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .tp-item-meta {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -933,7 +950,7 @@ code, pre, .code, .sp-cli-cmd {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
@@ -972,7 +989,7 @@ code, pre, .code, .sp-cli-cmd {
 .tp-empty {
   padding: 24px 0;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
 }
 
@@ -1005,7 +1022,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-sig {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   margin-top: 2px;
 }
 
@@ -1014,14 +1031,14 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-designation {
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.3;
 }
 
 .sp-class {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -1031,7 +1048,7 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fs-base);
   padding: 2px 4px;
   border-radius: var(--radius-xs);
   transition: color 0.12s ease;
@@ -1050,14 +1067,14 @@ code, pre, .code, .sp-cli-cmd {
   align-items: baseline;
   gap: 6px;
   margin: 0 0 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--warn);
 }
 
 .sp-evidence {
   margin: 0 0 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--ok);
 }
@@ -1068,7 +1085,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   gap: 10px;
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -1093,7 +1110,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-verdict-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   line-height: 1.3;
 }
@@ -1108,7 +1125,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-verdict-body {
   margin: 4px 0 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -1125,7 +1142,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
 }
@@ -1135,7 +1152,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-verdict-btn code {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1144,7 +1161,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-note {
   margin: 8px 0 0;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -1153,7 +1170,7 @@ code, pre, .code, .sp-cli-cmd {
 /* What depends on it, the panel's second finding: body size, not a footnote. */
 .sp-impact {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.45;
   color: var(--text-primary);
 }
@@ -1168,7 +1185,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1189,7 +1206,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-desc {
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -1236,7 +1253,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   background: var(--bg-surface);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1262,7 +1279,7 @@ code, pre, .code, .sp-cli-cmd {
 .sp-action-btn--outage {
   border: 1px solid var(--error);
   color: var(--error);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .sp-action-btn--outage:hover {
@@ -1272,7 +1289,7 @@ code, pre, .code, .sp-cli-cmd {
 .sp-action-btn--unlock {
   border: 1px solid var(--ok);
   color: var(--ok);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .sp-action-btn--unlock:hover {
@@ -1296,7 +1313,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-cli-cmd {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1309,7 +1326,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-xs);
   color: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   padding: 2px 8px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -1349,7 +1366,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   gap: 8px;
   padding: 3px 0;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
@@ -1375,7 +1392,7 @@ code, pre, .code, .sp-cli-cmd {
   margin-left: auto;
   padding-left: 8px;
   color: var(--text-muted);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -1384,7 +1401,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
 }
 
@@ -1419,7 +1436,7 @@ code, pre, .code, .sp-cli-cmd {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   letter-spacing: 0.2px;
   color: var(--text-secondary);
@@ -1465,7 +1482,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-ladder-facts {
   margin: 8px 0 12px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -1511,7 +1528,7 @@ code, pre, .code, .sp-cli-cmd {
   box-sizing: border-box;
   color: var(--on-accent);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sp-rung--reached .sp-rung-mark {
@@ -1532,7 +1549,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-rung-name {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
@@ -1543,7 +1560,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-rung-state {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: var(--text-muted);
@@ -1560,7 +1577,7 @@ code, pre, .code, .sp-cli-cmd {
 .sp-rung-detail {
   grid-column: 2 / -1;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -1657,7 +1674,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -1679,7 +1696,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .civ-zoom-btn:not(:has(svg)) {
   padding: 0 9px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 
@@ -1726,7 +1743,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .civ-key-head {
   padding: 4px 6px 2px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -1741,7 +1758,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   text-align: left;
 }
 
@@ -1761,7 +1778,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .civ-key-hint {
   margin: 6px 6px 2px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -1775,7 +1792,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -1789,7 +1806,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .civ-lens-hud .app-deck-tab {
   padding: 3px 10px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 /* Laid under the HUD like the HUD itself: a zero-height strip, so the banner
@@ -1860,7 +1877,7 @@ code, pre, .code, .sp-cli-cmd {
   max-width: 100%;
   padding: 6px 14px;
   border-radius: var(--radius-full);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   background: var(--bg-glass);
   box-shadow: var(--shadow-md);
@@ -1883,7 +1900,7 @@ code, pre, .code, .sp-cli-cmd {
   color: currentColor;
   padding: 2px 10px;
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -1915,7 +1932,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: var(--bg-glass);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 
@@ -1950,7 +1967,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .civ-range-sep {
   color: var(--border-bright);
-  font-weight: 300;
+  font-weight: 400;
   user-select: none;
 }
 
@@ -1989,7 +2006,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
@@ -2011,7 +2028,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--accent-line);
   background: var(--bg-glass);
   box-shadow: var(--shadow-md);
-  font-size: 14px;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
 }
 
@@ -2034,8 +2051,8 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: 50%;
   background: var(--error);
   color: var(--on-accent);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: 700;
   flex-shrink: 0;
 }
 
@@ -2047,7 +2064,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
 }
@@ -2070,7 +2087,7 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .civ-finding {
-    font-size: 13px;
+    font-size: var(--fs-md);
     border-radius: var(--radius-lg);
   }
 }
@@ -2098,7 +2115,7 @@ code, pre, .code, .sp-cli-cmd {
   padding-bottom: 8px;
   border-top: 1px solid var(--border);
   background: var(--bg-glass);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 
@@ -2136,7 +2153,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -2247,14 +2264,14 @@ code, pre, .code, .sp-cli-cmd {
 .civ-timeline-ends {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 /* The header says whose day its counts are while the map is in the past. */
 .app-status-asof {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--accent);
   white-space: nowrap;
 }
@@ -2266,7 +2283,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--accent-line);
   border-radius: var(--radius);
   background: var(--accent-soft);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -2307,7 +2324,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .civ-minimap-band {
-  fill: rgba(255, 255, 255, 0.06);
+  fill: var(--border-subtle);
 }
 
 .civ-minimap-dot {
@@ -2358,7 +2375,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border-bright);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   line-height: 1.45;
 }
@@ -2399,7 +2416,7 @@ code, pre, .code, .sp-cli-cmd {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -2407,7 +2424,7 @@ code, pre, .code, .sp-cli-cmd {
 /* The question a visitor already has, as the headline. The product name
    moved up into the brand line: nobody arrives asking what Ambit is called. */
 .app-welcome-title {
-  font-size: 36px;
+  font-size: var(--fs-3xl);
   line-height: 1.15;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -2419,7 +2436,7 @@ code, pre, .code, .sp-cli-cmd {
 /* What it is, in concrete nouns: a visitor's first question is whether it
    reads the tool they use. */
 .app-welcome-lede {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1.6;
   color: var(--text-secondary);
   text-wrap: pretty;
@@ -2441,7 +2458,7 @@ code, pre, .code, .sp-cli-cmd {
   flex: 1 1 auto;
   padding: 10px 12px;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   white-space: nowrap;
   overflow-x: auto;
@@ -2456,7 +2473,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
@@ -2471,7 +2488,7 @@ code, pre, .code, .sp-cli-cmd {
   gap: 6px 20px;
   padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .app-welcome-more a {
@@ -2498,7 +2515,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-surface);
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1.5;
   text-align: left;
   cursor: pointer;
@@ -2513,7 +2530,7 @@ code, pre, .code, .sp-cli-cmd {
 .app-welcome-fact-figure {
   flex-shrink: 0;
   min-width: 1ch;
-  font-size: 44px;
+  font-size: var(--fs-3xl);
   font-weight: 600;
   line-height: 1;
   color: var(--error);
@@ -2539,7 +2556,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-welcome-yours h2 {
   margin: 0 0 10px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -2549,7 +2566,7 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 400;
   color: var(--text-secondary);
   cursor: pointer;
@@ -2564,7 +2581,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-welcome-local {
   margin-top: -10px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-muted);
 }
@@ -2579,22 +2596,22 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .app-welcome-title {
-    font-size: 27px;
+    font-size: var(--fs-2xl);
     margin-top: 4px;
   }
 
   .app-welcome-lede {
-    font-size: 15px;
+    font-size: var(--fs-lg);
   }
 
   .app-welcome-fact {
     gap: 14px;
     padding: 14px;
-    font-size: 14px;
+    font-size: var(--fs-base);
   }
 
   .app-welcome-fact-figure {
-    font-size: 36px;
+    font-size: var(--fs-3xl);
   }
 }
 
@@ -2602,7 +2619,7 @@ code, pre, .code, .sp-cli-cmd {
 .uplink-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2633,7 +2650,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid transparent;
   background: transparent;
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
@@ -2653,7 +2670,7 @@ code, pre, .code, .sp-cli-cmd {
 .gov-empty {
   padding: 32px 0;
   text-align: center;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -2692,12 +2709,12 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-id {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
 }
 
 .gov-status {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   padding: 2px 9px;
   border-radius: var(--radius-full);
@@ -2711,7 +2728,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-goal {
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
@@ -2734,7 +2751,7 @@ code, pre, .code, .sp-cli-cmd {
   gap: 8px;
   padding-left: 8px;
   border-left: 2px solid var(--accent-dim);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .gov-step code {
@@ -2742,7 +2759,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-step-via {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -2777,13 +2794,13 @@ code, pre, .code, .sp-cli-cmd {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   cursor: pointer;
 }
 
 .gov-pick-note {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--warn);
 }
 
@@ -2801,7 +2818,7 @@ code, pre, .code, .sp-cli-cmd {
 /* A step nothing can undo. The word carries it and the outline marks it, so
    the colour is never the only sign. */
 .gov-step-mark {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   padding: 0 7px;
   border-radius: var(--radius-full);
@@ -2821,13 +2838,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-signed {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--ok);
 }
 
 .gov-hint {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
 }
 
@@ -2852,7 +2869,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .audit-title {
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: -0.3px;
   color: var(--text-primary);
@@ -2861,7 +2878,7 @@ code, pre, .code, .sp-cli-cmd {
 .audit-sub,
 .audit-empty {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.55;
   color: var(--text-secondary);
   max-width: 640px;
@@ -2877,7 +2894,7 @@ code, pre, .code, .sp-cli-cmd {
 .audit-hint,
 .audit-count {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -2897,12 +2914,12 @@ code, pre, .code, .sp-cli-cmd {
   gap: 4px 12px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .audit-time {
   min-width: 108px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -2915,7 +2932,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .audit-actor,
 .audit-target {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -2936,7 +2953,7 @@ code, pre, .code, .sp-cli-cmd {
   padding: 0 8px;
   border: 1px solid var(--border-bright);
   border-radius: var(--radius-full);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   white-space: nowrap;
   color: var(--text-secondary);
@@ -2995,7 +3012,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-guide-head strong {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -3005,7 +3022,7 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .app-guide-steps {
@@ -3013,7 +3030,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -3023,7 +3040,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   border: none;
   color: var(--accent);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   cursor: pointer;
   padding: 0;
@@ -3060,7 +3077,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .loop-title {
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   letter-spacing: -0.3px;
   color: var(--text-primary);
@@ -3069,7 +3086,7 @@ code, pre, .code, .sp-cli-cmd {
 /* The page's sentence: the saving, in the page's largest type. */
 .loop-lead {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--fs-2xl);
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.02em;
@@ -3078,7 +3095,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .loop-lead strong {
   color: var(--text-primary);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .loop-move {
@@ -3095,7 +3112,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .loop-move p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -3114,7 +3131,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -3126,7 +3143,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .loop-subtitle {
   margin-top: 10px;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.55;
   color: var(--text-secondary);
   max-width: 640px;
@@ -3142,7 +3159,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .loop-section-title {
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -3158,7 +3175,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
@@ -3215,13 +3232,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-caption-title {
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .fig-caption-note {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -3253,11 +3270,11 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig--alert .fig-caption-title {
   color: var(--error);
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .fig--alert .fig-key-label {
-  font-size: 14px;
+  font-size: var(--fs-base);
   color: var(--text-primary);
 }
 
@@ -3275,8 +3292,8 @@ code, pre, .code, .sp-cli-cmd {
 /* A hero number is a figure, not a headline: big enough to be the first thing
    read, with the unit small beside it so the digits stay the mark. */
 .fig-kpi-value {
-  font-size: 30px;
-  font-weight: 650;
+  font-size: var(--fs-2xl);
+  font-weight: 600;
   line-height: 1.1;
   color: var(--text-primary);
   letter-spacing: -0.02em;
@@ -3284,7 +3301,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-kpi-unit {
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 500;
   color: var(--text-secondary);
   letter-spacing: 0;
@@ -3292,7 +3309,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-kpi-second {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--text-secondary);
   margin-top: 2px;
@@ -3322,7 +3339,7 @@ code, pre, .code, .sp-cli-cmd {
 /* The comparison the band is measured from. Dashed so it reads as a reference
    rather than as a second series. */
 .fig-spark-base {
-  stroke: rgba(255, 255, 255, 0.28);
+  stroke: var(--border-hover);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
@@ -3344,14 +3361,14 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-spark-label {
   fill: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
 /* The name of the thing that landed, above the drop it explains. */
 .fig-spark-note {
   fill: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
 }
 
@@ -3451,7 +3468,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-tick {
   fill: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -3497,7 +3514,7 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: 10px 28px 1fr;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -3548,7 +3565,7 @@ code, pre, .code, .sp-cli-cmd {
 .fig-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .fig-table th,
@@ -3560,7 +3577,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-table thead th {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -3572,7 +3589,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-th-unit {
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -3589,7 +3606,7 @@ code, pre, .code, .sp-cli-cmd {
 .fig-th-scale {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
@@ -3619,14 +3636,14 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-row-title {
   display: block;
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 3px;
 }
 
 .fig-conf {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.03em;
   color: var(--text-muted);
 }
@@ -3662,7 +3679,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-inline-label {
   fill: var(--text-primary);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -3688,7 +3705,7 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
   border-radius: var(--radius-sm);
   padding: 5px 10px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -3701,7 +3718,7 @@ code, pre, .code, .sp-cli-cmd {
 .fig-legend {
   display: flex;
   gap: 16px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   margin: 10px 0 0;
 }
@@ -3735,13 +3752,13 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-bar-name {
   grid-area: name;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--text-primary);
 }
 
 .fig-tag {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -3775,7 +3792,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-bar-value {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   margin-left: 8px;
@@ -3785,13 +3802,13 @@ code, pre, .code, .sp-cli-cmd {
 .fig-bar-count {
   grid-area: count;
   text-align: right;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
 .fig-bar-note {
   grid-area: note;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   line-height: 1.45;
 }
@@ -3883,7 +3900,7 @@ code, pre, .code, .sp-cli-cmd {
   position: absolute;
   top: 2px;
   transform: translateX(-50%);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -3926,7 +3943,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .loop-foot {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-muted);
   border-top: 1px solid var(--border);
@@ -3939,7 +3956,7 @@ code, pre, .code, .sp-cli-cmd {
   padding: 1px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 /* ─── LOADING & ERROR STATES ─── */
@@ -3951,7 +3968,7 @@ code, pre, .code, .sp-cli-cmd {
   justify-content: center;
   gap: 12px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .app-loading-ring {
@@ -3971,14 +3988,14 @@ code, pre, .code, .sp-cli-cmd {
   padding: 32px;
   text-align: center;
   color: var(--error);
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 /* ─── DOCS MODAL STYLES ─── */
 .docs-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4008,13 +4025,13 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .docs-title {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .docs-subtitle {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -4023,7 +4040,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   cursor: pointer;
   padding: 4px;
   border-radius: var(--radius-xs);
@@ -4057,7 +4074,7 @@ code, pre, .code, .sp-cli-cmd {
   margin-bottom: -1px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
@@ -4083,7 +4100,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .docs-lede {
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -4108,24 +4125,24 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .docs-concept-term {
-  font-size: 14px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .docs-concept-short {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
 }
 
 .docs-concept-long {
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-secondary);
 }
 
 .docs-concept-seen {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   margin-top: 4px;
 }
@@ -4135,20 +4152,20 @@ code, pre, .code, .sp-cli-cmd {
    empty spans, and the shortcut keys were styled inline. The rules that did
    exist were for two tables nothing rendered. */
 .docs-h3 {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
   margin-top: 4px;
 }
 
 .docs-p {
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-secondary);
 }
 
 .docs-muted {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
 }
 
@@ -4162,7 +4179,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -4182,7 +4199,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: center;
   justify-content: center;
   color: var(--on-accent);
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
@@ -4203,21 +4220,21 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: 160px minmax(0, 1fr);
   gap: 12px;
   align-items: baseline;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .docs-action code.docs-cmd {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--accent);
 }
 
 .docs-cmd-inline {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--accent);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -4228,7 +4245,7 @@ code, pre, .code, .sp-cli-cmd {
 .docs-kbd {
   justify-self: start;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   background: var(--bg-elevated);
@@ -4428,7 +4445,7 @@ code, pre, .code, .sp-cli-cmd {
      faintest marks go first. The names get a size a phone can read at the
      zoom it frames to, and what is dimmed stays dimmed but survives. */
   .civ-node-label {
-    font-size: 13px;
+    font-size: var(--fs-md);
   }
 
   .civ-node--dim {
@@ -4462,7 +4479,7 @@ code, pre, .code, .sp-cli-cmd {
 
   .civ-lens-hud .app-deck-tab {
     padding: 3px 8px;
-    font-size: 12px;
+    font-size: var(--fs-sm);
   }
 
   .tp-filter-chips {
@@ -4531,12 +4548,12 @@ code, pre, .code, .sp-cli-cmd {
   }
 
   .app-brand {
-    font-size: 14px;
+    font-size: var(--fs-base);
   }
 
   .app-deck-tab {
     padding: 6px 8px;
-    font-size: 13px;
+    font-size: var(--fs-md);
     gap: 6px;
   }
 
@@ -4605,7 +4622,7 @@ code, pre, .code, .sp-cli-cmd {
   padding: 3px 9px;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -4645,7 +4662,7 @@ code, pre, .code, .sp-cli-cmd {
   border-radius: var(--radius-full);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
 }
@@ -4674,7 +4691,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-toggle-note {
   margin: 6px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-muted);
 }
@@ -4687,7 +4704,7 @@ code, pre, .code, .sp-cli-cmd {
 .tp-note {
   margin: 0;
   padding: 0 0 10px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-subtle);
@@ -4696,7 +4713,7 @@ code, pre, .code, .sp-cli-cmd {
 .tp-finding {
   margin: 0;
   padding: 8px 14px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.45;
   color: var(--text-secondary);
   border-left: 2px solid var(--border-bright);
@@ -4752,7 +4769,7 @@ code, pre, .code, .sp-cli-cmd {
 .infra-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .infra-table th,
@@ -4764,7 +4781,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .infra-table th {
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4779,7 +4796,7 @@ code, pre, .code, .sp-cli-cmd {
 .infra-kind {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -4796,7 +4813,7 @@ code, pre, .code, .sp-cli-cmd {
   padding: 1px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -4835,7 +4852,7 @@ code, pre, .code, .sp-cli-cmd {
   border-left: 3px solid var(--accent);
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.55;
   color: var(--text-secondary);
 }
@@ -4850,7 +4867,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .setup-unplaced code {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
 }
 
@@ -4873,7 +4890,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.5;
 }
 
@@ -4897,7 +4914,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 600;
   cursor: pointer;
 }
@@ -4920,19 +4937,19 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--accent);
   cursor: pointer;
 }
 
 .intake-error {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--error);
 }
 
 .intake-where summary {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -4947,7 +4964,7 @@ code, pre, .code, .sp-cli-cmd {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
   gap: 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .intake-where dt {
@@ -4961,14 +4978,14 @@ code, pre, .code, .sp-cli-cmd {
 
 .intake-where code {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
 
 .intake-note {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -4988,7 +5005,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .app-tour-count {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
@@ -4996,7 +5013,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-tour-title {
   margin: 0 0 8px;
-  font-size: 17px;
+  font-size: var(--fs-lg);
   line-height: 1.3;
   font-weight: 600;
   color: var(--text-primary);
@@ -5005,7 +5022,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-tour-body {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-secondary);
 }
@@ -5016,7 +5033,7 @@ code, pre, .code, .sp-cli-cmd {
   border: none;
   padding: 0;
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 500;
   color: var(--accent);
   cursor: pointer;
@@ -5042,7 +5059,7 @@ code, pre, .code, .sp-cli-cmd {
   min-width: 0;
   padding: 7px 10px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow-x: auto;
@@ -5056,13 +5073,13 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
 .app-tour-note {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -5098,7 +5115,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   cursor: pointer;
 }
 
@@ -5110,7 +5127,7 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--accent-dim);
   color: var(--on-accent);
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 600;
   cursor: pointer;
 }
@@ -5129,7 +5146,7 @@ code, pre, .code, .sp-cli-cmd {
   margin: 20px 0 0;
   padding-left: 20px;
   max-width: 620px;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.7;
   color: var(--text-secondary);
 }
@@ -5140,13 +5157,13 @@ code, pre, .code, .sp-cli-cmd {
 
 .loop-empty-steps code {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
 }
 
 .fig-note {
   margin: 8px 0 0;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-muted);
 }
@@ -5156,7 +5173,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-row-none {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
 }
 
@@ -5207,20 +5224,20 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .term-pop-title {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--text-primary);
 }
 
 .term-pop-short {
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--text-secondary);
 }
 
 .term-pop-seen {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-muted);
   display: flex;
@@ -5230,7 +5247,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .term-pop-seen-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5248,7 +5265,7 @@ code, pre, .code, .sp-cli-cmd {
   align-items: flex-start;
   justify-content: center;
   padding: 12vh 20px 20px;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--scrim);
 }
 
 .finder {
@@ -5273,7 +5290,7 @@ code, pre, .code, .sp-cli-cmd {
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .finder-input:focus,
@@ -5290,7 +5307,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .finder-group {
   padding: 8px 10px 4px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5309,7 +5326,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-primary);
   font: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   text-align: left;
   cursor: pointer;
 }
@@ -5320,7 +5337,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .finder-item-glyph {
   text-align: center;
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 
 .finder-item-name {
@@ -5330,14 +5347,14 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .finder-item-meta {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .finder-empty {
   padding: 18px 10px;
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
   text-align: center;
 }
@@ -5349,7 +5366,7 @@ code, pre, .code, .sp-cli-cmd {
   margin: 18vh auto 0;
   padding: 0 24px;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-secondary);
   display: flex;
@@ -5360,7 +5377,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .app-map-empty code {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -5404,7 +5421,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-subtitle {
   margin: 0 0 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -5423,7 +5440,7 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: minmax(160px, 1fr) minmax(0, 1.4fr) auto;
   gap: 12px;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .fig-promote-what {
@@ -5432,7 +5449,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-promote-why {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -5474,7 +5491,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-next-rank {
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-muted);
   text-align: right;
@@ -5489,20 +5506,20 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-next-name {
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .fig-next-cost {
   margin-left: 8px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-muted);
 }
 
 .fig-next-why {
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.45;
   color: var(--text-secondary);
 }
@@ -5512,7 +5529,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 16px;
-  font-size: 14px;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
 }
 
@@ -5539,7 +5556,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .loop-since-note {
   width: 100%;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -5548,7 +5565,7 @@ code, pre, .code, .sp-cli-cmd {
   margin: 0;
   display: grid;
   gap: 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .gov-decision-row {
@@ -5559,7 +5576,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .gov-decision dt {
   padding-top: 1px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5604,12 +5621,12 @@ code, pre, .code, .sp-cli-cmd {
    it runs on. A heading and one line per clause. */
 .sp-joint {
   margin: 10px 0 0;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
 }
 
 .sp-joint-hd {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -5623,7 +5640,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-authority {
   margin: 0 0 4px;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--text-secondary);
 }
@@ -5634,7 +5651,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .sp-failure {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   color: var(--error);
 }
@@ -5642,7 +5659,7 @@ code, pre, .code, .sp-cli-cmd {
 .sp-action-btn--gap {
   border: 1px solid var(--warn);
   color: var(--warn);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .sp-action-btn--gap:hover {
@@ -5663,7 +5680,7 @@ code, pre, .code, .sp-cli-cmd {
 .sp-action-btn--focus {
   border: 1px solid var(--accent-line);
   color: var(--accent);
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .sp-action-btn--focus:hover {
@@ -5689,7 +5706,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-focus-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -5710,7 +5727,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
@@ -5737,7 +5754,7 @@ code, pre, .code, .sp-cli-cmd {
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   cursor: pointer;
 }
 
@@ -5752,7 +5769,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-focus-note {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--text-muted);
 }
@@ -5786,7 +5803,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .gov-decline-label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -5796,7 +5813,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .gov-error {
   margin: 0;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
   color: var(--error);
 }
 
@@ -5820,7 +5837,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
@@ -5857,7 +5874,7 @@ code, pre, .code, .sp-cli-cmd {
   grid-template-columns: minmax(140px, 1fr) minmax(0, 1.6fr) auto;
   gap: 12px;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--fs-md);
 }
 
 .fig-demand-name {
@@ -5866,7 +5883,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-demand-why {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -5878,7 +5895,7 @@ code, pre, .code, .sp-cli-cmd {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -5934,7 +5951,7 @@ code, pre, .code, .sp-cli-cmd {
    are words on a tag, so the line reads without a colour. */
 .fig-needs {
   margin: 6px 0 2px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   font-weight: 400;
   line-height: 1.45;
   color: var(--text-muted);
@@ -5976,7 +5993,7 @@ code, pre, .code, .sp-cli-cmd {
 .fig-install {
   grid-column: 1 / -1;
   min-width: 0;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
 }
 
 .fig-install summary {
@@ -5993,7 +6010,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -6004,7 +6021,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -6026,12 +6043,12 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .fig-run-human {
   margin: 0 0 10px;
-  font-size: 13.5px;
+  font-size: var(--fs-base);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -6045,7 +6062,7 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-run-lane {
   fill: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .fig-run-bar {
@@ -6113,7 +6130,7 @@ code, pre, .code, .sp-cli-cmd {
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -6127,7 +6144,7 @@ code, pre, .code, .sp-cli-cmd {
   width: 100%;
   margin-top: 12px;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: var(--fs-md);
 }
 
 .fig-run-asks th,
@@ -6139,7 +6156,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .fig-run-asks th {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6181,7 +6198,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .tp-inline-hint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--accent);
 }
 
@@ -6193,7 +6210,7 @@ code, pre, .code, .sp-cli-cmd {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.6;
   color: var(--text-secondary);
   white-space: pre-wrap;
