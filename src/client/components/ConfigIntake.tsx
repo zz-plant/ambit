@@ -45,7 +45,7 @@ export default function ConfigIntake({ onMapped, rows = 4 }: ConfigIntakeProps) 
         <input
           ref={fileInput}
           type="file"
-          accept="application/json,.json"
+          accept="application/json,.json,.jsonc"
           aria-label="Choose an agent config file to map"
           className="visually-hidden"
           onChange={e => readFile(e.target.files?.[0])}

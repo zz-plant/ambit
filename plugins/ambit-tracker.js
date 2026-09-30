@@ -4,9 +4,15 @@
  * use hourly but never reconfigure should look static, because the question is
  * "what have I stopped tending", not "what do I use least".
  *
+ * One file for both major versions of OpenCode: the default export carries
+ * `id` and `setup` for OpenCode 2 and `server` for OpenCode 1, and each version
+ * reads only its own. OpenCode 2 announces a changed config and lists what it
+ * loaded, so under V2 a change is what differs between two listings.
+ *
  * Install:
  *   cp plugins/ambit-tracker.js ~/.config/opencode/plugins/
- * then add "./plugins/ambit-tracker.js" to `plugin` in opencode.json.
+ * OpenCode 2 loads the plugins directory on its own. OpenCode 1 also needs
+ * "./plugins/ambit-tracker.js" in `plugin` in opencode.json.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
@@ -127,3 +133,41 @@ export const AmbitTracker = async ctx => {
 };
 
 export const TechTreeTracker = AmbitTracker;
+
+// ─── OpenCode 2 ───────────────────────────────────────────────────────────────
+
+/**
+ * The MCP servers and agents OpenCode has loaded, as the ids the seed gives
+ * them. An agent is listed under its config key, which is what the seed names
+ * it by.
+ */
+async function loaded(ctx) {
+  const ids = new Set();
+  const [servers, agents] = await Promise.all([
+    ctx.mcp.list().catch(() => null),
+    ctx.agent.list().catch(() => null),
+  ]);
+  for (const s of servers?.data ?? []) if (s?.name) ids.add(`mcp:${s.name}`);
+  for (const a of agents?.data ?? []) if (a?.id ?? a?.name) ids.add(`agent:${a.id ?? a.name}`);
+  return ids;
+}
+
+async function setup(ctx) {
+  // What was there when the plugin loaded is the baseline, not a change: the
+  // built-in agents and every server already configured are not news.
+  let before = await loaded(ctx);
+  const controller = new AbortController();
+  void (async () => {
+    for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+      if (event?.type !== 'config.updated') continue;
+      const after = await loaded(ctx);
+      for (const id of after) if (!before.has(id)) write(id, 'built', 'Added to configuration');
+      for (const id of before)
+        if (!after.has(id)) write(id, 'removed', 'Removed from configuration');
+      before = after;
+    }
+  })().catch(() => {});
+  return () => controller.abort();
+}
+
+export default { id: 'ambit-tracker', setup, server: AmbitTracker };

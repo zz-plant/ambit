@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { configDefault } from './paths.ts';
+import { configSection, entryInShape, mcpEntries } from '../shared/opencode.ts';
 import { getDb, type Db } from './db.ts';
 import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
@@ -28,7 +29,8 @@ function inverseOf(patch: any, currentConfig: any): any | null {
   for (const [section, entries] of Object.entries<any>(patch)) {
     if (!entries || typeof entries !== 'object' || Array.isArray(entries)) return null;
     for (const key of Object.keys(entries)) {
-      const existing = currentConfig?.[section]?.[key];
+      const bag = currentConfig ? configSection(currentConfig, section) : undefined;
+      const existing = bag && Object.hasOwn(bag, key) ? bag[key] : undefined;
       // Overwriting something means the inverse must put the old value back,
       // and guessing at that is exactly the kind of "probably reversible" this
       // is meant to exclude.
@@ -441,9 +443,9 @@ function applyProposal(db: Db, proposalId?: string) {
   const applied: string[] = [];
   for (const step of steps) {
     for (const [section, entries] of Object.entries<any>(step.config_patch)) {
-      config[section] = config[section] || {};
+      const bag = configSection(config, section, true) as Record<string, unknown>;
       for (const [key, value] of Object.entries<any>(entries)) {
-        config[section][key] = value;
+        bag[key] = entryInShape(config, section, value);
         applied.push(`${section}.${key}`);
       }
     }
@@ -525,15 +527,15 @@ function rollbackProposal(db: Db, proposalId?: string) {
     const inv = step.inverse || {};
     for (const path of inv.remove || []) {
       const [section, key] = path.split('.');
-      if (config[section] && key in config[section]) {
-        delete config[section][key];
+      const bag = configSection(config, section);
+      if (bag && Object.hasOwn(bag, key)) {
+        delete bag[key];
         removed.push(path);
       }
     }
     for (const [path, value] of Object.entries<any>(inv.restore || {})) {
       const [section, key] = path.split('.');
-      config[section] = config[section] || {};
-      config[section][key] = value;
+      (configSection(config, section, true) as Record<string, unknown>)[key] = value;
       restored.push(path);
     }
   }
@@ -556,23 +558,37 @@ function rollbackProposal(db: Db, proposalId?: string) {
 // ─── Execution Layer ──────────────────────────────────────────────────────────
 
 function applyRemoval(db: Db, capId: string) {
-  const configPath =
-    process.env.OPENCODE_CONFIG || process.env.HOME + '/.config/opencode/opencode.json';
+  const configPath = configDefault();
   if (!existsSync(configPath)) return { error: 'Config not found' };
-  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  let config: any;
+  try {
+    config = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch {
+    // A commented `opencode.jsonc` parses, but writing it back deletes every
+    // comment in it, which no removal of one entry should do.
+    return { error: `${configPath} is not plain JSON; remove ${capId} by hand` };
+  }
   const prefix = capId.split(':')[0];
   const key = capId.replace(/^[^:]+:/, '');
-  const sectionMap: Record<string, string> = {
-    mcp: 'mcp',
-    agent: 'agent',
-    cmd: 'command',
-    provider: 'provider',
+  // Each section under its V1 and its OpenCode 2 name. The entry is removed
+  // from wherever the file holds it, V2's name first, as OpenCode reads it.
+  const sectionMap: Record<string, string[]> = {
+    mcp: ['mcp.servers', 'mcp'],
+    agent: ['agents', 'agent'],
+    cmd: ['commands', 'command'],
+    provider: ['providers', 'provider'],
   };
-  const section = sectionMap[prefix];
-  if (!section) return { error: 'Unknown prefix: ' + prefix };
-  if (!config[section]?.[key]) return { error: 'Not found: ' + capId };
+  const candidates = sectionMap[prefix];
+  if (!candidates) return { error: 'Unknown prefix: ' + prefix };
+  const bagAt = (path: string) =>
+    path === 'mcp.servers' ? mcpEntries(config).v2 && config.mcp.servers : config[path];
+  const section = candidates.find(path => {
+    const bag = bagAt(path);
+    return !!bag && typeof bag === 'object' && Object.hasOwn(bag, key);
+  });
+  if (!section) return { error: 'Not found: ' + capId };
   writeFileSync(configPath + '.bak', JSON.stringify(config, null, 2));
-  delete config[section][key];
+  delete bagAt(section)[key];
   writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
   const db2 = getDb();
   try {

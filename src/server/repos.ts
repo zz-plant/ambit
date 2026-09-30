@@ -1,11 +1,12 @@
 /**
  * How far each repository's agent config has drifted from the global one.
  *
- * Read-only: it opens every `opencode.json` under REPO_PATH and reports the
- * difference. Nothing here writes.
+ * Read-only: it opens every project's OpenCode config under REPO_PATH, in
+ * either major version, and reports the difference. Nothing here writes.
  */
 import { existsSync, readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { normalizeOpencode, parseJsonc } from '../shared/opencode.ts';
 import { readConfig, REPO_PATH } from './config.ts';
 
 export async function scanRepos(): Promise<Record<string, any>> {
@@ -24,12 +25,20 @@ export async function scanRepos(): Promise<Record<string, any>> {
   const entries = readdirSync(REPO_PATH, { encoding: 'utf8' });
   for (const entry of entries) {
     if (entry.startsWith('.')) continue;
-    const configFile = `${REPO_PATH}/${entry}/opencode.json`;
-    if (!existsSync(configFile)) continue;
+    // Where OpenCode 1 and 2 both look for a project's config.
+    const configFile = [
+      'opencode.json',
+      'opencode.jsonc',
+      '.opencode/opencode.json',
+      '.opencode/opencode.jsonc',
+    ]
+      .map(name => `${REPO_PATH}/${entry}/${name}`)
+      .find(path => existsSync(path));
+    if (!configFile) continue;
 
     let repoConfig: any;
     try {
-      repoConfig = JSON.parse(await readFile(configFile, 'utf8'));
+      repoConfig = normalizeOpencode(parseJsonc(await readFile(configFile, 'utf8')));
     } catch {
       continue;
     }

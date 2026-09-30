@@ -2,10 +2,16 @@
  * The work-telemetry bridge: records what an OpenCode session actually does
  * into Ambit's work ledger, through /api/telemetry.
  *
- * OpenCode's plugin API does not expose a session id on tool events, so this
- * keeps one run per plugin process (per opencode instance) and records every
- * tool execution into it. Session-grained runs arrive once the runtime
- * publishes session boundaries; this is the first, coarse turn of the loop.
+ * One file for both major versions of OpenCode, in the shape OpenCode's own
+ * plugin guide gives for it: the default export carries `id` and `setup`,
+ * which OpenCode 2 reads, and `server`, which OpenCode 1 calls. V2 ignores
+ * `server` and V1 ignores the rest, so each version runs one implementation.
+ *
+ * OpenCode 1's tool events carry no session id, so under V1 this keeps one run
+ * per plugin process and records every tool execution into it. OpenCode 2
+ * names the session on every tool call, so under V2 a run is a session. V2 also
+ * reports how a person answered a permission prompt, which V1 never did, so
+ * the intervention it records has an outcome and a length.
  *
  * Install: copy to ~/.config/opencode/plugins/ and restart opencode. The
  * visualizer API must be running (npm run server).
@@ -125,3 +131,118 @@ export const AmbitTelemetry = async _ctx => {
 };
 
 export const TechTreeTelemetry = AmbitTelemetry;
+
+// ─── OpenCode 2 ───────────────────────────────────────────────────────────────
+
+/** One run per OpenCode session, opened on the session's first tool call. */
+const sessionRuns = new Map();
+
+function runFor(sessionID) {
+  if (!sessionID) return ensureRun();
+  if (!sessionRuns.has(sessionID)) {
+    const opened = fetch(`${SERVER}/api/telemetry`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        run: { goal: 'opencode session work', source: 'opencode-plugin', runType: 'task' },
+      }),
+    })
+      .then(res => (res.ok ? res.json() : null))
+      .then(body => body?.run ?? null)
+      .catch(() => null)
+      .then(id => {
+        // A server that was down is asked again on the next call, not never.
+        if (!id) sessionRuns.delete(sessionID);
+        return id;
+      });
+    sessionRuns.set(sessionID, opened);
+  }
+  return sessionRuns.get(sessionID);
+}
+
+/**
+ * What OpenCode 2 said about a failed tool call. A call that errored carries a
+ * `Tool.Error`; one that completed can still have run a command that exited
+ * non-zero, which the tool reports in its result's metadata. As in V1, this
+ * gathers and src/engine/failures.ts classifies.
+ */
+function failureFromV2(event) {
+  if (event?.status === 'error') {
+    const meta = event.error?.metadata;
+    const exitCode = meta?.exitCode ?? meta?.exit_code ?? meta?.exit;
+    return {
+      tool: event.tool || 'unknown',
+      exitCode: typeof exitCode === 'number' ? exitCode : undefined,
+      message: String(event.error?.message ?? '').slice(0, 500),
+      source: 'opencode',
+    };
+  }
+  const meta = event?.result?.metadata;
+  const exitCode = meta?.exitCode ?? meta?.exit_code ?? meta?.exit;
+  if (typeof exitCode !== 'number' || exitCode === 0) return null;
+  const content = event.result?.content;
+  return {
+    tool: event.tool || 'unknown',
+    exitCode,
+    message: String(
+      meta?.stderr || (typeof content === 'string' ? content : content?.[0]?.text) || ''
+    ).slice(0, 500),
+    source: 'opencode',
+  };
+}
+
+const sqlTime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+
+/** How a person answered, in the ledger's words. OpenCode says once, always or reject. */
+const REPLY_OUTCOME = { once: 'approved', always: 'approved always', reject: 'rejected' };
+
+async function setup(ctx) {
+  // Nothing here may be awaited by the tool it observes: a slow or dead
+  // server would otherwise add its timeout to every tool call.
+  await ctx.tool.hook('execute.after', event => {
+    void (async () => {
+      const id = await runFor(event?.sessionID);
+      if (!id) return;
+      await post({
+        event: { runId: id, kind: 'tool', action: event?.tool || 'unknown', actor: 'agent' },
+      });
+      const failure = failureFromV2(event);
+      if (failure) await post({ failure });
+    })().catch(() => {});
+  });
+
+  // A prompt is recorded when it is answered, so the record says what the
+  // person decided and how long the agent waited for it. A prompt that is
+  // never answered was never a decision, and is not recorded as one.
+  const asked = new Map();
+  const controller = new AbortController();
+  void (async () => {
+    for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+      const data = event?.data;
+      if (event?.type === 'permission.asked' && data?.id) {
+        asked.set(data.id, { at: Date.now(), action: data.action, sessionID: data.sessionID });
+      } else if (event?.type === 'permission.replied' && data?.requestID) {
+        const ask = asked.get(data.requestID);
+        asked.delete(data.requestID);
+        if (!ask) continue;
+        const id = await runFor(ask.sessionID || data.sessionID);
+        if (!id) continue;
+        await post({
+          intervention: {
+            runId: id,
+            actorId: process.env.AMBIT_ACTOR || 'human:operator',
+            kind: 'authority',
+            action: ask.action || undefined,
+            startedAt: sqlTime(ask.at),
+            endedAt: sqlTime(Date.now()),
+            outcome: REPLY_OUTCOME[data.reply] || data.reply || undefined,
+          },
+        });
+      }
+    }
+  })().catch(() => {});
+
+  return () => controller.abort();
+}
+
+export default { id: 'ambit-telemetry', setup, server: AmbitTelemetry };

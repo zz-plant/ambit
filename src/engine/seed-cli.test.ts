@@ -463,3 +463,73 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   expect(contributions).toContainEqual({ f: 'runtime:codex', t: 'mcp:docs' });
   db.close();
 });
+
+test('an OpenCode 2 config seeds the same graph its V1 form does', () => {
+  // Read as V1, this config was one MCP server named "servers" and nothing
+  // else: every agent, command and provider was under a key the seed skipped.
+  const db = seed({
+    mcp: {
+      servers: {
+        playwright: { type: 'local', command: ['npx', '@playwright/mcp'], disabled: false },
+      },
+    },
+    agents: { writer: { description: 'writes', model: 'acme/fast-1#high' } },
+    commands: { review: { template: 'Review changes.', description: 'reviews' } },
+    providers: { acme: { models: [{ modelID: 'fast-1' }] } },
+    permissions: [{ action: 'shell', resource: '*', effect: 'ask' }],
+  });
+  const ids = rows(db, 'SELECT id FROM capabilities').map(r => r.id);
+  expect(ids).toEqual(
+    expect.arrayContaining([
+      'mcp:playwright',
+      'agent:writer',
+      'tool:review',
+      'provider:acme',
+      'model:acme/fast-1',
+    ])
+  );
+  expect(ids).not.toContain('mcp:servers');
+
+  // The variant after `#` is not part of the model's id.
+  const deps = rows(db, 'SELECT from_capability f, to_capability t FROM dependencies');
+  expect(deps.some(d => d.f === 'model:acme/fast-1' && d.t === 'agent:writer')).toBe(true);
+
+  // The runtime's own rule for a shell command is the runtime's authority.
+  const grant = rows(
+    db,
+    "SELECT mode, note FROM authority WHERE capability_id = 'runtime:opencode' AND action = 'execute'"
+  );
+  expect(grant).toEqual([{ mode: 'confirm', note: 'opencode permissions: shell * ask' }]);
+});
+
+test('an authority block a person wrote wins over what the runtime says', () => {
+  const db = seed({
+    mcp: { git: { type: 'local', command: ['git-mcp'] } },
+    permission: { bash: 'allow' },
+    authority: { runtime: { execute: 'forbidden', note: 'mine' } },
+  });
+  const grant = rows(
+    db,
+    "SELECT mode FROM authority WHERE capability_id = 'runtime:opencode' AND action = 'execute'"
+  );
+  expect(grant).toEqual([{ mode: 'forbidden' }]);
+});
+
+test('opencode.jsonc is read when it is the only config there', () => {
+  const home = join(dir, 'jsonc-home');
+  const configDir = join(home, '.config', 'opencode');
+  mkdirSync(configDir, { recursive: true });
+  writeFileSync(
+    join(configDir, 'opencode.jsonc'),
+    `{
+      // OpenCode reads comments, so Ambit does too.
+      "mcp": { "servers": { "notes": { "type": "local", "command": ["notes-mcp"], } } },
+    }`
+  );
+  const dbPath = join(dir, 'jsonc.db');
+  seedWith({ HOME: home, OPENCODE_CONFIG: undefined, TOOLCHAIN_DB: dbPath, AMBIT_DB: dbPath });
+  const db = getDb(dbPath);
+  const ids = rows(db, "SELECT id FROM capabilities WHERE id LIKE 'mcp:%'").map(r => r.id);
+  db.close();
+  expect(ids).toContain('mcp:notes');
+});

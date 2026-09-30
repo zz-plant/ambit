@@ -271,6 +271,62 @@ test('switching a server the config does not have changes nothing and creates no
   expect(after.mcp).toEqual(before.mcp);
 });
 
+test('an OpenCode 2 config is read out in V1 names and edited in its own', async () => {
+  const configPath = join(dir, 'opencode.json');
+  const original = readFileSync(configPath, 'utf8');
+  const call = (path: string, body?: object) =>
+    fetch(`${base}${path}`, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json', 'X-Ambit-Token': TOKEN },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  try {
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        mcp: { servers: { git: { type: 'local', command: ['git-mcp'], disabled: false } } },
+        agents: { writer: { description: 'old' } },
+      })
+    );
+    // The page reads servers and agents by their V1 names.
+    const read = await json(await call('/api/config'));
+    expect(Object.keys(read.config.mcp)).toEqual(['git']);
+    expect(read.config.mcp.git.enabled).toBe(true);
+    expect(read.config.agent.writer.description).toBe('old');
+
+    expect(
+      (
+        await call('/api/config/apply', {
+          disableMcp: ['git'],
+          updateAgent: { name: 'writer', updates: { description: 'new' } },
+        })
+      ).status
+    ).toBe(200);
+    // Written back in V2's words, and no V1 field left behind in a V2 file.
+    const file = JSON.parse(readFileSync(configPath, 'utf8'));
+    expect(file.mcp.servers.git).toEqual({ type: 'local', command: ['git-mcp'], disabled: true });
+    expect(file.mcp.git).toBeUndefined();
+    expect(file.agents.writer.description).toBe('new');
+    expect(file.agent).toBeUndefined();
+
+    // The snippet a person pastes fits the file it goes into.
+    const snip = await json(await call('/api/config/mcp-snippet', { name: 'x', config: {} }));
+    expect(JSON.parse(snip.snippet)).toEqual({ mcp: { servers: { x: { disabled: false } } } });
+
+    // A commented file is read, and an edit that would delete the comments is refused.
+    const commented = `{
+  // mine
+  "mcp": { "git": { "type": "local", "enabled": true } }
+}`;
+    writeFileSync(configPath, commented);
+    expect((await json(await call('/api/config'))).config.mcp.git.enabled).toBe(true);
+    expect((await call('/api/config/apply', { disableMcp: ['git'] })).status).toBe(409);
+    expect(readFileSync(configPath, 'utf8')).toBe(commented);
+  } finally {
+    writeFileSync(configPath, original);
+  }
+});
+
 test('telemetry stays open, because the runtime plugin posts to it unattended', async () => {
   const r = await fetch(`${base}/api/telemetry`, {
     method: 'POST',

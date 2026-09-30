@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
 
 export interface ConnectTarget {
   runtime: string;
@@ -55,7 +56,7 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
   {
     runtime: 'opencode',
     label: 'OpenCode',
-    paths: ['.config/opencode/opencode.json'],
+    paths: ['.config/opencode/opencode.json', '.config/opencode/opencode.jsonc'],
     kind: 'opencode',
   },
   {
@@ -72,12 +73,26 @@ function configureFile(
   kind: 'mcpServers' | 'opencode',
   dryRun = false
 ): 'added' | 'updated' | 'already_configured' {
+  // A file that does not parse is left as it is. Replacing it with `{}` plus
+  // one entry deleted every other server, agent and key a person had in it,
+  // and a commented `.jsonc` file, which OpenCode reads and JSON.parse does
+  // not, was exactly such a file.
   let parsed: any = {};
   if (existsSync(filePath)) {
+    const text = readFileSync(filePath, 'utf8');
     try {
-      parsed = JSON.parse(readFileSync(filePath, 'utf8'));
+      parsed = JSON.parse(text);
     } catch {
-      parsed = {};
+      let commented = false;
+      try {
+        parseJsonc(text);
+        commented = true;
+      } catch {}
+      throw new Error(
+        commented
+          ? `${filePath} has comments, and writing it would delete them; add the ambit server by hand`
+          : `${filePath} is not valid JSON; left unchanged`
+      );
     }
   }
 
@@ -101,16 +116,19 @@ function configureFile(
     if (!parsed.mcp || typeof parsed.mcp !== 'object') {
       parsed.mcp = {};
     }
-    const existing = parsed.mcp.ambit;
-    if (existing && existing.enabled !== false) {
+    // OpenCode 2 keeps servers under `mcp.servers` and switches one off with
+    // `disabled`; the entry goes into whichever shape the file is already in.
+    const { bag, v2 } = mcpEntries(parsed);
+    const servers = bag as Record<string, any>;
+    const existing = Object.hasOwn(servers, 'ambit') ? servers.ambit : undefined;
+    const off = existing && (existing.enabled === false || existing.disabled === true);
+    if (existing && !off) {
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
-      parsed.mcp.ambit = {
-        type: 'local',
-        command: ['ambit', 'mcp'],
-        enabled: true,
-      };
+      servers.ambit = v2
+        ? { type: 'local', command: ['ambit', 'mcp'], disabled: false }
+        : { type: 'local', command: ['ambit', 'mcp'], enabled: true };
     }
   }
 

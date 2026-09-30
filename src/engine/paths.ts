@@ -149,10 +149,20 @@ export function loadTechTree(): any {
  * the same rule `resolveDbPath` already follows.
  */
 export function configDefault(): string {
-  return (
-    process.env.OPENCODE_CONFIG ||
-    join(process.env.HOME || '/', '.config', 'opencode', 'opencode.json')
-  );
+  if (process.env.OPENCODE_CONFIG) return process.env.OPENCODE_CONFIG;
+  return opencodeConfigIn(join(process.env.HOME || '/', '.config', 'opencode'));
+}
+
+/**
+ * The config file in an OpenCode config directory. Both major versions read
+ * `opencode.json` or `opencode.jsonc`; the plain name is the default and is
+ * what a new file is written as, and the commented one is read when it is the
+ * only one there.
+ */
+export function opencodeConfigIn(dir: string): string {
+  const json = join(dir, 'opencode.json');
+  const jsonc = join(dir, 'opencode.jsonc');
+  return !existsSync(json) && existsSync(jsonc) ? jsonc : json;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { configDefault } from './paths.ts';
+import { normalizeOpencode, opencodeAuthority, parseJsonc } from '../shared/opencode.ts';
 import type { Db } from './db.ts';
 import { deriveLifecycles } from './assurance.ts';
 import { recordFrontier } from './ledger.ts';
@@ -24,6 +25,28 @@ import {
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 /**
+ * The agent config, in the shape the passes below read.
+ *
+ * OpenCode's own format is the default input, in either major version and with
+ * or without comments (`src/shared/opencode.ts`). The permission a runtime
+ * states for a shell command reaches the graph as the runtime's authority, as
+ * the Claude Code reader's `defaultMode` does, unless the file carries an
+ * `authority` block of Ambit's own, which a person wrote on purpose and wins.
+ * Only when OpenCode is the runtime being seeded: an adapter that seeds another
+ * runtime through this function states that runtime's authority itself.
+ */
+function readAgentConfig(cp: string): Record<string, any> {
+  if (!existsSync(cp)) return {};
+  const raw = parseJsonc(readFileSync(cp, 'utf8'));
+  const config = normalizeOpencode(raw);
+  if ((process.env.AMBIT_RUNTIME || 'opencode') === 'opencode' && !config.authority) {
+    const authority = opencodeAuthority(raw);
+    if (authority) config.authority = authority;
+  }
+  return config;
+}
+
+/**
  * Writers that stamp the ontological kind, so no seeder can omit it.
  *
  * Kind is derived from the same inputs the backfill uses rather than passed in
@@ -37,7 +60,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record
   // a raw SQLite error from the next query. The curated capability model does
   // not come from the config, so seed it anyway: the graph is then a valid,
   // empty-of-your-stuff frontier rather than nothing.
-  const config = existsSync(cp) ? JSON.parse(readFileSync(cp, 'utf8')) : {};
+  const config = readAgentConfig(cp);
   const mapping = parseMapping(mappingStr);
 
   let count = 0;

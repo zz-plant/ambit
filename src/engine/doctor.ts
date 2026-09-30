@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { FAILING_SQL, REACHED_SQL, graphCounts } from './vocabulary.ts';
 import { singlePointsOfFailure } from './inference.ts';
+import { parseJsonc } from '../shared/opencode.ts';
 
 export interface DoctorRuntime {
   runtime: string;
@@ -35,9 +36,10 @@ export interface DoctorReport {
 /** Check if a parsed JSON or TOML config already contains the ambit MCP server. */
 function hasAmbitServer(raw: string): boolean {
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = parseJsonc(raw);
     if (parsed?.mcpServers?.ambit) return true;
     if (parsed?.mcp?.ambit) return true;
+    if (parsed?.mcp?.servers?.ambit) return true;
     if (parsed?.context_servers?.ambit) return true;
     if (parsed?.experimental?.modelContextProtocolServers?.ambit) return true;
   } catch {
@@ -71,7 +73,10 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
     {
       runtime: 'opencode',
       label: 'OpenCode',
-      paths: [join(home, '.config', 'opencode', 'opencode.json')],
+      paths: [
+        join(home, '.config', 'opencode', 'opencode.json'),
+        join(home, '.config', 'opencode', 'opencode.jsonc'),
+      ],
     },
     {
       runtime: 'windsurf',

@@ -55,6 +55,8 @@ const open: Array<() => void> = [];
 afterEach(() => {
   while (open.length) open.pop()?.();
   delete process.env.AMBIT_JUDGE_URL;
+  delete process.env.TYPESAFE_BASE_URL;
+  delete process.env.JEV_BASE_URL;
 });
 
 async function judge(probabilities: Record<string, number>, status = 200) {
@@ -186,4 +188,43 @@ test('a judge URL off this machine is refused before anything is sent', async ()
   const out = await cliAsync('goal', UNMATCHED, `--judge=http://0.0.0.0:${port}`);
   expect(out.judged.error).toMatch(/must run on this machine/);
   expect(j.hits).toHaveLength(0);
+});
+
+test('a clone TYPESAFE_BASE_URL already points at is where the question goes', () => {
+  // The tree tells a person to point TYPESAFE_BASE_URL at a local clone. Having
+  // done that, they should not have to tell Ambit a second time.
+  process.env.TYPESAFE_BASE_URL = 'http://127.0.0.1:8123/v1';
+  expect(judgeUrl()).toEqual({ url: 'http://127.0.0.1:8123' });
+
+  // The same variable usually names the hosted API, which was set for an SDK
+  // and never typed as a place for a goal to go: passed over, not refused.
+  process.env.TYPESAFE_BASE_URL = 'https://api.typesafe.ai';
+  expect(judgeUrl()).toEqual({ url: 'http://127.0.0.1:8009' });
+  process.env.JEV_BASE_URL = 'http://localhost:8124';
+  expect(judgeUrl()).toEqual({ url: 'http://localhost:8124' });
+
+  // A URL a person typed still decides.
+  process.env.AMBIT_JUDGE_URL = 'http://[::1]:9000';
+  expect(judgeUrl()).toEqual({ url: 'http://[::1]:9000' });
+});
+
+test('an answer that names only its choice is read at its stated confidence', async () => {
+  const onlyChoice = (async () =>
+    new Response(
+      JSON.stringify({
+        model: 'jev-1.13.0',
+        answers: { capability: { type: 'choice', choice: 'web-research', confidence: 0.9 } },
+      }),
+      { headers: { 'content-type': 'application/json' } }
+    )) as unknown as typeof fetch;
+  const out = (await judgeGoal(UNMATCHED, {
+    url: 'http://127.0.0.1:1',
+    fetchImpl: onlyChoice,
+  })) as any;
+  expect(out.model).toBe('jev-1.13.0');
+  expect(out.suggested).toEqual({
+    id: 'combo:web-research',
+    name: 'Web Research',
+    probability: 0.9,
+  });
 });

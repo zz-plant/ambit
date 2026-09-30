@@ -11,16 +11,46 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { copyFile, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join } from 'node:path';
+import { opencodeConfigIn } from '../engine/paths.ts';
+import { normalizeOpencode, parseJsonc } from '../shared/opencode.ts';
 
 export const CONFIG_PATH =
-  process.env.OPENCODE_CONFIG || `${process.env.HOME}/.config/opencode/opencode.json`;
+  process.env.OPENCODE_CONFIG || opencodeConfigIn(`${process.env.HOME}/.config/opencode`);
 export const REPO_PATH = process.env.REPO_PATH || `${process.env.HOME}/Documents/GitHub`;
 export const INFRA_MANIFEST_PATH =
   process.env.INFRA_MANIFEST || `${process.env.HOME}/.config/opencode/infrastructure.json`;
 
+/**
+ * The config as every reader here reads it: OpenCode 1 or 2, with or without
+ * comments, in the V1 shape (src/shared/opencode.ts). For showing and
+ * comparing, never for writing back: a V2 file written from this would come
+ * out in V1's shape.
+ */
 export async function readConfig(): Promise<Record<string, unknown> | null> {
+  const file = await readConfigFile();
+  return file ? normalizeOpencode(file.raw) : null;
+}
+
+/**
+ * The config as it sits in the file, for an edit to go back into. `plain` is
+ * whether the file is plain JSON: a commented `.jsonc` file parses, but writing
+ * it back would delete every comment the person wrote, so the edit is refused.
+ */
+export async function readConfigFile(): Promise<{
+  raw: Record<string, any>;
+  plain: boolean;
+} | null> {
+  let text: string;
   try {
-    return JSON.parse(await readFile(CONFIG_PATH, 'utf8'));
+    text = await readFile(CONFIG_PATH, 'utf8');
+  } catch {
+    return null;
+  }
+  try {
+    return { raw: JSON.parse(text), plain: true };
+  } catch {}
+  try {
+    return { raw: parseJsonc(text), plain: false };
   } catch {
     return null;
   }

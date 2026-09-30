@@ -24,7 +24,7 @@ A checkout keeps its graph in the checkout (`toolchain-viz.db`), so the graph yo
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `node:http` in `src/server/api.ts` — visualizer API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
 - **MCP Server**: JSON-RPC over stdio in `src/mcp/`, one `ambit_*` tool per question the engine answers. The roster is in [the deep dive](./docs/deep-dive.md#the-full-mcp-surface); no test holds a count, so do not write one down here
-- **Plugins**: `plugins/ambit-telemetry.js` (tool executions and permission prompts → the work ledger) and `plugins/ambit-tracker.js` (configuration changes), both copied to `~/.config/opencode/plugins/`
+- **Plugins**: `plugins/ambit-telemetry.js` (tool executions and permission prompts → the work ledger) and `plugins/ambit-tracker.js` (configuration changes), both copied to `~/.config/opencode/plugins/`. Each default-exports `{ id, setup, server }`: OpenCode 2 runs `setup` and OpenCode 1 calls `server`, and neither version runs the other's half
 
 ## Core Structure
 
@@ -283,6 +283,9 @@ What both halves import, what CI checks, and the two files that run inside anoth
 ```
 src/shared/db-path.ts      `resolveDbPath`, the one answer to where the graph is, imported by
                            the engine, the MCP server and the API server
+src/shared/opencode.ts     An OpenCode config of either major version, with or without comments,
+                           read into the V1 shape every reader uses; and where an edit goes
+                           back in the file's own shape (`mcpEntries`, `configSection`)
 src/shared/authority.ts    Runtime approval settings, translated into the three modes Ambit
                            records; an unrecognized setting becomes `confirm`, never `autonomous`
 src/shared/types.ts        The ontology and domain types every half agrees on

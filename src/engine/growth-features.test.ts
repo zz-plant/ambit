@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { cli, seed, LOCAL_ONLY } from './testing/cli.ts';
 import { makeGraph } from './testing/graph.ts';
@@ -96,6 +96,40 @@ describe('ambit connect', () => {
     const res = runConnect('cursor', { home: testDir, dryRun: true, force: true });
     expect(res.dry_run).toBe(true);
     expect(existsSync(cursorJson)).toBe(false);
+  });
+});
+
+describe('ambit connect on OpenCode 2', () => {
+  test('adds ambit under mcp.servers, in V2 words, to a V2 config', () => {
+    const path = join(testDir, '.config', 'opencode', 'opencode.json');
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(
+      path,
+      JSON.stringify({ mcp: { servers: { git: { type: 'local', command: ['git-mcp'] } } } })
+    );
+    expect(runConnect('opencode', { home: testDir }).configured[0].action).toBe('added');
+    const after = JSON.parse(readFileSync(path, 'utf8'));
+    expect(after.mcp.servers.ambit).toEqual({
+      type: 'local',
+      command: ['ambit', 'mcp'],
+      disabled: false,
+    });
+    expect(after.mcp.ambit).toBeUndefined();
+    expect(after.mcp.servers.git).toBeDefined();
+    expect(runConnect('opencode', { home: testDir }).configured[0].action).toBe(
+      'already_configured'
+    );
+  });
+
+  test('leaves a file it cannot write faithfully as it was', () => {
+    const path = join(testDir, '.config', 'opencode', 'opencode.jsonc');
+    mkdirSync(dirname(path), { recursive: true });
+    const commented = '{\n  // mine\n  "mcp": {}\n}\n';
+    writeFileSync(path, commented);
+    const res = runConnect('opencode', { home: testDir });
+    expect(res.configured).toEqual([]);
+    expect(res.skipped[0].reason).toMatch(/has comments/);
+    expect(readFileSync(path, 'utf8')).toBe(commented);
   });
 });
 
