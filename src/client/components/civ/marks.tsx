@@ -36,8 +36,11 @@ export function JointIcon({ mark }: { mark: JointMark }) {
  * dozen around it are lit.
  */
 export function Brackets({ r, color }: { r: number; color: string }) {
-  // Outside the keystone's square (r + 6), so a selected keystone shows both.
-  const s = r + 11;
+  // A pixel outside the keystone's square (r + 6), whose corners are rounded
+  // at 9: six-pixel arms sit clear of its curve, so a selected keystone shows
+  // both. Any further out and a first-row node's top corners sat on its era's
+  // progress bar, 8 to 11 pixels above the node.
+  const s = r + 7;
   const arm = 6;
   const corners = [
     [-1, -1],

@@ -1642,6 +1642,16 @@ code, pre, .code, .sp-cli-cmd {
   pointer-events: auto;
 }
 
+/* A node's name is haloed in the canvas colour, as a map labels a road: an
+   edge or a bracket passing under a name is cut where the name is, and the
+   name reads whole. */
+.civ-node-label {
+  paint-order: stroke;
+  stroke: var(--bg-canvas);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 /* Room for the HUD above the era headers, so it never sits on a column name. */
 .civ-tree-svg {
   display: block;
