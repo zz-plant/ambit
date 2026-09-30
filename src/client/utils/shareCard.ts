@@ -48,6 +48,8 @@ const INK = {
 const FONT =
   "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
+const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
+
 export type CardMode = 'outage' | 'acquisition' | 'gap';
 
 /** At most this many nodes a column; the rest are counted, not drawn. */
@@ -177,6 +179,49 @@ export function buildCard(items: Item[], connections: Connection[], showing: Sho
   return { mode: mode as CardMode, kicker, count, sentence, nodes, edges, more };
 }
 
+/** The callout's type size: a label on a drawing, under the name it annotates. */
+const CALLOUT_SIZE = 18;
+
+/**
+ * A spec-sheet callout: a leader from the circle's lower right, down to a
+ * rule the note sits on. Monospace, capitals, like a part number.
+ */
+function callout(
+  cx: number,
+  cy: number,
+  r: number,
+  x: number,
+  baseline: number,
+  note: string,
+  color: string
+): string {
+  const lx = cx + r * 0.7;
+  const ly = cy + r * 0.7;
+  const ruleY = baseline + 6;
+  const end = x + note.length * CALLOUT_SIZE * 0.62;
+  return (
+    `<path d="M${lx} ${ly} L${x - 6} ${ruleY} H${end}" fill="none" stroke="${color}" stroke-opacity="0.7" stroke-width="2"/>` +
+    `<text x="${x}" y="${baseline}" font-size="${CALLOUT_SIZE}" fill="${color}" font-family="${MONO}" font-weight="600" letter-spacing="1">${esc(note)}</text>`
+  );
+}
+
+/** Four corners around a node, the lock-on the map draws. */
+function brackets(cx: number, cy: number, r: number, color: string): string {
+  const s = r + 12;
+  const arm = 12;
+  const d = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ]
+    .map(
+      ([dx, dy]) => `M${cx + dx * s} ${cy + dy * (s - arm)} V${cy + dy * s} H${cx + dx * (s - arm)}`
+    )
+    .join(' ');
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`;
+}
+
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -273,21 +318,31 @@ export function cardSvg(card: Card): string {
     for (const n of card.nodes) {
       const p = at.get(n.id)!;
       const root = n.tone === 'root';
-      // A failing node is drawn as a ring: it was not working to begin with.
-      const fill =
-        n.tone === 'failing'
-          ? INK.surface
-          : root
-            ? rootFill
-            : n.tone === 'weak'
-              ? INK.warn
-              : hitFill;
-      const stroke = n.tone === 'failing' ? INK.error : '#fff';
+      const failing = n.tone === 'failing';
+      // A failing node is striped, as on the map: it was not working to begin with.
+      const fill = failing
+        ? 'url(#hazard)'
+        : root
+          ? rootFill
+          : n.tone === 'weak'
+            ? INK.warn
+            : hitFill;
+      const stroke = failing ? INK.error : '#fff';
       out.push(
-        `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-opacity="${root || n.tone === 'failing' ? 0.9 : 0.3}" stroke-width="${root || n.tone === 'failing' ? 4 : 2}"/>`
+        `<circle cx="${p.x}" cy="${p.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-opacity="${root || failing ? 0.9 : 0.3}" stroke-width="${root || failing ? 4 : 2}"/>`
       );
+      // The origin is the node the sentence is about: corners, as the map
+      // draws around the node its headline names.
+      if (root) out.push(brackets(p.x, p.y, r, hue));
       const said = lines.get(n.id)!;
-      const first = p.y + label * 0.35 - ((said.length - 1) * (label + 4)) / 2;
+      // A callout under a failing node's name says what the stripes mean,
+      // so the image needs no legend; the name moves up to make room.
+      const note = failing ? CALLOUT_SIZE + 12 : 0;
+      const first = p.y + label * 0.35 - ((said.length - 1) * (label + 4) + note) / 2;
+      if (failing) {
+        const baseline = first + (said.length - 1) * (label + 4) + note;
+        out.push(callout(p.x, p.y, r, p.x + r + 16, baseline, 'CHECK FAILING', INK.error));
+      }
       said.forEach((line, i) => {
         text(
           p.x + r + 16,
@@ -325,7 +380,8 @@ export function cardSvg(card: Card): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}">` +
     `<defs>` +
-    `<radialGradient id="glow" cx="0.15" cy="0.1" r="0.9"><stop offset="0%" stop-color="${hue}" stop-opacity="0.16"/><stop offset="100%" stop-color="${hue}" stop-opacity="0"/></radialGradient></defs>` +
+    `<radialGradient id="glow" cx="0.15" cy="0.1" r="0.9"><stop offset="0%" stop-color="${hue}" stop-opacity="0.16"/><stop offset="100%" stop-color="${hue}" stop-opacity="0"/></radialGradient>` +
+    `<pattern id="hazard" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="${INK.surface}"/><rect width="6" height="12" fill="${INK.error}" fill-opacity="0.6"/></pattern></defs>` +
     `<rect width="${CARD_W}" height="${CARD_H}" fill="${INK.canvas}"/>` +
     `<rect width="${CARD_W}" height="${CARD_H}" fill="url(#glow)"/>` +
     out.join('') +

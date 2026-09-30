@@ -1450,10 +1450,6 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--fig-data, var(--accent));
 }
 
-.sp-ladder-seg--failing {
-  background: var(--error);
-}
-
 .sp-ladder-seg--next {
   box-shadow: inset 0 0 0 1px var(--fig-data, var(--accent));
 }
@@ -3373,10 +3369,6 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--fig-context);
 }
 
-.fig-stack-seg--failing {
-  background: var(--fig-bad);
-}
-
 .fig-stack-seg--unreached {
   background: var(--fig-track);
 }
@@ -3410,10 +3402,6 @@ code, pre, .code, .sp-cli-cmd {
 
 .fig-key-swatch--unproven {
   background: var(--fig-context);
-}
-
-.fig-key-swatch--failing {
-  background: var(--fig-bad);
 }
 
 .fig-key-swatch--unreached {
@@ -5280,9 +5268,18 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--fig-context);
 }
 
+/* Striped, as on the map: a failing check and a forbidden grant are the two
+   states that refuse, and each reads as refusing without its colour. */
+.fig-stack-seg--failing,
+.fig-key-swatch--failing,
+.sp-ladder-seg--failing,
 .fig-stack-seg--forbidden,
 .fig-key-swatch--forbidden {
-  background: var(--fig-bad);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--fig-bad) 0 3px,
+    color-mix(in srgb, var(--fig-bad) 35%, var(--bg-surface)) 3px 6px
+  );
 }
 
 .fig-block {

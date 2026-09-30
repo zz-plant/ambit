@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
 import { mapKey, typingIn } from '../utils/keys';
@@ -145,10 +145,56 @@ function JointIcon({ mark }: { mark: JointMark }) {
   );
 }
 
+/**
+ * A lock-on: four corners around a node, and no ring. A ring is one more
+ * circle on a map of circles; corners are a shape nothing else on the map
+ * draws, so the one node being pointed at reads as pointed at even when a
+ * dozen around it are lit.
+ */
+function Brackets({ r, color }: { r: number; color: string }) {
+  // Outside the keystone's square (r + 6), so a selected keystone shows both.
+  const s = r + 11;
+  const arm = 6;
+  const corners = [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ];
+  return (
+    <g stroke={color} strokeWidth={2} strokeLinecap="round" fill="none">
+      {corners.map(([dx, dy]) => (
+        <path key={`${dx}${dy}`} d={`M${dx * s} ${dy * (s - arm)} V${dy * s} H${dx * (s - arm)}`} />
+      ))}
+    </g>
+  );
+}
+
+/**
+ * Diagonal stripes for the two states that refuse: a check that is failing,
+ * and a grant that is forbidden. A texture survives a greyscale screenshot and
+ * a reader who cannot tell the reds apart, where a fill colour does not, and
+ * it stays rare enough to mean something: nothing else on the map is striped.
+ */
+function HazardPattern({ id }: { id: string }) {
+  return (
+    <pattern
+      id={id}
+      width={6}
+      height={6}
+      patternUnits="userSpaceOnUse"
+      patternTransform="rotate(45)"
+    >
+      <rect width={6} height={6} fill="var(--bg-canvas)" />
+      <rect width={3} height={6} fill="var(--error)" opacity={0.6} />
+    </pattern>
+  );
+}
+
 /** One entry of the legend under the map: a swatch, a stroke, or a heading for the ramp. */
 type LegendKey =
   | { kind: 'label'; label: string }
-  | { kind: 'node'; label: string; color: string; sym?: string }
+  | { kind: 'node'; label: string; color: string; sym?: string; hatch?: boolean }
   | { kind: 'ring' | 'faded' | 'square'; label: string }
   | { kind: 'line'; label: string; color?: string; dashed?: boolean }
   | { kind: 'joint'; label: string; mark: JointMark };
@@ -436,6 +482,17 @@ export default function CivTree({
   const [where, setWhere] = useState<string | null>(null);
   // The headline is two rows when there is a finding under the range line.
   const headlined = Boolean(!narrated && !asOf && (findings.failing.length || findings.best));
+  // The node the headline is about, bracketed on the map while the headline
+  // shows: the sentence names it, the corners say which circle that is.
+  const findingShown =
+    !narrated && !asOf && simulationMode === 'none' && !selectedId && selectedEra === null;
+  const findingTarget = findingShown
+    ? findings.failing[0]
+      ? { id: findings.failing[0].id, color: 'var(--error)' }
+      : findings.best
+        ? { id: findings.best.item.id, color: 'var(--accent)' }
+        : null
+    : null;
   // Its height, measured, so the canvas starts below it however many lines its
   // rows wrap to. A fixed 40px reserved one line of each, and at 900px the
   // range line wraps and the finding sat on the era names, which are controls.
@@ -475,6 +532,8 @@ export default function CivTree({
   // and what it enables are drawn apart now, and the transitive answer is
   // the simulation, one click away in the panel.
   const hovered = hoverItem || hoveredId;
+  const hazardId = `hazard-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const hazard = `url(#${hazardId})`;
   const focusId =
     selectedId && nodePositionMap.has(selectedId)
       ? selectedId
@@ -572,6 +631,7 @@ export default function CivTree({
             color: AUTHORITY_FILL[m],
             sym: AUTHORITY_SYM[m],
             label: AUTHORITY_LABEL[m],
+            hatch: m === 'forbidden',
           })
         )
       : activeLens === 'attention'
@@ -590,7 +650,7 @@ export default function CivTree({
               { kind: 'faded', label: 'Blocked' },
               { kind: 'square', label: 'Keystone' },
               { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing', hatch: true },
               { kind: 'line', label: 'Required' },
               { kind: 'line', dashed: true, label: 'Optional' },
               ...jointKeys,
@@ -603,7 +663,7 @@ export default function CivTree({
               { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
               { kind: 'square', label: 'Keystone' },
               { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing' },
+              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing', hatch: true },
               { kind: 'line', label: 'Required' },
               { kind: 'line', dashed: true, label: 'Optional' },
               ...directionKeys,
@@ -888,6 +948,9 @@ export default function CivTree({
           }}
         >
           <title>Capability tree: what this setup can do, by era</title>
+          <defs>
+            <HazardPattern id={hazardId} />
+          </defs>
           {/* Era column bands with clean headers */}
           {colOrder.map((d, i) => {
             const list = cols[d] || [];
@@ -1030,6 +1093,7 @@ export default function CivTree({
                       ? 'var(--node-reached)'
                       : defaultColor
                     : 'var(--bg-canvas)';
+                  if (failingNode) nodeFill = hazard;
                   // Failing outranks selection and focus: the ring outside the
                   // node already says it is selected, and a broken node drawn in
                   // the selection's colour read as working in the one step that
@@ -1093,7 +1157,7 @@ export default function CivTree({
                   } else if (mark) {
                     // Four categories, so four hues, each with its own glyph
                     // in the centre: the lens must read without colour.
-                    nodeFill = AUTHORITY_FILL[mark];
+                    nodeFill = mark === 'forbidden' ? hazard : AUTHORITY_FILL[mark];
                     sc = mark === 'ungranted' ? 'var(--text-muted)' : 'var(--on-accent)';
                     sw = 2;
                   } else if (isAttentionHot) {
@@ -1195,14 +1259,11 @@ export default function CivTree({
                         />
                       )}
 
-                      {selected && (
-                        <circle
-                          r={NODE_R + 5}
-                          fill="none"
-                          stroke="var(--accent)"
-                          strokeWidth={2}
-                          opacity={0.7}
-                        />
+                      {selected ? (
+                        <Brackets r={NODE_R} color="var(--accent)" />
+                      ) : (
+                        findingTarget?.id === item.id &&
+                        !dimmed && <Brackets r={NODE_R} color={findingTarget.color} />
                       )}
 
                       {/* A next step is the outlined circle the legend draws, with
@@ -1232,7 +1293,8 @@ export default function CivTree({
                           simulationMode === 'none' &&
                           !isAttentionHot &&
                           !mark &&
-                          !selected
+                          !selected &&
+                          !failingNode
                             ? 0.6
                             : 1
                         }
@@ -1251,9 +1313,11 @@ export default function CivTree({
                           fill={
                             mark === 'ungranted'
                               ? 'var(--text-muted)'
-                              : mark || reached
-                                ? 'var(--on-accent)'
-                                : 'var(--text-muted)'
+                              : nodeFill === hazard
+                                ? 'var(--text-primary)'
+                                : mark || reached
+                                  ? 'var(--on-accent)'
+                                  : 'var(--text-muted)'
                           }
                           fontSize={13}
                           fontWeight={700}
@@ -1562,30 +1626,34 @@ export default function CivTree({
                     <>
                       <circle
                         r={7}
-                        fill={l.color}
+                        fill={l.hatch ? hazard : l.color}
                         opacity={0.9}
                         stroke={
                           isLegendActive
                             ? 'var(--text-primary)'
-                            : l.color === 'var(--bg-canvas)'
-                              ? 'var(--text-muted)'
-                              : l.color === 'var(--node-reached)'
-                                ? 'var(--node-reached-ring)'
-                                : 'none'
+                            : l.hatch
+                              ? l.color
+                              : l.color === 'var(--bg-canvas)'
+                                ? 'var(--text-muted)'
+                                : l.color === 'var(--node-reached)'
+                                  ? 'var(--node-reached-ring)'
+                                  : 'none'
                         }
                         strokeWidth={
                           isLegendActive
                             ? 2
-                            : l.color === 'var(--bg-canvas)' || l.color === 'var(--node-reached)'
-                              ? 1.25
-                              : 0
+                            : l.hatch
+                              ? 1.5
+                              : l.color === 'var(--bg-canvas)' || l.color === 'var(--node-reached)'
+                                ? 1.25
+                                : 0
                         }
                       />
                       {l.sym && (
                         <text
                           y={3}
                           textAnchor="middle"
-                          fill="var(--on-accent)"
+                          fill={l.hatch ? 'var(--text-primary)' : 'var(--on-accent)'}
                           fontSize={9.5}
                           fontWeight={700}
                         >

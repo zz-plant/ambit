@@ -71,3 +71,18 @@ test('a number stays on the line with its noun', () => {
   expect(svg).not.toMatch(/ \d<\/text>/);
   expect(svg).toContain('1\u00a0not');
 });
+
+test('a node that was already failing is labelled on the image, which has no legend', () => {
+  const { stops, weakened } = outageSplit(items, connections, 'combo:tool-protocol');
+  const card = buildCard(items, connections, {
+    mode: 'outage',
+    rootId: 'combo:tool-protocol',
+    cascade: stops,
+    weakened,
+  })!;
+  const failing = card.nodes.filter(n => n.tone === 'failing');
+  expect(failing.length).toBeGreaterThan(0);
+  const svg = cardSvg(card);
+  expect(svg.match(/CHECK FAILING/g)).toHaveLength(failing.length);
+  expect(svg.match(/fill="url\(#hazard\)"/g)).toHaveLength(failing.length);
+});
