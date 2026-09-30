@@ -3767,14 +3767,11 @@ code, pre, .code, .sp-cli-cmd {
   min-width: 3px;
 }
 
-/* The keeper is context, so it recedes twice: the grey, and a hatch that
-   survives a greyscale print and a forced-colors mode. */
+/* The keeper is context, so it recedes: a paler grey, and the KEPT tag beside
+   its name says it without colour. It was hatched, and stripes are what the
+   page draws for a state that refuses; a keeper refuses nothing. */
 .fig-bar-fill--kept {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--fig-context) 0 3px,
-    rgba(138, 142, 150, 0.3) 3px 6px
-  );
+  background: color-mix(in srgb, var(--fig-context) 55%, transparent);
 }
 
 .fig-bar-value {
@@ -3832,9 +3829,11 @@ code, pre, .code, .sp-cli-cmd {
   right: 0;
   bottom: 0;
   border-radius: 0 4px 4px 0;
+  /* Past the ceiling a spend is refused, so it is striped as the map stripes
+     what refuses, at the same angle and pitch. */
   background: repeating-linear-gradient(
-    135deg,
-    rgba(239, 100, 97, 0.34) 0 3px,
+    -45deg,
+    color-mix(in srgb, var(--error) 34%, transparent) 0 3px,
     transparent 3px 6px
   );
 }
