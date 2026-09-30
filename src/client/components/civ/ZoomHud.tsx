@@ -41,6 +41,10 @@ interface ZoomHudProps {
    * the map is a past observation, which records neither attention nor grants.
    */
   lensNote?: string;
+  /** The map's own controls beside zoom: the key, the timeline, the image. */
+  tools?: React.ReactNode;
+  /** What one of those tools opened, laid under the controls. */
+  popover?: React.ReactNode;
 }
 
 export function ZoomHud({
@@ -56,6 +60,8 @@ export function ZoomHud({
   leftInset = 0,
   rightInset = 0,
   lensNote,
+  tools,
+  popover,
 }: ZoomHudProps) {
   const fit = () => {
     const el = containerRef.current;
@@ -80,84 +86,94 @@ export function ZoomHud({
 
   return (
     <div className="civ-hud" style={{ paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset }}>
-      <div className="civ-zoom-hud" role="toolbar" aria-label="Zoom">
-        <button
-          type="button"
-          className="civ-zoom-btn"
-          onClick={() => setZoom(z => Math.max(0.4, +(z - 0.2).toFixed(2)))}
-          title="Zoom out (−)"
-          aria-label="Zoom out"
-        >
-          <svg
-            width="11"
-            height="11"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
-            <line x1="2" y1="6" x2="10" y2="6" />
-          </svg>
-        </button>
-        {/* The reading is the reset: one control where a badge and a 1:1
+      <div className="civ-hud-left">
+        <div className="civ-hud-row">
+          <div className="civ-zoom-hud" role="toolbar" aria-label="Zoom">
+            <button
+              type="button"
+              className="civ-zoom-btn"
+              onClick={() => setZoom(z => Math.max(0.4, +(z - 0.2).toFixed(2)))}
+              title="Zoom out (−)"
+              aria-label="Zoom out"
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <line x1="2" y1="6" x2="10" y2="6" />
+              </svg>
+            </button>
+            {/* The reading is the reset: one control where a badge and a 1:1
             button stood, since the number is what you press to get it back. */}
-        <button
-          type="button"
-          className="civ-zoom-badge"
-          onClick={() => {
-            setZoom(1);
-            containerRef.current?.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
-          }}
-          title="Actual size (0)"
-          aria-label={`Zoom ${Math.round(zoom * 100)}%. Actual size`}
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-        <button
-          type="button"
-          className="civ-zoom-btn"
-          onClick={() => setZoom(z => Math.min(2.5, +(z + 0.2).toFixed(2)))}
-          title="Zoom in (+)"
-          aria-label="Zoom in"
-        >
-          <svg
-            width="11"
-            height="11"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
-            <line x1="2" y1="6" x2="10" y2="6" />
-            <line x1="6" y1="2" x2="6" y2="10" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="civ-zoom-btn"
-          onClick={fit}
-          title="Fit the whole map"
-          aria-label="Fit graph to view"
-        >
-          <svg
-            width="11"
-            height="11"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M1.5 4.5 V1.5 H4.5 M7.5 1.5 H10.5 V4.5 M10.5 7.5 V10.5 H7.5 M4.5 10.5 H1.5 V7.5" />
-          </svg>
-          <span className="civ-zoom-btn-label">Fit</span>
-        </button>
+            <button
+              type="button"
+              className="civ-zoom-badge"
+              onClick={() => {
+                setZoom(1);
+                containerRef.current?.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+              }}
+              title="Actual size (0)"
+              aria-label={`Zoom ${Math.round(zoom * 100)}%. Actual size`}
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              type="button"
+              className="civ-zoom-btn"
+              onClick={() => setZoom(z => Math.min(2.5, +(z + 0.2).toFixed(2)))}
+              title="Zoom in (+)"
+              aria-label="Zoom in"
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <line x1="2" y1="6" x2="10" y2="6" />
+                <line x1="6" y1="2" x2="6" y2="10" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="civ-zoom-btn"
+              onClick={fit}
+              title="Fit the whole map"
+              aria-label="Fit graph to view"
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M1.5 4.5 V1.5 H4.5 M7.5 1.5 H10.5 V4.5 M10.5 7.5 V10.5 H7.5 M4.5 10.5 H1.5 V7.5" />
+              </svg>
+              <span className="civ-zoom-btn-label">Fit</span>
+            </button>
+          </div>
+          {tools && (
+            <div className="civ-zoom-hud" role="toolbar" aria-label="Map">
+              {tools}
+            </div>
+          )}
+        </div>
+        {popover}
       </div>
 
       <div className="civ-lens-hud" role="toolbar" aria-label="Lens">

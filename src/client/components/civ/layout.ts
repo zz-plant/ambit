@@ -580,7 +580,8 @@ export function layoutNodes({ cols, colOrder }: Columns): Map<string, Placed> {
 export function sceneSize({ cols, colOrder }: Columns): { width: number; height: number } {
   return {
     width: START_X + colOrder.length * COL_W + 60,
-    height: Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 60,
+    // The key lived under the last row; it opens from the controls now.
+    height: Math.max(...colOrder.map(d => (cols[d]?.length || 0) * ROW_H), 5) + START_Y + 24,
   };
 }
 

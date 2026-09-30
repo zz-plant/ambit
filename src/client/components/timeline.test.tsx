@@ -97,6 +97,7 @@ afterEach(() => {
     showDetailPanel: false,
     history: null,
     historyAt: null,
+    historyOpen: false,
     attentionInterventions: {},
     backend: 'unknown',
   });
@@ -251,6 +252,10 @@ test('the page tells one date: the timeline under the map, the header, the panel
   expect(now).toContain('1 of 1 reached');
   expect(now).not.toContain('As of');
   seed({ selectedEra: null, selectedItem: vc.id });
+  // At now the strip waits to be opened: a band saying nothing has moved is a
+  // band of the screen spent on nothing.
+  expect(renderToStaticMarkup(<App />)).not.toContain('app-scene--timeline');
+  seed({ historyOpen: true });
   const nowNode = text(renderToStaticMarkup(<App />));
   expect(nowNode).toContain('Nothing has moved since Sep 25.');
   expect(nowNode).not.toContain('as of');

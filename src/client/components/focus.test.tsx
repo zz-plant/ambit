@@ -269,7 +269,7 @@ test('an edge is drawn only between two nodes the map draws', () => {
 });
 
 test('the header counts stay whole-map, whatever the collapse hides', () => {
-  const headers = (html: string) => html.match(/>Era \d · [^<]*</g);
+  const headers = (html: string) => html.match(/>Era \d: [^<]*</g);
   seed({ items, connections });
   const whole = headers(map());
   seed({ collapsed: true, collapseDepth: 1, collapseDirection: 'needs' });

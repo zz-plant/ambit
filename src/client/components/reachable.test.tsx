@@ -525,10 +525,11 @@ test('an era header is a control, and it counts only what is working', () => {
     'aria-label="Tool Use, era 3: 4 of 5 reached, 1 failing. Show its ladder"'
   );
   const text = html.replace(/<[^>]+>/g, '');
-  expect(text).toContain('Era 3 · 4 of 5');
-  expect(text).not.toContain('Era 3 · 5 of 5');
+  // The count under the name; the era's number and what is left say so on hover.
+  expect(text).toContain('Era 3: 4 of 5 reached');
+  expect(text).not.toContain('Era 3: 5 of 5');
   // An era with nothing failing counts as it always did.
-  expect(text).toContain('Era 1 · 4 of 4');
+  expect(text).toContain('Era 1: 4 of 4 reached');
   // The failing node is its own red segment of the bar, in that era alone.
   expect(html.match(/fig-eras-failing/g)).toHaveLength(1);
 });

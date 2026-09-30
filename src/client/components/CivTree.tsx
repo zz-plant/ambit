@@ -43,6 +43,9 @@ import {
   wrapLabel,
 } from './civ/layout.ts';
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
+import { hasHistory } from './civ/history.ts';
+import { MapKey } from './civ/MapKey.tsx';
+import { Brackets, HazardPattern, JointIcon, type LegendKey } from './civ/marks.tsx';
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { ZoomHud } from './civ/ZoomHud.tsx';
@@ -75,6 +78,8 @@ interface CivTreeProps {
   asOf?: string;
   /** Told where the headline's bottom edge is, so a card laid over the map can sit below it. */
   onHeadline?: (bottom: number) => void;
+  /** Save what the map shows as an image made to be posted. */
+  onSaveImage?: () => void;
 }
 
 /**
@@ -122,84 +127,6 @@ const AUTHORITY_SYM: Record<AuthorityMark, string> = {
 };
 
 /**
- * The mark for a joint capability: a person, or a device, in a small disc at
- * the node's lower left. Drawn, not typed, since the glyphs a font offers for
- * either vary by platform.
- */
-function JointIcon({ mark }: { mark: JointMark }) {
-  return (
-    <>
-      <circle r={6.5} fill="var(--bg-surface)" stroke="var(--accent)" strokeWidth={1.2} />
-      {mark === 'person' ? (
-        <>
-          <circle cy={-1.8} r={1.7} fill="var(--accent)" />
-          <path d="M-3 3.2 C-3 0.6 3 0.6 3 3.2 Z" fill="var(--accent)" />
-        </>
-      ) : (
-        <>
-          <rect x={-3.2} y={-2.6} width={6.4} height={4.2} rx={0.8} fill="var(--accent)" />
-          <line x1={-1.6} y1={3} x2={1.6} y2={3} stroke="var(--accent)" strokeWidth={1.1} />
-        </>
-      )}
-    </>
-  );
-}
-
-/**
- * A lock-on: four corners around a node, and no ring. A ring is one more
- * circle on a map of circles; corners are a shape nothing else on the map
- * draws, so the one node being pointed at reads as pointed at even when a
- * dozen around it are lit.
- */
-function Brackets({ r, color }: { r: number; color: string }) {
-  // Outside the keystone's square (r + 6), so a selected keystone shows both.
-  const s = r + 11;
-  const arm = 6;
-  const corners = [
-    [-1, -1],
-    [1, -1],
-    [1, 1],
-    [-1, 1],
-  ];
-  return (
-    <g stroke={color} strokeWidth={2} strokeLinecap="round" fill="none">
-      {corners.map(([dx, dy]) => (
-        <path key={`${dx}${dy}`} d={`M${dx * s} ${dy * (s - arm)} V${dy * s} H${dx * (s - arm)}`} />
-      ))}
-    </g>
-  );
-}
-
-/**
- * Diagonal stripes for the two states that refuse: a check that is failing,
- * and a grant that is forbidden. A texture survives a greyscale screenshot and
- * a reader who cannot tell the reds apart, where a fill colour does not, and
- * it stays rare enough to mean something: nothing else on the map is striped.
- */
-function HazardPattern({ id }: { id: string }) {
-  return (
-    <pattern
-      id={id}
-      width={6}
-      height={6}
-      patternUnits="userSpaceOnUse"
-      patternTransform="rotate(45)"
-    >
-      <rect width={6} height={6} fill="var(--bg-canvas)" />
-      <rect width={3} height={6} fill="var(--error)" opacity={0.6} />
-    </pattern>
-  );
-}
-
-/** One entry of the legend under the map: a swatch, a stroke, or a heading for the ramp. */
-type LegendKey =
-  | { kind: 'label'; label: string }
-  | { kind: 'node'; label: string; color: string; sym?: string; hatch?: boolean }
-  | { kind: 'ring' | 'faded' | 'square'; label: string }
-  | { kind: 'line'; label: string; color?: string; dashed?: boolean }
-  | { kind: 'joint'; label: string; mark: JointMark };
-
-/**
  * The count under a column's name, drawn as well as written. A column is a
  * set with a size and a filled fraction; saying "Era 5" where "1 of 5" could
  * stand was a label where a measurement belonged. One scale across all seven
@@ -239,9 +166,12 @@ function ColumnCount({
         fontWeight={500}
         style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
       >
-        {column.startsWith('era:') ? `Era ${column.slice(4)} · ` : ''}
+        {/* The count alone under the name. The era's number and what is left
+            to set up are the ladder's to say, and on hover here: seven
+            columns of "Era 2 · 3 of 6 · 35m left" at 10px were a row of
+            fine print over the map. */}
+        <title>{`${column.startsWith('era:') ? `Era ${column.slice(4)}: ` : ''}${reached} of ${total} reached${left ? `, about ${left} of setup left` : ''}`}</title>
         {reached} of {total}
-        {left ? ` · ${left} left` : ''}
       </text>
       <rect className="fig-eras-track" x={bx} y={by} width={barW} height={3} rx={1} />
       {reached > 0 && (
@@ -359,6 +289,7 @@ export default function CivTree({
   narrated = false,
   asOf,
   onHeadline,
+  onSaveImage,
 }: CivTreeProps) {
   const requestedLens = useAmbitStore(s => s.activeLens);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
@@ -668,10 +599,16 @@ export default function CivTree({
               { kind: 'line', dashed: true, label: 'Optional' },
               ...directionKeys,
             ];
-  const legendCount = legend.length;
-  // Where the trailing hint sits: past the last key, at the pitch the keys use.
-  const legendEnd = 10 + legendCount * (activeLens === 'authority' ? 150 : 112);
-  const hasSpotlights = legend.some(l => Boolean(SPOTLIGHTS[l.label]));
+  // A lens paints with a scale the standard map does not use, so switching to
+  // one opens the key until someone closes it; the standard map's key waits
+  // to be asked for.
+  const [keyToggled, setKeyToggled] = useState<boolean | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new lens is what resets the choice
+  useEffect(() => setKeyToggled(null), [activeLens]);
+  const keyOpen = keyToggled ?? activeLens !== 'default';
+  const history = useAmbitStore(s => s.history);
+  const historyOpen = useAmbitStore(s => s.historyOpen);
+  const setHistoryOpen = useAmbitStore(s => s.setHistoryOpen);
 
   // The selected node has the detail panel open beside it, which says
   // everything the tooltip would, so the tooltip is for the others.
@@ -782,9 +719,10 @@ export default function CivTree({
     if (!lit.length || framedFor.current === key) return;
     framedFor.current = key;
     const points = lit.flatMap(id => nodePositionMap.get(id) ?? []);
-    // The zoom and lens controls sit over the canvas's first 52px, except in
-    // the tour, which hides them on a phone.
-    const hud = narrated ? 8 : 52;
+    // The zoom and lens controls, and the map's tools on a row of their own,
+    // sit over the canvas's first 88px, except in the tour, which hides them
+    // on a phone.
+    const hud = narrated ? 8 : 88;
     const frame = frameScene(
       points,
       { top: hud, width: el.clientWidth - leftInset, height: el.clientHeight - hud - covered },
@@ -870,6 +808,63 @@ export default function CivTree({
           asOf
             ? 'An observation of the frontier records states and checks, not attention or authority. Back to now to use this lens.'
             : undefined
+        }
+        tools={
+          <>
+            <button
+              type="button"
+              className={`civ-zoom-btn${keyOpen ? ' is-on' : ''}`}
+              aria-expanded={keyOpen}
+              onClick={() => setKeyToggled(!keyOpen)}
+              title="What each mark on the map means"
+            >
+              Key
+            </button>
+            {hasHistory(history) && (
+              <button
+                type="button"
+                className={`civ-zoom-btn${historyOpen ? ' is-on' : ''}`}
+                aria-pressed={historyOpen}
+                onClick={() => setHistoryOpen(!historyOpen)}
+                title="The frontier through time: scrub the map back to an earlier observation"
+              >
+                History
+              </button>
+            )}
+            {onSaveImage && !asOf && (
+              <button
+                type="button"
+                className="civ-zoom-btn"
+                onClick={onSaveImage}
+                title="Save what the map shows as an image sized for posting"
+              >
+                Image
+              </button>
+            )}
+            {spotlight && (
+              <button
+                type="button"
+                className="civ-zoom-btn civ-spot-pill"
+                onClick={() => setSpotlight(null)}
+                title="Show every node again (Esc)"
+                aria-label={`Showing ${spotlight} only. Show every node again`}
+              >
+                {spotlight} only <span aria-hidden="true">×</span>
+              </button>
+            )}
+          </>
+        }
+        popover={
+          keyOpen && (
+            <MapKey
+              keys={legend}
+              spotlight={spotlight}
+              lights={label => Boolean(SPOTLIGHTS[label])}
+              onSpotlight={setSpotlight}
+              concepts={LEGEND_CONCEPTS}
+              hazard={hazard}
+            />
+          )
         }
       />
 
@@ -1558,198 +1553,6 @@ export default function CivTree({
                 </g>
               );
             })()}
-
-          {/* Legend. Clicking an entry spotlights the nodes it describes. */}
-          <g transform={`translate(${START_X}, ${contentHeight - 35})`}>
-            <line
-              x1={0}
-              y1={-8}
-              x2={colOrder.length * COL_W - 40}
-              y2={-8}
-              stroke="var(--border)"
-              strokeWidth={1}
-            />
-            {legend.map((l, i) => {
-              // The heat scale is a ramp, so its swatches sit close together and
-              // read as one object rather than as five separate keys.
-              const lx =
-                activeLens === 'attention'
-                  ? i === 0
-                    ? 10
-                    : 150 + (i - 1) * 62
-                  : activeLens === 'authority'
-                    ? 10 + i * 150
-                    : 10 + i * 112;
-              const clickable = Boolean(SPOTLIGHTS[l.label]);
-              const isLegendActive = spotlight === l.label;
-              return (
-                // biome-ignore lint/a11y/noStaticElementInteractions: Legend items trigger interactive filtering
-                <g
-                  key={l.label}
-                  role={clickable ? 'button' : undefined}
-                  tabIndex={clickable ? 0 : undefined}
-                  aria-label={
-                    clickable
-                      ? isLegendActive
-                        ? 'Show every node again'
-                        : `Highlight ${l.label}`
-                      : undefined
-                  }
-                  onKeyDown={e => {
-                    if (clickable && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      setSpotlight(spotlight === l.label ? null : l.label);
-                    }
-                  }}
-                  transform={`translate(${lx}, 8)`}
-                  style={{
-                    cursor: clickable ? 'pointer' : 'default',
-                    opacity: spotlight && !isLegendActive ? 0.45 : 1,
-                  }}
-                  onClick={() => {
-                    if (clickable) setSpotlight(spotlight === l.label ? null : l.label);
-                  }}
-                >
-                  {(clickable || LEGEND_CONCEPTS[l.label]) && (
-                    <title>
-                      {termTitle(
-                        LEGEND_CONCEPTS[l.label] ?? '',
-                        clickable
-                          ? isLegendActive
-                            ? 'Click to show everything again'
-                            : `Click to highlight ${l.label}`
-                          : undefined
-                      )}
-                    </title>
-                  )}
-                  {l.kind === 'node' && (
-                    <>
-                      <circle
-                        r={7}
-                        fill={l.hatch ? hazard : l.color}
-                        opacity={0.9}
-                        stroke={
-                          isLegendActive
-                            ? 'var(--text-primary)'
-                            : l.hatch
-                              ? l.color
-                              : l.color === 'var(--bg-canvas)'
-                                ? 'var(--text-muted)'
-                                : l.color === 'var(--node-reached)'
-                                  ? 'var(--node-reached-ring)'
-                                  : 'none'
-                        }
-                        strokeWidth={
-                          isLegendActive
-                            ? 2
-                            : l.hatch
-                              ? 1.5
-                              : l.color === 'var(--bg-canvas)' || l.color === 'var(--node-reached)'
-                                ? 1.25
-                                : 0
-                        }
-                      />
-                      {l.sym && (
-                        <text
-                          y={3}
-                          textAnchor="middle"
-                          fill={l.hatch ? 'var(--text-primary)' : 'var(--on-accent)'}
-                          fontSize={9.5}
-                          fontWeight={700}
-                        >
-                          {l.sym}
-                        </text>
-                      )}
-                    </>
-                  )}
-                  {l.kind === 'joint' && <JointIcon mark={l.mark} />}
-                  {l.kind === 'ring' && (
-                    <circle r={7} fill="var(--bg-canvas)" stroke="var(--accent)" strokeWidth={2} />
-                  )}
-                  {l.kind === 'faded' && (
-                    <circle
-                      r={7}
-                      fill="var(--bg-canvas)"
-                      stroke="var(--text-muted)"
-                      strokeWidth={1.25}
-                      strokeDasharray="3,2"
-                    />
-                  )}
-                  {l.kind === 'square' && (
-                    <rect
-                      x={-8}
-                      y={-8}
-                      width={16}
-                      height={16}
-                      rx={3}
-                      fill="none"
-                      stroke="var(--warn)"
-                      strokeOpacity={0.75}
-                      strokeWidth={1.25}
-                      strokeDasharray="3,2"
-                    />
-                  )}
-                  {l.kind === 'label' && null}
-                  {l.kind === 'line' && (
-                    <line
-                      x1={-10}
-                      y1={0}
-                      x2={10}
-                      y2={0}
-                      stroke={l.color ?? 'var(--text-muted)'}
-                      strokeWidth={1.5}
-                      strokeDasharray={l.dashed ? '4,3' : 'none'}
-                    />
-                  )}
-                  <text
-                    x={l.kind === 'label' ? 0 : 12}
-                    y={3.5}
-                    fill={isLegendActive ? 'var(--accent)' : 'var(--text-secondary)'}
-                    fontSize={11.5}
-                    fontWeight={isLegendActive ? 600 : 400}
-                    fontFamily="var(--font-sans)"
-                    // No underline: SVG text drew the dotted one solid, so every
-                    // key read as a hyperlink. The pointer, the hover tooltip and
-                    // the hint at the end of the row say a key can be pressed.
-                  >
-                    {l.label}
-                  </text>
-                </g>
-              );
-            })}
-            {spotlight ? (
-              // biome-ignore lint/a11y/useSemanticElements: an HTML button cannot live inside an SVG; role, tabIndex and a key handler are on the group
-              <g
-                role="button"
-                tabIndex={0}
-                transform={`translate(${legendEnd}, 8)`}
-                style={{ cursor: 'pointer' }}
-                aria-label="Show every node again"
-                onClick={() => setSpotlight(null)}
-                onKeyDown={e => {
-                  if (e.key !== 'Enter' && e.key !== ' ') return;
-                  e.preventDefault();
-                  setSpotlight(null);
-                }}
-              >
-                <text y={3.5} fill="var(--accent)" fontSize={11.5} fontFamily="var(--font-sans)">
-                  Showing {spotlight} only · show all (Esc)
-                </text>
-              </g>
-            ) : (
-              hasSpotlights && (
-                <text
-                  transform={`translate(${legendEnd}, 8)`}
-                  y={3.5}
-                  fill="var(--text-muted)"
-                  fontSize={11.5}
-                  fontFamily="var(--font-sans)"
-                >
-                  Click a key to highlight it
-                </text>
-              )
-            )}
-          </g>
         </svg>
       </div>
       {/* Where this came from, for the screenshot that loses the address bar.
@@ -1765,7 +1568,9 @@ export default function CivTree({
 
       {/* Not while a tour narrates the map: its card sits where the thumbnail
           does, and the finding the thumbnail feeds is hidden then too. */}
-      {!narrated && (
+      {/* Not with a panel open either: it sat over the map's right edge, the
+          part left beside the panel, and the headline it feeds is hidden then. */}
+      {!narrated && !selectedId && selectedEra === null && (
         <Minimap
           containerRef={containerRef}
           zoom={zoom}

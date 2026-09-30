@@ -207,7 +207,7 @@ test('the tour has the corner to itself: no minimap while it narrates the map', 
   // Nothing measures a scroller on the server, so the thumbnail cannot be seen
   // to be missing from a render; the condition is checked where it is written.
   const source = readFileSync(join(import.meta.dirname, 'CivTree.tsx'), 'utf8');
-  expect(source).toMatch(/\{!narrated && \(\s*<Minimap/);
+  expect(source).toMatch(/\{!narrated && [^(]*\(\s*<Minimap/);
 });
 
 afterEach(() => {

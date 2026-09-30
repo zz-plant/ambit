@@ -240,6 +240,13 @@ interface StoreState {
    */
   historyAt: string | null;
   setHistoryAt: (at: string | null) => void;
+  /**
+   * Whether the timeline is open under the map. Closed until asked for, or
+   * until a link names a moment: a strip that says nothing has moved is a
+   * band of the screen spent on nothing.
+   */
+  historyOpen: boolean;
+  setHistoryOpen: (open: boolean) => void;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
@@ -336,6 +343,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   configMcp: {},
   history: null,
   historyAt: initialLink.at ?? null,
+  historyOpen: Boolean(initialLink.at),
 
   setItems: (items, connections) => set({ items, connections }),
 
@@ -375,8 +383,12 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   // returns the map to now for the same reason, whichever surface started it.
   setHistoryAt: at => {
     if (at) get().clearSimulation();
-    set({ historyAt: at });
+    set(at ? { historyAt: at, historyOpen: true } : { historyAt: at });
   },
+  // Closing the strip returns the map to now: a past map with no playhead on
+  // screen would be a date nothing says.
+  setHistoryOpen: open =>
+    set(open ? { historyOpen: true } : { historyOpen: false, historyAt: null }),
   setCollapsed: on => set({ collapsed: on }),
   setCollapseDepth: depth => set({ collapseDepth: depth }),
   setCollapseDirection: direction => set({ collapseDirection: direction }),

@@ -238,7 +238,11 @@ src/client/                React frontend
     civ/Minimap.tsx        The thumbnail of the whole map when it does not fit, and its outline
     civ/history.ts         The map as of one observation, with today's names and edges: pure
     civ/Timeline.tsx       The scrub bar under the map: the frontier's observations and a playhead
-    civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree
+    civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree, and the map's tools
+                           beside zoom: the key, the timeline, the saved image
+    civ/MapKey.tsx         The key, opened from those tools; it opens itself under a lens
+    civ/marks.tsx          The drawings the map and its key share: corner brackets for what the
+                           map points at, stripes for what refuses, the joint mark, each swatch
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
     civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step
     NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, needs and enables

@@ -142,10 +142,17 @@ test('the map leads with the verified range, and the one loss that would stop th
 
 test('the week is stated as movement, and its absence is said, never printed as +0', () => {
   const found = mapFindings(merged.items, merged.connections);
+  // The range line follows a headline about the next step; a failing check
+  // stands alone, so this reads the demo as though nothing were failing.
   const render = (since: Parameters<typeof MapFinding>[0]['since']) =>
     text(
       renderToStaticMarkup(
-        <MapFinding findings={found} since={since} onShow={() => {}} onPreview={() => {}} />
+        <MapFinding
+          findings={{ ...found, failing: [] }}
+          since={since}
+          onShow={() => {}}
+          onPreview={() => {}}
+        />
       )
     );
   const week = render(demoSnapshot().since);
@@ -206,18 +213,30 @@ test('the canvas starts below the headline, however many lines it wraps to', () 
   ).toContain('--headline-pad:40px');
 });
 
-test('the headline leads with what is broken, and the worst loss follows it', () => {
+test('a failing check is the headline, alone', () => {
   // The range line led, so the first thing read was "losing Shell Execution
-  // stops 9", a hypothetical, above a check that was failing now.
+  // stops 9", a hypothetical, above a check that was failing now. Then it
+  // followed as a second band, saying the week and the worst loss under a
+  // sentence about something broken.
   const found = mapFindings(merged.items, merged.connections);
   expect(found.failing.length).toBeGreaterThan(0);
   const html = renderToStaticMarkup(
     <MapFinding findings={found} since={null} onShow={() => {}} onPreview={() => {}} />
   );
-  expect(html.indexOf('civ-finding--bad')).toBeGreaterThan(-1);
-  expect(html.indexOf('civ-finding--bad')).toBeLessThan(html.indexOf('civ-range'));
-  // The count the header's pill already says is marked so a wide screen drops it.
-  expect(html).toContain('civ-range-count');
+  expect(html).toContain('civ-finding--bad');
+  expect(html).not.toContain('civ-range');
+  // With nothing failing, the next step leads and the range follows it; the
+  // count the header's pill already says is marked so a wide screen drops it.
+  const calm = renderToStaticMarkup(
+    <MapFinding
+      findings={{ ...found, failing: [] }}
+      since={null}
+      onShow={() => {}}
+      onPreview={() => {}}
+    />
+  );
+  expect(calm.indexOf('civ-finding')).toBeLessThan(calm.indexOf('civ-range'));
+  expect(calm).toContain('civ-range-count');
 });
 
 /** The demo's tree, rendered with a node selected, or none. */

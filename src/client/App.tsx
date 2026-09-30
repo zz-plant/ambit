@@ -80,6 +80,7 @@ export default function App() {
   const history = useAmbitStore(s => s.history);
   const historyAt = useAmbitStore(s => s.historyAt);
   const setHistoryAt = useAmbitStore(s => s.setHistoryAt);
+  const historyOpen = useAmbitStore(s => s.historyOpen);
   const loadHistory = useAmbitStore(s => s.loadHistory);
 
   const selectItem = useAmbitStore(s => s.selectItem);
@@ -384,7 +385,8 @@ export default function App() {
   const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
   // Under the map, once a series has come back. It explains itself when it
   // holds fewer than two ticks; with no engine behind the page it is absent.
-  const showTimeline = view === 'tree' && hasTree && !touring && hasHistory(history);
+  const showTimeline =
+    view === 'tree' && hasTree && !touring && (historyOpen || Boolean(tick)) && hasHistory(history);
   const endTour = () => {
     setTourAsked(false);
     dismissGuide();
@@ -429,7 +431,6 @@ export default function App() {
         onSearch={() => setFinderOpen(true)}
         onShowView={showView}
         onShare={share}
-        onSaveImage={view === 'tree' && hasTree ? saveImage : undefined}
         onShowProposals={showProposals}
         onShowDocs={() => openDocs()}
         asOf={tick ? dayOf(tick.at) : undefined}
@@ -465,6 +466,7 @@ export default function App() {
               narrated={touring}
               asOf={tick ? momentOf(tick.at) : undefined}
               onHeadline={setHeadlineBottom}
+              onSaveImage={saveImage}
             />
           </Suspense>
         ) : items.length > 0 ? (

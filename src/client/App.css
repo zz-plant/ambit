@@ -1410,6 +1410,7 @@ code, pre, .code, .sp-cli-cmd {
    leaves the address bar behind. On a plate of its own, since it often sits
    over a row of names. Never in the way of a click. */
 .civ-source {
+  display: none;
   position: absolute;
   z-index: 5;
   padding: 3px 8px;
@@ -1425,6 +1426,14 @@ code, pre, .code, .sp-cli-cmd {
   pointer-events: none;
   user-select: none;
   transition: bottom 0.2s;
+}
+
+/* A phone's screenshot is the one that loses the address bar; a desktop
+   window keeps it, and the plate sat over a row of names for nothing. */
+@media (max-width: 768px) {
+  .civ-source {
+    display: block;
+  }
 }
 
 /* ─── ERA LADDER ─── */
@@ -1608,6 +1617,14 @@ code, pre, .code, .sp-cli-cmd {
   margin-top: 44px;
 }
 
+/* A phone has no room for the map's tools beside zoom and the lenses, so they
+   take a second row, and the canvas starts below it. */
+@media (max-width: 768px) {
+  .civ-tree-svg {
+    margin-top: 80px;
+  }
+}
+
 /* An era's header is a control: it opens the era's ladder in the detail panel.
    Pressed, its name takes the accent, the way an open panel's node does. */
 .civ-era-head {
@@ -1652,6 +1669,100 @@ code, pre, .code, .sp-cli-cmd {
 .civ-zoom-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+/* A map tool whose panel or strip is open. */
+.civ-zoom-btn.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.civ-zoom-btn:not(:has(svg)) {
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* The lit key, said where the controls are, so it can be ended without
+   opening the key again. */
+.civ-spot-pill {
+  color: var(--accent);
+  gap: 4px;
+}
+
+.civ-hud-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.civ-hud-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* The key, opened from the controls: one column, a picture and a word a row. */
+.civ-key {
+  min-width: 200px;
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.civ-key-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.civ-key-head {
+  padding: 4px 6px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.civ-key-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.civ-key-row--button {
+  cursor: pointer;
+}
+
+.civ-key-row--button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.civ-key-row.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.civ-key-hint {
+  margin: 6px 6px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* The zoom reading is also the reset to actual size, so it is a button. */
@@ -4300,6 +4411,10 @@ code, pre, .code, .sp-cli-cmd {
   .app--touring .app-deck-left > :not(.app-brand-group),
   .app--touring .civ-hud {
     display: none;
+  }
+
+  .app--touring .civ-tree-svg {
+    margin-top: 44px;
   }
 
   .app-guide {

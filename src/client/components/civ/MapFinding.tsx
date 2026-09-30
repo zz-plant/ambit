@@ -2,9 +2,12 @@
  * The map's headline: one sentence on what is broken or what to reach next,
  * then the size of the range, how it moved, and the worst single loss.
  *
- * What is broken comes first. The range line led, so the first thing read was
- * a hypothetical ("losing Shell Execution stops 9") and the real problem, a
- * check that is failing now, came second.
+ * What is broken comes first, and alone. The range line led, so the first
+ * thing read was a hypothetical ("losing Shell Execution stops 9") and the
+ * real problem, a check that is failing now, came second; then it followed,
+ * a second band over the map saying the week and the worst loss while the
+ * first said something was broken. With a check failing, that check is the
+ * headline and the range is Time & cost's to report.
  *
  * Sits where the simulation banner sits, and gives way to it, since a running
  * simulation is its own sentence. Hidden while a node is selected: the panel
@@ -181,12 +184,14 @@ export function MapFinding({
           </button>
         </div>
       ) : null}
-      <RangeLine
-        findings={findings}
-        since={since}
-        onSimulate={onSimulate}
-        onSpotlight={onSpotlight}
-      />
+      {failing.length === 0 && (
+        <RangeLine
+          findings={findings}
+          since={since}
+          onSimulate={onSimulate}
+          onSpotlight={onSpotlight}
+        />
+      )}
     </div>
   );
 }
