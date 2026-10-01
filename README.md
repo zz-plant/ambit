@@ -35,7 +35,7 @@ The demo walks a sample setup in five steps: the next step worth taking and what
 
 Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed.
 
-Think of it as an Eva: you and everything you have connected are one body, its sync is how much of it is proven to work, its umbilical is what each reach rests on, and its restraints come off one at a time as control is shown and lock again when it slips. Ambit is how you step in and see all of that. The way from A to B runs through seven legs:
+Think of it as an Eva. Your loadout is the Eva and you are the pilot: its sync is how much of it is proven to work, its umbilical is what each reach rests on, and its restraints are what must ask before it acts. Ambit adds a rule the show does not have, that a restraint comes off when the evidence meets a bar you set and locks again on one failure. [The loadout page](./docs/loadout.md#stepping-in) says where the picture stops. The way from A to B runs through seven legs:
 
 1. **See where it stands**: every runtime's config in one map, and which pieces pass their checks.
 2. **Pick the next step**: ranked by what has blocked work and how much it opens.

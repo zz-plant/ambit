@@ -66,7 +66,7 @@ The ≠ chain above is the short form. Ordinary tool registries collapse seven d
 
 The version of this I find most interesting is longitudinal. Instead of describing only today, record what the system could do at time T, and what changed. A system gains a machine, then network access, then credentials, then a scheduler, then memory, then deploy authority, then the ability to create further agents. Each is an infrastructure change *and* a change in the reachable frontier.
 
-That is a balance sheet for agency. And it makes visible the entries no changelog can:
+That is a ledger of agency, not a snapshot of it. And it makes visible the entries no changelog can:
 
 > The system acquired autonomous incident-recovery capability yesterday, although no component added yesterday was itself an incident-recovery system.
 

@@ -1,20 +1,28 @@
 # Your loadout, from A to B
 
-Your agents, your tools, your credentials, your machines, and you: together they are one loadout, and what it can do is your [ambit](./ideas.md). This page walks one person's loadout from where most setups start to where they can go, leg by leg, with the command that moves each leg and what Ambit shows at each one. The numbers are the hosted demo's, so every one of them can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
+Your agents, your tools, your credentials and your machines are your loadout. What you and your loadout can do together is your [ambit](./ideas.md). This page walks one person's loadout from where most setups start to where they can go, leg by leg, with the command that moves each leg and what Ambit shows at each one. The numbers are the hosted demo's, so every one of them can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
 
 ## Stepping in
 
-If you have seen *Neon Genesis Evangelion*, you already have the picture. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. That is a loadout. It is not a list of tools you own. It is one body, made of you and everything you have connected, and it can only do what its weakest joint allows.
+If you have seen *Neon Genesis Evangelion*, you already have the picture. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. Your loadout is the Eva, you are the pilot, and what the two of you can do together is your ambit. That is why a list of the tools you own says so little: the reach is in how they combine and how well they answer.
 
-The rest of the picture carries over too:
+Some of the picture carries over:
 
 | In the Eva | In your loadout | Where Ambit shows it |
 | :--- | :--- | :--- |
-| **Sync ratio**: how much of the body actually answers the pilot | How much of what is configured is proven to work | Proven against reached, on the map and in `ambit status` |
-| **The umbilical cable**: power from outside, and a clock when it is cut | What a reach rests on: one token, one server, one machine | The outage simulation and `ambit impact`: what stops, and what only weakens |
-| **The restraints**: released as the pilot proves control, and locked again when control slips | What may act without asking, released per action as checks pass, narrowed on one failure | The Authority lens, `ambit can`, `ambit authority promote` |
-| **MAGI**: a change of course is put to a vote before it happens | A change to the setup is a proposal a person signs before it applies | The Proposals panel, `ambit approve` |
-| **The dummy plug**: the body moving with nobody in it | What Ambit refuses: autonomy that widens with no person having set the bar | A grant widens only past a threshold a person set in advance |
+| **Sync ratio**: how much of the Eva actually answers the pilot | How much of what is configured is proven to work | Proven against reached, on the map and in `ambit status` |
+| **The umbilical cable**: power from outside, and what fails when it is cut | What a reach rests on: one token, one server, one machine | The outage simulation and `ambit impact`: what stops, and what only weakens |
+| **The restraints**: what holds the Eva back until it is cleared to move | What must ask before it acts, set per action and per target | The Authority lens, `ambit can` |
+| **MAGI**: the decision taken before NERV acts | A change to the setup is a proposal a person signs before it applies | The Proposals panel, `ambit approve` |
+| **The dummy plug**: the Eva moving with its pilot taken out | What Ambit refuses: autonomy that widens with no person having set the bar | A grant widens only past a threshold a person set in advance |
+
+Where the picture stops matters as much:
+
+- **Sync here is per piece, not one number.** Ambit says which capabilities are proven and which are not; it does not score how well you pilot.
+- **There is no clock.** An outage simulation says what would stop, not how long you would have.
+- **The restraints come off by a rule the show does not have.** In Ambit a person sets a bar once, a grant widens when the evidence meets it, and one failing check narrows it again with nobody asked.
+- **MAGI is three systems voting; Ambit's approval is one person signing.** Several approvers are not built yet.
+- **Autonomy is allowed.** An agent may act without asking where a grant says so. What Ambit refuses is that grant widening with no person behind it, which is the part the dummy plug stands for.
 
 If you have not seen it, the short version is this: a powerful suit is only as useful as the pilot's sync with it, and only as safe as its restraints. Ambit is how you see both.
 
@@ -48,7 +56,7 @@ My Setup in the app opens on a readout of these seven legs for the loadout on sc
 
 ## Why it compounds
 
-Every proven capability moves the frontier, and that changes what is one step away. A step taken makes the next one cheaper, safer or newly visible, which is why B is a direction more than a destination. The map draws the route in advance: its eras, Foundation through Sovereignty, are the journey laid out, and an era's ladder says how far up it you are.
+Every proven capability moves the frontier, and that changes what is one step away. A step taken makes the next one cheaper, safer or newly visible, which is why B is a direction more than a destination. The map's eras order capabilities by what they depend on, so the next steps on any route sit at the edge of the eras you have reached, and an era's ladder says how far up it you are. They are not the route itself: a B is a class of work you choose, and Sovereignty is a kind of capability, not the end of the road.
 
 ## Where the journey still has gaps
 

@@ -50,8 +50,9 @@ export function Journey() {
         <a href={DOCS}>From A to B, explained</a>
       </div>
       <p className="journey-sub">
-        From a pile of configs to a setup that does a class of work without you, with you only where
-        judgment is needed.
+        The entries below are your loadout. This is what they add up to on the way from a pile of
+        configs to a setup that does a class of work without you, with you only where judgment is
+        needed.
       </p>
       <ol className="journey-legs">
         {legs.map((leg, i) => (
