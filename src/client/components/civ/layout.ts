@@ -383,6 +383,67 @@ export function gapOf(
   return { missing, seconds };
 }
 
+/**
+ * The gap in an order it can be closed: each step after every step it needs,
+ * the way Civ numbers the path to a distant tech. A set lit all at once said
+ * what stood in the way and not where to start, and Launch Ready's six steps
+ * sit across four columns. Ties go to the earlier era, then the name, so the
+ * numbers do not move between renders. The node itself is not a step.
+ */
+export function routeTo(items: Item[], connections: Connection[], id: string): string[] {
+  const { missing } = gapOf(items, connections, id);
+  const byId = new Map(items.map(i => [i.id, i]));
+  const required = new Map<string, string[]>();
+  for (const c of connections) {
+    if (c.type !== 'hard-dep') continue;
+    if (!required.has(c.to)) required.set(c.to, []);
+    required.get(c.to)!.push(c.from);
+  }
+  const era = (x: string) => Number(byId.get(x)?.meta?.era) || 0;
+  const name = (x: string) => byId.get(x)?.name || x;
+  const order: string[] = [];
+  const seen = new Set<string>();
+  const visit = (node: string) => {
+    if (seen.has(node)) return;
+    seen.add(node);
+    const needs = (required.get(node) || [])
+      .filter(p => missing.has(p))
+      .sort((a, b) => era(a) - era(b) || name(a).localeCompare(name(b)));
+    for (const p of needs) visit(p);
+    if (missing.has(node)) order.push(node);
+  };
+  visit(id);
+  return order;
+}
+
+/**
+ * What a rebuild of the graph reached, as the sentence the page shows: the
+ * nodes of the tree that are reached now and were not, and the ones that
+ * became next steps because of it. Null when nothing was reached, so the page
+ * says only that it reloaded. A node the old graph did not hold is left out:
+ * the tree gaining a node is the model changing, not the machine.
+ */
+export function unlockedSince(before: Item[], after: Item[]): string | null {
+  const was = new Map(before.map(i => [i.id, i]));
+  const tree = (i: Item) => i.type === 'possibility';
+  const reached = after.filter(
+    i => tree(i) && i.status === 'built' && was.has(i.id) && was.get(i.id)!.status !== 'built'
+  );
+  if (!reached.length) return null;
+  const opened = after.filter(
+    i => tree(i) && isNext(i) && was.has(i.id) && !isNext(was.get(i.id)!)
+  );
+  const list = (items: Item[]) => {
+    const names = items.slice(0, 3).map(i => i.name);
+    const more = items.length - names.length;
+    if (more > 0) return `${names.join(', ')} and ${more} more`;
+    return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+  };
+  const head = `${list(reached)} reached`;
+  if (!opened.length) return `${head}.`;
+  return `${head}, which makes ${list(opened)} ${opened.length === 1 ? 'a next step' : 'next steps'}.`;
+}
+
 /** Seconds as the map writes them: minutes under an hour, hours above. */
 export const readableSeconds = (s: number): string =>
   !s ? '' : s >= 3600 ? `${Math.round((s / 3600) * 10) / 10}h` : `${Math.round(s / 60)}m`;

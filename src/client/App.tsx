@@ -2,7 +2,7 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import AppDeck, { mapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
 import { dayOf, hasHistory, itemsAsOf, momentOf, tickAt } from './components/civ/history';
-import { isEntry, visibleItems } from './components/civ/layout';
+import { isEntry, unlockedSince, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
@@ -152,11 +152,17 @@ export default function App() {
     graphChanged: () => {
       // Something rebuilt the graph: a seed, an adapter, another session. The
       // page reloads itself, and says so: a view that changes under the reader
-      // with no explanation reads as a glitch.
-      loadGraph();
+      // with no explanation reads as a glitch. When the rebuild reached
+      // something, that is the news, and it is said by name.
+      const before = useAmbitStore.getState().items;
+      loadGraph().then(() =>
+        setToast(
+          unlockedSince(before, useAmbitStore.getState().items) ??
+            'The graph was rebuilt, so the map has reloaded.'
+        )
+      );
       loadLoop();
       loadHistory();
-      setToast('The graph was rebuilt, so the map has reloaded.');
     },
     // A browser approval becomes a notice to act on, with the exact command
     // the terminal would run.

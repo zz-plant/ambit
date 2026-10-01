@@ -1302,7 +1302,7 @@
         "name": "Launch Ready",
         "type": "possibility",
         "status": "specified",
-        "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person. ambit goal launch-ready lists what is left, in order",
+        "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person. Reached when all six are in place, with nothing of its own to install",
         "position": {
           "x": 0,
           "y": 0,

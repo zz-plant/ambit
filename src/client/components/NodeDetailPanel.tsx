@@ -12,6 +12,7 @@ import {
   outageSentence,
   outageSplit,
   readableSeconds,
+  routeTo,
   unlockCascade,
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
@@ -21,6 +22,9 @@ import { HistoryStrip } from './figures';
 import { Term } from './Term';
 import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
+
+/** How many steps of a route the panel lists before it counts the rest. */
+const ROUTE_SHOWN = 8;
 
 /**
  * A prerequisite's edge, in the legend's words and not the data model's. The
@@ -354,6 +358,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           // alarm: the red button said danger under "nothing else would stop".
           const stops = impact?.stopped.length ?? 0;
           const missing = gap ? [...gap.missing] : [];
+          const route = missing.length > 1 ? routeTo(items, connections, item.id) : [];
           // The direct ones are named first: they are what to reach, the rest is
           // what those need in turn. The ladder for the node's era says it the
           // same way, from the same function.
@@ -370,11 +375,32 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                   {outage?.after}
                 </p>
               ) : missing.length ? (
-                <p className="sp-impact">
-                  Blocked by {named.join(', ')}
-                  {more > 0 ? ` and ${more} more` : ''}
-                  {gap?.seconds ? `, about ${readableSeconds(gap.seconds)} of setup first` : ''}.
-                </p>
+                <>
+                  <p className="sp-impact">
+                    Blocked by {named.join(', ')}
+                    {more > 0 ? ` and ${more} more` : ''}
+                    {gap?.seconds ? `, about ${readableSeconds(gap.seconds)} of setup first` : ''}.
+                  </p>
+                  {/* More than one step: say the order, the way the map numbers it. */}
+                  {route.length > 1 && (
+                    <ol className="sp-route" aria-label={`The steps to ${item.name}, in order`}>
+                      {route.slice(0, ROUTE_SHOWN).map(id => {
+                        const step = items.find(i => i.id === id);
+                        return (
+                          <li key={id}>
+                            <span>{step?.name ?? id}</span>
+                            {step && costOf(step) && (
+                              <span className="sp-route-cost">{costOf(step)}</span>
+                            )}
+                          </li>
+                        );
+                      })}
+                      {route.length > ROUTE_SHOWN && (
+                        <li className="sp-route-more">and {route.length - ROUTE_SHOWN} more</li>
+                      )}
+                    </ol>
+                  )}
+                </>
               ) : (
                 <p className="sp-impact">
                   {cascade
@@ -406,7 +432,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                       className="sp-action-btn sp-action-btn--gap"
                       onClick={() => startGap(item.id)}
                     >
-                      Show the gap on the map
+                      Show the steps on the map
                     </button>
                   )}
                   <button

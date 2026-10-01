@@ -10,6 +10,14 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["src/engine", "src/mcp", "src/shared"],
-  "exclude": ["**/*.test.ts"]
+  "include": [
+    "src/engine",
+    "src/mcp",
+    "src/shared",
+    "src/server"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "src/engine/testing"
+  ]
 }

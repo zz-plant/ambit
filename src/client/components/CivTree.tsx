@@ -35,6 +35,7 @@ import {
   type Progress,
   readableSeconds,
   ROW_H,
+  routeTo,
   rungOf,
   sceneSize,
   START_X,
@@ -326,6 +327,15 @@ export default function CivTree({
         ? cascadeDepths(connections, simulatedNodeId, simSet)
         : new Map<string, number>(),
     [connections, simulatedNodeId, simSet]
+  );
+  // The gap, numbered in the order it can be closed: step 1 needs nothing
+  // else in the gap, and each later step needs only earlier ones.
+  const routeStep = useMemo(
+    () =>
+      simulationMode === 'gap' && simulatedNodeId
+        ? new Map(routeTo(items, connections, simulatedNodeId).map((id, i) => [id, i + 1]))
+        : new Map<string, number>(),
+    [simulationMode, simulatedNodeId, items, connections]
   );
   /** The stagger for a node the simulation reaches: the hop count, as a CSS variable. */
   const hopStyle = (id: string): React.CSSProperties | undefined => {
@@ -714,6 +724,56 @@ export default function CivTree({
     setZoom(Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2))));
   }, [contentWidth, leftInset]);
 
+  // On a wider screen the panel sits over the map's right edge, which is
+  // where the Product and Operations eras are, so a route to Launch Ready was
+  // numbered entirely under it. When a simulation lights a node that is off
+  // screen or under the panel, bring the lit part into the rest of the canvas,
+  // zooming out if it has to and never in. What is already in view stays put.
+  const framedWide = React.useRef('');
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (narrow || !el || simulationMode === 'none') {
+      framedWide.current = '';
+      return;
+    }
+    const key = `${simulationMode}:${simulatedNodeId}`;
+    if (framedWide.current === key) return;
+    framedWide.current = key;
+    const points = [...simSet].flatMap(id => nodePositionMap.get(id) ?? []);
+    const hud = 88;
+    const right = el.scrollLeft + el.clientWidth - rightInset;
+    const inView = points.every(p => {
+      const x = p.x * zoom + leftInset;
+      const y = p.y * zoom;
+      return (
+        x - NODE_R >= el.scrollLeft &&
+        x + NODE_R <= right &&
+        y >= el.scrollTop + hud &&
+        y <= el.scrollTop + el.clientHeight
+      );
+    });
+    if (inView) return;
+    const frame = frameScene(
+      points,
+      { top: hud, width: el.clientWidth - leftInset - rightInset, height: el.clientHeight - hud },
+      { min: 0.4, max: zoom, inset: leftInset }
+    );
+    if (!frame) return;
+    if (frame.zoom !== zoom) setZoom(frame.zoom);
+    requestAnimationFrame(() =>
+      el.scrollTo({ left: frame.left, top: frame.top, behavior: 'smooth' })
+    );
+  }, [
+    narrow,
+    simulationMode,
+    simulatedNodeId,
+    simSet,
+    nodePositionMap,
+    leftInset,
+    rightInset,
+    zoom,
+  ]);
+
   // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
   // selected node with what it needs and enables. Framed into the part of the
   // canvas not under a card, at a zoom where the names can be read.
@@ -939,6 +999,8 @@ export default function CivTree({
         style={
           {
             paddingLeft: leftInset,
+            // Room to scroll the last columns out from under an open panel.
+            paddingRight: rightInset,
             cursor: isDragging ? 'grabbing' : 'default',
             userSelect: isDragging ? 'none' : 'auto',
             '--headline-pad': `${headlinePad}px`,
@@ -1296,19 +1358,20 @@ export default function CivTree({
                         its setup cost beside it. It used to carry a second ring
                         outside that one and an amber "Boost" tag that no legend,
                         glossary or document explained. */}
-                      {next && !dimmed && !isSimAffected && costOf(item) && (
-                        <text
-                          x={NODE_R + 6}
-                          y={-NODE_R + 4}
-                          textAnchor="start"
-                          fill="var(--accent)"
-                          fontSize={12}
-                          fontWeight={600}
-                          fontFamily="var(--font-sans)"
-                        >
-                          {costOf(item)}
-                        </text>
-                      )}
+                      {((next && !dimmed && !isSimAffected) || routeStep.has(item.id)) &&
+                        costOf(item) && (
+                          <text
+                            x={NODE_R + 6}
+                            y={-NODE_R + 4}
+                            textAnchor="start"
+                            fill="var(--accent)"
+                            fontSize={12}
+                            fontWeight={600}
+                            fontFamily="var(--font-sans)"
+                          >
+                            {costOf(item)}
+                          </text>
+                        )}
 
                       <circle
                         r={NODE_R}
@@ -1332,6 +1395,19 @@ export default function CivTree({
                             : undefined
                         }
                       />
+                      {routeStep.has(item.id) && (
+                        <text
+                          className="civ-route-step"
+                          y={5}
+                          textAnchor="middle"
+                          fill="var(--on-accent)"
+                          fontSize={14}
+                          fontWeight={700}
+                          fontFamily="var(--font-sans)"
+                        >
+                          {routeStep.get(item.id)}
+                        </text>
+                      )}
                       {sym && (
                         <text
                           y={4.5}

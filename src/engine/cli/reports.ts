@@ -16,12 +16,12 @@ import { join } from 'node:path';
 import { shellQuote } from '../../shared/shell.ts';
 import { ENGINE_DIR, loadTechTree } from '../paths.ts';
 import { findBottlenecks, singlePointsOfFailure } from '../inference.ts';
-import { ledgerHistory } from '../ledger.ts';
+import { ledgerHistory, ledgerSince } from '../ledger.ts';
 import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
-import { seedSources } from './seed.ts';
+import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
 import { CHECK_RUN_SQL, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
@@ -424,10 +424,19 @@ function briefReport(db: any) {
   } catch {
     /* no ranking, no section */
   }
+  // What moved since the person last looked: a seed in another terminal, the
+  // tracker plugin, another session. Shown once, then marked as seen.
+  const seen = unseenSince(db);
+  const since = seen ? (ledgerSince(db, seen) as any) : null;
+  if (seen) markSeen(db);
   return {
     // Null for a graph seeded before sources were recorded; [] when nothing
     // of the person's was found, which is an answer and changes the screen.
     read: sources,
+    moved:
+      since && !since.error
+        ? { since: seen, gained: since.gained, emergent: since.emergent, lost: since.lost }
+        : undefined,
     reached: counts.reached,
     total: counts.total,
     proven: ev.proven,
@@ -460,7 +469,7 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
   const footer = [
     '',
     `${GUTTER}${c.bold}ambit status${c.reset}  ${c.grey}the full report: single providers, bottlenecks, the frontier${c.reset}`,
-    `${GUTTER}${c.bold}ambit share${c.reset}   ${c.grey}the map as one HTML file, for any browser${c.reset}`,
+    `${GUTTER}${c.bold}ambit web${c.reset}     ${c.grey}the map, on localhost${c.reset}`,
     `${GUTTER}${c.bold}ambit --help${c.reset}  ${c.grey}every command, and ambit help <term> for a word${c.reset}`,
     '',
   ];
@@ -478,6 +487,14 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
   lines.push(
     `${GUTTER}${report.reached} of ${report.total} capabilities reached · ${report.proven} proven`
   );
+  const moved = report.moved ? movedLines(report.moved, c) : [];
+  if (moved.length) {
+    const when = ago(report.moved!.since);
+    lines.push(
+      `${GUTTER}${c.grey}Since you last looked${when ? `, ${when}` : ''}:${c.reset}`,
+      ...moved
+    );
+  }
 
   if (report.next.length) {
     lines.push('', heading('What one more step opens'));

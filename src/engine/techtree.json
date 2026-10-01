@@ -2095,7 +2095,7 @@
         "requires_met": true
       },
       "setup_seconds": 0,
-      "hint": "ambit goal launch-ready lists what is left, in order"
+      "hint": "Reached when all six are in place, with nothing of its own to install"
     }
   ]
 }

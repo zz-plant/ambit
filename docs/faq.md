@@ -32,7 +32,7 @@ Yes. `npx ambit-cli` reads the agent configs on this machine, builds the graph, 
 npm install -g ambit-cli          # or: brew install zz-plant/tap/ambit
 ```
 
-The map runs from a git checkout (`./bootstrap.sh web`), because the CLI package does not carry the web app. From an installed copy, `ambit share` writes the map as one HTML file any browser opens.
+`ambit web` opens the map on localhost from any install, served by the same loopback-only server a checkout runs; `--port=N` picks the port. `ambit share` writes the map as one HTML file to send to someone.
 
 ### How do I reset the graph?
 

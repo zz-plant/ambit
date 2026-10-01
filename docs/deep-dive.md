@@ -410,7 +410,7 @@ report     work [limit] · usage [days] · economics · attention [days]
            signals [days] · preferences [--observed] · federation export|import
 ```
 
-Two more sit outside the groups because they start a process rather than answer a question: `ambit web` opens the visualizer (it needs a checkout — an installed copy carries no dev dependencies) and `ambit mcp` runs the MCP server.
+Two more sit outside the groups because they start a process rather than answer a question: `ambit web` opens the visualizer (Vite in a checkout, and the built page with the loopback API server in an installed copy) and `ambit mcp` runs the MCP server.
 
 The table covers the commands whose answer is not obvious from the name, in the same five-noun order as the block above.
 

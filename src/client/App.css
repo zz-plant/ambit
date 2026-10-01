@@ -1181,6 +1181,31 @@ code, pre, .code, .sp-cli-cmd {
   font-weight: 700;
 }
 
+/* The gap in the order it closes, numbered the way the map numbers it. */
+.sp-route {
+  margin: 0;
+  padding-left: 22px;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.sp-route li::marker {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.sp-route-cost {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sp-route-more {
+  list-style: none;
+  color: var(--text-muted);
+}
+
 .sp-section-label {
   display: flex;
   align-items: center;
@@ -1257,6 +1282,7 @@ code, pre, .code, .sp-cli-cmd {
 }
 
 .sp-act-row .sp-impact,
+.sp-act-row .sp-route,
 .sp-act-row .sp-focus-row,
 .sp-act-row .sp-focus-pill,
 .sp-act-row .sp-focus-note {

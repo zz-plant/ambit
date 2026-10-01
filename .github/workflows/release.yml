@@ -132,6 +132,8 @@ jobs:
     if: ${{ github.repository_owner == 'zz-plant' }}
     permissions:
       contents: read
+      # --provenance signs the package with the workflow's identity.
+      id-token: write
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
@@ -140,6 +142,10 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      # Packing compiles the engine and builds the map, which needs the dev
+      # dependencies (tsc, vite).
+      - run: npm ci
+        if: ${{ env.NPM_TOKEN != '' }}
       - name: Publish ambit-cli
         if: ${{ env.NPM_TOKEN != '' }}
         env:

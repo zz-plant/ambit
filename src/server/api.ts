@@ -14,7 +14,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { access } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { dirname, extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getDb, type Db } from '../engine/db.ts';
 import { migrate } from '../engine/migrate.ts';
 import { resolveDbPath } from '../shared/db-path.ts';
@@ -105,6 +106,16 @@ function refusalStatus(kind: 'missing' | 'not-draft' | 'changed' | 'unnamed' | '
 }
 
 const API_PORT = Number(process.env.AMBIT_API_PORT || 3001);
+
+/**
+ * The built page, two levels above this file in either layout: `src/server`
+ * in a checkout, `dist-cli/server` in an installed copy, both beside `dist/`.
+ * It was `dist` under the working directory, which is right only for a
+ * checkout started from its root, so an installed `ambit web` would have
+ * served whatever `dist/` sat in the directory it was typed in.
+ */
+const WEB_ROOT =
+  process.env.AMBIT_WEB_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'dist');
 const GRAPH_DB_PATH = resolveDbPath();
 
 /**
@@ -328,7 +339,7 @@ async function serveStatic(
     /^(\.\.[/\\])+/,
     ''
   );
-  const root = join(process.cwd(), 'dist');
+  const root = WEB_ROOT;
   const filePath = join(root, relative);
   if (!filePath.startsWith(root + '/')) return false;
 

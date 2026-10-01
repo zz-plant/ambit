@@ -10,7 +10,7 @@
  * the graph went and that nothing left the machine; what one more step opens.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
@@ -45,8 +45,8 @@ afterEach(() => {
   rmSync(home, { recursive: true, force: true });
 });
 
-/** Bare `ambit`, piped, with this home and nothing else. */
-function bare(): string {
+/** Bare `ambit`, or the verb given, piped, with this home and nothing else. */
+function bare(...args: string[]): string {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     HOME: home,
@@ -57,7 +57,7 @@ function bare(): string {
     NODE_NO_WARNINGS: '1',
   };
   for (const key of OVERRIDES) delete env[key];
-  const r = spawnSync(process.execPath, [WRAPPER], { encoding: 'utf8', env });
+  const r = spawnSync(process.execPath, [WRAPPER, ...args], { encoding: 'utf8', env });
   expect(r.status, r.stderr).toBe(0);
   return r.stdout;
 }
@@ -123,4 +123,18 @@ test('with no config, it says where it looked and claims nothing as yours', () =
 test('the telemetry note names a bridge file this copy actually carries', () => {
   const [, file] = telemetryBridgeInstall().match(/^cp '?([^']+?)'? ~\/\.config/) ?? [];
   expect(file && existsSync(file)).toBe(true);
+});
+
+test('a seed that reaches something says so, once, and the short screen does not repeat it', () => {
+  withClaudeCodeAndCursor();
+  bare();
+  const config = join(home, '.claude.json');
+  const read = JSON.parse(readFileSync(config, 'utf8'));
+  read.mcpServers.vercel = { url: 'https://mcp.vercel.com' };
+  writeFileSync(config, JSON.stringify(read));
+
+  // Sentry was configured all along; Hosting is what it was waiting on.
+  const seeded = bare('seed');
+  expect(seeded).toMatch(/↑ Reached .*Hosting.*, and with it Error Tracking/);
+  expect(bare()).not.toContain('Since you last looked');
 });

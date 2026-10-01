@@ -15,6 +15,8 @@ npx vitest run src/engine/cli.test.ts   # one test file
 ./cli.js where                          # which graph is open, and whether it is seeded
 ```
 
+`ambit web` runs Vite in a checkout. An installed copy has no Vite: it serves the page it shipped with (`dist/index.html` and `dist/assets`, built by `prepack`) from the compiled API server, on the first free loopback port from 3001.
+
 A checkout keeps its graph in the checkout (`toolchain-viz.db`), so the graph you are working on is never the one an installed copy uses; `AMBIT_DB` overrides both. What CI requires before a change lands is in [CONTRIBUTING.md](./CONTRIBUTING.md#the-checks-ci-runs). How to run something belongs where an agent reads, what must pass belongs where a contributor reads.
 
 ## Tech Stack
@@ -248,8 +250,10 @@ src/client/                React frontend
     CivTree.tsx            The SVG map: era columns, one-hop highlighting of what a node needs and
                            enables, the two simulations, and the callout on an outage's root
     civ/layout.ts          Column and row placement, the cascade walks (an outage, an unlock, a
-                           focus's neighbourhood), the era ladder, label wrapping — pure, and
-                           tested apart from the renderer
+                           focus's neighbourhood), `routeTo` (the gap numbered in the order it
+                           closes), `unlockedSince` (what a rebuild reached, as the toast says
+                           it), the era ladder, label wrapping — pure, and tested apart from
+                           the renderer
     civ/viewport.ts        The minimap's arithmetic, and which way a failing node lies off screen
     civ/Minimap.tsx        The thumbnail of the whole map when it does not fit, and its outline
     civ/history.ts         The map as of one observation, with today's names and edges: pure

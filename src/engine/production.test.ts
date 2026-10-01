@@ -105,3 +105,28 @@ test('ambit people add lets someone with no actors block set a budget, and grant
   expect(grants?.n).toBe(0);
   expect(cli('people', 'add', 'x$(rm)').error).toMatch(/^Usage/);
 });
+
+test('the short screen says what moved since the person last looked, once', () => {
+  const before = { mcp: { sentry: { type: 'remote', url: 'https://mcp.sentry.dev/mcp' } } };
+  seed(before).close();
+  // A seed elsewhere, two days later: Hosting arrives, and Sentry with it.
+  const db = getDb(join(dir, 'graph.db'));
+  db.prepare("UPDATE frontier_snapshots SET taken_at = '2026-01-01 00:00:00'").run();
+  db.close();
+  seed({
+    mcp: { ...before.mcp, vercel: { type: 'remote', url: 'https://mcp.vercel.com' } },
+  }).close();
+  const back = getDb(join(dir, 'graph.db'));
+  back
+    .prepare(
+      "INSERT INTO schema_meta (key, value) VALUES ('brief-seen', '2026-01-01 00:00:00') ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+    )
+    .run();
+  back.close();
+
+  const shown = cli('status', '--brief');
+  const names = (list: any[]) => list.map(e => e.id);
+  expect(names(shown.moved.gained)).toContain('combo:hosting');
+  expect(names(shown.moved.emergent)).toContain('combo:error-tracking');
+  expect(cli('status', '--brief').moved).toBeUndefined();
+});

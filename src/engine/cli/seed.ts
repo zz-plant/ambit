@@ -11,9 +11,10 @@ import { claudeCodeSeedInput, readClaudeCode } from '../claude-code.ts';
 import { seedFromConfig } from '../discovery.ts';
 import { clientLocations, discoverMcpClients } from '../mcp-clients.ts';
 import { configDefault } from '../paths.ts';
+import { compareFrontiers, frontierNow } from '../ledger.ts';
 import { resolveDbPath } from '../../shared/db-path.ts';
 import { mcpEntries, parseJsonc } from '../../shared/opencode.ts';
-import { terminalPalette } from './output.ts';
+import { terminalPalette, type Palette } from './output.ts';
 
 /** What one seed read: the runtime as a person knows it, and the servers it listed. */
 export interface SeedSource {
@@ -61,6 +62,69 @@ function names(list: string[], room = 5): string {
     : list.join(', ');
 }
 
+/** Names as a sentence lists them: "a, b and c", or "a, b and 3 more". */
+function listed(list: string[], room = 4): string {
+  if (list.length > room) return `${list.slice(0, room).join(', ')} and ${list.length - room} more`;
+  return list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}` : list[0];
+}
+
+/** The `schema_meta` key holding the newest observation a person has been shown. */
+const SEEN_KEY = 'brief-seen';
+
+/** The newest frontier observation, or null before the first. */
+function newestObservation(db: any): string | null {
+  return (
+    db
+      .prepare('SELECT taken_at FROM frontier_snapshots ORDER BY taken_at DESC, id DESC LIMIT 1')
+      .get()?.taken_at ?? null
+  );
+}
+
+/** Mark everything observed so far as shown, so the short screen does not say it again. */
+export function markSeen(db: any): void {
+  const newest = newestObservation(db);
+  if (!newest) return;
+  db.prepare(
+    `INSERT INTO schema_meta (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, applied_at = datetime('now')`
+  ).run(SEEN_KEY, newest);
+}
+
+/** The observation last shown, if any, and whether a newer one exists. */
+export function unseenSince(db: any): string | null {
+  const seen = db.prepare('SELECT value FROM schema_meta WHERE key = ?').get(SEEN_KEY)?.value;
+  const newest = newestObservation(db);
+  return seen && newest && newest > seen ? seen : null;
+}
+
+/**
+ * What moved on the tree, as lines: what was reached by something added, what
+ * came with it from pieces already here, and what stopped being reached.
+ * Only nodes of the tree: an MCP entry appearing is what the read-out above
+ * already said, and an action follows its capability.
+ */
+export function movedLines(
+  moved: { gained: any[]; emergent: any[]; lost: any[] },
+  c: Palette
+): string[] {
+  const tree = (list: any[]) =>
+    list.filter(e => String(e.id).startsWith('combo:')).map(e => e.name as string);
+  const gained = tree(moved.gained);
+  const emergent = tree(moved.emergent);
+  const lost = tree(moved.lost);
+  const lines: string[] = [];
+  if (gained.length) {
+    const also = emergent.length ? `, and with it ${listed(emergent)}` : '';
+    lines.push(`  ${c.green}↑${c.reset} Reached ${listed(gained)}${also}`);
+  } else if (emergent.length) {
+    lines.push(
+      `  ${c.green}↑${c.reset} Reached ${listed(emergent)}, from pieces that were already here`
+    );
+  }
+  if (lost.length) lines.push(`  ${c.yellow}↓${c.reset} No longer reached: ${listed(lost)}`);
+  return lines;
+}
+
 /**
  * Read the agent configs and build the graph. One routine for `ambit seed` and
  * for the first-run path below, so the two cannot drift on what they read.
@@ -75,6 +139,12 @@ function names(list: string[], room = 5): string {
 function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   const say = quiet ? (_: string) => {} : console.log;
   const cfg = configDefault();
+  // What the tree looked like before, so the seed can say what it reached.
+  // An empty graph has no before: the first run's read-out is the news.
+  const hadGraph = Boolean(
+    db.prepare("SELECT 1 AS ok FROM capabilities WHERE kind = 'capability' LIMIT 1").get()
+  );
+  const before = hadGraph ? frontierNow(db) : null;
   const explicit = Boolean(process.env.OPENCODE_CONFIG || mappingOverride);
   const sources: Array<{
     runtime: string;
@@ -186,6 +256,12 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   }
   // Where it wrote, and that nothing went anywhere else: said on every seed,
   // since the seed is the moment a person decides whether to trust the tool.
+  // The moment a step lands: said here, where the person who took it is
+  // looking, and marked as shown so the short screen does not repeat it.
+  if (before) {
+    for (const line of movedLines(compareFrontiers(db, before, frontierNow(db)), paint)) say(line);
+  }
+  markSeen(db);
   const whose = sources.length ? '' : ', all from the curated model,';
   say(
     `    ${paint.grey}${c?.cnt ?? 0} capabilities${whose} written to ${tilde(resolveDbPath())}. Nothing was sent anywhere.${paint.reset}`

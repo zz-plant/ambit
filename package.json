@@ -21,7 +21,7 @@
     "server": "node --experimental-sqlite --disable-warning=ExperimentalWarning src/server/api.ts",
     "build:cli": "rm -rf dist-cli && tsc -p tsconfig.publish.json && cp src/engine/schema.sql src/engine/techtree.json dist-cli/engine/ && cp src/shared/concepts.json dist-cli/shared/",
     "prepublishOnly": "npm run build:cli",
-    "prepack": "npm run build:cli",
+    "prepack": "npm run build:cli && vite build",
     "assets:check": "node --experimental-strip-types scripts/check-assets.ts",
     "prose:check": "node --experimental-strip-types scripts/check-prose.ts",
     "assets:generate": "node --experimental-strip-types scripts/generate-scenes.ts",
@@ -60,7 +60,11 @@
   "files": [
     "cli.js",
     "dist-cli",
-    "plugins"
+    "plugins",
+    "dist/index.html",
+    "dist/assets",
+    "dist/favicon.svg",
+    "dist/apple-touch-icon.png"
   ],
   "keywords": [
     "ai-agents",

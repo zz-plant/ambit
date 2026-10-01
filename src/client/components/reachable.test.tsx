@@ -505,7 +505,7 @@ test('a blocked node says what it is blocked by, and prices the gap', () => {
   });
   const html = renderToStaticMarkup(<NodeDetailPanel />);
   expect(html).toContain('Blocked by Embeddings, about 10m of setup first');
-  expect(html).toContain('Show the gap on the map');
+  expect(html).toContain('Show the steps on the map');
 });
 
 test('an era header is a control, and it counts only what is working', () => {

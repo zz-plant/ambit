@@ -2,7 +2,8 @@
 
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:net';
 import { existsSync } from 'node:fs';
 
 /**
@@ -66,9 +67,8 @@ if (cmd === '--help' || cmd === 'help') {
     stdio: 'inherit',
   });
   console.log(`
-  ${D}ambit web              Open the visualizer. Needs a git checkout: it is
-                         built with dev dependencies an installed copy does
-                         not carry.
+  ${D}ambit web [--port=N] [--no-open]   Open the map on localhost: the built
+                         page from an install, Vite from a checkout
   ambit mcp              Run the MCP server, exposing the same questions to an
                          agent session: claude mcp add ambit -- ambit mcp${R}
 `);
@@ -88,32 +88,85 @@ if (!cmd) {
   process.exit(shown.status ?? 0);
 }
 
+/**
+ * The first port from `from` that nothing on loopback is listening on. 3001
+ * is a common default for other development servers, and a map that failed
+ * with EADDRINUSE taught nothing about which port to pass instead.
+ */
+function freePort(from) {
+  return new Promise(done => {
+    const probe = createServer();
+    probe.once('error', () => done(freePort(from + 1)));
+    probe.listen(from, '127.0.0.1', () => probe.close(() => done(from)));
+  });
+}
+
 if (cmd === 'web') {
-  // The visualizer needs the dev dependencies (vite, react), which an npm or
-  // Homebrew install of the CLI does not carry. Failing with a package
-  // runner's "script not found" taught nothing; say what the situation is.
+  // A checkout runs Vite with its dev dependencies, so an edit shows at once.
+  // An install has no Vite and runs the page it shipped with.
   //
   // Node is the only runtime. This used to insist on Bun as well, which
   // bootstrap.sh never needed and CI never installs — a checkout that had
   // just run `./bootstrap.sh web` successfully was told it lacked a tool.
   const hasDevDeps = existsSync(resolve(ROOT, 'node_modules', 'vite'));
   if (!hasDevDeps) {
-    console.log(
-      `\n  The visual map runs from a git checkout (the CLI install doesn't carry the web app):\n`
-    );
-    console.log(
-      `    git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web\n`
-    );
-    console.log(
-      `  From this install, ambit share writes your map as one HTML file any browser opens.`
-    );
-    console.log(
-      `  ${D}Or try the hosted demo with example data: https://zz-plant.github.io/ambit/?demo=1${R}\n`
-    );
-    process.exit(1);
+    // An installed copy carries the built page and the API server that serves
+    // it, so the map runs here too: one process, loopback only, the same
+    // server a checkout's `npm start` runs.
+    const page = resolve(ROOT, 'dist', 'index.html');
+    const srcServer = resolve(ROOT, 'src', 'server', 'api.ts');
+    const server = existsSync(srcServer)
+      ? srcServer
+      : resolve(ROOT, 'dist-cli', 'server', 'api.js');
+    if (!existsSync(page) || !existsSync(server)) {
+      console.log(`\n  This install does not carry the map. From a git checkout:\n`);
+      console.log(
+        `    git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web\n`
+      );
+      console.log(
+        `  ${D}ambit share writes the map as one HTML file; the hosted demo is https://zz-plant.github.io/ambit/?demo=1${R}\n`
+      );
+      process.exit(1);
+    }
+    // The server reads the graph and never builds it, so an empty one is
+    // seeded first, the same way any other first command is.
+    const where = spawnSync('node', [...NODE_FLAGS, engineEntry, 'where', '--json'], {
+      encoding: 'utf8',
+    });
+    let seeded = true;
+    try {
+      seeded = JSON.parse(where.stdout).capabilities > 0;
+    } catch {}
+    if (!seeded) spawnSync('node', [...NODE_FLAGS, engineEntry, 'seed'], { stdio: 'inherit' });
+
+    const asked = args.find(a => a.startsWith('--port='))?.slice(7) || process.env.AMBIT_API_PORT;
+    const port = asked ? Number(asked) : await freePort(3001);
+    const url = `http://localhost:${port}/`;
+    const child = spawn('node', [...NODE_FLAGS, server], {
+      stdio: ['ignore', 'pipe', 'inherit'],
+      env: { ...process.env, AMBIT_API_PORT: String(port), NODE_ENV: 'production' },
+    });
+    child.stdout.on('data', chunk => {
+      if (!String(chunk).includes('running on')) return process.stdout.write(chunk);
+      console.log(`\n  The map: ${url}\n  ${D}Loopback only. Ctrl-C stops it.${R}\n`);
+      // Typed by the person, to their own machine: opening it is the command.
+      if (!args.includes('--no-open')) {
+        const opener =
+          process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? null : 'xdg-open';
+        if (opener)
+          spawn(opener, [url], { stdio: 'ignore', detached: true })
+            .on('error', () => {})
+            .unref();
+      }
+    });
+    const stop = () => child.kill('SIGTERM');
+    process.on('SIGINT', stop);
+    process.on('SIGTERM', stop);
+    child.on('exit', code => process.exit(code ?? 0));
+  } else {
+    const web = spawnSync('npm', ['run', 'dev'], { cwd: ROOT, stdio: 'inherit' });
+    process.exit(web.status ?? 0);
   }
-  const web = spawnSync('npm', ['run', 'dev'], { cwd: ROOT, stdio: 'inherit' });
-  process.exit(web.status ?? 0);
 }
 
 // The MCP server, runnable from any install: `claude mcp add ambit -- ambit mcp`.
@@ -125,7 +178,11 @@ if (cmd === 'mcp') {
   process.exit(result.status || 0);
 }
 
-const result = spawnSync('node', [...NODE_FLAGS, engineEntry, cmd, ...args], {
-  stdio: 'inherit',
-});
-process.exit(result.status || 0);
+// `web` from an install keeps running as the server's parent, so it must not
+// fall through to the engine, which knows no such verb.
+if (cmd !== 'web') {
+  const result = spawnSync('node', [...NODE_FLAGS, engineEntry, cmd, ...args], {
+    stdio: 'inherit',
+  });
+  process.exit(result.status || 0);
+}
