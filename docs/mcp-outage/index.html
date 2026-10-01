@@ -42,7 +42,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <main>
 <h1 id="what-breaks-if-an-mcp-server-goes-down"><a class="anchor" href="#what-breaks-if-an-mcp-server-goes-down" aria-hidden="true" tabindex="-1">#</a>What breaks if an MCP server goes down</h1>
 <p>An agent setup is a stack of dependencies nobody wrote down. A GitHub MCP server provides version control; version control is half of a review loop; the review loop is what lets an agent open a pull request on its own. When that server&#39;s token expires, the agent does not report a missing server. It reports that it cannot open a pull request, or it quietly does something else.</p>
-<p>This page is about answering the question before that happens: if this one server, model or credential went away, what would stop?</p>
+<p>This page is about answering the question before that happens: if this one server, model or credential went away, what would stop? It is the guardrail half of widening what a setup can do. Every new capability rests on pieces that already exist, and knowing which ones carry the most is what makes adding to them safe to lean on.</p>
 <h2 id="three-answers-not-one"><a class="anchor" href="#three-answers-not-one" aria-hidden="true" tabindex="-1">#</a>Three answers, not one</h2>
 <p>Losing a piece of the setup does one of three things to each capability that depended on it:</p>
 <ul>
