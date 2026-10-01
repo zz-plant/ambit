@@ -67,6 +67,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <li><strong>Let the agent ask for what it lacks</strong>: it records what blocked it and drafts the step that closes it.</li>
 </ol>
 <p>My Setup opens on a readout of these seven legs for your own loadout. <a href="/ambit/docs/loadout/">Your loadout, from A to B</a> walks them with the demo&#39;s numbers.</p>
+<p>Building a product alone? <code>ambit goal &quot;launch my saas&quot;</code> lists what stands between you and real users, in order, and <a href="/ambit/docs/solo/">Building alone</a> covers what an agent may do to production without asking you.</p>
 <h2 id="what-ambit-is"><a class="anchor" href="#what-ambit-is" aria-hidden="true" tabindex="-1">#</a>What Ambit is</h2>
 <p>An <em>ambit</em> (from Latin <em>ambitus</em>: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file. What they add up to is written down nowhere, and so is where the boundary sits and how to move it.</p>
 <p>The claim under everything else: <strong>what an agent setup can do is not written in any config file.</strong> It is composed from pieces configured separately, it has to be proven before it counts, and it is a different thing from what the setup is allowed to do. Ambit computes that reach and helps you widen it, with evidence for each step and a person&#39;s approval for each change. Widening is the point. The checks, the authority model and the outage analysis are what make a wider reach safe to lean on, and the attention ledger, the &quot;where your own time is going&quot; of the tagline, is how you tell whether a step was worth taking.</p>
@@ -243,20 +244,20 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <!-- example: ambit status -->
 <pre><code class="language-console">$ ambit status
 
-    39 of 59 reached · 0 proven · 9 with a single provider
+    39 of 69 reached · 0 proven · 9 with a single provider
     ──────────────────────────────────────────────────────
     proven          0
   › unproven       15
     failing         0
     last check  never
 
-    actions: 18/28 reached
+    actions: 18/61 reached
     provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
     domains:
       ████░░░░░░ ai-ml     5/13
-      █████████░ backend   7/8
-      ████████░░ devops    4/5
-      ██████████ frontend  1/1
+      ██████░░░░ backend   7/11
+      ██████░░░░ devops    4/7
+      █████░░░░░ frontend  1/2
     …
 
     Next  ambit verify · turns 11 of the unproven into evidence
@@ -332,7 +333,7 @@ already recorded the deficit, so do not retry it under another name.</p>
 <h2 id="how-it-works"><a class="anchor" href="#how-it-works" aria-hidden="true" tabindex="-1">#</a>How it works</h2>
 <p>Discovery reads your host configs into an embedded SQLite graph, and three surfaces read it back out: the CLI, the MCP server and the map. Discovery, verification and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map&#39;s switch for an entry that already exists, which cannot create one.</p>
 <p>Each client is read from its own standard config path, and every server stays attributed to the client that listed it. Two clients naming the same server is one capability with two providers, which is what stops Ambit counting one binary twice and calling the result redundancy.</p>
-<p>Discovered capabilities are placed in a curated tree of seven eras, from <strong>Foundation</strong> and <strong>Model Access</strong> through <strong>Tool Use</strong>, <strong>Memory</strong>, <strong>Autonomy</strong> and <strong>Assurance</strong> to <strong>Sovereignty</strong>. Because each capability records what it needs, Ambit works out what you can reach without taking a config file&#39;s word for it, which combos emerge from tools configured apart, and which near misses are one or two prerequisites from unlocking several others.</p>
+<p>Discovered capabilities are placed in a curated tree of nine eras: seven for the agent setup, from <strong>Foundation</strong> and <strong>Model Access</strong> through <strong>Tool Use</strong>, <strong>Memory</strong>, <strong>Autonomy</strong> and <strong>Assurance</strong> to <strong>Sovereignty</strong>, and two for the product it builds, <strong>Product</strong> (hosting, a production database, accounts, payments, email) and <strong>Operations</strong> (error tracking, analytics, uptime, backups, and <strong>Launch Ready</strong>, reached when the launch checklist is done). Because each capability records what it needs, Ambit works out what you can reach without taking a config file&#39;s word for it, which combos emerge from tools configured apart, and which near misses are one or two prerequisites from unlocking several others.</p>
 <h3 id="configured-is-not-working"><a class="anchor" href="#configured-is-not-working" aria-hidden="true" tabindex="-1">#</a>Configured is not working</h3>
 <p>Ambit keeps two properties apart, and the distinction is load-bearing:</p>
 <ul>
