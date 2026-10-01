@@ -20,7 +20,7 @@ Three descriptions exist and they are not interchangeable. The paragraph above i
 
 ## Show HN draft
 
-Re-check both counts against the code before posting. The tool count is `TOOLS` in `src/mcp/tools.ts`, which is what `tools/list` returns and what no test pins, so it drifts silently. The runtime list is pinned by `src/engine/seed-cli.test.ts` and assembled from `src/engine/cli/seed.ts` (OpenCode, Claude Code) and `src/engine/mcp-clients.ts` (the other five).
+Re-check both counts against the code before posting. The tool count is `TOOLS` in `src/mcp/tools.ts`, which is what `tools/list` returns and what no test pins, so it drifts silently. The runtime list is assembled from `src/engine/cli/seed.ts` (OpenCode, Claude Code) and the `CLIENTS` array in `src/engine/mcp-clients.ts` (the other nine). Count from that array: `src/engine/mcp-clients.test.ts` reads all nine clients, but `src/engine/seed-cli.test.ts` seeds only seven of the eleven runtimes end to end.
 
 **Title:** Show HN: Ambit – A Civilization-style capability graph and meta-MCP server
 
@@ -34,7 +34,7 @@ The parts I use most:
 - Blast-radius and single-point-of-failure analysis for tools and credentials, the guardrail that makes widening safe to lean on.
 - An attention ledger for permission prompts and other human interventions.
 - Reviewable config proposals with signed approval receipts. Agents may propose changes over MCP, but approval and apply stay outside the MCP surface.
-- Automatic discovery for OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, and Codex CLI. A server two clients both list stays one capability with two providers.
+- Automatic discovery for OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, and Zed. A server two clients both list stays one capability with two providers.
 
 Zero-install demo: https://zz-plant.github.io/ambit/?demo=1
 
@@ -54,7 +54,11 @@ Applied 2026-09-30, with Website and Topics below. It was written first as "What
 
 **About → Website.** The demo, not the docs: `https://zz-plant.github.io/ambit/?demo=1`. It is the thing that needs nothing installed, and the link under the description is the most clicked one on the page.
 
-**About → Topics.** The `keywords` array in `package.json`, which is the one list. GitHub takes at most twenty, lowercase with hyphens, and the list is written to that limit: the protocol, the runtimes a reader searches for by name, and what the tool is.
+**About → Topics.** The `keywords` array in `package.json`, which is the one list. GitHub takes at most twenty, lowercase with hyphens, and the list is written to that limit: the protocol, the runtimes a reader searches for by name, and what the tool is. npm takes more, which is how the two lists once parted, so a new keyword replaces an old one. Seven of the eleven runtimes are named, the seven whose topics are largest: Windsurf, the smallest of them, has more repositories than Zed, Cline, Roo Code or Continue. Set the topics from the file:
+
+```bash
+node -p 'JSON.stringify({names: require("./package.json").keywords})' | gh api -X PUT repos/zz-plant/ambit/topics --input -
+```
 
 **About → Include in the home page.** Keep Releases, since the notes explain each change. Untick Packages, which is empty until the npm package ships, and an empty section reads as abandoned.
 

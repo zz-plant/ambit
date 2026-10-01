@@ -6,7 +6,7 @@
 - Requires: Node 22.18 or newer, and nothing else. No other runtime, no service, no account.
 - License: MIT.
 
-Ambit reads the configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue and Zed into one local SQLite graph. Every tool, model, skill, and credential becomes a node; everything one needs in order to work becomes an edge.
+Ambit reads the configs of OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, and Zed into one local SQLite graph. Every tool, model, skill, and credential becomes a node; everything one needs in order to work becomes an edge.
 
 Three surfaces read that graph: a terminal CLI (`ambit`), an MCP server (`ambit mcp`, 60 tools), and a web map. Discovery, verification, and the work ledger write to the graph, so MCP tools such as `ambit_run_begin` and `ambit_work_event` record rows in the local database.
 
