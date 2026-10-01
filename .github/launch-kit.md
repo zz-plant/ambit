@@ -44,7 +44,7 @@ The repository page is where a visitor decides whether the project is worth reme
 
 **About → Description.** The sidebar is the one line a visitor reads before the README loads, and GitHub search indexes it. The tagline is the brand; this is the answer to "what is it", naming the tools a reader already uses:
 
-> What breaks if one MCP server goes down? Ambit maps Claude Code, Cursor, OpenCode and four more agent configs into one local graph: what works, what is broken, and what to set up next.
+> See what your AI agent setup can do and what breaks if an MCP server goes down. Maps Claude Code, Cursor, OpenCode, Codex and more into one local graph, with a CLI and an MCP server.
 
 **About → Website.** The demo, not the docs: `https://zz-plant.github.io/ambit/?demo=1`. It is the thing that needs nothing installed, and the link under the description is the most clicked one on the page.
 

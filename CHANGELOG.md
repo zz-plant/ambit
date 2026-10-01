@@ -4,7 +4,39 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 An entry that refers to the previous entry therefore points down the page, not up.
 
-## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.4.1...main)
+## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.5.0...main)
+
+## [0.5.0](https://github.com/zz-plant/ambit/releases/tag/v0.5.0) — 2026-10-01
+
+### Pages that answer what people search for
+
+The hosted docs gain four pages for questions the web answers badly: where each of eleven agent runtimes keeps its MCP config, taken from the readers that parse them; what breaks if an MCP server goes down; how to audit which servers a coding agent has; and how Ambit differs from an MCP gateway on the call path, and how the two compose. A glossary page is written from `concepts.json`, the file the app and `ambit help` read, so it cannot define a term differently.
+
+The FAQ is marked up as questions and answers, parsed from its own headings; the glossary as a defined-term set; and every docs page carries breadcrumbs and the date its source last changed. Titles that named only the product say what the page answers, and the home page's heading and description use the words a search does. `ambit share` snapshots link to the site, Time & cost and Audit load when first opened (the first script is 41 KB smaller), and `ambit impact` with no id prints its usage, where it crashed on a missing query parameter.
+
+### Who drafted a proposal, and an approval listed once
+
+A proposal records who drafted it. Over MCP it is the runtime that called, by the name its handshake gave, reduced to a slug (`agent:opencode`); on the CLI it is whatever `ambit propose --by=` names, and nothing without it, since a terminal can be a person or an agent's shell; the control plane's drafts are `ambit`. The column arrives through `ADDED_COLUMNS` and is left out of the proposal's hash, so every approval already minted stays valid. The Proposals panel draws the request beside the drafter's mark, and Audit names the drafter on the proposed line.
+
+The trail could list one approval twice. The proposal row and the approval's act are written by two statements, each reading the clock, and the trail matched them to the second; when a second turned between the two writes, both stayed. The newest act for the proposal is what tells them apart, and the time now only has to fall within two seconds. A loaded test runner found it, and a test now pins the skew directly. A month test that read only the newest month failed on the first two days of every month, and reads the whole series.
+
+Esc closes the map's key before it clears the highlight the key set, and a press outside the key closes it. Between 769 and about 1180 pixels the headline covered the map's tools and the header's pill wrapped; the headline takes the row under the controls there, the canvas reserves room from where it ends, and the pill keeps the counts a person acts on. Dependencies move to vite 8.3, vitest 5, biome 2.5.15 and React 19.3.
+
+### Who acted, and each ask with its answer
+
+Actors are drawn: a circle for a person, a rounded square for an agent, a hexagon for a machine and a diamond for Ambit, each with a monogram, and only for an id whose prefix says which. A guessed avatar would be an identity nobody declared.
+
+A run's asks are exchanges: the recorded request on the left, the answer and its wait on the right, and an empty dashed reply where nothing recorded one. The request is the capability and action the ledger holds, never a sentence written in the agent's voice, because the ledger does not store the prompt's words. A proposal is drawn as a request and an approval as a receipt under it, with a seal and the signer's mark; the seal marks a signature and nothing else, so Audit's signed lines carry it where a passing check keeps its tick. The briefing reads as what it is, Ambit's message to the agent at connect, and an outage simulation labels the node that went down with how many capabilities stop.
+
+### The map gets the screen
+
+The map sat inside seven bands of chrome: on a phone it had about 45% of the screen, and at 1440x900 the legend was below the fold. The legend is a **Key** opened beside zoom, as buttons that light their nodes, and a lens opens it by itself. The timeline waits behind **History**. A failing check is the headline alone, with the week and the worst loss following the next step only when nothing fails. **Image** moved from the header to the map it saves, the minimap stays out of an open panel's way, and the source plate is drawn on phones only. On a phone the map has about 65% of the screen.
+
+Edges that cross more than two eras are faint until a node they touch is in focus. Stripes mean one thing, a state that refuses: a failing check, a forbidden grant, or a spend past its ceiling. The type is eight sizes and four weights, where it was seventeen and eight. Time & cost leads with what a first read is for, from 3,528 pixels to 2,746: what could break is one line, the hours card no longer repeats the headline, and an opportunity's ways to get it, the explainer and a run's lanes open on demand. One filled button a view, a red outage button only when the outage stops something, commands that wrap where they were cut off, and names haloed so an edge stops at them.
+
+### The map points at what is broken
+
+The headline leads with the failing check, where a hypothetical about the worst loss led. The selected node and the node the headline names carry corner brackets, a shape nothing else on the map draws, and a failing node and a forbidden grant are striped, which survives a greyscale screenshot where a red does not. The share image stripes a node that was already failing and labels it with a callout, so it needs no legend. On a phone the map frames what is lit at a readable zoom, and the Image button saves a 1080x1350 card of what the map shows.
 
 ### OpenCode 2, and a Jev clone found where its SDK looks
 

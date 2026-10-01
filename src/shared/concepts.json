@@ -20,7 +20,7 @@
       "term": "Reached, next step, blocked",
       "short": "Where you are on a tech tree node",
       "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next step: prerequisites are met but nothing was detected — this is the useful frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
-      "seen": "The three keys in the map legend, and the header's counts, where reached is split into verified and unproven"
+      "seen": "The three keys in the map's Key, and the header's counts, where reached is split into verified and unproven"
     },
     {
       "key": "prerequisite",
@@ -97,7 +97,7 @@
       "term": "Joint capability",
       "short": "One the agent cannot supply alone",
       "long": "Some of what a setup can do exists only when a person or a machine takes part. The engine derives it from structure, not from names: a person who must approve a capability makes it institutional, one who supplies it makes it cognitive, a provider running on a device makes it physical, and a person and a machine supplying it together is the case where the ability sits in the loop and in neither half. A recurring acquisition cost is economic. The map marks the joint ones with a person or a device; the panel names who.",
-      "seen": "The person and device marks on the map and their legend keys, Joint capability in the detail panel, and ambit graph affordances"
+      "seen": "The person and device marks on the map and their entries in the map's Key, Joint capability in the detail panel, and ambit graph affordances"
     },
     {
       "key": "frontier",

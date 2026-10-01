@@ -27,7 +27,7 @@ export default function GettingStartedGuide({ style, onDismiss, onReadMore }: Gu
           runs the other way: everything it would unlock.
         </li>
         <li>
-          <strong>Click a key in the legend</strong> to highlight just that kind.{' '}
+          <strong>Open the Key</strong> beside zoom and press one to highlight just that kind.{' '}
           <strong>Share</strong> copies a link that opens the view you are looking at.
         </li>
       </ol>
