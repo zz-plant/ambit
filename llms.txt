@@ -2,7 +2,7 @@
 
 > A capability graph for AI agent environments, and a meta-MCP server: what you, your agents, and your machines can jointly do (your *ambit*), what is worth setting up next to widen it, and what breaks downstream if a piece goes.
 
-- Install: `npx ambit-cli` (Node 22.18 or newer), `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` on macOS or Linux, or clone the repository and run `./bootstrap.sh`, which builds the graph from your own configs; `./bootstrap.sh web` adds the map.
+- Install: `npx ambit-cli` (Node 22.18 or newer), `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` on macOS or Linux, or clone the repository and run `./bootstrap.sh`, which builds the graph from your own configs. `npx ambit-cli web` opens the map on localhost from any of them.
 - Requires: Node 22.18 or newer, and nothing else. No other runtime, no service, no account.
 - License: MIT.
 
