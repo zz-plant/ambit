@@ -19,6 +19,7 @@ The paths are the ones Ambit reads on macOS and Linux, with `~` as your home dir
 | [Roo Code](#cline-and-roo-code) | VS Code's `globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json` | `mcpServers` |
 | [Continue](#continue) | `~/.continue/config.json` | `mcpServers`, or `experimental.modelContextProtocolServers` |
 | [Zed](#zed) | `~/.config/zed/settings.json`, or `~/Library/Application Support/Zed/settings.json` | `context_servers` |
+| [VS Code](#vs-code) | `~/Library/Application Support/Code/User/mcp.json` (macOS), `~/.config/Code/User/mcp.json` (Linux) | `servers` |
 
 VS Code's `globalStorage` directory is `~/Library/Application Support/Code/User/globalStorage` on macOS and `~/.config/Code/User/globalStorage` on Linux.
 
@@ -77,6 +78,10 @@ Both are VS Code extensions and keep their servers in the extension's global sto
 ## Zed
 
 Zed's `settings.json`, under `context_servers`. Linux keeps it in `~/.config/zed/`, macOS in `~/Library/Application Support/Zed/`. `ZED_MCP_CONFIG` overrides it for Ambit.
+
+## VS Code
+
+VS Code's user-level `mcp.json`, under `servers`. Linux keeps it in `~/.config/Code/User/mcp.json`, macOS in `~/Library/Application Support/Code/User/mcp.json`. `VSCODE_MCP_CONFIG` overrides it for Ambit.
 
 ## Seeing every runtime's servers at once
 
