@@ -52,11 +52,11 @@ const CHECK = process.argv.includes('--check');
 const TARGETS: { file: string; examples: { argv: string[]; tail?: number }[] }[] = [
   {
     file: 'README.md',
-    examples: [
-      { argv: ['status'], tail: 1 },
-      { argv: ['goal', 'local-embeddings'] },
-      { argv: ['impact', 'mcp:playwright'] },
-    ],
+    // `goal` and `impact` were captured here too, and printed the generic
+    // key/value formatter (`exact: true`, `setup seconds: 600`), which read as
+    // debug output on the page a first-time reader decides from. They come back
+    // when each has a renderer of its own, as `status` does.
+    examples: [{ argv: ['status'], tail: 1 }],
   },
 ];
 

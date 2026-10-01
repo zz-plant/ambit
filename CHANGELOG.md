@@ -4,7 +4,26 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 An entry that refers to the previous entry therefore points down the page, not up.
 
-## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.4.1...main)
+## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.5.0...main)
+
+## [0.5.0](https://github.com/zz-plant/ambit/releases/tag/v0.5.0) — 2026-09-30
+
+A month of rounds since 0.4.1, none of which Homebrew had until now. In short:
+
+- **OpenCode 2** is read and written in its own shape, and both plugins run under it as well as under OpenCode 1.
+- **An MCP server an agent can predict.** A call is checked against the schema its tool advertised, a tool marked read-only is held to it by a test, one resolver decides which node an id means, the server sends its own `instructions` on connect, and `--profile=agent` lists ten tools in 4.4KB.
+- **A CLI a script can read.** Output is plain off a terminal, a command that reports an error exits 1, and `--exit-code` on `can` and `verify` maps the answer to a code.
+- **A map that holds a large setup.** Focus, a minimap, a timeline that replays the map as it was, the Audit view, a queue that decides several drafts at once, the last fourteen check runs on each My Setup row, and one run laid out in time.
+- **Authority for a window** (`--ttl=30m`), a curated tree you can extend from `.ambit/techtree.json`, and `ambit dispatch`, which pushes a draft to Slack, Discord, Telegram or ntfy while the decision stays on the machine.
+- **Jev on the map**, routing goals and kept off the authority path.
+
+### The front page says what an ambit is, and how to widen yours
+
+The README had reached 6,400 words, and nothing on it said what an ambit is before using the word as the product's name. The line under the tagline now does: what you, your agents and your machines can jointly do is your ambit, and the tool maps it and shows how to widen it. The four questions lead with what is one step away and what to set up next, and verification and blast radius follow as what makes the widening safe to lean on. A section says who it is for, and a small setup is named as the one with the most ground ahead.
+
+What it moved, it did not cut: the map's marks, focus, minimap, timeline and proposal queue went to the deep dive's map section, the delegation loop to its delegation records, and the exit codes to its CLI surface. Jev left the comparison table for `docs/jev.md` and the FAQ, which already carried it.
+
+Four statements on the page were short of the truth. It named seven runtimes and Ambit reads eleven. The browser accepts any MCP config, not only `opencode.json`. Homebrew brings the CLI and the MCP server and no map. And the snippets now lead with `--profile=agent`. The `goal` and `impact` console blocks are gone until each has a renderer of its own, because they printed the generic key/value formatter and read as debug output.
 
 ### OpenCode 2, and a Jev clone found where its SDK looks
 

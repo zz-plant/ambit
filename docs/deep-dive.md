@@ -1,6 +1,6 @@
 # Ambit reference
 
-This is the long-form reference for how Ambit models capability. The [README](../README.md) covers getting started and the three surfaces; this covers the model underneath. The argument for building it is [why-ambit.md](./why-ambit.md); the theory under that is [the affordance frontier](./affordance-frontier.md).
+This is the long-form reference for how Ambit models capability. The [README](../README.md) covers getting started and the three surfaces; this covers the model underneath, every command and tool, and the map in full. The argument for building it is [why-ambit.md](./why-ambit.md); the theory under that is [the affordance frontier](./affordance-frontier.md).
 
 <details>
 <summary><b>Contents</b></summary>
@@ -356,7 +356,7 @@ Approval and apply stay off the MCP surface — an agent may draft, preview, and
 
 ### Delegation records
 
-Ambit holds two steps of the revisable-delegation loop — capability and authorization — and writes what happens to them as [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record), so another system can read it without sharing Ambit's database.
+The revisable-delegation loop is what an institution runs when it delegates consequential work to machines: believe, know what can be done, decide what authority is justified, act, detect mismatch, revise. Five systems each hold a step of it. Ambit holds two, capability and authorization, and writes what happens to them as [STD-07 Revisable Delegation Records](https://ethotechnics.org/standards/std-07-revisable-delegation-record): an append-only, hash-chained stream that another system can read as evidence and never as an instruction, without sharing Ambit's database. The siblings are [Whether](https://github.com/zz-plant/whether) (act), [Refract](https://github.com/refract-org/refract) (discrepancy), [NextConsensus](https://nextconsensus.com) (belief), and [Ethotechnics](https://ethotechnics.org) (the record shape).
 
 **The grant holds only while what it rests on does.** A capability whose hard prerequisite has started failing no longer runs unattended: `ambit can <capability>` returns CONFIRM instead of ALLOW and names what took it down. The declared grant is not rewritten — what a person wrote down stays written down — and the narrowing is a property of the decision, so it lifts by itself when the check passes again. A declared sandbox is exempt, because consequences are contained there.
 
@@ -477,6 +477,8 @@ Self-Hosted Stack  configured, but Observability is not in place yet
 
 Nothing declared those. They fall out of the dependency structure, and they are invisible in every file you own.
 
+**From a script, or an agent's shell.** Output is plain when nothing is reading it as a terminal: colour is drawn only when stdout is one and `NO_COLOR` is unset, so a pipe, a file and a CI log read what was written. `--json` prints any answer as data, and `ambit status --json` carries its closing suggestion as `next`. The exit code says whether the command worked: 0 for an answer, 1 for a command that reported an error (a usage error, an id that is not on the map), and 2 for a word that is not a command. `ambit check --ci` keeps its own codes. `--exit-code` on `can` maps ALLOW, CONFIRM and DENY to 0, 1 and 2, and a DENY files the deficit as it does over MCP; on `verify` it exits 1 unless every check that ran passed, and also for a capability with no check to run, since nothing was proved. A flag with a value is written `--target=svc:ollama`; the two-word form is not read.
+
 ### The full MCP surface
 
 Sixty tools in six groups:
@@ -510,7 +512,43 @@ Two smaller choices keep answers small. The text half of a result is compact JSO
 
 ### The map, and what it is allowed to do
 
-The web UI (`./bootstrap.sh web`) reads the same graph the CLI reads, over `/api/events`, and never writes to your configuration except through the two paths below. The README covers [the lenses and the simulations](../README.md#the-map); this is what sits underneath them.
+The web UI (`./bootstrap.sh web`) reads the same graph the CLI reads, over `/api/events`, and writes to your configuration in one place only: the My Setup switch, which edits an entry the config already holds and cannot create one. A proposal approved on the page mints an artifact, and only `ambit apply` spends it. What a person sees comes first here; what sits underneath it follows.
+
+**Four views over one graph.** The **map** is the curated tree with your position on it. **My Setup** is one row per entry your configs declare, with what the engine has proved about it and the nodes on the map it provides; its Briefing tab is the prose an agent is given at connect, so what the agent believes about the machine is inspectable. Its Not on the map tab lists what the agents used in the last 30 days that no node on the map accounts for, with an overlay to paste into `.ambit/techtree.json` that would put it there. **Time & cost** is the ledger and the governance half: what may act without asking, which grants have earned a threshold nobody set, what to reach next and why, and how the frontier moved this week. It lays one run out in time, and each time you were asked in it is an exchange: the recorded request, and your answer with how long it took, or an empty reply where nothing recorded one. The request is the capability and action the ledger holds, never words written in the agent's voice. **Audit** is the trail, one line per event and newest first: proposals drafted, approved, applied and turned down, check runs, work runs, and the delegation records that say when a grant narrowed, each with what came of it where that was recorded, and a query bar that takes `actor:`, `action:` and `target:`.
+
+**Who acted.** A mark before each line says who: a circle for a person, a rounded square for an agent, a hexagon for a machine and a diamond for Ambit, drawn only where the actor's id says which. A signature carries a seal.
+
+**Search.** <kbd>/</kbd> finds anything by name and opens it where it lives, and lists actions beside what it finds: simulate an outage or an unlock, copy the command that checks a node, switch lens, open Proposals. It copies a check and never runs one, and a proposal is still decided by the buttons in its panel.
+
+**What the map found.** Over the map, one line says what the map found before you read a node. A capability that is configured and failing its check is that line on its own, with a button that shows it, and the node it names is marked with corner brackets. With nothing failing, the line is the next step that reaches the most, with a button that previews it, and a second line gives the range: how many capabilities are verified, how that moved this week, and the one piece of the setup whose loss would stop the most, with a button that simulates it.
+
+**Marks.** A failing node is striped, as is a forbidden grant under the Authority lens: stripes mean something refuses, and nothing else on the page is striped. Edges that cross more than two eras are drawn faint until a node they touch is in focus. A small person mark on a node means it needs someone: a person approves or supplies it; a device mark means it runs on one of your machines. The detail panel says who, under Joint capability. The **Key** button beside zoom opens what each mark means, and pressing a key there highlights its nodes; switching to the Attention or Authority lens opens it, since a lens paints with its own scale. **Image** beside it saves what the map shows as a card sized for posting. The **Docs** button defines every term on the canvas.
+
+**Selecting a node.** Its edges are drawn apart: what it needs in violet, what it enables in blue, one hop each way. The panel states the answer before the simulation that draws it: what would stop and what would only lose a provider if the node went down, or what stands between it and being reached and how long that would take.
+
+**Counts.** The header counts the map's nodes, leading with the reached ones that have a passing check (verified) apart from those with none or a failing one (unproven), and each count highlights its nodes, the way the keys do. Each era's header counts what is reached and working, and it is a control: click it and the era opens in the panel as a ladder, a bar for how far up it you are and one rung per node, each either reached, a next step with its setup time, or blocked with what it waits for. A reached node whose check failed is a rung of its own, failing, and is left out of the reached count.
+
+**A map bigger than the window.** It gets a minimap at its bottom right: the whole tree as a thumbnail, a dot for each node with the failing ones red, and the part on screen outlined. Drag the outline, or focus it and use the arrow keys. It is not drawn when the whole map fits, and the line over the map says which way a failing node lies (off-screen left) when it is out of sight.
+
+**Focus.** On a map too crowded to read, select a node and press **Focus** in its panel: only what it needs and what it enables within a few hops stays on the map. Choose which way (needs, both, enables) and how far (one to three hops), and a pill says how many nodes are hidden and brings them back. The columns keep their places, the header still counts the whole map, and a simulation still counts its whole cascade and says how much of it the focus hides. <kbd>Esc</kbd> ends it. It is off unless asked for, and a link carries it as `collapse=1`, with `depth` and `dir` when they are not two hops both ways.
+
+**Three lenses.** The switch sits over the map, top right, and <kbd>1</kbd>, <kbd>2</kbd> or <kbd>3</kbd> changes it from the keyboard.
+
+| Lens | What it renders | Use it for |
+| :--- | :--- | :--- |
+| **Standard** | Era columns with reached, next-step and blocked nodes. | Reading overall progression and what is nearby. |
+| **Attention** | Nodes shaded by how often a person had to step in, offered once the ledger has recorded any. | Finding which tools keep interrupting you. |
+| **Authority** | Each reached node by what it may do: act without asking, ask first, forbidden, or no grant yet, which the gate refuses until someone grants one. | Seeing where being able to do something is not the same as being allowed to. |
+
+**Simulating.** Select a node to open the inspector, then simulate against it. Neither mode writes anything.
+
+- **Simulate an outage** dims the canvas and draws the cascade: red for what stops, amber for what keeps another provider and only loses one, with the count of each. The node that went down is labelled on the map with how many capabilities stop.
+- **Simulate unlocking** acquires a locked primitive hypothetically and lights up, in green, everything that becomes reachable because of it.
+- **Show the gap** draws what a blocked node is waiting on, every hop up, priced in setup time.
+
+**The map through time.** Once the ledger holds two observations, the **History** button beside zoom opens a timeline under the map, one tick for each second a snapshot was taken. It stays closed until asked for, or until a link names a moment. Drag the playhead, or step it with the arrow keys, and the map redraws as that snapshot left it: states and checks from then, names, eras and edges from now, because a snapshot stores none of those. One sentence says what moved at each tick, such as "Sep 26: reached 43 to 45, 1 emergent, 1 went failing", in the words `ambit history since <then> <now>` prints for the same two observations. The header's counts and the detail panel follow the playhead and say "as of". A snapshot keeps no grants, providers or attention either, so while the playhead is in the past the Attention and Authority lenses and the simulations wait for now. The playhead is a timestamp in the link, so a link to last week's map opens on it wherever the same ledger is. With fewer than two observations there is no History button, since there is nothing to scrub.
+
+**Approving proposals.** When an agent proposes an environment change over MCP, the **Proposals** panel reads it as a plan before you sign: how many steps, which of them nothing can undo, whether `ambit apply` can run it at all, the hours a month it is forecast to take before and after, what it costs, what it unlocks, and how you have decided on things like it before. Each proposal is drawn as a request beside the mark of whoever drafted it, the agent's runtime over MCP or whoever `ambit propose --by=` names, and your decision as the answer under it: a signed approval is a receipt with a seal and your mark, and a no is recorded with the reason, which is what the next draft learns from. When several drafts are waiting, tick the ones to decide and approve or turn them down together: each is still signed on its own, against the version you were shown, so one that changed since is refused while the rest go ahead, and nothing is applied. A draft your record leans against starts unticked. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`. When you are away from the machine, `ambit dispatch <id>` pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.
 
 **Simulation is arithmetic on the graph, not on the host.** An outage walks the transitive downstream closure of the chosen node and counts what stops working; an unlock takes a locked node whose other hard prerequisites are already met and lights what becomes reachable. Neither reads a config file or writes one.
 
