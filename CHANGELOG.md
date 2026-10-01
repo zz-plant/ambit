@@ -4,7 +4,17 @@ Written per release, on [the releases page](https://github.com/zz-plant/ambit/re
 
 An entry that refers to the previous entry therefore points down the page, not up.
 
-## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.5.0...main)
+## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
+
+## [0.6.0](https://github.com/zz-plant/ambit/releases/tag/v0.6.0) — 2026-10-01
+
+The first release on npm and in the MCP registry, and the first that helps someone running a product, not only an agent setup. In short:
+
+- **`npx ambit-cli`** runs it with nothing installed, and its first screen says what it read and what one more step would open.
+- **Building alone.** Two eras, Product and Operations, hold what running a product needs: hosting, a production database, backups, error tracking, uptime, payments, accounts, email. `ambit goal "launch my saas"` is the checklist in order, and each node arrives with defaults that read freely, ask before a customer would notice, and refuse what cannot be undone. `ambit people add` lets someone with no OpenCode config set a budget and approve.
+- **The route and the unlock.** The map numbers the steps to a node in the order they close, and a seed that reaches something says what, and what came with it.
+- **The map from any install.** `ambit web` serves the built page on localhost from npm, and from Homebrew once the formula moves to the npm tarball. The page fetches nothing from another origin, fonts included.
+- **A fix to authority.** A question that names no target is inside no scope, so "autonomous on staging" no longer answers yes for an untargeted call, which every Claude Code tool call is.
 
 ### On npm: `npx ambit-cli`
 
@@ -12,7 +22,7 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ### Nothing fetched from another origin, and a formula that carries the map
 
-The page took IBM Plex from Google Fonts, so opening the map, the local one included, asked Google for a stylesheet on every visit. The fonts ship with the page now: the latin subset of the weights in use, about 130 KB. A test fails if `index.html` gains a stylesheet, script or image from another origin. The Homebrew formula is written from the npm tarball from 0.5.1, the same files `npx ambit-cli` runs, built page included; it installed the GitHub source tarball, which has none, so `ambit web` from Homebrew had nothing to serve.
+The page took IBM Plex from Google Fonts, so opening the map, the local one included, asked Google for a stylesheet on every visit. The fonts ship with the page now: the latin subset of the weights in use, about 130 KB. A test fails if `index.html` gains a stylesheet, script or image from another origin. The Homebrew formula is written from the npm tarball from 0.6.0, the same files `npx ambit-cli` runs, built page included; it installed the GitHub source tarball, which has none, so `ambit web` from Homebrew had nothing to serve.
 
 ### The route on the map, the unlock said aloud, and the map from any install
 
