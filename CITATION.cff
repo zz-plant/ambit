@@ -9,7 +9,7 @@ abstract: >-
   approval a dependency a plan cannot route around. A capability is not something
   configured; it is an action the system has evidence it can perform.
 version: 0.5.0
-date-released: 2026-10-01
+date-released: 2026-09-30
 authors:
   - given-names: Kanav
     family-names: Jain
