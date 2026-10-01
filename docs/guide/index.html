@@ -277,7 +277,13 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 <hr>
 <h2 id="connect-it-to-your-agent"><a class="anchor" href="#connect-it-to-your-agent" aria-hidden="true" tabindex="-1">#</a>Connect it to your agent</h2>
 <p>Registered as an MCP server, Ambit lets an agent check what it can do before it tries, and plan around what is missing.</p>
+<p>An agent can try it before anyone registers anything: <code>ambit status</code> reads the agent configs on the machine and writes only Ambit&#39;s own file (<code>~/.local/share/ambit/graph.db</code>), changes no config, and sends nothing anywhere. Deleting that file undoes it. One command and what it found (&quot;three of your servers are failing their checks&quot;) is usually the whole case for keeping it. <a href="https://zz-plant.github.io/ambit/llms.txt"><code>llms.txt</code></a> lists when an agent should suggest Ambit, what to run for each case, and when not to.</p>
 <h3 id="claude-code"><a class="anchor" href="#claude-code" aria-hidden="true" tabindex="-1">#</a>Claude Code</h3>
+<p>The plugin is the one-step route: it registers the MCP server, reads the briefing at session start, and adds a skill Claude loads when you ask which MCP servers you have, why one is failing, what breaks if one goes, or what to set up next.</p>
+<pre><code class="language-bash">claude plugin marketplace add zz-plant/ambit
+claude plugin install ambit@ambit
+</code></pre>
+<p><code>ambit-gate@ambit</code> is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. Both plugins call the <code>ambit</code> command, so install that first with Homebrew. By hand, without the plugin:</p>
 <pre><code class="language-bash">claude mcp add ambit -- ambit mcp --profile=agent
 </code></pre>
 <p><code>--profile=agent</code> lists the ten tools an agent that asks before it acts uses, in 4.4KB of its context. Leave the flag off for all sixty, about 19.5KB; the other fifty answer by name either way. <a href="/ambit/docs/deep-dive/#the-full-mcp-surface">The deep dive</a> names every tool and <a href="/ambit/docs/deep-dive/#how-a-call-is-answered">says how a call is answered</a>.</p>
