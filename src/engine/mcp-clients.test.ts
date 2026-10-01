@@ -158,3 +158,56 @@ test('skips invalid Zed settings', () => {
   const found = discoverMcpClients(dir);
   expect(found.find(c => c.runtime === 'zed')).toBeUndefined();
 });
+
+test('discovers VS Code user mcp.json from JSONC with inputs array', () => {
+  const vscodeFile = join(dir, 'mcp.json');
+  writeFileSync(
+    vscodeFile,
+    `// VS Code user MCP config
+{
+  "inputs": [
+    {
+      "id": "token",
+      "type": "promptString",
+      "description": "API Token"
+    }
+  ],
+  "servers": {
+    "git": {
+      "type": "stdio",
+      "command": "git-mcp",
+      "args": ["--verbose"]
+    },
+    "remote": {
+      "type": "http",
+      "url": "https://mcp.example.com"
+    }
+  }
+}
+`
+  );
+  process.env.VSCODE_MCP_CONFIG = vscodeFile;
+
+  const found = discoverMcpClients(dir);
+  const vscode = found.find(c => c.runtime === 'vscode');
+  expect(vscode).toBeDefined();
+  expect(vscode?.label).toBe('VS Code');
+  expect(vscode?.config.mcp.git).toEqual({
+    type: 'local',
+    command: 'git-mcp',
+    args: ['--verbose'],
+  });
+  expect(vscode?.config.mcp.remote).toEqual({
+    type: 'remote',
+    url: 'https://mcp.example.com',
+  });
+});
+
+test('skips invalid VS Code settings', () => {
+  const vscodeFile = join(dir, 'mcp.json');
+  writeFileSync(vscodeFile, 'not json');
+  process.env.VSCODE_MCP_CONFIG = vscodeFile;
+
+  const found = discoverMcpClients(dir);
+  expect(found.find(c => c.runtime === 'vscode')).toBeUndefined();
+});
