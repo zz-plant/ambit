@@ -53,9 +53,10 @@ test('anything else is refused rather than drawn as an empty graph', () => {
   expect(useAmbitStore.getState().items).toEqual([]);
 });
 
-test('an mcpServers config is mapped too, the block five of the seven runtimes write', () => {
-  // Claude Desktop, Claude Code, Cursor, Windsurf and Gemini CLI all keep their
-  // servers under `mcpServers`. The drop zone refused every one of them.
+test('an mcpServers config is mapped too, the block most runtimes write', () => {
+  // Claude Desktop, Claude Code, Cursor, Windsurf, Gemini CLI, Cline and Roo
+  // Code all keep their servers under `mcpServers`. The drop zone once refused
+  // every one of them.
   const ok = useAmbitStore.getState().loadFromJSON(
     JSON.stringify({
       mcpServers: {

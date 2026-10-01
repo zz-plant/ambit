@@ -5,6 +5,7 @@
  * of a single 2,300-line file so a failure names a subject.
  */
 import { test, expect } from 'vitest';
+import { MCP_CLIENTS } from './mcp-clients.ts';
 import {
   cli,
   dir,
@@ -351,12 +352,23 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   const geminiConfig = join(home, '.gemini', 'settings.json');
   const desktopConfig = join(home, '.config', 'Claude', 'claude_desktop_config.json');
   const codexConfig = join(home, '.codex', 'config.toml');
+  // Cline and Roo Code are VS Code extensions, so their settings live in the
+  // editor's global storage, one directory per extension id.
+  const vscodeStorage = join(home, '.config', 'Code', 'User', 'globalStorage');
+  const clineDir = join(vscodeStorage, 'saoudrizwan.claude-dev', 'settings');
+  const rooDir = join(vscodeStorage, 'rooveterinaryinc.roo-cline', 'settings');
+  const continueConfig = join(home, '.continue', 'config.json');
+  const zedConfig = join(home, '.config', 'zed', 'settings.json');
   mkdirSync(join(home, '.config', 'opencode'), { recursive: true });
   mkdirSync(join(home, '.cursor'), { recursive: true });
   mkdirSync(join(home, '.codeium', 'windsurf'), { recursive: true });
   mkdirSync(join(home, '.gemini'), { recursive: true });
   mkdirSync(join(home, '.config', 'Claude'), { recursive: true });
   mkdirSync(join(home, '.codex'), { recursive: true });
+  mkdirSync(clineDir, { recursive: true });
+  mkdirSync(rooDir, { recursive: true });
+  mkdirSync(join(home, '.continue'), { recursive: true });
+  mkdirSync(join(home, '.config', 'zed'), { recursive: true });
   writeFileSync(
     openCodeConfig,
     JSON.stringify({
@@ -413,6 +425,34 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
       'ignored = true',
     ].join('\n')
   );
+  writeFileSync(
+    join(clineDir, 'cline_mcp_settings.json'),
+    JSON.stringify({
+      mcpServers: { fetch: { command: 'uvx', args: ['mcp-server-fetch'], autoApprove: [] } },
+    })
+  );
+  writeFileSync(
+    join(rooDir, 'cline_mcp_settings.json'),
+    JSON.stringify({
+      mcpServers: { postgres: { command: 'npx', args: ['-y', 'postgres-mcp'] } },
+    })
+  );
+  // Continue's servers may sit under `experimental`, which the reader also takes.
+  writeFileSync(
+    continueConfig,
+    JSON.stringify({
+      models: [],
+      experimental: { modelContextProtocolServers: { memory: { command: 'memory-mcp' } } },
+    })
+  );
+  // Zed calls them context servers, inside the editor's general settings.
+  writeFileSync(
+    zedConfig,
+    JSON.stringify({
+      theme: 'One Dark',
+      context_servers: { search: { command: 'search-mcp', args: [] } },
+    })
+  );
 
   const dbPath = join(dir, 'auto-discovery.db');
   // No config and no mapping: the engine has to find the runtimes under HOME
@@ -428,24 +468,38 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   const db = getDb(dbPath);
   const capabilities = rows(
     db,
-    "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex')"
+    "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'mcp:fetch', 'mcp:postgres', 'mcp:memory', 'mcp:search', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex', 'runtime:cline', 'runtime:roo-code', 'runtime:continue', 'runtime:zed')"
   );
   expect(capabilities.map(row => row.id).sort()).toEqual([
     'mcp:browser',
     'mcp:docs',
+    'mcp:fetch',
     'mcp:filesystem',
     'mcp:github',
     'mcp:linear',
     'mcp:maps',
+    'mcp:memory',
+    'mcp:postgres',
+    'mcp:search',
     'mcp:sqlite',
     'runtime:claude-code',
     'runtime:claude-desktop',
+    'runtime:cline',
     'runtime:codex',
+    'runtime:continue',
     'runtime:cursor',
     'runtime:gemini-cli',
     'runtime:opencode',
+    'runtime:roo-code',
     'runtime:windsurf',
+    'runtime:zed',
   ]);
+  // A client added to CLIENTS without a fixture here fails this line, so the
+  // test's name stays true.
+  const runtimes = rows(db, "SELECT id FROM capabilities WHERE id LIKE 'runtime:%'").map(
+    row => row.id
+  );
+  for (const { runtime } of MCP_CLIENTS) expect(runtimes).toContain(`runtime:${runtime}`);
   const contributions = rows(
     db,
     `
@@ -461,6 +515,10 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   expect(contributions).toContainEqual({ f: 'runtime:gemini-cli', t: 'mcp:maps' });
   expect(contributions).toContainEqual({ f: 'runtime:claude-desktop', t: 'mcp:sqlite' });
   expect(contributions).toContainEqual({ f: 'runtime:codex', t: 'mcp:docs' });
+  expect(contributions).toContainEqual({ f: 'runtime:cline', t: 'mcp:fetch' });
+  expect(contributions).toContainEqual({ f: 'runtime:roo-code', t: 'mcp:postgres' });
+  expect(contributions).toContainEqual({ f: 'runtime:continue', t: 'mcp:memory' });
+  expect(contributions).toContainEqual({ f: 'runtime:zed', t: 'mcp:search' });
   db.close();
 });
 

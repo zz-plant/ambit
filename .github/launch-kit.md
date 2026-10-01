@@ -20,7 +20,7 @@ Three descriptions exist and they are not interchangeable. The paragraph above i
 
 ## Show HN draft
 
-Re-check both counts against the code before posting. The tool count is `TOOLS` in `src/mcp/tools.ts`, which is what `tools/list` returns and what no test pins, so it drifts silently. The runtime list is assembled from `src/engine/cli/seed.ts` (OpenCode, Claude Code) and the `CLIENTS` array in `src/engine/mcp-clients.ts` (the other nine). Count from that array: `src/engine/mcp-clients.test.ts` reads all nine clients, but `src/engine/seed-cli.test.ts` seeds only seven of the eleven runtimes end to end.
+Re-check both counts against the code before posting. The tool count is `TOOLS` in `src/mcp/tools.ts`, which is what `tools/list` returns and what no test pins, so it drifts silently. The runtime list is assembled from `src/engine/cli/seed.ts` (OpenCode, Claude Code) and the `CLIENTS` array in `src/engine/mcp-clients.ts` (the other nine). `src/engine/seed-cli.test.ts` seeds all eleven end to end and fails when a client in that array has no fixture.
 
 **Title:** Show HN: Ambit – A Civilization-style capability graph and meta-MCP server
 
