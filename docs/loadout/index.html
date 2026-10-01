@@ -41,10 +41,10 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
 <main>
 <h1 id="your-loadout-from-a-to-b"><a class="anchor" href="#your-loadout-from-a-to-b" aria-hidden="true" tabindex="-1">#</a>Your loadout, from A to B</h1>
-<p>Your agents, your tools, your credentials, your machines, and you: together they are one loadout, and what it can do is your <a href="/ambit/docs/ideas/">ambit</a>. This page walks one person&#39;s loadout from where most setups start to where they can go, leg by leg, with the command that moves each leg and what Ambit shows at each one. The numbers are the hosted demo&#39;s, so every one of them can be checked by <a href="https://zz-plant.github.io/ambit/?demo=1">opening it</a>.</p>
+<p>Your agents, your tools, your credentials and your machines are your loadout. What you and your loadout can do together is your <a href="/ambit/docs/ideas/">ambit</a>. This page walks one person&#39;s loadout from where most setups start to where they can go, leg by leg, with the command that moves each leg and what Ambit shows at each one. The numbers are the hosted demo&#39;s, so every one of them can be checked by <a href="https://zz-plant.github.io/ambit/?demo=1">opening it</a>.</p>
 <h2 id="stepping-in"><a class="anchor" href="#stepping-in" aria-hidden="true" tabindex="-1">#</a>Stepping in</h2>
-<p>If you have seen <em>Neon Genesis Evangelion</em>, you already have the picture. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. That is a loadout. It is not a list of tools you own. It is one body, made of you and everything you have connected, and it can only do what its weakest joint allows.</p>
-<p>The rest of the picture carries over too:</p>
+<p>If you have seen <em>Neon Genesis Evangelion</em>, you already have the picture. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. Your loadout is the Eva, you are the pilot, and what the two of you can do together is your ambit. That is why a list of the tools you own says so little: the reach is in how they combine and how well they answer.</p>
+<p>Some of the picture carries over:</p>
 <table>
 <thead>
 <tr>
@@ -54,31 +54,39 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 </tr>
 </thead>
 <tbody><tr>
-<td align="left"><strong>Sync ratio</strong>: how much of the body actually answers the pilot</td>
+<td align="left"><strong>Sync ratio</strong>: how much of the Eva actually answers the pilot</td>
 <td align="left">How much of what is configured is proven to work</td>
 <td align="left">Proven against reached, on the map and in <code>ambit status</code></td>
 </tr>
 <tr>
-<td align="left"><strong>The umbilical cable</strong>: power from outside, and a clock when it is cut</td>
+<td align="left"><strong>The umbilical cable</strong>: power from outside, and what fails when it is cut</td>
 <td align="left">What a reach rests on: one token, one server, one machine</td>
 <td align="left">The outage simulation and <code>ambit impact</code>: what stops, and what only weakens</td>
 </tr>
 <tr>
-<td align="left"><strong>The restraints</strong>: released as the pilot proves control, and locked again when control slips</td>
-<td align="left">What may act without asking, released per action as checks pass, narrowed on one failure</td>
-<td align="left">The Authority lens, <code>ambit can</code>, <code>ambit authority promote</code></td>
+<td align="left"><strong>The restraints</strong>: what holds the Eva back until it is cleared to move</td>
+<td align="left">What must ask before it acts, set per action and per target</td>
+<td align="left">The Authority lens, <code>ambit can</code></td>
 </tr>
 <tr>
-<td align="left"><strong>MAGI</strong>: a change of course is put to a vote before it happens</td>
+<td align="left"><strong>MAGI</strong>: the decision taken before NERV acts</td>
 <td align="left">A change to the setup is a proposal a person signs before it applies</td>
 <td align="left">The Proposals panel, <code>ambit approve</code></td>
 </tr>
 <tr>
-<td align="left"><strong>The dummy plug</strong>: the body moving with nobody in it</td>
+<td align="left"><strong>The dummy plug</strong>: the Eva moving with its pilot taken out</td>
 <td align="left">What Ambit refuses: autonomy that widens with no person having set the bar</td>
 <td align="left">A grant widens only past a threshold a person set in advance</td>
 </tr>
 </tbody></table>
+<p>Where the picture stops matters as much:</p>
+<ul>
+<li><strong>Sync here is per piece, not one number.</strong> Ambit says which capabilities are proven and which are not; it does not score how well you pilot.</li>
+<li><strong>There is no clock.</strong> An outage simulation says what would stop, not how long you would have.</li>
+<li><strong>The restraints come off by a rule the show does not have.</strong> In Ambit a person sets a bar once, a grant widens when the evidence meets it, and one failing check narrows it again with nobody asked.</li>
+<li><strong>MAGI is three systems voting; Ambit&#39;s approval is one person signing.</strong> Several approvers are not built yet.</li>
+<li><strong>Autonomy is allowed.</strong> An agent may act without asking where a grant says so. What Ambit refuses is that grant widening with no person behind it, which is the part the dummy plug stands for.</li>
+</ul>
 <p>If you have not seen it, the short version is this: a powerful suit is only as useful as the pilot&#39;s sync with it, and only as safe as its restraints. Ambit is how you see both.</p>
 <h2 id="point-a"><a class="anchor" href="#point-a" aria-hidden="true" tabindex="-1">#</a>Point A</h2>
 <p>Most loadouts start the same way. One runtime, Claude Code or Cursor, a handful of MCP servers picked from a &quot;best servers&quot; list, a GitHub token, perhaps a local model. The agent does chores and a person supervises every one of them. Nobody knows which servers actually work, what they combine into, or what to add next. Permission prompts arrive all day, or the setting that approves everything is on and the person hopes. When something breaks, the first sign is an agent behaving strangely, hours later.</p>
@@ -95,7 +103,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p><strong>6. Know whether it paid.</strong> The telemetry plugin records each time a person steps in so an agent can continue, against the capability it was waiting on. That is how a next step is priced before you take it, and how <code>ambit roi</code> says afterwards whether it saved what it was forecast to save. The demo records 89 interventions and 41 hours a year saved. <em>Possible: without measurement, B cannot be told apart from a setup that only feels busier.</em></p>
 <p><strong>7. Let the agent ask for what it lacks.</strong> Registered over MCP, an agent reads a briefing before its first tool call and asks <code>ambit_can</code> before a tool it has not used. When something missing blocks it, it records the deficit and drafts the step that closes it, for you to sign. In the demo, agents have asked for Vector Store. <em>Possible: this is what makes the journey compound, because the loadout grows out of the work itself.</em></p>
 <h2 id="why-it-compounds"><a class="anchor" href="#why-it-compounds" aria-hidden="true" tabindex="-1">#</a>Why it compounds</h2>
-<p>Every proven capability moves the frontier, and that changes what is one step away. A step taken makes the next one cheaper, safer or newly visible, which is why B is a direction more than a destination. The map draws the route in advance: its eras, Foundation through Sovereignty, are the journey laid out, and an era&#39;s ladder says how far up it you are.</p>
+<p>Every proven capability moves the frontier, and that changes what is one step away. A step taken makes the next one cheaper, safer or newly visible, which is why B is a direction more than a destination. The map&#39;s eras order capabilities by what they depend on, so the next steps on any route sit at the edge of the eras you have reached, and an era&#39;s ladder says how far up it you are. They are not the route itself: a B is a class of work you choose, and Sovereignty is a kind of capability, not the end of the road.</p>
 <h2 id="where-the-journey-still-has-gaps"><a class="anchor" href="#where-the-journey-still-has-gaps" aria-hidden="true" tabindex="-1">#</a>Where the journey still has gaps</h2>
 <ul>
 <li><strong>Leg 4 is enforced in two places.</strong> Ambit&#39;s own <code>apply</code> and its control plane enforce grants. Nothing forces Claude Code or Cursor to ask <code>ambit_can</code>, so for most people the gradual hand-over depends on the agent following its instructions.</li>
