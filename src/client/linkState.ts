@@ -106,7 +106,7 @@ export function readLinkState(search: string): LinkState {
   const demo = params.get('demo') === '1';
   return {
     // ?demo=1 is the link the README leads with and the one the hero image is
-    // a picture of: the map, seven eras. A local visit opens on the machine's
+    // a picture of: the map, nine eras. A local visit opens on the machine's
     // own setup. An explicit view wins over both.
     view: oneOf(VIEWS, stated, demo ? 'tree' : 'config'),
     viewStated: (VIEWS as readonly string[]).includes(stated ?? ''),

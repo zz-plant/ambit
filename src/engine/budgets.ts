@@ -18,6 +18,7 @@
  * ceiling only when the call states a spend.
  */
 import type { Db } from './db.ts';
+import { shellQuote } from '../shared/shell.ts';
 
 /** How long a period lasts, for the reset. */
 const PERIOD_DAYS: Record<string, number> = { day: 1, week: 7, month: 30, quarter: 91, year: 365 };
@@ -196,7 +197,7 @@ function setBudget(
     !db.prepare("SELECT 1 AS ok FROM capabilities WHERE id = ? AND category = 'human'").get(humanId)
   ) {
     return {
-      error: `${humanId} is not a person in the graph. A standing budget is a ceiling a person sets in advance — it has to come from someone accountable.`,
+      error: `${humanId} is not a person in the graph. A standing budget is a ceiling a person sets in advance, so it has to come from someone accountable: ambit people add ${shellQuote(humanId.replace(/^human:/, ''))}`,
     };
   }
   if (!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(capability)) {

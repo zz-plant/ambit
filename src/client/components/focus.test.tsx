@@ -275,7 +275,7 @@ test('the header counts stay whole-map, whatever the collapse hides', () => {
   seed({ collapsed: true, collapseDepth: 1, collapseDirection: 'needs' });
   const collapsed = headers(map());
 
-  expect(whole).toHaveLength(7);
+  expect(whole).toHaveLength(9);
   expect(collapsed).toEqual(whole);
 });
 

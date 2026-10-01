@@ -22,6 +22,12 @@ import { edgeWriter } from './writers.ts';
  *   prerequisites met, not detected → locked, and surfaced as researchable next
  *   prerequisites unmet             → locked, further out
  *
+ * A capstone declares `detect: { "requires_met": true }` and no patterns:
+ * nothing on a machine is the capstone itself, so it is reached exactly when
+ * everything it requires is. Launch Ready is one, and its plan is the
+ * checklist of what stands between a person and putting a product in front of
+ * users.
+ *
  * Nodes are stored with a `combo:` prefix and category, because that is what
  * the existing unlock analyses select on.
  */
@@ -71,7 +77,8 @@ function seedTechTree(db: Db, insert: any): number {
     const id = `combo:${node.id}`;
     const proof = evidence.get(node.id) || [];
     const missing: string[] = (node.requires || []).filter((r: string) => !unlocked.has(r));
-    const reached = proof.length > 0 && missing.length === 0;
+    const capstone = node.detect?.requires_met === true;
+    const reached = (capstone || proof.length > 0) && missing.length === 0;
     if (reached) unlocked.add(node.id);
 
     // Having the tooling for a node whose prerequisites are unmet is the most

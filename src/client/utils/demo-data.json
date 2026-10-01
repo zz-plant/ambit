@@ -774,6 +774,56 @@
         }
       },
       {
+        "id": "combo:backups",
+        "name": "Backups",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The production data can be restored to an earlier point, and someone has seen a restore work. Turn on point-in-time restore, or schedule a copy off the database host, then restore it once to prove it",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 9,
+          "eraName": "Operations",
+          "next": false,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:backups/create_backup",
+              "name": "create_backup",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:backups/delete_backup",
+              "name": "delete_backup",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:backups/list_backups",
+              "name": "list_backups",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:backups/restore_backup",
+              "name": "restore_backup",
+              "mode": "confirm"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
         "id": "combo:browser-automation",
         "name": "Browser Automation",
         "type": "possibility",
@@ -1012,6 +1062,49 @@
         }
       },
       {
+        "id": "combo:error-tracking",
+        "name": "Error Tracking",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Errors your users hit are collected where the agent can read them and fix them before anyone writes in — configured, but Hosting is not in place yet",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "quality",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 9,
+          "eraName": "Operations",
+          "next": false,
+          "lifecycle": "detected",
+          "providers": [
+            "mcp:sentry"
+          ],
+          "authority": {
+            "execute": "autonomous",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:error-tracking/read_issue",
+              "name": "read_issue",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:error-tracking/resolve_issue",
+              "name": "resolve_issue",
+              "mode": "confirm"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
         "id": "combo:evaluation",
         "name": "Evaluation",
         "type": "possibility",
@@ -1147,6 +1240,82 @@
             "ungranted": true
           },
           "daysSinceChange": 0
+        }
+      },
+      {
+        "id": "combo:hosting",
+        "name": "Hosting",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The agent can deploy the app it builds and read the logs where it runs. Connect your host's MCP server, so a deploy and its logs are one step for the agent",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 8,
+          "eraName": "Product",
+          "next": true,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:hosting/change_domain",
+              "name": "change_domain",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:hosting/delete_project",
+              "name": "delete_project",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:hosting/deploy_preview",
+              "name": "deploy_preview",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:hosting/deploy_production",
+              "name": "deploy_production",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:hosting/read_logs",
+              "name": "read_logs",
+              "mode": "autonomous"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
+        "id": "combo:launch-ready",
+        "name": "Launch Ready",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person. ambit goal launch-ready lists what is left, in order",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "locked",
+          "setupSeconds": 0,
+          "era": 9,
+          "eraName": "Operations",
+          "next": false,
+          "lifecycle": "unknown"
         }
       },
       {
@@ -1399,6 +1568,61 @@
         }
       },
       {
+        "id": "combo:payments",
+        "name": "Payments",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The agent can read and set up how customers pay, while moving money stays with a person. Connect your payment provider's MCP server in test mode first",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 8,
+          "eraName": "Product",
+          "next": true,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "confirm"
+          },
+          "actions": [
+            {
+              "id": "act:payments/change_price",
+              "name": "change_price",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:payments/create_payment_link",
+              "name": "create_payment_link",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:payments/delete_customer",
+              "name": "delete_customer",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:payments/issue_refund",
+              "name": "issue_refund",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:payments/list_payments",
+              "name": "list_payments",
+              "mode": "confirm"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
         "id": "combo:persistent-memory",
         "name": "Persistent Memory",
         "type": "possibility",
@@ -1460,6 +1684,106 @@
             "execute": "confirm",
             "observe": "confirm"
           }
+        }
+      },
+      {
+        "id": "combo:product-analytics",
+        "name": "Product Analytics",
+        "type": "possibility",
+        "status": "specified",
+        "description": "What users actually do in the app, readable by the agent when it decides what to build next. Add product analytics and connect it, so a feature decision starts from what people did",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "frontend",
+          "state": "locked",
+          "setupSeconds": 900,
+          "era": 9,
+          "eraName": "Operations",
+          "next": false,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "autonomous",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:product-analytics/export_people",
+              "name": "export_people",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:product-analytics/read_metrics",
+              "name": "read_metrics",
+              "mode": "autonomous"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
+        "id": "combo:production-database",
+        "name": "Production Database",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The data your users create lives in a managed database the agent can inspect, and changing it waits for a person. Use a managed database with branching or point-in-time restore, and give the agent a read-only role first",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 8,
+          "eraName": "Product",
+          "next": true,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:production-database/delete_database",
+              "name": "delete_database",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:production-database/drop_table",
+              "name": "drop_table",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:production-database/read_rows",
+              "name": "read_rows",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:production-database/read_schema",
+              "name": "read_schema",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:production-database/run_migration",
+              "name": "run_migration",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:production-database/write_row",
+              "name": "write_row",
+              "mode": "confirm"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
         }
       },
       {
@@ -1802,6 +2126,51 @@
         }
       },
       {
+        "id": "combo:transactional-email",
+        "name": "Transactional Email",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The app can send the emails a product needs, and the agent can test them without mailing every user. Connect an email API and verify your sending domain",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "backend",
+          "state": "locked",
+          "setupSeconds": 1200,
+          "era": 8,
+          "eraName": "Product",
+          "next": true,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:transactional-email/send_broadcast",
+              "name": "send_broadcast",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:transactional-email/send_test",
+              "name": "send_test",
+              "mode": "autonomous"
+            },
+            {
+              "id": "act:transactional-email/send_to_user",
+              "name": "send_to_user",
+              "mode": "confirm"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
         "id": "combo:typed-judgment",
         "name": "Typed Judgment",
         "type": "possibility",
@@ -1828,6 +2197,96 @@
             "ungranted": true
           },
           "daysSinceChange": 0
+        }
+      },
+      {
+        "id": "combo:uptime-monitoring",
+        "name": "Uptime Monitoring",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Something outside your machine checks the product is up and tells a person when it is not. Point an uptime checker at your production URL and send its alerts to your phone",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "infra",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 9,
+          "eraName": "Operations",
+          "next": false,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:uptime-monitoring/pause_monitor",
+              "name": "pause_monitor",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:uptime-monitoring/read_status",
+              "name": "read_status",
+              "mode": "autonomous"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
+        "id": "combo:user-accounts",
+        "name": "User Accounts",
+        "type": "possibility",
+        "status": "specified",
+        "description": "Sign-up and sign-in run on a provider the agent can configure, and the people in it are not the agent's to read freely. Use a hosted auth provider; writing your own sign-in is the code most worth not writing",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "security",
+          "state": "locked",
+          "setupSeconds": 1800,
+          "era": 8,
+          "eraName": "Product",
+          "next": true,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "confirm"
+          },
+          "actions": [
+            {
+              "id": "act:user-accounts/delete_user",
+              "name": "delete_user",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:user-accounts/impersonate_user",
+              "name": "impersonate_user",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:user-accounts/invite_user",
+              "name": "invite_user",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:user-accounts/read_user",
+              "name": "read_user",
+              "mode": "confirm"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
         }
       },
       {
@@ -2599,8 +3058,26 @@
         "kind": "requires"
       },
       {
+        "from": "combo:backups",
+        "to": "combo:launch-ready",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
         "from": "combo:code-intelligence",
         "to": "combo:automated-tests",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:continuous-delivery",
+        "to": "combo:launch-ready",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:data-access",
+        "to": "combo:production-database",
         "type": "hard-dep",
         "kind": "requires"
       },
@@ -2613,6 +3090,12 @@
       {
         "from": "combo:embeddings",
         "to": "combo:vector-store",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:error-tracking",
+        "to": "combo:launch-ready",
         "type": "hard-dep",
         "kind": "requires"
       },
@@ -2643,6 +3126,30 @@
       {
         "from": "combo:hosted-inference",
         "to": "combo:model-routing",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:hosting",
+        "to": "combo:error-tracking",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:hosting",
+        "to": "combo:launch-ready",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:hosting",
+        "to": "combo:product-analytics",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:hosting",
+        "to": "combo:uptime-monitoring",
         "type": "hard-dep",
         "kind": "requires"
       },
@@ -2713,8 +3220,26 @@
         "kind": "requires"
       },
       {
+        "from": "combo:notifications",
+        "to": "combo:uptime-monitoring",
+        "type": "soft-dep",
+        "kind": "optional"
+      },
+      {
         "from": "combo:observability",
         "to": "combo:self-hosted-stack",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:production-database",
+        "to": "combo:backups",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:production-database",
+        "to": "combo:launch-ready",
         "type": "hard-dep",
         "kind": "requires"
       },
@@ -2723,6 +3248,12 @@
         "to": "combo:evaluation",
         "type": "hard-dep",
         "kind": "requires"
+      },
+      {
+        "from": "combo:scheduled-work",
+        "to": "combo:backups",
+        "type": "soft-dep",
+        "kind": "optional"
       },
       {
         "from": "combo:scheduled-work",
@@ -2798,6 +3329,18 @@
       },
       {
         "from": "combo:tool-protocol",
+        "to": "combo:hosting",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:tool-protocol",
+        "to": "combo:payments",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:tool-protocol",
         "to": "combo:persistent-memory",
         "type": "hard-dep",
         "kind": "requires"
@@ -2810,6 +3353,18 @@
       },
       {
         "from": "combo:tool-protocol",
+        "to": "combo:transactional-email",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:tool-protocol",
+        "to": "combo:user-accounts",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:tool-protocol",
         "to": "combo:web-research",
         "type": "hard-dep",
         "kind": "requires"
@@ -2817,6 +3372,12 @@
       {
         "from": "combo:typed-judgment",
         "to": "combo:local-typed-judgment",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:uptime-monitoring",
+        "to": "combo:launch-ready",
         "type": "hard-dep",
         "kind": "requires"
       },
@@ -2925,6 +3486,12 @@
       {
         "from": "mcp:postgres",
         "to": "combo:data-access",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
+        "from": "mcp:sentry",
+        "to": "combo:error-tracking",
         "type": "hard-dep",
         "kind": "provides"
       },
@@ -3141,16 +3708,20 @@
         "states": {
           "agent:reviewer": "unlocked",
           "combo:automated-tests": "locked",
+          "combo:backups": "locked",
           "combo:browser-automation": "locked",
           "combo:code-intelligence": "unlocked",
           "combo:context-compaction": "locked",
           "combo:continuous-delivery": "locked",
           "combo:data-access": "locked",
           "combo:embeddings": "locked",
+          "combo:error-tracking": "locked",
           "combo:evaluation": "locked",
           "combo:extended-context": "locked",
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
+          "combo:hosting": "locked",
+          "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "locked",
           "combo:local-tool-calling": "locked",
@@ -3160,8 +3731,11 @@
           "combo:observability": "locked",
           "combo:offline-capable": "locked",
           "combo:parallel-execution": "locked",
+          "combo:payments": "locked",
           "combo:persistent-memory": "locked",
           "combo:private-data-handling": "locked",
+          "combo:product-analytics": "locked",
+          "combo:production-database": "locked",
           "combo:retrieval": "locked",
           "combo:review-loop": "locked",
           "combo:scheduled-work": "locked",
@@ -3171,7 +3745,10 @@
           "combo:skill-library": "locked",
           "combo:subagents": "locked",
           "combo:tool-protocol": "unlocked",
+          "combo:transactional-email": "locked",
           "combo:typed-judgment": "locked",
+          "combo:uptime-monitoring": "locked",
+          "combo:user-accounts": "locked",
           "combo:vector-store": "locked",
           "combo:version-control": "unlocked",
           "combo:web-research": "unlocked",
@@ -3189,16 +3766,20 @@
         "kinds": {
           "agent:reviewer": "provider",
           "combo:automated-tests": "capability",
+          "combo:backups": "capability",
           "combo:browser-automation": "capability",
           "combo:code-intelligence": "capability",
           "combo:context-compaction": "capability",
           "combo:continuous-delivery": "capability",
           "combo:data-access": "capability",
           "combo:embeddings": "capability",
+          "combo:error-tracking": "capability",
           "combo:evaluation": "capability",
           "combo:extended-context": "capability",
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
+          "combo:hosting": "capability",
+          "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
           "combo:local-tool-calling": "capability",
@@ -3208,8 +3789,11 @@
           "combo:observability": "capability",
           "combo:offline-capable": "capability",
           "combo:parallel-execution": "capability",
+          "combo:payments": "capability",
           "combo:persistent-memory": "capability",
           "combo:private-data-handling": "capability",
+          "combo:product-analytics": "capability",
+          "combo:production-database": "capability",
           "combo:retrieval": "capability",
           "combo:review-loop": "capability",
           "combo:scheduled-work": "capability",
@@ -3219,7 +3803,10 @@
           "combo:skill-library": "capability",
           "combo:subagents": "capability",
           "combo:tool-protocol": "capability",
+          "combo:transactional-email": "capability",
           "combo:typed-judgment": "capability",
+          "combo:uptime-monitoring": "capability",
+          "combo:user-accounts": "capability",
           "combo:vector-store": "capability",
           "combo:version-control": "capability",
           "combo:web-research": "capability",
@@ -3237,16 +3824,20 @@
         "lifecycles": {
           "agent:reviewer": "unknown",
           "combo:automated-tests": "unknown",
+          "combo:backups": "unknown",
           "combo:browser-automation": "unknown",
           "combo:code-intelligence": "configured",
           "combo:context-compaction": "unknown",
           "combo:continuous-delivery": "unknown",
           "combo:data-access": "unknown",
           "combo:embeddings": "unknown",
+          "combo:error-tracking": "unknown",
           "combo:evaluation": "unknown",
           "combo:extended-context": "unknown",
           "combo:file-editing": "configured",
           "combo:hosted-inference": "configured",
+          "combo:hosting": "unknown",
+          "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "unknown",
           "combo:local-tool-calling": "unknown",
@@ -3256,8 +3847,11 @@
           "combo:observability": "unknown",
           "combo:offline-capable": "unknown",
           "combo:parallel-execution": "unknown",
+          "combo:payments": "unknown",
           "combo:persistent-memory": "unknown",
           "combo:private-data-handling": "unknown",
+          "combo:product-analytics": "unknown",
+          "combo:production-database": "unknown",
           "combo:retrieval": "unknown",
           "combo:review-loop": "detected",
           "combo:scheduled-work": "unknown",
@@ -3267,7 +3861,10 @@
           "combo:skill-library": "unknown",
           "combo:subagents": "detected",
           "combo:tool-protocol": "configured",
+          "combo:transactional-email": "unknown",
           "combo:typed-judgment": "unknown",
+          "combo:uptime-monitoring": "unknown",
+          "combo:user-accounts": "unknown",
           "combo:vector-store": "unknown",
           "combo:version-control": "configured",
           "combo:web-research": "configured",
@@ -3290,16 +3887,20 @@
           "agent:researcher": "unlocked",
           "agent:reviewer": "unlocked",
           "combo:automated-tests": "unlocked",
+          "combo:backups": "locked",
           "combo:browser-automation": "unlocked",
           "combo:code-intelligence": "unlocked",
           "combo:context-compaction": "locked",
           "combo:continuous-delivery": "locked",
           "combo:data-access": "unlocked",
           "combo:embeddings": "locked",
+          "combo:error-tracking": "locked",
           "combo:evaluation": "locked",
           "combo:extended-context": "locked",
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
+          "combo:hosting": "locked",
+          "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "locked",
           "combo:local-tool-calling": "locked",
@@ -3309,8 +3910,11 @@
           "combo:observability": "locked",
           "combo:offline-capable": "locked",
           "combo:parallel-execution": "locked",
+          "combo:payments": "locked",
           "combo:persistent-memory": "unlocked",
           "combo:private-data-handling": "locked",
+          "combo:product-analytics": "locked",
+          "combo:production-database": "locked",
           "combo:retrieval": "locked",
           "combo:review-loop": "locked",
           "combo:scheduled-work": "locked",
@@ -3320,7 +3924,10 @@
           "combo:skill-library": "locked",
           "combo:subagents": "locked",
           "combo:tool-protocol": "unlocked",
+          "combo:transactional-email": "locked",
           "combo:typed-judgment": "locked",
+          "combo:uptime-monitoring": "locked",
+          "combo:user-accounts": "locked",
           "combo:vector-store": "locked",
           "combo:version-control": "unlocked",
           "combo:web-research": "unlocked",
@@ -3344,16 +3951,20 @@
           "agent:researcher": "provider",
           "agent:reviewer": "provider",
           "combo:automated-tests": "capability",
+          "combo:backups": "capability",
           "combo:browser-automation": "capability",
           "combo:code-intelligence": "capability",
           "combo:context-compaction": "capability",
           "combo:continuous-delivery": "capability",
           "combo:data-access": "capability",
           "combo:embeddings": "capability",
+          "combo:error-tracking": "capability",
           "combo:evaluation": "capability",
           "combo:extended-context": "capability",
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
+          "combo:hosting": "capability",
+          "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
           "combo:local-tool-calling": "capability",
@@ -3363,8 +3974,11 @@
           "combo:observability": "capability",
           "combo:offline-capable": "capability",
           "combo:parallel-execution": "capability",
+          "combo:payments": "capability",
           "combo:persistent-memory": "capability",
           "combo:private-data-handling": "capability",
+          "combo:product-analytics": "capability",
+          "combo:production-database": "capability",
           "combo:retrieval": "capability",
           "combo:review-loop": "capability",
           "combo:scheduled-work": "capability",
@@ -3374,7 +3988,10 @@
           "combo:skill-library": "capability",
           "combo:subagents": "capability",
           "combo:tool-protocol": "capability",
+          "combo:transactional-email": "capability",
           "combo:typed-judgment": "capability",
+          "combo:uptime-monitoring": "capability",
+          "combo:user-accounts": "capability",
           "combo:vector-store": "capability",
           "combo:version-control": "capability",
           "combo:web-research": "capability",
@@ -3398,16 +4015,20 @@
           "agent:researcher": "unknown",
           "agent:reviewer": "unknown",
           "combo:automated-tests": "configured",
+          "combo:backups": "unknown",
           "combo:browser-automation": "configured",
           "combo:code-intelligence": "configured",
           "combo:context-compaction": "unknown",
           "combo:continuous-delivery": "unknown",
           "combo:data-access": "configured",
           "combo:embeddings": "unknown",
+          "combo:error-tracking": "unknown",
           "combo:evaluation": "unknown",
           "combo:extended-context": "unknown",
           "combo:file-editing": "configured",
           "combo:hosted-inference": "configured",
+          "combo:hosting": "unknown",
+          "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "unknown",
           "combo:local-tool-calling": "unknown",
@@ -3417,8 +4038,11 @@
           "combo:observability": "unknown",
           "combo:offline-capable": "unknown",
           "combo:parallel-execution": "unknown",
+          "combo:payments": "unknown",
           "combo:persistent-memory": "configured",
           "combo:private-data-handling": "unknown",
+          "combo:product-analytics": "unknown",
+          "combo:production-database": "unknown",
           "combo:retrieval": "unknown",
           "combo:review-loop": "detected",
           "combo:scheduled-work": "unknown",
@@ -3428,7 +4052,10 @@
           "combo:skill-library": "unknown",
           "combo:subagents": "detected",
           "combo:tool-protocol": "configured",
+          "combo:transactional-email": "unknown",
           "combo:typed-judgment": "unknown",
+          "combo:uptime-monitoring": "unknown",
+          "combo:user-accounts": "unknown",
           "combo:vector-store": "unknown",
           "combo:version-control": "configured",
           "combo:web-research": "configured",
@@ -3457,16 +4084,20 @@
           "agent:reviewer": "unlocked",
           "agent:steward": "unlocked",
           "combo:automated-tests": "unlocked",
+          "combo:backups": "locked",
           "combo:browser-automation": "unlocked",
           "combo:code-intelligence": "unlocked",
           "combo:context-compaction": "locked",
           "combo:continuous-delivery": "unlocked",
           "combo:data-access": "unlocked",
           "combo:embeddings": "locked",
+          "combo:error-tracking": "locked",
           "combo:evaluation": "locked",
           "combo:extended-context": "locked",
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
+          "combo:hosting": "locked",
+          "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "unlocked",
           "combo:local-tool-calling": "locked",
@@ -3476,8 +4107,11 @@
           "combo:observability": "unlocked",
           "combo:offline-capable": "locked",
           "combo:parallel-execution": "locked",
+          "combo:payments": "locked",
           "combo:persistent-memory": "unlocked",
           "combo:private-data-handling": "locked",
+          "combo:product-analytics": "locked",
+          "combo:production-database": "locked",
           "combo:retrieval": "locked",
           "combo:review-loop": "locked",
           "combo:scheduled-work": "locked",
@@ -3487,7 +4121,10 @@
           "combo:skill-library": "locked",
           "combo:subagents": "locked",
           "combo:tool-protocol": "unlocked",
+          "combo:transactional-email": "locked",
           "combo:typed-judgment": "unlocked",
+          "combo:uptime-monitoring": "locked",
+          "combo:user-accounts": "locked",
           "combo:vector-store": "locked",
           "combo:version-control": "unlocked",
           "combo:web-research": "unlocked",
@@ -3523,16 +4160,20 @@
           "agent:reviewer": "provider",
           "agent:steward": "provider",
           "combo:automated-tests": "capability",
+          "combo:backups": "capability",
           "combo:browser-automation": "capability",
           "combo:code-intelligence": "capability",
           "combo:context-compaction": "capability",
           "combo:continuous-delivery": "capability",
           "combo:data-access": "capability",
           "combo:embeddings": "capability",
+          "combo:error-tracking": "capability",
           "combo:evaluation": "capability",
           "combo:extended-context": "capability",
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
+          "combo:hosting": "capability",
+          "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
           "combo:local-tool-calling": "capability",
@@ -3542,8 +4183,11 @@
           "combo:observability": "capability",
           "combo:offline-capable": "capability",
           "combo:parallel-execution": "capability",
+          "combo:payments": "capability",
           "combo:persistent-memory": "capability",
           "combo:private-data-handling": "capability",
+          "combo:product-analytics": "capability",
+          "combo:production-database": "capability",
           "combo:retrieval": "capability",
           "combo:review-loop": "capability",
           "combo:scheduled-work": "capability",
@@ -3553,7 +4197,10 @@
           "combo:skill-library": "capability",
           "combo:subagents": "capability",
           "combo:tool-protocol": "capability",
+          "combo:transactional-email": "capability",
           "combo:typed-judgment": "capability",
+          "combo:uptime-monitoring": "capability",
+          "combo:user-accounts": "capability",
           "combo:vector-store": "capability",
           "combo:version-control": "capability",
           "combo:web-research": "capability",
@@ -3589,16 +4236,20 @@
           "agent:reviewer": "unknown",
           "agent:steward": "unknown",
           "combo:automated-tests": "configured",
+          "combo:backups": "unknown",
           "combo:browser-automation": "configured",
           "combo:code-intelligence": "configured",
           "combo:context-compaction": "unknown",
           "combo:continuous-delivery": "configured",
           "combo:data-access": "configured",
           "combo:embeddings": "unknown",
+          "combo:error-tracking": "detected",
           "combo:evaluation": "unknown",
           "combo:extended-context": "unknown",
           "combo:file-editing": "configured",
           "combo:hosted-inference": "configured",
+          "combo:hosting": "unknown",
+          "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "configured",
           "combo:local-tool-calling": "unknown",
@@ -3608,8 +4259,11 @@
           "combo:observability": "configured",
           "combo:offline-capable": "unknown",
           "combo:parallel-execution": "unknown",
+          "combo:payments": "unknown",
           "combo:persistent-memory": "configured",
           "combo:private-data-handling": "unknown",
+          "combo:product-analytics": "unknown",
+          "combo:production-database": "unknown",
           "combo:retrieval": "unknown",
           "combo:review-loop": "detected",
           "combo:scheduled-work": "unknown",
@@ -3619,7 +4273,10 @@
           "combo:skill-library": "unknown",
           "combo:subagents": "detected",
           "combo:tool-protocol": "configured",
+          "combo:transactional-email": "unknown",
           "combo:typed-judgment": "configured",
+          "combo:uptime-monitoring": "unknown",
+          "combo:user-accounts": "unknown",
           "combo:vector-store": "unknown",
           "combo:version-control": "configured",
           "combo:web-research": "configured",
@@ -3659,16 +4316,20 @@
           "agent:reviewer": "unlocked",
           "agent:steward": "unlocked",
           "combo:automated-tests": "unlocked",
+          "combo:backups": "locked",
           "combo:browser-automation": "unlocked",
           "combo:code-intelligence": "unlocked",
           "combo:context-compaction": "locked",
           "combo:continuous-delivery": "unlocked",
           "combo:data-access": "unlocked",
           "combo:embeddings": "locked",
+          "combo:error-tracking": "locked",
           "combo:evaluation": "locked",
           "combo:extended-context": "locked",
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
+          "combo:hosting": "locked",
+          "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "unlocked",
           "combo:local-tool-calling": "locked",
@@ -3678,8 +4339,11 @@
           "combo:observability": "unlocked",
           "combo:offline-capable": "locked",
           "combo:parallel-execution": "locked",
+          "combo:payments": "locked",
           "combo:persistent-memory": "unlocked",
           "combo:private-data-handling": "locked",
+          "combo:product-analytics": "locked",
+          "combo:production-database": "locked",
           "combo:retrieval": "locked",
           "combo:review-loop": "locked",
           "combo:scheduled-work": "locked",
@@ -3689,7 +4353,10 @@
           "combo:skill-library": "locked",
           "combo:subagents": "locked",
           "combo:tool-protocol": "unlocked",
+          "combo:transactional-email": "locked",
           "combo:typed-judgment": "unlocked",
+          "combo:uptime-monitoring": "locked",
+          "combo:user-accounts": "locked",
           "combo:vector-store": "locked",
           "combo:version-control": "unlocked",
           "combo:web-research": "unlocked",
@@ -3725,16 +4392,20 @@
           "agent:reviewer": "provider",
           "agent:steward": "provider",
           "combo:automated-tests": "capability",
+          "combo:backups": "capability",
           "combo:browser-automation": "capability",
           "combo:code-intelligence": "capability",
           "combo:context-compaction": "capability",
           "combo:continuous-delivery": "capability",
           "combo:data-access": "capability",
           "combo:embeddings": "capability",
+          "combo:error-tracking": "capability",
           "combo:evaluation": "capability",
           "combo:extended-context": "capability",
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
+          "combo:hosting": "capability",
+          "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
           "combo:local-tool-calling": "capability",
@@ -3744,8 +4415,11 @@
           "combo:observability": "capability",
           "combo:offline-capable": "capability",
           "combo:parallel-execution": "capability",
+          "combo:payments": "capability",
           "combo:persistent-memory": "capability",
           "combo:private-data-handling": "capability",
+          "combo:product-analytics": "capability",
+          "combo:production-database": "capability",
           "combo:retrieval": "capability",
           "combo:review-loop": "capability",
           "combo:scheduled-work": "capability",
@@ -3755,7 +4429,10 @@
           "combo:skill-library": "capability",
           "combo:subagents": "capability",
           "combo:tool-protocol": "capability",
+          "combo:transactional-email": "capability",
           "combo:typed-judgment": "capability",
+          "combo:uptime-monitoring": "capability",
+          "combo:user-accounts": "capability",
           "combo:vector-store": "capability",
           "combo:version-control": "capability",
           "combo:web-research": "capability",
@@ -3791,16 +4468,20 @@
           "agent:reviewer": "unknown",
           "agent:steward": "unknown",
           "combo:automated-tests": "verified",
+          "combo:backups": "unknown",
           "combo:browser-automation": "configured",
           "combo:code-intelligence": "configured",
           "combo:context-compaction": "unknown",
           "combo:continuous-delivery": "verified",
           "combo:data-access": "verified",
           "combo:embeddings": "unknown",
+          "combo:error-tracking": "detected",
           "combo:evaluation": "unknown",
           "combo:extended-context": "unknown",
           "combo:file-editing": "verified",
           "combo:hosted-inference": "verified",
+          "combo:hosting": "unknown",
+          "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "verified",
           "combo:local-tool-calling": "unknown",
@@ -3810,8 +4491,11 @@
           "combo:observability": "verified",
           "combo:offline-capable": "unknown",
           "combo:parallel-execution": "unknown",
+          "combo:payments": "unknown",
           "combo:persistent-memory": "verified",
           "combo:private-data-handling": "unknown",
+          "combo:product-analytics": "unknown",
+          "combo:production-database": "unknown",
           "combo:retrieval": "unknown",
           "combo:review-loop": "detected",
           "combo:scheduled-work": "unknown",
@@ -3821,7 +4505,10 @@
           "combo:skill-library": "unknown",
           "combo:subagents": "detected",
           "combo:tool-protocol": "verified",
+          "combo:transactional-email": "unknown",
           "combo:typed-judgment": "configured",
+          "combo:uptime-monitoring": "unknown",
+          "combo:user-accounts": "unknown",
           "combo:vector-store": "unknown",
           "combo:version-control": "verified",
           "combo:web-research": "verified",
@@ -3861,16 +4548,20 @@
           "agent:reviewer": "unlocked",
           "agent:steward": "unlocked",
           "combo:automated-tests": "unlocked",
+          "combo:backups": "locked",
           "combo:browser-automation": "unlocked",
           "combo:code-intelligence": "unlocked",
           "combo:context-compaction": "locked",
           "combo:continuous-delivery": "unlocked",
           "combo:data-access": "unlocked",
           "combo:embeddings": "locked",
+          "combo:error-tracking": "locked",
           "combo:evaluation": "locked",
           "combo:extended-context": "locked",
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
+          "combo:hosting": "locked",
+          "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "unlocked",
           "combo:local-tool-calling": "locked",
@@ -3880,8 +4571,11 @@
           "combo:observability": "unlocked",
           "combo:offline-capable": "locked",
           "combo:parallel-execution": "locked",
+          "combo:payments": "locked",
           "combo:persistent-memory": "unlocked",
           "combo:private-data-handling": "locked",
+          "combo:product-analytics": "locked",
+          "combo:production-database": "locked",
           "combo:retrieval": "locked",
           "combo:review-loop": "locked",
           "combo:scheduled-work": "locked",
@@ -3891,7 +4585,10 @@
           "combo:skill-library": "locked",
           "combo:subagents": "locked",
           "combo:tool-protocol": "unlocked",
+          "combo:transactional-email": "locked",
           "combo:typed-judgment": "unlocked",
+          "combo:uptime-monitoring": "locked",
+          "combo:user-accounts": "locked",
           "combo:vector-store": "locked",
           "combo:version-control": "unlocked",
           "combo:web-research": "unlocked",
@@ -3927,16 +4624,20 @@
           "agent:reviewer": "provider",
           "agent:steward": "provider",
           "combo:automated-tests": "capability",
+          "combo:backups": "capability",
           "combo:browser-automation": "capability",
           "combo:code-intelligence": "capability",
           "combo:context-compaction": "capability",
           "combo:continuous-delivery": "capability",
           "combo:data-access": "capability",
           "combo:embeddings": "capability",
+          "combo:error-tracking": "capability",
           "combo:evaluation": "capability",
           "combo:extended-context": "capability",
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
+          "combo:hosting": "capability",
+          "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
           "combo:local-tool-calling": "capability",
@@ -3946,8 +4647,11 @@
           "combo:observability": "capability",
           "combo:offline-capable": "capability",
           "combo:parallel-execution": "capability",
+          "combo:payments": "capability",
           "combo:persistent-memory": "capability",
           "combo:private-data-handling": "capability",
+          "combo:product-analytics": "capability",
+          "combo:production-database": "capability",
           "combo:retrieval": "capability",
           "combo:review-loop": "capability",
           "combo:scheduled-work": "capability",
@@ -3957,7 +4661,10 @@
           "combo:skill-library": "capability",
           "combo:subagents": "capability",
           "combo:tool-protocol": "capability",
+          "combo:transactional-email": "capability",
           "combo:typed-judgment": "capability",
+          "combo:uptime-monitoring": "capability",
+          "combo:user-accounts": "capability",
           "combo:vector-store": "capability",
           "combo:version-control": "capability",
           "combo:web-research": "capability",
@@ -3993,16 +4700,20 @@
           "agent:reviewer": "unknown",
           "agent:steward": "unknown",
           "combo:automated-tests": "verified",
+          "combo:backups": "unknown",
           "combo:browser-automation": "broken",
           "combo:code-intelligence": "configured",
           "combo:context-compaction": "unknown",
           "combo:continuous-delivery": "verified",
           "combo:data-access": "verified",
           "combo:embeddings": "unknown",
+          "combo:error-tracking": "detected",
           "combo:evaluation": "unknown",
           "combo:extended-context": "unknown",
           "combo:file-editing": "verified",
           "combo:hosted-inference": "verified",
+          "combo:hosting": "unknown",
+          "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "verified",
           "combo:local-tool-calling": "unknown",
@@ -4012,8 +4723,11 @@
           "combo:observability": "verified",
           "combo:offline-capable": "unknown",
           "combo:parallel-execution": "unknown",
+          "combo:payments": "unknown",
           "combo:persistent-memory": "verified",
           "combo:private-data-handling": "unknown",
+          "combo:product-analytics": "unknown",
+          "combo:production-database": "unknown",
           "combo:retrieval": "unknown",
           "combo:review-loop": "detected",
           "combo:scheduled-work": "unknown",
@@ -4023,7 +4737,10 @@
           "combo:skill-library": "unknown",
           "combo:subagents": "detected",
           "combo:tool-protocol": "verified",
+          "combo:transactional-email": "unknown",
           "combo:typed-judgment": "configured",
+          "combo:uptime-monitoring": "unknown",
+          "combo:user-accounts": "unknown",
           "combo:vector-store": "unknown",
           "combo:version-control": "verified",
           "combo:web-research": "verified",

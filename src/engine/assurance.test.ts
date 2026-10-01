@@ -103,6 +103,35 @@ test('a grant scoped to staging does not authorize production', () => {
   db.close();
 });
 
+test('a question that names no target is not inside any scope, so a scoped grant cannot widen it', () => {
+  // "Autonomous on staging" beside a standing "confirm" was the most specific
+  // covering grant for a call that named no target, and answered yes for it:
+  // every call the Claude Code gate asks about names none.
+  const db = makeGraph({
+    ...deployable,
+    authority: [
+      { capability: 'combo:deploy', mode: 'confirm' },
+      { capability: 'combo:deploy', mode: 'autonomous', scope: 'env:staging' },
+    ],
+  });
+  expect(canExecute(db, { capability: 'combo:deploy' }).decision).toBe('CONFIRM');
+  expect(canExecute(db, { capability: 'combo:deploy', target: 'env:staging' }).decision).toBe(
+    'ALLOW'
+  );
+  db.close();
+
+  // It may still narrow: a scoped refusal is not given up for want of a target.
+  const refused = makeGraph({
+    ...deployable,
+    authority: [
+      { capability: 'combo:deploy', mode: 'autonomous' },
+      { capability: 'combo:deploy', mode: 'forbidden', scope: 'env:production' },
+    ],
+  });
+  expect(canExecute(refused, { capability: 'combo:deploy' }).decision).toBe('DENY');
+  refused.close();
+});
+
 test('permission does not override a failing implementation', () => {
   const db = makeGraph({
     capabilities: [{ id: 'combo:deploy', name: 'Deploy', lifecycle: 'broken' }],

@@ -9,6 +9,7 @@ import { mintApproval, proposalHash, verifyApproval } from './approval.ts';
 import { pendingDrafts } from './attention.ts';
 import type { ProposalRow } from './rows.ts';
 import type { QueueDecisionResult, ShownProposal } from '../shared/api.ts';
+import { shellQuote } from '../shared/shell.ts';
 
 /**
  * The inverse of a declarative config patch: remove exactly what it adds.
@@ -226,6 +227,44 @@ function ensureActor(db: Db, id: string, name: string, role: string): boolean {
 }
 
 /**
+ * `ambit people add <id> [name]`: declare a person from the terminal.
+ *
+ * Approvals, rejections and budgets refuse a person the graph does not know,
+ * and the only way to make one known was an `actors` block in an OpenCode
+ * config. Someone on Claude Code or Cursor has no such file, so the guardrails
+ * a person building alone most needs (a ceiling on spend, a yes on a draft)
+ * were out of reach. This is the terminal's counterpart to what the web server
+ * does for the person at the page, with the same limit: it records a name the
+ * trail can carry and grants nothing. Whoever can type it can already type
+ * `ambit approve` or edit that block, so it opens no new door.
+ */
+function addPerson(db: Db, who?: string, name?: string) {
+  if (!who || !/^[A-Za-z0-9_.-]+$/.test(who.replace(/^human:/, ''))) {
+    return {
+      error:
+        'Usage: ambit people add <id> ["Display Name"], with an id of letters, digits, . _ or -',
+    };
+  }
+  const id = who.startsWith('human:') ? who : `human:${who}`;
+  const declared = ensureActor(db, id, name || who.replace(/^human:/, ''), 'Person in the system');
+  return {
+    person: id,
+    declared: declared ? 'now' : 'already',
+    note: 'A name the record can carry: it grants nothing. Budgets, approvals and rejections can now name this person.',
+  };
+}
+
+/** The people the graph knows, by id and name. */
+function listPeople(db: Db) {
+  const people = db
+    .prepare("SELECT id, name FROM capabilities WHERE category = 'human' ORDER BY id")
+    .all<{ id: string; name: string }>();
+  return people.length
+    ? { people }
+    : { people: [], note: 'Nobody yet. ambit people add <id> declares you.' };
+}
+
+/**
  * Records that a person turned a proposal down, and why.
  *
  * Approval was recordable from the first version and refusal was not, which
@@ -249,7 +288,7 @@ function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: stri
     .get(humanId);
   if (!person) {
     return {
-      error: `${humanId} is not a person in the graph. Declare them in the actors block first.`,
+      error: `${humanId} is not a person in the graph. Declare them first: ambit people add ${shellQuote(humanId.replace(/^human:/, ''))}`,
     };
   }
   db.prepare(
@@ -292,7 +331,7 @@ function approveProposal(db: Db, proposalId?: string, who?: string) {
     .get(humanId);
   if (!person) {
     return {
-      error: `${humanId} is not a person in the graph. Declare them in the actors block first — an approval has to come from someone accountable.`,
+      error: `${humanId} is not a person in the graph, and an approval has to come from someone accountable. Declare them first: ambit people add ${shellQuote(humanId.replace(/^human:/, ''))}`,
     };
   }
 
@@ -606,6 +645,8 @@ function applyRemoval(db: Db, capId: string) {
 export {
   inverseOf,
   ensureActor,
+  addPerson,
+  listPeople,
   approveProposal,
   approveProposals,
   decideDraft,

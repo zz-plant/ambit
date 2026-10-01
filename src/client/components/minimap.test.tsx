@@ -50,7 +50,7 @@ const nodes: MinimapNode[] = [...layoutNodes(columns).values()].map(p => ({
   y: p.y,
   state: rungOf(p.item),
 }));
-const SCENE = { width: 1340, height: 760 };
+const SCENE = { width: 1720, height: 760 };
 const BOX = { width: 176, height: 124 };
 
 /** A scroller that shows the top left of the demo map at zoom 1, and not all of it. */
@@ -60,7 +60,7 @@ const model = minimapModel(
     scrollTop: 0,
     clientWidth: 1000,
     clientHeight: 600,
-    scrollWidth: 1348,
+    scrollWidth: 1728,
     scrollHeight: 844,
     offsetX: 8,
     offsetY: 84,
@@ -72,15 +72,15 @@ const model = minimapModel(
 
 const draw = (extra: Partial<Parameters<typeof MinimapView>[0]> = {}) =>
   renderToStaticMarkup(
-    <MinimapView model={model} scene={SCENE} columns={7} nodes={nodes} {...extra} />
+    <MinimapView model={model} scene={SCENE} columns={9} nodes={nodes} {...extra} />
   );
 
 test('the thumbnail has an era bar for every column and a dot for every node', () => {
   const html = draw();
-  expect(html.match(/civ-minimap-band/g)).toHaveLength(7);
-  // The demo tree is 35 curated nodes: the machine's own entries are not on the map.
-  expect(nodes).toHaveLength(35);
-  expect(html.match(/civ-minimap-dot /g)).toHaveLength(35);
+  expect(html.match(/civ-minimap-band/g)).toHaveLength(9);
+  // The demo tree is 45 curated nodes: the machine's own entries are not on the map.
+  expect(nodes).toHaveLength(45);
+  expect(html.match(/civ-minimap-dot /g)).toHaveLength(45);
 });
 
 test('a failing node is a red dot, drawn last, and larger than the rest', () => {
@@ -196,7 +196,7 @@ test('the map draws no minimap on the server, where no scroller has been measure
         zoom={1}
         width={SCENE.width}
         height={SCENE.height}
-        columns={7}
+        columns={9}
         nodes={nodes}
       />
     )

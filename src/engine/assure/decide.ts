@@ -224,6 +224,12 @@ function canExecute(
     // than the report again.
     if (!isRuntimeGrant(g) && g.holder && input.actor && g.holder !== input.actor) return false;
     if (g.scope && input.target && !scopeCovers(g.scope, input.target)) return false;
+    // No target named, so a scoped grant cannot say the call is inside its
+    // scope. It may still narrow, and never widen: "autonomous on staging"
+    // was the most specific grant for a question that named no target, and
+    // answered yes for production too, including every call the Claude Code
+    // gate asks about, since a tool call carries no target.
+    if (g.scope && !input.target && g.mode === 'autonomous') return false;
     if (g.expires_at) {
       const expiry = new Date(g.expires_at).getTime();
       if (!Number.isNaN(expiry) && expiry <= Date.now()) {

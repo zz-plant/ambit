@@ -19,7 +19,7 @@ import { findBottlenecks, singlePointsOfFailure } from '../inference.ts';
 import { ledgerHistory } from '../ledger.ts';
 import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
-import { nextSteps } from '../next.ts';
+import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import { seedSources } from './seed.ts';
 import { CHECK_RUN_SQL, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
@@ -512,6 +512,119 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
   return [...lines, ...footer];
 }
 
+/** A step of a plan, as `planFor` returns it. */
+interface PlanStep {
+  id: string;
+  name: string;
+  setup_seconds?: number;
+  requires_person?: string[];
+  configured?: string[];
+  options?: { name: string; recurring_cost?: string; note?: string }[];
+}
+
+/**
+ * A plan as a checklist: what is already in place, then each step left in
+ * order with its time, what to do, and the ways to do it.
+ *
+ * `ambit goal launch-ready` is the question a person building alone asks, and
+ * it printed as nested records: `setup seconds: 900` under an id. The data is
+ * unchanged for `--json`; this is how it reads. `asked` is the sentence a
+ * free-form goal was routed from, said first so the reader can see what the
+ * words were taken to mean.
+ */
+function renderPlan(
+  plan: {
+    goal: string;
+    steps?: number;
+    estimated_setup?: string;
+    order?: PlanStep[];
+    requires_person?: string[];
+    degraded?: { id: string; name: string }[];
+    note?: string;
+  },
+  c: Palette = C,
+  asked?: { sentence: string; others: string[] }
+): string[] {
+  const tree = loadTechTree();
+  const nodeOf = (id: string) => tree.nodes?.find((n: any) => `combo:${n.id}` === id);
+  const goalNode = tree.nodes?.find((n: any) => n.name === plan.goal);
+  // A capstone is reached by its steps and is not a step of its own.
+  const steps = (plan.order ?? []).filter(s => !nodeOf(s.id)?.detect?.requires_met);
+  const lines = [''];
+  if (asked) {
+    lines.push(
+      `${GUTTER}${c.grey}“${asked.sentence}” reads as${c.reset} ${c.bold}${plan.goal}${c.reset}`
+    );
+  }
+  if (!steps.length && !plan.degraded?.length) {
+    lines.push(`${GUTTER}${c.bold}${plan.goal}${c.reset} is already reached.`, '');
+    return lines;
+  }
+  const seconds = steps.reduce((sum, s) => sum + (s.setup_seconds || 0), 0);
+  const time = seconds ? ` · about ${readableCost(seconds)}` : '';
+  lines.push(
+    `${GUTTER}${c.bold}${plan.goal}${c.reset} ${c.grey}· ${steps.length} ${steps.length === 1 ? 'step' : 'steps'} left${time}${c.reset}`
+  );
+
+  // What is already in place among the goal's own prerequisites, so a long
+  // checklist also says how far along it is.
+  const left = new Set([...steps.map(s => s.id), ...(plan.degraded ?? []).map(d => d.id)]);
+  const done = (goalNode?.requires ?? [])
+    .filter((r: string) => !left.has(`combo:${r}`))
+    .map((r: string) => nodeOf(`combo:${r}`)?.name ?? r);
+  if (done.length) {
+    lines.push('', ...done.map((name: string) => `  ${c.green}✓${c.reset} ${name}`));
+  }
+  for (const d of plan.degraded ?? []) {
+    lines.push(
+      `  ${c.yellow}!${c.reset} ${d.name} is configured and failing its check ${c.grey}· ambit verify ${shellQuote(d.id.replace(/^combo:/, ''))}${c.reset}`
+    );
+  }
+
+  steps.forEach((step, i) => {
+    const node = nodeOf(step.id);
+    const cost = step.setup_seconds
+      ? ` ${c.grey}· about ${readableCost(step.setup_seconds)}${c.reset}`
+      : '';
+    lines.push('', `  ${c.bold}${i + 1}. ${step.name}${c.reset}${cost}`);
+    // Half done already: what is configured counts once the steps before it land.
+    if (step.configured?.length) {
+      const waits = (node?.requires ?? [])
+        .map((r: string) => steps.find(s => s.id === `combo:${r}`)?.name)
+        .filter(Boolean);
+      const once = waits.length ? `, and counts once ${waits.join(' and ')} is in place` : '';
+      lines.push(
+        `     ${c.green}✓${c.reset} ${step.configured.join(', ')} is already configured${once}`
+      );
+    } else {
+      const what = node?.hint || node?.description;
+      if (what) lines.push(`     ${what}`);
+    }
+    for (const o of step.configured?.length ? [] : (step.options ?? [])) {
+      const said = [o.name, o.recurring_cost, o.note].filter(Boolean).join(' · ');
+      lines.push(`     ${c.grey}› ${said}${c.reset}`);
+    }
+    if (step.requires_person?.length) {
+      lines.push(`     ${c.accent}› needs ${step.requires_person.join(', ')}${c.reset}`);
+    }
+  });
+
+  const first = steps[0];
+  lines.push('');
+  if (asked?.others.length) {
+    lines.push(`${GUTTER}${c.grey}Also matched: ${asked.others.join(', ')}${c.reset}`);
+  }
+  if (first) {
+    // `ambit propose` drafts a description for a step like these, which a
+    // person then does by hand, so the honest next move is the step itself.
+    lines.push(
+      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${first.name}${c.reset}${c.grey}, then ambit seed: the list moves as each step lands${c.reset}`
+    );
+  }
+  lines.push('');
+  return lines;
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -562,6 +675,7 @@ export {
   ago,
   briefReport,
   renderBrief,
+  renderPlan,
   evidenceReport,
   statusReport,
   renderStatus,

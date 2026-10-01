@@ -7,7 +7,9 @@
     "4": "Memory",
     "5": "Autonomy",
     "6": "Assurance",
-    "7": "Sovereignty"
+    "7": "Sovereignty",
+    "8": "Product",
+    "9": "Operations"
   },
   "nodes": [
     {
@@ -1473,6 +1475,627 @@
         ],
         "timeout_seconds": 20
       }
+    },
+    {
+      "id": "hosting",
+      "name": "Hosting",
+      "goal": [
+        "host",
+        "hosting",
+        "deploy my app",
+        "put it online",
+        "go live",
+        "website",
+        "custom domain",
+        "production"
+      ],
+      "era": 8,
+      "domain": "devops",
+      "description": "The agent can deploy the app it builds and read the logs where it runs",
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "vercel",
+          "netlify",
+          "cloudflare",
+          "wrangler",
+          "fly\\.io",
+          "flyctl",
+          "\\brender\\b",
+          "railway",
+          "heroku",
+          "digitalocean",
+          "coolify"
+        ]
+      },
+      "setup_seconds": 900,
+      "hint": "Connect your host's MCP server, so a deploy and its logs are one step for the agent",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "read_logs": "autonomous",
+          "deploy_preview": "autonomous",
+          "deploy_production": "confirm",
+          "change_domain": "confirm",
+          "delete_project": "forbidden"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "a managed host with an MCP server (Vercel, Cloudflare, Netlify)",
+            "setup_seconds": 900,
+            "recurring_cost": "free tier, then monthly",
+            "privacy": "hosted"
+          },
+          {
+            "name": "a container host you run (Coolify on a VPS)",
+            "setup_seconds": 7200,
+            "recurring_cost": "monthly",
+            "privacy": "local",
+            "note": "cheaper at scale, and every outage is yours to fix"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "read_logs",
+          "deploy_preview",
+          "deploy_production",
+          "change_domain",
+          "delete_project"
+        ]
+      }
+    },
+    {
+      "id": "production-database",
+      "name": "Production Database",
+      "goal": [
+        "production database",
+        "database for my app",
+        "store user data",
+        "migrations",
+        "migrate the schema",
+        "schema change"
+      ],
+      "era": 8,
+      "domain": "backend",
+      "description": "The data your users create lives in a managed database the agent can inspect, and changing it waits for a person",
+      "requires": [
+        "data-access"
+      ],
+      "detect": {
+        "any": [
+          "supabase",
+          "\\bneon\\b",
+          "planetscale",
+          "turso",
+          "xata",
+          "convex",
+          "mongodb",
+          "firebase",
+          "\\bd1\\b"
+        ]
+      },
+      "setup_seconds": 1800,
+      "hint": "Use a managed database with branching or point-in-time restore, and give the agent a read-only role first",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "read_schema": "autonomous",
+          "read_rows": "confirm",
+          "run_migration": "confirm",
+          "write_row": "confirm",
+          "drop_table": "forbidden",
+          "delete_database": "forbidden"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "managed Postgres with branching (Neon, Supabase)",
+            "setup_seconds": 1200,
+            "recurring_cost": "free tier, then monthly",
+            "privacy": "hosted",
+            "note": "a branch per change lets the agent migrate a copy first"
+          },
+          {
+            "name": "SQLite at the edge (Cloudflare D1, Turso)",
+            "setup_seconds": 900,
+            "recurring_cost": "free tier, then usage",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "read_schema",
+          "read_rows",
+          "run_migration",
+          "write_row",
+          "drop_table",
+          "delete_database"
+        ]
+      }
+    },
+    {
+      "id": "user-accounts",
+      "name": "User Accounts",
+      "goal": [
+        "user accounts",
+        "sign up",
+        "signup",
+        "log in",
+        "login",
+        "authentication",
+        "auth",
+        "sign in"
+      ],
+      "era": 8,
+      "domain": "security",
+      "description": "Sign-up and sign-in run on a provider the agent can configure, and the people in it are not the agent's to read freely",
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "clerk",
+          "auth0",
+          "workos",
+          "stytch",
+          "kinde",
+          "better-auth",
+          "firebase-auth",
+          "supabase-auth"
+        ]
+      },
+      "setup_seconds": 1800,
+      "hint": "Use a hosted auth provider; writing your own sign-in is the code most worth not writing",
+      "authority": {
+        "observe": "confirm",
+        "execute": "confirm",
+        "actions": {
+          "read_user": "confirm",
+          "invite_user": "confirm",
+          "delete_user": "forbidden",
+          "impersonate_user": "forbidden"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "a hosted auth provider (Clerk, WorkOS, Auth0)",
+            "setup_seconds": 1800,
+            "recurring_cost": "free tier, then monthly",
+            "privacy": "hosted"
+          },
+          {
+            "name": "the auth built into your database provider (Supabase)",
+            "setup_seconds": 1200,
+            "recurring_cost": "with the database",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "read_user",
+          "invite_user",
+          "delete_user",
+          "impersonate_user"
+        ]
+      }
+    },
+    {
+      "id": "payments",
+      "name": "Payments",
+      "goal": [
+        "take payments",
+        "payments",
+        "charge customers",
+        "subscriptions",
+        "billing",
+        "refund",
+        "revenue",
+        "checkout",
+        "get paid"
+      ],
+      "era": 8,
+      "domain": "backend",
+      "description": "The agent can read and set up how customers pay, while moving money stays with a person",
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "stripe",
+          "lemonsqueezy",
+          "lemon-squeezy",
+          "paddle",
+          "\\bpolar\\b",
+          "chargebee",
+          "revenuecat"
+        ]
+      },
+      "setup_seconds": 1800,
+      "hint": "Connect your payment provider's MCP server in test mode first",
+      "authority": {
+        "observe": "confirm",
+        "execute": "confirm",
+        "actions": {
+          "list_payments": "confirm",
+          "create_payment_link": "confirm",
+          "change_price": "confirm",
+          "issue_refund": "forbidden",
+          "delete_customer": "forbidden"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "Stripe MCP server, test mode key first",
+            "setup_seconds": 1200,
+            "recurring_cost": "per-transaction",
+            "privacy": "hosted"
+          },
+          {
+            "name": "a merchant of record (Lemon Squeezy, Paddle), which also handles sales tax",
+            "setup_seconds": 1800,
+            "recurring_cost": "per-transaction",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "list_payments",
+          "create_payment_link",
+          "change_price",
+          "issue_refund",
+          "delete_customer"
+        ]
+      }
+    },
+    {
+      "id": "transactional-email",
+      "name": "Transactional Email",
+      "goal": [
+        "send email",
+        "email users",
+        "emails",
+        "password reset",
+        "welcome email",
+        "newsletter",
+        "receipts"
+      ],
+      "era": 8,
+      "domain": "backend",
+      "description": "The app can send the emails a product needs, and the agent can test them without mailing every user",
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "resend",
+          "postmark",
+          "sendgrid",
+          "mailgun",
+          "\\bses\\b",
+          "\\bloops\\b",
+          "brevo",
+          "mailchimp"
+        ]
+      },
+      "setup_seconds": 1200,
+      "hint": "Connect an email API and verify your sending domain",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "send_test": "autonomous",
+          "send_to_user": "confirm",
+          "send_broadcast": "forbidden"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "an email API with an MCP server (Resend, Postmark)",
+            "setup_seconds": 1200,
+            "recurring_cost": "free tier, then monthly",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "send_test",
+          "send_to_user",
+          "send_broadcast"
+        ]
+      }
+    },
+    {
+      "id": "error-tracking",
+      "name": "Error Tracking",
+      "goal": [
+        "errors in production",
+        "crash",
+        "crashes",
+        "exceptions",
+        "what broke",
+        "bug reports",
+        "errors users hit"
+      ],
+      "era": 9,
+      "domain": "quality",
+      "description": "Errors your users hit are collected where the agent can read them and fix them before anyone writes in",
+      "requires": [
+        "hosting"
+      ],
+      "detect": {
+        "any": [
+          "sentry",
+          "rollbar",
+          "bugsnag",
+          "honeybadger",
+          "highlight",
+          "raygun",
+          "logrocket"
+        ]
+      },
+      "setup_seconds": 900,
+      "hint": "Add an error tracker to the app and connect its MCP server, so the agent starts from the stack trace",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "autonomous",
+        "actions": {
+          "read_issue": "autonomous",
+          "resolve_issue": "confirm"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "Sentry, with its MCP server",
+            "setup_seconds": 900,
+            "recurring_cost": "free tier, then monthly",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "read_issue",
+          "resolve_issue"
+        ]
+      }
+    },
+    {
+      "id": "product-analytics",
+      "name": "Product Analytics",
+      "goal": [
+        "product analytics",
+        "who uses",
+        "how many users",
+        "signups",
+        "funnel",
+        "retention",
+        "usage of my app"
+      ],
+      "era": 9,
+      "domain": "frontend",
+      "description": "What users actually do in the app, readable by the agent when it decides what to build next",
+      "requires": [
+        "hosting"
+      ],
+      "detect": {
+        "any": [
+          "posthog",
+          "plausible",
+          "mixpanel",
+          "amplitude",
+          "umami",
+          "fathom"
+        ]
+      },
+      "setup_seconds": 900,
+      "hint": "Add product analytics and connect it, so a feature decision starts from what people did",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "autonomous",
+        "actions": {
+          "read_metrics": "autonomous",
+          "export_people": "confirm"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "PostHog, with its MCP server",
+            "setup_seconds": 900,
+            "recurring_cost": "free tier, then usage",
+            "privacy": "hosted"
+          },
+          {
+            "name": "Plausible or Umami, cookie-free",
+            "setup_seconds": 900,
+            "recurring_cost": "monthly",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "read_metrics",
+          "export_people"
+        ]
+      }
+    },
+    {
+      "id": "uptime-monitoring",
+      "name": "Uptime Monitoring",
+      "goal": [
+        "site goes down",
+        "site is down",
+        "uptime",
+        "outage",
+        "is it up",
+        "status page",
+        "downtime",
+        "alert me"
+      ],
+      "era": 9,
+      "domain": "infra",
+      "description": "Something outside your machine checks the product is up and tells a person when it is not",
+      "requires": [
+        "hosting"
+      ],
+      "optional": [
+        "notifications"
+      ],
+      "detect": {
+        "any": [
+          "betterstack",
+          "better-stack",
+          "uptimerobot",
+          "uptime",
+          "checkly",
+          "pingdom",
+          "healthchecks",
+          "cronitor",
+          "statuspage"
+        ]
+      },
+      "setup_seconds": 600,
+      "hint": "Point an uptime checker at your production URL and send its alerts to your phone",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "read_status": "autonomous",
+          "pause_monitor": "confirm"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "a hosted uptime checker (Better Stack, UptimeRobot)",
+            "setup_seconds": 600,
+            "recurring_cost": "free tier, then monthly",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "read_status",
+          "pause_monitor"
+        ]
+      }
+    },
+    {
+      "id": "backups",
+      "name": "Backups",
+      "goal": [
+        "back up",
+        "backup",
+        "backups",
+        "restore",
+        "recover data",
+        "lose data",
+        "disaster recovery"
+      ],
+      "era": 9,
+      "domain": "infra",
+      "description": "The production data can be restored to an earlier point, and someone has seen a restore work",
+      "requires": [
+        "production-database"
+      ],
+      "optional": [
+        "scheduled-work"
+      ],
+      "detect": {
+        "any": [
+          "backup",
+          "litestream",
+          "restic",
+          "pgbackrest",
+          "borg",
+          "rclone"
+        ]
+      },
+      "setup_seconds": 1800,
+      "hint": "Turn on point-in-time restore, or schedule a copy off the database host, then restore it once to prove it",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "list_backups": "autonomous",
+          "create_backup": "autonomous",
+          "restore_backup": "confirm",
+          "delete_backup": "forbidden"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "point-in-time restore from the database provider",
+            "setup_seconds": 600,
+            "recurring_cost": "monthly",
+            "privacy": "hosted"
+          },
+          {
+            "name": "Litestream or restic to object storage",
+            "setup_seconds": 3600,
+            "recurring_cost": "storage",
+            "privacy": "local"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "list_backups",
+          "create_backup",
+          "restore_backup",
+          "delete_backup"
+        ]
+      }
+    },
+    {
+      "id": "launch-ready",
+      "name": "Launch Ready",
+      "goal": [
+        "launch",
+        "ready for users",
+        "production ready",
+        "ready to launch",
+        "go to production",
+        "without a cto",
+        "ship my product",
+        "first customers",
+        "real users"
+      ],
+      "era": 9,
+      "domain": "devops",
+      "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person",
+      "requires": [
+        "hosting",
+        "production-database",
+        "backups",
+        "continuous-delivery",
+        "error-tracking",
+        "uptime-monitoring"
+      ],
+      "detect": {
+        "requires_met": true
+      },
+      "setup_seconds": 0,
+      "hint": "ambit goal launch-ready lists what is left, in order"
     }
   ]
 }

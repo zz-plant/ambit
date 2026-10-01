@@ -36,6 +36,7 @@ const GROUPS: Record<string, string[]> = {
     'ci',
   ],
   govern: [
+    'people',
     'proposals',
     'proposal',
     'approve',

@@ -116,6 +116,8 @@ check — what is proven, what is permitted, what is currently broken
   check ci [--strict]     verify capability invariants for CI/CD pipelines
 
 govern — the reviewable path from proposal to applied change
+  govern people [add <id> ["Name"]]   who may approve and set budgets; adding
+                          one declares a name and grants nothing
   govern proposals [--pending] / govern proposal <id>
   govern approve <id> [<id>…] <person>   several in one sitting
   govern reject <id> <person> ["why"]    a no, recorded — it teaches the next draft

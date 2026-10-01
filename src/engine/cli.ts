@@ -1,9 +1,24 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
-import { emit, emitRaw, emitText, raiseExitCode, setSink, terminalPalette } from './cli/output.ts';
+import {
+  emit,
+  emitRaw,
+  emitText,
+  formatGeneric,
+  raiseExitCode,
+  setSink,
+  terminalPalette,
+} from './cli/output.ts';
 import { HELP, HELP_SHORT, groupHelp } from './cli/help.ts';
-import { briefReport, explain, renderBrief, renderStatus, statusReport } from './cli/reports.ts';
+import {
+  briefReport,
+  explain,
+  renderBrief,
+  renderPlan,
+  renderStatus,
+  statusReport,
+} from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
 import { GROUPS, resolveCommand } from './cli/groups.ts';
 import { shareSnapshot } from './share.ts';
@@ -53,7 +68,13 @@ import {
   pullDelegationSources,
   verifyChain,
 } from './delegation.ts';
-import { recordFailure, simulateFrontier, propose, preferencesReport } from './planning.ts';
+import {
+  planFor,
+  recordFailure,
+  simulateFrontier,
+  propose,
+  preferencesReport,
+} from './planning.ts';
 import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
@@ -70,6 +91,8 @@ import { incidents, resolveIncident } from './incident.ts';
 import { catalogReport } from './catalog.ts';
 import { auditFor } from './audit.ts';
 import {
+  addPerson,
+  listPeople,
   approveProposal,
   approveProposals,
   rejectProposal,
@@ -199,7 +222,26 @@ async function runCommand(
         const routed = goalFor(db, arg) as any;
         if (!arg || routed.error || routed.exact || routed.recommended) emit(routed);
         else emit({ ...routed, judged: await judgeGoal(arg, { url: value('judge') }) });
-      } else emit(goalFor(db, arg));
+      } else {
+        // A plan reads as a checklist. A sentence the vocabulary routed is
+        // drawn as the plan for what it was taken to mean, said first; the
+        // data, for --json and a script, is the routing as it always was.
+        const routed = goalFor(db, arg) as any;
+        const palette = terminalPalette();
+        emit(routed, r => {
+          if (r.exact && Array.isArray(r.order)) return renderPlan(r, palette);
+          if (r.recommended) {
+            const plan = planFor(db, r.recommended) as any;
+            if (!plan.error) {
+              const others = (r.candidates ?? [])
+                .filter((c: any) => c.id !== r.recommended)
+                .map((c: any) => c.name);
+              return renderPlan(plan, palette, { sentence: r.goal, others });
+            }
+          }
+          return formatGeneric(r, palette);
+        });
+      }
       break;
     }
     case 'attention':
@@ -499,6 +541,10 @@ async function runCommand(
       break;
     case 'proposal':
       emit(showProposal(db, arg));
+      break;
+    case 'people':
+      // Declaring is not granting: a name the trail can carry, nothing more.
+      emit(arg === 'add' ? addPerson(db, positional[1], positional[2]) : listPeople(db));
       break;
     case 'approve': {
       // The last positional is the person; everything before it is a proposal.

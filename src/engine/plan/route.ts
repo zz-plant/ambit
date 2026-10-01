@@ -12,6 +12,7 @@
  */
 import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
+import { PROVISION_EDGES } from '../ontology.ts';
 import { usable } from '../assurance.ts';
 import { preferredOption } from '../observed.ts';
 
@@ -188,6 +189,24 @@ function planFor(db: Db, goal?: string) {
     if (people?.length) step.requires_person = people;
   }
   const gatedBy = humanFor.get(id);
+
+  // What the machine already has for a step, held back by a prerequisite that
+  // is also in the plan. Sentry configured before any host is half of Error
+  // Tracking, and a checklist that lists it as untouched sends the person to
+  // set up what they already set up.
+  const provisions = (PROVISION_EDGES as string[]).map(() => '?').join(', ');
+  const providersOf = db.prepare(
+    `SELECT c.name FROM dependencies d JOIN capabilities c ON c.id = d.from_capability
+     WHERE d.to_capability = ? AND d.kind IN (${provisions})
+       AND c.kind NOT IN ('capability', 'action', 'actor')
+     ORDER BY c.name`
+  );
+  for (const step of order) {
+    const names = providersOf
+      .all<{ name: string }>(step.id, ...(PROVISION_EDGES as string[]))
+      .map(r => r.name);
+    if (names.length) step.configured = names;
+  }
 
   // How each step could be closed. Alternatives rather than one blessed
   // answer, because the trade-off is rarely setup time alone: a hosted option

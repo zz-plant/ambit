@@ -1480,7 +1480,10 @@ export default function CivTree({
               const hintH = 17;
               const boxH = headH + keyH + descH + enablesH + hintH + 12;
 
-              const tx = columnCentre(di) + NODE_R + 10;
+              // To the right of the node, unless that runs past the map's edge:
+              // the last column's card was cut off there.
+              const right = columnCentre(di) + NODE_R + 10;
+              const tx = right + W > contentWidth ? columnCentre(di) - NODE_R - 10 - W : right;
               const ty = START_Y + ai * ROW_H + NODE_R - 10;
 
               return (

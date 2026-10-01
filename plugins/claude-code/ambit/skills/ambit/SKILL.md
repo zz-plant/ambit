@@ -1,6 +1,6 @@
 ---
 name: ambit
-description: Use when the user asks which MCP servers or agent tools they have, why one is failing or stopped answering, what breaks if a server, model or token goes away, what to set up next, or how to approve fewer permission prompts safely. Ambit maps every agent runtime's config on this machine into one local graph and answers from it.
+description: Use when the user asks which MCP servers or agent tools they have, why one is failing or stopped answering, what breaks if a server, model or token goes away, what to set up next or before launching a product, or how to approve fewer permission prompts safely. Ambit maps every agent runtime's config on this machine into one local graph and answers from it.
 ---
 
 # Ambit
@@ -22,6 +22,7 @@ Run it as `npx ambit-cli <command>` when `ambit` is not installed (Node 22.18 or
 | They are about to revoke or rotate a token | `ambit credentials` | Everything that rests on each credential |
 | "What should I add next?", or the same missing ability keeps blocking you | `ambit next` | The ranked next step, why, and its setup time |
 | They approve the same permission prompts all day | `ambit authority` | What may run without asking, and grants that have earned a threshold |
+| They are building a product alone: what to set up before launch, or how to keep an agent off production | `ambit goal "launch my saas"` | The steps left before real users, in order, and what an agent may do to hosting, the database and payments without asking |
 
 Lead with one command and what it found. That is usually the whole case for the tool.
 

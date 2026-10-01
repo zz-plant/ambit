@@ -47,6 +47,8 @@ Think of it as an Eva. Your loadout is the Eva and you are the pilot: its sync i
 
 My Setup opens on a readout of these seven legs for your own loadout. [Your loadout, from A to B](./docs/loadout.md) walks them with the demo's numbers.
 
+Building a product alone? `ambit goal "launch my saas"` lists what stands between you and real users, in order, and [Building alone](./docs/solo.md) covers what an agent may do to production without asking you.
+
 ## What Ambit is
 
 An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file. What they add up to is written down nowhere, and so is where the boundary sits and how to move it.
@@ -160,20 +162,20 @@ Everything above answers on a graph Ambit builds by itself. A second group (`att
 ```console
 $ ambit status
 
-    39 of 59 reached · 0 proven · 9 with a single provider
+    39 of 69 reached · 0 proven · 9 with a single provider
     ──────────────────────────────────────────────────────
     proven          0
   › unproven       15
     failing         0
     last check  never
 
-    actions: 18/28 reached
+    actions: 18/61 reached
     provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
     domains:
       ████░░░░░░ ai-ml     5/13
-      █████████░ backend   7/8
-      ████████░░ devops    4/5
-      ██████████ frontend  1/1
+      ██████░░░░ backend   7/11
+      ██████░░░░ devops    4/7
+      █████░░░░░ frontend  1/2
     …
 
     Next  ambit verify · turns 11 of the unproven into evidence
@@ -293,7 +295,7 @@ Discovery reads your host configs into an embedded SQLite graph, and three surfa
 
 Each client is read from its own standard config path, and every server stays attributed to the client that listed it. Two clients naming the same server is one capability with two providers, which is what stops Ambit counting one binary twice and calling the result redundancy.
 
-Discovered capabilities are placed in a curated tree of seven eras, from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy** and **Assurance** to **Sovereignty**. Because each capability records what it needs, Ambit works out what you can reach without taking a config file's word for it, which combos emerge from tools configured apart, and which near misses are one or two prerequisites from unlocking several others.
+Discovered capabilities are placed in a curated tree of nine eras: seven for the agent setup, from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy** and **Assurance** to **Sovereignty**, and two for the product it builds, **Product** (hosting, a production database, accounts, payments, email) and **Operations** (error tracking, analytics, uptime, backups, and **Launch Ready**, reached when the launch checklist is done). Because each capability records what it needs, Ambit works out what you can reach without taking a config file's word for it, which combos emerge from tools configured apart, and which near misses are one or two prerequisites from unlocking several others.
 
 ### Configured is not working
 

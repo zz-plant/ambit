@@ -34,7 +34,7 @@ test('every setup item exists in the tree — it is one machine, seen twice', ()
 
 test('the tree spans every era, so the demo shows the whole shape', () => {
   const eras = new Set(tree.items.map(i => i.meta?.era).filter(Boolean));
-  expect(eras.size).toBe(7);
+  expect(eras.size).toBe(9);
 });
 
 test('the demo has a history to scrub, on fixed dates, ending where its map is', () => {

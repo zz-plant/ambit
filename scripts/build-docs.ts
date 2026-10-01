@@ -85,6 +85,14 @@ export const PAGES: Page[] = [
     card: 'Step into your loadout',
   },
   {
+    src: 'docs/solo.md',
+    slug: 'solo',
+    title: 'Building alone: a launch checklist and production guardrails for your agents',
+    description:
+      'For a one-person company: what to set up before real users arrive, what an agent may do to production without asking, and how you hear when it breaks.',
+    card: 'What a CTO would ask, answered from your agent setup',
+  },
+  {
     src: 'docs/ideas.md',
     slug: 'ideas',
     title: 'The ideas behind Ambit: what is new, and where it comes from',
