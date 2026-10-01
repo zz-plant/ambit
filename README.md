@@ -4,7 +4,7 @@
 
 **What you, your agents, and your machines can jointly do — and where your own time is going.**
 
-What breaks if one MCP server goes down? Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop and Codex CLI into one local graph, and answers what no single config file can: what works, what is configured but broken, and what stops if one server, model or token goes away.
+That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode and eight more agent runtimes into one local map of it, and shows how to widen it: what you can do now, what one more step would unlock, and which of what you have is configured but not actually working.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
@@ -27,22 +27,22 @@ What breaks if one MCP server goes down? Ambit reads the configs of Claude Code,
 
 ## Who it is for
 
-Anyone whose agent setup has outgrown reading its config files one at a time: two or more agent runtimes, a dozen MCP servers, a token several of them share, a second machine. With one runtime and three servers you can hold the whole thing in your head. Ambit earns its place once you cannot.
+Anyone running AI agents who wants them to do more. A small setup, one runtime and a few MCP servers, has the most ground ahead of it, and Ambit names the step that unlocks the most and the combos a single missing piece would give you. A large one, with several runtimes, dozens of servers and a second machine, gets the other half as well: what is configured but failing, and what would stop together if one shared piece went.
 
-The demo is the quickest way to tell which side you are on. It opens on a sample setup losing its MCP servers and walks through it in five steps: what stopped, what was configured but already failing, what to set up next, the approval every change waits for, and then your own config, pasted into the tab and mapped there with nothing uploaded.
+The demo walks a sample setup in five steps: an outage that spreads, a check that was already failing, the next step worth taking, the approval every change waits for, and then your own config, pasted into the tab and mapped there with nothing uploaded.
 
 ## What Ambit is
 
-Your agent setup is spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, and every piece has its own config file. What they add up to is written down nowhere.
+An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file. What they add up to is written down nowhere, and so is where the boundary sits and how to move it.
 
 Ambit reads those configs and builds one map. Every tool, model, skill and credential becomes a point on it, and everything one of them needs in order to work becomes a line to another. The map answers four questions no single file can:
 
-1. **What works right now?** A configured tool is not a working one. Ambit runs each capability's declared check (`ambit verify`), keeps what is configured apart from what is proven (`installed ≠ working ≠ authorized`), and takes a failing capability out of every plan without asking.
-2. **What breaks if one piece goes away?** It follows dependencies all the way down, so three "redundant" providers behind one shared token show up as the single point of failure they are.
-3. **What is one step away?** Tools configured separately combine: a vector store plus local embeddings is semantic retrieval, which neither config mentions. Ambit names the combos you have and the ones a single missing prerequisite would give you.
-4. **What is worth setting up next?** Ranked by the human attention it would save, from a ledger of tool runs, permission prompts and interruptions.
+1. **What is one step away?** The frontier: capabilities whose prerequisites you already meet, each with its setup time, and the near misses one or two prerequisites from unlocking several more. Tools configured separately combine, too: a vector store plus local embeddings is semantic retrieval, which neither config mentions.
+2. **What is worth setting up next?** Ranked by what keeps blocking your agents and by how much each step unlocks, and once the work ledger holds a few weeks, by the human attention it would save.
+3. **What actually works?** A configured tool is not a working one. Ambit runs each capability's declared check (`ambit verify`), keeps what is configured apart from what is proven (`installed ≠ working ≠ authorized`), and takes a failing capability out of every plan without asking, so the boundary it draws is one you can lean on.
+4. **What would stop if one piece went?** It follows dependencies all the way down, so three "redundant" providers behind one shared token show up as the single point of failure they are.
 
-You ask from the terminal. Your agents ask over MCP, before their first tool call: Ambit is itself an MCP server, so the thing describing your MCP servers speaks their protocol. (A *meta-MCP server*, if you want the term to search for.)
+You ask from the terminal. Your agents ask over MCP: what they can do before they try, and when they hit a limit, what would lift it, drafted as a change you approve. Ambit is itself an MCP server, so the thing describing your MCP servers speaks their protocol. (A *meta-MCP server*, if you want the term to search for.)
 
 ### The words Ambit uses
 
@@ -64,9 +64,9 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 **The combo you already almost have.** You run local Postgres and Ollama, but your agent cannot search your code semantically. `ambit graph combos` reports the gap as one step, `CREATE EXTENSION vector;`, and `ambit goal retrieval --simulate` shows what that five-minute change reaches, with no cloud API in the path.
 
-**Rotating a shared token.** Revoke a personal access token, and two background MCP tools and a scheduled sync agent fail some hours later without a word. `ambit impact credential:github/user-token` names everything standing on that one credential before you revoke it. The sharing is declared in a `credentials` block, whose shape is in [the deep dive](./docs/deep-dive.md#what-a-node-is); until you write one, `ambit credentials` says none are declared.
+**An agent that asks for what it lacks.** Mid-task, an agent needs local embeddings and has none. It records the deficit, asks Ambit what the goal is missing, and drafts a proposal: one config patch. You approve and apply it, and the frontier moves by four capabilities, Local Embeddings among them, through combination. [The recording below](#the-one-habit-worth-teaching) is that loop, run for real.
 
-**An agent that stops before the wall.** Playwright is configured, but a system update broke the local Chromium. Left alone, an agent tries it, gets opaque exit codes, attempts four workarounds and spends a long stretch of its context failing. With the `ambit://briefing` resource, the failing check has taken browser automation off the list before the session starts, and the agent asks for the binary fix up front. Asked to deploy without a staging kubeconfig, the same agent gets `authority: confirm` and `missing: staging-kubeconfig` from `ambit_authority`, and asks for an approval it can name.
+**Rotating a shared token.** Before you revoke a personal access token, `ambit impact credential:github/user-token` names everything standing on it: the two background MCP tools and the scheduled sync agent that would otherwise fail some hours later without a word. The sharing is declared in a `credentials` block, whose shape is in [the deep dive](./docs/deep-dive.md#what-a-node-is); until you write one, `ambit credentials` says none are declared.
 
 ---
 
@@ -96,7 +96,7 @@ Semantic search finds tools that sound relevant and cannot tell a working one fr
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
 
-Homebrew installs the tagged release on macOS or Linux. `./bootstrap.sh` discovers the seven runtimes above and the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
+Homebrew installs the tagged release on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue and Zed, and the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
 
 > [!NOTE]
 > The npm package is built and ready but not yet published, so there is no `npx` path yet.
