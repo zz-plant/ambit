@@ -311,18 +311,23 @@ function runOutcome(word: string): AuditOutcome {
  * The row holds only the latest of each, though. A proposal applied and rolled
  * back can be approved again, which overwrites `approved_by` and
  * `approved_at`, so the act is dropped only where the row states that very
- * act: its proposal (the note leads with the id and a colon), its second, its
- * approver, and the newest act of its kind for that proposal, since a second
- * can hold two of them (rule 11). Every earlier approval and apply stays.
+ * act: its proposal (the note leads with the id and a colon), its approver,
+ * the newest act of its kind for that proposal, since a second can hold two of
+ * them (rule 11), and a time within two seconds of the row's. The row and the
+ * act are written by two statements, each reading the clock; when a second
+ * turned between them an exact match failed and the approval was listed
+ * twice, which a loaded test runner found. The newest-id rule is what tells
+ * acts apart; the time only keeps a row that was cleared from claiming one.
+ * Every earlier approval and apply stays.
  */
 const STATED_BY_THE_PROPOSAL = `NOT EXISTS (
   SELECT 1 FROM proposals p
   WHERE substr(s.notes, 1, length(p.id) + 1) = p.id || ':'
     AND ((s.session_id = 'approval' AND s.action = 'approved'
           AND s.capability_id = p.approved_by
-          AND datetime(s.timestamp) = datetime(p.approved_at))
+          AND abs(strftime('%s', s.timestamp) - strftime('%s', p.approved_at)) <= 2)
       OR (s.session_id = 'apply' AND s.action = 'applied'
-          AND datetime(s.timestamp) = datetime(p.applied_at)))
+          AND abs(strftime('%s', s.timestamp) - strftime('%s', p.applied_at)) <= 2))
     AND s.id = (SELECT MAX(o.id) FROM session_learning o
                 WHERE o.session_id = s.session_id AND o.action = s.action
                   AND substr(o.notes, 1, length(p.id) + 1) = p.id || ':'))`;

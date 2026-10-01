@@ -299,6 +299,25 @@ test('every act is recorded against the person who authorised it', () => {
   expect(acts.every(a => a.capability_id === 'human:kanav')).toBe(true);
 });
 
+test('an approval written across a second boundary is still one line on the trail', () => {
+  // The row and the act are two statements, each reading the clock. A second
+  // that turned between them listed the approval twice.
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  expect(cli('approve', p.proposal, 'kanav').error).toBeUndefined();
+  const db = getDb(join(dir, 'graph.db'));
+  db.prepare(
+    `UPDATE session_learning SET timestamp = datetime(timestamp, '+1 seconds')
+     WHERE session_id = 'approval' AND action = 'approved'`
+  ).run();
+  const approved = auditStream(db).events.filter(
+    e => e.target === p.proposal && e.action === 'approved'
+  );
+  db.close();
+  expect(approved).toHaveLength(1);
+  expect(approved[0].outcome?.word).toBe('signed');
+});
+
 test('the trail keeps an approval and an apply that a later approval replaced on the row', () => {
   // A rolled-back proposal can be approved again, and the second approval
   // overwrites `approved_by` and `approved_at`. The trail dropped every

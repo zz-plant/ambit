@@ -12,7 +12,7 @@ export default defineConfig({
     // behind a flag. Setting it here is what lets a test import an engine
     // module and call it, instead of spawning `node` and parsing stdout.
     pool: 'forks',
-    poolOptions: { forks: { execArgv: ['--experimental-sqlite'] } },
+    execArgv: ['--experimental-sqlite'],
     // Engine tests seed real SQLite files in temp directories; a seed is
     // slower than a unit assertion and CI runners are not fast.
     testTimeout: 30_000,
