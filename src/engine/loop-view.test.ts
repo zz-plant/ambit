@@ -77,9 +77,13 @@ test('recorded interventions become hours, a month series, and a burden the page
   const row = loop.attention.reducible.find(r => r.capability === 'Data transfer');
   expect(row?.hours).toBe(2);
   expect(row?.capability_id).toBe('combo:transfer');
-  // One month of records is one point on the line, not twelve invented ones.
-  expect(loop.roi.monthly_hours.length).toBeGreaterThanOrEqual(1);
-  expect(loop.roi.monthly_hours.at(-1)?.hours).toBe(2);
+  // Two days of records are one point on the line, or two when a month
+  // turned between them and now, never twelve invented ones. It read the
+  // newest month alone, and failed on the 1st and 2nd of every month.
+  const months = loop.roi.monthly_hours;
+  expect(months.length).toBeGreaterThanOrEqual(1);
+  expect(months.length).toBeLessThanOrEqual(2);
+  expect(months.reduce((sum, m) => sum + m.hours, 0)).toBe(2);
 });
 
 test('judgment is reported as a keeper and never priced as an opportunity', () => {
