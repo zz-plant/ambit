@@ -8,6 +8,8 @@ Ambit models the **affordance frontier** of extended human-machine systems: the 
 
 The shortest form: *Ambit makes the capability frontier of an agentic system legible.*
 
+This is the formal name for what the README calls your *ambit*, and its edge is what the map calls the frontier. [The ideas behind Ambit](./ideas.md) sets the names side by side.
+
 ```
 A(S) = A_digital ∪ A_cognitive ∪ A_physical ∪ A_social ∪ A_institutional ∪ A_economic
 ```

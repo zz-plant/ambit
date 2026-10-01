@@ -94,8 +94,8 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
         </h1>
         <p className="app-welcome-lede">
           That reach is your <em>ambit</em>. Ambit reads the configs of {RUNTIMES.join(', ')} and
-          four more, and draws it as one map: what works, what is one step away and worth setting up
-          next, and what stops if a piece goes away.
+          four more, and draws it as one map: what works, which next step would open the most, and
+          what stops if a piece goes away.
         </p>
 
         {next && (

@@ -6,7 +6,7 @@ Short answers, with a pointer to the longer one where there is one. Terms are de
 
 ### How is this different from listing my MCP servers?
 
-A list shows what is configured, one server at a time. Ambit records what each capability *needs*, so it can answer the questions a list cannot: what breaks downstream if this credential is revoked, which capability you are one prerequisite away from, and which tools interrupt you most. The [comparison table](../README.md#where-this-sits-in-the-stack) in the README places it next to tool-RAG, workflow graphs, and package managers.
+A list shows what is configured, one server at a time. Ambit records what each capability *needs*, so it can answer the questions a list cannot: what breaks downstream if this credential is revoked, which capability you are one prerequisite away from, and which tools interrupt you most. The [comparison table](../README.md#where-this-sits-in-the-stack) in the README places it next to tool-RAG, workflow graphs, and package managers, and [the ideas behind Ambit](./ideas.md) says what in it is new.
 
 ### Do I need Claude Code for this?
 

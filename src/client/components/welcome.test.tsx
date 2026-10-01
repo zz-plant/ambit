@@ -23,7 +23,7 @@ test('the headline asks what you can do and what one step would open, and the wo
   // Breakage is in the lede, after reach, as the half that makes widening safe.
   expect(html).not.toMatch(/<h1[^>]*>[^<]*break/i);
   expect(html).toContain('That reach is your <em>ambit</em>');
-  expect(html.indexOf('one step away')).toBeLessThan(html.indexOf('stops if a piece goes'));
+  expect(html.indexOf('next step would open')).toBeLessThan(html.indexOf('stops if a piece goes'));
 });
 
 test("the one number on the page is what the demo's best next step would open", () => {

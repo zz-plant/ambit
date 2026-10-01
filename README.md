@@ -29,15 +29,17 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 
 Anyone running AI agents who wants them to do more. A small setup, one runtime and a few MCP servers, has the most ground ahead of it, and Ambit names the step that unlocks the most and the combos a single missing piece would give you. A large one, with several runtimes, dozens of servers and a second machine, gets the other half as well: what is configured but failing, and what would stop together if one shared piece went.
 
-The demo walks a sample setup in five steps: an outage that spreads, a check that was already failing, the next step worth taking, the approval every change waits for, and then your own config, pasted into the tab and mapped there with nothing uploaded.
+The demo walks a sample setup in five steps: the next step worth taking and what it would open, the outage that shows what that reach rests on, a check that was already failing, the approval every change waits for, and then your own config, pasted into the tab and mapped there with nothing uploaded.
 
 ## What Ambit is
 
 An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file. What they add up to is written down nowhere, and so is where the boundary sits and how to move it.
 
-Ambit reads those configs and builds one map. Every tool, model, skill and credential becomes a point on it, and everything one of them needs in order to work becomes a line to another. The map answers four questions no single file can:
+The claim under everything else: **what an agent setup can do is not written in any config file.** It is composed from pieces configured separately, it has to be proven before it counts, and it is a different thing from what the setup is allowed to do. Ambit computes that reach and helps you widen it, with evidence for each step and a person's approval for each change. Widening is the point. The checks, the authority model and the outage analysis are what make a wider reach safe to lean on, and the attention ledger, the "where your own time is going" of the tagline, is how you tell whether a step was worth taking.
 
-1. **What is one step away?** The frontier: capabilities whose prerequisites you already meet, each with its setup time, and the near misses one or two prerequisites from unlocking several more. Tools configured separately combine, too: a vector store plus local embeddings is semantic retrieval, which neither config mentions.
+Ambit reads those configs and builds one map, the capability graph. Every tool, model, skill and credential becomes a point on it, and everything one of them needs in order to work becomes a line to another. Its edge is the *frontier*: everything reached, with the next steps just past it. The map answers four questions no single file can:
+
+1. **What is one step away?** Just past the frontier: capabilities whose prerequisites you already meet, each with its setup time, and the near misses one or two prerequisites from unlocking several more. Tools configured separately combine, too: a vector store plus local embeddings is semantic retrieval, which neither config mentions.
 2. **What is worth setting up next?** Ranked by what keeps blocking your agents and by how much each step unlocks, and once the work ledger holds a few weeks, by the human attention it would save.
 3. **What actually works?** A configured tool is not a working one. Ambit runs each capability's declared check (`ambit verify`), keeps what is configured apart from what is proven (`installed ≠ working ≠ authorized`), and takes a failing capability out of every plan without asking, so the boundary it draws is one you can lean on.
 4. **What would stop if one piece went?** It follows dependencies all the way down, so three "redundant" providers behind one shared token show up as the single point of failure they are.
@@ -50,7 +52,7 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 
 - **Capability**: one thing your setup can do. Every MCP server, agent, skill, provider, model and command in your config becomes one, as does every node of the curated tree.
 - **Era**: how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
-- **Reached, next step, blocked**: reached means something in your config provides it. A next step is one whose prerequisites are met with nothing detected: this is the frontier, and `ambit goal` lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.
+- **Reached, next step, blocked**: reached means something in your config provides it. A next step is one whose prerequisites are met with nothing detected: it sits just past the frontier, and `ambit goal` lists it. Blocked means a prerequisite is missing, which is usually the most informative of the three.
 - **Required vs optional prerequisite**: a required prerequisite gates the capability; an optional one strengthens it without gating. Only required ones block a node. The data model and the CLI call these hard and soft.
 
 <div align="center">
@@ -67,6 +69,20 @@ Four of them carry most of the meaning, in the terminal and on the map alike.
 **An agent that asks for what it lacks.** Mid-task, an agent needs local embeddings and has none. It records the deficit, asks Ambit what the goal is missing, and drafts a proposal: one config patch. You approve and apply it, and the frontier moves by four capabilities, Local Embeddings among them, through combination. [The recording below](#the-one-habit-worth-teaching) is that loop, run for real.
 
 **Rotating a shared token.** Before you revoke a personal access token, `ambit impact credential:github/user-token` names everything standing on it: the two background MCP tools and the scheduled sync agent that would otherwise fail some hours later without a word. The sharing is declared in a `credentials` block, whose shape is in [the deep dive](./docs/deep-dive.md#what-a-node-is); until you write one, `ambit credentials` says none are declared.
+
+---
+
+## What is new here
+
+Most tools that touch an agent's setup list it, search it or route through it. Ambit treats what the setup can do as something to compute, prove and govern, and these are the parts no other tool we know of does:
+
+1. **Capability is computed, not declared.** A capability can exist that no component declares: a vector store plus local embeddings is semantic retrieval. The frontier ledger records when one appears *emergent*, reached with nothing new providing it, which no per-component changelog can show. ([The frontier ledger](./docs/deep-dive.md#the-frontier-ledger))
+2. **Evidence gates every decision.** `installed ≠ working ≠ authorized`. A capability counts once its declared check passes, and one failing check takes it out of every plan, permission and ranking without anyone asking. ([Assurance](./docs/roadmap.md#4-detection-becomes-verification--built-and-gates))
+3. **Authority changes asymmetrically.** A grant widens only past a threshold a person set in advance, and narrows on one failing check with nobody asked; a refusal beats any narrower scope. Technical reach can grow without silently broadening permission. ([Capability and authority](./docs/deep-dive.md#capability-and-authority-are-different-things))
+4. **The agent asks for what it lacks.** Friction becomes a recorded deficit, then a proposal, a signed approval, a check, and a measured return against the hours it was forecast to save. ([The economic loop](./docs/deep-dive.md#the-economic-loop))
+5. **Reach has a history.** Each observation records what the setup could do then, so the question is not only what it can do now but how that set is changing. ([The map through time](./docs/deep-dive.md#the-frontier-ledger))
+
+The nearest prior work is attack-graph analysis, which asks what a principal can reach given a topology, and the capability approach in economics, which separates having resources from being able to achieve with them. Ambit applies the first to all productive action, not only attack paths, and makes the second's conversion computable for one kind of system. [The ideas behind Ambit](./docs/ideas.md) sets these out at length.
 
 ---
 

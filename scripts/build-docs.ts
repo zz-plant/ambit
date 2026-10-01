@@ -77,6 +77,14 @@ export const PAGES: Page[] = [
     card: 'What it reads, and what never leaves your machine',
   },
   {
+    src: 'docs/ideas.md',
+    slug: 'ideas',
+    title: 'The ideas behind Ambit: what is new, and where it comes from',
+    description:
+      "An agent setup's reach is composed, has to be proven, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim.",
+    card: 'Reach is composed, proven, and not the same as permission',
+  },
+  {
     src: 'docs/mcp-config-locations.md',
     slug: 'mcp-config-locations',
     title: 'Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more',

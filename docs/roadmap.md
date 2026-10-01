@@ -14,7 +14,7 @@ Each section says what is built and what is not. The README describes only what 
 
 > A capability is not something configured. A capability is an action the system has evidence it can perform.
 
-Everything here follows from taking that seriously.
+Everything here follows from taking that seriously. It is the first half of the claim [the ideas page](./ideas.md) states whole: what an agent setup can do is not written in any config file, because it is composed, it has to be proven, and it differs from what the setup is allowed to do.
 
 That claim gives four layers, ordered by ambition. Each is defensible on its own; each depends on the one above it.
 

@@ -1,6 +1,6 @@
 # Ambit documentation
 
-[The README](../README.md) is the front door: what Ambit is, how to get it running, and what each command answers. These are the longer documents, grouped by the kind of claim each one makes, because whether a page describes the code, argues for it, runs ahead of it, or records what was said at the time is the thing a file listing cannot tell you. If you are reading rather than looking something up, start with [Why Ambit](./why-ambit.md).
+[The README](../README.md) is the front door: what Ambit is, how to get it running, and what each command answers. The claim under all of it is that what an agent setup can do is not written in any config file: it is composed, it has to be proven, and it differs from what the setup is allowed to do. [The ideas behind Ambit](./ideas.md) says what is new in that, in one page. These are the longer documents, grouped by the kind of claim each one makes, because whether a page describes the code, argues for it, runs ahead of it, or records what was said at the time is the thing a file listing cannot tell you. If you are reading rather than looking something up, start with [Why Ambit](./why-ambit.md).
 
 ## Description: true of the code today
 
@@ -16,6 +16,7 @@
 
 ## Argument: why the thing exists
 
+- [The ideas behind Ambit](./ideas.md) — the claim, what is new in it, its nearest prior work, and what it does not claim. The short version of the two below.
 - [Why Ambit](./why-ambit.md) — the argument for building it: what one agent stack looked like, and why effective agency should be a governed object.
 - [The affordance frontier](./affordance-frontier.md) — the theory under that argument, and the two cases (robots, brain-computer interfaces) where it is tested.
 

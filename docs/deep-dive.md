@@ -25,7 +25,7 @@ This is the long-form reference for how Ambit models capability. The [README](..
 
 ### The core idea
 
-Configuration tells you what is declared. Ambit tries to tell you what those declarations amount to.
+Configuration tells you what is declared. Ambit tries to tell you what those declarations amount to: what the setup can do, composed from its pieces, proven by checks, and kept apart from what it is allowed to do. [The ideas behind Ambit](./ideas.md) is that claim in one page, with what is new in it.
 
 A capability in a tool registry looks like *"GitHub access: yes."* The useful form is closer to:
 

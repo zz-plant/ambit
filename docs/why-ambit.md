@@ -1,6 +1,6 @@
 # Why Ambit
 
-> This is the argument, not the reference. It runs ahead of the software deliberately. The [README](../README.md) describes what runs today; [the roadmap](./roadmap.md) says, section by section, what is built and what remains.
+> This is the argument, not the reference. It runs ahead of the software deliberately. The [README](../README.md) describes what runs today; [the roadmap](./roadmap.md) says, section by section, what is built and what remains; [the ideas behind Ambit](./ideas.md) is the short version of what follows, with what is new in it.
 
 I built Ambit because my agent stack crossed the point where neither I nor the agents could reliably keep the whole thing in our heads.
 
@@ -89,5 +89,7 @@ The design norm:
 > **No increase in effective capability without a corresponding increase in legibility, verification, and governability.**
 
 Ambit does not measure how intelligent the AI is. It tries to measure what intelligence has acquired the means to do.
+
+That norm is also why the product leads with widening and not with warning. The point is for you and your agents to reach further: the next step that opens the most, the combination one missing piece would give you. Governing that growth is what lets you lean on it, so the same map that names the next step also says whether it works, who may use it and what it rests on. Widening, governing and accounting for the time it costs a person are one project, and the word for what they share is the one the product is named after: your *ambit*.
 
 The abstraction is tested where it stops being software: robots add physical actuation, and brain-computer interfaces erode the boundary between human and machine capability. [The affordance frontier](./affordance-frontier.md) works those cases through, and takes the argument to its end.
