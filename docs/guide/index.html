@@ -284,10 +284,12 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 <p>Ambit also publishes <code>ambit://briefing</code>, a resource a client reads on connect: what is reached and proven, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to <code>~/.claude/settings.json</code>:</p>
 <pre><code class="language-json">{
   &quot;hooks&quot;: {
-    &quot;SessionStart&quot;: [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;ambit briefing&quot; }] }]
+    &quot;SessionStart&quot;: [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;ambit briefing&quot; }] }],
+    &quot;PreToolUse&quot;: [{ &quot;matcher&quot;: &quot;*&quot;, &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;ambit gate&quot;, &quot;timeout&quot;: 10 }] }]
   }
 }
 </code></pre>
+<p>The <code>PreToolUse</code> entry makes the gate binding in Claude Code. Before each tool call, <code>ambit gate</code> finds the capability the call exercises and answers: forbidden is a deny, asking first or having no grant yet is put to you, and anything allowed or unknown gets no answer, so Claude Code&#39;s own permissions decide. It can only narrow what Claude Code would do, never widen it, and it adds about a fifth of a second to each call. Run <code>ambit gate</code> in a terminal for the entry on its own.</p>
 <h3 id="opencode"><a class="anchor" href="#opencode" aria-hidden="true" tabindex="-1">#</a>OpenCode</h3>
 <p><code>ambit connect opencode</code> adds the entry to <code>~/.config/opencode/opencode.json</code> in whichever shape the file already uses, OpenCode 1&#39;s or 2&#39;s, with or without comments. By hand, in OpenCode 1&#39;s shape:</p>
 <pre><code class="language-json">{

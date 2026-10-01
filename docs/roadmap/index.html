@@ -142,7 +142,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#4-detection-becomes-verification--built-and-gates">4</a></td>
 <td align="left">Detection becomes verification</td>
 <td align="left">built, and gates</td>
-<td align="left">Gates on evidence: a failing check demotes, a threshold a person set promotes (§12.6), and real use counts (§13.2). The gate is consulted at every decision surface and enforced in two places, the apply path (§10) and the control plane (§15); everywhere else it is read and not obeyed, and a check whose failure flipped a capability to <code>broken</code> is re-verified by hand.</td>
+<td align="left">Gates on evidence: a failing check demotes, a threshold a person set promotes (§12.6), and real use counts (§13.2). The gate is consulted at every decision surface and enforced in three places, the apply path (§10), the control plane (§15), and Claude Code&#39;s tool calls once the <code>ambit gate</code> hook is installed; everywhere else it is read and not obeyed, and a check whose failure flipped a capability to <code>broken</code> is re-verified by hand.</td>
 </tr>
 <tr>
 <td align="left"><a href="#5-goal--capability-delta--partly-built">5</a></td>
@@ -178,7 +178,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#9-authority-as-a-first-class-edge--built-and-mediates-one-thing">9</a></td>
 <td align="left">Authority as a first-class edge</td>
 <td align="left">built, and mediates one thing</td>
-<td align="left">The one place is a grant narrowing when what it rests on fails. Nothing forces a <em>runtime</em> to consult the gate. A grant proposed from what interrupts a person is specified and waits on recording which command asked (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#g3-once-here-or-never">G3</a>).</td>
+<td align="left">The one place is a grant narrowing when what it rests on fails. Only Claude Code can be made to consult the gate, by the <code>ambit gate</code> hook, which can deny or ask and never allow; other runtimes still choose whether to ask. A grant proposed from what interrupts a person is specified and waits on recording which command asked (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#g3-once-here-or-never">G3</a>).</td>
 </tr>
 <tr>
 <td align="left"><a href="#9b-the-record-it-writes-std-07--shipped">9b</a></td>
