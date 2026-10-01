@@ -2562,7 +2562,7 @@ code, pre, .code, .sp-cli-cmd {
   font-size: var(--fs-3xl);
   font-weight: 600;
   line-height: 1;
-  color: var(--error);
+  color: var(--ok);
   font-variant-numeric: tabular-nums;
 }
 

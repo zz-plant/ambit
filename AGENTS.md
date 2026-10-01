@@ -222,11 +222,13 @@ src/client/                React frontend
     AuditView.tsx          The Audit view: the trail as one stream, newest first, with a query bar
     ActorMark.tsx          Who acted: a shape for the kind (person, agent, machine, Ambit) and a
                            monogram; drawn only for an id whose prefix says what it is
-    WelcomeScreen.tsx      What an empty graph shows: the question, one number from the demo's
-                           outage with a button that plays it, and the paste box
+    WelcomeScreen.tsx      What an empty graph shows: what you and your agents can do and what one
+                           step would open, the word *ambit* defined, one number from the demo's
+                           best next step with a button that plays it, and the paste box
     ConfigIntake.tsx       Paste a config or pick the file, and where each runtime keeps it
-    Tour.tsx               The demo narrated, on the hosted site's first visit: an outage that
-                           spreads, a failing check, the next step, the approval gate, your config
+    Tour.tsx               The demo narrated, on the hosted site's first visit: the next step and
+                           what it opens, then an outage as the guardrail, a failing check, the
+                           approval gate, your config
     figures.tsx            The sparkline, reach bar and check-run strip every surface draws the same
                            way, and the seal on something signed
     Term.tsx               A house word with its definition attached — one glossary, two renderings

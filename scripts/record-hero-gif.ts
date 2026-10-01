@@ -626,7 +626,48 @@ async function main() {
   await sleep(400);
   await hold(2.0, 'a region of the map');
 
-  // 2 — one capability, and what hangs off it. Nodes carry role=button and an
+  // 2 — one more step, and what it would open. Widening the setup is what the
+  // product is for, so the GIF shows it first and the blast radius after it.
+  // A next step is an unreached node whose prerequisites are met; the panel's
+  // unlock simulation lights what it would make reachable.
+  const next = await cdp.clickWhere(`(() => {
+    const nodes = [...document.querySelectorAll('g[role="button"][aria-label]')];
+    const want = ['Embeddings', 'Model Routing', 'Local Tool Calling', 'Skill Library'];
+    for (const w of want) {
+      const n = nodes.find(x => x.getAttribute('aria-label').startsWith(w));
+      if (n) return n;
+    }
+    throw new Error('no next-step node. present: ' +
+      nodes.slice(0, 40).map(n => n.getAttribute('aria-label')).join(' | '));
+  })()`);
+  console.log(`  selected ${next}`);
+  await cdp.eval(`document.activeElement?.blur?.(); true`);
+  await sleep(900);
+  const unlocked = await cdp.clickWhere(`(() => {
+    const b = [...document.querySelectorAll('.sp-action-btn')]
+      .find(e => /simulate unlocking/i.test(e.textContent));
+    if (!b) throw new Error('no unlock button. panel buttons: ' +
+      [...document.querySelectorAll('.sp-action-btn')].map(e => e.textContent.trim()).join(' | ') || '(panel absent)');
+    return b;
+  })()`);
+  console.log(`  ${unlocked}`);
+  await sleep(1200);
+  const opened = await cdp.eval(
+    `document.querySelector('.civ-sim-banner span')?.textContent ?? ''`
+  );
+  if (!/would make [1-9]\d* more capabilit(y|ies) reachable/.test(String(opened)))
+    throw new Error(`the unlock beat opens nothing: "${opened}"`);
+  console.log(`  · ${opened}`);
+  await hold(2.4, 'one more step');
+  await cdp.eval(`(() => {
+    const b = [...document.querySelectorAll('.sp-action-btn')].find(e => /clear|exit|stop/i.test(e.textContent));
+    if (b) b.click();
+    const c = document.querySelector('.sp-close'); if (c) c.click();
+    return true;
+  })()`);
+  await sleep(900);
+
+  // 3 — one capability, and what hangs off it. Nodes carry role=button and an
   // aria-label of "<name>, <type>", which is a contract the keyboard path
   // depends on too, so it is a safer handle than the rendered glyph.
   // Prefer a reached node whose loss stops something that works. Local Runtime
@@ -637,7 +678,12 @@ async function main() {
     const want = ['Shell Execution', 'Version Control', 'File Editing', 'Local Runtime'];
     for (const w of want) {
       const n = nodes.find(x => x.getAttribute('aria-label').startsWith(w));
-      if (n) return n;
+      // The unlock beat before this one can leave the map scrolled, and a
+      // click at a node's centre off screen lands on whatever is there.
+      if (n) {
+        n.scrollIntoView({ block: 'center', inline: 'center' });
+        return n;
+      }
     }
     throw new Error('no candidate node. present: ' +
       nodes.slice(0, 40).map(n => n.getAttribute('aria-label')).join(' | '));
@@ -651,7 +697,7 @@ async function main() {
   await sleep(1100);
   await hold(1.6, 'one capability selected');
 
-  // 3 — blast radius
+  // 4 — blast radius, the guardrail
   const simmed = await cdp.clickWhere(`(() => {
     const b = [...document.querySelectorAll('.sp-action-btn')]
       .find(e => /simulate (an outage|unlocking)/i.test(e.textContent));
@@ -667,7 +713,7 @@ async function main() {
   console.log(`  · ${said}`);
   await hold(2.4, 'blast radius');
 
-  // 4 — back to a clean map
+  // 5 — back to a clean map
   await cdp.eval(`(() => {
     const b = [...document.querySelectorAll('.sp-action-btn')].find(e => /clear|exit|stop/i.test(e.textContent));
     if (b) b.click();
@@ -676,7 +722,7 @@ async function main() {
   })()`);
   await sleep(900);
 
-  // 5 — where the human time goes. The scenario rows above are what give the
+  // 6 — where the human time goes. The scenario rows above are what give the
   // lens something to colour; without them it is offered disabled.
   console.log('  · attention lens');
   await cdp.clickWhere(deckTab('Attention'));
@@ -685,13 +731,13 @@ async function main() {
   await cdp.clickWhere(deckTab('Standard'));
   await sleep(900);
 
-  // 6 — the proposal waiting for a person
+  // 7 — the proposal waiting for a person
   console.log('  · proposals');
   await cdp.clickWhere(deckBtn('Proposals'));
   await sleep(1400);
   await hold(2.4);
 
-  // 7 — My Setup, for the README's second still. Not a beat of the GIF: a
+  // 8 — My Setup, for the README's second still. Not a beat of the GIF: a
   // list holds still for as long as a reader wants, which a frame cannot.
   await cdp.send('Page.navigate', { url: `http://127.0.0.1:${webPort}/ambit/?view=config` });
   await sleep(3000);

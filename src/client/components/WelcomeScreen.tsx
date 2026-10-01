@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useConfigImport } from '../hooks/useConfigImport';
 import { useCopied } from '../hooks/useCopied';
 import { mergeGraphs } from '../store/ambitStore';
-import { COLD_OPEN_PLAIN, coldOpen, demoConfigGraph, demoTreeGraph } from '../store/demo';
+import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { INSTALL } from '../utils/copy';
 import { BrandMark } from './BrandMark';
+import { mapFindings } from './civ/layout';
 import ConfigIntake from './ConfigIntake';
 
 interface WelcomeProps {
@@ -31,13 +32,14 @@ const RUNTIMES = [
 const DOCS = `${import.meta.env.BASE_URL}docs/`;
 
 /**
- * How many things the sample's agents do every day stop with the demo's
- * opening outage, on the graph the demo seeds and by the walk the map draws,
- * so the number here is the one the tour then shows.
+ * The sample setup's best next step and how much it would open, on the graph
+ * the demo seeds and by the walk the map draws, so the number here is the one
+ * the tour's first step then shows.
  */
-function coldOpenStopped(): number {
+function demoNextStep(): { name: string; reaches: number } | null {
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
-  return coldOpen(items, connections)?.stopped.length ?? 0;
+  const { best } = mapFindings(items, connections);
+  return best ? { name: best.item.name, reaches: best.reaches } : null;
 }
 
 /**
@@ -45,12 +47,13 @@ function coldOpenStopped(): number {
  * watch, and a place to put their own config.
  *
  * It opened on the product's name and a sentence about joint capability,
- * which is accurate and which nobody has felt. It now opens on the afternoon
- * everyone has had, when one piece of an agent setup stopped and it was not
- * clear what else stopped with it. Under that, one number from the sample
- * setup, counting only what was working, with a button that shows it happening: the product's claim,
- * demonstrated in a click. The two charts that sat here were example data a
- * visitor had to read a caption to understand, and they are gone.
+ * which is accurate and which nobody has felt; then on an outage, which sold
+ * the guardrail as the product. It now opens on what the product is for: what
+ * you and your agents can do, and what one more step would open, with the
+ * word *ambit* defined where a visitor first meets it. Under that, one number
+ * from the sample setup, how much its best next step would open, with a
+ * button that shows it happening. What breaks if a piece goes is in the lede
+ * and the tour, after it, as the half that makes widening safe.
  *
  * Then the visitor's own config, pasted or dropped, and last what a visitor
  * who is already convinced needs: the install line and the docs. Rendered
@@ -60,7 +63,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
   const { readFile, error: dropError } = useConfigImport();
   const [dropping, setDropping] = useState(false);
   const [copied, copy] = useCopied();
-  const stopped = coldOpenStopped();
+  const next = demoNextStep();
 
   return (
     // The whole page takes a dropped file, so there is no target to aim at;
@@ -87,22 +90,23 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
           <span>Ambit</span>
         </div>
         <h1 className="app-welcome-title">
-          When one piece of your agent setup breaks, what breaks with it?
+          What can you and your agents do, and what would one more step open up?
         </h1>
         <p className="app-welcome-lede">
-          Ambit reads the configs of {RUNTIMES.slice(0, -1).join(', ')} and {RUNTIMES.at(-1)} and
-          draws one map: what works, what stops if a piece goes away, and what is worth setting up
-          next.
+          That reach is your <em>ambit</em>. Ambit reads the configs of {RUNTIMES.join(', ')} and
+          four more, and draws it as one map: what works, what is one step away and worth setting up
+          next, and what stops if a piece goes away.
         </p>
 
-        <button type="button" className="app-welcome-fact" onClick={onExploreDemo}>
-          <span className="app-welcome-fact-figure">{stopped}</span>
-          <span className="app-welcome-fact-text">
-            things a sample developer&apos;s agents do every day stop when {COLD_OPEN_PLAIN} go
-            down.
-            <strong className="app-welcome-fact-go">Watch it happen →</strong>
-          </span>
-        </button>
+        {next && (
+          <button type="button" className="app-welcome-fact" onClick={onExploreDemo}>
+            <span className="app-welcome-fact-figure">{next.reaches}</span>
+            <span className="app-welcome-fact-text">
+              more things a sample developer&apos;s agents could do once {next.name} is set up.
+              <strong className="app-welcome-fact-go">Watch it open →</strong>
+            </span>
+          </button>
+        )}
 
         <div className="app-welcome-yours">
           <h2>Or map your own config</h2>

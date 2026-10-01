@@ -40,10 +40,13 @@ test('it draws the lit nodes and only the edges between them', () => {
   expect(card.edges.every(e => drawn.has(e.from) && drawn.has(e.to))).toBe(true);
 });
 
-test('with nothing simulated it plays out the map finding', () => {
+test('with nothing simulated it plays out the next step, and the loss only when there is none', () => {
   const card = buildCard(items, connections, none);
   expect(card).not.toBeNull();
   expect(card!.nodes.length).toBeGreaterThan(0);
+  // Widening is what the product is for; the loss is the guardrail.
+  expect(card!.mode).toBe('acquisition');
+  expect(card!.kicker).toMatch(/^Adding /);
 });
 
 test('the SVG is the portrait size, escapes names, and carries the address', () => {

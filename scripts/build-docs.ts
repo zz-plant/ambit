@@ -65,7 +65,7 @@ export const PAGES: Page[] = [
     slug: 'guide',
     title: 'Ambit guide: install, CLI and MCP setup',
     description:
-      'Install Ambit, map your AI agent setup, and ask what works, what breaks and what to set up next, from the terminal or over MCP in Claude Code and OpenCode.',
+      'Install Ambit, map your AI agent setup, and ask what it can do, what to set up next and what breaks, from the terminal or over MCP in Claude Code and OpenCode.',
     card: 'Map what your AI agent setup can do, in one command',
   },
   {

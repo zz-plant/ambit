@@ -89,23 +89,25 @@ export interface Showing {
 
 /**
  * The card for what the map shows: the running simulation, else the map's own
- * finding played out (the loss that stops the most, else the next step that
- * reaches the most). Null when the graph has nothing to say.
+ * finding played out (the next step that reaches the most, else the loss that
+ * stops the most). The next step leads because widening what a setup can do
+ * is what the product is for; the loss is the guardrail. Null when the graph
+ * has nothing to say.
  */
 export function buildCard(items: Item[], connections: Connection[], showing: Showing): Card | null {
   let { mode, rootId, cascade, weakened } = showing;
   if (mode === 'none' || !rootId) {
     const { weakest, best } = mapFindings(items, connections);
-    if (weakest) {
+    if (best?.reaches) {
+      mode = 'acquisition';
+      rootId = best.item.id;
+      cascade = unlockCascade(items, connections, best.item.id);
+    } else if (weakest) {
       const split = outageSplit(items, connections, weakest.item.id);
       mode = 'outage';
       rootId = weakest.item.id;
       cascade = split.stops;
       weakened = split.weakened;
-    } else if (best) {
-      mode = 'acquisition';
-      rootId = best.item.id;
-      cascade = unlockCascade(items, connections, best.item.id);
     } else {
       return null;
     }

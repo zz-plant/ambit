@@ -39,11 +39,13 @@ interface Step {
  * The demo, narrated. A visitor who lands on the map used to get sixty
  * circles, a red banner and a card of instructions, and nothing happened
  * until they read the card and clicked. Now the map acts first: the opening
- * step takes a model API down, and the cascade spreads before a word is read.
- * Each later step makes the map show one more thing the product does, in the
- * order the claim is built: what breaks, what is broken without anyone
- * noticing, what to set up next, and that nothing changes without a person.
- * The last step is the visitor's own setup.
+ * step plays the best next step, and what it would open lights before a word
+ * is read. Each later step makes the map show one more thing the product does,
+ * in the order the claim is built: what one more step opens, what stops if a
+ * piece goes, what is broken without anyone noticing, and that nothing changes
+ * without a person. Reach comes first because widening it is what the product
+ * is for; the outage follows as the half that makes widening safe. The last
+ * step is the visitor's own setup.
  *
  * It replaces the first-run card on the demo only. A real graph gets the card,
  * because a person looking at their own machine needs the controls, not the
@@ -70,16 +72,29 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
     const cost = best ? costOf(best.item) : '';
 
     const list: Step[] = [];
+    if (best) {
+      list.push({
+        title: `One step would open ${best.reaches} more`,
+        body:
+          `This is a sample developer's agent setup, drawn from their config files. ` +
+          `What it can do is their ambit. Adding ${best.item.name}` +
+          `${cost ? `, about ${cost} of setup,` : ''} would open ${best.reaches} more things their agents could do. ` +
+          `Every next step is ranked by what it opens up, and agents can ask for the same ranking over MCP.`,
+        enter: () => {
+          select(null);
+          startAcquisition(best.item.id);
+        },
+      });
+    }
     // Only what was working counts as stopped. The rest of the red is named
     // for what it is, because the map draws it in the same colour.
     if (outage?.stopped.length) {
       const { stopped, broken, cutOff } = outage;
-      const plain = COLD_OPEN_PLAIN[0].toUpperCase() + COLD_OPEN_PLAIN.slice(1);
       list.push({
-        title: `${plain} went down. ${stopped.length} things stopped.`,
+        title: `And if ${COLD_OPEN_PLAIN} went down? ${stopped.length} things stop.`,
         body:
-          `This is a sample developer's agent setup, drawn from their config files. ` +
-          `With no MCP server answering, their agents lost ${named(stopped)}.` +
+          `The same map says what a reach rests on. ` +
+          `With no MCP server answering, these agents would lose ${named(stopped)}.` +
           (broken.length
             ? ` ${named(broken)} ${broken.length === 1 ? 'was' : 'were'} already failing ${broken.length === 1 ? 'its check' : 'their checks'}.`
             : '') +
@@ -101,19 +116,6 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
         enter: () => {
           clearSimulation();
           select(broken.id);
-        },
-      });
-    }
-    if (best) {
-      list.push({
-        title: 'What to set up next',
-        body:
-          `Adding ${best.item.name} would reach ${best.reaches} more` +
-          `${cost ? `, for about ${cost} of setup` : ''}. ` +
-          `Every next step is ranked by what it opens up, and your agents can ask for the same ranking over MCP.`,
-        enter: () => {
-          select(null);
-          startAcquisition(best.item.id);
         },
       });
     }

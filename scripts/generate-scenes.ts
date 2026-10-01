@@ -131,6 +131,7 @@ const INK = '#e8e8ea'; // --text-primary
 const SUB = '#a4a7ae'; // --text-secondary
 const QUIET = '#8a8e96'; // --text-muted
 const RED = '#ef6461'; // --error
+const OK = '#56c28a'; // --ok, the colour the map's unlock simulation draws
 
 /** Text is data here: a title with an ampersand would otherwise end the SVG. */
 const xml = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -150,8 +151,9 @@ function wrap(text: string, width: number, max: number): string[] {
 }
 
 /**
- * A node of the card's graph. `down` is the one that failed, `lost` what
- * stops with it, and `frontier` is not reached, drawn dashed.
+ * A node of the card's graph. `down` is the pivot (in an unlock, the one step
+ * added; in an outage, the piece that failed), `lost` what changes with it
+ * (opened, or stopped), and `frontier` is not reached, drawn dashed.
  */
 type Node = { x: number; y: number; r: number; down?: boolean; lost?: boolean; frontier?: boolean };
 
@@ -190,7 +192,19 @@ const EDGES: [string, string][] = [
   ['c3', 'd2'],
 ];
 
-function graph(opacity = 1): string {
+/**
+ * The cards' graph, in one of two stories on the same nodes. An unlock is the
+ * default: one step added, and what it opens lit green, the way the map's
+ * unlock simulation draws it. Widening what a setup can do is what the product
+ * is for, so the cards lead with it. An outage, the guardrail, is drawn only
+ * on the page about outages: the piece that failed, crossed out, and what
+ * stops with it in red.
+ */
+function graph(opacity = 1, story: 'unlock' | 'outage' = 'unlock'): string {
+  const outage = story === 'outage';
+  const hue = outage ? RED : OK;
+  const hotLine = outage ? 'rgba(239,100,97,0.70)' : 'rgba(86,194,138,0.70)';
+  const hotFill = outage ? '#3c2123' : '#1c3328';
   const parts: string[] = [];
   for (const [from, to] of EDGES) {
     const f = NODES[from];
@@ -199,7 +213,7 @@ function graph(opacity = 1): string {
     const soft = t.frontier;
     parts.push(
       `<line x1="${f.x}" y1="${f.y}" x2="${t.x}" y2="${t.y}" stroke="${
-        hot ? 'rgba(239,100,97,0.70)' : soft ? 'rgba(138,142,150,0.30)' : 'rgba(122,162,247,0.50)'
+        hot ? hotLine : soft ? 'rgba(138,142,150,0.30)' : 'rgba(122,162,247,0.50)'
       }" stroke-width="${hot ? 4 : soft ? 2.5 : 3.5}"${soft ? ' stroke-dasharray="8 7"' : ''} stroke-linecap="round"/>`
     );
   }
@@ -209,16 +223,20 @@ function graph(opacity = 1): string {
       n.frontier
         ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="none" stroke="rgba(138,142,150,0.62)" stroke-width="3.2" stroke-dasharray="9 6.5"/>`
         : n.lost
-          ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="#3c2123" stroke="${RED}" stroke-width="4"/>`
+          ? `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="${hotFill}" stroke="${hue}" stroke-width="4"/>`
           : `<circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="${ACCENT}"/>`
     );
   }
-  // The failed node last, over its own edges: lit red, crossed out in the
-  // ground colour, as the page's status fills carry dark text.
+  // The pivot last, over its own edges. Failed: lit red and crossed out in
+  // the ground colour. Added: lit green with a plus, the step that opens the
+  // rest.
   const d = NODES.down;
-  parts.push(`<circle cx="${d.x}" cy="${d.y}" r="100" fill="url(#downGlow)"/>
-    <circle cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${RED}"/>
-    <path d="M${d.x - 13} ${d.y - 13} L${d.x + 13} ${d.y + 13} M${d.x + 13} ${d.y - 13} L${d.x - 13} ${d.y + 13}" stroke="${CANVAS}" stroke-width="7" stroke-linecap="round"/>`);
+  const glyph = outage
+    ? `M${d.x - 13} ${d.y - 13} L${d.x + 13} ${d.y + 13} M${d.x + 13} ${d.y - 13} L${d.x - 13} ${d.y + 13}`
+    : `M${d.x - 15} ${d.y} H${d.x + 15} M${d.x} ${d.y - 15} V${d.y + 15}`;
+  parts.push(`<circle cx="${d.x}" cy="${d.y}" r="100" fill="url(#${outage ? 'downGlow' : 'openGlow'})"/>
+    <circle cx="${d.x}" cy="${d.y}" r="${d.r}" fill="${hue}"/>
+    <path d="${glyph}" stroke="${CANVAS}" stroke-width="7" stroke-linecap="round"/>`);
   return `<g opacity="${opacity}">${parts.join('\n    ')}</g>`;
 }
 
@@ -232,6 +250,10 @@ const GROUND = `<defs>
         <stop offset="0%" stop-color="rgba(239,100,97,0.38)"/>
         <stop offset="100%" stop-color="rgba(239,100,97,0)"/>
       </radialGradient>
+      <radialGradient id="openGlow">
+        <stop offset="0%" stop-color="rgba(86,194,138,0.34)"/>
+        <stop offset="100%" stop-color="rgba(86,194,138,0)"/>
+      </radialGradient>
     </defs>
     <rect width="1280" height="640" fill="${CANVAS}"/>`;
 
@@ -243,19 +265,19 @@ function socialCard(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
     ${GROUND}
     ${graph()}
-    <text x="1236" y="70" font-family="${FONT}" font-size="30" font-weight="700" fill="${RED}" text-anchor="end">1 down, ${Object.values(NODES).filter(n => n.lost).length} stop working</text>
+    <text x="1236" y="70" font-family="${FONT}" font-size="30" font-weight="700" fill="${OK}" text-anchor="end">1 step, ${Object.values(NODES).filter(n => n.lost).length} more open</text>
 
     ${BRAND}
 
     <text font-family="${FONT}" font-size="60" font-weight="750" fill="${INK}" letter-spacing="-1.8">
-      <tspan x="80" y="230">What breaks if one</tspan>
-      <tspan x="80" y="302">MCP server goes down?</tspan>
+      <tspan x="80" y="230">What could your agents</tspan>
+      <tspan x="80" y="302">do with one more step?</tspan>
     </text>
 
     <text font-family="${FONT}" font-size="27" font-weight="500" fill="${SUB}">
       <tspan x="80" y="392">Ambit maps Claude Code, Cursor, OpenCode</tspan>
-      <tspan x="80" y="428">and four more into one graph of what</tspan>
-      <tspan x="80" y="464">your agents can actually do.</tspan>
+      <tspan x="80" y="428">and eight more into one graph: what works,</tspan>
+      <tspan x="80" y="464">what to set up next, what breaks if it goes.</tspan>
     </text>
 
     <rect x="80" y="548" width="352" height="56" rx="28" fill="${ACCENT}"/>
@@ -280,7 +302,7 @@ function docCard(page: Page): string {
   const titleY = top + lines.length * 76 + 18;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
     ${GROUND}
-    ${graph(0.35)}
+    ${graph(0.35, page.slug === 'mcp-outage' ? 'outage' : 'unlock')}
     ${BRAND}
     <text x="80" y="${top - 70}" font-family="${FONT}" font-size="26" font-weight="700" fill="${ACCENT}" letter-spacing="3">DOCS</text>
     <text font-family="${FONT}" font-size="64" font-weight="750" fill="${INK}" letter-spacing="-1.6">
