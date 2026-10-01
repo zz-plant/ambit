@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The ideas behind Ambit: what is new, and where it comes from</title>
+<meta name="description" content="An agent setup's reach is composed, has to be proven, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/ideas/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/ideas/" />
+<meta property="og:title" content="The ideas behind Ambit: what is new, and where it comes from" />
+<meta property="og:description" content="An agent setup's reach is composed, has to be proven, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/og/ideas.png" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="640" />
+<meta property="og:image:alt" content="Reach is composed, proven, and not the same as permission" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="The ideas behind Ambit: what is new, and where it comes from" />
+<meta name="twitter:description" content="An agent setup's reach is composed, has to be proven, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim." />
+<meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/ideas.png" />
+<meta name="theme-color" content="#0f1013" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"The ideas behind Ambit: what is new, and where it comes from","description":"An agent setup's reach is composed, has to be proven, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim.","url":"https://zz-plant.github.io/ambit/docs/ideas/","dateModified":"2026-10-01","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"The ideas behind Ambit: what is new, and where it comes from","item":"https://zz-plant.github.io/ambit/docs/ideas/"}]}]}</script>
+<style>
+:root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="the-ideas-behind-ambit"><a class="anchor" href="#the-ideas-behind-ambit" aria-hidden="true" tabindex="-1">#</a>The ideas behind Ambit</h1>
+<p>This page says what Ambit claims that is new, in one place, with where each claim is built and what it does not claim. <a href="/ambit/docs/why-ambit/">Why Ambit</a> is the argument at length, <a href="/ambit/docs/affordance-frontier/">the affordance frontier</a> is the theory under it, and <a href="/ambit/docs/deep-dive/">the reference</a> is how the software does it.</p>
+<h2 id="the-claim"><a class="anchor" href="#the-claim" aria-hidden="true" tabindex="-1">#</a>The claim</h2>
+<p><strong>What an agent setup can do is not written in any config file.</strong> It is composed from pieces configured separately, it has to be proven before it counts, and it is a different thing from what the setup is allowed to do.</p>
+<p>Everything else follows from taking that seriously. If reach is composed, it has to be computed. If it has to be proven, a configured tool and a working one are different facts. If it differs from permission, the two need separate records and separate rules for changing. Ambit is a working model of that, for one kind of system: a person, their agents and their machines.</p>
+<h2 id="one-object-four-names"><a class="anchor" href="#one-object-four-names" aria-hidden="true" tabindex="-1">#</a>One object, four names</h2>
+<p>The same thing appears under four names, each for a different reader:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Name</th>
+<th align="left">Where you meet it</th>
+<th align="left">What it names</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Ambit</strong></td>
+<td align="left">The README, the app</td>
+<td align="left">What you, your agents and your machines can jointly do. The word the product is named after.</td>
+</tr>
+<tr>
+<td align="left"><strong>Frontier</strong></td>
+<td align="left">The map, the CLI, the ledger</td>
+<td align="left">The edge of your ambit: everything reached, with the next steps just past it. The ledger records where it stood at each moment.</td>
+</tr>
+<tr>
+<td align="left"><strong>Capability graph</strong></td>
+<td align="left">The reference</td>
+<td align="left">The model that computes it: every tool, model, skill, credential, person and machine as a node, and every dependency as an edge.</td>
+</tr>
+<tr>
+<td align="left"><strong>Affordance frontier</strong></td>
+<td align="left">The theory</td>
+<td align="left">The formal name for the ambit, extended to physical, social, institutional and economic action.</td>
+</tr>
+</tbody></table>
+<p>They are one object at different levels of formality. The <a href="https://zz-plant.github.io/ambit/docs/glossary/">glossary</a> defines each.</p>
+<h2 id="three-aims-one-project"><a class="anchor" href="#three-aims-one-project" aria-hidden="true" tabindex="-1">#</a>Three aims, one project</h2>
+<p>Ambit is for <strong>widening</strong> your ambit: naming the step that opens the most, and the combinations a single missing piece would give you.</p>
+<p>The same composition that widens a reach widens it whether or not anyone is watching. Give one model shell access, credentials, a scheduler and a second machine, and the system can do far more without a single weight changing. So Ambit <strong>governs</strong> each widening: it is verified before it is trusted, it is distinct from authority, and a change to the setup waits for a person. The design norm from <a href="/ambit/docs/why-ambit/#effective-agency-as-a-governed-object">Why Ambit</a> is the hinge: <em>no increase in effective capability without a corresponding increase in legibility, verification, and governability.</em> Governing is not the opposite of widening; it is what makes a wider reach safe to lean on.</p>
+<p>And Ambit <strong>accounts</strong> for it: where your own time goes, which is the second half of the tagline. Each time a person steps in so an agent can continue is recorded against the capability it was waiting on, which is how a next step is priced and how you find out afterwards whether it paid.</p>
+<h2 id="what-is-new"><a class="anchor" href="#what-is-new" aria-hidden="true" tabindex="-1">#</a>What is new</h2>
+<ol>
+<li><p><strong>Capability is computed, not declared.</strong> A capability can exist that no component declares: a vector store plus local embeddings is semantic retrieval, which neither config mentions. Each observation of the frontier records which capabilities were reached, and the comparison between two separates what was acquired from what was <em>emergent</em>: reached with nothing new providing it, because a prerequisite was met elsewhere. No per-component changelog can show an emergent capability, because no single change explains one. Built: <a href="/ambit/docs/deep-dive/#the-frontier-ledger">the frontier ledger</a>, <code>ambit history since</code>.</p>
+</li>
+<li><p><strong>Evidence gates every decision.</strong> <code>installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate</code>. A capability is <em>configured</em> when something provides it and <em>proven</em> when its declared check passes. A failing check takes it out of every plan, permission decision, ranking and simulation, without anyone asking, until it passes again. Structure (<code>state</code>) and health (<code>lifecycle</code>) are separate columns, so the ledger records what was configured and the gate reads what works. Built: <a href="/ambit/docs/roadmap/#4-detection-becomes-verification--built-and-gates">assurance</a>, <code>ambit verify</code>.</p>
+</li>
+<li><p><strong>Authority changes asymmetrically.</strong> Being able to do something is not permission to do it, and the two are stored apart. A grant widens only past a threshold a person set in advance, never on evidence alone. It narrows on a single failing check, with nobody asked. A forbidden grant wins at any specificity, so a narrower scope is never a route to something refused. Technical reach can grow without silently broadening what may run unattended. Built: <a href="/ambit/docs/deep-dive/#capability-and-authority-are-different-things">capability and authority</a>, <code>ambit can</code>, <code>ambit authority promote</code>.</p>
+</li>
+<li><p><strong>The agent asks for what it lacks.</strong> Ambit adds a term to what an assistant optimizes: <code>utility = task_value − cost − risk + λ · reusable_capability_created</code>. An agent that keeps hitting the same limit records it as a deficit, asks what would close it, and drafts the change as a proposal. A person approves it, the approval is a signed artifact the executor verifies, a check proves the result, and the hours it saved are measured against the hours it was forecast to save. Built: <a href="/ambit/docs/deep-dive/#the-economic-loop">the economic loop</a>, <code>ambit next</code>, <code>ambit propose</code>, <code>ambit roi</code>.</p>
+</li>
+<li><p><strong>Reach has a history.</strong> The question is not only what a setup can do now but how that set is changing: <code>ΔC = C(S_t+1) − C(S_t)</code>. The ledger is a first, narrow implementation of that difference for one kind of system, and the map replays it. Built: <code>ambit history</code>, the map&#39;s History.</p>
+</li>
+</ol>
+<h2 id="where-it-comes-from"><a class="anchor" href="#where-it-comes-from" aria-hidden="true" tabindex="-1">#</a>Where it comes from</h2>
+<p>No existing field studies this frontier directly; its concepts are spread across several. The two nearest:</p>
+<ul>
+<li><strong>Attack-graph analysis</strong> asks what a principal can reach, given a topology of hosts, permissions and vulnerabilities. Innocuous permissions compose into reachable paths. Ambit asks the same structural question of all productive action, not only unauthorized paths, and adds evidence that each step works.</li>
+<li><strong>The capability approach</strong> in economics (Sen, Nussbaum, Robeyns) separates possessing resources from the effective freedom to achieve something with them. Ambit makes that conversion computable for one system: from <em>tool installed</em> to <em>capability actually reachable</em>.</li>
+</ul>
+<p>The rest are closer to parts than to the whole: dependency and configuration databases know what depends on what; tool search and MCP catalogs find a tool by name or similarity; workflow graphs order steps within one task; agent evaluations measure what a model can do on a benchmark; <a href="/ambit/docs/compare/">MCP gateways</a> decide calls as they happen. <a href="/ambit/docs/affordance-frontier/#intellectual-genealogy">The affordance frontier</a> has the full genealogy, and the README places Ambit <a href="/ambit/docs/guide/#where-this-sits-in-the-stack">in the stack</a>.</p>
+<h2 id="what-it-does-not-claim"><a class="anchor" href="#what-it-does-not-claim" aria-hidden="true" tabindex="-1">#</a>What it does not claim</h2>
+<ul>
+<li><strong>Not new algorithms.</strong> Reachability over a dependency graph, cascades and single points of failure are standard graph work. What is new is the object they are run on and the rules around it.</li>
+<li><strong>Not discovered composition.</strong> The curated tree is authored, and a combination is reached when its declared prerequisites are, not inferred from behaviour. A setup can add its own nodes in <code>.ambit/techtree.json</code>.</li>
+<li><strong>Not enforcement everywhere.</strong> The gate is consulted at every decision surface and enforced in two places, the apply path and the control plane. Nothing forces a runtime to ask it. <a href="/ambit/docs/roadmap/#status-at-a-glance">The roadmap</a> lists every gap like this one.</li>
+<li><strong>Not a measure of intelligence.</strong> Ambit does not measure how capable a model is. It measures what a system has acquired the means to do.</li>
+</ul>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/docs/ideas.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>
