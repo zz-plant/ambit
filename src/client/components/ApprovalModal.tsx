@@ -346,75 +346,83 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
               return (
                 // A proposal is a request, and its card is drawn as one: a
-                // bubble, with the answer below it on the other side. Who
-                // drafted it is not recorded, so the request carries no mark;
-                // the answer carries the signer's.
+                // bubble beside the mark of who drafted it, where that was
+                // recorded, with the answer below it on the other side.
                 <div
                   key={p.id}
                   className={`gov-card ${isApproved ? 'gov-card--approved' : ''} ${isRejected ? 'gov-card--rejected' : ''}`}
                 >
-                  <div className="gov-ask">
-                    <div className="gov-card-head">
-                      {showQueue && p.status === 'draft' ? (
-                        <label className="gov-pick">
-                          <input
-                            type="checkbox"
-                            checked={selected.has(p.id)}
-                            onChange={() => toggle(p.id)}
-                            aria-label={`Include ${p.id}`}
-                          />
-                          <code className="gov-id">{p.id}</code>
-                          {leansRefused(p) && (
-                            <span className="gov-pick-note">
-                              unticked to start: your record leans against it
-                            </span>
-                          )}
-                        </label>
-                      ) : (
-                        <code className="gov-id">{p.id}</code>
-                      )}
-                      <span
-                        className={`gov-status ${isApproved ? 'gov-status--approved' : ''} ${isRejected ? 'gov-status--rejected' : ''}`}
-                      >
-                        {p.status === 'applied'
-                          ? 'Applied'
-                          : isApproved
-                            ? 'Approved'
-                            : isRejected
-                              ? 'Turned down'
-                              : 'Waiting for your approval'}
+                  <div className="gov-ask-row">
+                    {p.proposed_by && (
+                      <span className="gov-asker" title={`Drafted by ${p.proposed_by}`}>
+                        <ActorMark id={p.proposed_by} size={22} />
                       </span>
-                    </div>
+                    )}
+                    <div className="gov-ask">
+                      <div className="gov-card-head">
+                        {showQueue && p.status === 'draft' ? (
+                          <label className="gov-pick">
+                            <input
+                              type="checkbox"
+                              checked={selected.has(p.id)}
+                              onChange={() => toggle(p.id)}
+                              aria-label={`Include ${p.id}`}
+                            />
+                            <code className="gov-id">{p.id}</code>
+                            {leansRefused(p) && (
+                              <span className="gov-pick-note">
+                                unticked to start: your record leans against it
+                              </span>
+                            )}
+                          </label>
+                        ) : (
+                          <code className="gov-id">{p.id}</code>
+                        )}
+                        <span
+                          className={`gov-status ${isApproved ? 'gov-status--approved' : ''} ${isRejected ? 'gov-status--rejected' : ''}`}
+                        >
+                          {p.status === 'applied'
+                            ? 'Applied'
+                            : isApproved
+                              ? 'Approved'
+                              : isRejected
+                                ? 'Turned down'
+                                : 'Waiting for your approval'}
+                        </span>
+                      </div>
 
-                    <div className="gov-goal">{p.goal}</div>
+                      <div className="gov-goal">{p.goal}</div>
 
-                    {p.decision && <DecisionRows d={p.decision} />}
+                      {p.decision && <DecisionRows d={p.decision} />}
 
-                    {parsedSteps.length > 0 && (
-                      <div className="gov-steps">
-                        <div className="sp-section-label">
-                          {planTally(parsedSteps.length, p.decision)}
-                        </div>
-                        {/* An engine step is {id, name, chosen, …}; the demo's
+                      {parsedSteps.length > 0 && (
+                        <div className="gov-steps">
+                          <div className="sp-section-label">
+                            {planTally(parsedSteps.length, p.decision)}
+                          </div>
+                          {/* An engine step is {id, name, chosen, …}; the demo's
                           hand-written ones are {action, provider}. Either reads
                           as a name and what supplies it; a step shaped some third
                           way used to print as its own JSON. A step with nothing
                           to undo it says so, in words. */}
-                        {parsedSteps.map((step, idx) => (
-                          <div key={idx} className="gov-step">
-                            <code>{step.name || step.action || step.key || step.id || 'step'}</code>
-                            <span className="gov-step-side">
-                              {(step.chosen || step.provider) && (
-                                <span className="gov-step-via">
-                                  via {step.chosen || step.provider}
-                                </span>
-                              )}
-                              {!step.inverse && <span className="gov-step-mark">no inverse</span>}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          {parsedSteps.map((step, idx) => (
+                            <div key={idx} className="gov-step">
+                              <code>
+                                {step.name || step.action || step.key || step.id || 'step'}
+                              </code>
+                              <span className="gov-step-side">
+                                {(step.chosen || step.provider) && (
+                                  <span className="gov-step-via">
+                                    via {step.chosen || step.provider}
+                                  </span>
+                                )}
+                                {!step.inverse && <span className="gov-step-mark">no inverse</span>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {isDeclining && (

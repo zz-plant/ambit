@@ -455,8 +455,8 @@ export function executeThroughControlPlane(
     };
 
     db.prepare(`
-      INSERT INTO proposals (id, goal, status, steps, simulated, created_at)
-      VALUES (?, ?, 'draft', ?, ?, datetime('now'))
+      INSERT INTO proposals (id, goal, status, steps, simulated, created_at, proposed_by)
+      VALUES (?, ?, 'draft', ?, ?, datetime('now'), 'ambit')
     `).run(
       proposalId,
       `Remediate and Authorize Deploy to Production (${request.payload?.target_version || 'v2.0.0'})`,

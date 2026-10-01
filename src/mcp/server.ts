@@ -198,6 +198,24 @@ function emptyGraphNotice(db: Db): string | null {
 }
 
 let dbHandle: any = null;
+
+/**
+ * The connected runtime, as its handshake named itself, kept as the actor a
+ * proposal it drafts was drafted by. Whatever calls this server is an agent's
+ * runtime; its name is what the client sent, so it is reduced to a slug
+ * before it is stored or drawn.
+ */
+let proposer = 'agent';
+
+export function proposerFrom(clientName: unknown): string {
+  if (typeof clientName !== 'string') return 'agent';
+  const slug = clientName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+  return slug ? `agent:${slug}` : 'agent';
+}
 function getWarmDb() {
   if (!dbHandle) {
     dbHandle = getDb(DB_PATH);
@@ -262,6 +280,7 @@ async function handleLine(line: string) {
       // which is neither the name of the product nor its version — an agent
       // that connected had no way to tell what it was talking to.
       case 'initialize':
+        proposer = proposerFrom(params?.clientInfo?.name);
         return respond(id, {
           protocolVersion: negotiate(params?.protocolVersion),
           capabilities: { tools: {}, resources: {} },
@@ -607,7 +626,7 @@ async function handleLine(line: string) {
               res = tt(db => simulateFrontier(db, [capId as string]));
               break;
             case 'tt_propose':
-              res = tt(db => propose(db, capId, args.option));
+              res = tt(db => propose(db, capId, args.option, proposer));
               break;
             case 'tt_proposals':
               res = tt(db => listProposals(db));

@@ -82,6 +82,8 @@ export type ProposalRow = {
   steps: string;
   simulated: string;
   approved_by: string | null;
+  /** Who drafted it: `agent:<runtime>` over MCP, `--by` on the CLI, `ambit` for the control plane. */
+  proposed_by: string | null;
   approved_at: string | null;
   applied_at: string | null;
   backup_path: string | null;

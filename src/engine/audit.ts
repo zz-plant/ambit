@@ -378,7 +378,7 @@ function proposalEvents(db: Db, window: string, take: number): AuditEvent[] {
     .prepare(
       `SELECT * FROM (
          SELECT id, goal, 'proposed' AS verb, 0 AS step, created_at AS at,
-                NULL AS actor, 0 AS signed
+                proposed_by AS actor, 0 AS signed
            FROM proposals WHERE datetime(created_at) >= datetime('now', ?)
          UNION ALL
          SELECT id, goal, 'approved', 1, approved_at, approved_by,

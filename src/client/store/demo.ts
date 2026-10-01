@@ -120,6 +120,7 @@ export function demoProposals(): ProposalRow[] {
     {
       id: 'prop-deploy-staging-42',
       created_at: new Date(Date.now() - 3600000).toISOString(),
+      proposed_by: 'agent:opencode',
       goal: 'Deploy the billing hotfix to the staging cluster',
       status: 'draft',
       // None of these is a config change, so none has an inverse, and the
@@ -156,6 +157,7 @@ export function demoProposals(): ProposalRow[] {
     {
       id: 'prop-offline-semantic-search',
       created_at: new Date(Date.now() - 86400000).toISOString(),
+      proposed_by: 'agent:opencode',
       goal: 'Add pgvector to the local Postgres, for offline retrieval',
       status: 'approved',
       // A config patch with its inverse written beside it, the shape a live
@@ -207,6 +209,7 @@ export function demoAudit(): AuditResponse {
     {
       id: 'prop-deploy-staging-42#proposed',
       at: ago(hour),
+      actor: 'agent:opencode',
       action: 'proposed',
       target: 'prop-deploy-staging-42',
       summary: 'Deploy the billing hotfix to the staging cluster',
@@ -246,6 +249,7 @@ export function demoAudit(): AuditResponse {
     {
       id: 'prop-offline-semantic-search#proposed',
       at: ago(24 * hour),
+      actor: 'agent:opencode',
       action: 'proposed',
       target: 'prop-offline-semantic-search',
       summary: 'Add pgvector to the local Postgres, for offline retrieval',

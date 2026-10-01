@@ -6516,3 +6516,20 @@ code, pre, .code, .sp-cli-cmd {
   stroke-width: 3px;
   stroke-linejoin: round;
 }
+
+/* The asker's mark beside the request, at its foot like a chat's. */
+.gov-ask-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.gov-ask-row > .gov-ask {
+  flex: 1;
+  min-width: 0;
+}
+
+.gov-asker {
+  display: inline-flex;
+  flex-shrink: 0;
+}

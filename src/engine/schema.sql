@@ -114,7 +114,10 @@ CREATE TABLE IF NOT EXISTS proposals (
     approved_by TEXT,
     approved_at TEXT,
     applied_at TEXT,
-    backup_path TEXT
+    backup_path TEXT,
+    -- Who drafted it: an agent over MCP, a person who said so with --by, or
+    -- Ambit's control plane. Null when nobody said, and never guessed.
+    proposed_by TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);

@@ -884,3 +884,36 @@ test('the authority answer is the short one unless the rows are asked for', () =
   expect(long.detail).toBeDefined();
   expect(JSON.stringify(short).length).toBeLessThan(JSON.stringify(long).length / 4);
 });
+
+test('a proposal drafted over MCP records the runtime that drafted it, by the name it gave', () => {
+  const db = copyOfGraph('proposer.db');
+  const [, drafted] = rpc(
+    [
+      {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: {
+          protocolVersion: '2025-06-18',
+          clientInfo: { name: 'OpenCode 2!', version: '2' },
+        },
+      },
+      {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'ambit_propose', arguments: { capId: 'embeddings' } },
+      },
+    ],
+    db
+  );
+  const id = JSON.parse(drafted.result.content[0].text).proposal;
+  expect(id).toMatch(/^prop-/);
+  const handle = getDb(db);
+  const row = handle
+    .prepare('SELECT proposed_by FROM proposals WHERE id = ?')
+    .get<{ proposed_by: string }>(id);
+  handle.close();
+  // Reduced to a slug: the name is whatever the client sent.
+  expect(row?.proposed_by).toBe('agent:opencode-2');
+});

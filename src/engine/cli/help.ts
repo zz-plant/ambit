@@ -71,7 +71,8 @@ plan — what to acquire next, and whether it paid
                           ranked investments — observed burden, priced, compared;
                           --budget allocates the best combination within $N
   plan opportunity <id>   one ranked case in full
-  plan propose <cap> [option]   draft a reviewable acquisition, with its simulation
+  plan propose <cap> [option] [--by=<who>]   draft a reviewable acquisition, with
+                          its simulation; --by records who drafted it
   plan roi [proposal-id]  cumulative savings and forecast accuracy, or one
                           proposal's before/after verdict
   plan portfolio [--budget=N]   across imported environments — shared burden,

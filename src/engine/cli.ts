@@ -457,7 +457,10 @@ async function runCommand(
       } else emit(ledgerHistory(db));
       break;
     case 'propose': {
-      const drafted = propose(db, arg, Number(positional[1]) || undefined);
+      // --by says who is drafting, as it says who declared a grant. A terminal
+      // could be a person or an agent's shell, so without it nothing is
+      // recorded and the page draws the request with no asker.
+      const drafted = propose(db, arg, Number(positional[1]) || undefined, value('by'));
       // --dispatch pushes the draft out of band in the same breath, so an
       // unattended loop's request reaches the person without a second verb.
       if (drafted?.proposal && (flags.has('--dispatch') || value('dispatch'))) {

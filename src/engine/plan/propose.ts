@@ -128,7 +128,7 @@ function simulateFrontier(db: Db, assume: string[]) {
  * step may run without one, so an unpopulated inverse is what prevents a
  * future apply from touching this proposal at all.
  */
-function propose(db: Db, goal?: string, optionIndex?: number) {
+function propose(db: Db, goal?: string, optionIndex?: number, proposedBy?: string | null) {
   if (!goal) return { error: 'Usage: ambit propose <capability> [option-number]' };
   let target: string = goal;
 
@@ -217,13 +217,14 @@ function propose(db: Db, goal?: string, optionIndex?: number) {
 
   const id = `prop-${Date.now().toString(36)}`;
   db.prepare(
-    "INSERT INTO proposals (id, goal, status, steps, simulated, economic_case) VALUES (?, ?, 'draft', ?, ?, ?)"
+    "INSERT INTO proposals (id, goal, status, steps, simulated, economic_case, proposed_by) VALUES (?, ?, 'draft', ?, ?, ?, ?)"
   ).run(
     id,
     plan.goal,
     JSON.stringify(steps),
     JSON.stringify(simulated),
-    economic ? JSON.stringify(economic) : null
+    economic ? JSON.stringify(economic) : null,
+    proposedBy ?? null
   );
 
   const totalSeconds = steps.reduce((t: number, s: any) => t + (s.setup_seconds || 0), 0);

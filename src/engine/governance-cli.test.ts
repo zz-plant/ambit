@@ -51,6 +51,26 @@ test('a proposal records the chosen alternative and its trade-off', () => {
   expect(embeddings.privacy).toBe('local');
 });
 
+test('a proposal records who drafted it only when someone said', () => {
+  seed(LOCAL_ONLY).close();
+  // A terminal could be a person or an agent's shell, so a bare propose
+  // records nobody; --by says who, as it says who declared a grant.
+  const bare = cli('propose', 'retrieval');
+  const named = cli('propose', 'embeddings', '--by=human:kanav');
+  const db = getDb(join(dir, 'graph.db'));
+  const by = (id: string) =>
+    db
+      .prepare('SELECT proposed_by FROM proposals WHERE id = ?')
+      .get<{ proposed_by: string | null }>(id)?.proposed_by;
+  expect(by(bare.proposal)).toBeNull();
+  expect(by(named.proposal)).toBe('human:kanav');
+  // The trail names the drafter on the proposed line, and nobody where none was said.
+  const trail = auditStream(db, { days: 1 }).events.filter(e => e.action === 'proposed');
+  db.close();
+  expect(trail.find(e => e.target === named.proposal)?.actor).toBe('human:kanav');
+  expect(trail.find(e => e.target === bare.proposal)?.actor).toBeUndefined();
+});
+
 test('a proposal with an uninvertible step is not applicable, and says why', () => {
   seed(LOCAL_ONLY).close();
   const p = cli('propose', 'retrieval');

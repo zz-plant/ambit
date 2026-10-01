@@ -293,6 +293,8 @@ export interface ProposalRow {
   created_at: string;
   approved_by?: string | null;
   approved_at?: string | null;
+  /** Who drafted it, where something said: an agent's runtime, a person's --by, or `ambit`. */
+  proposed_by?: string | null;
   budget_cents?: number | null;
   expires_at?: string | null;
   approval_artifact?: string | null;
