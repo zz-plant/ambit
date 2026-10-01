@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more</title>
+<meta name="description" content="The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/mcp-config-locations/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/mcp-config-locations/" />
+<meta property="og:title" content="Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more" />
+<meta property="og:description" content="The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/og/mcp-config-locations.png" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="640" />
+<meta property="og:image:alt" content="Eleven agents, eleven config files, one table" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more" />
+<meta name="twitter:description" content="The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed." />
+<meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/mcp-config-locations.png" />
+<meta name="theme-color" content="#0f1013" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","description":"The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed.","url":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/","dateModified":"2026-09-30","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","item":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/"}]}]}</script>
+<style>
+:root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="where-each-ai-agent-keeps-its-mcp-config"><a class="anchor" href="#where-each-ai-agent-keeps-its-mcp-config" aria-hidden="true" tabindex="-1">#</a>Where each AI agent keeps its MCP config</h1>
+<p>Every agent runtime stores its MCP servers in its own file, under its own key, and a config copied from one into another usually fails without an error. This page lists the file and the key for each runtime Ambit reads, taken from the readers in <a href="https://github.com/zz-plant/ambit/blob/main/src/engine/mcp-clients.ts"><code>src/engine/mcp-clients.ts</code></a> and <a href="https://github.com/zz-plant/ambit/blob/main/src/engine/claude-code.ts"><code>src/engine/claude-code.ts</code></a>, so it stays as current as the code that uses it.</p>
+<p>The paths are the ones Ambit reads on macOS and Linux, with <code>~</code> as your home directory. Windows keeps these files elsewhere, and Ambit does not read Windows paths yet; the runtime&#39;s own documentation has them.</p>
+<h2 id="the-table"><a class="anchor" href="#the-table" aria-hidden="true" tabindex="-1">#</a>The table</h2>
+<table>
+<thead>
+<tr>
+<th align="left">Runtime</th>
+<th align="left">File</th>
+<th align="left">Where the servers are</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><a href="#claude-code">Claude Code</a></td>
+<td align="left"><code>~/.claude.json</code></td>
+<td align="left"><code>mcpServers</code>, and <code>projects.&lt;path&gt;.mcpServers</code> for each project</td>
+</tr>
+<tr>
+<td align="left"><a href="#claude-desktop">Claude Desktop</a></td>
+<td align="left"><code>~/Library/Application Support/Claude/claude_desktop_config.json</code> (macOS), <code>~/.config/Claude/claude_desktop_config.json</code> (Linux)</td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#cursor">Cursor</a></td>
+<td align="left"><code>~/.cursor/mcp.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#windsurf">Windsurf</a></td>
+<td align="left"><code>~/.codeium/windsurf/mcp_config.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#gemini-cli">Gemini CLI</a></td>
+<td align="left"><code>~/.gemini/settings.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#codex-cli">Codex CLI</a></td>
+<td align="left"><code>~/.codex/config.toml</code></td>
+<td align="left"><code>[mcp_servers.&lt;name&gt;]</code> tables</td>
+</tr>
+<tr>
+<td align="left"><a href="#opencode">OpenCode</a></td>
+<td align="left"><code>~/.config/opencode/opencode.json</code>, or <code>opencode.jsonc</code></td>
+<td align="left"><code>mcp</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#cline-and-roo-code">Cline</a></td>
+<td align="left">VS Code&#39;s <code>globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#cline-and-roo-code">Roo Code</a></td>
+<td align="left">VS Code&#39;s <code>globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#continue">Continue</a></td>
+<td align="left"><code>~/.continue/config.json</code></td>
+<td align="left"><code>mcpServers</code>, or <code>experimental.modelContextProtocolServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#zed">Zed</a></td>
+<td align="left"><code>~/.config/zed/settings.json</code>, or <code>~/Library/Application Support/Zed/settings.json</code></td>
+<td align="left"><code>context_servers</code></td>
+</tr>
+</tbody></table>
+<p>VS Code&#39;s <code>globalStorage</code> directory is <code>~/Library/Application Support/Code/User/globalStorage</code> on macOS and <code>~/.config/Code/User/globalStorage</code> on Linux.</p>
+<h2 id="why-the-same-server-breaks-when-you-copy-it"><a class="anchor" href="#why-the-same-server-breaks-when-you-copy-it" aria-hidden="true" tabindex="-1">#</a>Why the same server breaks when you copy it</h2>
+<p>Three differences account for most failed copies:</p>
+<ul>
+<li><strong>The key.</strong> Most runtimes use <code>mcpServers</code>. OpenCode uses <code>mcp</code>, Zed uses <code>context_servers</code>, and Codex CLI uses TOML tables named <code>mcp_servers</code>. A block pasted under the wrong key is valid JSON that the runtime ignores.</li>
+<li><strong>The file format.</strong> Codex CLI reads TOML, OpenCode accepts JSON with comments, and the rest read plain JSON. A trailing comma or a comment breaks a plain JSON file.</li>
+<li><strong>Where a project&#39;s servers live.</strong> Claude Code keeps per-project servers inside <code>~/.claude.json</code>, keyed by the project&#39;s path, so the same server can be on in one repository and absent in another.</li>
+</ul>
+<h2 id="claude-code"><a class="anchor" href="#claude-code" aria-hidden="true" tabindex="-1">#</a>Claude Code</h2>
+<p><code>~/.claude.json</code> holds both the global <code>mcpServers</code> and a <code>projects</code> map whose entries each carry their own <code>mcpServers</code>. Skills, agents and settings live under <code>~/.claude/</code>. Ambit reads both and counts a server once, wherever it is declared. <code>CLAUDE_CONFIG</code> and <code>CLAUDE_HOME</code> point Ambit at a different file or directory.</p>
+<h2 id="claude-desktop"><a class="anchor" href="#claude-desktop" aria-hidden="true" tabindex="-1">#</a>Claude Desktop</h2>
+<p>One JSON file with a top-level <code>mcpServers</code> object. The macOS path is under <code>~/Library/Application Support/Claude/</code>, and the Linux path under <code>~/.config/Claude/</code>. <code>CLAUDE_DESKTOP_CONFIG</code> overrides it for Ambit.</p>
+<h2 id="cursor"><a class="anchor" href="#cursor" aria-hidden="true" tabindex="-1">#</a>Cursor</h2>
+<p><code>~/.cursor/mcp.json</code>, with <code>mcpServers</code> at the top. <code>CURSOR_MCP_CONFIG</code> overrides it for Ambit.</p>
+<h2 id="windsurf"><a class="anchor" href="#windsurf" aria-hidden="true" tabindex="-1">#</a>Windsurf</h2>
+<p><code>~/.codeium/windsurf/mcp_config.json</code>, with <code>mcpServers</code> at the top. <code>WINDSURF_MCP_CONFIG</code> overrides it for Ambit.</p>
+<h2 id="gemini-cli"><a class="anchor" href="#gemini-cli" aria-hidden="true" tabindex="-1">#</a>Gemini CLI</h2>
+<p><code>~/.gemini/settings.json</code>. The servers are under <code>mcpServers</code>, beside Gemini CLI&#39;s other settings. <code>GEMINI_MCP_CONFIG</code> overrides it for Ambit.</p>
+<h2 id="codex-cli"><a class="anchor" href="#codex-cli" aria-hidden="true" tabindex="-1">#</a>Codex CLI</h2>
+<p><code>~/.codex/config.toml</code>, where each server is a table:</p>
+<pre><code class="language-toml">[mcp_servers.github]
+command = &quot;npx&quot;
+args = [&quot;-y&quot;, &quot;@modelcontextprotocol/server-github&quot;]
+</code></pre>
+<p><code>CODEX_MCP_CONFIG</code> overrides it for Ambit.</p>
+<h2 id="opencode"><a class="anchor" href="#opencode" aria-hidden="true" tabindex="-1">#</a>OpenCode</h2>
+<p><code>~/.config/opencode/opencode.json</code>, or <code>opencode.jsonc</code> when that is the one present. Servers are under <code>mcp</code>, and each can carry <code>enabled: false</code> to stay declared and off. OpenCode is the format Ambit&#39;s own config switch writes, and <code>OPENCODE_CONFIG</code> points Ambit at a different file.</p>
+<h2 id="cline-and-roo-code"><a class="anchor" href="#cline-and-roo-code" aria-hidden="true" tabindex="-1">#</a>Cline and Roo Code</h2>
+<p>Both are VS Code extensions and keep their servers in the extension&#39;s global storage, in a file named <code>cline_mcp_settings.json</code> with <code>mcpServers</code> at the top. <code>CLINE_MCP_CONFIG</code> and <code>ROO_CODE_MCP_CONFIG</code> override them for Ambit.</p>
+<h2 id="continue"><a class="anchor" href="#continue" aria-hidden="true" tabindex="-1">#</a>Continue</h2>
+<p><code>~/.continue/config.json</code>. Newer versions use <code>mcpServers</code>; older ones nest servers under <code>experimental.modelContextProtocolServers</code>. Ambit reads either. <code>CONTINUE_MCP_CONFIG</code> overrides it.</p>
+<h2 id="zed"><a class="anchor" href="#zed" aria-hidden="true" tabindex="-1">#</a>Zed</h2>
+<p>Zed&#39;s <code>settings.json</code>, under <code>context_servers</code>. Linux keeps it in <code>~/.config/zed/</code>, macOS in <code>~/Library/Application Support/Zed/</code>. <code>ZED_MCP_CONFIG</code> overrides it for Ambit.</p>
+<h2 id="seeing-every-runtimes-servers-at-once"><a class="anchor" href="#seeing-every-runtimes-servers-at-once" aria-hidden="true" tabindex="-1">#</a>Seeing every runtime&#39;s servers at once</h2>
+<p>Each file answers for one runtime. To see all of them together, with which servers are on, which are failing a check, and what stops working if one goes down:</p>
+<pre><code class="language-bash">brew install zz-plant/tap/ambit
+ambit seed
+ambit status
+</code></pre>
+<p><code>ambit seed</code> reads every file above that exists, and <code>ambit status</code> reports on the result. Nothing leaves the machine. Or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and paste one config into the page, where it is read in the tab and never uploaded.</p>
+<p>Related: <a href="/ambit/docs/mcp-outage/">what breaks if an MCP server goes down</a> and <a href="/ambit/docs/audit-mcp-servers/">auditing which MCP servers a coding agent has</a>.</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/docs/mcp-config-locations.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>

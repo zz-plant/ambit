@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/guide.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Ambit guide: install, CLI and MCP setup","description":"Install Ambit, map your AI agent setup, and ask what works, what breaks and what to set up next, from the terminal or over MCP in Claude Code and OpenCode.","url":"https://zz-plant.github.io/ambit/docs/guide/","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit guide: install, CLI and MCP setup","description":"Install Ambit, map your AI agent setup, and ask what works, what breaks and what to set up next, from the terminal or over MCP in Claude Code and OpenCode.","url":"https://zz-plant.github.io/ambit/docs/guide/","dateModified":"2026-09-30","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit guide: install, CLI and MCP setup","item":"https://zz-plant.github.io/ambit/docs/guide/"}]}]}</script>
 <style>
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -38,7 +38,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 </style>
 </head>
 <body>
-<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
 <main>
 <div align="center"><h1 id="ambit"><a class="anchor" href="#ambit" aria-hidden="true" tabindex="-1">#</a>Ambit</h1>
 <p><strong>What you, your agents, and your machines can jointly do — and where your own time is going.</strong></p>
@@ -494,6 +494,7 @@ asciinema play docs/incidents/demo_intervention_trace.cast # replay the recordin
 <ul>
 <li><a href="/ambit/docs/faq/">FAQ</a> — what needs installing, what leaves the machine, why the attention commands are empty on day one.</li>
 <li><a href="/ambit/docs/deep-dive/">Deep dive</a> — the reference for the model under everything above.</li>
+<li><a href="/ambit/docs/mcp-config-locations/">Where each AI agent keeps its MCP config</a> · <a href="/ambit/docs/mcp-outage/">What breaks if an MCP server goes down</a> · <a href="/ambit/docs/audit-mcp-servers/">Auditing an agent&#39;s MCP servers</a> · <a href="/ambit/docs/compare/">Ambit and MCP gateways</a> — the questions people search for, answered with the commands above.</li>
 <li><a href="/ambit/docs/security/">Security</a> · <a href="https://github.com/zz-plant/ambit/blob/main/AGENTS.md">Agent invariants</a> · <a href="https://github.com/zz-plant/ambit/blob/main/SUPPORT.md">Support</a> · <a href="/ambit/docs/contributing/">Contributing</a> — the invariants above in full, where each is enforced, where each kind of question goes, and how to send a change.</li>
 <li><a href="/ambit/docs/">Everything else</a> — the argument, the theory, the design notes, the changelog, the incident traces.</li>
 <li><a href="https://zz-plant.github.io/ambit/llms.txt"><code>llms.txt</code></a> — the project in one page, for an agent that is deciding whether to recommend it.</li>

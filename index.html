@@ -52,7 +52,17 @@
         "price": "0",
         "priceCurrency": "USD"
       },
-      "description": "What you, your agents, and your machines can jointly do — and where your own time is going. A capability graph for agent environments, readable from the terminal and over MCP.",
+      "description": "Ambit maps Claude Code, Cursor, OpenCode and other MCP configs into one local capability graph: what your AI agent setup can do, what is broken, what breaks if one MCP server goes down, and what to set up next. Ask from the terminal or over MCP.",
+      "featureList": [
+        "Reads MCP configs from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed",
+        "Blast radius: what stops and what only weakens if a server, model or credential goes away",
+        "Declared checks that prove a capability works, and demote it when one fails",
+        "Per-action authority: what an agent may do without asking",
+        "Signed approvals for configuration changes, with rollback",
+        "An MCP server agents query before acting",
+        "Everything in one local SQLite file, with no telemetry"
+      ],
+      "screenshot": "https://zz-plant.github.io/ambit/docs/assets/screenshot-tree.png",
       "url": "https://zz-plant.github.io/ambit/",
       "softwareVersion": "0.4.1",
       "license": "https://github.com/zz-plant/ambit/blob/main/LICENSE",
@@ -65,7 +75,7 @@
       "sameAs": ["https://github.com/zz-plant/ambit"]
     }
     </script>
-    <script type="module" crossorigin src="/ambit/assets/index-UPeTAa18.js"></script>
+    <script type="module" crossorigin src="/ambit/assets/index-0W9hjQui.js"></script>
     <link rel="modulepreload" crossorigin href="/ambit/assets/rolldown-runtime-CbXtAM7H.js">
     <link rel="modulepreload" crossorigin href="/ambit/assets/react-Dy-GIXkn.js">
     <link rel="stylesheet" crossorigin href="/ambit/assets/index-BuP49N64.css">
@@ -78,7 +88,7 @@
          shows it. -->
     <div id="root">
       <main class="static-intro" style="max-width: 720px; margin: 0 auto; padding: 32px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; background: #0f1013; color: #e8e8ea;">
-        <h1>Ambit: what you, your agents, and your machines can jointly do</h1>
+        <h1>Ambit: see what your AI agent setup can do, and what breaks if an MCP server goes down</h1>
         <p>If you use AI agents, your setup is spread across LLM providers, MCP servers, local CLI tools, skills, credentials, and more than one machine. Ambit reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop and Codex CLI and builds one capability graph out of them.</p>
         <h2>What it answers</h2>
         <ul>
@@ -93,6 +103,9 @@
           <li><a href="?demo=1" style="color: #7aa2f7;">Live demo</a>, the map on example data</li>
           <li><a href="docs/guide/" style="color: #7aa2f7;">Guide</a>: install, the CLI, and connecting it to Claude Code or OpenCode</li>
           <li><a href="docs/faq/" style="color: #7aa2f7;">FAQ</a>: what it reads, and what leaves your machine</li>
+          <li><a href="docs/mcp-config-locations/" style="color: #7aa2f7;">Where each AI agent keeps its MCP config</a>: Claude Code, Cursor, Codex CLI and eight more</li>
+          <li><a href="docs/mcp-outage/" style="color: #7aa2f7;">What breaks if an MCP server goes down</a>: finding single points of failure</li>
+          <li><a href="docs/audit-mcp-servers/" style="color: #7aa2f7;">Auditing an agent's MCP servers</a>: declared, working, permitted, and used</li>
           <li><a href="docs/deep-dive/" style="color: #7aa2f7;">Reference</a>: the model and every MCP tool</li>
           <li><a href="docs/jev/" style="color: #7aa2f7;">Ambit and Jev</a>: typed judgment on the capability map</li>
           <li><a href="docs/" style="color: #7aa2f7;">All documentation</a></li>

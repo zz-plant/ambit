@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>How to audit which MCP servers your coding agent has</title>
+<meta name="description" content="Audit an AI coding agent four ways: every MCP server declared, which ones work, what each may do without asking, and what was used but never declared." />
+<link rel="canonical" href="https://zz-plant.github.io/ambit/docs/audit-mcp-servers/" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://zz-plant.github.io/ambit/docs/audit-mcp-servers/" />
+<meta property="og:title" content="How to audit which MCP servers your coding agent has" />
+<meta property="og:description" content="Audit an AI coding agent four ways: every MCP server declared, which ones work, what each may do without asking, and what was used but never declared." />
+<meta property="og:image" content="https://zz-plant.github.io/ambit/og/audit-mcp-servers.png" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="640" />
+<meta property="og:image:alt" content="Audit every MCP server your agent can reach" />
+<meta property="og:site_name" content="Ambit" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="How to audit which MCP servers your coding agent has" />
+<meta name="twitter:description" content="Audit an AI coding agent four ways: every MCP server declared, which ones work, what each may do without asking, and what was used but never declared." />
+<meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/audit-mcp-servers.png" />
+<meta name="theme-color" content="#0f1013" />
+<link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"How to audit which MCP servers your coding agent has","description":"Audit an AI coding agent four ways: every MCP server declared, which ones work, what each may do without asking, and what was used but never declared.","url":"https://zz-plant.github.io/ambit/docs/audit-mcp-servers/","dateModified":"2026-09-30","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"How to audit which MCP servers your coding agent has","item":"https://zz-plant.github.io/ambit/docs/audit-mcp-servers/"}]}]}</script>
+<style>
+:root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
+header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+.anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
+code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
+footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<main>
+<h1 id="how-to-audit-which-mcp-servers-your-coding-agent-has"><a class="anchor" href="#how-to-audit-which-mcp-servers-your-coding-agent-has" aria-hidden="true" tabindex="-1">#</a>How to audit which MCP servers your coding agent has</h1>
+<p>An audit of an agent&#39;s MCP servers answers four questions: which servers are declared, which of them actually work, what each one lets the agent do without asking, and what the agent used that nobody declared. The first is a matter of reading files. The other three are what make it an audit.</p>
+<h2 id="1-find-every-declaration"><a class="anchor" href="#1-find-every-declaration" aria-hidden="true" tabindex="-1">#</a>1. Find every declaration</h2>
+<p>Servers are declared per runtime and sometimes per project, in files with different names, keys and formats. <a href="/ambit/docs/mcp-config-locations/">Where each AI agent keeps its MCP config</a> lists them. A server can be declared in more than one, on in one project and off in another, or left in a file for a runtime you no longer use.</p>
+<p><a href="/ambit/docs/">Ambit</a> reads them all into one local graph:</p>
+<pre><code class="language-bash">brew install zz-plant/tap/ambit
+ambit seed      # reads every runtime&#39;s config that exists on this machine
+ambit status    # what is reached, what is proven, what is failing
+</code></pre>
+<p>The map&#39;s <strong>My Setup</strong> view is the same list, one row per server, agent, model or command, with which runtime declared it and whether it is enabled.</p>
+<h2 id="2-check-which-ones-work"><a class="anchor" href="#2-check-which-ones-work" aria-hidden="true" tabindex="-1">#</a>2. Check which ones work</h2>
+<p>A server in a config file is configured, not working. Tokens expire, binaries move and services go offline, and the config file still says the same thing.</p>
+<pre><code class="language-bash">ambit verify            # run every declared check, and record the result
+ambit doctor            # setup health, broken tools, and token-thrash risk
+</code></pre>
+<p>A capability with a passing check is <strong>proven</strong>; one with a failing check is configured and not working, and every plan and permission decision leaves it out until it passes again. <code>ambit verify &lt;capability&gt; --history</code> shows its past runs.</p>
+<h2 id="3-see-what-each-one-may-do-without-asking"><a class="anchor" href="#3-see-what-each-one-may-do-without-asking" aria-hidden="true" tabindex="-1">#</a>3. See what each one may do without asking</h2>
+<p>Being able to call a tool is not permission to call it. Each runtime has its own approval setting, and Ambit records each as one of three modes: runs without asking, asks first, or forbidden.</p>
+<pre><code class="language-bash">ambit authority                  # every capability&#39;s mode, per action
+ambit can &lt;capability&gt;           # ALLOW, CONFIRM or DENY for one action
+ambit credentials                # what revoking each credential would end
+</code></pre>
+<p>The map&#39;s <strong>Authority</strong> lens draws the same answer on every reached node.</p>
+<h2 id="4-find-what-was-used-and-never-declared"><a class="anchor" href="#4-find-what-was-used-and-never-declared" aria-hidden="true" tabindex="-1">#</a>4. Find what was used and never declared</h2>
+<p>An agent can reach a tool through a shell, a skill or another server. The declared list is then incomplete in the direction that matters.</p>
+<pre><code class="language-bash">ambit graph unmapped --days=30   # what the agents used that no node accounts for
+ambit audit 30                   # who approved what, what ran, and what came of it
+</code></pre>
+<p><code>ambit graph unmapped</code> reads the work ledger, which the telemetry plugin fills from real sessions, and lists each tool used with nothing on the map that accounts for it. <code>ambit audit</code> is the trail: proposals, approvals, check runs and every grant that narrowed itself because a check failed.</p>
+<h2 id="keeping-it-current"><a class="anchor" href="#keeping-it-current" aria-hidden="true" tabindex="-1">#</a>Keeping it current</h2>
+<p>An audit is a snapshot. <code>ambit briefing</code> is the standing version: what an agent is told when it connects over MCP, before its first tool call, including what is broken and what waits on a person. Registering Ambit as an MCP server puts that briefing in front of every session, so the agent works from the audit and not from its own assumptions.</p>
+<p>Nothing in any of this leaves the machine. The graph is a local SQLite file, and there is no telemetry.</p>
+<p>Related: <a href="/ambit/docs/mcp-outage/">what breaks if an MCP server goes down</a>.</p>
+
+</main>
+<footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/docs/audit-mcp-servers.md">Edit this page on GitHub</a>.</footer>
+</body>
+</html>
