@@ -1,10 +1,8 @@
 /**
- * Reading the agent config and building the graph.
+ * Reading the agent configs and building the graph.
  *
  * One routine for `ambit seed` and for the first-run path, so the two cannot
- * drift on the fallback order: opencode.json if present, else a Claude Code
- * install, else the curated capability model alone — announced as such rather
- * than passed off as a discovered environment.
+ * drift on what they read. See `runSeed` for the sources and their order.
  */
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,11 +14,15 @@ import { configDefault } from '../paths.ts';
 import { terminalPalette } from './output.ts';
 
 /**
- * Read the agent config and build the graph. One routine for `ambit seed` and
- * for the first-run path below, so the two cannot drift on the fallback order:
- * opencode.json if present, else a Claude Code install, else the curated
- * capability model alone — announced as such rather than passed off as a
- * discovered environment.
+ * Read the agent configs and build the graph. One routine for `ambit seed` and
+ * for the first-run path below, so the two cannot drift on what they read.
+ *
+ * Every source found is seeded in turn as its own runtime, so a server two
+ * runtimes list is one capability with two providers: opencode.json if present,
+ * then, unless OPENCODE_CONFIG is set or a mapping is passed, a Claude Code
+ * install and every client `discoverMcpClients` finds. With none of them it
+ * seeds the curated capability model alone, and says so instead of passing that
+ * off as a discovered environment.
  */
 function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   const say = quiet ? (_: string) => {} : console.log;

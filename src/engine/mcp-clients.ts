@@ -210,6 +210,13 @@ const CLIENTS = [
   },
 ];
 
+/**
+ * Every client discovery reads, by runtime id and the name a person knows it
+ * by. The end-to-end seed test is held to it, so a client added above fails
+ * that test until it has a fixture there.
+ */
+export const MCP_CLIENTS = CLIENTS.map(({ runtime, label }) => ({ runtime, label }));
+
 /** Read MCP-only clients into the same config shape used by the engine seeder. */
 export function discoverMcpClients(home = process.env.HOME || '/'): McpClientSeed[] {
   const found: McpClientSeed[] = [];

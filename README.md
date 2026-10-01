@@ -90,7 +90,7 @@ Semantic search finds tools that sound relevant and cannot tell a working one fr
 
 | Way in | What it gives you |
 | :--- | :--- |
-| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI or OpenCode, and it is mapped in the tab, uploading nothing. |
+| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code or OpenCode, and it is mapped in the tab, uploading nothing. |
 | **On your machine** | `brew install zz-plant/tap/ambit && ambit` reads your real agent configs and prints where you stand. This is the CLI and the MCP server; the map needs a checkout. |
 | **With the map** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the map the pictures on this page show. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. |

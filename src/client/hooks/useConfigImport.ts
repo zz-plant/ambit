@@ -7,6 +7,11 @@ const MAX_CONFIG_BYTES = 2_000_000;
 /**
  * Where each runtime keeps the file a visitor would hand over. A person asked
  * to "drop your config" has to know which file that is, and most do not.
+ *
+ * Only runtimes whose file this tab can read are listed: the importer takes an
+ * OpenCode config or an `mcpServers` block. Codex keeps TOML, Zed keeps
+ * `context_servers` and Continue may nest its servers under `experimental`,
+ * which only the engine's readers understand.
  */
 export const CONFIG_PATHS: { runtime: string; path: string }[] = [
   { runtime: 'Claude Code', path: '~/.claude.json' },
@@ -18,6 +23,14 @@ export const CONFIG_PATHS: { runtime: string; path: string }[] = [
   { runtime: 'OpenCode', path: '~/.config/opencode/opencode.json' },
   { runtime: 'Windsurf', path: '~/.codeium/windsurf/mcp_config.json' },
   { runtime: 'Gemini CLI', path: '~/.gemini/settings.json' },
+  {
+    runtime: 'Cline',
+    path: '~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json',
+  },
+  {
+    runtime: 'Roo Code',
+    path: '~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json',
+  },
 ];
 
 /**
