@@ -82,7 +82,7 @@ Where to submit, in the order the traffic justifies. Status is one of Not submit
 
 | Directory | How | Status | Last checked |
 | :--- | :--- | :--- | :--- |
-| [Official MCP registry](https://registry.modelcontextprotocol.io) | `server.json` at the repo root is written against the 2025-09-29 schema and `package.json` carries the matching `mcpName`. Publishing needs `ambit-cli` on npm first: the registry verifies the package exists and that its `mcpName` matches. Then `mcp-publisher login github` and `mcp-publisher publish` from the repo root. | Not submitted | 2026-10-01: a search for `ambit` returns nothing |
+| [Official MCP registry](https://registry.modelcontextprotocol.io) | `server.json` at the repo root is written against the 2025-09-29 schema and `package.json` carries the matching `mcpName`. Publishing needs `ambit-cli` on npm first: the registry verifies the package exists and that its `mcpName` matches. Then `mcp-publisher login github` and `mcp-publisher publish` from the repo root. | Listed | 2026-10-01: `io.github.zz-plant/ambit` 0.5.0, found by a search for it. A new version republishes with `mcp-publisher publish` after the version in `server.json` is bumped; the login expires, so `mcp-publisher login github` first |
 | [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | Pull request adding one line under the developer-tools category, using the directory description. | Not submitted | Not checked |
 | [Glama](https://glama.ai/mcp/servers) | Claim the server from the GitHub repo; it reads the README and the MCP tool list. | Not submitted | 2026-10-01: not listed |
 | [PulseMCP](https://www.pulsemcp.com/servers) | Submission form; link the hosted demo as the homepage. | Not submitted | Not checked |
@@ -101,8 +101,9 @@ Keep the table current: an entry that says "submitted" is the one thing that sto
 
 `ambit-cli` 0.5.0 was published on 2026-10-01. Done in the same change: the README's Get started table and the welcome screen lead with `npx ambit-cli`; CI's "Check adoption copy" step, which failed any README that named the npm route, is gone; and the Claude Code plugin's MCP server and briefing run through `npx -y ambit-cli`, so installing the plugin needs nothing else first. The gate plugin keeps calling an installed `ambit`, because it runs on every tool call and `npx` resolution would add to each one.
 
+The registry listing went up the same day: `io.github.zz-plant/ambit` 0.5.0, with the 87-character description in `server.json` (the registry refuses one over 100).
+
 Left, and each needs a person:
 
-1. Publish `server.json` to the MCP registry: `brew install mcp-publisher`, then `mcp-publisher login github` (a browser sign-in as `zz-plant`) and `mcp-publisher publish` from the repository root. The registry checks that `ambit-cli` exists on npm and that its `mcpName` is `io.github.zz-plant/ambit`.
-2. Add an `NPM_TOKEN` automation token to the repository's secrets, so the release workflow publishes the next version itself, with provenance. 0.5.0 was published from a laptop without it.
-3. Post the Show HN draft, whose install line is now `npx ambit-cli`.
+1. Add an `NPM_TOKEN` automation token to the repository's secrets, so the release workflow publishes the next version itself, with provenance. 0.5.0 was published from a laptop without it.
+2. Post the Show HN draft, whose install line is now `npx ambit-cli`.
