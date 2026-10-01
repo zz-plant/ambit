@@ -6,7 +6,16 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, test } from 'vitest';
-import { BASE, ORIGIN, PAGES, buildDocs, pagePath, rewriteHref, slugger } from './build-docs.ts';
+import {
+  BASE,
+  ORIGIN,
+  PAGES,
+  buildDocs,
+  faqEntries,
+  pagePath,
+  rewriteHref,
+  slugger,
+} from './build-docs.ts';
 
 const out = mkdtempSync(join(tmpdir(), 'ambit-docs-'));
 buildDocs(out);
@@ -94,4 +103,34 @@ test('the sitemap lists the home page and the built pages, each its own canonica
   ].map(m => m[1]);
   expect(locs).toEqual([ORIGIN + BASE, ...PAGES.map(p => ORIGIN + pagePath(p))]);
   expect(locs.some(l => l.includes('?'))).toBe(false);
+});
+
+/** The page's structured data, as the one graph it is written as. */
+const graphOf = (path: string) =>
+  JSON.parse(html(path).match(/<script type="application\/ld\+json">(.*?)<\/script>/s)![1])[
+    '@graph'
+  ] as Array<Record<string, any>>;
+
+test('the FAQ is marked up as questions and answers, read from the page it renders', () => {
+  const faq = PAGES.find(p => p.slug === 'faq')!;
+  const data = graphOf(pagePath(faq)).find(n => n['@type'] === 'FAQPage')!;
+  const md = readFileSync(join(import.meta.dirname, '..', faq.src), 'utf8');
+  const asked = md.split('\n').filter(l => l.startsWith('### '));
+  expect(data.mainEntity).toHaveLength(asked.length);
+  expect(faqEntries(md).every(e => e.q.length > 0 && e.a.length > 20)).toBe(true);
+  // Markdown syntax is gone from what a search engine would show.
+  expect(JSON.stringify(data)).not.toMatch(/\]\(|`/);
+});
+
+test('the glossary defines every concept the app does, and every page says where it sits', () => {
+  const glossary = PAGES.find(p => p.slug === 'glossary')!;
+  const terms = graphOf(pagePath(glossary)).find(n => n['@type'] === 'DefinedTermSet')!;
+  const concepts = JSON.parse(readFileSync(join(import.meta.dirname, '..', glossary.src), 'utf8'))
+    .concepts as Array<{ key: string }>;
+  expect(terms.hasDefinedTerm).toHaveLength(concepts.length);
+  for (const c of concepts) expect(html(pagePath(glossary))).toContain(`id="${c.key}"`);
+  for (const p of PAGES) {
+    const crumbs = graphOf(pagePath(p)).find(n => n['@type'] === 'BreadcrumbList')!;
+    expect(crumbs.itemListElement.at(-1).item, p.src).toBe(ORIGIN + pagePath(p));
+  }
 });

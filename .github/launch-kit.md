@@ -76,11 +76,12 @@ Where to submit, in the order the traffic justifies. Status is one of Not submit
 
 | Directory | How | Status | Last checked |
 | :--- | :--- | :--- | :--- |
-| [Official MCP registry](https://registry.modelcontextprotocol.io) | `server.json` at the repo root is written against the 2025-09-29 schema and `package.json` carries the matching `mcpName`. Publishing needs `ambit-cli` on npm first: the registry verifies the package exists and that its `mcpName` matches. Then `mcp-publisher login github` and `mcp-publisher publish` from the repo root. | Not submitted | Not checked |
+| [Official MCP registry](https://registry.modelcontextprotocol.io) | `server.json` at the repo root is written against the 2025-09-29 schema and `package.json` carries the matching `mcpName`. Publishing needs `ambit-cli` on npm first: the registry verifies the package exists and that its `mcpName` matches. Then `mcp-publisher login github` and `mcp-publisher publish` from the repo root. | Not submitted | 2026-10-01: a search for `ambit` returns nothing |
 | [awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers) | Pull request adding one line under the developer-tools category, using the directory description. | Not submitted | Not checked |
-| [Glama](https://glama.ai/mcp/servers) | Claim the server from the GitHub repo; it reads the README and the MCP tool list. | Not submitted | Not checked |
+| [Glama](https://glama.ai/mcp/servers) | Claim the server from the GitHub repo; it reads the README and the MCP tool list. | Not submitted | 2026-10-01: not listed |
 | [PulseMCP](https://www.pulsemcp.com/servers) | Submission form; link the hosted demo as the homepage. | Not submitted | Not checked |
 | [mcp.so](https://mcp.so) | Submission form. | Not submitted | Not checked |
+| [MCP Market](https://mcpmarket.com/server/ambit) | Listed without a submission, from the repository. Claim it to edit the description and link the hosted demo. | Listed [mcpmarket.com/server/ambit](https://mcpmarket.com/server/ambit), unclaimed | 2026-10-01 |
 
 Keep the table current: an entry that says "submitted" is the one thing that stops the same directory being submitted twice.
 

@@ -270,7 +270,9 @@ async function runCommand(
       break;
     }
     case 'impact':
-      emit(analyzeImpact(db, arg));
+      // With no id it crashed on the query's missing parameter, a stack trace
+      // where every other verb says how it is used.
+      emit(arg ? analyzeImpact(db, arg) : { error: 'Usage: ambit impact <id>' });
       break;
     case 'verify':
       if (flags.has('--history')) {

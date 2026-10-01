@@ -189,6 +189,8 @@ test('a result taken in-process leaves the exit code to whoever took it', () => 
   try {
     expect(Number(before) || 0).toBe(0);
     expect(capture(db, ['sync']).error).toContain('Usage');
+    // impact with no id said nothing useful: it crashed on the query.
+    expect(capture(db, ['impact']).error).toBe('Usage: ambit impact <id>');
     expect(process.exitCode).toBe(before);
     // An unknown verb reports no result, so the seam throws; the code stays.
     expect(() => capture(db, ['nonsense'])).toThrow();

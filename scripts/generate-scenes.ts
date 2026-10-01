@@ -271,7 +271,8 @@ function socialCard(): string {
  * unfurled as "What breaks if one MCP server goes down?", a question that page
  * does not answer. Each now leads with its own `card` line from build-docs.ts,
  * with the page's title under it and the graph faint behind, so the set reads
- * as one site.
+ * as one site. The title's part before a colon is the one drawn: titles carry
+ * the words a search uses after it, and a card cut them to an ellipsis.
  */
 function docCard(page: Page): string {
   const lines = wrap(page.card, 24, 3);
@@ -285,7 +286,7 @@ function docCard(page: Page): string {
     <text font-family="${FONT}" font-size="64" font-weight="750" fill="${INK}" letter-spacing="-1.6">
       ${lines.map((l, i) => `<tspan x="80" y="${top + i * 76}">${xml(l)}</tspan>`).join('\n      ')}
     </text>
-    <text x="80" y="${titleY}" font-family="${FONT}" font-size="28" font-weight="500" fill="${SUB}">${xml(wrap(page.title, 44, 1)[0])}</text>
+    <text x="80" y="${titleY}" font-family="${FONT}" font-size="28" font-weight="500" fill="${SUB}">${xml(wrap(page.title.split(': ')[0], 44, 1)[0])}</text>
     <text x="80" y="586" font-family="${FONT}" font-size="26" font-weight="500" fill="${QUIET}">zz-plant.github.io/ambit/docs/${xml(page.slug ? `${page.slug}/` : '')}</text>
   </svg>`;
 }

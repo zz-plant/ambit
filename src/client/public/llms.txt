@@ -24,6 +24,11 @@ A *capability* is one thing the setup can do. Its *era* is how far up the curate
 - [README](https://github.com/zz-plant/ambit/blob/main/README.md): what it is, install, the CLI, the MCP surface, security invariants
 - [Deep dive](https://github.com/zz-plant/ambit/blob/main/docs/deep-dive.md): the long-form reference to the node model, assurance, authority, and the full MCP surface
 - [FAQ](https://github.com/zz-plant/ambit/blob/main/docs/faq.md): short answers to the common questions
+- [Where each AI agent keeps its MCP config](https://zz-plant.github.io/ambit/docs/mcp-config-locations/): the file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed
+- [What breaks if an MCP server goes down](https://zz-plant.github.io/ambit/docs/mcp-outage/): single points of failure in an agent setup, and the commands that find them
+- [Auditing which MCP servers a coding agent has](https://zz-plant.github.io/ambit/docs/audit-mcp-servers/): declared, working, permitted, and used but undeclared
+- [Ambit and MCP gateways](https://zz-plant.github.io/ambit/docs/compare/): how a capability map differs from a proxy on the call path, and how they compose
+- [Glossary](https://zz-plant.github.io/ambit/docs/glossary/): every term Ambit uses, defined once
 - [Why Ambit](https://github.com/zz-plant/ambit/blob/main/docs/why-ambit.md): why this exists, and the case for treating effective agency as a governed object
 - [The affordance frontier](https://github.com/zz-plant/ambit/blob/main/docs/affordance-frontier.md): the theory under that case, where robotics and brain-computer interfaces test it, and what it implies about AGI
 - [Security](https://github.com/zz-plant/ambit/blob/main/SECURITY.md): loopback only, origin allowlist, no entry creation over HTTP, no egress you did not type
