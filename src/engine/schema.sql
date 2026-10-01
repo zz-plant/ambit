@@ -117,7 +117,11 @@ CREATE TABLE IF NOT EXISTS proposals (
     backup_path TEXT,
     -- Who drafted it: an agent over MCP, a person who said so with --by, or
     -- Ambit's control plane. Null when nobody said, and never guessed.
-    proposed_by TEXT
+    proposed_by TEXT,
+    -- The work the change is for, in the drafter's words: the class of work a
+    -- person wants done. Reach serves a purpose someone named, and an
+    -- approval binds the purpose it was shown.
+    purpose TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);

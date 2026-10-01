@@ -17,7 +17,7 @@ Ambit is not on the call path. It reads the configs of Claude Code, Cursor, Open
 - **What breaks if one piece goes?** [The blast radius](./mcp-outage.md) of a server, model or credential: what would stop, and what would only lose one of its providers.
 - **What should change next, and was it worth it?** Ranked by what has actually blocked work, drafted as a proposal a person approves, and measured afterwards against the hours it was forecast to save.
 
-Ambit does have a gate. `ambit can` returns ALLOW, CONFIRM or DENY for an action, approvals are signed artifacts the executor verifies, and a grant narrows itself on one failing check. Its control plane can sit on the call path. But its center is the map and the ledger, not the proxy.
+Ambit does have a gate. `ambit can` returns ALLOW, CONFIRM or DENY for an action, approvals are signed artifacts the executor verifies, and a grant narrows itself on one failing check. Its control plane can sit on the call path, and in Claude Code the `ambit gate` hook puts the same answer in front of every tool call, though it can only deny or ask, never allow. But its center is the map and the ledger, not the proxy.
 
 ## Side by side
 

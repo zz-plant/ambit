@@ -23,6 +23,7 @@ const GROUPS: Record<string, string[]> = {
     'verify',
     'authority',
     'can',
+    'gate',
     'credentials',
     'incidents',
     'incident',

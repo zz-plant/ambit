@@ -225,7 +225,7 @@ This lets technical capability accumulate without silently broadening delegated 
 
 Authority is recorded per action, and from two sources. The curated model says what an action is like in general; the runtime that would execute it says what it permits here — Hermes publishes `approvals.mode` and `approvals.cron_mode`, Claude Code publishes `permissions.defaultMode`, and both adapters pass them through. Where the two disagree the narrower wins, and `ambit authority` names which source narrowed it. A runtime's setting is stored once against the runtime and reaches every capability it contributes and every action those confer; `ambit authority` and the gate behind `ambit can`, `apply` and the control plane resolve it through the same reach, so the report can never be stricter than what is enforced.
 
-Enforcement lands where it matters. `ambit can <cap> [--target=X] [--spend=N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. The one limit worth stating: enforcement is on Ambit's own apply path, not yet interposed between every runtime and every tool — the runtime adapters are the next boundary.
+Enforcement lands where it matters. `ambit can <cap> [--target=X] [--spend=N]` is the decision API: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. `apply` gates every step through it, and nothing applies without a signed, unexpired approval artifact. Claude Code can put the same question on every tool call: `ambit gate` is a PreToolUse hook that finds the capability a call exercises (by the tree's own `detect` patterns, the matching failures use) and answers. It can only narrow. Forbidden or over budget is a deny; no grant yet, a failing check, or asking first is put to the person; allowed, or a tool the graph does not know, is no answer, so Claude Code's own permission settings decide. It never answers allow, and a call it cannot read is no answer. It adds about a fifth of a second to each call. Other runtimes are not interposed yet, and the runtime adapters are the next boundary.
 
 A calibrated classifier is a capability, not an authority. Typed decision models such as TypeSafe's Jev are cheap and fast enough to screen every tool call, and harnesses now use them that way. They are welcome on the map as Typed Judgment, and a runtime may consult one before it asks `ambit can`. They never stand in for the grant. A probability read from state an agent fetched can be steered by whoever wrote that state, which is the failure a grant a person set in advance does not have.
 
@@ -370,7 +370,7 @@ The revisable-delegation loop is what an institution runs when it delegates cons
 
 **The source that works is another Ambit.** A peer runs the same tech tree, so it names capabilities identically, which is the whole reason its discrepancies are legible here; nothing else in the loop shares the vocabulary. A source must say which environment it is (`--instance`), because two graphs on the same tree produce identical record ids, and declaring this environment as a source is refused. When the laptop reports `combo:shell-execution` broken, the server records that as evidence attributed to `std07:ambit/laptop` and its own grant on `act:shell-execution/read_output` still returns ALLOW; on the laptop, where the check actually failed, the same grant returns CONFIRM. A peer can tell this graph something. It cannot revoke anything in it.
 
-**What is honestly not there.** `action` and `outcome` records: the environment adapter is simulated, so an action record from here would attest to a fixture. Nothing forces a runtime to consult the gate, so a runtime that never calls `ambit can` is unaffected by any of this. And no sibling yet consumes what Ambit emits; the reading edge runs one way.
+**What is honestly not there.** `action` and `outcome` records: the environment adapter is simulated, so an action record from here would attest to a fixture. Only Claude Code can be made to consult the gate, through the `ambit gate` hook; any other runtime that never calls `ambit can` is unaffected by any of this. And no sibling yet consumes what Ambit emits; the reading edge runs one way.
 
 ---
 
@@ -388,13 +388,14 @@ graph      impact <id> · catalog <cap> · where · skills · objects [target]
 plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · next [n]
            reversible
            opportunities [--by=…] [--budget=N] · opportunity <id>
-           propose <cap> [option] · roi [proposal-id] · portfolio [--budget=N]
+           propose <cap> [option] [--for="…"] [--by=<who>] · roi [proposal-id]
+           portfolio [--budget=N]
 check      verify [cap] [--history] [--target=<object>]
            authority [cap] [scope <target>]
            authority promote [<cap> <action> --after=N --window=30d --scope=X --by=<person>]
            authority grant <cap> <mode> [--ttl=30m] [--scope=X] [--by=<person>]
            authority sandbox [<target> --by=<person>] · budget [set|clear]
-           can <cap> [--target=X] [--spend=N] · credentials
+           can <cap> [--target=X] [--spend=N] · gate (the Claude Code hook) · credentials
            incidents · incident resolve <svc> <outcome>
 govern     proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
            reject <id> <person> ["why"]

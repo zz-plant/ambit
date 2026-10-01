@@ -392,6 +392,14 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                       </div>
 
                       <div className="gov-goal">{p.goal}</div>
+                      {/* What the change is for, in the drafter's words. Reach
+                      serves a purpose someone named, and the approval binds
+                      the purpose shown here. */}
+                      {p.purpose && (
+                        <p className="gov-purpose">
+                          <span>For</span> {p.purpose}
+                        </p>
+                      )}
 
                       {p.decision && <DecisionRows d={p.decision} />}
 

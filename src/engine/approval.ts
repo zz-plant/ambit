@@ -42,7 +42,11 @@ function sign(payload: string): string {
 
 /** A stable hash of everything that makes a proposal what it is. */
 function proposalHash(_db: Migratable, row: any): string {
-  const body = [row.id, row.goal, row.steps, row.simulated, row.economic_case || ''].join('|');
+  // The purpose is bound when there is one, so an approval covers the work it
+  // was shown as being for; a row without one hashes as it always did.
+  const body = [row.id, row.goal, row.steps, row.simulated, row.economic_case || '']
+    .concat(row.purpose ? [row.purpose] : [])
+    .join('|');
   return createHmac('sha256', 'ambit-proposal').update(body).digest('hex').slice(0, 16);
 }
 

@@ -295,6 +295,8 @@ export interface ProposalRow {
   approved_at?: string | null;
   /** Who drafted it, where something said: an agent's runtime, a person's --by, or `ambit`. */
   proposed_by?: string | null;
+  /** The work the change is for, in the drafter's words, where they said. */
+  purpose?: string | null;
   budget_cents?: number | null;
   expires_at?: string | null;
   approval_artifact?: string | null;

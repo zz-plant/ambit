@@ -219,10 +219,13 @@ Ambit also publishes `ambit://briefing`, a resource a client reads on connect: w
 ```json
 {
   "hooks": {
-    "SessionStart": [{ "hooks": [{ "type": "command", "command": "ambit briefing" }] }]
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "ambit briefing" }] }],
+    "PreToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "ambit gate", "timeout": 10 }] }]
   }
 }
 ```
+
+The `PreToolUse` entry makes the gate binding in Claude Code. Before each tool call, `ambit gate` finds the capability the call exercises and answers: forbidden is a deny, asking first or having no grant yet is put to you, and anything allowed or unknown gets no answer, so Claude Code's own permissions decide. It can only narrow what Claude Code would do, never widen it, and it adds about a fifth of a second to each call. Run `ambit gate` in a terminal for the entry on its own.
 
 ### OpenCode
 

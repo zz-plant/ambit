@@ -103,6 +103,9 @@ check — what is proven, what is permitted, what is currently broken
                           refused, and within it the grant's own mode decides
   check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
                           ALLOW/CONFIRM/DENY; --exit-code also exits 0/1/2
+  check gate              the Claude Code PreToolUse hook: denies what is forbidden,
+                          asks about what asks first or has no grant, and never allows;
+                          run it in a terminal for the settings entry to paste
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger

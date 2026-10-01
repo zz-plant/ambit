@@ -80,6 +80,7 @@ import {
   rollbackProposal,
 } from './governance.ts';
 import { runDoctor } from './doctor.ts';
+import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
@@ -462,7 +463,13 @@ async function runCommand(
       // --by says who is drafting, as it says who declared a grant. A terminal
       // could be a person or an agent's shell, so without it nothing is
       // recorded and the page draws the request with no asker.
-      const drafted = propose(db, arg, Number(positional[1]) || undefined, value('by'));
+      const drafted = propose(
+        db,
+        arg,
+        Number(positional[1]) || undefined,
+        value('by'),
+        value('for')
+      );
       // --dispatch pushes the draft out of band in the same breath, so an
       // unattended loop's request reaches the person without a second verb.
       if (drafted?.proposal && (flags.has('--dispatch') || value('dispatch'))) {
@@ -588,6 +595,29 @@ async function runCommand(
         bytes: existsSync(path) ? statSync(path).size : 0,
         override: 'AMBIT_DB (or TOOLCHAIN_DB)',
       });
+      break;
+    }
+    case 'gate': {
+      // A Claude Code PreToolUse hook's command. With no call on stdin (a
+      // terminal), it prints the settings entry to paste. With one, it prints
+      // the decision or nothing at all, and always exits 0: a gate that cannot
+      // read the call, or the graph, says nothing, so the runtime's own
+      // permissions decide and a broken gate never stops someone's work.
+      if (process.stdin.isTTY || flags.has('--snippet')) {
+        emit({
+          snippet: claudeHookSnippet(),
+          note: "Merge this into ~/.claude/settings.json, or a project's .claude/settings.json, to put Ambit's gate on every tool call. It can deny what is forbidden and ask about what asks first or has no grant; it never allows anything Claude Code would otherwise ask about.",
+        });
+        break;
+      }
+      let out = '';
+      try {
+        const call = JSON.parse(readFileSync(0, 'utf8') || '{}');
+        out = claudeHookOutput(gateToolCall(db, call));
+      } catch {
+        out = '';
+      }
+      if (out) process.stdout.write(`${out}\n`);
       break;
     }
     case 'doctor': {

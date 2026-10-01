@@ -626,7 +626,7 @@ async function handleLine(line: string) {
               res = tt(db => simulateFrontier(db, [capId as string]));
               break;
             case 'tt_propose':
-              res = tt(db => propose(db, capId, args.option, proposer));
+              res = tt(db => propose(db, capId, args.option, proposer, args.purpose));
               break;
             case 'tt_proposals':
               res = tt(db => listProposals(db));

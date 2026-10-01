@@ -6670,3 +6670,19 @@ code, pre, .code, .sp-cli-cmd {
     justify-self: start;
   }
 }
+
+/* What a proposal is for, in the drafter's words, under its goal. */
+.gov-purpose {
+  margin: -4px 0 0;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+
+.gov-purpose span {
+  margin-right: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}

@@ -121,6 +121,7 @@ export function demoProposals(): ProposalRow[] {
       id: 'prop-deploy-staging-42',
       created_at: new Date(Date.now() - 3600000).toISOString(),
       proposed_by: 'agent:opencode',
+      purpose: 'Unattended staging deploys, so a fix reaches staging without waiting on you',
       goal: 'Deploy the billing hotfix to the staging cluster',
       status: 'draft',
       // None of these is a config change, so none has an inverse, and the
@@ -158,6 +159,7 @@ export function demoProposals(): ProposalRow[] {
       id: 'prop-offline-semantic-search',
       created_at: new Date(Date.now() - 86400000).toISOString(),
       proposed_by: 'agent:opencode',
+      purpose: 'Searching your own code and notes offline, with nothing sent to a hosted API',
       goal: 'Add pgvector to the local Postgres, for offline retrieval',
       status: 'approved',
       // A config patch with its inverse written beside it, the shape a live

@@ -44,9 +44,9 @@ My Setup in the app opens on a readout of these seven legs for the loadout on sc
 
 **2. Pick the next step.** Adding servers from a list is a guess about what they combine into. `ambit next` ranks what to reach by what has actually blocked work, and `ambit graph combos` names the combinations one missing piece away. In the demo, Embeddings is next: it has blocked work four times, and it also reaches Vector Store. Ranked by how much each step opens, the welcome screen's pick is Model Routing, which would open six more. *Tractable: the choice is combinatorial, and without a model people stop at the size they can hold in their heads.*
 
-**3. Add it safely.** `ambit propose` writes the change as a proposal: what it does, what undoes it, what it costs and what it is forecast to save. You sign it, `ambit apply` applies it, `ambit rollback` undoes it, and a check proves the result. *Easier: no hand-edited JSON, no change without a record.*
+**3. Add it safely.** `ambit propose` writes the change as a proposal: what it does, what undoes it, what it costs, what it is forecast to save, and, with `--for`, the work it is for. Your approval binds that purpose, so a proposal whose purpose changes after you sign it is no longer covered. You sign it, `ambit apply` applies it, `ambit rollback` undoes it, and a check proves the result. *Easier: no hand-edited JSON, no change without a record.*
 
-**4. Hand over trust gradually.** This is the leg that separates A from B, and the one nothing else offers. A grant is per action and per target, so "deploy to staging without asking" can be true while "deploy to production" still asks. `ambit authority promote <capability> <action> --after=10 --by=<you>` sets the bar once: the grant widens when the evidence reaches it, and narrows again on a single failing check, with nobody asked. A sandbox relaxes confirmation inside it and never a refusal, and `--ttl=30m` grants a window that closes on its own. The demo's loadout has 31 capabilities that may act without asking, 12 that ask first and 3 forbidden, and Secret Management has earned a threshold nobody has set yet. *Possible: without it the only routes are approving every call or approving none.*
+**4. Hand over trust gradually.** This is the leg that separates A from B, and the one nothing else offers. A grant is per action and per target, so "deploy to staging without asking" can be true while "deploy to production" still asks. `ambit authority promote <capability> <action> --after=10 --by=<you>` sets the bar once: the grant widens when the evidence reaches it, and narrows again on a single failing check, with nobody asked. A sandbox relaxes confirmation inside it and never a refusal, and `--ttl=30m` grants a window that closes on its own. The demo's loadout has 31 capabilities that may act without asking, 12 that ask first and 3 forbidden, and Secret Management has earned a threshold nobody has set yet. In Claude Code, the `ambit gate` hook makes these answers binding on every tool call: forbidden is refused, asking first is put to you, and it never allows anything Claude Code would otherwise ask about. *Possible: without it the only routes are approving every call or approving none.*
 
 **5. Keep it standing.** A loadout decays: tokens expire, binaries move, services go down. `ambit status` lists what is configured but failing and the pieces the setup rests on alone, and [`ambit impact`](./mcp-outage.md) says what would stop before you revoke or remove one. *Tractable: maintenance grows with every piece added, and a model is what keeps it from growing faster than the loadout.*
 
@@ -54,13 +54,29 @@ My Setup in the app opens on a readout of these seven legs for the loadout on sc
 
 **7. Let the agent ask for what it lacks.** Registered over MCP, an agent reads a briefing before its first tool call and asks `ambit_can` before a tool it has not used. When something missing blocks it, it records the deficit and drafts the step that closes it, for you to sign. In the demo, agents have asked for Vector Store. *Possible: this is what makes the journey compound, because the loadout grows out of the work itself.*
 
+## What changes for the person
+
+Two things change, and the ledger shows both.
+
+**What you can reach becomes something you design.** At A, a setup is a collection of tools other people recommended. With the map, you choose what to add from what it would open and what keeps blocking you, and you see what each new reach rests on. In the demo, Embeddings is the next step: it has blocked work four times, and it also opens Vector Store.
+
+**How you hold that reach becomes something you govern.** At A, you approve every call or none. At B, you set a bar once, a grant widens when a capability's checks meet it, and one failure narrows it again without anyone asking. Your interruptions shift from *clerical* (routine steps an agent could take) to *keeper* (decisions that should always reach a person), and the ledger records which is which.
+
+Together that is a setup with written-down authority, signed approvals and a trail of what happened: the governance of a small organisation, at the scale of one person and their agents.
+
+**What it will not do.** It will not choose your B, the class of work you want done without you. It routes a goal you state, and each proposal can carry the work it is for, which your approval binds. It measures reach, not judgment: a wide reach with poor judgment is a bigger blast radius. And it sees only what is on the map.
+
+The questions transfer even where the software does not: what is one step away, what you have proven against what you assume, what rests on a single credential or tool, and where you are able but not permitted, or permitted but not able. Ambit computes them only for agent setups.
+
+The aim is not more reach for its own sake. It is reach that is legible, earned and revocable, which you can grow on purpose because you can see what holds it up.
+
 ## Why it compounds
 
 Every proven capability moves the frontier, and that changes what is one step away. A step taken makes the next one cheaper, safer or newly visible, which is why B is a direction more than a destination. The map's eras order capabilities by what they depend on, so the next steps on any route sit at the edge of the eras you have reached, and an era's ladder says how far up it you are. They are not the route itself: a B is a class of work you choose, and Sovereignty is a kind of capability, not the end of the road.
 
 ## Where the journey still has gaps
 
-- **Leg 4 is enforced in two places.** Ambit's own `apply` and its control plane enforce grants. Nothing forces Claude Code or Cursor to ask `ambit_can`, so for most people the gradual hand-over depends on the agent following its instructions.
+- **Leg 4 is enforced where it can be.** Ambit's own `apply`, its control plane, and Claude Code once the `ambit gate` hook is installed. Cursor and the other runtimes still choose whether to ask `ambit_can`, so there the gradual hand-over depends on the agent following its instructions.
 - **Legs 6 and 7 need a record.** The telemetry plugins run in OpenCode, and the figures need weeks of history. On day one those legs say so.
 - **Leg 2 knows the curated tree.** A goal outside it needs the judgment model or an overlay in `.ambit/techtree.json`.
 - **It is one person's journey.** The same path for a team, with shared thresholds and several approvers, is only partly built.

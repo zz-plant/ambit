@@ -437,6 +437,7 @@ const BASE_TOOLS: ToolDef[] = [
       properties: {
         capId: str,
         option: { type: 'number', description: 'Which alternative, 0-based' },
+        purpose: { type: 'string', description: 'The work this is for, for the person deciding' },
       },
       required: ['capId'],
     },

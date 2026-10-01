@@ -54,5 +54,5 @@ The rest are closer to parts than to the whole: dependency and configuration dat
 
 - **Not new algorithms.** Reachability over a dependency graph, cascades and single points of failure are standard graph work. What is new is the object they are run on and the rules around it.
 - **Not discovered composition.** The curated tree is authored, and a combination is reached when its declared prerequisites are, not inferred from behaviour. A setup can add its own nodes in `.ambit/techtree.json`.
-- **Not enforcement everywhere.** The gate is consulted at every decision surface and enforced in two places, the apply path and the control plane. Nothing forces a runtime to ask it. [The roadmap](./roadmap.md#status-at-a-glance) lists every gap like this one.
+- **Not enforcement everywhere.** The gate is consulted at every decision surface and enforced in three places: the apply path, the control plane, and Claude Code's tool calls once the `ambit gate` hook is installed. Other runtimes still choose whether to ask it. [The roadmap](./roadmap.md#status-at-a-glance) lists every gap like this one.
 - **Not a measure of intelligence.** Ambit does not measure how capable a model is. It measures what a system has acquired the means to do.

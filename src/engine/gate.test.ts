@@ -1,0 +1,87 @@
+/**
+ * The gate a Claude Code hook puts on every tool call.
+ *
+ * It can only narrow: forbidden is a deny, asking first or having no grant is
+ * a question for the person, and allowed or unknown is no answer, so the
+ * runtime's own settings decide. It never answers "allow", and a call it
+ * cannot read is no answer either.
+ */
+import { expect, test } from 'vitest';
+import { capture } from './cli.ts';
+import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
+import { cli, dir, getDb, join, seed } from './testing/cli.ts';
+
+const WITH_GITHUB = {
+  provider: { ollama: { models: { 'qwen3-coder': {} } } },
+  mcp: { github: { type: 'local', command: ['github-mcp-server'] } },
+};
+
+const decide = (tool: string) => {
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    return gateToolCall(db, { tool_name: tool, tool_input: {} });
+  } finally {
+    db.close();
+  }
+};
+
+test('a tool the graph does not know gets no answer, so the runtime decides', () => {
+  seed(WITH_GITHUB).close();
+  const answer = decide('SomeToolNobodyMapped');
+  expect(answer.decision).toBeNull();
+  expect(claudeHookOutput(answer)).toBe('');
+});
+
+test('an MCP tool is decided by what its server supplies, and the narrowest answer wins', () => {
+  seed(WITH_GITHUB).close();
+  const before = decide('mcp__github__create_issue');
+  expect(before.capabilities.length).toBeGreaterThan(0);
+  // Nothing is granted yet: a question for the person, not a refusal.
+  expect(before.decision).toBe('ask');
+
+  const target = before.capabilities[0].replace(/^combo:/, '');
+  expect(cli('authority', 'grant', target, 'forbidden', '--by=kanav').error).toBeUndefined();
+  const after = decide('mcp__github__create_issue');
+  expect(after.decision).toBe('deny');
+  expect(after.reason).toMatch(/^Ambit: .*forbidden/);
+});
+
+test('the gate never answers allow, even for a capability that may run unattended', () => {
+  // A server matched by no node of the tree supplies only Tool Protocol, so the
+  // grant set here is the only one that governs it.
+  seed({
+    ...WITH_GITHUB,
+    mcp: { ...WITH_GITHUB.mcp, zzlocal: { type: 'local', command: ['zz'] } },
+  }).close();
+  expect(decide('mcp__zzlocal__run').capabilities).toEqual(['combo:tool-protocol']);
+  cli('authority', 'grant', 'tool-protocol', 'autonomous', '--by=kanav');
+  const answer = decide('mcp__zzlocal__run');
+  expect(answer.decision).toBeNull();
+  expect(claudeHookOutput(answer)).toBe('');
+  // Where two grants tie, the narrower governs (AGENTS.md rule 9): GitHub also
+  // supplies Version Control, which the curated model has asking first.
+  expect(decide('mcp__github__create_issue').decision).toBe('ask');
+});
+
+test('the hook output is the shape Claude Code reads, and the snippet registers it on every tool', () => {
+  const out = JSON.parse(
+    claudeHookOutput({ decision: 'deny', reason: 'Ambit: no', capabilities: ['combo:x'] })
+  );
+  expect(out).toEqual({
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'deny',
+      permissionDecisionReason: 'Ambit: no',
+    },
+  });
+  const snippet = JSON.parse(claudeHookSnippet());
+  expect(snippet.hooks.PreToolUse[0].matcher).toBe('*');
+  expect(snippet.hooks.PreToolUse[0].hooks[0].command).toBe('ambit gate');
+});
+
+test('asked from a terminal, ambit gate prints the entry to paste', () => {
+  seed(WITH_GITHUB).close();
+  const r = capture(getDb(join(dir, 'graph.db')), ['gate', '--snippet']);
+  expect(JSON.parse(r.snippet).hooks.PreToolUse).toHaveLength(1);
+  expect(r.note).toMatch(/never allows/);
+});

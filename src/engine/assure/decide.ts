@@ -142,6 +142,14 @@ function scopeCovers(scope: string, target: string): boolean {
 }
 
 /**
+ * Why a DENY is a DENY, for a caller that has to treat them differently. The
+ * Claude Code gate denies what is forbidden or over budget, and asks a person
+ * about the rest: a capability with no grant yet, or one whose check is
+ * failing, is a question for the person at the keyboard, not a refusal.
+ */
+export type Refusal = 'forbidden' | 'ungranted' | 'failing' | 'budget' | 'unknown';
+
+/**
  * The decision API: may this actor perform this action on this target, within
  * this spend?
  *
@@ -182,6 +190,7 @@ function canExecute(
   if (!cap) {
     return {
       decision: 'DENY',
+      refused: 'unknown' as Refusal,
       verdict: 'no' as const,
       reason: `Nothing in the graph supplies ${capability}. Record it as a deficit rather than working around it again.`,
       missing: [capability.replace('combo:', '')],
@@ -271,6 +280,7 @@ function canExecute(
   if (cap.state !== 'locked' && !usable(cap.lifecycle)) {
     return {
       decision: 'DENY',
+      refused: 'failing' as Refusal,
       verdict: 'no' as const,
       reason: `${cap.name} is ${cap.lifecycle} — configured but failing verification. Re-verify before acting.`,
       missing: [cap.name],
@@ -284,6 +294,7 @@ function canExecute(
   if (governing === 'forbidden') {
     return {
       decision: 'DENY',
+      refused: (covering.length ? 'forbidden' : 'ungranted') as Refusal,
       verdict: 'no' as const,
       reason: covering.length
         ? `${cap.name} is forbidden for ${action}. This is not a slow yes — do not retry it under another name.`
@@ -303,6 +314,7 @@ function canExecute(
   if (overBudget) {
     return {
       decision: 'DENY',
+      refused: 'budget' as Refusal,
       verdict: 'no' as const,
       reason: `Spending ${input.spendCents} cents exceeds the ${remaining} left in the budget for ${cap.name}.`,
       capability,

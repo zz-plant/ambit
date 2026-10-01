@@ -6,6 +6,20 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.5.0...main)
 
+### The gate is binding in Claude Code, and a proposal says what it is for
+
+Ambit's decisions bound only where Ambit itself acts, `ambit apply` and the control plane, and a runtime had to choose to ask `ambit_can`. `ambit gate` is a Claude Code PreToolUse hook that puts the question on every tool call. It finds the capabilities a call exercises with the same matching that attributes failures and fills the unmapped report, and answers by one rule: it can only narrow. Forbidden or over a budget is a deny; asking first, no grant yet, or a failing check is put to the person; allowed, or a tool the graph cannot name, is no answer, so Claude Code's own permissions decide. It never answers allow, prints nothing on any error, and adds about a fifth of a second to a call. `ambit gate` in a terminal prints the settings entry, and the README's Claude Code section carries it beside the briefing hook. A refusal now carries its reason as a code (`forbidden`, `ungranted`, `failing`, `budget`, `unknown`), which is how the gate tells a refusal from a question.
+
+A proposal records the work it is for: `ambit propose <cap> --for="…"`, or `purpose` on the MCP tool. The Proposals panel shows it under the goal, and the approval binds it, so a purpose changed after the signature is no longer covered; a proposal without one hashes as before, and every earlier approval stays valid. Reach serves a purpose someone named.
+
+### Your loadout, from A to B
+
+Ambit described features and claims, and nothing walked one person from a pile of configs to a setup that does a class of work without them. My Setup opens on the seven legs of that walk for the loadout on screen, each read from the graph and the ledger with the one command that moves it, and a page walks them with the demo's numbers, says what changes for the person, and where the journey still has gaps. It frames the loadout as an Eva and you as its pilot, says where that picture stops, and keeps interface labels in the glossary's words.
+
+### One claim, and what is new in it
+
+The site stated its central idea five ways. One claim now carries them: what an agent setup can do is not written in any config file; it is composed, it has to be proven, and it differs from what it is allowed to do. A README section and a page say what is new in that, its nearest prior work, and what Ambit does not claim. The glossary gains *Ambit*, the word a reader meets first, and the frontier is its edge.
+
 ## [0.5.0](https://github.com/zz-plant/ambit/releases/tag/v0.5.0) — 2026-09-30
 
 A month of rounds since 0.4.1, none of which Homebrew had until now. In short:

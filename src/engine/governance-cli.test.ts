@@ -71,6 +71,31 @@ test('a proposal records who drafted it only when someone said', () => {
   expect(trail.find(e => e.target === bare.proposal)?.actor).toBeUndefined();
 });
 
+test('a proposal records the work it is for, and its approval binds that purpose', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research', '--for=Research a vendor before a call');
+  const read = () => {
+    const db = getDb(join(dir, 'graph.db'));
+    try {
+      return db
+        .prepare('SELECT purpose FROM proposals WHERE id = ?')
+        .get<{ purpose: string | null }>(p.proposal)?.purpose;
+    } finally {
+      db.close();
+    }
+  };
+  expect(read()).toBe('Research a vendor before a call');
+  expect(cli('approve', p.proposal, 'kanav').error).toBeUndefined();
+  // A purpose changed after the approval is a different proposal from the
+  // one that was signed, and the signature no longer covers it.
+  const db = getDb(join(dir, 'graph.db'));
+  db.prepare('UPDATE proposals SET purpose = ? WHERE id = ?').run('Anything at all', p.proposal);
+  db.close();
+  const applied = cli('apply', p.proposal);
+  expect(applied.applied).not.toBe(true);
+  expect(JSON.stringify(applied)).toMatch(/hash|changed|approv/i);
+});
+
 test('a proposal with an uninvertible step is not applicable, and says why', () => {
   seed(LOCAL_ONLY).close();
   const p = cli('propose', 'retrieval');
