@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseJsonc } from '../shared/opencode.ts';
 import { defaultMapping } from './seed/writers.ts';
 
 export interface McpClientSeed {
@@ -85,7 +86,7 @@ function readContinueJson(raw: string): Record<string, unknown> | null {
 function readZedJson(raw: string): Record<string, unknown> | null {
   let parsed: any;
   try {
-    parsed = JSON.parse(raw);
+    parsed = parseJsonc(raw);
   } catch {
     return null;
   }

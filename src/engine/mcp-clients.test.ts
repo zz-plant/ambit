@@ -126,15 +126,20 @@ test('discovers Continue.dev config (mcpServers & experimental)', () => {
   expect(cont?.config.mcp.memory).toBeDefined();
 });
 
-test('discovers Zed editor context_servers', () => {
+test('discovers Zed editor context_servers from JSONC', () => {
   const zedFile = join(dir, 'zed.json');
   writeFileSync(
     zedFile,
-    JSON.stringify({
-      context_servers: {
-        docker: { command: 'docker-mcp', args: [] },
-      },
-    })
+    `// Zed settings
+{
+  "context_servers": {
+    "docker": {
+      "command": "docker-mcp",
+      "args": [],
+    },
+  },
+}
+`
   );
   process.env.ZED_MCP_CONFIG = zedFile;
 
@@ -143,4 +148,13 @@ test('discovers Zed editor context_servers', () => {
   expect(zed).toBeDefined();
   expect(zed?.label).toBe('Zed');
   expect(zed?.config.mcp.docker).toEqual({ command: 'docker-mcp', args: [], type: 'local' });
+});
+
+test('skips invalid Zed settings', () => {
+  const zedFile = join(dir, 'zed.json');
+  writeFileSync(zedFile, 'not json');
+  process.env.ZED_MCP_CONFIG = zedFile;
+
+  const found = discoverMcpClients(dir);
+  expect(found.find(c => c.runtime === 'zed')).toBeUndefined();
 });
