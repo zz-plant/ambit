@@ -10,6 +10,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 `ambit-cli` is on npm, so `npx ambit-cli` reads every agent config on the machine and prints where you stand, with nothing installed first and Node 22.18 or newer the only requirement. `npm install -g ambit-cli` keeps it, beside Homebrew. The README, `llms.txt`, the welcome screen and the Claude Code skill lead with it, and the `ambit` Claude Code plugin now runs its MCP server and briefing through `npx`, so installing the plugin needs nothing else. The gate plugin keeps calling an installed `ambit`, since it runs on every tool call.
 
+### Nothing fetched from another origin, and a formula that carries the map
+
+The page took IBM Plex from Google Fonts, so opening the map, the local one included, asked Google for a stylesheet on every visit. The fonts ship with the page now: the latin subset of the weights in use, about 130 KB. A test fails if `index.html` gains a stylesheet, script or image from another origin. The Homebrew formula is written from the npm tarball from 0.5.1, the same files `npx ambit-cli` runs, built page included; it installed the GitHub source tarball, which has none, so `ambit web` from Homebrew had nothing to serve.
+
 ### The route on the map, the unlock said aloud, and the map from any install
 
 A blocked node's panel lists the steps to it in the order they close, and "Show the steps on the map" numbers them there, each after everything it needs, the way Civ numbers the path to a distant tech. The gap had been a set lit all at once, which said what stood in the way and not where to start. With the panel open, the map now scrolls a simulation out from under it, so Launch Ready's steps in the last two eras are not numbered where nobody can see them.

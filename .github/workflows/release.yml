@@ -75,50 +75,60 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --generate-notes
           fi
-          echo "Formula values for the tap:"
-          echo "  url    https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz"
-          echo "  sha256 ${SHA}"
+          echo "The Homebrew formula is written from the npm tarball by the tap job."
 
   tap:
-    needs: release
+    # The formula installs the npm tarball: the same files `npx ambit-cli`
+    # runs, built page included. It installed the GitHub source tarball, which
+    # has no built page, so `ambit web` from Homebrew had nothing to serve. So
+    # this runs after the npm job, and only once that version is on npm.
+    needs: [release, npm]
+    if: ${{ always() && needs.release.result == 'success' && github.repository_owner == 'zz-plant' }}
     runs-on: ubuntu-latest
-    # Needs a token with write access to zz-plant/homebrew-tap; without it the
-    # release still succeeds and prints the two values to paste by hand.
-    if: ${{ github.repository_owner == 'zz-plant' }}
     steps:
-      - name: Update the Homebrew formula
+      - name: Write the Homebrew formula from the npm tarball
         env:
           GH_TOKEN: ${{ secrets.TAP_TOKEN }}
           TAG: ${{ needs.release.outputs.tag }}
-          SHA: ${{ needs.release.outputs.sha256 }}
         run: |
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo "No TAP_TOKEN secret set — skipping. Formula values are in the release job's log."
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          TARBALL="https://registry.npmjs.org/ambit-cli/-/ambit-cli-${VERSION}.tgz"
+          if ! curl -fsSL "$TARBALL" -o ambit.tgz; then
+            echo "ambit-cli ${VERSION} is not on npm yet, so the formula has nothing to point at. Publish it, then re-run this job."
             exit 0
           fi
-          set -euo pipefail
+          SHA="$(sha256sum ambit.tgz | cut -d' ' -f1)"
+          cat > ambit.rb <<RUBY
+          class Ambit < Formula
+            desc "What you, your agents, and your machines can jointly do, and where time goes"
+            homepage "https://github.com/zz-plant/ambit"
+            url "${TARBALL}"
+            sha256 "${SHA}"
+            license "MIT"
+
+            depends_on "node"
+
+            def install
+              system "npm", "install", *std_npm_args
+              bin.install_symlink Dir["#{libexec}/bin/*"]
+              # The command's old name, kept for anyone who still types it.
+              bin.install_symlink libexec/"bin/ambit" => "tt"
+            end
+
+            test do
+              system bin/"ambit", "--help"
+            end
+          end
+          RUBY
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "No TAP_TOKEN secret set. Paste this into zz-plant/homebrew-tap Formula/ambit.rb:"
+            cat ambit.rb
+            exit 0
+          fi
           git clone "https://x-access-token:${GH_TOKEN}@github.com/zz-plant/homebrew-tap" tap
+          cp ambit.rb tap/Formula/ambit.rb
           cd tap
-          VERSION="${TAG#v}"
-          python3 - "$VERSION" "$SHA" <<'PY'
-          import re, sys
-          version, sha = sys.argv[1], sys.argv[2]
-          path = 'Formula/ambit.rb'
-          f = open(path).read()
-          f = re.sub(r'url "[^"]*"', f'url "https://github.com/zz-plant/ambit/archive/refs/tags/v{version}.tar.gz"', f)
-          f = re.sub(r'version "[^"]*"', f'version "{version}"', f)
-          if 'sha256 "' in f:
-              f = re.sub(r'sha256 "[^"]*"', f'sha256 "{sha}"', f)
-          else:
-              # The formula shipped without one, so brew warned that it could
-              # not verify what it was installing. Add it next to the url.
-              f = re.sub(r'(url "[^"]*"\n)', rf'\1  sha256 "{sha}"\n', f)
-          # Keep the documented command name while retaining tt for older users.
-          f = f.replace('bin.install_symlink libexec/"cli.js" => "tt"',
-                        'bin.install_symlink libexec/"cli.js" => "ambit"\n  bin.install_symlink libexec/"cli.js" => "tt"')
-          f = f.replace('system "#{bin}/tt", "--help"', 'system "#{bin}/ambit", "--help"')
-          open(path, 'w').write(f)
-          PY
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -am "ambit ${VERSION}"

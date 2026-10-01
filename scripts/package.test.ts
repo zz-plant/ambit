@@ -33,3 +33,16 @@ test('the server finds the page beside itself, not in the directory it was start
   expect(api).toContain("join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'dist')");
   expect(api).not.toContain("join(process.cwd(), 'dist')");
 });
+
+test('the page loads nothing from another origin', () => {
+  // Google Fonts was the one exception, so opening the local map asked Google
+  // for a stylesheet on every visit. Links to other sites are fine; a resource
+  // the browser fetches on load is not.
+  const html = readFileSync(join(ROOT, 'src/client/index.html'), 'utf8');
+  const fetched = [
+    ...html.matchAll(/<link[^>]+rel="(?:stylesheet|preload|preconnect|modulepreload)"[^>]*>/g),
+    ...html.matchAll(/<script[^>]+src="[^"]*"[^>]*>/g),
+    ...html.matchAll(/<img[^>]+src="[^"]*"[^>]*>/g),
+  ].map(m => m[0]);
+  expect(fetched.filter(tag => /(?:href|src)="(?:https?:)?\/\//.test(tag))).toEqual([]);
+});
