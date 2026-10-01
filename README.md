@@ -473,6 +473,7 @@ Ambit reads developer toolchains and writes to agent configs, so four properties
 
 - [FAQ](./docs/faq.md) — what needs installing, what leaves the machine, why the attention commands are empty on day one.
 - [Deep dive](./docs/deep-dive.md) — the reference for the model under everything above.
+- [Where each AI agent keeps its MCP config](./docs/mcp-config-locations.md) · [What breaks if an MCP server goes down](./docs/mcp-outage.md) · [Auditing an agent's MCP servers](./docs/audit-mcp-servers.md) · [Ambit and MCP gateways](./docs/compare.md) — the questions people search for, answered with the commands above.
 - [Security](./SECURITY.md) · [Agent invariants](./AGENTS.md) · [Support](./SUPPORT.md) · [Contributing](./CONTRIBUTING.md) — the invariants above in full, where each is enforced, where each kind of question goes, and how to send a change.
 - [Everything else](./docs/) — the argument, the theory, the design notes, the changelog, the incident traces.
 - [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) — the project in one page, for an agent that is deciding whether to recommend it.

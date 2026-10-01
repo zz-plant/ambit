@@ -43,15 +43,21 @@ export interface Page {
    * says which page it is and not why to open it.
    */
   card: string;
+  /**
+   * How the page is built when it is not a markdown document: the glossary is
+   * written from the concepts file, so the page and the app cannot define a
+   * term two ways.
+   */
+  render?: 'glossary';
 }
 
 export const PAGES: Page[] = [
   {
     src: 'docs/README.md',
     slug: '',
-    title: 'Ambit documentation',
+    title: 'Ambit documentation: map, audit and govern an AI agent setup',
     description:
-      'Every Ambit document in one place: the guide, the FAQ, the reference, the argument for it, the roadmap, the changelog, and how to contribute.',
+      'Every Ambit document in one place: the guide, the FAQ, where each agent keeps its MCP config, the reference, the roadmap, the changelog, and how to contribute.',
     card: 'Every Ambit document, in one place',
   },
   {
@@ -65,10 +71,51 @@ export const PAGES: Page[] = [
   {
     src: 'docs/faq.md',
     slug: 'faq',
-    title: 'Ambit FAQ',
+    title: 'Ambit FAQ: MCP servers, agent permissions, and what stays local',
     description:
       'Short answers about Ambit: which agent runtimes it reads, what leaves your machine, how an agent changes config, Jev, and why attention reports start empty.',
     card: 'What it reads, and what never leaves your machine',
+  },
+  {
+    src: 'docs/mcp-config-locations.md',
+    slug: 'mcp-config-locations',
+    title: 'Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more',
+    description:
+      'The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed.',
+    card: 'Eleven agents, eleven config files, one table',
+  },
+  {
+    src: 'docs/mcp-outage.md',
+    slug: 'mcp-outage',
+    title: 'What breaks if an MCP server goes down: blast radius for AI agents',
+    description:
+      'Find the single points of failure in an AI agent setup: what stops, what only weakens, and what was already broken if one MCP server, model or token goes.',
+    card: 'One server goes down. What else stops?',
+  },
+  {
+    src: 'docs/audit-mcp-servers.md',
+    slug: 'audit-mcp-servers',
+    title: 'How to audit which MCP servers your coding agent has',
+    description:
+      'Audit an AI coding agent four ways: every MCP server declared, which ones work, what each may do without asking, and what was used but never declared.',
+    card: 'Audit every MCP server your agent can reach',
+  },
+  {
+    src: 'docs/compare.md',
+    slug: 'compare',
+    title: 'Ambit and MCP gateways: which one answers which question',
+    description:
+      'MCP gateways decide each tool call as it happens. Ambit maps what an agent setup can do, whether it works, and what breaks if a piece goes.',
+    card: 'A gateway decides calls. A map shows the setup.',
+  },
+  {
+    src: 'src/shared/concepts.json',
+    slug: 'glossary',
+    title: 'Ambit glossary: capability graph, frontier, keystone and more',
+    description:
+      'Every word Ambit uses, defined once: capabilities, reached and next steps, keystones, evidence, authority modes, the frontier and the work ledger.',
+    card: 'Every word on the map, defined once',
+    render: 'glossary',
   },
   {
     src: 'docs/jev.md',
@@ -129,7 +176,7 @@ export const PAGES: Page[] = [
   {
     src: 'CHANGELOG.md',
     slug: 'changelog',
-    title: 'Ambit changelog',
+    title: 'Ambit changelog: what changed in each release',
     description: 'What changed in each Ambit release and why, newest first.',
     card: 'What changed in each release, and why',
   },
@@ -219,21 +266,87 @@ const NAV: Array<[string, string]> = [
   ['FAQ', `${BASE}docs/faq/`],
   ['Reference', `${BASE}docs/deep-dive/`],
   ['Jev', `${BASE}docs/jev/`],
+  ['Glossary', `${BASE}docs/glossary/`],
   ['All docs', `${BASE}docs/`],
   ['GitHub', 'https://github.com/zz-plant/ambit'],
 ];
 
+/** Markdown inline syntax dropped, for text a search engine shows as an answer. */
+const plain = (md: string) =>
+  md
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[`*_]/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * The FAQ's questions and answers as FAQPage data: each `###` heading is a
+ * question, and what follows it up to the next heading is its answer. Read
+ * from the same markdown the page renders, so the two cannot disagree.
+ */
+export function faqEntries(markdown: string): Array<{ q: string; a: string }> {
+  const out: Array<{ q: string; a: string }> = [];
+  let current: { q: string; lines: string[] } | null = null;
+  for (const line of markdown.split('\n')) {
+    if (/^#{1,6} /.test(line)) {
+      if (current) out.push({ q: plain(current.q), a: plain(current.lines.join(' ')) });
+      current = line.startsWith('### ') ? { q: line.slice(4), lines: [] } : null;
+    } else if (current) current.lines.push(line);
+  }
+  if (current) out.push({ q: plain(current.q), a: plain(current.lines.join(' ')) });
+  return out.filter(e => e.q && e.a);
+}
+
+interface Concept {
+  key: string;
+  term: string;
+  short: string;
+  long: string;
+}
+
+/** The glossary's body, one section per concept, in the order a reader meets them. */
+export function glossaryBody(concepts: Concept[]): string {
+  return [
+    '<h1 id="glossary">Ambit glossary</h1>',
+    '<p>Every word the map, the CLI and the MCP server use, defined once. The same file is what the app\u2019s Docs overlay, its term popovers and <code>ambit help &lt;term&gt;</code> read, so a definition here is the one the interface shows.</p>',
+    ...concepts.map(
+      c =>
+        `<h2 id="${escapeHtml(c.key)}"><a class="anchor" href="#${escapeHtml(c.key)}" aria-hidden="true" tabindex="-1">#</a>${escapeHtml(c.term)}</h2>\n<p><strong>${escapeHtml(c.short)}.</strong> ${escapeHtml(c.long)}</p>`
+    ),
+  ].join('\n');
+}
+
 /** One published page, whole. System fonts, so nothing blocks the first paint. */
-export function renderPage(page: Page, body: string): string {
+export function renderPage(
+  page: Page,
+  body: string,
+  extra: { modified?: string; data?: object[] } = {}
+): string {
   const url = ORIGIN + pagePath(page);
+  const docs = ORIGIN + pagePath(PAGES[0]);
   const ld = {
     '@context': 'https://schema.org',
-    '@type': 'TechArticle',
-    headline: page.title,
-    description: page.description,
-    url,
-    author: { '@type': 'Person', name: 'Kanav Jain' },
-    isPartOf: { '@type': 'WebSite', name: 'Ambit', url: ORIGIN + BASE },
+    '@graph': [
+      {
+        '@type': 'TechArticle',
+        headline: page.title,
+        description: page.description,
+        url,
+        ...(extra.modified ? { dateModified: extra.modified } : {}),
+        author: { '@type': 'Person', name: 'Kanav Jain' },
+        isPartOf: { '@type': 'WebSite', name: 'Ambit', url: ORIGIN + BASE },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Ambit', item: ORIGIN + BASE },
+          { '@type': 'ListItem', position: 2, name: 'Docs', item: docs },
+          ...(page.slug ? [{ '@type': 'ListItem', position: 3, name: page.title, item: url }] : []),
+        ],
+      },
+      ...(extra.data ?? []),
+    ],
   };
   return `<!DOCTYPE html>
 <html lang="en">
@@ -319,12 +432,42 @@ export function sitemap(entries: Array<{ loc: string; lastmod?: string }>): stri
 export function buildDocs(out: string): { pages: number; assets: number } {
   const assets = new Set<string>();
   for (const page of PAGES) {
-    const md = readFileSync(join(ROOT, page.src), 'utf8');
-    const { html, assets: used } = renderBody(page.src, md);
-    for (const a of used) assets.add(a);
+    const source = readFileSync(join(ROOT, page.src), 'utf8');
+    const modified = lastModified(page.src);
+    let html: string;
+    const data: object[] = [];
+    if (page.render === 'glossary') {
+      const concepts: Concept[] = JSON.parse(source).concepts;
+      html = glossaryBody(concepts);
+      data.push({
+        '@type': 'DefinedTermSet',
+        name: 'Ambit glossary',
+        url: ORIGIN + pagePath(page),
+        hasDefinedTerm: concepts.map(c => ({
+          '@type': 'DefinedTerm',
+          name: c.term,
+          description: `${c.short}. ${c.long}`,
+          url: `${ORIGIN}${pagePath(page)}#${c.key}`,
+        })),
+      });
+    } else {
+      const rendered = renderBody(page.src, source);
+      html = rendered.html;
+      for (const a of rendered.assets) assets.add(a);
+      if (page.slug === 'faq') {
+        data.push({
+          '@type': 'FAQPage',
+          mainEntity: faqEntries(source).map(e => ({
+            '@type': 'Question',
+            name: e.q,
+            acceptedAnswer: { '@type': 'Answer', text: e.a },
+          })),
+        });
+      }
+    }
     const dir = join(out, 'docs', page.slug);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'index.html'), renderPage(page, html));
+    writeFileSync(join(dir, 'index.html'), renderPage(page, html, { modified, data }));
   }
   mkdirSync(join(out, 'docs', 'assets'), { recursive: true });
   for (const a of assets) copyFileSync(join(ROOT, a), join(out, 'docs', 'assets', basename(a)));

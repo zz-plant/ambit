@@ -1,14 +1,12 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import AppDeck, { mapCounts } from './components/AppDeck';
 import ApprovalModal from './components/ApprovalModal';
-import AuditView from './components/AuditView';
 import { dayOf, hasHistory, itemsAsOf, momentOf, tickAt } from './components/civ/history';
 import { isEntry, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
 import GettingStartedGuide from './components/GettingStartedGuide';
-import LoopDashboard from './components/LoopDashboard';
 import NodeDetailPanel from './components/NodeDetailPanel';
 import SetupView from './components/SetupView';
 import Toast from './components/Toast';
@@ -28,6 +26,10 @@ import type { PaletteHandlers } from './utils/palette';
 import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg } from './utils/shareCard';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
+// Fetched when first opened: a visit lands on the map, and the two views it
+// does not show were 41KB of the script every first load waited for.
+const LoopDashboard = React.lazy(() => import('./components/LoopDashboard'));
+const AuditView = React.lazy(() => import('./components/AuditView'));
 
 /** An SVG document drawn onto a canvas, at its own size, as a PNG. */
 function svgToPng(svg: string, width: number, height: number): Promise<Blob> {
@@ -449,9 +451,13 @@ export default function App() {
           </div>
         )}
         {view === 'loop' ? (
-          <LoopDashboard onShowOnMap={showOnMap} />
+          <Suspense fallback={<Loading />}>
+            <LoopDashboard onShowOnMap={showOnMap} />
+          </Suspense>
         ) : view === 'audit' ? (
-          <AuditView />
+          <Suspense fallback={<Loading />}>
+            <AuditView />
+          </Suspense>
         ) : view === 'config' ? (
           <SetupView onShow={show} />
         ) : items.length > 0 && hasTree ? (
