@@ -130,7 +130,8 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
           </button>
         </div>
         <p className="app-welcome-local">
-          Installs the CLI and the MCP server, then maps every runtime on the machine.
+          Runs the CLI with nothing installed, and maps every runtime on the machine. Homebrew and{' '}
+          <code>npm install -g ambit-cli</code> keep it.
         </p>
         <nav className="app-welcome-more" aria-label="Read more">
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>

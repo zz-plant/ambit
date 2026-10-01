@@ -49,10 +49,12 @@ test('every hook and server runs an ambit verb the CLI has', () => {
     }
   }
   expect(commands.length).toBeGreaterThanOrEqual(3);
+  // Either the installed command or the published package through npx; the
+  // gate runs on every tool call, so it stays on the installed command.
   for (const c of commands) {
-    const [bin, verb] = c.split(' ');
-    expect(bin, c).toBe('ambit');
-    expect(verbs.has(verb), c).toBe(true);
+    const words = c.replace(/^npx -y ambit-cli /, 'ambit ').split(' ');
+    expect(words[0], c).toBe('ambit');
+    expect(verbs.has(words[1]), c).toBe(true);
   }
 });
 

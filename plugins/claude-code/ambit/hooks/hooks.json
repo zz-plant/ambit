@@ -2,7 +2,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "hooks": [{ "type": "command", "command": "ambit briefing", "timeout": 10 }]
+        "hooks": [{ "type": "command", "command": "npx -y ambit-cli briefing", "timeout": 10 }]
       }
     ]
   }

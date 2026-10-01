@@ -11,7 +11,7 @@ Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Wi
 
 It reads the agent configs on this machine and writes only its own SQLite file (`~/.local/share/ambit/graph.db`). It changes no agent config without a proposal the user approves, and it sends nothing anywhere: there is no telemetry. Deleting that file undoes it.
 
-If `ambit` is not installed, say so and offer `brew install zz-plant/tap/ambit` (macOS or Linux). Do not install it without the user's go-ahead.
+Run it as `npx ambit-cli <command>` when `ambit` is not installed (Node 22.18 or newer); `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` installs it for good. Do not install it without the user's go-ahead.
 
 ## Which command answers which question
 

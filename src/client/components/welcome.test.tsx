@@ -56,7 +56,7 @@ test('the demo comes before the paste box, so a phone shows it on its first scre
 });
 
 test('a convinced visitor finds the install line and the docs without leaving for GitHub', () => {
-  expect(html).toContain('brew install zz-plant/tap/ambit');
+  expect(html).toContain('npx ambit-cli');
   expect(html).toMatch(/href="[^"]*docs\/guide\/"/);
   expect(html).toMatch(/href="[^"]*docs\/faq\/"/);
 });

@@ -19,7 +19,7 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 
 <sub>One setup, mapped. Pick a next step and Ambit shows what it would open: four more capabilities. Pick one you rely on and switch it off, and it counts the nine working things that would stop with it. Then which tools interrupt you most, and a change waiting on your approval.</sub>
 
-`brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
+`npx ambit-cli`, or `brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
 
 </div>
 
@@ -123,15 +123,12 @@ Semantic search finds tools that sound relevant and cannot tell a working one fr
 | Way in | What it gives you |
 | :--- | :--- |
 | **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code or OpenCode, and it is mapped in the tab, uploading nothing. |
-| **On your machine** | `brew install zz-plant/tap/ambit && ambit` reads your real agent configs and prints where you stand. This is the CLI and the MCP server; the map needs a checkout. |
+| **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs and prints where you stand. This is the CLI and the MCP server; the map needs a checkout. `npm install -g ambit-cli` puts `ambit` on your path. |
 | **With the map** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the map the pictures on this page show. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
 
-Homebrew installs the tagged release on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue and Zed, and the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
-
-> [!NOTE]
-> The npm package is built and ready but not yet published, so there is no `npx` path yet.
+npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue and Zed, and the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
@@ -217,7 +214,7 @@ claude plugin marketplace add zz-plant/ambit
 claude plugin install ambit@ambit
 ```
 
-`ambit-gate@ambit` is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. Both plugins call the `ambit` command, so install that first with Homebrew. By hand, without the plugin:
+`ambit-gate@ambit` is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. The first plugin runs Ambit through `npx` and needs nothing else installed; the gate runs on every call, so it calls an installed `ambit` (`npm install -g ambit-cli`) to stay fast. By hand, without the plugin:
 
 ```bash
 claude mcp add ambit -- ambit mcp --profile=agent

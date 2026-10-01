@@ -8,7 +8,7 @@
  */
 
 /** The one-line install the README leads with, quoted by the landing and the tour. */
-export const INSTALL = 'brew install zz-plant/tap/ambit && ambit';
+export const INSTALL = 'npx ambit-cli';
 
 /**
  * Who an approval from the browser is recorded as. The terminal asks for a

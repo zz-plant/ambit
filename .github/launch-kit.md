@@ -38,6 +38,8 @@ The parts I use most:
 
 Zero-install demo: https://zz-plant.github.io/ambit/?demo=1
 
+On your own machine: `npx ambit-cli` reads every agent config and prints where you stand, writing only its own local file.
+
 Repository: https://github.com/zz-plant/ambit
 
 I would especially value feedback on whether the capability model matches how larger agent stacks fail in practice.
@@ -97,7 +99,10 @@ Keep the table current: an entry that says "submitted" is the one thing that sto
 
 ## After the first release on npm
 
-1. Replace the npm note in the README's Get started section with an `npx ambit-cli` line beside the Homebrew block. Delete CI's "Check adoption copy" step in the same commit: it greps the README for that install line and never consults the registry, so it fails after the publish exactly as it does before.
-2. Publish `server.json` to the MCP registry (above).
-3. Re-run the Show HN draft with the one-line install in it.
-4. Point the Claude Code plugin's MCP server and hooks at `npx -y ambit-cli` in `plugins/claude-code/`, so installing the plugin needs nothing else installed first.
+`ambit-cli` 0.5.0 was published on 2026-10-01. Done in the same change: the README's Get started table and the welcome screen lead with `npx ambit-cli`; CI's "Check adoption copy" step, which failed any README that named the npm route, is gone; and the Claude Code plugin's MCP server and briefing run through `npx -y ambit-cli`, so installing the plugin needs nothing else first. The gate plugin keeps calling an installed `ambit`, because it runs on every tool call and `npx` resolution would add to each one.
+
+Left, and each needs a person:
+
+1. Publish `server.json` to the MCP registry: `brew install mcp-publisher`, then `mcp-publisher login github` (a browser sign-in as `zz-plant`) and `mcp-publisher publish` from the repository root. The registry checks that `ambit-cli` exists on npm and that its `mcpName` is `io.github.zz-plant/ambit`.
+2. Add an `NPM_TOKEN` automation token to the repository's secrets, so the release workflow publishes the next version itself, with provenance. 0.5.0 was published from a laptop without it.
+3. Post the Show HN draft, whose install line is now `npx ambit-cli`.

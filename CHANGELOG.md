@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.5.0...main)
 
+### On npm: `npx ambit-cli`
+
+`ambit-cli` is on npm, so `npx ambit-cli` reads every agent config on the machine and prints where you stand, with nothing installed first and Node 22.18 or newer the only requirement. `npm install -g ambit-cli` keeps it, beside Homebrew. The README, `llms.txt`, the welcome screen and the Claude Code skill lead with it, and the `ambit` Claude Code plugin now runs its MCP server and briefing through `npx`, so installing the plugin needs nothing else. The gate plugin keeps calling an installed `ambit`, since it runs on every tool call.
+
 ### What an agent needs to suggest it
 
 An agent suggests a tool it can see at the moment it would help, can install itself, and can say is safe. Ambit now ships as a Claude Code marketplace in its own repository: `claude plugin marketplace add zz-plant/ambit`, then `claude plugin install ambit@ambit`, which registers the MCP server with the agent profile, reads the briefing at session start, and adds a skill Claude loads when someone asks which MCP servers they have, why one is failing, what breaks if one goes, or what to set up next. The gate is a second plugin, `ambit-gate@ambit`, installed on purpose. A test holds both plugins to the package version and to verbs the CLI has.

@@ -1,8 +1,13 @@
 {
   "mcpServers": {
     "ambit": {
-      "command": "ambit",
-      "args": ["mcp", "--profile=agent"]
+      "command": "npx",
+      "args": [
+        "-y",
+        "ambit-cli",
+        "mcp",
+        "--profile=agent"
+      ]
     }
   }
 }
