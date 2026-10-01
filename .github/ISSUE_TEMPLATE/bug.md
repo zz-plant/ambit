@@ -22,7 +22,7 @@ $
 - Which version: `brew list --versions ambit` for Homebrew, `git rev-parse --short HEAD` in a checkout:
 - OS:
 - `node -v`:
-- Agent runtime whose config it read (OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, none):
+- Agent runtime whose config it read (OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, none):
 
 ### Your graph
 

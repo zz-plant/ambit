@@ -64,7 +64,8 @@ src/engine/seed/           What each pass actually writes
   techtree.ts              The curated tree
 src/engine/techtree.json   The curated tree itself: authored content, the same for everyone,
                            matched against a machine's capabilities by `detect` patterns
-src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex config readers
+src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code,
+                           Continue and Zed config readers: the nine besides OpenCode and Claude Code
 src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts
 ```
 
