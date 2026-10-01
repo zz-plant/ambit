@@ -264,10 +264,11 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   </span>
                 </div>
                 <div className="docs-action">
-                  <span className="docs-cmd">Click a legend key</span>
+                  <span className="docs-cmd">Key</span>
                   <span className="docs-answers">
-                    Highlights only that kind: keystones, failing checks, next steps. The counts in
-                    the header do the same. Esc clears it
+                    Beside zoom: what each mark on the map means. Press a key to highlight only that
+                    kind: keystones, failing checks, next steps. The counts in the header do the
+                    same. Esc closes the key, then clears the highlight
                   </span>
                 </div>
                 <div className="docs-action">
@@ -295,9 +296,9 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Timeline</span>
                   <span className="docs-answers">
-                    Under the map, once two observations are recorded. Drag the playhead or step it
-                    with the arrow keys, and the map redraws as that observation left it, with
-                    today's names and edges. Lenses and simulations wait for now
+                    From History beside zoom, once two observations are recorded. Drag the playhead
+                    or step it with the arrow keys, and the map redraws as that observation left it,
+                    with today's names and edges. Lenses and simulations wait for now
                   </span>
                 </div>
                 <div className="docs-action">

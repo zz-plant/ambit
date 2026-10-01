@@ -442,7 +442,9 @@ export default function CivTree({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const headlinePad = headlineReserve(headlineBox?.height ?? null);
+  // Measured from the controls' row, 12px down, so a headline that moved under
+  // the controls on a narrow screen pushes the canvas by that much more.
+  const headlinePad = headlineReserve(headlineBox ? headlineBox.bottom - 12 : null);
   useEffect(() => {
     if (headlineBox) onHeadline?.(headlineBox.bottom);
   }, [headlineBox, onHeadline]);
@@ -612,10 +614,10 @@ export default function CivTree({
         : 0,
     [simulationMode, items, simulatedCascadeIds, simulatedWeakenedIds]
   );
-  const [keyToggled, setKeyToggled] = useState<boolean | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new lens is what resets the choice
-  useEffect(() => setKeyToggled(null), [activeLens]);
+  const keyToggled = useAmbitStore(s => s.keyToggled);
+  const setKeyToggled = useAmbitStore(s => s.setKeyToggled);
   const keyOpen = keyToggled ?? activeLens !== 'default';
+  const closeKey = React.useCallback(() => setKeyToggled(false), [setKeyToggled]);
   const history = useAmbitStore(s => s.history);
   const historyOpen = useAmbitStore(s => s.historyOpen);
   const setHistoryOpen = useAmbitStore(s => s.setHistoryOpen);
@@ -825,6 +827,7 @@ export default function CivTree({
               type="button"
               className={`civ-zoom-btn${keyOpen ? ' is-on' : ''}`}
               aria-expanded={keyOpen}
+              data-key-toggle
               onClick={() => setKeyToggled(!keyOpen)}
               title="What each mark on the map means"
             >
@@ -873,6 +876,7 @@ export default function CivTree({
               onSpotlight={setSpotlight}
               concepts={LEGEND_CONCEPTS}
               hazard={hazard}
+              onClose={closeKey}
             />
           )
         }

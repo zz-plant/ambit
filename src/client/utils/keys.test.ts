@@ -26,6 +26,7 @@ const NOTHING: EscapeState = {
   proposals: false,
   finder: false,
   onMap: true,
+  key: false,
   spotlight: false,
   simulation: false,
   selection: false,
@@ -49,6 +50,17 @@ test('on the map each press peels one layer: the spotlight, the simulation, then
     'selection',
   ]);
   expect(presses({ selection: true, simulation: true })).toEqual(['simulation', 'selection']);
+});
+
+test('the key closes before the highlight it set, and the map keeps both until asked', () => {
+  // Pressing a key lights its nodes with the key still open; the first press
+  // takes the key away, the second the highlight.
+  expect(presses({ key: true, spotlight: true, selection: true })).toEqual([
+    'key',
+    'spotlight',
+    'selection',
+  ]);
+  expect(presses({ onMap: false, key: true, selection: true })).toEqual(['selection']);
 });
 
 test('an era ladder and a spotlight take two presses, not one', () => {

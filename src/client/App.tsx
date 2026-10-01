@@ -180,6 +180,7 @@ export default function App() {
         proposals: s.showApprovalModal,
         finder: finderOpen,
         onMap: view === 'tree',
+        key: s.keyToggled ?? s.activeLens !== 'default',
         spotlight: s.spotlight !== null,
         simulation: s.simulationMode !== 'none',
         selection: s.selectedItem !== null || s.selectedEra !== null,
@@ -187,6 +188,7 @@ export default function App() {
       if (layer === 'docs') closeDocs();
       else if (layer === 'proposals') setShowApprovalModal(false);
       else if (layer === 'finder') setFinderOpen(false);
+      else if (layer === 'key') s.setKeyToggled(false);
       else if (layer === 'spotlight') setSpotlight(null);
       else if (layer === 'simulation') clearSimulation();
       else if (layer === 'selection') selectItem(null);

@@ -12,6 +12,7 @@ export type EscapeLayer =
   | 'docs'
   | 'proposals'
   | 'finder'
+  | 'key'
   | 'spotlight'
   | 'simulation'
   | 'selection';
@@ -23,6 +24,8 @@ export interface EscapeState {
   finder: boolean;
   /** Whether the map is the view on screen: its spotlight and simulation are drawn nowhere else. */
   onMap: boolean;
+  /** The map's key, open over the canvas. It closes before the highlight it may have set. */
+  key?: boolean;
   spotlight: boolean;
   simulation: boolean;
   /** A node, or an era's ladder, open in the detail panel. */
@@ -45,6 +48,7 @@ export function escapeLayer(s: EscapeState): EscapeLayer | null {
   if (s.docs) return 'docs';
   if (s.proposals) return 'proposals';
   if (s.finder) return 'finder';
+  if (s.onMap && s.key) return 'key';
   if (s.onMap && s.spotlight) return 'spotlight';
   if (s.onMap && s.simulation) return 'simulation';
   if (s.selection) return 'selection';

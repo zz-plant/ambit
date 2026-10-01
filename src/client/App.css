@@ -1960,19 +1960,24 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-secondary);
 }
 
-/* Whichever line comes first shares a row with the zoom controls on the left
-   and the lens switch on the right, and wraps before it runs under either.
-   The lens switch is the wider of the two, up to 231px and 12px in from the
-   edge, and the headline's box runs from 20px in to 12px in, so a centred
-   line 474px narrower than the box keeps 6px clear of it. A phone puts the
-   headline at the bottom edge, where it shares no row. */
+/* Whichever line comes first shares a row with the zoom controls and the
+   map's tools on the left and the lens switch on the right, and wraps before
+   it runs under either. The left group is the wider now, up to about 340px
+   with Key, History and Image beside zoom, so a centred line 716px narrower
+   than the box keeps clear of both. Below 1180px that leaves too little, and
+   the headline takes the row under the controls; a phone puts it at the
+   bottom edge, where it shares no row. */
 .civ-finding-wrap > :first-child {
-  max-width: max(280px, calc(100% - 420px));
+  max-width: calc(100% - 716px);
 }
 
-@media (min-width: 721px) {
+@media (min-width: 769px) and (max-width: 1180px) {
+  .civ-finding-wrap {
+    top: 52px;
+  }
+
   .civ-finding-wrap > :first-child {
-    max-width: max(240px, calc(100% - 474px));
+    max-width: calc(100% - 40px);
   }
 }
 
@@ -4386,6 +4391,25 @@ code, pre, .code, .sp-cli-cmd {
 @media (min-width: 769px) and (max-width: 1420px) {
   .app-deck-btn .app-deck-btn-label,
   .app-deck-btn .app-deck-key {
+    display: none;
+  }
+}
+
+/* Between a phone and about 1100px the pill wrapped to two lines inside a
+   52px bar. It keeps its words, since a count without its noun says nothing,
+   and keeps the counts a person acts on: verified, failing, the next step.
+   Unproven and blocked are the rest of the map, and each is still a key in
+   the map's Key. */
+@media (min-width: 769px) and (max-width: 1100px) {
+  .app-status-pill .app-status-seg--unproven,
+  .app-status-pill .app-status-seg--blocked {
+    display: none;
+  }
+}
+
+/* Narrower still, the bar beside the counts goes: it draws the same numbers. */
+@media (min-width: 769px) and (max-width: 860px) {
+  .app-status-pill .fig-reach {
     display: none;
   }
 }

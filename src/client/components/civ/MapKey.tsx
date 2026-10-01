@@ -7,6 +7,7 @@
  * click away and never in the way. A key that lights nodes is a button; the
  * rest are rows.
  */
+import { useEffect, useRef } from 'react';
 import { termTitle } from '../Term';
 import { KeySwatch, type LegendKey } from './marks';
 
@@ -20,11 +21,32 @@ interface MapKeyProps {
   /** The glossary entry each key is a picture of. */
   concepts: Record<string, string>;
   hazard: string;
+  /** A press anywhere else closes it, except on the button that toggles it. */
+  onClose?: () => void;
 }
 
-export function MapKey({ keys, spotlight, lights, onSpotlight, concepts, hazard }: MapKeyProps) {
+export function MapKey({
+  keys,
+  spotlight,
+  lights,
+  onSpotlight,
+  concepts,
+  hazard,
+  onClose,
+}: MapKeyProps) {
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!onClose) return;
+    const away = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (box.current?.contains(target) || target?.closest?.('[data-key-toggle]')) return;
+      onClose();
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [onClose]);
   return (
-    <section className="civ-key" aria-label="Key">
+    <section className="civ-key" aria-label="Key" ref={box}>
       <ul className="civ-key-list">
         {keys.map(entry => {
           if (entry.kind === 'label') {

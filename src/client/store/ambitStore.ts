@@ -253,6 +253,13 @@ interface StoreState {
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
   setSpotlight: (group: string | null) => void;
+  /**
+   * Whether the map's key was opened or closed by hand; null until it is. A
+   * lens opens the key by itself, so a new lens resets this, and Escape reads
+   * it to close the key before it clears a highlight.
+   */
+  keyToggled: boolean | null;
+  setKeyToggled: (open: boolean | null) => void;
   setCollapsed: (on: boolean) => void;
   setCollapseDepth: (depth: FocusDepth) => void;
   setCollapseDirection: (direction: FocusDirection) => void;
@@ -376,8 +383,14 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   // a lens on now: chosen while the map is scrubbed, it brings the map back.
   // The standard lens is what a past map is drawn in, and keeps the playhead.
   setActiveLens: lens =>
-    set(lens === 'default' ? { activeLens: lens } : { activeLens: lens, historyAt: null }),
+    set(
+      lens === 'default'
+        ? { activeLens: lens, keyToggled: null }
+        : { activeLens: lens, historyAt: null, keyToggled: null }
+    ),
   setSpotlight: group => set({ spotlight: group }),
+  keyToggled: null,
+  setKeyToggled: open => set({ keyToggled: open }),
   // A simulation walks the live graph, and an outage needs providers, which no
   // snapshot stores, so scrubbing into the past ends one. Each simulation below
   // returns the map to now for the same reason, whichever surface started it.
