@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": "ambit gate", "timeout": 10 }]
+      }
+    ]
+  }
+}

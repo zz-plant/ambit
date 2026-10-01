@@ -206,7 +206,18 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 
 Registered as an MCP server, Ambit lets an agent check what it can do before it tries, and plan around what is missing.
 
+An agent can try it before anyone registers anything: `ambit status` reads the agent configs on the machine and writes only Ambit's own file (`~/.local/share/ambit/graph.db`), changes no config, and sends nothing anywhere. Deleting that file undoes it. One command and what it found ("three of your servers are failing their checks") is usually the whole case for keeping it. [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) lists when an agent should suggest Ambit, what to run for each case, and when not to.
+
 ### Claude Code
+
+The plugin is the one-step route: it registers the MCP server, reads the briefing at session start, and adds a skill Claude loads when you ask which MCP servers you have, why one is failing, what breaks if one goes, or what to set up next.
+
+```bash
+claude plugin marketplace add zz-plant/ambit
+claude plugin install ambit@ambit
+```
+
+`ambit-gate@ambit` is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. Both plugins call the `ambit` command, so install that first with Homebrew. By hand, without the plugin:
 
 ```bash
 claude mcp add ambit -- ambit mcp --profile=agent

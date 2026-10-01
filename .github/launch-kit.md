@@ -87,6 +87,12 @@ Where to submit, in the order the traffic justifies. Status is one of Not submit
 | [mcp.so](https://mcp.so) | Submission form. | Not submitted | Not checked |
 | [MCP Market](https://mcpmarket.com/server/ambit) | Listed without a submission, from the repository. Claim it to edit the description and link the hosted demo. | Listed [mcpmarket.com/server/ambit](https://mcpmarket.com/server/ambit), unclaimed | 2026-10-01 |
 
+The awesome-mcp-servers line, in the list's own format, for the developer-tools category:
+
+> - [zz-plant/ambit](https://github.com/zz-plant/ambit) 📇 🏠 🍎 🐧 - Maps every agent runtime's MCP config on the machine into one local capability graph: what works, what is failing, what breaks if a server or token goes, and what to set up next. Agents ask it before acting, and a Claude Code hook can make its decisions binding.
+
+Its CONTRIBUTING.md asks automated agents to mark their pull requests in the title. An agent opening this one for a person should say so in the description instead and leave the decision to that person.
+
 Keep the table current: an entry that says "submitted" is the one thing that stops the same directory being submitted twice.
 
 ## After the first release on npm
@@ -94,3 +100,4 @@ Keep the table current: an entry that says "submitted" is the one thing that sto
 1. Replace the npm note in the README's Get started section with an `npx ambit-cli` line beside the Homebrew block. Delete CI's "Check adoption copy" step in the same commit: it greps the README for that install line and never consults the registry, so it fails after the publish exactly as it does before.
 2. Publish `server.json` to the MCP registry (above).
 3. Re-run the Show HN draft with the one-line install in it.
+4. Point the Claude Code plugin's MCP server and hooks at `npx -y ambit-cli` in `plugins/claude-code/`, so installing the plugin needs nothing else installed first.

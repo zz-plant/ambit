@@ -329,6 +329,10 @@ scripts/adapters/          Deeper runtime readers than mcp-clients.ts: claude-co
                            piped to /api/telemetry)
 plugins/ambit-telemetry.js Tool executions and permission prompts, into the work ledger
 plugins/ambit-tracker.js   Configuration changes: plain JavaScript, transcribing the engine
+plugins/claude-code/       The Claude Code plugins the root .claude-plugin/marketplace.json lists:
+                           `ambit` (MCP server, session-start briefing, a skill) and
+                           `ambit-gate` (the PreToolUse gate). Their versions follow
+                           package.json; scripts/claude-plugin.test.ts holds that
 ```
 
 ## Typechecking

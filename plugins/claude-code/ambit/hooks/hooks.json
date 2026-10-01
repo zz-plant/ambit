@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [{ "type": "command", "command": "ambit briefing", "timeout": 10 }]
+      }
+    ]
+  }
+}

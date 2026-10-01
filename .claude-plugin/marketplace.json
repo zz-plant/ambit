@@ -1,0 +1,24 @@
+{
+  "name": "ambit",
+  "owner": {
+    "name": "Kanav Jain",
+    "url": "https://github.com/zz-plant"
+  },
+  "metadata": {
+    "description": "Ambit for Claude Code: what your AI agents can do, what is failing, and what to set up next, from every agent config on the machine."
+  },
+  "plugins": [
+    {
+      "name": "ambit",
+      "source": "./plugins/claude-code/ambit",
+      "description": "Ambit's MCP server, its briefing at session start, and a skill for questions about your agent setup: which MCP servers you have, what is failing, what breaks if one goes, and what to set up next.",
+      "version": "0.5.0"
+    },
+    {
+      "name": "ambit-gate",
+      "source": "./plugins/claude-code/ambit-gate",
+      "description": "Ambit's gate on every tool call: denies what is forbidden and asks about what asks first. It never allows anything Claude Code would otherwise ask about.",
+      "version": "0.5.0"
+    }
+  ]
+}

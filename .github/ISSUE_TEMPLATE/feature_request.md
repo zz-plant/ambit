@@ -18,3 +18,7 @@ Agent config, the graph, the work ledger, something on disk Ambit does not look 
 ### What you would do differently once you had it
 
 The decision the answer changes. A number nobody acts on is a number worth not computing.
+
+### How you found Ambit
+
+Optional. A search, a directory, a post, a person, or an agent that suggested it. Ambit has no telemetry, so this is the only way to learn which of those works.

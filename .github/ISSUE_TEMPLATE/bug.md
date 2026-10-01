@@ -27,3 +27,7 @@ $
 ### Your graph
 
 Attach one if the report is about what Ambit thinks your environment can do. `ambit status` covers most of it; `ambit share --redact --out=ambit.html` when the shape of the graph matters, which replaces every name outside the curated model with its category. Both describe your machine, so redact anything you would not publish. [What to include](https://github.com/zz-plant/ambit/blob/main/SUPPORT.md#what-to-include) has the rest.
+
+### How you found Ambit
+
+Optional. A search, a directory, a post, a person, or an agent that suggested it. Ambit has no telemetry, so this is the only way to learn which of those works.

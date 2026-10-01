@@ -6,6 +6,12 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.5.0...main)
 
+### What an agent needs to suggest it
+
+An agent suggests a tool it can see at the moment it would help, can install itself, and can say is safe. Ambit now ships as a Claude Code marketplace in its own repository: `claude plugin marketplace add zz-plant/ambit`, then `claude plugin install ambit@ambit`, which registers the MCP server with the agent profile, reads the briefing at session start, and adds a skill Claude loads when someone asks which MCP servers they have, why one is failing, what breaks if one goes, or what to set up next. The gate is a second plugin, `ambit-gate@ambit`, installed on purpose. A test holds both plugins to the package version and to verbs the CLI has.
+
+`llms.txt` says when to suggest Ambit as a table of situations, the command for each, and what it shows; what it touches, said before it runs (the agent configs read, one local file written, nothing sent, deleting that file undoes it); and when not to suggest it. The README's "Connect it to your agent" opens with the same safe first command. The issue templates ask, optionally, how someone found Ambit, since there is no telemetry to say. The home page's structured data no longer claims Windows, where Ambit does not read the configs yet.
+
 ### The gate is binding in Claude Code, and a proposal says what it is for
 
 Ambit's decisions bound only where Ambit itself acts, `ambit apply` and the control plane, and a runtime had to choose to ask `ambit_can`. `ambit gate` is a Claude Code PreToolUse hook that puts the question on every tool call. It finds the capabilities a call exercises with the same matching that attributes failures and fills the unmapped report, and answers by one rule: it can only narrow. Forbidden or over a budget is a deny; asking first, no grant yet, or a failing check is put to the person; allowed, or a tool the graph cannot name, is no answer, so Claude Code's own permissions decide. It never answers allow, prints nothing on any error, and adds about a fifth of a second to a call. `ambit gate` in a terminal prints the settings entry, and the README's Claude Code section carries it beside the briefing hook. A refusal now carries its reason as a code (`forbidden`, `ungranted`, `failing`, `budget`, `unknown`), which is how the gate tells a refusal from a question.
