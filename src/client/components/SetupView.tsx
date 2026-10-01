@@ -1,4 +1,5 @@
 import { ActorMark } from './ActorMark';
+import { Journey } from './Journey';
 import { useEffect, useMemo, useState } from 'react';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
@@ -403,6 +404,7 @@ export function SetupView({ onShow }: SetupViewProps) {
         )}
         {tab === 'entries' && (
           <>
+            {placed && <Journey />}
             <div className="setup-controls">
               <div className="tp-search-wrap">
                 <input

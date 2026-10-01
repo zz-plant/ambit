@@ -220,6 +220,8 @@ src/client/                React frontend
                            it provides; repo drift, infrastructure (with what an agent may do on
                            each machine), the agent's briefing and what was used but is on no
                            node of the map as its other tabs
+    Journey.tsx            My Setup's opening readout: the loadout's seven legs from A to B, each
+                           read from the graph and the ledger, with the one command that moves it
     AuditView.tsx          The Audit view: the trail as one stream, newest first, with a query bar
     ActorMark.tsx          Who acted: a shape for the kind (person, agent, machine, Ambit) and a
                            monogram; drawn only for an id whose prefix says what it is
@@ -280,6 +282,7 @@ src/client/                React frontend
     configSwitch.ts        Whether a row may offer a switch, and the flip it writes
     palette.ts             The finder's actions and how a key chooses one
     auditQuery.ts          The Audit query bar: actor:, action:, target: and free words
+    journey.ts             The seven legs as data: what each says, its state, and its command
     actors.ts              What an actor id names: its kind, its monogram, how it is read aloud
     budgetBar.ts           Where a budget's fill, ceiling and forecast tick sit on its bar
     needs.ts               What a capability needs and whether each need is in place

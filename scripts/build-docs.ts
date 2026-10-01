@@ -77,6 +77,14 @@ export const PAGES: Page[] = [
     card: 'What it reads, and what never leaves your machine',
   },
   {
+    src: 'docs/loadout.md',
+    slug: 'loadout',
+    title: 'Your loadout, from A to B: what Ambit makes possible, leg by leg',
+    description:
+      'One person, their agents and their machines, from a pile of configs to work done without them: seven legs, the command for each, and what the demo shows.',
+    card: 'Step into your loadout',
+  },
+  {
     src: 'docs/ideas.md',
     slug: 'ideas',
     title: 'The ideas behind Ambit: what is new, and where it comes from',

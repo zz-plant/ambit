@@ -136,6 +136,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>
             Time &amp; cost
           </button>
+          <a href={`${DOCS}loadout/`}>Your loadout, from A to B</a>
           <a href={`${DOCS}guide/`}>Guide</a>
           <a href={`${DOCS}faq/`}>What it reads, and what leaves your machine</a>
           <a href="https://github.com/zz-plant/ambit" rel="noopener">

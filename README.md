@@ -31,6 +31,22 @@ Anyone running AI agents who wants them to do more. A small setup, one runtime a
 
 The demo walks a sample setup in five steps: the next step worth taking and what it would open, the outage that shows what that reach rests on, a check that was already failing, the approval every change waits for, and then your own config, pasted into the tab and mapped there with nothing uploaded.
 
+## From A to B
+
+Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed.
+
+Think of it as an Eva: you and everything you have connected are one body, its sync is how much of it is proven to work, its umbilical is what each reach rests on, and its restraints come off one at a time as control is shown and lock again when it slips. Ambit is how you step in and see all of that. The way from A to B runs through seven legs:
+
+1. **See where it stands**: every runtime's config in one map, and which pieces pass their checks.
+2. **Pick the next step**: ranked by what has blocked work and how much it opens.
+3. **Add it safely**: a proposal you sign, applied with an undo, proven by a check.
+4. **Hand over trust gradually**: autonomy per action and per target, widening when the evidence meets a bar you set and narrowing on one failing check. Without this, the only choices are approving every call or none.
+5. **Keep it standing**: what is failing, and what stops if a piece goes.
+6. **Know whether it paid**: the time you spent stepping in, before and after.
+7. **Let the agent ask for what it lacks**: it records what blocked it and drafts the step that closes it.
+
+My Setup opens on a readout of these seven legs for your own loadout. [Your loadout, from A to B](./docs/loadout.md) walks them with the demo's numbers.
+
 ## What Ambit is
 
 An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file. What they add up to is written down nowhere, and so is where the boundary sits and how to move it.

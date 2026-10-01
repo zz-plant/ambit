@@ -6533,3 +6533,140 @@ code, pre, .code, .sp-cli-cmd {
   display: inline-flex;
   flex-shrink: 0;
 }
+
+/* ─── THE LOADOUT, LEG BY LEG ───
+   Seven rows above My Setup's list: what the pieces add up to on the way
+   from A to B, one move per leg. A leg under way is quiet, the next one is
+   the accent, and one nothing has recorded says so in muted type. */
+.journey {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.journey-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.journey-head h3 {
+  margin: 0;
+  font-size: var(--fs-base);
+  font-weight: 600;
+}
+
+.journey-head a {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+}
+
+.journey-sub {
+  margin: 4px 0 10px;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+
+.journey-legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.journey-leg {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.journey-n {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+
+.journey-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.journey-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.journey-state {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.journey-leg.is-done .journey-state {
+  color: var(--ok);
+}
+
+.journey-leg.is-open .journey-state,
+.journey-leg.is-open .journey-n {
+  color: var(--accent);
+}
+
+.journey-said {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.journey-leg.is-unrecorded .journey-said {
+  color: var(--text-muted);
+}
+
+.journey-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 280px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.journey-cmd code {
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.journey-cmd:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+  .journey-leg {
+    grid-template-columns: 22px 1fr;
+  }
+
+  .journey-cmd {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
