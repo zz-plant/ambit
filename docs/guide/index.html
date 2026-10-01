@@ -49,7 +49,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <a href="https://github.com/zz-plant/ambit/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-informational?style=flat-square" alt="License: MIT"></a></p>
 <p><a href="https://zz-plant.github.io/ambit/?demo=1"><strong>Try the live demo</strong></a> · <a href="#get-started">Get started</a> · <a href="#connect-it-to-your-agent">Connect it to your agent</a> · <a href="/ambit/docs/faq/">FAQ</a> · <a href="https://zz-plant.github.io/ambit/docs/">Docs</a></p>
 <br><img src="/ambit/docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Embeddings, a next step, is selected and simulating it lights the four capabilities it would make reachable in green; then Shell Execution is switched off, what depends on it turns red, and nine working capabilities would stop; a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920"><p><sub>One setup, mapped. Pick a next step and Ambit shows what it would open: four more capabilities. Pick one you rely on and switch it off, and it counts the nine working things that would stop with it. Then which tools interrupt you most, and a change waiting on your approval.</sub></p>
-<p><code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and install nothing.</p>
+<p><code>npx ambit-cli</code>, or <code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and install nothing.</p>
 </div><hr>
 <h2 id="who-it-is-for"><a class="anchor" href="#who-it-is-for" aria-hidden="true" tabindex="-1">#</a>Who it is for</h2>
 <p>Anyone running AI agents who wants them to do more. A small setup, one runtime and a few MCP servers, has the most ground ahead of it, and Ambit names the step that unlocks the most and the combos a single missing piece would give you. A large one, with several runtimes, dozens of servers and a second machine, gets the other half as well: what is configured but failing, and what would stop together if one shared piece went.</p>
@@ -176,7 +176,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 </tr>
 <tr>
 <td align="left"><strong>On your machine</strong></td>
-<td align="left"><code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code> reads your real agent configs and prints where you stand. This is the CLI and the MCP server; the map needs a checkout.</td>
+<td align="left"><code>npx ambit-cli</code> (Node 22.18 or newer), or <code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, reads your real agent configs and prints where you stand. This is the CLI and the MCP server; the map needs a checkout. <code>npm install -g ambit-cli</code> puts <code>ambit</code> on your path.</td>
 </tr>
 <tr>
 <td align="left"><strong>With the map</strong></td>
@@ -191,11 +191,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left">Register Ambit over MCP and the agent can ask what it is able to do before it tries. <a href="#connect-it-to-your-agent">Connect it to your agent</a> has the snippet.</td>
 </tr>
 </tbody></table>
-<p>Homebrew installs the tagged release on macOS or Linux. <code>./bootstrap.sh</code> discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue and Zed, and the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>, builds a local SQLite graph, links <code>ambit</code> into <code>~/.local/bin</code> (or prints the <code>ln -s</code> line when that is not on your PATH), and ends on <code>ambit status</code>. <code>--dry-run</code> shows what it would do first.</p>
-<blockquote>
-<p><strong>Note.</strong>
-The npm package is built and ready but not yet published, so there is no <code>npx</code> path yet.</p>
-</blockquote>
+<p>npm and Homebrew install the tagged release, on macOS or Linux. <code>./bootstrap.sh</code> discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue and Zed, and the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>, builds a local SQLite graph, links <code>ambit</code> into <code>~/.local/bin</code> (or prints the <code>ln -s</code> line when that is not on your PATH), and ends on <code>ambit status</code>. <code>--dry-run</code> shows what it would do first.</p>
 <div align="center">
 <img src="/ambit/docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
 <br><sub>My Setup is the list the map is drawn from: every server, agent, and model found on the machine, whether it is on, what its check said, and which capabilities on the map it provides</sub>
@@ -283,7 +279,7 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 <pre><code class="language-bash">claude plugin marketplace add zz-plant/ambit
 claude plugin install ambit@ambit
 </code></pre>
-<p><code>ambit-gate@ambit</code> is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. Both plugins call the <code>ambit</code> command, so install that first with Homebrew. By hand, without the plugin:</p>
+<p><code>ambit-gate@ambit</code> is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. The first plugin runs Ambit through <code>npx</code> and needs nothing else installed; the gate runs on every call, so it calls an installed <code>ambit</code> (<code>npm install -g ambit-cli</code>) to stay fast. By hand, without the plugin:</p>
 <pre><code class="language-bash">claude mcp add ambit -- ambit mcp --profile=agent
 </code></pre>
 <p><code>--profile=agent</code> lists the ten tools an agent that asks before it acts uses, in 4.4KB of its context. Leave the flag off for all sixty, about 19.5KB; the other fifty answer by name either way. <a href="/ambit/docs/deep-dive/#the-full-mcp-surface">The deep dive</a> names every tool and <a href="/ambit/docs/deep-dive/#how-a-call-is-answered">says how a call is answered</a>.</p>
