@@ -218,6 +218,19 @@ const CLIENTS = [
  */
 export const MCP_CLIENTS = CLIENTS.map(({ runtime, label }) => ({ runtime, label }));
 
+/**
+ * Where discovery looks for each client, as a person would check by hand: the
+ * override when one is set, else the first place the client keeps its config.
+ * A first run that finds nothing lists these, so "no config" names where it
+ * looked instead of naming one runtime.
+ */
+export function clientLocations(home = process.env.HOME || '/'): { label: string; path: string }[] {
+  return CLIENTS.map(client => ({
+    label: client.label,
+    path: process.env[client.env] || client.paths(home)[0],
+  }));
+}
+
 /** Read MCP-only clients into the same config shape used by the engine seeder. */
 export function discoverMcpClients(home = process.env.HOME || '/'): McpClientSeed[] {
   const found: McpClientSeed[] = [];

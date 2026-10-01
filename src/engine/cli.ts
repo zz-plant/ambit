@@ -3,7 +3,7 @@ import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
 import { emit, emitRaw, emitText, raiseExitCode, setSink, terminalPalette } from './cli/output.ts';
 import { HELP, HELP_SHORT, groupHelp } from './cli/help.ts';
-import { explain, renderStatus, statusReport } from './cli/reports.ts';
+import { briefReport, explain, renderBrief, renderStatus, statusReport } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
 import { GROUPS, resolveCommand } from './cli/groups.ts';
 import { shareSnapshot } from './share.ts';
@@ -160,7 +160,10 @@ async function runCommand(
     }
     case 'status':
       // Drawn by its own renderer for a person; the sink and --json get the data.
-      emit(statusReport(db), report => renderStatus(report, terminalPalette()));
+      // `--brief` is what bare `ambit` shows: the next steps first, the rest here.
+      if (flags.has('--brief'))
+        emit(briefReport(db), report => renderBrief(report, terminalPalette()));
+      else emit(statusReport(db), report => renderStatus(report, terminalPalette()));
       break;
     case 'graph': {
       // The graph is one thing with several views; none of them is a headline.
@@ -803,7 +806,7 @@ async function main() {
       if (!json) {
         const paint = terminalPalette();
         console.log(
-          `${paint.grey}First run — reading your agent config and building the graph…${paint.reset}`
+          `${paint.grey}First run: reading the agent configs on this machine${paint.reset}`
         );
       }
       runSeed(db, mappingOverride, json);

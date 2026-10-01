@@ -7,6 +7,9 @@
  * lists. Both read several engine modules and shape one answer, which is why
  * they live beside the CLI rather than in the engine. `renderStatus` is how
  * that answer looks to a person; `--json` and the tests get the data.
+ * `briefReport` and `renderBrief` are the short screen bare `ambit` shows:
+ * what was read, what one more step opens, and what to check before leaning
+ * on it, with the rest of `status` one command away.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -18,6 +21,7 @@ import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
+import { seedSources } from './seed.ts';
 import { CHECK_RUN_SQL, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
@@ -386,6 +390,128 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   ];
 }
 
+/**
+ * The short screen: where you are, what one more step would open, and what to
+ * check before leaning on it.
+ *
+ * `status` is the whole report, and a first run that printed it opened on a
+ * count of what was unproven and sixty lines of single providers and
+ * bottlenecks, ending on a suggestion to run checks. That is the guardrail
+ * shown before the purpose. This leads with the next steps `ambit next` ranks,
+ * keeps a failing check and the unproven count as the two things worth
+ * knowing first, and leaves the rest of the fragility detail to `status`.
+ */
+function briefReport(db: any) {
+  const sources = seedSources(db);
+  const counts = graphCounts(db);
+  const checkable = checkableNames(db);
+  const ev = evidenceReport(db, checkable);
+  const failing = db
+    .prepare(
+      `SELECT id, name FROM capabilities
+       WHERE kind != 'action' AND ${FAILING_SQL} ORDER BY id`
+    )
+    .all() as { id: string; name: string }[];
+  // The ranking is the screen's purpose but never the reason it fails to print.
+  let next: { capability: string; cost: string; why: string; command: string }[] = [];
+  try {
+    next = ((nextSteps(db, 2) as any).next ?? []).map((n: any) => ({
+      capability: n.capability,
+      cost: n.cost,
+      why: n.why,
+      command: n.plan,
+    }));
+  } catch {
+    /* no ranking, no section */
+  }
+  return {
+    // Null for a graph seeded before sources were recorded; [] when nothing
+    // of the person's was found, which is an answer and changes the screen.
+    read: sources,
+    reached: counts.reached,
+    total: counts.total,
+    proven: ev.proven,
+    unproven: ev.unproven,
+    failing: failing.map(f => ({
+      name: f.name,
+      command: `ambit verify ${shellQuote(f.id.replace(/^combo:/, ''))}`,
+    })),
+    next,
+  };
+}
+
+type BriefReport = ReturnType<typeof briefReport>;
+
+/** "Claude Code (3 servers) and Cursor (2 servers)". */
+function readFrom(read: { label: string; servers: string[] }[]): string {
+  const parts = read.map(
+    r => `${r.label} (${r.servers.length} ${r.servers.length === 1 ? 'server' : 'servers'})`
+  );
+  return parts.length > 1
+    ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+    : parts[0];
+}
+
+/** The short screen as lines; pure, like `renderStatus`. */
+function renderBrief(report: BriefReport, c: Palette = C): string[] {
+  const heading = (text: string) => `${c.bold}${text}${c.reset}`;
+  // No leading blank: the first run's seed report ends on one already.
+  const lines = [heading('Where you are')];
+  const footer = [
+    '',
+    `${GUTTER}${c.bold}ambit status${c.reset}  ${c.grey}the full report: single providers, bottlenecks, the frontier${c.reset}`,
+    `${GUTTER}${c.bold}ambit share${c.reset}   ${c.grey}the map as one HTML file, for any browser${c.reset}`,
+    `${GUTTER}${c.bold}ambit --help${c.reset}  ${c.grey}every command, and ambit help <term> for a word${c.reset}`,
+    '',
+  ];
+
+  if (report.read && report.read.length === 0) {
+    // Counts here would describe the curated model and read as the person's.
+    lines.push(
+      `${GUTTER}Nothing of yours is in the graph yet.`,
+      `${GUTTER}${c.grey}Add an agent config and run ambit seed, which lists where it looks.${c.reset}`
+    );
+    return [...lines, ...footer];
+  }
+
+  if (report.read) lines.push(`${GUTTER}${c.grey}Read from ${readFrom(report.read)}${c.reset}`);
+  lines.push(
+    `${GUTTER}${report.reached} of ${report.total} capabilities reached · ${report.proven} proven`
+  );
+
+  if (report.next.length) {
+    lines.push('', heading('What one more step opens'));
+    for (const n of report.next) {
+      const cost = n.cost === 'unknown' ? '' : ` ${c.grey}· about ${n.cost}${c.reset}`;
+      lines.push(
+        `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${n.capability}${c.reset}${cost}`,
+        `${GUTTER}${n.why}`,
+        `${GUTTER}${c.grey}${n.command}${c.reset}`
+      );
+    }
+  }
+
+  if (report.failing.length || report.unproven) {
+    lines.push('', heading('Before you lean on it'));
+    if (report.failing.length) {
+      const shown = report.failing
+        .slice(0, 3)
+        .map(f => f.name)
+        .join(', ');
+      const more = report.failing.length > 3 ? ` and ${report.failing.length - 3} more` : '';
+      lines.push(
+        `  ${c.yellow}!${c.reset} ${report.failing.length} configured and failing a check: ${shown}${more} ${c.grey}· ${report.failing[0].command}${c.reset}`
+      );
+    }
+    if (report.unproven) {
+      lines.push(
+        `${GUTTER}${report.unproven} configured and not yet proven ${c.grey}· ambit verify runs their checks${c.reset}`
+      );
+    }
+  }
+  return [...lines, ...footer];
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -434,11 +560,14 @@ function explain(wanted: string): void {
 
 export {
   ago,
+  briefReport,
+  renderBrief,
   evidenceReport,
   statusReport,
   renderStatus,
   worries,
   explain,
+  type BriefReport,
   type NextMove,
   type StatusReport,
 };

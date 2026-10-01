@@ -157,7 +157,7 @@ src/engine/cli.ts          Command dispatch; the five groups resolve to flat ver
 src/engine/cli/            groups.ts (the five nouns) · help.ts · seed.ts
                            output.ts (the colour gate, and the generic formatter, which returns
                            lines) · reports.ts (`renderStatus`, and the move `ambit status`
-                           ends on)
+                           ends on; `renderBrief`, the short screen bare `ambit` shows)
 src/engine/testing/        The shared test harness: a throwaway graph, driven in-process;
                            terminal.ts runs a function as if on a terminal, or piped
 ```

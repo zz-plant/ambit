@@ -11,7 +11,7 @@ import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
 import type { Migratable } from './migrate.ts';
 import { PROVISION_EDGES } from './ontology.ts';
-import { loadTechTree } from './paths.ts';
+import { loadTechTree, telemetryBridgeInstall } from './paths.ts';
 import type {
   CapabilityRow,
   CapabilityUseRow,
@@ -619,7 +619,7 @@ function unmappedUse(db: Db, days = 30): UnmappedResponse {
       days,
       seen: 0,
       unmapped: [],
-      note: `No tool use recorded in the last ${days} days. plugins/ambit-telemetry.js records it; copy it into ~/.config/opencode/plugins/.`,
+      note: `No tool use recorded in the last ${days} days. In OpenCode the telemetry bridge records it: ${telemetryBridgeInstall()}`,
     };
   }
 

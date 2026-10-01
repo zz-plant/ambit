@@ -15,6 +15,7 @@
  */
 import { shellQuote } from '../shared/shell.ts';
 import type { Db } from './db.ts';
+import { telemetryBridgeInstall } from './paths.ts';
 import { usable } from './assurance.ts';
 import { deficits } from './planning.ts';
 import { catalogReport } from './catalog.ts';
@@ -218,7 +219,7 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
     }),
     note: observed
       ? undefined
-      : 'Install the telemetry bridge and this ranks by what actually blocks work instead — see plugins/ambit-telemetry.js.',
+      : `Install the telemetry bridge and this ranks by what actually blocks work instead: ${telemetryBridgeInstall()}`,
   };
 }
 

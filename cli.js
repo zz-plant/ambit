@@ -27,8 +27,7 @@ const ROOT = __dirname;
 // cannot load the engine's TypeScript, so the test is repeated here and has to
 // match. A pipe gets the same words from both with nothing painted on them.
 const painted = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
-const B = painted ? '\x1b[1m' : '',
-  R = painted ? '\x1b[0m' : '',
+const R = painted ? '\x1b[0m' : '',
   D = painted ? '\x1b[90m' : '';
 
 // A git checkout runs the TypeScript sources directly; an npm or Homebrew
@@ -82,12 +81,11 @@ if (cmd === '--help' || cmd === 'help') {
 if (!cmd) {
   const run = (c, args = []) =>
     spawnSync('node', [...NODE_FLAGS, engineEntry, c, ...args], { stdio: 'inherit' });
-  console.log(`\n${B}Where you are${R}`);
-  run('status');
-  console.log(
-    `\n${D}ambit --help for every command · ambit help <term> for what the terms mean${R}\n`
-  );
-  process.exit(0);
+  // The short screen; `ambit status` is the whole report, and the screen ends
+  // by saying so.
+  console.log('');
+  const shown = run('status', ['--brief']);
+  process.exit(shown.status ?? 0);
 }
 
 if (cmd === 'web') {
@@ -105,6 +103,9 @@ if (cmd === 'web') {
     );
     console.log(
       `    git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web\n`
+    );
+    console.log(
+      `  From this install, ambit share writes your map as one HTML file any browser opens.`
     );
     console.log(
       `  ${D}Or try the hosted demo with example data: https://zz-plant.github.io/ambit/?demo=1${R}\n`

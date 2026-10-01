@@ -123,7 +123,7 @@ Semantic search finds tools that sound relevant and cannot tell a working one fr
 | Way in | What it gives you |
 | :--- | :--- |
 | **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code or OpenCode, and it is mapped in the tab, uploading nothing. |
-| **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs and prints where you stand. This is the CLI and the MCP server; the map needs a checkout. `npm install -g ambit-cli` puts `ambit` on your path. |
+| **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs, names what it found, and shows what one more step would open. This is the CLI and the MCP server; the live map needs a checkout, and `ambit share` writes it as one HTML file from any install. `npm install -g ambit-cli` puts `ambit` on your path. |
 | **With the map** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the map the pictures on this page show. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |

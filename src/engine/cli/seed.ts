@@ -4,14 +4,62 @@
  * One routine for `ambit seed` and for the first-run path, so the two cannot
  * drift on what they read. See `runSeed` for the sources and their order.
  */
-import { existsSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claudeCodeSeedInput, readClaudeCode } from '../claude-code.ts';
 import { seedFromConfig } from '../discovery.ts';
-import { discoverMcpClients } from '../mcp-clients.ts';
+import { clientLocations, discoverMcpClients } from '../mcp-clients.ts';
 import { configDefault } from '../paths.ts';
+import { resolveDbPath } from '../../shared/db-path.ts';
+import { mcpEntries, parseJsonc } from '../../shared/opencode.ts';
 import { terminalPalette } from './output.ts';
+
+/** What one seed read: the runtime as a person knows it, and the servers it listed. */
+export interface SeedSource {
+  label: string;
+  servers: string[];
+}
+
+/** The `schema_meta` key the sources of the last seed are kept under. */
+export const SEED_SOURCES_KEY = 'seed-sources';
+
+/** A path as a person would type it: the home directory as `~`. */
+function tilde(path: string): string {
+  const home = process.env.HOME;
+  return home && home !== '/' && path.startsWith(home + '/') ? `~${path.slice(home.length)}` : path;
+}
+
+/** The server names an OpenCode config lists, or none when it cannot be read. */
+function opencodeServers(path: string): string[] {
+  try {
+    const { bag } = mcpEntries(parseJsonc(readFileSync(path, 'utf8')));
+    return bag ? Object.keys(bag) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The sources the last seed read, or null for a graph seeded before they were
+ * recorded. An empty list is an answer: nothing of the person's was found.
+ */
+export function seedSources(db: any): SeedSource[] | null {
+  try {
+    const row = db.prepare('SELECT value FROM schema_meta WHERE key = ?').get(SEED_SOURCES_KEY);
+    return row ? JSON.parse(row.value) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A list of names, cut at a few with the rest counted. */
+function names(list: string[], room = 5): string {
+  if (!list.length) return 'no MCP servers';
+  return list.length > room
+    ? `${list.slice(0, room).join(', ')} and ${list.length - room} more`
+    : list.join(', ');
+}
 
 /**
  * Read the agent configs and build the graph. One routine for `ambit seed` and
@@ -32,6 +80,7 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
     runtime: string;
     label: string;
     path: string;
+    servers: string[];
     mapping?: string;
     temporary?: boolean;
   }> = [];
@@ -41,6 +90,7 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
       runtime: process.env.AMBIT_RUNTIME || 'opencode',
       label: 'OpenCode',
       path: cfg,
+      servers: opencodeServers(cfg),
       mapping: mappingOverride,
     });
   }
@@ -54,6 +104,7 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
         runtime: 'claude-code',
         label: 'Claude Code',
         path: tmp,
+        servers: Object.keys(fragment.mcp),
         mapping: JSON.stringify(mapping),
         temporary: true,
       });
@@ -68,6 +119,7 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
         runtime: client.runtime,
         label: client.label,
         path: tmp,
+        servers: Object.keys(client.config.mcp),
         mapping: JSON.stringify(client.mapping),
         temporary: true,
       });
@@ -90,38 +142,54 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   if (previousRuntime === undefined) delete process.env.AMBIT_RUNTIME;
   else process.env.AMBIT_RUNTIME = previousRuntime;
 
+  const read: SeedSource[] = sources.map(({ label, servers }) => ({ label, servers }));
+  db.prepare(
+    `INSERT INTO schema_meta (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, applied_at = datetime('now')`
+  ).run(SEED_SOURCES_KEY, JSON.stringify(read));
+
   // `kind != 'action'` is what makes a row a capability, and every count shown
   // to a person has to use it. Counting the whole table here reported 69 where
   // `ambit status` reported 41 a second later, in the same run of bootstrap.
   const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE kind != 'action'").get();
-  const a = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE kind = 'action'").get();
-  const actions = a?.cnt ? ` · ${a.cnt} actions` : '';
   // Printed by `ambit seed`, bootstrap.sh and the first run alike, any of which
   // may be writing to a pipe or a log.
   const paint = terminalPalette();
+  if (sources.length) {
+    // What was read, by name: the first thing a cautious person checks is
+    // whether it found the servers they know they have.
+    const width = Math.max(...read.map(r => r.label.length));
+    for (const r of read) {
+      say(
+        `  ${paint.green}✓${paint.reset} ${r.label.padEnd(width)}  ${paint.grey}${names(r.servers)}${paint.reset}`
+      );
+    }
+  } else {
+    // Say so, and say where it looked: naming one runtime's path told a Cursor
+    // or Claude Code user that Ambit reads OpenCode alone.
+    say(`  ${paint.yellow}!${paint.reset} No agent config found. Looked for:`);
+    const looked = [
+      { label: 'OpenCode', path: cfg },
+      {
+        label: 'Claude Code',
+        path: process.env.CLAUDE_CONFIG || `${process.env.HOME || ''}/.claude.json`,
+      },
+      ...clientLocations(),
+    ];
+    const width = Math.max(...looked.map(l => l.label.length));
+    for (const l of looked) {
+      say(`      ${l.label.padEnd(width)}  ${paint.grey}${tilde(l.path)}${paint.reset}`);
+    }
+    say(
+      `    ${paint.grey}A config kept somewhere else: OPENCODE_CONFIG=/path/to/opencode.json ambit seed${paint.reset}`
+    );
+  }
+  // Where it wrote, and that nothing went anywhere else: said on every seed,
+  // since the seed is the moment a person decides whether to trust the tool.
+  const whose = sources.length ? '' : ', all from the curated model,';
   say(
-    `${paint.green}✓${paint.reset} ${c?.cnt ?? 0} capabilities${paint.grey}${actions}${paint.reset}`
+    `    ${paint.grey}${c?.cnt ?? 0} capabilities${whose} written to ${tilde(resolveDbPath())}. Nothing was sent anywhere.${paint.reset}`
   );
-  for (const source of sources) {
-    say(`${paint.grey}  Seeded from ${source.label}.${paint.reset}`);
-  }
-  if (sources.length === 0) {
-    // Say so rather than reporting a curated-model-only graph as if it had
-    // read the environment. Silence here reads as "your stack is empty".
-    say(`${paint.yellow}!${paint.reset} No agent config at ${paint.grey}${cfg}${paint.reset}`);
-    say(
-      `${paint.grey}  Seeded the capability model only — nothing of yours is in the graph yet.${paint.reset}`
-    );
-    say(
-      `${paint.grey}  Point it at your own config: OPENCODE_CONFIG=/path/to/config.json${paint.reset}`
-    );
-    // This used to send people to an "Other configurations" section of the
-    // README. There is no such section, and there was none when the line was
-    // written; AGENTS.md is where the variable is actually described.
-    say(
-      `${paint.grey}  Another format: set CONFIG_MAPPING to a JSON mapping — see AGENTS.md.${paint.reset}`
-    );
-  }
 }
 
 export { runSeed };

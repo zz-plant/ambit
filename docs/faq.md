@@ -26,16 +26,17 @@ Node 22.18 or newer, and nothing else. The engine, the CLI, the API server, and 
 
 ### Can I `npx` it?
 
-Not yet. The npm package is built and ready but not published. Until it is, use one of:
+Yes. `npx ambit-cli` reads the agent configs on this machine, builds the graph, and shows what one more step would open, with nothing installed. To keep the `ambit` command:
 
 ```bash
-brew install zz-plant/tap/ambit                                  # CLI and engine
-git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh   # everything, including the map
+npm install -g ambit-cli          # or: brew install zz-plant/tap/ambit
 ```
+
+The map runs from a git checkout (`./bootstrap.sh web`), because the CLI package does not carry the web app. From an installed copy, `ambit share` writes the map as one HTML file any browser opens.
 
 ### How do I reset the graph?
 
-Delete the database file `ambit where` names and run `./bootstrap.sh` (or `ambit seed`) again. Discovery is idempotent, and `*.db` is gitignored so a checkout never commits one.
+Delete the database file `ambit where` names and run `ambit seed` (or `./bootstrap.sh` in a checkout) again. Discovery is idempotent, and `*.db` is gitignored so a checkout never commits one.
 
 ## What it touches
 

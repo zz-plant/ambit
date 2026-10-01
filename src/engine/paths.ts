@@ -1,6 +1,7 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { shellQuote } from '../shared/shell.ts';
 
 /**
  * Where the engine's authored data lives — schema.sql, techtree.json,
@@ -9,6 +10,19 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
  * directories cannot silently change which tree it reads.
  */
 export const ENGINE_DIR = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The command that installs the OpenCode telemetry bridge from this copy.
+ *
+ * The notes that suggest the bridge used to name `plugins/ambit-telemetry.js`,
+ * a path that exists only in a checkout. An npm or Homebrew install carries
+ * the file too, two levels above the engine in either layout (`src/engine` or
+ * `dist-cli/engine`), so the note can name where it actually is.
+ */
+export function telemetryBridgeInstall(): string {
+  const file = join(ENGINE_DIR, '..', '..', 'plugins', 'ambit-telemetry.js');
+  return `cp ${shellQuote(file)} ~/.config/opencode/plugins/`;
+}
 
 /**
  * Which capability model to read.
