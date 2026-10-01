@@ -13,7 +13,8 @@ export interface McpClientSeed {
     | 'cline'
     | 'roo-code'
     | 'continue'
-    | 'zed';
+    | 'zed'
+    | 'vscode';
   label: string;
   path: string;
   config: { mcp: Record<string, unknown> };
@@ -91,6 +92,19 @@ function readZedJson(raw: string): Record<string, unknown> | null {
     return null;
   }
   const servers = parsed?.context_servers;
+  if (!servers || typeof servers !== 'object') return null;
+  return servers;
+}
+
+/** VS Code's user-level mcp.json, reading the servers object. */
+function readVsCodeJson(raw: string): Record<string, unknown> | null {
+  let parsed: any;
+  try {
+    parsed = parseJsonc(raw);
+  } catch {
+    return null;
+  }
+  const servers = parsed?.servers;
   if (!servers || typeof servers !== 'object') return null;
   return servers;
 }
@@ -208,6 +222,16 @@ const CLIENTS = [
       join(home, 'Library', 'Application Support', 'Zed', 'settings.json'),
     ],
     read: readZedJson,
+  },
+  {
+    runtime: 'vscode' as const,
+    label: 'VS Code',
+    env: 'VSCODE_MCP_CONFIG',
+    paths: (home: string) => [
+      join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json'),
+      join(home, '.config', 'Code', 'User', 'mcp.json'),
+    ],
+    read: readVsCodeJson,
   },
 ];
 
