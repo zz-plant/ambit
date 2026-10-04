@@ -949,9 +949,8 @@ function EmptyLedger({
       <div className="loop-inner">
         <h2 className="loop-title">Nothing recorded yet</h2>
         <p className="loop-subtitle">
-          This page prices the time a person spends inside the loop. The graph knows what you can
-          do; the ledger is what says how often you had to step in, and nothing has written to it on
-          this machine.
+          The graph knows what you can do; the ledger is what says how often you had to step in, and
+          nothing has written to it on this machine.
         </p>
         {loop && <SinceStrip since={loop.since ?? null} />}
 

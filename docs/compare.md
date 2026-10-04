@@ -1,6 +1,6 @@
 # Ambit and MCP gateways
 
-Two kinds of tool answer questions about an agent's MCP servers, and they answer different ones. This page says which is which, so you can tell whether you need one, the other, or both.
+Two kinds of tool answer questions about an agent's MCP servers, and they answer different ones.
 
 ## MCP gateways and governance proxies
 

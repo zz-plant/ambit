@@ -1,6 +1,6 @@
 # Your loadout, from A to B
 
-Your agents, your tools, your credentials and your machines are your loadout. What you and your loadout can do together is your [ambit](./ideas.md). This page walks one person's loadout from where most setups start to where they can go, leg by leg, with the command that moves each leg and what Ambit shows at each one. The numbers are the hosted demo's, so every one of them can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
+Your agents, your tools, your credentials and your machines are your loadout. What you and your loadout can do together is your [ambit](./ideas.md). Every number below is the hosted demo's, so each can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
 
 ## Stepping in
 
