@@ -1,6 +1,6 @@
 # Where each AI agent keeps its MCP config
 
-Every agent runtime stores its MCP servers in its own file, under its own key, and a config copied from one into another usually fails without an error. This page lists the file and the key for each runtime Ambit reads, taken from the readers in [`src/engine/mcp-clients.ts`](../src/engine/mcp-clients.ts) and [`src/engine/claude-code.ts`](../src/engine/claude-code.ts), so it stays as current as the code that uses it.
+Every agent runtime stores its MCP servers in its own file, under its own key, and a config copied from one into another usually fails without an error. The file and the key for each runtime Ambit reads come from the readers in [`src/engine/mcp-clients.ts`](../src/engine/mcp-clients.ts) and [`src/engine/claude-code.ts`](../src/engine/claude-code.ts), so the table stays as current as the code that uses it.
 
 The paths are the ones Ambit reads on macOS and Linux, with `~` as your home directory. Windows keeps these files elsewhere, and Ambit does not read Windows paths yet; the runtime's own documentation has them.
 

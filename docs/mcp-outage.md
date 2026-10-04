@@ -2,7 +2,7 @@
 
 An agent setup is a stack of dependencies nobody wrote down. A GitHub MCP server provides version control; version control is half of a review loop; the review loop is what lets an agent open a pull request on its own. When that server's token expires, the agent does not report a missing server. It reports that it cannot open a pull request, or it quietly does something else.
 
-This page is about answering the question before that happens: if this one server, model or credential went away, what would stop? It is the guardrail half of widening what a setup can do. Every new capability rests on pieces that already exist, and knowing which ones carry the most is what makes adding to them safe to lean on.
+The question to answer before that happens: if this one server, model or credential went away, what would stop? Answering it is the guardrail half of widening what a setup can do. Every new capability rests on pieces that already exist, and knowing which ones carry the most is what makes adding to them safe to lean on.
 
 ## Three answers, not one
 

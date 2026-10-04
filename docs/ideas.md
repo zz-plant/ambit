@@ -1,6 +1,6 @@
 # The ideas behind Ambit
 
-This page says what Ambit claims that is new, in one place, with where each claim is built and what it does not claim. [Why Ambit](./why-ambit.md) is the argument at length, [the affordance frontier](./affordance-frontier.md) is the theory under it, and [the reference](./deep-dive.md) is how the software does it.
+[Why Ambit](./why-ambit.md) is the argument at length, [the affordance frontier](./affordance-frontier.md) is the theory under it, and [the reference](./deep-dive.md) is how the software does it.
 
 ## The claim
 

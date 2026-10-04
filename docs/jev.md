@@ -1,6 +1,6 @@
 # Ambit and Jev
 
-TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) is a model that answers typed questions with calibrated probabilities instead of text: pick one of these options, place this on a scale, yes or no. It is fast and cheap enough to ask on every tool call, and agent harnesses now use it to decide what to try and whether a call looks safe. Ambit answers a different question, what this setup can do and what an agent may do with it, so the two fit together. This page is how.
+TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) is a model that answers typed questions with calibrated probabilities instead of text: pick one of these options, place this on a scale, yes or no. It is fast and cheap enough to ask on every tool call, and agent harnesses now use it to decide what to try and whether a call looks safe. Ambit answers a different question, what this setup can do and what an agent may do with it, so the two fit together.
 
 ## Jev on the map
 

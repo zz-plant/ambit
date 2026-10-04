@@ -1,6 +1,6 @@
 # Interface specs
 
-> This is intent, not description. [The roadmap](./roadmap.md) says what each part of Ambit decided and what it still lacks. This page takes sixteen changes to the surfaces and says, for each, what it would do, what it has to read, and how anyone would know it was finished. Nothing here is built unless its section says so. The "Today" paragraphs describe the code at the time of writing, so check one against the file before relying on it. A section that is built keeps its Today, Change and Done when as the intent, and ends with a **Built** paragraph saying what shipped and where it departs from them.
+> This is intent, not description. [The roadmap](./roadmap.md) says what each part of Ambit decided and what it still lacks. Nothing here is built unless its section says so. The "Today" paragraphs describe the code at the time of writing, so check one against the file before relying on it. A section that is built keeps its Today, Change and Done when as the intent, and ends with a **Built** paragraph saying what shipped and where it departs from them.
 
 ## Where these came from
 
