@@ -184,7 +184,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
           <div className="app-tour-install">
             <code>{INSTALL}</code>
             <button type="button" onClick={() => copy('install', INSTALL)}>
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? 'Copied ✓' : 'Copy'}
             </button>
           </div>
           <p className="app-tour-note">

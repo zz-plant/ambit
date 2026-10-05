@@ -126,7 +126,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
             onClick={() => copy('install', INSTALL)}
             aria-label="Copy the install command"
           >
-            {copied ? 'Copied' : 'Copy'}
+            {copied ? 'Copied ✓' : 'Copy'}
           </button>
         </div>
         <p className="app-welcome-local">

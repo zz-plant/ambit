@@ -265,7 +265,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               and applying is a command you run.
             </div>
           </div>
-          <button type="button" className="sp-close" onClick={onClose} aria-label="Close">
+          <button type="button" className="sp-close" onClick={onClose} aria-label="Close proposals">
             ✕
           </button>
         </div>
@@ -475,7 +475,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
                             className="tp-btn-sm"
                             onClick={() => copyApplyCmd(p.id)}
                           >
-                            {copiedId === p.id ? 'Copied' : `Copy: ambit apply ${p.id}`}
+                            {copiedId === p.id ? 'Copied ✓' : `Copy: ambit apply ${p.id}`}
                           </button>
                         )}
                       </>

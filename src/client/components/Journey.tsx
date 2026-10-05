@@ -77,7 +77,7 @@ export function Journey() {
                 title="Copy the command; the page never runs it"
               >
                 <code>{leg.command}</code>
-                <span>{copied === leg.key ? 'Copied' : 'Copy'}</span>
+                <span>{copied === leg.key ? 'Copied ✓' : 'Copy'}</span>
               </button>
             )}
           </li>

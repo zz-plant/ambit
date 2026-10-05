@@ -212,7 +212,7 @@ export function FinderView(p: FinderViewProps) {
               </li>
             );
           })}
-          {p.rows.length === 0 && <li className="finder-empty">Nothing matches.</li>}
+          {p.rows.length === 0 && <li className="finder-empty">Nothing matches</li>}
         </ul>
       </div>
     </div>
