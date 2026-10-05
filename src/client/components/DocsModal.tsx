@@ -27,7 +27,10 @@ const HOTKEYS = [
     key: '/',
     desc: 'Find a capability, on the map or in your setup, or run an action on it: an outage, an unlock, its check, a lens, Proposals',
   },
-  { key: 'J / K', desc: 'Step through the nodes on the map, skipping any a focus hides' },
+  {
+    key: 'J / K',
+    desc: 'Step through the nodes on the map, skipping any a focus hides; the arrow keys do the same',
+  },
   { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
   { key: '+ / -', desc: 'Zoom in / out on the map' },
   { key: '0', desc: 'Back to actual size' },
@@ -118,7 +121,12 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
               <p className="docs-subtitle">What the map shows, and what you can do with it</p>
             </div>
           </div>
-          <button type="button" className="docs-close" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="docs-close"
+            onClick={onClose}
+            aria-label="Close the guide"
+          >
             ✕
           </button>
         </div>

@@ -530,7 +530,9 @@ async function main() {
 
   // Fit first, to land somewhere the fixture decides rather than somewhere
   // hardcoded. The fitted frame is the README's still of the whole tree.
-  await cdp.clickWhere(`document.querySelector('[aria-label="Fit graph to view"]')`);
+  // By its visible label, not its aria-label, so wording changes to the
+  // accessible name do not break the recording.
+  await cdp.clickWhere(byText('.civ-zoom-btn', 'Fit'));
   await sleep(1000);
   writeFileSync(OUT_TREE_PNG, await cdp.shot());
   console.log(`  wrote ${OUT_TREE_PNG}`);

@@ -1079,7 +1079,9 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--ok);
 }
 
-/* The runs behind the verdict above: how the check has gone, oldest to newest. */
+/* The runs behind the verdict above: how the check has gone, oldest to newest.
+   The label is a section label like Needs and Details, minus its own margin,
+   which a flex row would turn into an offset. */
 .sp-history {
   display: flex;
   align-items: center;
@@ -1087,6 +1089,10 @@ code, pre, .code, .sp-cli-cmd {
   margin: 0 0 8px;
   font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+.sp-history .sp-section-label {
+  margin-bottom: 0;
 }
 
 /* Never checked, or failing: the finding the panel exists for, so it gets
@@ -2433,6 +2439,14 @@ code, pre, .code, .sp-cli-cmd {
   font-size: var(--fs-md);
   color: var(--text-primary);
   line-height: 1.45;
+}
+
+/* The notice's own buttons, right-aligned under the sentence. */
+.ambit-toast-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: flex-end;
 }
 
 /* ─── WELCOME / LANDING VIEW ─── */

@@ -355,7 +355,7 @@ export function UnmappedPanel({ report }: { report: UnmappedResponse | null }) {
               className="tp-inline-btn"
               onClick={() => copy('overlay', report.overlay!)}
             >
-              {copied === 'overlay' ? 'Copied' : 'Copy overlay'}
+              {copied === 'overlay' ? 'Copied ✓' : 'Copy overlay'}
             </button>
           </div>
           {report.overlay_note && <p className="tp-note">{report.overlay_note}</p>}

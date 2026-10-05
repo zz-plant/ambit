@@ -336,7 +336,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
       )}
       {history.length > 0 && (
         <div className="sp-history">
-          <span>Recent checks</span>
+          <span className="sp-section-label">Recent checks</span>
           <HistoryStrip runs={history} of={item.name} />
         </div>
       )}

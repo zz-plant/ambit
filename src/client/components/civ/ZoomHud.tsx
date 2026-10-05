@@ -149,7 +149,7 @@ export function ZoomHud({
               className="civ-zoom-btn"
               onClick={fit}
               title="Fit the whole map"
-              aria-label="Fit graph to view"
+              aria-label="Fit the whole map"
             >
               <svg
                 width="11"
