@@ -14,7 +14,15 @@ The first release on npm and in the MCP registry, and the first that helps someo
 - **Building alone.** Two eras, Product and Operations, hold what running a product needs: hosting, a production database, backups, error tracking, uptime, payments, accounts, email. `ambit goal "launch my saas"` is the checklist in order, and each node arrives with defaults that read freely, ask before a customer would notice, and refuse what cannot be undone. `ambit people add` lets someone with no OpenCode config set a budget and approve.
 - **The route and the unlock.** The map numbers the steps to a node in the order they close, and a seed that reaches something says what, and what came with it.
 - **The map from any install.** `ambit web` serves the built page on localhost from npm, and from Homebrew once the formula moves to the npm tarball. The page fetches nothing from another origin, fonts included.
-- **A fix to authority.** A question that names no target is inside no scope, so "autonomous on staging" no longer answers yes for an untargeted call, which every Claude Code tool call is.
+- **Two fixes to authority.** A question that names no target is inside no scope, so "autonomous on staging" no longer answers yes for an untargeted call, which every Claude Code tool call is. And a tree overlay, which a cloned repository can ship as `.ambit.json`, may narrow a curated authority mode and never widen it.
+
+### An overlay narrows authority, never widens it
+
+A tree overlay is read from the working directory, so running `ambit` or the MCP server inside a cloned repository that ships `.ambit.json` applies it, and the overlay's `authority` block replaced the curated one whole: an overlay saying a refund was `autonomous` made `ambit can act:payments/issue_refund` answer yes where the curated tree refuses. Every curated mode is now kept, the narrower of curated and overlay wins per key (with `override: true` too), and a mode the curated tree never stated is capped at `confirm`.
+
+### One wording per thing
+
+A pass over every surface closed the places it said one thing two ways: every copy button now answers `Copied ✓`, the detail panel's history row is a section label like the five beside it, and the guide and proposals dialogs name what their close button closes. Eight passages in the docs that described their own page, where a heading or an outline already did, are gone.
 
 ### On npm: `npx ambit-cli`
 
