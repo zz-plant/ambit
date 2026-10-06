@@ -279,7 +279,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <h3 id="ambit-share--what-may-leave-the-graph-and-what-may-not"><a class="anchor" href="#ambit-share--what-may-leave-the-graph-and-what-may-not" aria-hidden="true" tabindex="-1">#</a>ambit share — what may leave the graph, and what may not</h3>
 <p><code>ambit share</code> builds its HTML from an allow-list: name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions and economics cannot enter the file, people render as &quot;a person&quot;, and <code>--redact</code> replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.</p>
 <h3 id="from-a-script-or-an-agents-shell"><a class="anchor" href="#from-a-script-or-an-agents-shell" aria-hidden="true" tabindex="-1">#</a>From a script, or an agent&#39;s shell</h3>
-<p><code>--json</code> prints any answer as data, colour is drawn only on a terminal, and the exit code says whether the command worked. Two commands can gate a script the way <code>git diff --exit-code</code> does:</p>
+<p><code>--json</code> prints any answer as data, color is drawn only on a terminal, and the exit code says whether the command worked. Two commands can gate a script the way <code>git diff --exit-code</code> does:</p>
 <pre><code class="language-bash">ambit can shell-execution --exit-code     # 0 go ahead, 1 put it to the person, 2 stop
 ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 </code></pre>
