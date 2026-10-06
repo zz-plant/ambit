@@ -269,10 +269,10 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 
     If playwright went away
     ───────────────────────
-  › Stops working  Browser Automation, Automated Tests
-    Survives  Tool Protocol (5 other providers)
+  › Stops working  Automated Tests, Browser Automation, Continuous Delivery, Observability · and the 3 actions they confer
+    Survives  Tool Protocol (12 other providers)
 </code></pre>
-<!-- /example --><p>What ends comes first, marked with the <code>›</code>; what survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, <code>impact</code> answers what revoking it ends, the same answer as <code>ambit credentials</code>.</p>
+<!-- /example --><p>What ends comes first, marked with the <code>›</code>, as far down as it goes: Continuous Delivery needs Automated Tests, so it ends too. What survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, <code>impact</code> answers what revoking it ends, the same answer as <code>ambit credentials</code>.</p>
 <h3 id="ambit-share--what-may-leave-the-graph-and-what-may-not"><a class="anchor" href="#ambit-share--what-may-leave-the-graph-and-what-may-not" aria-hidden="true" tabindex="-1">#</a>ambit share — what may leave the graph, and what may not</h3>
 <p><code>ambit share</code> builds its HTML from an allow-list: name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions and economics cannot enter the file, people render as &quot;a person&quot;, and <code>--redact</code> replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.</p>
 <h3 id="from-a-script-or-an-agents-shell"><a class="anchor" href="#from-a-script-or-an-agents-shell" aria-hidden="true" tabindex="-1">#</a>From a script, or an agent&#39;s shell</h3>
@@ -304,7 +304,7 @@ claude plugin install ambit@ambit
 </code></pre>
 <p>The <code>PreToolUse</code> entry makes the gate binding in Claude Code. Before each tool call, <code>ambit gate</code> finds the capability the call exercises and answers: forbidden is a deny, asking first or having no grant yet is put to you, and anything allowed or unknown gets no answer, so Claude Code&#39;s own permissions decide. It can only narrow what Claude Code would do, never widen it, and it adds about a fifth of a second to each call. Run <code>ambit gate</code> in a terminal for the entry on its own.</p>
 <h3 id="opencode"><a class="anchor" href="#opencode" aria-hidden="true" tabindex="-1">#</a>OpenCode</h3>
-<p><code>ambit connect opencode</code> adds the entry to <code>~/.config/opencode/opencode.json</code> in whichever shape the file already uses, OpenCode 1&#39;s or 2&#39;s, with or without comments. By hand, in OpenCode 1&#39;s shape:</p>
+<p><code>ambit connect opencode</code> adds the entry to <code>~/.config/opencode/opencode.json</code> in whichever shape the file already uses, OpenCode 1&#39;s or 2&#39;s, and keeps what the file held in <code>opencode.json.bak</code> first. A file with comments is left alone, since writing it back would delete them. By hand, in OpenCode 1&#39;s shape:</p>
 <pre><code class="language-json">{
   &quot;mcp&quot;: {
     &quot;ambit&quot;: {
@@ -368,7 +368,7 @@ already recorded the deficit, so do not retry it under another name.</p>
 <li><strong>Loopback only.</strong> The API server binds <code>127.0.0.1</code>. No LAN, no tunnel.</li>
 <li><strong>Origin allowlist.</strong> A request with a non-local <code>Origin</code> is rejected with 403 <em>before</em> routing, because a simple request skips preflight and response headers alone would not stop it.</li>
 <li><strong>No entry creation over HTTP.</strong> The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.</li>
-<li><strong>No egress you did not type.</strong> The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket at all (<code>notify</code>, <code>notify-approvals</code>, <code>dispatch</code>, <code>incidents</code>, and <code>goal --judge</code>). The first four each need a target you name, and the last refuses any host but this machine. <a href="/ambit/docs/faq/#does-anything-leave-my-machine">The FAQ</a> lists exactly what each one sends.</li>
+<li><strong>No egress you did not type.</strong> The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit&#39;s own code (<code>notify</code>, <code>notify-approvals</code>, <code>dispatch</code>, <code>incidents</code>, and <code>goal --judge</code>). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from <code>verify</code> and <code>apply</code> or an agent&#39;s <code>ambit_verify</code>, and never from the server. <a href="/ambit/docs/faq/#does-anything-leave-my-machine">The FAQ</a> lists exactly what each one sends.</li>
 </ol>
 <hr>
 <h2 id="documentation"><a class="anchor" href="#documentation" aria-hidden="true" tabindex="-1">#</a>Documentation</h2>
