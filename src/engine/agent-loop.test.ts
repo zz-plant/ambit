@@ -179,6 +179,50 @@ describe('what to reach next', () => {
     expect(ids).not.toContain('combo:far');
     db.close();
   });
+
+  it('says a waiting capability is reached only when something already supplies it', () => {
+    // Vector Store waits on Embeddings alone and nothing supplies it, so
+    // reaching Embeddings makes it a next step and does not reach it. Local
+    // Embeddings has a provider, so it is reached with Embeddings.
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:embeddings', name: 'Embeddings', kind: 'capability', state: 'locked' },
+        { id: 'combo:vector-store', name: 'Vector Store', kind: 'capability', state: 'locked' },
+        { id: 'combo:local-embed', name: 'Local Embeddings', kind: 'capability', state: 'locked' },
+        { id: 'provider:nomic', name: 'nomic', kind: 'provider' },
+      ],
+      dependencies: [
+        { from: 'combo:embeddings', to: 'combo:vector-store' },
+        { from: 'combo:embeddings', to: 'combo:local-embed' },
+        { from: 'provider:nomic', to: 'combo:local-embed', kind: 'provides' },
+      ],
+    });
+    const step = (nextSteps(db) as any).next.find((n: any) => n.id === 'combo:embeddings');
+    expect(step.why).toBe(
+      'Reaching it also reaches Local Embeddings, which is already supplied and waiting on this alone, and makes Vector Store a next step.'
+    );
+    db.close();
+  });
+
+  it('puts what blocked work first, whatever the leverage of the rest', () => {
+    // A five-minute capability with two waiting on it outscored one blocked
+    // once, when the ranking was a weighted sum.
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:quick', kind: 'capability', state: 'locked', setupSeconds: 300 },
+        { id: 'combo:w1', kind: 'capability', state: 'locked' },
+        { id: 'combo:w2', kind: 'capability', state: 'locked' },
+        { id: 'combo:slow', kind: 'capability', state: 'locked', setupSeconds: 7200 },
+      ],
+      dependencies: [
+        { from: 'combo:quick', to: 'combo:w1' },
+        { from: 'combo:quick', to: 'combo:w2' },
+      ],
+    });
+    captureFailure(db, { tool: 'x', message: 'ECONNREFUSED', capabilityId: 'combo:slow' });
+    expect((nextSteps(db) as any).next[0].id).toBe('combo:slow');
+    db.close();
+  });
 });
 
 // ── §12.1 the briefing ───────────────────────────────────────────────────────

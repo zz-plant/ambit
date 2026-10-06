@@ -28,8 +28,13 @@ export type Kind = NodeKind;
  * Excluding one new kind leaves every existing kind counted exactly as before,
  * so a snapshot taken now stays comparable with one taken before credentials
  * existed. That comparability is the whole value of the ledger.
+ *
+ * A person is not something the system can do either. Counting one made the
+ * first approval from the page, which declares the person at the browser,
+ * read as a capability gained that week and move every reach count by one.
+ * What a person supplies is a node of its own and is still counted.
  */
-export const NON_FRONTIER_KINDS: NodeKind[] = ['credential'];
+export const NON_FRONTIER_KINDS: NodeKind[] = ['credential', 'actor'];
 
 export const EDGE_KINDS = [
   'provides',

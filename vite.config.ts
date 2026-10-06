@@ -22,7 +22,9 @@ export default defineConfig({
     port: 3000,
     proxy: {
       // The API server reads the same variable, so the two can move together.
-      '/api': `http://localhost:${process.env.AMBIT_API_PORT || 3001}`,
+      // It listens on 127.0.0.1 only, and `localhost` can resolve to ::1,
+      // where another server may hold the same port.
+      '/api': `http://127.0.0.1:${process.env.AMBIT_API_PORT || 3001}`,
     },
   },
   build: {

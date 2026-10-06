@@ -3,7 +3,7 @@ import type { HumanInterventionRow, ProposalRow, SessionLearningRow } from './ro
 // The intervention vocabulary lives in one file: this list was here, again
 // under another name in opportunities.ts, and a third time as a subset in the
 // promotion suggester.
-import { KEEPER_KINDS, MIDDLEWARE_KINDS } from './vocabulary.ts';
+import { DECIDED_CAPABILITY_SQL, KEEPER_KINDS, MIDDLEWARE_KINDS } from './vocabulary.ts';
 
 /**
  * Where the human is in the graph — and how much of the work still runs
@@ -75,10 +75,11 @@ function humanDigest(db: Migratable, days?: number | string) {
 
   const actions = db
     .prepare(
-      `SELECT capability_id, action, timestamp FROM session_learning
-       WHERE action IN ('approved', 'applied', 'blocked:permission', 'failed')
-         AND timestamp >= datetime('now', ?)
-       ORDER BY timestamp DESC`
+      `SELECT ${DECIDED_CAPABILITY_SQL} AS capability_id, s.action, s.timestamp
+       FROM session_learning s
+       WHERE s.action IN ('approved', 'applied', 'blocked:permission', 'failed')
+         AND s.timestamp >= datetime('now', ?)
+       ORDER BY s.timestamp DESC`
     )
     .all<Pick<SessionLearningRow, 'capability_id' | 'action' | 'timestamp'>>(`-${window} days`);
 

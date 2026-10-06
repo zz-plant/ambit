@@ -179,6 +179,38 @@ test('removing a capability reports what it takes with it', () => {
   db.close();
 });
 
+test('a capability that requires the lost one stops whatever supplies it, all the way down', () => {
+  // Version Control has providers of its own and still stops without Shell
+  // Execution. Impact counted those providers and called it redundant, and it
+  // stopped one hop down, so what stood on Version Control went unnamed.
+  const db = makeGraph({
+    capabilities: [
+      { id: 'combo:shell', name: 'Shell' },
+      { id: 'combo:vcs', name: 'Version Control' },
+      { id: 'combo:cd', name: 'Continuous Delivery' },
+      { id: 'mcp:git', name: 'git', kind: 'provider' },
+      { id: 'mcp:github', name: 'github', kind: 'provider' },
+    ],
+    dependencies: [
+      { from: 'combo:shell', to: 'combo:vcs', hard: true },
+      { from: 'combo:vcs', to: 'combo:cd', hard: true },
+      { from: 'mcp:git', to: 'combo:vcs', kind: 'provides' },
+      { from: 'mcp:github', to: 'combo:vcs', kind: 'provides' },
+    ],
+  });
+  const lost = analyzeImpact(db, 'combo:shell') as any;
+  expect(lost.combos_at_risk).toEqual([{ name: 'Version Control', severity: 'critical' }]);
+  expect(lost.stops).toEqual(['Continuous Delivery', 'Version Control']);
+
+  // One provider of two is a loss of redundancy, and nothing stops.
+  const one = analyzeImpact(db, 'mcp:git') as any;
+  expect(one.combos_at_risk).toEqual([
+    { name: 'Version Control', severity: 'redundant', also_provided_by: 1 },
+  ]);
+  expect(one.stops).toBeUndefined();
+  db.close();
+});
+
 test('domain health and affordance domains only count what exists', () => {
   const db = makeGraph({
     capabilities: [

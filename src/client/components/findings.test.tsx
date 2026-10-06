@@ -101,7 +101,15 @@ test('a failing node reads as not working, never as a green "Reached"', () => {
 });
 
 test('My Setup leads with what is failing and what provides nothing', () => {
-  seed({ ...merged, connections: [...merged.connections, ...demoConfigGraph().connections] });
+  // In the sample every server supplies Tool Protocol at least, so two are
+  // stripped of their edges to stand for servers that supply nothing. They
+  // looked idle in the sample itself only while the seed kept six providers
+  // a capability and dropped the rest.
+  const idle = new Set(['mcp:grafana', 'mcp:kubernetes']);
+  const connections = [...merged.connections, ...demoConfigGraph().connections].filter(
+    c => !idle.has(c.from)
+  );
+  seed({ ...merged, connections });
   const html = text(renderToStaticMarkup(<SetupView onShow={() => {}} />));
   expect(html).toContain('playwright provides something whose check is failing');
   expect(html).toContain('grafana and kubernetes are enabled but provide nothing on the map');

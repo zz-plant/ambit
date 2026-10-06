@@ -8,6 +8,7 @@ import {
   collapseTo,
   costOf,
   gapOf,
+  isProvision,
   outageImpact,
   outageSentence,
   outageSplit,
@@ -212,13 +213,18 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   const byId = new Map(items.map(i => [i.id, i]));
   // One hop each way, the same two sets the map colours: what this needs, and
   // what it enables. They were one list with an edge word on each row.
-  const needs = connections
+  const incoming = connections
     .filter(c => c.to === item.id && byId.has(c.from))
     .map(c => ({ node: byId.get(c.from)!, conn: c }));
+  // What supplies a capability is not something it requires. Listed together,
+  // every provider read as a required need, and Shell Execution needed Shell
+  // Execution: the command entry that supplies it carries the same name.
+  const needs = incoming.filter(({ conn }) => !isProvision(conn));
+  const suppliers = incoming.filter(({ conn }) => isProvision(conn));
   const enables = connections
     .filter(c => c.from === item.id && byId.has(c.to))
     .map(c => ({ node: byId.get(c.to)!, conn: c }));
-  const neighbors = [...needs, ...enables];
+  const neighbors = [...incoming, ...enables];
 
   // The header already says whether a node is reached or being retired. The
   // one thing it cannot say is that a node has no edges at all.
@@ -602,6 +608,12 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         title="Needs"
         edge="needs"
         links={needs.map(({ node, conn }) => ({ node, note: prerequisiteLabel(conn) }))}
+        onShow={onShow ?? selectItem}
+      />
+      <LinkList
+        title="Provided by"
+        edge="needs"
+        links={suppliers.map(({ node }) => ({ node }))}
         onShow={onShow ?? selectItem}
       />
       <LinkList

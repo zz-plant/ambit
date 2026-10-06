@@ -200,7 +200,14 @@ export function techTreeView(db: Db): TechTreeResponse {
   const isNext = (id: string, state: string) =>
     state === 'locked' && (hardPrereqs.get(id) || []).every(p => stateById.get(p) !== 'locked');
 
-  const items: TreeItem[] = caps.map(c => ({
+  // A person is drawn for what they supply or authorize, and one with no edge
+  // has neither. The person at the browser is declared the first time they
+  // decide a proposal there, and served as a node they appeared in My Setup as
+  // an enabled entry of the config, which nothing declares them in.
+  const touched = new Set(deps.flatMap(d => [d.from_capability, d.to_capability]));
+  const shown = caps.filter(c => c.kind !== 'actor' || touched.has(c.id));
+
+  const items: TreeItem[] = shown.map(c => ({
     id: c.id,
     name: c.name,
     type: nodeType(c.category),
@@ -411,36 +418,47 @@ function checkHistory(db: Db, runs = CHECK_HISTORY_RUNS): Map<string, CheckRun[]
 }
 
 /**
- * The three counts the live stream reports. Each is guarded on its own: a
- * database predating frontier_snapshots used to throw on the second query and
- * zero the counts from the first, reporting an empty graph for a full one.
+ * What the live stream watches; a change in any of it is a change worth
+ * redrawing. A type, so it is the flat record of numbers the stream diffs.
  */
-export function graphSummary(db: Db): { reached: number; total: number; observations: number } {
-  let reached = 0,
-    total = 0,
-    observations = 0;
-  try {
-    const counts = db
-      // Counted the same way every other surface counts it. This said
-      // `state != 'locked'`, which agrees with the rest only because a third
-      // state has never been added — and would have diverged silently the day
-      // one was.
-      .prepare(
-        `SELECT COUNT(*) AS total, SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) AS reached
-         FROM capabilities`
-      )
-      .get();
-    total = counts?.total ?? 0;
-    reached = counts?.reached ?? 0;
-  } catch {
-    /* no capabilities table yet */
-  }
+export type GraphSummary = {
+  reached: number;
+  total: number;
+  observations: number;
+  /** Capabilities with a passing check, and with a failing one. */
+  proven: number;
+  failing: number;
+  /** Proposals waiting on a person. */
+  drafts: number;
+};
+
+/**
+ * The counts the live stream reports. Each is guarded on its own: a database
+ * predating frontier_snapshots used to throw on the second query and zero the
+ * counts from the first, reporting an empty graph for a full one.
+ *
+ * Reach alone was all it watched, so a check that started failing in another
+ * terminal, which moves no reach, never reached an open page, and neither did
+ * a proposal an agent drafted over MCP.
+ */
+export function graphSummary(db: Db): GraphSummary {
+  // Counted by the one query every summary uses. This kept its own, over every
+  // row, so the stream announced 251 capabilities on a graph `ambit status`
+  // called 189: actions, people and credentials were all in it.
+  const { reached, total, proven, failing } = graphCounts(db);
+  let observations = 0;
+  let drafts = 0;
   try {
     observations = db.prepare('SELECT COUNT(*) AS n FROM frontier_snapshots').get()?.n ?? 0;
   } catch {
     /* ledger predates this database */
   }
-  return { reached, total, observations };
+  try {
+    drafts = db.prepare("SELECT COUNT(*) AS n FROM proposals WHERE status = 'draft'").get()?.n ?? 0;
+  } catch {
+    /* no proposals table yet */
+  }
+  return { reached, total, observations, proven, failing, drafts };
 }
 
 /**

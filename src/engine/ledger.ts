@@ -135,13 +135,16 @@ function recordFrontier(db: Db, at?: string): 'recorded' | 'unchanged' {
 
   const counted = Object.keys(now.states).filter(id => inFrontier(now.kinds?.[id]));
   const reached = counted.filter(id => isReached(now.states[id])).length;
+  // The total is over the same nodes as the reach, so the row reads as one
+  // fraction. It was over every row, people and credentials included, and
+  // `ambit history` printed a reach against a total it was never part of.
   db.prepare(
     `INSERT INTO frontier_snapshots (taken_at, reached, total, verified, states, kinds, lifecycles)
      VALUES (COALESCE(?, datetime('now')), ?, ?, ?, ?, ?, ?)`
   ).run(
     stamp,
     reached,
-    Object.keys(now.states).length,
+    counted.length,
     now.verified,
     serialised,
     JSON.stringify(now.kinds),
@@ -318,11 +321,12 @@ function compareFrontiers(
       : [];
 
   // Both sides exclude the same kinds. A snapshot taken before credentials
-  // existed has none to exclude and `kinds` may be null altogether, so an old
-  // observation counts exactly as it always did — which is what keeps
-  // `frontier_then` and `frontier_now` the same measurement.
+  // existed has none to exclude, and one written before kinds were recorded
+  // says nothing about any node, so a node it does hold is classified by the
+  // kind it has now. People were counted then and are not now; reading them
+  // as counted on one side only would report them all as lost.
   const pastReached = Object.entries(past.states).filter(
-    ([id, v]) => isReached(v) && inFrontier(past.kinds?.[id])
+    ([id, v]) => isReached(v) && inFrontier(past.kinds?.[id] ?? kindOf(id))
   ).length;
   // Counted on the same basis as `frontier_then`, so the two numbers mean the
   // same thing. Vocabulary additions are described and not counted; the total

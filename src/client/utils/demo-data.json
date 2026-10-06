@@ -2161,7 +2161,16 @@
             "mcp:filesystem",
             "mcp:playwright",
             "mcp:sqlite",
-            "mcp:fetch"
+            "mcp:fetch",
+            "mcp:memory",
+            "mcp:docker",
+            "mcp:postgres",
+            "mcp:slack",
+            "mcp:sentry",
+            "mcp:kubernetes",
+            "mcp:grafana",
+            "mcp:1password",
+            "mcp:jev"
           ],
           "reliability": {
             "passed": 1,
@@ -3467,8 +3476,20 @@
         "kind": "provides"
       },
       {
+        "from": "mcp:1password",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
         "from": "mcp:docker",
         "to": "combo:continuous-delivery",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
+        "from": "mcp:docker",
+        "to": "combo:tool-protocol",
         "type": "hard-dep",
         "kind": "provides"
       },
@@ -3515,14 +3536,38 @@
         "kind": "provides"
       },
       {
+        "from": "mcp:grafana",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
+        "from": "mcp:jev",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
         "from": "mcp:jev",
         "to": "combo:typed-judgment",
         "type": "hard-dep",
         "kind": "provides"
       },
       {
+        "from": "mcp:kubernetes",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
         "from": "mcp:memory",
         "to": "combo:persistent-memory",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
+        "from": "mcp:memory",
+        "to": "combo:tool-protocol",
         "type": "hard-dep",
         "kind": "provides"
       },
@@ -3551,6 +3596,12 @@
         "kind": "provides"
       },
       {
+        "from": "mcp:postgres",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
         "from": "mcp:sentry",
         "to": "combo:error-tracking",
         "type": "hard-dep",
@@ -3563,8 +3614,20 @@
         "kind": "provides"
       },
       {
+        "from": "mcp:sentry",
+        "to": "combo:tool-protocol",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
         "from": "mcp:slack",
         "to": "combo:notifications",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
+        "from": "mcp:slack",
+        "to": "combo:tool-protocol",
         "type": "hard-dep",
         "kind": "provides"
       },
@@ -4377,7 +4440,7 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 46 to 66, 3 emergent"
+        "moved": "reached 46 to 65, 3 emergent"
       },
       {
         "at": "2026-09-14 09:00:00",
@@ -4612,7 +4675,7 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 66, verified 0 to 13"
+        "moved": "reached 65, verified 0 to 13"
       },
       {
         "at": "2026-09-26 09:00:00",
@@ -4847,7 +4910,7 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 66, 1 went failing"
+        "moved": "reached 65, 1 went failing"
       }
     ],
     "movedSinceLast": null

@@ -4,7 +4,9 @@
  * End-to-end: each test seeds a real graph by running the engine CLI. Split out
  * of a single 2,300-line file so a failure names a subject.
  */
+import { writeFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
+import { parseJsonc } from '../shared/opencode.ts';
 import { auditStream } from './audit.ts';
 import {
   APPLIABLE,
@@ -300,6 +302,26 @@ test('rollback reverses exactly what was applied', () => {
   expect(Object.keys(readConfig().mcp)).toEqual(['git']);
 });
 
+/**
+ * The row's status holds only the latest word, so a proposal applied and then
+ * rolled back was audited as one where nothing executed.
+ */
+test('the audit of a rolled-back proposal shows the apply and the rollback', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  expect(cli('audit', p.proposal).note).toMatch(/nothing executed/);
+
+  cli('apply', p.proposal);
+  cli('rollback', p.proposal);
+  const audit = cli('audit', p.proposal);
+  expect(audit.status).toBe('rolled_back');
+  expect(audit.executed.map((e: any) => e.action)).toEqual(['applied', 'rolled_back']);
+  expect(audit.executed[0].keys).toEqual(['mcp.fetch']);
+  expect(audit.note).not.toMatch(/nothing executed/);
+  expect(audit.note).toMatch(/rolled back/);
+});
+
 test('applying twice is refused', () => {
   seed(APPLIABLE).close();
   const p = cli('propose', 'web-research');
@@ -568,13 +590,23 @@ test('a budget refuses a spend that would exceed it', () => {
   ).run('combo:offline-capable');
   db.close();
 
-  const ok = cli('can', 'offline-capable', '--spend=5000');
+  // A spend is typed in dollars, as `budget set --amount` is.
+  const ok = cli('can', 'offline-capable', '--spend=50');
   expect(ok.decision).toBe('ALLOW');
   expect(ok.remaining_budget_cents).toBe(6000);
 
-  const over = cli('can', 'offline-capable', '--spend=7000');
+  const over = cli('can', 'offline-capable', '--spend=$70');
   expect(over.decision).toBe('DENY');
   expect(over.reason).toContain('exceeds');
+  expect(cli('can', 'offline-capable', '--spend=7000c').decision).toBe('DENY');
+
+  // A spend nobody can read is refused, never treated as no spend: this one
+  // used to become NaN and pass.
+  for (const unread of ['--spend=twenty', '--spend=', '--spend', '--spend=-5']) {
+    const r = cli('can', 'offline-capable', unread);
+    expect(r.error).toMatch(/--spend takes an amount in dollars/);
+    expect(r.decision).toBeUndefined();
+  }
 });
 
 test('apply refuses a step authority denies, even with an approval', () => {
@@ -592,4 +624,39 @@ test('apply refuses a step authority denies, even with an approval', () => {
   const refused = cli('apply', p.proposal);
   expect(refused.applied).toBeUndefined();
   expect(refused.error).toContain('not permitted');
+});
+
+test('apply and rollback edit a commented config in place, and give back its bytes', () => {
+  // Apply read the config with JSON.parse, so a commented file `seed` maps was
+  // refused, and a plain one was rewritten whole: the backup and the rolled
+  // back file had the content and not the bytes, comments and layout gone.
+  seed(APPLIABLE).close();
+  const path = join(dir, 'config.json');
+  const original = `{
+  // the person's own note
+  "provider": { "ollama": { "models": { "qwen3-coder": {} } } },
+  "mcp": {
+    "git": {}, // kept
+  },
+  "actors": { "kanav": { "name": "Kanav" } }
+}
+`;
+  writeFileSync(path, original);
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  const applied = cli('apply', p.proposal);
+  expect(applied.applied).toBe(true);
+
+  const after = readFileSync(path, 'utf8');
+  expect(after).toContain("// the person's own note");
+  expect(after).toContain('"git": {}, // kept');
+  expect(parseJsonc(after).mcp).toHaveProperty('fetch');
+  expect(readFileSync(applied.backup, 'utf8')).toBe(original);
+
+  cli('rollback', p.proposal);
+  expect(readFileSync(path, 'utf8')).toBe(original);
+  // And the graph followed the config back, without a manual seed.
+  const db = getDb(join(dir, 'graph.db'));
+  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'mcp:fetch'")[0].state).toBe('locked');
+  db.close();
 });

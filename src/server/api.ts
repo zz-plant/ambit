@@ -234,7 +234,9 @@ function openEventStream(res: ServerResponse, headers: Record<string, string>): 
     res.write(`data: ${JSON.stringify({ type, timestamp: Date.now(), ...payload })}\n\n`);
 
   const snapshot = () =>
-    existsSync(GRAPH_DB_PATH) ? withGraph(graphSummary) : { reached: 0, total: 0, observations: 0 };
+    existsSync(GRAPH_DB_PATH)
+      ? withGraph(graphSummary)
+      : { reached: 0, total: 0, observations: 0, proven: 0, failing: 0, drafts: 0 };
 
   /** RFC 6902 diff of a flat state object: `replace` for every changed key. */
   const diffState = (a: Record<string, number>, b: Record<string, number>) =>
@@ -746,5 +748,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(API_PORT, '127.0.0.1', () => {
-  console.log(`API server running on http://localhost:${API_PORT}`);
+  console.log(`API server running on http://127.0.0.1:${API_PORT}`);
 });

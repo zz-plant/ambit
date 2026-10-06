@@ -13,6 +13,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { mergeGraphs } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
+import { demoSnapshot } from '../utils/demoSnapshot';
 import { mapFindings } from './civ/layout';
 import WelcomeScreen from './WelcomeScreen';
 
@@ -27,8 +28,15 @@ test('the headline asks what you can do and what one step would open, and the wo
 });
 
 test("the one number on the page is what the demo's best next step would open", () => {
+  // Ranked as the demo's Time & cost ranks it, which is the step the map and
+  // the tour then lead with.
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
-  const { best } = mapFindings(items, connections);
+  const { best } = mapFindings(
+    items,
+    connections,
+    demoSnapshot().next.map(n => n.id)
+  );
+  expect(best?.item.id).toBe(demoSnapshot().next[0].id);
   expect(best?.reaches).toBeGreaterThan(0);
   expect(best?.item.status).not.toBe('built');
   expect(html).toContain(`<span class="app-welcome-fact-figure">${best?.reaches}</span>`);

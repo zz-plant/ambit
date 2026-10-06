@@ -52,6 +52,39 @@ test('an object two levels down is printed, not dropped', () => {
   expect(out).toMatch(/^ +probability: 0\.74$/m);
 });
 
+/**
+ * A config patch names a model with nothing set on it, `{ "nomic-embed-text":
+ * {} }`. The block printed `models:` over nothing, which hid the one thing the
+ * patch adds.
+ */
+test('inside a block, an empty object prints its name', () => {
+  const out = printed({
+    proposal: 'prop-x',
+    config_patch: { provider: { ollama: { models: { 'nomic-embed-text': {} } } } },
+    nothing_here: {},
+  });
+  expect(out.split('\n')).toEqual(
+    expect.arrayContaining(['          models:', '            nomic-embed-text'])
+  );
+  // At the top of a record an empty object still has nothing to say.
+  expect(out).not.toContain('nothing');
+});
+
+/**
+ * A nested list stopped at five rows and said nothing about the rest, so a
+ * reader took the five for the answer.
+ */
+test('a nested list past five rows says how many it did not print', () => {
+  const rows = Array.from({ length: 12 }, (_, i) => ({ id: `row-${i + 1}` }));
+  const out = printed({ capability: 'x', rows });
+  expect(out).toContain('row-5');
+  expect(out).not.toContain('row-6');
+  expect(out).toMatch(/^ +… 7 more · --json for all$/m);
+  expect(printed({ capability: 'x', rows: rows.slice(0, 5) })).not.toContain('more');
+  // The marker is words, not paint, so a pipe keeps it.
+  expect(formatGeneric({ rows }, PLAIN).join('\n')).toContain('… 7 more');
+});
+
 test('one level down reads exactly as it did', () => {
   const out = printed({ capability: 'x', evidence: { proven: 0, unproven: 14 } });
   expect(out.split('\n')).toEqual(

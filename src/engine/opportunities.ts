@@ -1,8 +1,12 @@
 import type { Migratable } from './migrate.ts';
 import { planFor, simulateFrontier, deficits } from './planning.ts';
-import { attentionValueCentsPerHour } from './economics.ts';
+import { attentionOwner, attentionValueCentsPerHour } from './economics.ts';
 import { catalogReport } from './catalog.ts';
-import { KEEPER_KINDS as KEEPERS, MIDDLEWARE_KINDS as MIDDLEWARE } from './vocabulary.ts';
+import {
+  DECIDED_CAPABILITY_SQL,
+  KEEPER_KINDS as KEEPERS,
+  MIDDLEWARE_KINDS as MIDDLEWARE,
+} from './vocabulary.ts';
 import type { CapabilityRow, HumanInterventionRow, SessionLearningRow } from './rows.ts';
 
 /**
@@ -100,12 +104,12 @@ function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
   }
 
   // The governance path records approvals etc. in session_learning; fold them
-  // in as middleware on the same capability.
+  // in as middleware on the capability each decision was about.
   for (const a of db
     .prepare(
-      `SELECT capability_id, action FROM session_learning
-     WHERE action IN ('approved', 'applied', 'blocked:permission')
-       AND timestamp >= datetime('now', ?)`
+      `SELECT ${DECIDED_CAPABILITY_SQL} AS capability_id, s.action FROM session_learning s
+     WHERE s.action IN ('approved', 'applied', 'blocked:permission')
+       AND s.timestamp >= datetime('now', ?)`
     )
     .all<Pick<SessionLearningRow, 'capability_id' | 'action'>>(`-${windowDays} days`)) {
     const kind =
@@ -114,7 +118,7 @@ function clusters(db: Migratable, windowDays = WINDOW_DAYS): BurdenCluster[] {
         : a.action === 'applied'
           ? 'application'
           : 'permission block';
-    ensure(a.capability_id, kind).times++;
+    ensure(a.capability_id || 'unattributed', kind).times++;
   }
 
   // Capability use attaches exercise frequency to the capability.
@@ -356,7 +360,7 @@ function opportunitiesFor(
   by: OpportunityObjective = 'attention',
   budgetDollars?: number
 ) {
-  const actor = 'human:kanav';
+  const actor = attentionOwner(db) ?? '';
   const rate = attentionValueCentsPerHour(db, actor);
   const cs = clusters(db);
   const middleware = cs.filter(c => MIDDLEWARE.has(c.kind) || c.kind === 'deficit');
@@ -414,9 +418,10 @@ function opportunityFor(db: Migratable, id?: string) {
   if (!match) return { error: `${id} is not an opportunity id. See ambit opportunities.` };
   const idx = Number(match[1]) - 1;
   const cs = clusters(db).filter(c => MIDDLEWARE.has(c.kind) || c.kind === 'deficit');
-  const o = priceCluster(db, cs[idx], 'human:kanav', idx);
-  if (!o) return { error: `${id} not found. Run ambit opportunities to see the list.` };
-  return o;
+  // Checked before pricing: an id past the end priced `undefined` and threw on
+  // its first field, so the not-found answer never ran.
+  if (!cs[idx]) return { error: `${id} not found. Run ambit opportunities to see the list.` };
+  return priceCluster(db, cs[idx], attentionOwner(db) ?? '', idx);
 }
 
 /**
@@ -429,7 +434,7 @@ function economicCaseFor(db: Migratable, capabilityId: string) {
     c => (MIDDLEWARE.has(c.kind) || c.kind === 'deficit') && c.capability_id === capabilityId
   );
   if (cs.length === 0) return null;
-  const case_ = priceCluster(db, cs[0], 'human:kanav', 0);
+  const case_ = priceCluster(db, cs[0], attentionOwner(db) ?? '', 0);
   return {
     observed: {
       interventions_month: case_.burden.interventions_month,

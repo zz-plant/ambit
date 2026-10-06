@@ -143,6 +143,8 @@ function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
   const say = (line: string) => void lines.push(line);
 
   const HEADLINE = ['name', 'title', 'capability_id', 'domain', 'id', 'type'];
+  // How many rows of a nested list the text view prints before counting the rest.
+  const LIST_ROWS = 5;
   const label = (k: string) => k.replace(/_/g, ' ');
   const scalar = (v: any) =>
     Array.isArray(v) ? v.filter(x => typeof x !== 'object').join(', ') : String(v);
@@ -204,6 +206,14 @@ function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
     for (const [k, v] of Object.entries(row)) {
       if (k === headKey || skip(k, v)) continue;
       if (typeof v !== 'object' || v === null || Array.isArray(v)) continue;
+      // Inside a block an empty object is a name with nothing set on it, and
+      // the name is the content: a config patch's `models: { "nomic-embed-text":
+      // {} }` printed `models:` over nothing, which hid the one model the patch
+      // adds. At the top of a record an empty object still says nothing.
+      if (Object.keys(v).length === 0) {
+        if (!headline) say(`${indent}  ${k}`);
+        continue;
+      }
       if (!Object.values(v).some(x => !skip(k, x))) continue;
       say(`${indent}  ${c.grey}${label(k)}:${c.reset}`);
       renderOne(v, `${indent}  `, false);
@@ -215,7 +225,13 @@ function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
           renderProgress(v, indent + '    ');
           continue;
         }
-        for (const child of v.slice(0, 5)) renderOne(child, indent + '    ');
+        // Five rows and then a count of the rest. Stopping at five with no
+        // word about it read as a list of five, and a reader had no way to
+        // know the answer went on.
+        for (const child of v.slice(0, LIST_ROWS)) renderOne(child, indent + '    ');
+        if (v.length > LIST_ROWS) {
+          say(`${indent}    ${c.grey}… ${v.length - LIST_ROWS} more · --json for all${c.reset}`);
+        }
       }
     }
   };

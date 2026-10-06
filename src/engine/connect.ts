@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { keepBackup } from '../shared/backup.ts';
 import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
 
 export interface ConnectTarget {
@@ -16,6 +17,8 @@ export interface ConnectResult {
     label: string;
     path: string;
     action: 'added' | 'updated' | 'already_configured';
+    /** Where the file stood before this run, when it existed and was rewritten. */
+    backup?: string;
   }[];
   skipped: {
     runtime: string;
@@ -23,6 +26,8 @@ export interface ConnectResult {
     reason: string;
   }[];
   dry_run?: boolean;
+  /** Which files were rewritten and where each was kept, or would be on a dry run. */
+  note?: string;
 }
 
 const RUNTIME_TARGETS: ConnectTarget[] = [
@@ -72,7 +77,7 @@ function configureFile(
   filePath: string,
   kind: 'mcpServers' | 'opencode',
   dryRun = false
-): 'added' | 'updated' | 'already_configured' {
+): { action: 'added' | 'updated' | 'already_configured'; backup?: string } {
   // A file that does not parse is left as it is. Replacing it with `{}` plus
   // one entry deleted every other server, agent and key a person had in it,
   // and a commented `.jsonc` file, which OpenCode reads and JSON.parse does
@@ -132,12 +137,17 @@ function configureFile(
     }
   }
 
+  // The file is someone's own config, rewritten whole, so what it held is
+  // kept in `<file>.bak` first. A backup that cannot be made throws, and the
+  // file is left as it was.
+  let backup: string | undefined;
   if (action !== 'already_configured' && !dryRun) {
+    backup = keepBackup(filePath);
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, JSON.stringify(parsed, null, 2) + '\n');
   }
 
-  return action;
+  return { action, backup };
 }
 
 /** Connect Ambit as meta-MCP server to detected or specified agent runtimes. */
@@ -189,12 +199,13 @@ export function runConnect(
     }
 
     try {
-      const action = configureFile(targetPath, target.kind, dryRun);
+      const { action, backup } = configureFile(targetPath, target.kind, dryRun);
       configured.push({
         runtime: target.runtime,
         label: target.label,
         path: targetPath,
         action,
+        ...(backup ? { backup } : {}),
       });
     } catch (err: any) {
       skipped.push({
@@ -210,5 +221,36 @@ export function runConnect(
     configured,
     skipped,
     dry_run: dryRun,
+    note: changeNote(configured, dryRun, home),
   };
+}
+
+/**
+ * The files this run rewrote, and where each one's previous contents are.
+ * Run bare, `connect` edits every runtime config it finds without asking, so
+ * the answer says plainly what it touched and how to put each back.
+ */
+function changeNote(
+  configured: ConnectResult['configured'],
+  dryRun: boolean,
+  home: string
+): string | undefined {
+  const changed = configured.filter(c => c.action !== 'already_configured');
+  if (!changed.length) return undefined;
+  const short = (path = '') =>
+    home !== '/' && path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+  const list = (paths: (string | undefined)[]) => paths.map(short).join(', ');
+  if (dryRun) {
+    return `Would change ${list(changed.map(c => c.path))}, keeping each file that exists in <file>.bak first. Nothing was written.`;
+  }
+  const kept = changed.filter(c => c.backup);
+  const created = changed.filter(c => !c.backup);
+  return [
+    kept.length
+      ? `Changed ${list(kept.map(c => c.path))}. What each held is in ${list(kept.map(c => c.backup))}.`
+      : '',
+    created.length ? `Created ${list(created.map(c => c.path))}, which did not exist.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }

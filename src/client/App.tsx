@@ -149,16 +149,24 @@ export default function App() {
   const [toast, setToast] = useToast();
 
   const { connected } = useGraphStream({
-    graphChanged: () => {
-      // Something rebuilt the graph: a seed, an adapter, another session. The
-      // page reloads itself, and says so: a view that changes under the reader
-      // with no explanation reads as a glitch. When the rebuild reached
+    graphChanged: changed => {
+      // A proposal drafted or decided elsewhere, an agent's over MCP or this
+      // page's own, changes the waiting count and nothing the map draws: the
+      // badge refreshes and nothing is announced.
+      loadProposals();
+      if (changed.every(key => key === 'drafts')) return;
+      // Something changed the graph: a seed, an adapter, a check run in another
+      // terminal. The page reloads itself, and says so: a view that changes
+      // under the reader with no explanation reads as a glitch. When it reached
       // something, that is the news, and it is said by name.
+      const checked = changed.some(key => key === 'proven' || key === 'failing');
       const before = useAmbitStore.getState().items;
       loadGraph().then(() =>
         setToast(
           unlockedSince(before, useAmbitStore.getState().items) ??
-            'The graph was rebuilt, so the map has reloaded.'
+            (checked
+              ? 'A check ran, so the map has reloaded with its result.'
+              : 'The graph was rebuilt, so the map has reloaded.')
         )
       );
       loadLoop();
@@ -309,12 +317,17 @@ export default function App() {
   // it goes straight to a post or a message, and a download elsewhere.
   const saveImage = async () => {
     const st = useAmbitStore.getState();
-    const card = buildCard(items, connections, {
-      mode: st.simulationMode,
-      rootId: st.simulatedNodeId,
-      cascade: st.simulatedCascadeIds,
-      weakened: st.simulatedWeakenedIds,
-    });
+    const card = buildCard(
+      items,
+      connections,
+      {
+        mode: st.simulationMode,
+        rootId: st.simulatedNodeId,
+        cascade: st.simulatedCascadeIds,
+        weakened: st.simulatedWeakenedIds,
+      },
+      st.loop?.next.map(n => n.id)
+    );
     if (!card) {
       setToast('The map has no finding to put in an image yet.');
       return;

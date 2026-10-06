@@ -1,5 +1,5 @@
 import type { Migratable } from './migrate.ts';
-import { attentionValueCentsPerHour } from './economics.ts';
+import { attentionOwner, attentionValueCentsPerHour } from './economics.ts';
 import type { CapabilityRow, ProposalRow } from './rows.ts';
 
 /**
@@ -95,7 +95,7 @@ function roiFor(db: Migratable, proposalId?: string) {
         .get<Pick<CapabilityRow, 'name'>>(capId)?.name || capId
     : row.goal;
 
-  const actor = row.approved_by || 'human:kanav';
+  const actor = row.approved_by || attentionOwner(db) || '';
   const rate = attentionValueCentsPerHour(db, actor);
   const applied = row.applied_at;
 

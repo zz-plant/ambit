@@ -145,7 +145,7 @@ M2 had the weakest case at 35 nodes, and was built with M1: a graph that outgrow
 
 **The question.** Why is this red, and can I turn it off without opening a file?
 
-**Today.** Check output survives only as the first 160 characters in `session_learning.notes`, and a missing binary or a timeout is stored as "exit null" because `verifyCheck` never reads the error. The shipped checks are nearly all silent on failure, but `git diff --exit-code` and any agent-registered check can print source or secrets. `notes` already leaves the graph through `sync export`, `ambit audit` and the evidence MCP tool, so storing more widens that. No route serves it. Enabling and disabling an MCP server already works through `enableMcp` and `disableMcp` behind `ownEntry`, and no other kind of entry has an enabled state. Ambit never lists a server's tools, so a tool count has no source.
+**Today.** Check output survives only as the first 160 characters in `session_learning.notes`, and a missing binary or a timeout is stored as "exit null" because `verifyCheck` never reads the error. The shipped checks are nearly all silent on failure, but any agent-registered check can print source or secrets. `notes` already leaves the graph through `sync export`, `ambit audit` and the evidence MCP tool, so storing more widens that. No route serves it. Enabling and disabling an MCP server already works through `enableMcp` and `disableMcp` behind `ownEntry`, and no other kind of entry has an enabled state. Ambit never lists a server's tools, so a tool count has no source.
 
 **The change.**
 
@@ -445,7 +445,7 @@ Open:
 
 - `isNext` in `views.ts` is state-only, so a next step whose prerequisite is `degraded` or `broken` still counts as a next step and is drawn as one. Rule 6 says an availability decision excludes it. The era ladder names the failing prerequisite on that row, but the map and the header count still call it a next step. Recommended: take `usable(lifecycle)` in `isNext` and regenerate the demo, which is a change to a count on the header, so it wants a person's yes.
 - `data-access` in `techtree.json` has two alternatives named "read-only database MCP", one with a patch. The catalog keeps the later, which has none, so the patch never reaches the page. `installText` refuses to show the earlier one's patch against the later, and a test holds that. Recommended: name them apart.
-- `applyProposal`, rollback and `applyRemoval` write their backups with a plain write to `<config>.ambit-<id>.bak` and `<config>.bak`, so they follow a link planted at that name as the visualizer's write used to. They run from the terminal on the person's own config.
+- `applyProposal` and `applyRemoval` wrote their backups with a plain write, which followed a link planted at the backup's name. Both now make them through `keepBackup`, as the visualizer's write does.
 - `/api/frontier` returns every snapshot with its full state maps, and `runTimeline` reads every intervention of a run before it caps the list. `/api/telemetry` is open, so anything can add interventions. A long-lived graph could make either large.
 - The CLI formatters print names and ids raw, so a control sequence in one reaches the terminal.
 - The origin allowlist judges the hostname only, so a page served from any local port passes it without the token (the Host check closes the rebinding route to the same reads, not this one). The config routes are readable by such a page today, and S2's output route must not use it.

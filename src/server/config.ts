@@ -8,10 +8,10 @@
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { copyFile, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { constants } from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { opencodeConfigIn } from '../engine/paths.ts';
+import { keepBackup } from '../shared/backup.ts';
 import { normalizeOpencode, parseJsonc } from '../shared/opencode.ts';
 
 export const CONFIG_PATH =
@@ -61,50 +61,21 @@ export async function readConfigFile(): Promise<{
  *
  * SECURITY.md says the visualiser's config editing writes a `.bak` before it
  * changes anything, as `ambit apply` does. This is where that stops being a
- * sentence. The copy is byte for byte, so it keeps the formatting the JSON
- * round trip below would lose, and it keeps the file's mode: a config that
- * holds a key and is chmod 600 gets a backup no more readable than itself. Each
- * edit replaces the last backup, so the file is always the config as it stood
- * before the most recent edit.
+ * sentence. `keepBackup` makes the copy the way `ambit connect` makes its own:
+ * byte for byte, with the file's mode, renamed over the old backup so a link
+ * planted at that name is replaced and never followed.
  *
- * The copy is made beside the backup and renamed over it. Copying straight to
- * `<config>.bak` follows a link that is already there, so a link planted at that
- * name made the write land wherever it pointed, and a link pointing nowhere made
- * the copy fail in a way this function once read as "there is no config yet".
- * A rename replaces the name itself and follows nothing.
- *
- * No config yet means nothing to keep, and the write goes ahead. That is decided
- * by asking about the config, never by which step failed. A backup that cannot be
- * made stops the write instead: an edit this server cannot undo is not one it
- * should make.
+ * No config yet means nothing to keep, and the write goes ahead. A backup that
+ * cannot be made stops the write instead: an edit this server cannot undo is
+ * not one it should make.
  */
 export async function writeConfig(data: Record<string, unknown>): Promise<boolean> {
   try {
-    if (await configExists()) {
-      const backup = `${CONFIG_PATH}.bak`;
-      const beside = `${backup}.${randomBytes(6).toString('hex')}.tmp`;
-      try {
-        await copyFile(CONFIG_PATH, beside, constants.COPYFILE_EXCL);
-        await rename(beside, backup);
-      } catch (e) {
-        await rm(beside, { force: true });
-        throw e;
-      }
-    }
+    keepBackup(CONFIG_PATH);
     await writeFile(CONFIG_PATH, JSON.stringify(data, null, 2));
     return true;
   } catch {
     return false;
-  }
-}
-
-async function configExists(): Promise<boolean> {
-  try {
-    await stat(CONFIG_PATH);
-    return true;
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return false;
-    throw e;
   }
 }
 

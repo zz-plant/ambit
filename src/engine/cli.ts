@@ -44,7 +44,7 @@ import {
   removeSandbox,
   grantAuthority,
 } from './assurance.ts';
-import { setBudget, budgetReport, clearBudget } from './budgets.ts';
+import { setBudget, budgetReport, clearBudget, parseAmount } from './budgets.ts';
 import { reversibilityReport } from './reversibility.ts';
 import { observedReport } from './observed.ts';
 import { objectReport } from './objects.ts';
@@ -391,7 +391,25 @@ async function runCommand(
     }
     case 'can': {
       if (!arg) {
-        emit({ error: 'Usage: ambit can <capability> [--target=X] [--spend=N] [--exit-code]' });
+        emit({
+          error: 'Usage: ambit can <capability> [--target=X] [--spend=<dollars>] [--exit-code]',
+        });
+        break;
+      }
+      // Dollars, read by the parser `budget set --amount` uses, so a ceiling
+      // and a spend checked against it are typed in the same unit. This flag
+      // used to be read as cents with Number(), and `--spend=$25` became NaN,
+      // which the decision then treated as no spend at all.
+      const spendGiven = value('spend') ?? (flags.has('--spend') ? '' : undefined);
+      const spendCents = spendGiven === undefined ? undefined : parseAmount(spendGiven);
+      if (spendGiven !== undefined && spendCents === undefined) {
+        // An empty value is most often `--spend=$25` typed without quotes,
+        // which the shell expanded before Ambit saw it.
+        emit({
+          error: spendGiven
+            ? `--spend takes an amount in dollars, such as --spend=25 or --spend=0.50, and "${spendGiven}" is not one.`
+            : '--spend takes an amount in dollars, such as --spend=25. A $ typed without quotes is read by the shell, so quote it or leave it off.',
+        });
         break;
       }
       // A slip is answered as one and files nothing; see `capabilityToAsk`.
@@ -404,7 +422,7 @@ async function runCommand(
         actor: value('actor'),
         capability: asked.ask,
         target: value('target'),
-        spendCents: value('spend') ? Number(value('spend')) : undefined,
+        spendCents,
       });
       // A refusal is a deficit whoever asked. This surface used to be the
       // silent one, which meant the same question had different consequences
@@ -652,26 +670,7 @@ async function runCommand(
       break;
     }
     case 'gate': {
-      // A Claude Code PreToolUse hook's command. With no call on stdin (a
-      // terminal), it prints the settings entry to paste. With one, it prints
-      // the decision or nothing at all, and always exits 0: a gate that cannot
-      // read the call, or the graph, says nothing, so the runtime's own
-      // permissions decide and a broken gate never stops someone's work.
-      if (process.stdin.isTTY || flags.has('--snippet')) {
-        emit({
-          snippet: claudeHookSnippet(),
-          note: "Merge this into ~/.claude/settings.json, or a project's .claude/settings.json, to put Ambit's gate on every tool call. It can deny what is forbidden and ask about what asks first or has no grant; it never allows anything Claude Code would otherwise ask about.",
-        });
-        break;
-      }
-      let out = '';
-      try {
-        const call = JSON.parse(readFileSync(0, 'utf8') || '{}');
-        out = claudeHookOutput(gateToolCall(db, call));
-      } catch {
-        out = '';
-      }
-      if (out) process.stdout.write(`${out}\n`);
+      runGate(db, flags);
       break;
     }
     case 'doctor': {
@@ -812,11 +811,61 @@ async function captureAsync(db: Db, argv: string[], mappingOverride?: string): P
   return result(argv, state);
 }
 
+/**
+ * `ambit gate`, a Claude Code PreToolUse hook's command. With no call on stdin
+ * (a terminal), it prints the settings entry to paste. With one, it prints the
+ * decision or nothing at all, and always exits 0: a gate that cannot read the
+ * call, or the graph, says nothing, so the runtime's own permissions decide and
+ * a broken gate never stops someone's work. Null is a graph that would not
+ * open, which still has a snippet to print and never has an answer.
+ */
+function runGate(db: Db | null, flags: Set<string>): void {
+  if (process.stdin.isTTY || flags.has('--snippet')) {
+    emit({
+      snippet: claudeHookSnippet(),
+      note: "Merge this into ~/.claude/settings.json, or a project's .claude/settings.json, to put Ambit's gate on every tool call. It can deny what is forbidden and ask about what asks first or has no grant; it never allows anything Claude Code would otherwise ask about.",
+    });
+    return;
+  }
+  if (!db) return;
+  let out = '';
+  try {
+    const call = JSON.parse(readFileSync(0, 'utf8') || '{}');
+    out = claudeHookOutput(gateToolCall(db, call));
+  } catch {
+    out = '';
+  }
+  if (out) process.stdout.write(`${out}\n`);
+}
+
 async function main() {
-  const db = getDb();
-  migrate(db);
   const resolved = resolveCommand(process.argv[2], process.argv.slice(3));
   const cmd = resolved.cmd;
+  // The gate runs inside someone else's tool call, so it is answered before
+  // the graph is opened for anything else. A graph it cannot open printed a
+  // stack trace and exited 1, and an empty one was seeded on the spot, with
+  // the seed's report on the stdout the hook reads. Neither is an answer: it
+  // says nothing and exits 0, and the runtime's own settings decide.
+  if (cmd === 'gate') {
+    const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
+    let db: Db | null = null;
+    try {
+      db = getDb();
+      migrate(db);
+    } catch {
+      db = null;
+    }
+    try {
+      runGate(db, flags);
+    } finally {
+      try {
+        db?.close();
+      } catch {}
+    }
+    return;
+  }
+  const db = getDb();
+  migrate(db);
   // Flags are not arguments. Taking argv[3] blindly meant `tt verify --json`
   // looked for a capability named "--json", which every flag-taking command
   // silently inherited.

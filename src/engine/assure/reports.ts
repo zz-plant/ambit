@@ -8,7 +8,7 @@
  */
 import type { Db } from '../db.ts';
 import { usable } from './lifecycle.ts';
-import { narrower, scopeCovers } from './decide.ts';
+import { narrower, scopeCovers, standing } from './decide.ts';
 import { runtimeReach } from './reach.ts';
 import type { CapabilityRow } from '../rows.ts';
 
@@ -31,11 +31,17 @@ function authorityReport(db: Db) {
   const grants = db
     .prepare(
       `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note,
-              c.name, c.state, c.kind, c.lifecycle
+              a.expires_at, c.name, c.state, c.kind, c.lifecycle
        FROM authority a JOIN capabilities c ON c.id = a.capability_id
        ORDER BY c.name, a.action`
     )
-    .all();
+    .all()
+    // An expired elevation decides nothing, here as in `canExecute`. Counted,
+    // it would stand in for the default it displaced long after it ran out.
+    .filter((g: any) => {
+      const expiry = g.expires_at ? new Date(g.expires_at).getTime() : Number.NaN;
+      return Number.isNaN(expiry) || expiry > Date.now();
+    });
   if (grants.length === 0) {
     return {
       note: 'No authority declared. Seed a graph, or declare authority on a capability in the model.',
@@ -59,7 +65,8 @@ function authorityReport(db: Db) {
     action: string,
     mode: string,
     source: string,
-    scope: string
+    scope: string,
+    holder = ''
   ) => {
     const key = `${id}|${action}|${scope}`;
     if (!collected.has(key)) {
@@ -74,7 +81,7 @@ function authorityReport(db: Db) {
         grants: [],
       });
     }
-    collected.get(key)!.grants.push({ source, mode });
+    collected.get(key)!.grants.push({ capability_id: id, source, mode, scope, holder });
   };
 
   const nodes = new Map(
@@ -113,12 +120,16 @@ function authorityReport(db: Db) {
       g.action,
       g.mode,
       g.source,
-      g.scope
+      g.scope,
+      g.holder
     );
   }
 
   const detail = [...collected.values()]
     .map(entry => {
+      // Resolved as `canExecute` resolves it: a person's grant in place of the
+      // curated default it speaks to, then the narrowest of what stands.
+      entry.grants = standing(entry.grants);
       const mode = entry.grants.map((g: any) => g.mode).reduce(narrower);
       const declared = entry.grants.filter((g: any) => g.source === 'techtree');
       // Narrowed means a runtime is stricter than the model says the action is

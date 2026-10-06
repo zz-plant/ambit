@@ -651,6 +651,10 @@ interface ImpactReport {
     also_provided_by?: number;
     but_all_share?: string;
   }[];
+  /** Everything working now that would stop, however far down: the map's outage count. */
+  stops?: string[];
+  /** The actions those capabilities confer, which stop with them. */
+  actions_stopped?: number;
 }
 
 /**
@@ -697,8 +701,16 @@ function renderImpact(report: ImpactReport, c: Palette = C): string[] {
     return lines;
   }
   const list = (names: string[]) => names.join(', ');
-  if (ends.length) {
-    lines.push(`  ${c.accent}${c.bold}›${c.reset} ${c.bold}Stops working${c.reset}  ${list(ends)}`);
+  // The whole cascade where the report has one: what stands on what stops
+  // stops too, and a dependent that is not working now has nothing to lose.
+  const stopping = report.stops ?? ends;
+  if (stopping.length) {
+    const actions = report.actions_stopped
+      ? ` ${c.grey}· and the ${report.actions_stopped} ${report.actions_stopped === 1 ? 'action' : 'actions'} they confer${c.reset}`
+      : '';
+    lines.push(
+      `  ${c.accent}${c.bold}›${c.reset} ${c.bold}Stops working${c.reset}  ${list(stopping)}${actions}`
+    );
   } else {
     lines.push(`${GUTTER}Nothing stops working.`);
   }

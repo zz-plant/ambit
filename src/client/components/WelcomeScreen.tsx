@@ -4,6 +4,7 @@ import { useCopied } from '../hooks/useCopied';
 import { mergeGraphs } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { INSTALL } from '../utils/copy';
+import { demoSnapshot } from '../utils/demoSnapshot';
 import { BrandMark } from './BrandMark';
 import { mapFindings } from './civ/layout';
 import ConfigIntake from './ConfigIntake';
@@ -38,7 +39,11 @@ const DOCS = `${import.meta.env.BASE_URL}docs/`;
  */
 function demoNextStep(): { name: string; reaches: number } | null {
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
-  const { best } = mapFindings(items, connections);
+  const { best } = mapFindings(
+    items,
+    connections,
+    demoSnapshot().next.map(n => n.id)
+  );
   return best ? { name: best.item.name, reaches: best.reaches } : null;
 }
 
