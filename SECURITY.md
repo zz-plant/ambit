@@ -17,6 +17,8 @@ Ambit reads your agent configuration and, through the visualizer, writes back to
 
 Also in scope: anything that causes the engine to execute content from a scanned configuration or infrastructure manifest, and any path by which `ambit gate`, the Claude Code PreToolUse hook, answers *allow*. The gate may only narrow what Claude Code would do: it denies what is forbidden or over budget, asks about the rest of what it can name, and otherwise prints nothing. It reads the call from stdin and the local graph, writes nothing, opens no socket, and on any error prints nothing, so a broken gate leaves Claude Code's own permissions in charge.
 
+A tech tree overlay (`.ambit/techtree.json` or `.ambit.json` in the directory `ambit` runs from, or `AMBIT_OVERLAY_TECHTREE`) may add nodes and detection patterns and may narrow the authority the curated tree states, never widen it. A cloned repository can ship either file, so the merge keeps every curated mode, takes the narrower of the curated and the overlay's for each key (`forbidden` over `confirm` over `autonomous`, with `override: true` no exception), and caps at `confirm` any mode the curated tree never stated, a node only the overlay names included. Any overlay that yields a grant wider than the shipped tree's is in scope.
+
 ## What is not
 
 - The declared verification checks run commands from the capability model by design. That model is code in this repository; changing it is equivalent to changing any other source file.

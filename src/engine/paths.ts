@@ -68,6 +68,51 @@ export function clearTreeCache(): void {
   treeCache.clear();
 }
 
+/**
+ * How far a mode lets an agent go without a person, narrowest last. An overlay
+ * is a file in whatever directory `ambit` runs from, so a cloned repository
+ * that ships `.ambit.json` is a file that travelled, and a file that travelled
+ * may narrow what the curated tree permits and never widen it (AGENTS.md rule 7).
+ */
+const MODE_RANK: Record<string, number> = { autonomous: 0, confirm: 1, forbidden: 2 };
+
+/** The narrower of a curated mode and an overlay's; an unknown overlay word changes nothing. */
+function narrower(base: unknown, overlay: unknown): unknown {
+  if (typeof overlay !== 'string' || !(overlay in MODE_RANK)) return base;
+  // A key the curated tree never stated has no mode to narrow, and the overlay
+  // alone may not grant autonomy: the most it can state is that a person confirms.
+  if (typeof base !== 'string' || !(base in MODE_RANK)) {
+    return overlay === 'autonomous' ? 'confirm' : overlay;
+  }
+  return MODE_RANK[overlay] > MODE_RANK[base] ? overlay : base;
+}
+
+/** One level of an authority block: every curated key kept, each overlay key narrowed against it. */
+function narrowModes(base: any, overlay: any): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, mode] of Object.entries<unknown>(base || {})) {
+    if (typeof mode === 'string') out[key] = mode;
+  }
+  for (const [key, mode] of Object.entries<unknown>(overlay || {})) {
+    if (typeof mode === 'string') out[key] = narrower(out[key], mode);
+  }
+  return out;
+}
+
+/**
+ * The authority a node carries once an overlay is applied. Every curated mode
+ * survives, even under `override: true`: a curated `forbidden` that disappeared
+ * would leave a runtime's own `autonomous` grant governing in its place.
+ */
+function mergeAuthority(base: any, overlay: any): any {
+  const b = base && typeof base === 'object' ? base : {};
+  const o = overlay && typeof overlay === 'object' ? overlay : {};
+  const merged: any = narrowModes(b, o);
+  const actions = narrowModes(b.actions, o.actions);
+  if (Object.keys(actions).length) merged.actions = actions;
+  return Object.keys(merged).length ? merged : undefined;
+}
+
 /** Merges an overlay tech tree definition on top of the base curated tree. */
 function mergeTrees(base: any, overlay: any): any {
   if (!overlay || !Array.isArray(overlay.nodes)) return base;
@@ -85,10 +130,11 @@ function mergeTrees(base: any, overlay: any): any {
     if (!node?.id) continue;
     if (nodeMap.has(node.id)) {
       const idx = nodeMap.get(node.id)!;
+      const existing = mergedNodes[idx];
+      const authority = mergeAuthority(existing.authority, node.authority);
       if (node.override) {
-        mergedNodes[idx] = { ...node };
+        mergedNodes[idx] = { ...node, authority };
       } else {
-        const existing = mergedNodes[idx];
         mergedNodes[idx] = {
           ...existing,
           ...node,
@@ -100,11 +146,12 @@ function mergeTrees(base: any, overlay: any): any {
             ),
           },
           requires: Array.from(new Set([...(existing.requires || []), ...(node.requires || [])])),
+          authority,
         };
       }
     } else {
       nodeMap.set(node.id, mergedNodes.length);
-      mergedNodes.push({ ...node });
+      mergedNodes.push({ ...node, authority: mergeAuthority(undefined, node.authority) });
     }
   }
 
