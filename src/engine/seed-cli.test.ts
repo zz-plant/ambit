@@ -603,3 +603,23 @@ test('opencode.jsonc is read when it is the only config there', () => {
   db.close();
   expect(ids).toContain('mcp:notes');
 });
+
+test('a Linear server reaches Issue Tracking, and an agent with "linear" inside a word does not', () => {
+  const db = seed({
+    mcp: { linear: { type: 'remote', url: 'https://mcp.linear.app/sse' } },
+    agent: { 'nonlinear-notes': { description: 'keeps notes' } },
+  });
+  const proof = db
+    .prepare(
+      "SELECT from_capability AS f FROM dependencies WHERE to_capability = 'combo:issue-tracking'"
+    )
+    .all()
+    .map((r: any) => r.f);
+  const node = db
+    .prepare("SELECT state FROM capabilities WHERE id = 'combo:issue-tracking'")
+    .get() as { state: string };
+  db.close();
+  expect(node.state).toBe('unlocked');
+  expect(proof).toContain('mcp:linear');
+  expect(proof).not.toContain('agent:nonlinear-notes');
+});

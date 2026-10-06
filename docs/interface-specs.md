@@ -59,7 +59,7 @@ M2 had the weakest case at 35 nodes, and was built with M1: a graph that outgrow
 
 **The question.** What does this one node touch, on a map too big to read at once?
 
-**Today.** Selecting a node lights its one-hop neighbors and dims the rest, and nothing is hidden (`buildAdjacency` in `src/client/components/civ/layout.ts`, drawn by `CivTree.tsx`). The multi-hop walks exist for the simulations only. `outageSplit`, `unlockCascade` and `gapOf` carry the simulation rules, and `cascadeDepths` counts downstream hops. None takes a depth or a direction. The demo tree is 45 curated nodes in nine era columns, so a three-hop focus on a busy node still shows about half of it. The case grows with the graph.
+**Today.** Selecting a node lights its one-hop neighbors and dims the rest, and nothing is hidden (`buildAdjacency` in `src/client/components/civ/layout.ts`, drawn by `CivTree.tsx`). The multi-hop walks exist for the simulations only. `outageSplit`, `unlockCascade` and `gapOf` carry the simulation rules, and `cascadeDepths` counts downstream hops. None takes a depth or a direction. The demo tree is 46 curated nodes in nine era columns, so a three-hop focus on a busy node still shows about half of it. The case grows with the graph.
 
 **The change.** A Focus toggle on the selected node keeps only its neighborhood on the map. Beside it sit a direction (Needs, Both, Enables), a depth (1 to 3, default 2), and a pill that says how many nodes are hidden and clears the focus.
 
@@ -82,7 +82,7 @@ M2 had the weakest case at 35 nodes, and was built with M1: a graph that outgrow
 
 **The question.** Where am I on this map, and is anything wrong out of sight?
 
-**Today.** No viewport state exists to read. Zoom is local to `CivTree.tsx`, and pan is the native scroll of the `.civ-scroll` container. Nothing in `src/client` listens to scroll or resize. The failing row already exists (`MapFinding.tsx`). Its Show button selects the node and recenters, but the row hides while anything is selected or simulated, and it names no direction. Corner room is tight: the top row holds the zoom HUD, the finding and the tour, the legend sits bottom-left, and the 340px detail panel takes the right edge, becoming a 60% sheet at 768px and below. At 45 nodes the need is still modest.
+**Today.** No viewport state exists to read. Zoom is local to `CivTree.tsx`, and pan is the native scroll of the `.civ-scroll` container. Nothing in `src/client` listens to scroll or resize. The failing row already exists (`MapFinding.tsx`). Its Show button selects the node and recenters, but the row hides while anything is selected or simulated, and it names no direction. Corner room is tight: the top row holds the zoom HUD, the finding and the tour, the legend sits bottom-left, and the 340px detail panel takes the right edge, becoming a 60% sheet at 768px and below. At 46 nodes the need is still modest.
 
 **The change.** A thumbnail at the bottom-right of the canvas area, left of the detail panel. It shows seven era bars with a dot per node, failing dots red (`isFailing`), and the viewport outlined and draggable. It draws only when the whole map does not fit, so today's demo shows none. The failing row names its direction, as in "off-screen left".
 

@@ -10,6 +10,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 VS Code keeps the servers it runs in a user-level `mcp.json`, under `servers`, apart from the Cline and Roo Code extensions Ambit already read, so those servers never reached the graph. They do now, as a twelfth runtime, with `VSCODE_MCP_CONFIG` to point elsewhere: contributed by @webdevsamran in #83, closing #77. Every place that lists the runtimes, the social card included, says twelve.
 
+### Issue Tracking
+
+Issue trackers are among the most common MCP servers and no node covered them, so `ambit goal "file an issue"` routed nowhere and a Linear server sat on the map unmapped. Issue Tracking is in the Tool Use era beside Data Access, detected from Linear, Jira and the rest of the Atlassian suite, YouTrack, ClickUp and Asana; reading runs on its own, commenting, filing and closing ask, and deleting is refused. GitHub is left out of the patterns because they would match a Copilot provider too. Error Tracking no longer claims "bug reports", which is a tracker's phrase, so "triage incoming bug reports" stays the docs' example of a goal only `--judge` can route. Closes #79.
+
 ## [0.6.0](https://github.com/zz-plant/ambit/releases/tag/v0.6.0) — 2026-10-01
 
 The first release on npm and in the MCP registry, and the first that helps someone running a product, not only an agent setup. In short:

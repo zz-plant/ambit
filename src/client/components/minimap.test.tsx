@@ -78,9 +78,9 @@ const draw = (extra: Partial<Parameters<typeof MinimapView>[0]> = {}) =>
 test('the thumbnail has an era bar for every column and a dot for every node', () => {
   const html = draw();
   expect(html.match(/civ-minimap-band/g)).toHaveLength(9);
-  // The demo tree is 45 curated nodes: the machine's own entries are not on the map.
-  expect(nodes).toHaveLength(45);
-  expect(html.match(/civ-minimap-dot /g)).toHaveLength(45);
+  // The demo tree is 46 curated nodes: the machine's own entries are not on the map.
+  expect(nodes).toHaveLength(46);
+  expect(html.match(/civ-minimap-dot /g)).toHaveLength(46);
 });
 
 test('a failing node is a red dot, drawn last, and larger than the rest', () => {

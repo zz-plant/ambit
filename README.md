@@ -162,19 +162,19 @@ Everything above answers on a graph Ambit builds by itself. A second group (`att
 ```console
 $ ambit status
 
-    39 of 69 reached · 0 proven · 9 with a single provider
+    39 of 70 reached · 0 proven · 9 with a single provider
     ──────────────────────────────────────────────────────
     proven          0
   › unproven       15
     failing         0
     last check  never
 
-    actions: 18/61 reached
+    actions: 18/66 reached
     provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
     domains:
       ████░░░░░░ ai-ml     5/13
       ██████░░░░ backend   7/11
-      ██████░░░░ devops    4/7
+      █████░░░░░ devops    4/8
       █████░░░░░ frontend  1/2
     …
 

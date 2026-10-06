@@ -658,6 +658,67 @@
       }
     },
     {
+      "id": "issue-tracking",
+      "name": "Issue Tracking",
+      "goal": [
+        "file an issue",
+        "open a ticket",
+        "track bugs",
+        "issue tracker",
+        "tickets",
+        "backlog",
+        "work items"
+      ],
+      "era": 3,
+      "domain": "devops",
+      "description": "The agent can read the work queued for it and file what it finds, instead of leaving it in a chat",
+      "requires": [
+        "tool-protocol"
+      ],
+      "detect": {
+        "any": [
+          "\\blinear\\b",
+          "jira",
+          "atlassian",
+          "youtrack",
+          "clickup",
+          "asana"
+        ]
+      },
+      "setup_seconds": 600,
+      "hint": "Connect your issue tracker's MCP server, read-only at first",
+      "authority": {
+        "observe": "autonomous",
+        "execute": "confirm",
+        "actions": {
+          "read_issue": "autonomous",
+          "comment": "confirm",
+          "create_issue": "confirm",
+          "close_issue": "confirm",
+          "delete_issue": "forbidden"
+        }
+      },
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "the tracker's hosted MCP server (Linear, Atlassian)",
+            "setup_seconds": 600,
+            "recurring_cost": "with the tracker",
+            "privacy": "hosted"
+          }
+        ]
+      },
+      "contract": {
+        "can": [
+          "read_issue",
+          "comment",
+          "create_issue",
+          "close_issue",
+          "delete_issue"
+        ]
+      }
+    },
+    {
       "id": "embeddings",
       "name": "Embeddings",
       "goal": [
@@ -1828,7 +1889,6 @@
         "crashes",
         "exceptions",
         "what broke",
-        "bug reports",
         "errors users hit"
       ],
       "era": 9,

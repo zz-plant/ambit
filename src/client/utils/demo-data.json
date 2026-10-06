@@ -1298,6 +1298,61 @@
         }
       },
       {
+        "id": "combo:issue-tracking",
+        "name": "Issue Tracking",
+        "type": "possibility",
+        "status": "specified",
+        "description": "The agent can read the work queued for it and file what it finds, instead of leaving it in a chat. Connect your issue tracker's MCP server, read-only at first",
+        "position": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "meta": {
+          "domain": "devops",
+          "state": "locked",
+          "setupSeconds": 600,
+          "era": 3,
+          "eraName": "Tool Use",
+          "next": true,
+          "lifecycle": "unknown",
+          "authority": {
+            "execute": "confirm",
+            "observe": "autonomous"
+          },
+          "actions": [
+            {
+              "id": "act:issue-tracking/close_issue",
+              "name": "close_issue",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:issue-tracking/comment",
+              "name": "comment",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:issue-tracking/create_issue",
+              "name": "create_issue",
+              "mode": "confirm"
+            },
+            {
+              "id": "act:issue-tracking/delete_issue",
+              "name": "delete_issue",
+              "mode": "forbidden"
+            },
+            {
+              "id": "act:issue-tracking/read_issue",
+              "name": "read_issue",
+              "mode": "autonomous"
+            }
+          ],
+          "structure": [
+            "economic"
+          ]
+        }
+      },
+      {
         "id": "combo:launch-ready",
         "name": "Launch Ready",
         "type": "possibility",
@@ -3335,6 +3390,12 @@
       },
       {
         "from": "combo:tool-protocol",
+        "to": "combo:issue-tracking",
+        "type": "hard-dep",
+        "kind": "requires"
+      },
+      {
+        "from": "combo:tool-protocol",
         "to": "combo:payments",
         "type": "hard-dep",
         "kind": "requires"
@@ -3721,6 +3782,7 @@
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
           "combo:hosting": "locked",
+          "combo:issue-tracking": "locked",
           "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "locked",
@@ -3779,6 +3841,7 @@
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
           "combo:hosting": "capability",
+          "combo:issue-tracking": "capability",
           "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
@@ -3837,6 +3900,7 @@
           "combo:file-editing": "configured",
           "combo:hosted-inference": "configured",
           "combo:hosting": "unknown",
+          "combo:issue-tracking": "unknown",
           "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "unknown",
@@ -3900,6 +3964,7 @@
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
           "combo:hosting": "locked",
+          "combo:issue-tracking": "locked",
           "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "locked",
@@ -3964,6 +4029,7 @@
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
           "combo:hosting": "capability",
+          "combo:issue-tracking": "capability",
           "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
@@ -4028,6 +4094,7 @@
           "combo:file-editing": "configured",
           "combo:hosted-inference": "configured",
           "combo:hosting": "unknown",
+          "combo:issue-tracking": "unknown",
           "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "unknown",
@@ -4097,6 +4164,7 @@
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
           "combo:hosting": "locked",
+          "combo:issue-tracking": "locked",
           "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "unlocked",
@@ -4173,6 +4241,7 @@
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
           "combo:hosting": "capability",
+          "combo:issue-tracking": "capability",
           "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
@@ -4249,6 +4318,7 @@
           "combo:file-editing": "configured",
           "combo:hosted-inference": "configured",
           "combo:hosting": "unknown",
+          "combo:issue-tracking": "unknown",
           "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "configured",
@@ -4329,6 +4399,7 @@
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
           "combo:hosting": "locked",
+          "combo:issue-tracking": "locked",
           "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "unlocked",
@@ -4405,6 +4476,7 @@
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
           "combo:hosting": "capability",
+          "combo:issue-tracking": "capability",
           "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
@@ -4481,6 +4553,7 @@
           "combo:file-editing": "verified",
           "combo:hosted-inference": "verified",
           "combo:hosting": "unknown",
+          "combo:issue-tracking": "unknown",
           "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "verified",
@@ -4561,6 +4634,7 @@
           "combo:file-editing": "unlocked",
           "combo:hosted-inference": "unlocked",
           "combo:hosting": "locked",
+          "combo:issue-tracking": "locked",
           "combo:launch-ready": "locked",
           "combo:local-embeddings": "locked",
           "combo:local-runtime": "unlocked",
@@ -4637,6 +4711,7 @@
           "combo:file-editing": "capability",
           "combo:hosted-inference": "capability",
           "combo:hosting": "capability",
+          "combo:issue-tracking": "capability",
           "combo:launch-ready": "capability",
           "combo:local-embeddings": "capability",
           "combo:local-runtime": "capability",
@@ -4713,6 +4788,7 @@
           "combo:file-editing": "verified",
           "combo:hosted-inference": "verified",
           "combo:hosting": "unknown",
+          "combo:issue-tracking": "unknown",
           "combo:launch-ready": "unknown",
           "combo:local-embeddings": "unknown",
           "combo:local-runtime": "verified",
