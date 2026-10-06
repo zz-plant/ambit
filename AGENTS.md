@@ -254,7 +254,11 @@ src/client/                React frontend
                            closes), `unlockedSince` (what a rebuild reached, as the toast says
                            it), the era ladder, label wrapping — pure, and tested apart from
                            the renderer
-    civ/viewport.ts        The minimap's arithmetic, and which way a failing node lies off screen
+    civ/viewport.ts        The minimap's arithmetic, which way a failing node lies off screen, and
+                           a zoom about a point: the range, and what one wheel event scales by
+    civ/usePinchZoom.ts    Every way a zoom arrives, anchored where it was asked for: a trackpad
+                           pinch (Ctrl+wheel in Chrome and Firefox, gesture events in Safari), two
+                           fingers on a touch screen, and the keys and buttons about the middle
     civ/Minimap.tsx        The thumbnail of the whole map when it does not fit, and its outline
     civ/history.ts         The map as of one observation, with today's names and edges: pure
     civ/Timeline.tsx       The scrub bar under the map: the frontier's observations and a playhead

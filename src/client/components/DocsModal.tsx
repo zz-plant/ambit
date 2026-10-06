@@ -32,7 +32,10 @@ const HOTKEYS = [
     desc: 'Step through the nodes on the map, skipping any a focus hides; the arrow keys do the same',
   },
   { key: '1 / 2 / 3', desc: 'Switch lens: Standard, Attention, Authority' },
-  { key: '+ / -', desc: 'Zoom in / out on the map' },
+  {
+    key: '+ / -',
+    desc: 'Zoom in / out about the middle of the map. A pinch, or the wheel with Ctrl or ⌘ held, zooms about the point under it',
+  },
   { key: '0', desc: 'Back to actual size' },
   { key: 'G', desc: 'Open proposals' },
   { key: '?', desc: 'Open this guide' },

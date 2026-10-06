@@ -8,6 +8,7 @@
  */
 import type React from 'react';
 import type { ActiveLens } from '../../linkState';
+import { ZOOM_MIN } from './viewport';
 
 export const LENSES: readonly [ActiveLens, string, string][] = [
   ['default', 'Standard', '1'],
@@ -17,7 +18,10 @@ export const LENSES: readonly [ActiveLens, string, string][] = [
 
 interface ZoomHudProps {
   zoom: number;
+  /** Sets the zoom outright: fit and actual size, which say where the map scrolls to. */
   setZoom: React.Dispatch<React.SetStateAction<number>>;
+  /** A step in or out, about the middle of the canvas. */
+  zoomTo: (to: (zoom: number) => number) => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
   /** The scene's extent, which "fit to view" divides the viewport by. */
   contentWidth: number;
@@ -50,6 +54,7 @@ interface ZoomHudProps {
 export function ZoomHud({
   zoom,
   setZoom,
+  zoomTo,
   containerRef,
   contentWidth,
   contentHeight,
@@ -80,7 +85,7 @@ export function ZoomHud({
       px(box.paddingBottom) -
       px(svg ? getComputedStyle(svg).marginTop : undefined);
     const fitRatio = Math.min(width / contentWidth, height / contentHeight);
-    setZoom(Math.max(0.4, Math.min(1.5, +(fitRatio * 0.97).toFixed(2))));
+    setZoom(Math.max(ZOOM_MIN, Math.min(1.5, +(fitRatio * 0.97).toFixed(2))));
     el.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
   };
 
@@ -92,7 +97,7 @@ export function ZoomHud({
             <button
               type="button"
               className="civ-zoom-btn"
-              onClick={() => setZoom(z => Math.max(0.4, +(z - 0.2).toFixed(2)))}
+              onClick={() => zoomTo(z => +(z - 0.2).toFixed(2))}
               title="Zoom out (−)"
               aria-label="Zoom out"
             >
@@ -126,7 +131,7 @@ export function ZoomHud({
             <button
               type="button"
               className="civ-zoom-btn"
-              onClick={() => setZoom(z => Math.min(2.5, +(z + 0.2).toFixed(2)))}
+              onClick={() => zoomTo(z => +(z + 0.2).toFixed(2))}
               title="Zoom in (+)"
               aria-label="Zoom in"
             >

@@ -88,6 +88,61 @@ export function thumbnail(
   return { scale, width: scene.width * scale, height: scene.height * scale };
 }
 
+/** The range the map zooms in, whichever way the zoom is asked for. */
+export const ZOOM_MIN = 0.4;
+export const ZOOM_MAX = 2.5;
+
+export function clampZoom(zoom: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+}
+
+/**
+ * The zoom and scroll position that redraw the scene at another zoom about a
+ * point of the scroller, in pixels from its top left corner. The part of the
+ * scene that was under `from` lands under `to`: the same place for a wheel or
+ * a button, and for two fingers their midpoint before and after a move, so a
+ * pinch that drifts pans as it zooms. Zoomed at the old scroll position, the
+ * scene grew from its top left corner and slid out from under the pointer.
+ *
+ * The scroll it returns can lie past either end, and the browser holds the
+ * scroller at that end. The view a pinch is heading for is kept unclamped
+ * (usePinchZoom.ts), so the point comes back under the fingers once the zoom
+ * makes room for it, and clamping here would lose it at the start.
+ */
+export function zoomAbout(
+  g: Geometry,
+  zoom: number,
+  from: Point,
+  to: Point = from
+): { zoom: number; left: number; top: number } {
+  const next = Number.isFinite(zoom) ? clampZoom(zoom) : g.zoom;
+  const x = (g.scrollLeft + from.x - g.offsetX) / g.zoom;
+  const y = (g.scrollTop + from.y - g.offsetY) / g.zoom;
+  return {
+    zoom: next,
+    left: g.offsetX + x * next - to.x,
+    top: g.offsetY + y * next - to.y,
+  };
+}
+
+/** The most one wheel event moves, in pixels: a mouse's notch zooms by about a fifth. */
+const WHEEL_CAP = 20;
+
+/**
+ * What one wheel event with Ctrl held scales the zoom by. A trackpad pinch
+ * arrives this way in Chrome and Firefox, as a stream of small deltas that
+ * Chrome sizes so the exponential below tracks the fingers. A mouse wheel
+ * arrives as a few large ones, a notch of 100 pixels or 3 lines, so a delta
+ * is capped: uncapped, one notch took the zoom to a third of itself, and a fixed
+ * step per event, the way this used to work, turned the dozens of events in
+ * one pinch into a jump to the end of the range.
+ */
+export function wheelFactor(deltaY: number, deltaMode: number, pageHeight: number): number {
+  const pixels = deltaY * (deltaMode === 1 ? 16 : deltaMode === 2 ? pageHeight : 1);
+  if (!Number.isFinite(pixels)) return 1;
+  return Math.exp(-Math.max(-WHEEL_CAP, Math.min(WHEEL_CAP, pixels)) / 100);
+}
+
 /** The scroll position that puts a point of the scene at the middle of the scroller. */
 export function scrollForCentre(point: Point, g: Geometry): { left: number; top: number } {
   const clamp = (v: number, room: number) => Math.min(Math.max(0, v), Math.max(0, room));

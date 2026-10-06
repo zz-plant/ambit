@@ -50,6 +50,8 @@ import { MapKey } from './civ/MapKey.tsx';
 import { Brackets, Callout, HazardPattern, JointIcon, type LegendKey } from './civ/marks.tsx';
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
+import { usePinchZoom } from './civ/usePinchZoom.ts';
+import { ZOOM_MIN } from './civ/viewport.ts';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
 import { useBottomOcclusion, useNarrow } from '../hooks/useViewport';
@@ -397,6 +399,13 @@ export default function CivTree({
   } | null>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const surfaceRef = React.useRef<HTMLDivElement>(null);
+  const { zoomTo, handZoom } = usePinchZoom({
+    surface: surfaceRef,
+    scroller: containerRef,
+    zoom,
+    setZoom,
+  });
 
   const { cols, colOrder } = useMemo(
     () => buildColumns(filtered, connections),
@@ -654,9 +663,9 @@ export default function CivTree({
         if (available) setActiveLens(key.lens);
       } else if (key.kind === 'zoom') {
         e.preventDefault();
-        if (key.to === 'actual') setZoom(1);
-        else if (key.to === 'in') setZoom(z => Math.min(2.5, +(z + 0.15).toFixed(2)));
-        else setZoom(z => Math.max(0.4, +(z - 0.15).toFixed(2)));
+        if (key.to === 'actual') zoomTo(1);
+        else if (key.to === 'in') zoomTo(z => +(z + 0.15).toFixed(2));
+        else zoomTo(z => +(z - 0.15).toFixed(2));
       } else {
         e.preventDefault();
         // A collapse hides nodes, and a key that lands on one selects what
@@ -677,6 +686,7 @@ export default function CivTree({
     onSelect,
     filtered,
     collapse,
+    zoomTo,
   ]);
 
   const narrow = useNarrow();
@@ -686,10 +696,16 @@ export default function CivTree({
   // Centre the node in view: the selection, or else where a simulation
   // started. On a wide screen the whole map is in view and this is a no-op; on
   // a phone the framing below does it instead, fitted around the cards.
+  // A zoom made by hand centres nothing: it is anchored where it was asked
+  // for, and centring the selection again pulled every step of a pinch back
+  // to the node. Any other zoom, the fit on arrival included, centres it.
   const centreOn = selectedId ?? (simulationMode !== 'none' ? simulatedNodeId : null);
+  const centred = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (narrow) return;
     if (centreOn && nodePositionMap.has(centreOn)) {
+      if (centred.current === centreOn && zoom === handZoom.current) return;
+      centred.current = centreOn;
       const pos = nodePositionMap.get(centreOn)!;
       if (containerRef.current) {
         const container = containerRef.current;
@@ -701,8 +717,10 @@ export default function CivTree({
           behavior: 'smooth',
         });
       }
+    } else {
+      centred.current = null;
     }
-  }, [narrow, centreOn, zoom, nodePositionMap]);
+  }, [narrow, centreOn, zoom, nodePositionMap, handZoom]);
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
@@ -720,7 +738,7 @@ export default function CivTree({
     // A phone fits the whole tree at about 0.3, where a node's name is four
     // pixels tall. There the map opens at a scale its names can be read at,
     // two columns or so across, and scrolls sideways; Fit still shows it all.
-    const floor = el.clientWidth < 700 ? 0.72 : 0.4;
+    const floor = el.clientWidth < 700 ? 0.72 : ZOOM_MIN;
     setZoom(Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2))));
   }, [contentWidth, leftInset]);
 
@@ -756,7 +774,7 @@ export default function CivTree({
     const frame = frameScene(
       points,
       { top: hud, width: el.clientWidth - leftInset - rightInset, height: el.clientHeight - hud },
-      { min: 0.4, max: zoom, inset: leftInset }
+      { min: ZOOM_MIN, max: zoom, inset: leftInset }
     );
     if (!frame) return;
     if (frame.zoom !== zoom) setZoom(frame.zoom);
@@ -849,24 +867,17 @@ export default function CivTree({
     dragStartRef.current = null;
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoom(z => Math.max(0.4, Math.min(2.5, +(z + delta).toFixed(2))));
-    }
-  };
-
   // The controls sit over the scroller, not inside it. Inside, they were
   // sticky, which holds vertically and, with a left inset, horizontally too;
   // but Chrome measures that inset from the scroller's padding edge and other
   // engines from its border edge, so centring a node pushed the zoom controls
   // 340px to the right in one and under the capability list in the other.
   return (
-    <div className="civ-tree">
+    <div className="civ-tree" ref={surfaceRef}>
       <ZoomHud
         zoom={zoom}
         setZoom={setZoom}
+        zoomTo={zoomTo}
         containerRef={containerRef}
         contentWidth={contentWidth}
         contentHeight={contentHeight}
@@ -995,7 +1006,6 @@ export default function CivTree({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
         style={
           {
             paddingLeft: leftInset,

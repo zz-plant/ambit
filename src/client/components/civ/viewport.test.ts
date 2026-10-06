@@ -11,6 +11,7 @@ import { expect, test } from 'vitest';
 import { columnCentre, NODE_R, START_Y } from './layout.ts';
 import {
   clampToScene,
+  clampZoom,
   fitsScene,
   type Geometry,
   grabOffset,
@@ -23,6 +24,10 @@ import {
   scrollForKey,
   thumbnail,
   viewportRect,
+  wheelFactor,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  zoomAbout,
 } from './viewport.ts';
 
 /** The demo's scene: seven eras, six rows at most. */
@@ -208,6 +213,83 @@ test('the viewport cannot be moved past the ends of the scroll', () => {
     left: 0,
     top: 0,
   });
+});
+
+/** The point of the scene under a point of the scroller. */
+function under(g: Geometry, at: { x: number; y: number }) {
+  return {
+    x: (g.scrollLeft + at.x - g.offsetX) / g.zoom,
+    y: (g.scrollTop + at.y - g.offsetY) / g.zoom,
+  };
+}
+
+test('a zoom about a point keeps the part of the map under it where it was', () => {
+  const g = scroller(1, SCREEN, { left: 200, top: 100 });
+  const pointer = { x: 600, y: 350 };
+  const before = under(g, pointer);
+  for (const zoom of [0.8, 1.3, 2.5]) {
+    const next = zoomAbout(g, zoom, pointer);
+    expect(next.zoom).toBe(zoom);
+    const after = under({ ...g, zoom, scrollLeft: next.left, scrollTop: next.top }, pointer);
+    expect(after.x).toBeCloseTo(before.x, 5);
+    expect(after.y).toBeCloseTo(before.y, 5);
+  }
+});
+
+test('two fingers that drift as they spread pan the map with them', () => {
+  const g = scroller(1, SCREEN, { left: 200, top: 100 });
+  const from = { x: 500, y: 300 };
+  const to = { x: 540, y: 280 };
+  const next = zoomAbout(g, 1.5, from, to);
+  // What was between the fingers is between them again, where they now are.
+  const after = under({ ...g, zoom: 1.5, scrollLeft: next.left, scrollTop: next.top }, to);
+  expect(after.x).toBeCloseTo(under(g, from).x, 5);
+  expect(after.y).toBeCloseTo(under(g, from).y, 5);
+  // And with no zoom at all, it is a pan by the distance the finger moved.
+  expect(zoomAbout(g, 1, from, to)).toEqual({ zoom: 1, left: 160, top: 120 });
+});
+
+test('a zoom stays inside the range, and its scroll is left for the browser to hold', () => {
+  const g = scroller(1, SCREEN);
+  expect(zoomAbout(g, 9, { x: 0, y: 0 }).zoom).toBe(ZOOM_MAX);
+  expect(zoomAbout(g, 0.01, { x: 0, y: 0 }).zoom).toBe(ZOOM_MIN);
+  // A zoom that is not a number keeps the one the map has.
+  expect(zoomAbout(g, Number.NaN, { x: 0, y: 0 }).zoom).toBe(1);
+  expect(clampZoom(1.7)).toBe(1.7);
+
+  // Zooming out about the middle of a map scrolled to its start asks for a
+  // scroll before the start. The browser holds the scroller at 0; the pinch
+  // keeps what it asked for, and zooming back in lands where it began.
+  const out = zoomAbout(g, 0.5, { x: 600, y: 350 });
+  expect(out.left).toBeLessThan(0);
+  expect(out.top).toBeLessThan(0);
+  const back = zoomAbout({ ...g, zoom: out.zoom, scrollLeft: out.left, scrollTop: out.top }, 1, {
+    x: 600,
+    y: 350,
+  });
+  expect(back.left).toBeCloseTo(0, 5);
+  expect(back.top).toBeCloseTo(0, 5);
+});
+
+test('a pinch tracks the fingers, and a mouse notch is a step and not the whole range', () => {
+  // A trackpad pinch: the deltas of one gesture compose to the scale Chrome
+  // sized them for, however it splits them across events.
+  const deltas = [3, 5, 8, 4, 2];
+  const total = deltas.reduce((sum, d) => sum + d, 0);
+  const composed = deltas.reduce((zoom, d) => zoom * wheelFactor(d, 0, 800), 1);
+  expect(composed).toBeCloseTo(Math.exp(-total / 100), 10);
+  // Spreading the fingers is a negative delta, and zooms in.
+  expect(wheelFactor(-5, 0, 800)).toBeGreaterThan(1);
+
+  // A notch of a mouse wheel, in pixels or in lines, zooms by about a fifth.
+  const notch = wheelFactor(100, 0, 800);
+  expect(notch).toBeCloseTo(wheelFactor(3, 1, 800), 10);
+  expect(1 / notch).toBeGreaterThan(1.15);
+  expect(1 / notch).toBeLessThan(1.3);
+  // Ten notches do not reach the end of the range from the middle of it.
+  expect(1.2 * wheelFactor(100, 0, 800) ** 10).toBeGreaterThan(0.1);
+  // A delta that is not a number scales by nothing.
+  expect(wheelFactor(Number.NaN, 0, 800)).toBe(1);
 });
 
 test('a press inside the outline keeps its place under the pointer, and one outside jumps to it', () => {

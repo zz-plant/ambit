@@ -1631,11 +1631,15 @@ code, pre, .code, .sp-cli-cmd {
 /* ─── CANVAS HUD & CONTROLS ─── */
 /* The canvas scrolls inside .civ-scroll; the controls are laid over it and
    never move. The zoom controls sit left, the lenses right, so neither covers
-   a column header. Insets for the two side panels are set inline. */
+   a column header. Insets for the two side panels are set inline.
+   One finger scrolls the canvas natively. Two zoom the map, never the page
+   around it (civ/usePinchZoom.ts), so the browser's own pinch is withheld,
+   and its double tap with it. */
 .civ-tree {
   position: relative;
   width: 100%;
   height: 100%;
+  touch-action: pan-x pan-y;
 }
 
 .civ-scroll {
