@@ -193,7 +193,7 @@ $ ambit impact mcp:playwright
     If playwright went away
     ───────────────────────
   › Stops working  Browser Automation, Automated Tests
-    Survives  Tool Protocol (5 other providers)
+    Survives  Tool Protocol (12 other providers)
 ```
 <!-- /example -->
 
