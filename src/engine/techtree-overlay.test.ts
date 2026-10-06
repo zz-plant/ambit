@@ -114,3 +114,113 @@ test('seeding a graph with overlay creates combo capability node and contract ac
 
   db.close();
 });
+
+// ── Authority: an overlay narrows, never widens ─────────────────────────────
+
+/**
+ * An overlay is a file in whatever directory `ambit` runs from, so a cloned
+ * repository that ships `.ambit.json` is a file that travelled. Seed the
+ * payments node with an overlay and ask the gate what it now permits.
+ */
+async function seedWithOverlay(overlay: any, capabilities: { id: string; name: string }[]) {
+  const { seedTechTree } = await import('./seed/techtree.ts');
+  const { nodeWriter } = await import('./seed/writers.ts');
+  const { seedAuthority } = await import('./seed/declared.ts');
+  const { canExecute } = await import('./assurance.ts');
+
+  mkdirSync(tempOverlayDir, { recursive: true });
+  writeFileSync(tempOverlayFile, JSON.stringify(overlay));
+  process.env.AMBIT_OVERLAY_TECHTREE = tempOverlayFile;
+
+  const db = makeGraph({ capabilities });
+  seedTechTree(db, nodeWriter(db));
+  seedAuthority(db, {});
+  return { db, decide: (capability: string) => canExecute(db, { capability }).decision };
+}
+
+const stripe = [{ id: 'provider:stripe', name: 'Stripe MCP' }];
+
+test('an overlay cannot widen a curated forbidden action to autonomous', async () => {
+  const { db, decide } = await seedWithOverlay(
+    {
+      nodes: [
+        {
+          id: 'payments',
+          authority: {
+            observe: 'autonomous',
+            execute: 'autonomous',
+            actions: { issue_refund: 'autonomous', change_price: 'autonomous' },
+          },
+        },
+      ],
+    },
+    stripe
+  );
+  expect(decide('act:payments/issue_refund')).toBe('DENY');
+  expect(decide('act:payments/change_price')).toBe('CONFIRM');
+  expect(decide('combo:payments')).toBe('CONFIRM');
+  db.close();
+});
+
+test('override: true cannot widen a curated mode either', async () => {
+  const { db, decide } = await seedWithOverlay(
+    {
+      nodes: [
+        {
+          id: 'payments',
+          override: true,
+          name: 'Payments',
+          description: 'Take payments',
+          era: 8,
+          domain: 'backend',
+          detect: { any: ['stripe'] },
+          contract: { can: ['issue_refund'] },
+          authority: { execute: 'autonomous', actions: { issue_refund: 'autonomous' } },
+        },
+      ],
+    },
+    stripe
+  );
+  expect(decide('act:payments/issue_refund')).toBe('DENY');
+  expect(decide('combo:payments')).toBe('CONFIRM');
+  db.close();
+});
+
+test('an overlay may narrow a curated mode', async () => {
+  const { db, decide } = await seedWithOverlay(
+    { nodes: [{ id: 'payments', authority: { actions: { change_price: 'forbidden' } } }] },
+    stripe
+  );
+  expect(decide('act:payments/change_price')).toBe('DENY');
+  // A key the overlay leaves out keeps its curated mode.
+  expect(decide('act:payments/create_payment_link')).toBe('CONFIRM');
+  expect(decide('act:payments/issue_refund')).toBe('DENY');
+  db.close();
+});
+
+test('a node only the overlay names may not be granted autonomy', async () => {
+  const { db, decide } = await seedWithOverlay(
+    {
+      nodes: [
+        {
+          id: 'homelab-truenas',
+          name: 'TrueNAS Storage',
+          domain: 'infrastructure',
+          description: 'ZFS pool management and snapshots',
+          era: 2,
+          detect: { any: ['truenas'] },
+          contract: { can: ['snapshot', 'destroy_pool'] },
+          authority: {
+            execute: 'autonomous',
+            actions: { snapshot: 'autonomous', destroy_pool: 'forbidden' },
+          },
+        },
+      ],
+    },
+    [{ id: 'provider:truenas', name: 'TrueNAS MCP' }]
+  );
+  expect(decide('combo:homelab-truenas')).toBe('CONFIRM');
+  expect(decide('act:homelab-truenas/snapshot')).toBe('CONFIRM');
+  expect(decide('act:homelab-truenas/destroy_pool')).toBe('DENY');
+  db.close();
+});
