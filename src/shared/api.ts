@@ -605,12 +605,26 @@ export interface LoopSnapshot {
   since: LoopSince | null;
   /** Asked for and never there, worst first. Heads the queue of what to reach. */
   demand: LoopDemand[];
+  /**
+   * Tokens sessions used in the window, per model, from session transcripts.
+   * Absent when none were recorded; no price, since the transcripts state none.
+   */
+  tokens?: LoopTokens;
   /** Prevented agent token waste and context thrash from failing checks and pre-flight briefings. */
   context_burn?: {
     tokens_prevented: number;
     dollars_prevented: number;
     loops_intercepted: number;
   };
+}
+
+export interface LoopTokens {
+  /** The window, in days. */
+  days: number;
+  /** Sessions with a token count in the window. */
+  sessions: number;
+  /** Most used first. Cache reads apart from fresh input, which they dwarf. */
+  models: { model: string; input: number; cached: number; output: number }[];
 }
 
 export interface LoopResponse extends LoopSnapshot {

@@ -47,21 +47,28 @@ export interface StackSegment {
  * `fig-key-swatch--<key>`, and the key repeats each count in writing, so
  * colour is never the only encoding. Empty segments are not drawn.
  */
-export function StackedBar({ segments }: { segments: StackSegment[] }) {
+export function StackedBar({
+  segments,
+  format = String,
+}: {
+  segments: StackSegment[];
+  /** How a count is written, in the key and the label: 547M for a token count. */
+  format?: (n: number) => string;
+}) {
   const shown = segments.filter(s => s.n > 0);
   return (
     <>
       <div
         className="fig-stack"
         role="img"
-        aria-label={shown.map(s => `${s.n} ${s.label}`).join(', ')}
+        aria-label={shown.map(s => `${format(s.n)} ${s.label}`).join(', ')}
       >
         {shown.map(s => (
           <div
             key={s.key}
             className={`fig-stack-seg fig-stack-seg--${s.key}`}
             style={{ flexGrow: s.n }}
-            title={`${s.n} ${s.label}`}
+            title={`${format(s.n)} ${s.label}`}
           />
         ))}
       </div>
@@ -70,7 +77,7 @@ export function StackedBar({ segments }: { segments: StackSegment[] }) {
           <li key={s.key} className="fig-key-item">
             <span className={`fig-key-swatch fig-key-swatch--${s.key}`} aria-hidden="true" />
             <span className="fig-key-n" style={NUM}>
-              {s.n}
+              {format(s.n)}
             </span>
             <span className="fig-key-label">{s.label}</span>
           </li>

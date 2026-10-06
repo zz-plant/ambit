@@ -5555,6 +5555,23 @@ code, pre, .code, .sp-cli-cmd {
    What may act without asking, what has earned a threshold, what is spent,
    what to reach next, and how the frontier moved. None of it had a web
    surface; all of it was a report the terminal already printed. */
+/* Tokens: fresh input and output in the data colours, and cache reads in the
+   grey of context, since they are most of the count and the cheapest part of it. */
+.fig-stack-seg--input,
+.fig-key-swatch--input {
+  background: var(--fig-data);
+}
+
+.fig-stack-seg--output,
+.fig-key-swatch--output {
+  background: var(--fig-data-soft);
+}
+
+.fig-stack-seg--cached,
+.fig-key-swatch--cached {
+  background: var(--fig-context);
+}
+
 .fig-stack-seg--autonomous,
 .fig-key-swatch--autonomous {
   background: var(--fig-good);
@@ -6830,4 +6847,20 @@ code, pre, .code, .sp-cli-cmd {
 .journey,
 .app-welcome-fact {
   box-shadow: var(--surface-edge);
+}
+
+/* One model's bar on the Tokens figure, named only when there is more than one.
+   Its counts run to "41.3M", wider than the key's usual column. */
+.loop-token-model .fig-key-item {
+  grid-template-columns: 10px 44px 1fr;
+}
+
+.loop-token-model + .loop-token-model {
+  margin-top: 10px;
+}
+
+.loop-token-name {
+  margin-bottom: 4px;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }

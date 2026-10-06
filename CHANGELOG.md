@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Tokens on Time & cost
+
+The token counts the Claude Code hooks read from each session's transcript now have a figure on Time & cost: the month's total, and per model a bar of fresh input, cache reads and output, written as 2.5M and 41.3M, not nine digits. Cache reads are drawn in the quietest colour, since they are most of a long session's count and the cheapest part of it. The figure says where the counts came from and that no price was applied, and it is not drawn at all when nothing was recorded. A ledger holding only token counts no longer opens on "Nothing recorded yet". The hosted demo carries a month of sample sessions.
+
 ### Three faces, one job each
 
 IBM Plex Sans set everything, titles, figures and labels alike, so a count read at a glance had the same voice as the sentence beside it. The map, the panel and the saved image now set three faces. Hubot Sans is the readout: wide for titles and figures, narrow capitals for era headers, section labels and the spec-sheet callout, the way an instrument panel sets them, and its barred zero is the readout convention. Mona Sans, drawn beside it, is the text, and Monaspace Neon, from the same family, is what a person types. The saved image used to fall back to a system face, since an SVG drawn as an image cannot reach the page's fonts; it now embeds the two it sets. The docs pages take the same pair. All three are served from this origin, latin only, which also stops Vite bundling every subset fontsource declares.

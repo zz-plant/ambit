@@ -11,6 +11,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 import { ingestSpool } from './spool.ts';
+import { tokenUsage } from './telemetry.ts';
+import { loopView } from './views.ts';
 import { dir, getDb, join, seed } from './testing/cli.ts';
 
 const HOOK = join(
@@ -188,6 +190,39 @@ test("a session's tokens come from its transcript, each message once, and a resu
       { unit: 'input tokens', quantity: 31, cost_cents: null },
       { unit: 'output tokens', quantity: 13, cost_cents: null },
     ]);
+  } finally {
+    db.close();
+  }
+});
+
+test('Time & cost reads the tokens, and a ledger with only tokens is not empty', () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  const transcript = join(dir, 'transcript.jsonl');
+  writeFileSync(
+    transcript,
+    JSON.stringify({
+      type: 'assistant',
+      message: {
+        id: 'm1',
+        model: 'claude-opus-5-5',
+        usage: { input_tokens: 40, cache_read_input_tokens: 900, output_tokens: 60 },
+      },
+    })
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    expect(tokenUsage(db)).toBeUndefined();
+    expect(loopView(db).tokens).toBeUndefined();
+    hook(spool, { session_id: 'loop', transcript_path: transcript, hook_event_name: 'SessionEnd' });
+    ingestSpool(db, spool);
+    const view = loopView(db);
+    expect(view.tokens).toEqual({
+      days: 30,
+      sessions: 1,
+      models: [{ model: 'claude-opus-5-5', input: 40, cached: 900, output: 60 }],
+    });
+    expect(view.empty).toBe(false);
   } finally {
     db.close();
   }

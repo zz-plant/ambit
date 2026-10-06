@@ -727,6 +727,54 @@ function unmappedUse(db: Db, days = 30): UnmappedResponse {
   };
 }
 
+/**
+ * The tokens sessions used in a window, per model: fresh input, cache reads
+ * and output kept apart, since in a long session cache reads are most of the
+ * count and a fraction of the price. Read from what the Claude Code hooks
+ * recorded from each transcript (src/engine/spool.ts). Undefined when nothing
+ * was recorded in the window, so a surface says nothing instead of drawing
+ * zeroes (AGENTS.md rule 16). No price: the transcripts state none.
+ */
+function tokenUsage(db: Migratable, days = 30) {
+  const rows = db
+    .prepare(
+      `SELECT r.resource_id AS resource, r.unit AS unit, SUM(r.quantity) AS quantity,
+              COUNT(DISTINCT r.run_id) AS runs
+       FROM resource_consumption r JOIN work_runs w ON w.id = r.run_id
+       WHERE r.kind = 'tokens' AND w.started_at >= datetime('now', ?)
+       GROUP BY r.resource_id, r.unit`
+    )
+    .all<{ resource: string; unit: string; quantity: number; runs: number }>(`-${days} days`);
+  if (!rows.length) return undefined;
+  const models = new Map<
+    string,
+    { model: string; input: number; cached: number; output: number }
+  >();
+  for (const r of rows) {
+    const model = String(r.resource).replace(/^model:/, '');
+    const m = models.get(model) ?? { model, input: 0, cached: 0, output: 0 };
+    if (r.unit === 'input tokens') m.input += r.quantity;
+    else if (r.unit === 'cache read tokens') m.cached += r.quantity;
+    else if (r.unit === 'output tokens') m.output += r.quantity;
+    models.set(model, m);
+  }
+  const sessions =
+    db
+      .prepare(
+        `SELECT COUNT(DISTINCT r.run_id) AS n FROM resource_consumption r
+         JOIN work_runs w ON w.id = r.run_id
+         WHERE r.kind = 'tokens' AND w.started_at >= datetime('now', ?)`
+      )
+      .get<{ n: number }>(`-${days} days`)?.n ?? 0;
+  const total = (m: { input: number; cached: number; output: number }) =>
+    m.input + m.cached + m.output;
+  return {
+    days,
+    sessions,
+    models: [...models.values()].sort((a, b) => total(b) - total(a)),
+  };
+}
+
 export {
   beginRun,
   endRun,
@@ -739,4 +787,5 @@ export {
   runTimeline,
   usageReport,
   unmappedUse,
+  tokenUsage,
 };
