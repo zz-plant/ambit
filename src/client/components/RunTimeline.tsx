@@ -282,7 +282,7 @@ function AskList({ run }: { run: RunView }) {
             <div className="thread-line thread-line--ask">
               <ActorMark id="agent" decorative />
               <div className="bubble bubble--ask">
-                <span className="bubble-meta" style={NUM}>
+                <span className="bubble-meta">
                   <span className={`fig-tag ${a.gate ? 'fig-tag--gate' : ''}`}>
                     {a.gate ? 'permission' : a.kind}
                   </span>
@@ -296,12 +296,12 @@ function AskList({ run }: { run: RunView }) {
                 {a.seconds === null ? (
                   <span className="fig-run-untimed">No answer recorded · not timed</span>
                 ) : answered ? (
-                  <span style={NUM}>
+                  <span>
                     Answered after <strong>{span(a.seconds)}</strong>
                     {a.outcome && a.outcome !== 'asked' ? ` · ${a.outcome}` : ''}
                   </span>
                 ) : (
-                  <span style={NUM}>
+                  <span>
                     {span(a.seconds)} recorded
                     <span className="fig-run-note"> · no end recorded</span>
                   </span>
@@ -378,14 +378,12 @@ export default function RunSection() {
         <figure className="fig fig--run">
           <figcaption className="fig-caption">
             <span className="fig-caption-title">{data.run.goal || data.run.id}</span>
-            <span className="fig-caption-note" style={NUM}>
+            <span className="fig-caption-note">
               {sample ? 'a sample run · ' : ''}
               recorded as it happened: nothing here is inferred
             </span>
           </figcaption>
-          <p className="fig-run-human" style={NUM}>
-            {humanSentence(data.run)}
-          </p>
+          <p className="fig-run-human">{humanSentence(data.run)}</p>
           {/* The sentence is the finding; the lanes and the asks are its
               evidence, a click in. Drawn open, they were the page's tallest
               section, under everything a first read was for. */}

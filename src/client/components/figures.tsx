@@ -23,7 +23,12 @@
 import { CHECK_HISTORY_RUNS, type CheckRun, type LoopSnapshot } from '../../shared/api';
 import { describeRuns } from '../utils/checkHistory';
 
-/** Figures line up in a column only if the digits are the same width. */
+/**
+ * Figures line up in a column only if the digits are the same width. Only a
+ * column: the text face's tabular digits are its code forms, a slashed zero
+ * and a footed one, which read as a readout in a column of numbers and as a
+ * typo in a sentence.
+ */
 export const NUM = { fontVariantNumeric: 'tabular-nums' } as const;
 
 export const money = (n: number) => `$${n.toLocaleString()}`;

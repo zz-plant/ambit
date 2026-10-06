@@ -98,14 +98,23 @@
   --radius-lg: 12px;
   --radius-full: 9999px;
 
-  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Menlo', Consolas, monospace;
+  /* Three faces, one job each (src/client/fonts.ts). Hubot Sans is the
+     readout: titles and figures set wide, column and section labels set
+     narrow, the way an instrument panel sets them. Mona Sans is everything
+     read as text, and Monaspace Neon is what a person types. Which selectors
+     take the readout face is listed once, under TYPE ROLES at the end. */
+  --font-display: 'Hubot Sans', 'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: 'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'Monaspace Neon', 'SF Mono', 'Menlo', Consolas, monospace;
   --font: var(--font-sans);
+  --stretch-wide: 112.5%;
+  --stretch-narrow: 87.5%;
 
   /* The type scale: eight steps, and nothing between them. There were
      seventeen sizes, six of them a half pixel from a neighbour, and a reader
-     sees a half-pixel step as a mistake, not as a level. Weights are 400, 500,
-     600 and 700. */
+     sees a half-pixel step as a mistake, not as a level. Text weights are 400,
+     500, 600 and 700; the readout face adds 750 for titles and 800 for
+     figures. */
   --fs-xs: 11px;
   --fs-sm: 12px;
   --fs-md: 13px;
@@ -121,6 +130,10 @@
   --scrim: rgba(0, 0, 0, 0.65);
   --bg-inset: rgba(0, 0, 0, 0.3);
   --band: rgba(255, 255, 255, 0.018);
+
+  /* A plate's top edge catching the light: one pixel, inside the border, so a
+     card reads as a surface laid on the canvas, not a box drawn on it. */
+  --surface-edge: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
@@ -565,9 +578,9 @@ code, pre, .code, .sp-cli-cmd {
   align-items: baseline;
   gap: 8px;
   margin-bottom: 6px;
-  font-size: var(--fs-base);
+  font-size: var(--fs-sm);
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .setup-group-n {
@@ -2035,7 +2048,6 @@ code, pre, .code, .sp-cli-cmd {
 .civ-range strong {
   color: var(--text-primary);
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
 .civ-range-sep {
@@ -2215,7 +2227,6 @@ code, pre, .code, .sp-cli-cmd {
 
 .civ-timeline-sentence {
   color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
 }
 
 .civ-timeline-now {
@@ -6737,4 +6748,86 @@ code, pre, .code, .sp-cli-cmd {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+/* ─── TYPE ROLES ─── */
+/* Which selectors the readout face sets, in one place, and by role, not by
+   size: a selector joins the role it serves. Placed last so a role wins over
+   the family a component set for itself. Everything not listed is text. */
+
+/* Titles: what a view, a dialog, a step or a verdict is called, and the
+   wordmark, which the saved image sets the same way. */
+.app-brand,
+.app-welcome-brand,
+.setup-title,
+.audit-title,
+.loop-title,
+.docs-title,
+.app-welcome-title,
+.app-tour-title,
+.sp-designation,
+.sp-verdict-title {
+  font-family: var(--font-display);
+  font-stretch: var(--stretch-wide);
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+/* Headings: what a card, a section or a proposal is about. The readout face
+   at its own width, so a heading sits between a title and the text without
+   shouting like either. */
+.fig-caption-title,
+.loop-section-title,
+.journey-head h3,
+.gov-goal {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* Figures read at a glance, set wide; a count inside a line keeps the
+   line's width, so the header pill does not grow. */
+.fig-kpi-value,
+.app-welcome-fact-figure {
+  font-family: var(--font-display);
+  font-stretch: var(--stretch-wide);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-status-n,
+.setup-group-n,
+.journey-n,
+.fig-next-rank {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Labels: the short caps a column, a table, a section or a callout is headed
+   with. */
+.civ-era-name,
+.civ-callout,
+.sp-section-label,
+.setup-group-title,
+.sp-joint-hd,
+.gov-decision dt,
+.gov-purpose span,
+.fig-table thead th,
+.infra-table th,
+.finder-group,
+.term-pop-seen-label {
+  font-family: var(--font-display);
+  font-stretch: var(--stretch-narrow);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ─── SURFACES ─── */
+/* The plates a reader scans: each catches the light along its top edge. */
+.fig,
+.journey,
+.app-welcome-fact {
+  box-shadow: var(--surface-edge);
 }

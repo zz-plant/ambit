@@ -24,6 +24,7 @@ import { statusLabel } from './utils/labels';
 import { escapeLayer } from './utils/keys';
 import type { PaletteHandlers } from './utils/palette';
 import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg } from './utils/shareCard';
+import { embeddedFontCss, FACES } from './fonts';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 // Fetched when first opened: a visit lands on the map, and the two views it
@@ -333,7 +334,12 @@ export default function App() {
       return;
     }
     try {
-      const png = await svgToPng(cardSvg(card), CARD_W, CARD_H);
+      // The text and readout faces, inlined: the card sets no code. A face
+      // that cannot be read leaves the card in its fallback, never unsaved.
+      const fonts = await embeddedFontCss(FACES.filter(f => f.family !== 'Monaspace Neon')).catch(
+        () => ''
+      );
+      const png = await svgToPng(cardSvg(card, fonts), CARD_W, CARD_H);
       const file = new File([png], cardFileName(card), { type: 'image/png' });
       if (isNarrow && navigator.canShare?.({ files: [file] })) {
         try {

@@ -242,9 +242,8 @@ export function ColumnHead({
         y={START_Y - 27}
         textAnchor="middle"
         fill="var(--text-primary)"
-        fontSize={13}
-        fontWeight={600}
-        style={{ fontFamily: 'var(--font-sans)' }}
+        fontSize={12}
+        fontWeight={700}
       >
         <title>{termTitle(term)}</title>
         {label}

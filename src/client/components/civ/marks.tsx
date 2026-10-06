@@ -184,7 +184,9 @@ export function Callout({ r, text, color }: { r: number; text: string; color: st
   const from = -r * 0.72;
   const elbowX = -r - 12;
   const elbowY = -r - 12;
-  const width = text.length * 6.6 + 4;
+  // The rule runs the width of the label: about 6.3px a character in the
+  // readout face's narrow capitals at 11px, as measured.
+  const width = text.length * 6.3 + 4;
   return (
     <g pointerEvents="none">
       <path
@@ -201,9 +203,7 @@ export function Callout({ r, text, color }: { r: number; text: string; color: st
         textAnchor="end"
         fill={color}
         fontSize={11}
-        fontWeight={600}
-        fontFamily="var(--font-mono)"
-        letterSpacing={0.6}
+        fontWeight={700}
       >
         {text}
       </text>

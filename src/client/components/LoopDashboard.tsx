@@ -122,7 +122,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
     <figure className="fig fig--assurance">
       <figcaption className="fig-caption">
         <span className="fig-caption-title">What the graph can prove</span>
-        <span className="fig-caption-note" style={NUM}>
+        <span className="fig-caption-note">
           {status.verified} of {status.total} proved
           {status.total > 0 ? ` · ${Math.round((status.verified / status.total) * 100)}%` : ''}
         </span>
@@ -421,7 +421,7 @@ function BudgetRow({ budget: b }: { budget: LoopAuthority['budgets'][number] }) 
         )}
       </span>
       <span className="fig-bar-count">a {b.period}</span>
-      <span className="fig-bar-note" style={NUM}>
+      <span className="fig-bar-note">
         {dollars(b.spent_dollars)} of {dollars(b.ceiling_dollars)} spent.{pace ? ` ${pace}` : ''}
       </span>
     </li>
@@ -460,7 +460,7 @@ function AuthorityFigure({
     <figure className="fig fig--authority">
       <figcaption className="fig-caption">
         <span className="fig-caption-title">What may act without asking</span>
-        <span className="fig-caption-note" style={NUM}>
+        <span className="fig-caption-note">
           {total
             ? `${authority.autonomous} of ${total} reached capabilities run unattended`
             : 'no authority declared yet'}
@@ -484,7 +484,7 @@ function AuthorityFigure({
                   )}
                   <span className="fig-tag">{p.action}</span>
                 </span>
-                <span className="fig-promote-why" style={NUM}>
+                <span className="fig-promote-why">
                   asked {p.asked}× in 30 days · {p.evidence}
                 </span>
                 <button
@@ -577,7 +577,7 @@ function NextFigure({
                   {d.failing ? 'failing its check' : d.structural ? 'structural' : 'asked for'}
                 </span>
               </span>
-              <span className="fig-demand-why" style={NUM}>
+              <span className="fig-demand-why">
                 stopped work {d.times}× ·{' '}
                 {d.failing
                   ? 'configured and failing: check it again, do not add it again'
@@ -764,7 +764,7 @@ function NeedsLine({ needs }: { needs: CapabilityNeeds }) {
     <div className="fig-needs">
       {needs.required.length > 0 && (
         <>
-          <p className="fig-needs-head" style={NUM}>
+          <p className="fig-needs-head">
             Needs · <Term name="prerequisite">required</Term> prerequisites:{' '}
             <strong>
               {needs.met} of {needs.required.length} met here
@@ -1038,7 +1038,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
         <div className="loop-hero">
           <div>
             {saved ? (
-              <h2 className="loop-lead" style={NUM}>
+              <h2 className="loop-lead">
                 <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in,
                 worth <strong>{money(roi.dollars_per_year)}</strong>.
               </h2>
@@ -1047,7 +1047,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             )}
             {topMove && (
               <div className="loop-move">
-                <p style={NUM}>
+                <p>
                   Next: <strong>{topMove.title}</strong>. Pays back in {topMove.payback_months}{' '}
                   {topMove.payback_months === 1 ? 'month' : 'months'} and recovers{' '}
                   {money(topMove.expected.savings_dollars_month)} a month.
@@ -1139,23 +1139,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
           {loop.context_burn && (
             <figure className="fig fig--kpi">
               <figcaption className="fig-caption">
-                <span className="fig-caption-title">
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    className="fig-kpi-icon"
-                    aria-hidden="true"
-                  >
-                    <circle cx="8" cy="8" r="6" />
-                    <path d="M8 5v3l2 2" />
-                  </svg>
-                  Context burn prevented
-                </span>
+                <span className="fig-caption-title">Context burn prevented</span>
                 <span className="fig-caption-note">
                   {loop.context_burn.loops_intercepted} loops intercepted
                 </span>

@@ -3,7 +3,7 @@ import type { AuditEvent, AuditOutcome } from '../../shared/api';
 import { useAmbitStore } from '../store/ambitStore';
 import { matchesAudit, parseAuditQuery } from '../utils/auditQuery';
 import { ActorMark } from './ActorMark';
-import { NUM, Seal } from './figures';
+import { Seal } from './figures';
 
 /**
  * The trail: who approved what, what ran, and what came of it, one line per
@@ -75,7 +75,7 @@ export function AuditTrail({ events, query }: { events: AuditEvent[]; query: str
               <ActorMark id={e.actor} size={20} decorative />
             </span>
             {time && (
-              <time className="audit-time" dateTime={e.at} style={NUM}>
+              <time className="audit-time" dateTime={e.at}>
                 {time}
               </time>
             )}
@@ -144,7 +144,7 @@ export default function AuditView() {
                 exactly, colons and all. Any other word is looked for in every field.
               </p>
             </div>
-            <p className="audit-count" style={NUM}>
+            <p className="audit-count">
               {query.trim()
                 ? `${shownCount} of ${audit.events.length} events`
                 : `${audit.events.length} ${audit.events.length === 1 ? 'event' : 'events'}`}{' '}

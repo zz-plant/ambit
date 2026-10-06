@@ -6,6 +6,12 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Three faces, one job each
+
+IBM Plex Sans set everything, titles, figures and labels alike, so a count read at a glance had the same voice as the sentence beside it. The map, the panel and the saved image now set three faces. Hubot Sans is the readout: wide for titles and figures, narrow capitals for era headers, section labels and the spec-sheet callout, the way an instrument panel sets them, and its barred zero is the readout convention. Mona Sans, drawn beside it, is the text, and Monaspace Neon, from the same family, is what a person types. The saved image used to fall back to a system face, since an SVG drawn as an image cannot reach the page's fonts; it now embeds the two it sets. The docs pages take the same pair. All three are served from this origin, latin only, which also stops Vite bundling every subset fontsource declares.
+
+The rest followed from giving each role one face. A card's or a proposal's heading sets the readout face at its own width, between a title and the text. Every caps label, which had been set by hand five slightly different ways, takes the one narrow setting, and My Setup's groups join them. Tabular figures came off sentences, captions and times: the text face draws its tabular digits as code, a slashed zero and a footed one, which read as a readout in a column of numbers and as a typo in "pays back in 0.3 months". The cards catch the light along their top edge, and the one icon on a card heading, which no other card had, is gone.
+
 ### `ambit impact` says what ends and what survives
 
 It printed through the generic formatter, so the answer read `becomes unavailable: false` and `also provided by: 5`, with every capability listed twice. It now leads with what stops working, marked `›`, then what survives only on providers that all present one credential, what survives on others and on how many, and what loses an optional input. Two wrong answers went with it: a server's own credential was listed as something that decays when the server goes, and `ambit impact credential:…` answered with nothing at all, because a key's edges point at it. A credential's impact is now what revoking it ends, the same computation as `ambit credentials`. The README carries the example again, captured from the fixture. Closes #76.
