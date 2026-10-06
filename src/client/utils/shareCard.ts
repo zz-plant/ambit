@@ -45,10 +45,15 @@ const INK = {
   errorDeep: '#d8504d',
 };
 
+/** The page's text and readout faces (src/client/fonts.ts), which `cardSvg` can embed. */
 const FONT =
-  "'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+  "'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-const MONO = "'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
+const DISPLAY = `'Hubot Sans', ${FONT}`;
+
+/** The readout face's two settings, as the page's TYPE ROLES set them. */
+const WIDE = 'font-stretch:112.5%';
+const NARROW = 'font-stretch:87.5%';
 
 export type CardMode = 'outage' | 'acquisition' | 'gap';
 
@@ -191,7 +196,7 @@ const CALLOUT_SIZE = 18;
 
 /**
  * A spec-sheet callout: a leader from the circle's lower right, down to a
- * rule the note sits on. Monospace, capitals, like a part number.
+ * rule the note sits on. Narrow capitals, as the map sets its own.
  */
 function callout(
   cx: number,
@@ -205,10 +210,10 @@ function callout(
   const lx = cx + r * 0.7;
   const ly = cy + r * 0.7;
   const ruleY = baseline + 6;
-  const end = x + note.length * CALLOUT_SIZE * 0.62;
+  const end = x + note.length * CALLOUT_SIZE * 0.6;
   return (
     `<path d="M${lx} ${ly} L${x - 6} ${ruleY} H${end}" fill="none" stroke="${color}" stroke-opacity="0.7" stroke-width="2"/>` +
-    `<text x="${x}" y="${baseline}" font-size="${CALLOUT_SIZE}" fill="${color}" font-family="${MONO}" font-weight="600" letter-spacing="1">${esc(note)}</text>`
+    `<text x="${x}" y="${baseline}" font-size="${CALLOUT_SIZE}" fill="${color}" font-family="${DISPLAY}" style="${NARROW}" font-weight="700" letter-spacing="1.5">${esc(note)}</text>`
   );
 }
 
@@ -248,17 +253,29 @@ function wrap(text: string, perLine: number): string[] {
   return lines;
 }
 
-/** The card as a standalone SVG document, 1080 by 1350. */
-export function cardSvg(card: Card): string {
+/**
+ * The card as a standalone SVG document, 1080 by 1350. `fonts` is `@font-face`
+ * CSS with the files inlined: drawn as an image, the document cannot fetch
+ * them, and without it every line falls back to a system face.
+ */
+export function cardSvg(card: Card, fonts = ''): string {
   const pad = 72;
   const hue = card.mode === 'outage' ? INK.error : card.mode === 'acquisition' ? INK.ok : INK.warn;
   const rootFill = card.mode === 'outage' ? INK.error : INK.accent;
   const hitFill =
     card.mode === 'outage' ? INK.errorDeep : card.mode === 'acquisition' ? INK.ok : INK.warn;
   const out: string[] = [];
-  const text = (x: number, y: number, size: number, fill: string, body: string, extra = '') =>
+  const text = (
+    x: number,
+    y: number,
+    size: number,
+    fill: string,
+    body: string,
+    extra = '',
+    family = FONT
+  ) =>
     out.push(
-      `<text x="${x}" y="${y}" font-size="${size}" fill="${fill}" font-family="${FONT}" ${extra}>${esc(body)}</text>`
+      `<text x="${x}" y="${y}" font-size="${size}" fill="${fill}" font-family="${family}" ${extra}>${esc(body)}</text>`
     );
 
   // Brand, top left: BrandMark, drawn at 56.
@@ -267,15 +284,31 @@ export function cardSvg(card: Card): string {
       `<g stroke="${INK.canvas}" stroke-linecap="round"><path d="M13 51 L32 12" stroke-width="9.5"/><path d="M51 51 L32 12" stroke-width="9.5"/><path d="M20 40 H44" stroke-width="8.5"/></g>` +
       `<g fill="${INK.canvas}"><circle cx="32" cy="12" r="8.5"/><circle cx="13" cy="51" r="7.5"/><circle cx="51" cy="51" r="7.5"/></g></g>`
   );
-  text(pad + 76, pad + 40, 36, INK.text, 'Ambit', 'font-weight="700"');
+  text(pad + 76, pad + 40, 36, INK.text, 'Ambit', `font-weight="750" style="${WIDE}"`, DISPLAY);
 
   // The claim: kicker, number, sentence.
   let y = 250;
-  text(pad, y, 30, hue, card.kicker.toUpperCase(), 'font-weight="700" letter-spacing="1.5"');
+  text(
+    pad,
+    y,
+    30,
+    hue,
+    card.kicker.toUpperCase(),
+    `font-weight="700" letter-spacing="2.4" style="${NARROW}"`,
+    DISPLAY
+  );
   y += 24;
   if (card.count !== undefined) {
     y += 176;
-    text(pad - 6, y, 200, hue, String(card.count), 'font-weight="800" letter-spacing="-6"');
+    text(
+      pad - 6,
+      y,
+      200,
+      hue,
+      String(card.count),
+      `font-weight="800" letter-spacing="-4" style="${WIDE}"`,
+      DISPLAY
+    );
     y += 24;
   }
   // A number stays on the line with its noun.
@@ -387,6 +420,7 @@ export function cardSvg(card: Card): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}">` +
     `<defs>` +
+    (fonts ? `<style>${fonts}</style>` : '') +
     `<radialGradient id="glow" cx="0.15" cy="0.1" r="0.9"><stop offset="0%" stop-color="${hue}" stop-opacity="0.16"/><stop offset="100%" stop-color="${hue}" stop-opacity="0"/></radialGradient>` +
     `<pattern id="hazard" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="${INK.surface}"/><rect width="6" height="12" fill="${INK.error}" fill-opacity="0.6"/></pattern></defs>` +
     `<rect width="${CARD_W}" height="${CARD_H}" fill="${INK.canvas}"/>` +

@@ -205,6 +205,10 @@ One renderer: `CivTree.tsx` (SVG), the curated tree in era columns — the 3D mo
 ```
 src/client/                React frontend
   App.tsx                  The shell: which view is showing, and how the hooks and panels fit
+  fonts.ts                 The three faces, from this origin and latin only: Hubot Sans reads out
+                           (titles and figures wide, labels narrow), Mona Sans is the text, Monaspace
+                           Neon is code. Which selectors take Hubot is listed once, under TYPE ROLES
+                           at the end of App.css; the share card embeds the same files
   linkState.ts             The URL in both directions — which view, node, lens, focus and timeline
                            moment it asks for, and how a view is written back to it. A bare visit
                            to the hosted site is the demo, on the map. `linkFocus` says which node a

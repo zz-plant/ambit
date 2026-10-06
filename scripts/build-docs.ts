@@ -341,7 +341,28 @@ export function glossaryBody(concepts: Concept[]): string {
   ].join('\n');
 }
 
-/** One published page, whole. System fonts, so nothing blocks the first paint. */
+/**
+ * The app's faces, copied beside the pages: Hubot Sans for the headings and
+ * the wordmark, Mona Sans for the text, Monaspace Neon for code
+ * (src/client/fonts.ts says why each). Latin files only, and swapped in when
+ * they arrive, so a page still paints at once in the system face.
+ */
+const FONTS: [file: string, from: string][] = [
+  ['hubot-sans.woff2', '@fontsource-variable/hubot-sans/files/hubot-sans-latin-wdth-normal.woff2'],
+  ['mona-sans.woff2', '@fontsource-variable/mona-sans/files/mona-sans-latin-wght-normal.woff2'],
+  [
+    'monaspace-neon.woff2',
+    '@fontsource/monaspace-neon/files/monaspace-neon-latin-400-normal.woff2',
+  ],
+];
+
+const FONT_FACES = [
+  `@font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(${BASE}docs/fonts/hubot-sans.woff2) format("woff2")}`,
+  `@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(${BASE}docs/fonts/mona-sans.woff2) format("woff2")}`,
+  `@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(${BASE}docs/fonts/monaspace-neon.woff2) format("woff2")}`,
+].join('');
+
+/** One published page, whole. */
 export function renderPage(
   page: Page,
   body: string,
@@ -397,14 +418,15 @@ export function renderPage(
 <link rel="icon" href="${BASE}favicon.svg" type="image/svg+xml" />
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 <style>
+${FONT_FACES}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 "Mona Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
 header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-weight:700;font-size:16px;margin-right:auto}
-main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1{font-size:2em}
+header a{color:var(--muted);text-decoration:none;font-size:14px}header a:hover{color:var(--fg)}header .brand{color:var(--fg);font-family:"Hubot Sans","Mona Sans",sans-serif;font-stretch:112.5%;font-weight:750;font-size:17px;margin-right:auto}
+main{padding-top:8px;padding-bottom:48px}a{color:var(--link)}h1,h2,h3,h4{line-height:1.3;margin:1.6em 0 .5em}h1,h2{font-family:"Hubot Sans","Mona Sans",sans-serif;font-stretch:112.5%;font-weight:750;letter-spacing:-.01em}h1{font-size:2em}
 .anchor{float:left;margin-left:-1em;padding-right:.25em;color:var(--muted);text-decoration:none;opacity:0}h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:1}
-code{font:.88em/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
+code{font:.88em/1.5 "Monaspace Neon",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--code);padding:.1em .35em;border-radius:4px}
 pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}pre code{padding:0;background:none}
 table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
 img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
@@ -495,6 +517,10 @@ export function buildDocs(out: string): { pages: number; assets: number } {
   }
   mkdirSync(join(out, 'docs', 'assets'), { recursive: true });
   for (const a of assets) copyFileSync(join(ROOT, a), join(out, 'docs', 'assets', basename(a)));
+  mkdirSync(join(out, 'docs', 'fonts'), { recursive: true });
+  for (const [file, from] of FONTS) {
+    copyFileSync(join(ROOT, 'node_modules', from), join(out, 'docs', 'fonts', file));
+  }
   writeFileSync(
     join(out, 'sitemap.xml'),
     sitemap([

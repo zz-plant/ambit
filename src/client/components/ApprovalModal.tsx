@@ -6,7 +6,7 @@ import { trapTab } from '../utils/keys';
 import { useAmbitStore } from '../store/ambitStore';
 import { WEB_ACTOR } from '../utils/copy';
 import { ActorMark } from './ActorMark';
-import { NUM, Seal, money } from './figures';
+import { Seal, money } from './figures';
 
 /**
  * What a step may be called, what supplies it, and whether it can be undone.
@@ -102,7 +102,7 @@ function DecisionRows({ d }: { d: ProposalDecision }) {
     ]);
   }
   return (
-    <dl className="gov-decision" style={NUM}>
+    <dl className="gov-decision">
       {rows.map(([term, value]) => (
         <div key={term} className="gov-decision-row">
           <dt>{term}</dt>
