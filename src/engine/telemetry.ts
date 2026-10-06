@@ -67,6 +67,8 @@ function durationSeconds(started?: string | null, ended?: string | null): number
 
 export interface BeginRunInput {
   id?: string;
+  /** When it began, for a run recorded after the fact; now when absent. */
+  at?: string;
   goal?: string;
   goalId?: string;
   runType?: string;
@@ -81,13 +83,14 @@ let runCounter = 0;
 function beginRun(db: Migratable, input: BeginRunInput = {}) {
   const id = input.id || `run-${Date.now().toString(36)}-${runCounter++}`;
   db.prepare(
-    'INSERT INTO work_runs (id, goal, goal_id, run_type, source) VALUES (?, ?, ?, ?, ?)'
+    "INSERT INTO work_runs (id, goal, goal_id, run_type, source, started_at) VALUES (?, ?, ?, ?, ?, COALESCE(?, datetime('now')))"
   ).run(
     id,
     input.goal || null,
     input.goalId || null,
     input.runType || 'task',
-    input.source || 'manual'
+    input.source || 'manual',
+    input.at ?? null
   );
   return {
     run: id,
@@ -97,12 +100,18 @@ function beginRun(db: Migratable, input: BeginRunInput = {}) {
   };
 }
 
-function endRun(db: Migratable, runId: string, outcome: string, outcomeValueCents?: number) {
+function endRun(
+  db: Migratable,
+  runId: string,
+  outcome: string,
+  outcomeValueCents?: number,
+  at?: string
+) {
   const row = db.prepare('SELECT id FROM work_runs WHERE id = ?').get(runId);
   if (!row) return { error: `No run ${runId}. Begin one first.` };
   db.prepare(
-    "UPDATE work_runs SET ended_at = datetime('now'), outcome = ?, outcome_value_cents = ? WHERE id = ?"
-  ).run(outcome, outcomeValueCents ?? null, runId);
+    "UPDATE work_runs SET ended_at = COALESCE(?, datetime('now')), outcome = ?, outcome_value_cents = ? WHERE id = ?"
+  ).run(at ?? null, outcome, outcomeValueCents ?? null, runId);
   return {
     run: runId,
     outcome,
@@ -114,6 +123,8 @@ function endRun(db: Migratable, runId: string, outcome: string, outcomeValueCent
 
 export interface EventInput {
   kind: string;
+  /** When it happened, for an event recorded after the fact; now when absent. */
+  at?: string;
   actor?: string;
   capabilityId?: string;
   action?: string;
@@ -124,14 +135,15 @@ function addEvent(db: Migratable, runId: string, event: EventInput) {
   const row = db.prepare('SELECT id FROM work_runs WHERE id = ?').get(runId);
   if (!row) return { error: `No run ${runId}. Begin one first.` };
   db.prepare(
-    'INSERT INTO work_events (run_id, kind, actor, capability_id, action, detail) VALUES (?, ?, ?, ?, ?, ?)'
+    "INSERT INTO work_events (run_id, kind, actor, capability_id, action, detail, at) VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))"
   ).run(
     runId,
     event.kind,
     event.actor || null,
     event.capabilityId || null,
     event.action || null,
-    event.detail || null
+    event.detail || null,
+    event.at ?? null
   );
   return {
     run: runId,
@@ -146,14 +158,20 @@ function recordUse(
   db: Migratable,
   runId: string,
   capabilityId: string,
-  input: { durationSeconds?: number; source?: string } = {}
+  input: { durationSeconds?: number; source?: string; at?: string } = {}
 ) {
   if (!db.prepare('SELECT id FROM work_runs WHERE id = ?').get(runId)) {
     return { error: `No run ${runId}. Begin one first.` };
   }
   db.prepare(
-    'INSERT INTO capability_use (run_id, capability_id, duration_seconds, source) VALUES (?, ?, ?, ?)'
-  ).run(runId, capabilityId, input.durationSeconds ?? null, input.source || 'event');
+    "INSERT INTO capability_use (run_id, capability_id, duration_seconds, source, used_at) VALUES (?, ?, ?, ?, COALESCE(?, datetime('now')))"
+  ).run(
+    runId,
+    capabilityId,
+    input.durationSeconds ?? null,
+    input.source || 'event',
+    input.at ?? null
+  );
   return { run: runId, capability: capabilityId };
 }
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node --experimental-sqlite
+import { ingestSpool } from '../engine/spool.ts';
 import { readFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { nearest } from '../shared/nearest.ts';
@@ -220,6 +221,13 @@ function getWarmDb() {
   if (!dbHandle) {
     dbHandle = getDb(DB_PATH);
     migrate(dbHandle);
+    // A Claude Code session's tool calls, spooled by its hooks: read in when the
+    // agent's server opens the graph, so the briefing and the ledger see them.
+    try {
+      ingestSpool(dbHandle);
+    } catch {
+      /* the spool waits for the next reader */
+    }
   }
   return dbHandle;
 }

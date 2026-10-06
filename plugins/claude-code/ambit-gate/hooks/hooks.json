@@ -1,9 +1,26 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v ambit >/dev/null 2>&1 && exit 0; printf \"%s\" \"{\\\"systemMessage\\\":\\\"The Ambit gate is inactive: the ambit command is not installed, so no tool call is being checked. Install it with npm install -g ambit-cli or brew install zz-plant/tap/ambit.\\\"}\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "ambit gate", "timeout": 10 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'command -v ambit >/dev/null 2>&1 || exit 0; exec ambit gate'",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }

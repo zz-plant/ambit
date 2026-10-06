@@ -255,6 +255,11 @@ export function clientLocations(home = process.env.HOME || '/'): { label: string
   }));
 }
 
+/** Every place discovery looks for one client's config, for `ambit connect` to write to. */
+export function clientPaths(runtime: string, home = process.env.HOME || '/'): string[] {
+  return CLIENTS.find(c => c.runtime === runtime)?.paths(home) ?? [];
+}
+
 /** Read MCP-only clients into the same config shape used by the engine seeder. */
 export function discoverMcpClients(home = process.env.HOME || '/'): McpClientSeed[] {
   const found: McpClientSeed[] = [];
