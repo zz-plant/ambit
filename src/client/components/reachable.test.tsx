@@ -682,7 +682,7 @@ test('the ways to acquire a capability are compared, with the record\u2019s lean
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
   expect(html).toContain('Ways to acquire it');
-  expect(html).toContain('your record favours this');
+  expect(html).toContain('your record favors this');
   // Cheapest first, so the first option drawn is the cheaper of the two.
   expect(html.indexOf('$4,560/yr')).toBeLessThan(html.indexOf('$5,880/yr'));
 });

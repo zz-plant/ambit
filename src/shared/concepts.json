@@ -5,7 +5,7 @@
       "key": "ambit",
       "term": "Ambit",
       "short": "What you, your agents and your machines can jointly do",
-      "long": "Your ambit is everything your setup can actually do, which is more than any config file says: capabilities compose from pieces configured separately, and only count once they are proven to work. The frontier is its edge, the next steps just past it are how it widens, and the capability graph is the model that computes it. The theory documents call the same object the affordance frontier. Widening it is what the product is for; checks, authority and approvals are what make each widening safe to lean on.",
+      "long": "Your ambit is everything your setup can actually do, which is more than any config file says: capabilities compose from pieces configured separately. A capability counts once something provides it and its required prerequisites are reached. It is proven when its declared check passes, and a failing check takes it out of every plan until it passes again. Whether it may run is a separate question, which authority answers. The frontier is its edge, the next steps just past it are how it widens, and the capability graph is the model that computes it. The theory documents call the same object the affordance frontier. Widening it is what the product is for; checks, authority and approvals are what make each widening safe to lean on.",
       "seen": "The first line of the README and the welcome screen, the tour's first step, and the glossary page"
     },
     {
@@ -19,14 +19,14 @@
       "key": "era",
       "term": "Era",
       "short": "How far up the tree a capability sits",
-      "long": "The tech tree runs through seven eras: Foundation, Model Access, Tool Use, Memory, Autonomy, Assurance, Sovereignty. Later eras depend on earlier ones — you cannot run fully offline before you have a local runtime. Eras describe ordering, not importance.",
+      "long": "The tech tree runs through nine eras. Seven are the agent setup: Foundation, Model Access, Tool Use, Memory, Autonomy, Assurance, Sovereignty. Two are the product it builds: Product and Operations. Later eras depend on earlier ones — you cannot run fully offline before you have a local runtime. Eras describe ordering, not importance.",
       "seen": "Column headers on the map. Click one to open the era as a ladder"
     },
     {
       "key": "state",
       "term": "Reached, next step, blocked",
       "short": "Where you are on a tech tree node",
-      "long": "Reached: something in your config provides this, and the graph records which capability proved it. Next step: prerequisites are met but nothing was detected — these sit just past the frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
+      "long": "Reached: something in your config provides this and its required prerequisites are reached, and the graph records which entry provides it. Whether it works is a separate question, which its check answers. Next step: every required prerequisite is reached but nothing in your config provides it yet — these sit just past the frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
       "seen": "The three keys in the map's Key, and the header's counts, where reached is split into verified and unproven"
     },
     {
@@ -47,7 +47,7 @@
       "key": "combo",
       "term": "Combo",
       "short": "A capability several others unlock",
-      "long": "The tech tree nodes are combos, and you can define your own in a `combos` block for things specific to your work. A combo is a judgment about what composes into something new, which is why the tool never invents one from your config.",
+      "long": "The tech tree nodes are combos, which is why each one's id starts with `combo:`, and you can define your own in a `combos` block for things specific to your work. A combo is a judgment about what composes into something new, which is why the tool never invents one from your config.",
       "seen": "Every node on the map, ambit graph combos, ambit goal"
     },
     {

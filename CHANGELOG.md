@@ -6,6 +6,24 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### A page on another local port is not Ambit's page
+
+The origin check compared the hostname and ignored the port. Every page on a machine is on `localhost`, so another project's dev server, or `python -m http.server` in a downloaded folder, passed as Ambit's own page and, with no token, could read the agent config, switch an existing MCP server on, and approve or turn down drafts. An Origin now has to name a loopback host on a port this app serves its page from: the API's own, and in a checkout the Vite port that `npm run dev` gives both processes as `AMBIT_WEB_PORT`. Vite takes that port or stops, so it never moves to one the API would refuse.
+
+`/api/telemetry` took a post from anything that could reach it, which was harmless while it only recorded work. A use inside a run that ended in success counts toward a promotion threshold, though, so a post could bring forward the widening of a grant a person had set a threshold on. The route now follows the token rule the config and decision routes follow. The server writes the token when it starts, and the OpenCode bridge and the stdin adapter present it. A copy of `plugins/ambit-telemetry.js` made before this release posts without it and is refused, so copy it into `~/.config/opencode/plugins/` again.
+
+### The docs say one thing about what counts
+
+The glossary said a capability counts only once it is proven, the README said it counts once its check passes, and the engine counts what is reached and lets a failing check take it away. Three versions of the installed, working, authorized chain ran across four pages, one of them six links long and grading itself, and the map was "every tool and credential as a point" on one page and "the curated tree with your position on it" on another. Each is now stated once: reached counts, proven is the part a passing check backs, permission is a separate layer, and the gate binds in three places, `ambit apply`, the control plane for what is routed through it, and the Claude Code hook.
+
+The pages were rearranged around that. The README says what Ambit is before the journey from A to B, and the Eva picture moved to the end of the loadout page as an aside. The deep dive gained a section on how a setup reaches further, defining the frontier, next steps, near misses, keystones and combos, with fragility after it as what that reach rests on, and lost the maintainer histories and the counts that drift. The roadmap's status table lists only what remains, the interface specs open on what they are now, and the how-to pages give a method by hand before the commands, advice that follows from the diagnosis, the project-scoped config files Ambit does not read yet, and what each step needs before its output means anything.
+
+### Budget amounts the shell leaves alone, and a version to report
+
+Every example of `ambit budget set` wrote `--amount=$20`. Typed as shown, bash reads `$2` and a 0, so the command set a $0 ceiling and refused every stated spend after it; zsh reads `$20`, which is unset, and the command failed. The examples now write `--amount=20`, an empty amount says to leave the `$` off, and a zero ceiling is set with a warning naming the likely cause.
+
+`ambit --version` reached the engine as an unknown command and began a first-run seed. It now prints the version from `package.json` before the engine starts, and the bug template asks for it.
+
 ### Tokens on Time & cost
 
 The token counts the Claude Code hooks read from each session's transcript now have a figure on Time & cost: the month's total, and per model a bar of fresh input, cache reads and output, written as 2.5M and 41.3M, not nine digits. Cache reads are drawn in the quietest colour, since they are most of a long session's count and the cheapest part of it. The figure says where the counts came from and that no price was applied, and it is not drawn at all when nothing was recorded. A ledger holding only token counts no longer opens on "Nothing recorded yet". The hosted demo carries a month of sample sessions.

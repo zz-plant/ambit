@@ -773,7 +773,7 @@ function OptionCompare({
               <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
                 {a.privacy}
               </span>
-              {a.favoured && <span className="fig-option-favoured">your record favours this</span>}
+              {a.favoured && <span className="fig-option-favoured">your record favors this</span>}
             </span>
             {/* Text to read and to paste, and nothing else: a patch names a
                 command, so a surface shows it and never runs it. */}

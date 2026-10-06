@@ -4,15 +4,15 @@ TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) is a model that a
 
 ## Jev on the map
 
-Ambit models Jev as **Typed Judgment**, in the Model Access era of the curated tree. It is reached however Jev arrives in your config:
+Ambit models Jev as **Typed Judgment**, in the Model Access era of the curated tree. An era is one of the map's columns, ordered by what depends on what. Typed Judgment is reached however Jev arrives in your config:
 
 - one of the community Jev MCP servers, seen as `mcp:jev` or similar;
 - TypeSafe listed as a provider;
 - an open clone that serves the same `/v1/systemone` API, such as Kev, LitJev or OpenJev.
 
-A clone running on your own hardware also reaches **Local Typed Judgment**, in the Sovereignty era, beside Local Embeddings. The difference matters. The hosted API may keep requests for a while unless your account has a zero-retention agreement, and a local clone keeps the state it judges on your machine.
+A clone running on your own hardware also reaches **Local Typed Judgment**, in the Sovereignty era, which holds what runs without a hosted service, beside Local Embeddings. The difference matters. The hosted API may keep requests for a while unless your account has a zero-retention agreement, and a local clone keeps the state it judges on your machine.
 
-`ambit impact combo:typed-judgment` shows what depends on it, and `ambit goal typed-judgment` shows what it would take to reach it.
+Every node of the curated tree is a combo, a capability composed from others, so its id starts with `combo:`. `ambit impact combo:typed-judgment` shows what depends on it, and `ambit goal typed-judgment` shows what it would take to reach it.
 
 ## Proving a local model answers
 

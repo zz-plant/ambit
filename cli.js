@@ -4,7 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { connect, createServer } from 'node:net';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 /**
  * How the engine is launched.
@@ -70,9 +70,18 @@ if (cmd === '--help' || cmd === 'help') {
   ${D}ambit web [--port=N] [--no-open]   Open the map on localhost: the built
                          page from an install, Vite from a checkout
   ambit mcp              Run the MCP server, exposing the same questions to an
-                         agent session: claude mcp add ambit -- ambit mcp${R}
+                         agent session: claude mcp add ambit -- ambit mcp
+  ambit --version        The installed version, for a bug report${R}
 `);
   process.exit(engineHelp.status ?? 0);
+}
+
+// The version a bug report asks for. It answers here, before the engine
+// starts, because an unknown flag reached the engine and began a first-run
+// seed on a machine with no graph.
+if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
+  console.log(JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version);
+  process.exit(0);
 }
 
 // Bare `ambit` used to print help — a list of things to read before doing
@@ -185,9 +194,17 @@ if (cmd === 'web') {
     // The address the server binds, never `localhost`: that name can resolve
     // to ::1 first, where a different server may be listening on this port.
     const url = `http://127.0.0.1:${port}/`;
+    // The server serves the page itself here, so its own port is the only one
+    // a page may write from. A dev port left in the shell would admit a page
+    // on that port, and there is no Vite here to be it.
     const child = spawn('node', [...NODE_FLAGS, server], {
       stdio: ['ignore', 'pipe', 'inherit'],
-      env: { ...process.env, AMBIT_API_PORT: String(port), NODE_ENV: 'production' },
+      env: {
+        ...process.env,
+        AMBIT_API_PORT: String(port),
+        AMBIT_WEB_PORT: '',
+        NODE_ENV: 'production',
+      },
     });
     child.stdout.on('data', chunk => {
       if (!String(chunk).includes('running on')) return process.stdout.write(chunk);
@@ -207,7 +224,11 @@ if (cmd === 'web') {
     process.on('SIGTERM', stop);
     child.on('exit', code => process.exit(code ?? 0));
   } else {
-    const web = spawnSync('npm', ['run', 'dev'], { cwd: ROOT, stdio: 'inherit' });
+    // `--port` is the page's port here, which Vite listens on and the API
+    // accepts writes from; `npm run dev` hands it to both as AMBIT_WEB_PORT.
+    const asked = args.find(a => a.startsWith('--port='))?.slice(7);
+    const env = asked ? { ...process.env, AMBIT_WEB_PORT: asked } : process.env;
+    const web = spawnSync('npm', ['run', 'dev'], { cwd: ROOT, stdio: 'inherit', env });
     process.exit(web.status ?? 0);
   }
 }

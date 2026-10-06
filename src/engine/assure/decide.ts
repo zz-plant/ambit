@@ -504,7 +504,7 @@ function recordSpend(db: Db, capability: string, action: string, scope: string, 
       action,
       spent_cents: cents,
       recorded: false,
-      note: `No budget covers ${capability} / ${action}. The spend is not tracked against a ceiling — ambit budget set ${capability.replace('combo:', '')} --amount=$N --by=<person> declares one.`,
+      note: `No budget covers ${capability} / ${action}. The spend is not tracked against a ceiling — ambit budget set ${capability.replace('combo:', '')} --amount=<dollars> --by=<person> declares one.`,
     };
   }
   const nextPeriod = periodElapsed(db, existing);

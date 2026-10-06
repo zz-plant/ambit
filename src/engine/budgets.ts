@@ -175,14 +175,18 @@ function setBudget(
   }
 ) {
   const usage =
-    'Usage: ambit budget set <capability> [action] --amount=$20 [--period=month] [--scope=<target>] --by=<person>';
+    'Usage: ambit budget set <capability> [action] --amount=<dollars> [--period=month] [--scope=<target>] --by=<person>';
   if (!input.capability) return { error: usage };
   const capability = input.capability.includes(':')
     ? input.capability
     : `combo:${input.capability}`;
   const action = input.action || 'execute';
   const cents = parseAmount(input.amount);
-  if (cents === undefined) return { error: `${usage}\nAn amount is required, e.g. --amount=$20.` };
+  if (cents === undefined) {
+    return {
+      error: `${usage}\nAn amount in dollars is required, e.g. --amount=20. A $ typed without quotes is read by the shell, so leave it off: in bash, --amount=$20 arrives as --amount=0.`,
+    };
+  }
   const period = (input.period || 'month').toLowerCase();
   if (!PERIOD_DAYS[period]) {
     return { error: `${usage}\nPeriod is one of: ${Object.keys(PERIOD_DAYS).join(', ')}.` };
@@ -226,7 +230,13 @@ function setBudget(
     scope: input.scope,
     budget: `$${(cents / 100).toFixed(2)} per ${period}`,
     granted_by: humanId,
-    note: "A spend past this ceiling is refused until the period turns over, for any caller that states its spend, which is what makes a ceiling safer than a one-off approval. Within it the grant's own mode still decides: a budget bounds an autonomous grant and does not create one.",
+    note: "A spend past this ceiling is refused until the period turns over, for any caller that states its spend. Nothing records a spend on its own yet, so a caller that states none is not counted. Within it the grant's own mode still decides: a budget bounds an autonomous grant and does not create one.",
+    ...(cents === 0
+      ? {
+          warning:
+            'A ceiling of $0.00 refuses every stated spend. If you meant another amount, a $ typed without quotes is read by the shell: in bash, --amount=$20 arrives as --amount=0. Type --amount=20.',
+        }
+      : {}),
   };
 }
 
@@ -273,7 +283,7 @@ function budgetReport(db: Db) {
     .all<any>();
   if (!rows.length) {
     return {
-      note: "No standing budgets. `ambit budget set <cap> --amount=$20 --by=<person>` sets a ceiling on what may be spent in a period. A spend past it is refused until the period turns over; within it the grant's own mode still decides.",
+      note: "No standing budgets. `ambit budget set <cap> --amount=20 --by=<person>` sets a ceiling, in dollars, on what may be spent in a period. A spend past it is refused until the period turns over; within it the grant's own mode still decides.",
       budgets: [],
     };
   }

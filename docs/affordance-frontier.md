@@ -4,11 +4,11 @@
 
 ## The object
 
-Ambit models the **affordance frontier** of extended human-machine systems: the set of digital, cognitive, physical, social, institutional, and economic actions made reachable by the composition of humans, models, software, authority, bodies, and machines.
+The object is the **affordance frontier** of extended human-machine systems: the set of digital, cognitive, physical, social, institutional, and economic actions made reachable by the composition of humans, models, software, authority, bodies, and machines.
 
 The shortest form: *Ambit makes the capability frontier of an agentic system legible.*
 
-This is the formal name for what the README calls your *ambit*, and its edge is what the map calls the frontier. [The ideas behind Ambit](./ideas.md) sets the names side by side.
+This is the formal name for what the README calls your *ambit*, and its edge is what the map calls the frontier. The software models one narrow part of it: a person's agents, tools and machines. [The ideas behind Ambit](./ideas.md) sets the names side by side.
 
 ```
 A(S) = A_digital ∪ A_cognitive ∪ A_physical ∪ A_social ∪ A_institutional ∪ A_economic
@@ -29,7 +29,7 @@ flowchart LR
 
 That chain is not well described as "an AI using a tool." It is a self-extending sociotechnical system.
 
-## Why "affordance" and not "capability"
+## Why the theory says "affordance"
 
 A hammer does not contain hammering. Hammering emerges from a relation between an agent, the tool, the agent's motor ability, a suitable target, and an environment. Affordances are relational; capabilities sound like possessions.
 
@@ -37,7 +37,7 @@ The same is true of the digital case, which is easy to miss because software fee
 
 Robotics makes the relational character obvious, because physical affordances have always worked this way. A robot possesses a gripper; whether it can open a particular door depends on gripper geometry, force, perception, handle type, reach, locomotion, planning, door state, authorization, and possibly a human holding something aside.
 
-Ambit generalizes that logic to digital and institutional action.
+Ambit generalizes that logic to digital and institutional action. The product keeps the plainer word: a capability on the map is an affordance in this sense, reached only when what it needs lines up, and the provider that supplies it is a separate node.
 
 ## The hard cases
 
@@ -82,11 +82,11 @@ flowchart LR
 
 Where is *pick up the cup* in that loop? Not in the unaided nervous system, the decoder, the model, the planner, or the arm. It exists only in the closed circuit.
 
-This forces a distinction Ambit should eventually make explicit:
+This forces a distinction, which the map now draws as kinds of joint capability:
 
-- **Human-gated** — the machine acts only after approval.
-- **Human-composed** — human cognition is necessary to produce the action.
-- **Machine-composed-human** — the machine extends what the human can perceive, remember, decide, communicate, or do.
+- **Human-gated**: the machine acts only after approval. The graph calls this institutional.
+- **Human-composed**: human cognition is necessary to produce the action. The graph calls this cognitive.
+- **Machine-composed-human**: the machine extends what the human can perceive, remember, decide, communicate, or do. The graph marks a capability a person and a machine supply together.
 
 "Human in the loop" implies two pre-existing entities passing control. A tight enough interface produces a coupled system whose relevant cognition spans both, and which has abilities neither participant has alone. Calling the human a supervisor misses what is happening.
 
@@ -120,6 +120,8 @@ Ambit's [ledger](./deep-dive.md#the-frontier-ledger) is a first, narrow implemen
 
 ## The AGI thesis
 
+This section is speculation, further from the software than anything else on this page.
+
 AGI need not arrive as one monolithic model crossing a threshold. It may arrive compositionally: models plus tools plus persistence plus credentials plus infrastructure plus humans, forming systems whose aggregate ability to act becomes the historically relevant thing.
 
 The conventional framing plots *model capability over time* and asks how many intellectual tasks a model can perform. The systems framing plots **system capability frontier over time** and asks across how many domains an assembled system can perceive opportunities, form goals, marshal resources, act, observe consequences, adapt, and continue.
@@ -142,7 +144,7 @@ At that point, asking whether the intelligence resides in the person, the model,
 
 ## What the software does with this
 
-Four concrete consequences have landed.
+What has landed in the software:
 
 - The infrastructure manifest accepts devices of any kind. A robot arm declared as a device and a neural decoder declared as a service on it seed into the graph as first-class nodes with a `runs_on` edge between them, exactly as a Pi and a container do.
 - The domain vocabulary was entirely software, so anything acting on the world collapsed into the `meta` column. `physical` is now a domain, and such resources render in their own column.
@@ -151,4 +153,4 @@ Four concrete consequences have landed.
 
 The distinction the affordance reading forces — that an affordance exists only when reasoning, tool, target, and authorization line up — is what the split buys. A capability is reached when something supplies it; an action is exercisable when it is reached *and* permitted *and* has evidence behind it, and those are three columns rather than one boolean.
 
-The domains are derived from structure, not matched from keywords: `ambit graph affordances` calls a capability institutional when an authority holder must approve it and physical when a provider runs on a device. The map marks the joint ones, a person who approves or supplies a capability and a device it runs on, and the detail panel names who; it has no column for them. What has not landed is the line the whole project sits behind: Ambit describes authority, and enforcement stops at its own gate. `apply` and the control-plane proxy refuse a step that fails `canExecute`; nothing forces a runtime to consult that gate, so a system that acts without asking is not stopped by the graph. [Roadmap §7b and §9](./roadmap.md#status-at-a-glance) carry the current state of each, and the theory above still runs ahead of them.
+The domains are derived from structure, not matched from keywords: `ambit graph affordances` calls a capability institutional when an authority holder must approve it and physical when a provider runs on a device. The map marks the joint ones, a person who approves or supplies a capability and a device it runs on, and the detail panel names who; it has no column for them. What has not landed is the line the whole project sits behind: Ambit describes authority, and enforcement stops at its own gate. `apply`, the control-plane proxy and, once its hook is installed, Claude Code's tool calls refuse, or put to a person, what `canExecute` does not allow; nothing forces any other runtime to consult that gate, so a system that acts without asking is not stopped by the graph. [Roadmap §7b and §9](./roadmap.md#status-at-a-glance) carry the current state of each, and the theory above still runs ahead of them.
