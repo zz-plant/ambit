@@ -3,25 +3,25 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Why Ambit: effective agency as a governed object</title>
-<meta name="description" content="Why Ambit exists: agent stacks become capable through composition, and effective agency should be a governed, verified and legible object." />
+<title>Why Ambit: widening what an agent stack can do, and governing it</title>
+<meta name="description" content="Why Ambit exists: agent stacks get capable through composition, so their reach is worth widening on purpose, with each widening verified, legible and governed." />
 <link rel="canonical" href="https://zz-plant.github.io/ambit/docs/why-ambit/" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://zz-plant.github.io/ambit/docs/why-ambit/" />
-<meta property="og:title" content="Why Ambit: effective agency as a governed object" />
-<meta property="og:description" content="Why Ambit exists: agent stacks become capable through composition, and effective agency should be a governed, verified and legible object." />
+<meta property="og:title" content="Why Ambit: widening what an agent stack can do, and governing it" />
+<meta property="og:description" content="Why Ambit exists: agent stacks get capable through composition, so their reach is worth widening on purpose, with each widening verified, legible and governed." />
 <meta property="og:image" content="https://zz-plant.github.io/ambit/og/why-ambit.png" />
 <meta property="og:image:width" content="1280" />
 <meta property="og:image:height" content="640" />
-<meta property="og:image:alt" content="Agents get capable by composition. Who governs that?" />
+<meta property="og:image:alt" content="Agents get capable by composition. Grow it on purpose" />
 <meta property="og:site_name" content="Ambit" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Why Ambit: effective agency as a governed object" />
-<meta name="twitter:description" content="Why Ambit exists: agent stacks become capable through composition, and effective agency should be a governed, verified and legible object." />
+<meta name="twitter:title" content="Why Ambit: widening what an agent stack can do, and governing it" />
+<meta name="twitter:description" content="Why Ambit exists: agent stacks get capable through composition, so their reach is worth widening on purpose, with each widening verified, legible and governed." />
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/why-ambit.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Why Ambit: effective agency as a governed object","description":"Why Ambit exists: agent stacks become capable through composition, and effective agency should be a governed, verified and legible object.","url":"https://zz-plant.github.io/ambit/docs/why-ambit/","dateModified":"2026-10-01","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Why Ambit: effective agency as a governed object","item":"https://zz-plant.github.io/ambit/docs/why-ambit/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Why Ambit: widening what an agent stack can do, and governing it","description":"Why Ambit exists: agent stacks get capable through composition, so their reach is worth widening on purpose, with each widening verified, legible and governed.","url":"https://zz-plant.github.io/ambit/docs/why-ambit/","dateModified":"2026-10-06","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Why Ambit: widening what an agent stack can do, and governing it","item":"https://zz-plant.github.io/ambit/docs/why-ambit/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
@@ -50,6 +50,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p>Every component had configuration. Nothing had a model of what the whole system could actually do.</p>
 <p>Ambit is a capability graph for agent stacks. What I wanted from it was the questions no config file answers:</p>
 <ul>
+<li>What could the whole stack do that I was not using, and which one addition would open the most?</li>
 <li>What does this provider actually support?</li>
 <li>Which parts of the stack are decaying?</li>
 <li>Are three different failures actually the same structural deficit?</li>
@@ -63,8 +64,9 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p>And the inverse matters too. Having a tool installed does not mean an agent can reliably use it. Having the technical ability to perform an action does not mean it has the authority to do so.</p>
 <p>So the direction is to move from <em>what tools exist?</em> to <em>what actions are actually reachable?</em></p>
 <p>That means distinguishing:</p>
-<pre><code>installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate
+<pre><code>installed ≠ working ≠ authorized
 </code></pre>
+<p>Something configured is not thereby working, and something working is not thereby permitted. Ambit records the three apart: what is reached, what a passing check has proven, and what a grant allows.</p>
 <h2 id="what-an-agent-could-notice"><a class="anchor" href="#what-an-agent-could-notice" aria-hidden="true" tabindex="-1">#</a>What an agent could notice</h2>
 <p>Eventually an agent should be able to say:</p>
 <blockquote>
@@ -83,7 +85,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p>A workaround gets you through today. A capability that has been verified and left on the map is there for every session after this one, until it decays and the graph says so.</p>
 <h2 id="accounting-and-then-a-ledger"><a class="anchor" href="#accounting-and-then-a-ledger" aria-hidden="true" tabindex="-1">#</a>Accounting, and then a ledger</h2>
 <p>What Ambit is doing is closest to accounting. Partly a dependency graph, partly IAM, partly a CMDB, partly an audit ledger — but with <em>capacity for action</em> as the thing being accounted for.</p>
-<p>The ≠ chain above is the short form. Ordinary tool registries collapse seven different things into one. Something can be <strong>available</strong> without being <strong>authorized</strong>; <strong>authorized</strong> without being <strong>reachable</strong>; reachable without being <strong>verified</strong>; and a <strong>composed</strong> capability can exist that no component declares. Two more decide whether it holds. <strong>Delegated</strong>, where a human or another agent supplies a missing step. <strong>Persistent</strong>, where it survives the current interaction. Together those seven are most of what determines whether a system can actually cause something to happen.</p>
+<p>The ≠ chain above is what the graph records. The argument goes further, because ordinary tool registries collapse several different things into one. Something can be <strong>available</strong> without being <strong>authorized</strong>; <strong>authorized</strong> without being <strong>reachable</strong>; reachable without being <strong>verified</strong>; and a <strong>composed</strong> capability can exist that no component declares. Two more decide whether it holds: whether a person or another agent has to supply a missing step (the map marks the person&#39;s case as a joint capability), and whether it survives the current interaction. Together they are most of what determines whether a system can actually cause something to happen, and <a href="/ambit/docs/roadmap/">the roadmap</a> says which of them the software records today.</p>
 <p>The version of this I find most interesting is longitudinal. Instead of describing only today, record what the system could do at time T, and what changed. A system gains a machine, then network access, then credentials, then a scheduler, then memory, then deploy authority, then the ability to create further agents. Each is an infrastructure change <em>and</em> a change in the reachable frontier.</p>
 <p>That is a ledger of agency, not a snapshot of it. And it makes visible the entries no changelog can:</p>
 <blockquote>
@@ -94,7 +96,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p><strong>Effective agency can grow much faster than model intelligence.</strong></p>
 <p>Give the same model shell access, persistent execution, credentials, browser control, local machines, memory, schedulers, and delegation, and you have created a radically more consequential system without changing a single model weight.</p>
 <p>Those capabilities currently accumulate across JSON files, OAuth scopes, shell scripts, prompts, containers, machines, and human memory. No single artifact represents the total.</p>
-<p>Ambit&#39;s longer-term thesis is: <strong>make effective agency a governed object.</strong></p>
+<p>Widening that reach is what Ambit is for. Its longer-term thesis is about what the widening needs: <strong>make effective agency a governed object.</strong></p>
 <p>Capability should be distinct from authority. New abilities should be verified before being trusted. Human approval should remain an explicit dependency where it matters. Revocation and blast radius should be computable. An agent should be able to propose expanding its environment without thereby having unilateral authority to expand it.</p>
 <p>The design norm:</p>
 <blockquote>
