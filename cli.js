@@ -194,9 +194,17 @@ if (cmd === 'web') {
     // The address the server binds, never `localhost`: that name can resolve
     // to ::1 first, where a different server may be listening on this port.
     const url = `http://127.0.0.1:${port}/`;
+    // The server serves the page itself here, so its own port is the only one
+    // a page may write from. A dev port left in the shell would admit a page
+    // on that port, and there is no Vite here to be it.
     const child = spawn('node', [...NODE_FLAGS, server], {
       stdio: ['ignore', 'pipe', 'inherit'],
-      env: { ...process.env, AMBIT_API_PORT: String(port), NODE_ENV: 'production' },
+      env: {
+        ...process.env,
+        AMBIT_API_PORT: String(port),
+        AMBIT_WEB_PORT: '',
+        NODE_ENV: 'production',
+      },
     });
     child.stdout.on('data', chunk => {
       if (!String(chunk).includes('running on')) return process.stdout.write(chunk);
@@ -216,7 +224,11 @@ if (cmd === 'web') {
     process.on('SIGTERM', stop);
     child.on('exit', code => process.exit(code ?? 0));
   } else {
-    const web = spawnSync('npm', ['run', 'dev'], { cwd: ROOT, stdio: 'inherit' });
+    // `--port` is the page's port here, which Vite listens on and the API
+    // accepts writes from; `npm run dev` hands it to both as AMBIT_WEB_PORT.
+    const asked = args.find(a => a.startsWith('--port='))?.slice(7);
+    const env = asked ? { ...process.env, AMBIT_WEB_PORT: asked } : process.env;
+    const web = spawnSync('npm', ['run', 'dev'], { cwd: ROOT, stdio: 'inherit', env });
     process.exit(web.status ?? 0);
   }
 }

@@ -19,7 +19,12 @@ export default defineConfig({
   base: '/ambit/',
   root: 'src/client',
   server: {
-    port: 3000,
+    // The API accepts a page's Origin only on a port it was told about, and
+    // `npm run dev` tells both processes the same AMBIT_WEB_PORT. A Vite that
+    // moved to the next free port would serve a page the API then refuses on
+    // every write, so it takes this port or stops.
+    port: Number(process.env.AMBIT_WEB_PORT || 3000),
+    strictPort: true,
     proxy: {
       // The API server reads the same variable, so the two can move together.
       // It listens on 127.0.0.1 only, and `localhost` can resolve to ::1,

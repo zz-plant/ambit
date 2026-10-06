@@ -20,14 +20,20 @@
  * does not recognise is reported rather than dropped silently.
  */
 
-const SERVER = process.env.AMBIT_SERVER || 'http://127.0.0.1:3001';
 import { createInterface } from 'node:readline';
+import { readApiToken } from '../../src/server/config.ts';
+
+const SERVER = process.env.AMBIT_SERVER || 'http://127.0.0.1:3001';
+
+// The route refuses a post without the API token: a use recorded here counts
+// toward a promotion threshold, so not just anything may record one.
+const TOKEN = readApiToken();
 
 async function post(body: any): Promise<void> {
   try {
     const res = await fetch(`${SERVER}/api/telemetry`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(TOKEN ? { 'X-Ambit-Token': TOKEN } : {}) },
       body: JSON.stringify(body),
     });
     if (!res.ok) {

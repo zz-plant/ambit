@@ -14,22 +14,49 @@
  * the intervention it records has an outcome and a length.
  *
  * Install: copy to ~/.config/opencode/plugins/ and restart opencode. The
- * visualizer API must be running (npm run server).
+ * visualizer API must be running (npm run server), as the same user, so the
+ * token it writes is the one this reads.
  *
  * Everything is wrapped: a dead server, a changed payload, or an unknown
  * event must never take a session down.
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 const SERVER = process.env.AMBIT_SERVER || 'http://127.0.0.1:3001';
 let runId = null;
 
+/**
+ * The API token, found as `readApiToken` in src/server/config.ts finds it:
+ * AMBIT_API_TOKEN, else the file the API server makes when it starts. This
+ * file runs in OpenCode's process and cannot import the server, so it
+ * transcribes; keep the two in step. Read on every post, so a server started
+ * after the session, or a token made anew, is picked up without a restart.
+ */
+function apiToken() {
+  if (process.env.AMBIT_API_TOKEN) return process.env.AMBIT_API_TOKEN;
+  try {
+    const file = join(process.env.HOME || '/', '.config', 'opencode', 'ambit-api.token');
+    return readFileSync(file, 'utf8').trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** One observation to /api/telemetry, which refuses a post without the token. */
+function send(body) {
+  const token = apiToken();
+  return fetch(`${SERVER}/api/telemetry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token ? { 'X-Ambit-Token': token } : {}) },
+    body: JSON.stringify(body),
+  });
+}
+
 async function post(body) {
   try {
-    await fetch(`${SERVER}/api/telemetry`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    await send(body);
   } catch {}
 }
 
@@ -37,12 +64,8 @@ async function post(body) {
  *  records nothing. */
 async function ensureRun() {
   if (runId) return runId;
-  const res = await fetch(`${SERVER}/api/telemetry`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      run: { goal: 'opencode session work', source: 'opencode-plugin', runType: 'task' },
-    }),
+  const res = await send({
+    run: { goal: 'opencode session work', source: 'opencode-plugin', runType: 'task' },
   }).catch(() => null);
   if (!res?.ok) return null;
   try {
@@ -140,12 +163,8 @@ const sessionRuns = new Map();
 function runFor(sessionID) {
   if (!sessionID) return ensureRun();
   if (!sessionRuns.has(sessionID)) {
-    const opened = fetch(`${SERVER}/api/telemetry`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        run: { goal: 'opencode session work', source: 'opencode-plugin', runType: 'task' },
-      }),
+    const opened = send({
+      run: { goal: 'opencode session work', source: 'opencode-plugin', runType: 'task' },
     })
       .then(res => (res.ok ? res.json() : null))
       .then(body => body?.run ?? null)

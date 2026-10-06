@@ -348,7 +348,7 @@ The decision is real and runs against your actual graph. What sits on the other 
 Ambit reads developer toolchains and writes to agent configs, so four properties are fixed and cannot be relaxed. [`SECURITY.md`](./SECURITY.md) states each in full, with what is in scope and what is not; [`AGENTS.md`](./AGENTS.md#security-posture) says where each is enforced.
 
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
-2. **Origin allowlist.** A request with a non-local `Origin` is rejected with 403 *before* routing, because a simple request skips preflight and response headers alone would not stop it.
+2. **Origin allowlist.** A request whose `Origin` is not Ambit's own page, a page on another localhost port included, is rejected with 403 *before* routing, because a simple request skips preflight and response headers alone would not stop it.
 3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.
 4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit's own code (`notify`, `notify-approvals`, `dispatch`, `incidents`, and `goal --judge`). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from `verify` and `apply` or an agent's `ambit_verify`, and never from the server. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
 

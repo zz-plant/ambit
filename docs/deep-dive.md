@@ -294,7 +294,7 @@ echo '{"run":{"goal":"recover production service","runType":"incident"}}' \
     | node --experimental-strip-types scripts/adapters/telemetry.ts
 ```
 
-The endpoint is loopback-only and origin-allowlisted like every other route, and a telemetry payload is structured data, never a command.
+The endpoint is loopback-only and origin-allowlisted like every other route, and it needs the API token, because work recorded there counts toward promotion. The server writes the token to `~/.config/opencode/ambit-api.token` when it starts, and the adapter and the OpenCode plugin read it from there or from `AMBIT_API_TOKEN`. A telemetry payload is structured data, never a command.
 
 Failures land in the ledger too, classified from what a runtime states outright: a shell's own message for a missing binary, an MCP error kind, a permission refusal. Nothing reads what the failure was *about*. So `deficits` and `opportunities` stop saying "nothing observed" within a day of real work, without anyone remembering to record anything, and `ambit signals` is the raw view, including the failures no capability could be attributed to. Those are a gap in the model, not in the environment.
 

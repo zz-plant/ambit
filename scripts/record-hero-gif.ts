@@ -387,9 +387,12 @@ async function main() {
   execSync('npx vite build', { cwd: ROOT, stdio: 'ignore' });
 
   const apiPort = await freePort();
+  // The page is served on a port of its own, below, and the API accepts a
+  // page's Origin only on a port it was told about, as `npm run dev` tells it.
+  const webPort = await freePort();
   console.log(`Starting the API on ${apiPort}…`);
   const api = spawn(NODE, ['--experimental-sqlite', join(ROOT, 'src', 'server', 'api.ts')], {
-    env: { ...SANDBOX, AMBIT_API_PORT: String(apiPort) },
+    env: { ...SANDBOX, AMBIT_API_PORT: String(apiPort), AMBIT_WEB_PORT: String(webPort) },
     cwd: ROOT,
     stdio: 'ignore',
   });
@@ -407,7 +410,6 @@ async function main() {
   // The recording must not be able to reach the real machine's API, so the
   // page is served here with its own proxy rather than through vite preview,
   // whose /api target is the developer's own running server.
-  const webPort = await freePort();
   const dist = join(ROOT, 'dist');
   const MIME: Record<string, string> = {
     '.html': 'text/html',
