@@ -263,6 +263,16 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
     Next  ambit verify · turns 11 of the unproven into evidence
 </code></pre>
 <!-- /example --><p>This is a fresh graph, before any check has run: reached and proven lead, the <code>›</code> marks the count that wants a person, and the last line is the command to type next. CI captures the block from a fixture graph and fails if it drifts from what the command prints.</p>
+<h3 id="ambit-impact--what-stops-if-a-piece-goes"><a class="anchor" href="#ambit-impact--what-stops-if-a-piece-goes" aria-hidden="true" tabindex="-1">#</a>ambit impact — what stops if a piece goes</h3>
+<!-- example: ambit impact mcp:playwright -->
+<pre><code class="language-console">$ ambit impact mcp:playwright
+
+    If playwright went away
+    ───────────────────────
+  › Stops working  Browser Automation, Automated Tests
+    Survives  Tool Protocol (5 other providers)
+</code></pre>
+<!-- /example --><p>What ends comes first, marked with the <code>›</code>; what survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, <code>impact</code> answers what revoking it ends, the same answer as <code>ambit credentials</code>.</p>
 <h3 id="ambit-share--what-may-leave-the-graph-and-what-may-not"><a class="anchor" href="#ambit-share--what-may-leave-the-graph-and-what-may-not" aria-hidden="true" tabindex="-1">#</a>ambit share — what may leave the graph, and what may not</h3>
 <p><code>ambit share</code> builds its HTML from an allow-list: name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions and economics cannot enter the file, people render as &quot;a person&quot;, and <code>--redact</code> replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.</p>
 <h3 id="from-a-script-or-an-agents-shell"><a class="anchor" href="#from-a-script-or-an-agents-shell" aria-hidden="true" tabindex="-1">#</a>From a script, or an agent&#39;s shell</h3>
