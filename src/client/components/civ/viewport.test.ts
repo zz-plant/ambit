@@ -30,7 +30,7 @@ import {
   zoomAbout,
 } from './viewport.ts';
 
-/** The demo's scene: seven eras, six rows at most. */
+/** A fixed scene, the demo's size when it had seven eras: six rows at most. */
 const SCENE = { width: 1340, height: 760 };
 const BOX = { width: 176, height: 124 };
 

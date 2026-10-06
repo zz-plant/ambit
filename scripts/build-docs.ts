@@ -105,8 +105,8 @@ export const PAGES: Page[] = [
     slug: 'mcp-config-locations',
     title: 'Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more',
     description:
-      'The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed.',
-    card: 'Eleven agents, eleven config files, one table',
+      'The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed and VS Code.',
+    card: 'Twelve agents, twelve config files, one table',
   },
   {
     src: 'docs/mcp-outage.md',

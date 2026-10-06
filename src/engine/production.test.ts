@@ -11,12 +11,9 @@
  */
 import { expect, test } from 'vitest';
 import { renderPlan } from './cli/reports.ts';
-import { C, type Palette } from './cli/output.ts';
+import { PLAIN } from './cli/output.ts';
 import { planFor } from './planning.ts';
 import { cli, dir, getDb, join, seed } from './testing/cli.ts';
-
-/** A palette with nothing in it, so a rendering reads as a pipe would. */
-const PLAIN = Object.fromEntries(Object.keys(C).map(k => [k, ''])) as unknown as Palette;
 
 /** A setup with every piece Launch Ready needs, read from MCP server names alone. */
 const LAUNCHABLE = {

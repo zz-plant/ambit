@@ -110,8 +110,33 @@ function analyzeImpact(db: Db, capId: string) {
       : { error: `No capability "${capId}" in this graph.`, hint: 'ambit graph lists every id.' };
   }
 
+  // A credential supplies nothing along an edge: its holders point at it. What
+  // it holds up is what revoking it would end, the answer `ambit credentials`
+  // gives, so the impact of a key is that answer and not an empty list.
+  const kind = db.prepare('SELECT kind FROM capabilities WHERE id = ?').get(capId)?.kind;
+  if (kind === 'credential') {
+    const { ends, weakens } = revocation(db, capId);
+    return {
+      capability: cap.name,
+      decayed: [
+        ...ends.map(name => ({ name, becomes_unavailable: true })),
+        ...weakens.map(w => ({
+          name: w.name,
+          becomes_unavailable: false,
+          also_provided_by: w.without,
+        })),
+      ],
+      combos_at_risk: [],
+    };
+  }
+
+  // Only edges along which this node supplies something. A `uses` edge runs
+  // from a consumer to the credential it presents, so a server's own key was
+  // reported as something that decays when the server goes.
   const deps = db
-    .prepare('SELECT from_capability, to_capability, is_hard_requisite FROM dependencies')
+    .prepare(
+      "SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE COALESCE(kind, '') != 'uses'"
+    )
     .all();
   const allCaps = db.prepare('SELECT id, name, maturity_score, state FROM capabilities').all();
   const capMap = new Map<string, Record<string, any>>(allCaps.map(c => [c.id, c]));
@@ -261,6 +286,49 @@ function singlePointsOfFailure(db: Db) {
  * nothing. `weakens` is everything else the credential touches, where the
  * capability survives on another provider.
  */
+/**
+ * What revoking one credential would do: who holds it, the reached capabilities
+ * every provider of which presents it (those end), and the ones some provider
+ * reaches without it (those weaken). One computation for `ambit credentials`
+ * and `ambit impact credential:…`, so the two cannot disagree.
+ */
+function revocation(
+  db: Db,
+  credId: string,
+  context = {
+    providers: providersOf(db),
+    credsOf: credentialsOf(db),
+    nodes: new Map(
+      db
+        .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
+        .all<CapNode>()
+        .map(c => [c.id, c] as const)
+    ),
+  }
+) {
+  const { providers, credsOf, nodes } = context;
+  const holders = [...credsOf.entries()].filter(([, cs]) => cs.includes(credId)).map(([p]) => p);
+  const ends: string[] = [];
+  const weakens: { name: string; without: number }[] = [];
+  for (const [target, list] of providers) {
+    const t = nodes.get(target);
+    // Availability read the same way `tt spof` reads it, so the two surfaces
+    // cannot disagree about what a revocation would cost. A capability whose
+    // check is already failing is not something this credential is holding up.
+    if (!t || t.state === 'locked' || !usable(t.lifecycle)) continue;
+    // Same exclusion `tt spof` makes: an action conferred by a capability
+    // goes down with it by definition, and listing both doubles every entry.
+    if (t.kind === 'action' && nodes.get(list[0])?.kind === 'capability') continue;
+    if (!list.some(p => (credsOf.get(p) || []).includes(credId))) continue;
+    if (sharedCredentials(list, credsOf).includes(credId)) ends.push(t.name);
+    else {
+      const without = list.filter(p => !(credsOf.get(p) || []).includes(credId)).length;
+      weakens.push({ name: t.name, without });
+    }
+  }
+  return { holders, ends, weakens };
+}
+
 function credentialReport(db: Db) {
   const creds = db
     .prepare(
@@ -272,38 +340,26 @@ function credentialReport(db: Db) {
       note: 'No credentials declared. Add a `credentials` block naming which providers share one.',
     };
   }
-  const providers = providersOf(db);
-  const credsOf = credentialsOf(db);
-  const nodes = new Map(
-    db
-      .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
-      .all<CapNode>()
-      .map(c => [c.id, c] as const)
-  );
-  const nameOf = (id: string) => nodes.get(id)?.name || id;
+  const context = {
+    providers: providersOf(db),
+    credsOf: credentialsOf(db),
+    nodes: new Map(
+      db
+        .prepare('SELECT id, name, state, kind, lifecycle FROM capabilities')
+        .all<CapNode>()
+        .map(c => [c.id, c] as const)
+    ),
+  };
+  const nameOf = (id: string) => context.nodes.get(id)?.name || id;
 
   return creds.map(cred => {
-    const holders = [...credsOf.entries()].filter(([, cs]) => cs.includes(cred.id)).map(([p]) => p);
-    const ends: string[] = [];
-    const weakens: string[] = [];
-    for (const [target, list] of providers) {
-      const t = nodes.get(target);
-      // Availability read the same way `tt spof` reads it, so the two surfaces
-      // cannot disagree about what a revocation would cost. A capability whose
-      // check is already failing is not something this credential is holding up.
-      if (!t || t.state === 'locked' || !usable(t.lifecycle)) continue;
-      // Same exclusion `tt spof` makes: an action conferred by a capability
-      // goes down with it by definition, and listing both doubles every entry.
-      if (t.kind === 'action' && nodes.get(list[0])?.kind === 'capability') continue;
-      if (!list.some(p => (credsOf.get(p) || []).includes(cred.id))) continue;
-      (sharedCredentials(list, credsOf).includes(cred.id) ? ends : weakens).push(t.name);
-    }
+    const { holders, ends, weakens } = revocation(db, cred.id, context);
     return {
       credential: cred.name,
       id: cred.id,
       held_by: holders.map(nameOf),
       ends,
-      weakens,
+      weakens: weakens.map(w => w.name),
       note: ends.length
         ? `Revoking this ends ${ends.length} reached ${ends.length === 1 ? 'capability' : 'capabilities'}.`
         : undefined,

@@ -6,6 +6,18 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### `ambit impact` says what ends and what survives
+
+It printed through the generic formatter, so the answer read `becomes unavailable: false` and `also provided by: 5`, with every capability listed twice. It now leads with what stops working, marked `›`, then what survives only on providers that all present one credential, what survives on others and on how many, and what loses an optional input. Two wrong answers went with it: a server's own credential was listed as something that decays when the server goes, and `ambit impact credential:…` answered with nothing at all, because a key's edges point at it. A credential's impact is now what revoking it ends, the same computation as `ambit credentials`. The README carries the example again, captured from the fixture. Closes #76.
+
+### VS Code's own MCP servers
+
+VS Code keeps the servers it runs in a user-level `mcp.json`, under `servers`, apart from the Cline and Roo Code extensions Ambit already read, so those servers never reached the graph. They do now, as a twelfth runtime, with `VSCODE_MCP_CONFIG` to point elsewhere: contributed by @webdevsamran in #83, closing #77. Every place that lists the runtimes, the social card included, says twelve.
+
+### Issue Tracking
+
+Issue trackers are among the most common MCP servers and no node covered them, so `ambit goal "file an issue"` routed nowhere and a Linear server sat on the map unmapped. Issue Tracking is in the Tool Use era beside Data Access, detected from Linear, Jira and the rest of the Atlassian suite, YouTrack, ClickUp and Asana; reading runs on its own, commenting, filing and closing ask, and deleting is refused. GitHub is left out of the patterns because they would match a Copilot provider too. Error Tracking no longer claims "bug reports", which is a tracker's phrase, so "triage incoming bug reports" stays the docs' example of a goal only `--judge` can route. Closes #79.
+
 ## [0.6.0](https://github.com/zz-plant/ambit/releases/tag/v0.6.0) — 2026-10-01
 
 The first release on npm and in the MCP registry, and the first that helps someone running a product, not only an agent setup. In short:

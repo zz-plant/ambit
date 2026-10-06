@@ -15,6 +15,7 @@ import {
   briefReport,
   explain,
   renderBrief,
+  renderImpact,
   renderPlan,
   renderStatus,
   statusReport,
@@ -318,7 +319,11 @@ async function runCommand(
     case 'impact':
       // With no id it crashed on the query's missing parameter, a stack trace
       // where every other verb says how it is used.
-      emit(arg ? analyzeImpact(db, arg) : { error: 'Usage: ambit impact <id>' });
+      {
+        const answer = arg ? analyzeImpact(db, arg) : { error: 'Usage: ambit impact <id>' };
+        const palette = terminalPalette();
+        emit(answer, r => (r.error ? formatGeneric(r, palette) : renderImpact(r, palette)));
+      }
       break;
     case 'verify':
       if (flags.has('--history')) {

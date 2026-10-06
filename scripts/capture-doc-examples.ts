@@ -54,9 +54,9 @@ const TARGETS: { file: string; examples: { argv: string[]; tail?: number }[] }[]
     file: 'README.md',
     // `goal` and `impact` were captured here too, and printed the generic
     // key/value formatter (`exact: true`, `setup seconds: 600`), which read as
-    // debug output on the page a first-time reader decides from. They come back
-    // when each has a renderer of its own, as `status` does.
-    examples: [{ argv: ['status'], tail: 1 }],
+    // debug output on the page a first-time reader decides from. Each comes
+    // back once it has a renderer of its own, as `status` and `impact` do.
+    examples: [{ argv: ['status'], tail: 1 }, { argv: ['impact', 'mcp:playwright'] }],
   },
 ];
 
