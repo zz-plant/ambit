@@ -192,12 +192,12 @@ $ ambit impact mcp:playwright
 
     If playwright went away
     ───────────────────────
-  › Stops working  Browser Automation, Automated Tests
+  › Stops working  Automated Tests, Browser Automation, Continuous Delivery, Observability · and the 3 actions they confer
     Survives  Tool Protocol (12 other providers)
 ```
 <!-- /example -->
 
-What ends comes first, marked with the `›`; what survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, `impact` answers what revoking it ends, the same answer as `ambit credentials`.
+What ends comes first, marked with the `›`, as far down as it goes: Continuous Delivery needs Automated Tests, so it ends too. What survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, `impact` answers what revoking it ends, the same answer as `ambit credentials`.
 
 ### ambit share — what may leave the graph, and what may not
 

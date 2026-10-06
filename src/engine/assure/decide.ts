@@ -110,6 +110,37 @@ function specificity(scope?: string): number {
  *      statement than one written about everything. Ties go to the narrower
  *      mode, which is the old rule doing the job it was right for.
  */
+/**
+ * The grants still standing once a person has spoken.
+ *
+ * The curated tree declares a default for every action, and a person's grant
+ * for the same capability, scope and holder is their decision about it. Left
+ * side by side the two tied on specificity, the tie went to the narrower mode,
+ * and `ambit authority grant x autonomous` reported success and changed
+ * nothing, a `--ttl` elevation included. So the person's grant takes the
+ * default's place. Two things it never displaces: a curated refusal, since a
+ * forbidden grant wins outright (rule 9), and a runtime's own setting, which is
+ * what the runtime in front of the person will actually do.
+ *
+ * Applied to grants that are live: an expired elevation has already been
+ * dropped, so once it runs out the default it displaced decides again.
+ */
+function standing<
+  G extends {
+    capability_id?: string;
+    source: string;
+    mode: string;
+    scope?: string | null;
+    holder?: string | null;
+  },
+>(grants: G[]): G[] {
+  const key = (g: G) => `${g.capability_id ?? ''}|${g.scope || ''}|${g.holder || ''}`;
+  const spoken = new Set(grants.filter(g => g.source === 'human').map(key));
+  return grants.filter(
+    g => g.source !== 'techtree' || g.mode === 'forbidden' || !spoken.has(key(g))
+  );
+}
+
 function governingMode(covering: Array<{ mode: string; scope?: string }>): string {
   if (!covering.length) return 'forbidden';
   if (covering.some(g => g.mode === 'forbidden')) return 'forbidden';
@@ -215,7 +246,7 @@ function canExecute(
   const isRuntimeGrant = (g: { capability_id: string }) => g.capability_id !== capability;
 
   let expiredGrant: (Omit<AuthorityRow, 'id'> & { expires_at?: string | null }) | undefined;
-  const covering = grants.filter((g: any) => {
+  const live = grants.filter((g: any) => {
     // A runtime grant's holder is the runtime: it records whose setting this
     // is, not who it binds. It binds whatever acts through what that runtime
     // supplies, whoever asks, which is how the report applies it. Held to the
@@ -244,7 +275,9 @@ function canExecute(
   // as if the elevation had never been declared: a standing confirm stays
   // confirm, and nothing at all stays a refusal. Treating expiry as a fall
   // back to confirm would let a row that has ended widen authority for good.
-  // The expired grant is kept only to explain the answer.
+  // The expired grant is kept only to explain the answer. A person's live
+  // grant takes the place of the curated default it speaks to.
+  const covering = standing(live);
   const governing = governingMode(covering as any);
   const grant = covering.find((g: any) => g.mode === governing);
   // A runtime's own setting that decided the mode, so the answer can say whose
@@ -271,14 +304,27 @@ function canExecute(
   // after the month turns over is a read, and a decision API that wrote to the
   // database to answer a question would be a surprising thing to put in front
   // of every action.
-  const budget = db
+  //
+  // Every budget that covers the spend has to have room for it: the one with
+  // no scope, which covers everything, and any whose scope takes in the
+  // target. The lookup matched one scope exactly, the scope of whichever grant
+  // governed, so naming a target with a grant of its own walked past the
+  // standing ceiling and a $25 spend on a $20 budget was allowed.
+  const budgets = db
     .prepare(
-      `SELECT budget_cents, spent_cents, period, period_start
-       FROM budgets WHERE capability_id = ? AND action = ? AND scope = ? LIMIT 1`
+      `SELECT budget_cents, spent_cents, period, period_start, scope
+       FROM budgets WHERE capability_id = ? AND action = ?`
     )
-    .get(capability, action, scope || '');
-  const spent = budget ? (periodElapsed(db, budget) ? 0 : budget.spent_cents) : 0;
-  const remaining = budget ? budget.budget_cents - spent : null;
+    .all<{
+      budget_cents: number;
+      spent_cents: number;
+      period: string | null;
+      period_start: string | null;
+      scope: string;
+    }>(capability, action)
+    .filter(b => !b.scope || (input.target !== undefined && scopeCovers(b.scope, input.target)));
+  const room = budgets.map(b => b.budget_cents - (periodElapsed(db, b) ? 0 : b.spent_cents));
+  const remaining = room.length ? Math.min(...room) : null;
   const overBudget = input.spendCents != null && remaining != null && input.spendCents > remaining;
 
   // The lifecycle gate: configured but failing is not working, and permission
@@ -489,6 +535,7 @@ export {
   MODE_RANK,
   narrower,
   specificity,
+  standing,
   governingMode,
   scopeCovers,
   sandboxCovering,

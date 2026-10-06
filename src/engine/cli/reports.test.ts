@@ -330,6 +330,31 @@ describe('renderImpact', () => {
     expect(text.indexOf('Stops working')).toBeLessThan(text.indexOf('Survives'));
   });
 
+  it('names what stops further down, and counts the actions it takes with it', () => {
+    // Deploy requires Solo, so it stops with A two hops away; Push is an
+    // action Solo confers. A dependent that is not working now has nothing to
+    // lose and is not listed.
+    const db = makeGraph({
+      capabilities: [
+        { id: 'mcp:a', name: 'A' },
+        { id: 'combo:solo', name: 'Solo' },
+        { id: 'combo:deploy', name: 'Deploy' },
+        { id: 'combo:later', name: 'Later', state: 'locked' },
+        { id: 'act:solo/push', name: 'push', kind: 'action' },
+      ],
+      dependencies: [
+        { from: 'mcp:a', to: 'combo:solo', kind: 'provides', hard: true },
+        { from: 'combo:solo', to: 'combo:deploy', hard: true },
+        { from: 'combo:solo', to: 'combo:later', hard: true },
+        { from: 'combo:solo', to: 'act:solo/push', kind: 'provides', hard: true },
+      ],
+    });
+    const text = renderImpact(analyzeImpact(db, 'mcp:a') as any, PLAIN).join('\n');
+    db.close();
+    expect(text).toContain('› Stops working  Deploy, Solo · and the 1 action they confer');
+    expect(text).not.toContain('Later');
+  });
+
   it('says plainly when nothing depends on the node', () => {
     const db = graph();
     const text = renderImpact(analyzeImpact(db, 'mcp:d') as any, PLAIN).join('\n');

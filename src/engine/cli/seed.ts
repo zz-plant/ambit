@@ -12,6 +12,7 @@ import { seedFromConfig } from '../discovery.ts';
 import { clientLocations, discoverMcpClients } from '../mcp-clients.ts';
 import { configDefault } from '../paths.ts';
 import { compareFrontiers, frontierNow } from '../ledger.ts';
+import { graphCounts } from '../vocabulary.ts';
 import { resolveDbPath } from '../../shared/db-path.ts';
 import { mcpEntries, parseJsonc } from '../../shared/opencode.ts';
 import { terminalPalette, type Palette } from './output.ts';
@@ -218,10 +219,11 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, applied_at = datetime('now')`
   ).run(SEED_SOURCES_KEY, JSON.stringify(read));
 
-  // `kind != 'action'` is what makes a row a capability, and every count shown
-  // to a person has to use it. Counting the whole table here reported 69 where
-  // `ambit status` reported 41 a second later, in the same run of bootstrap.
-  const c = db.prepare("SELECT COUNT(*) as cnt FROM capabilities WHERE kind != 'action'").get();
+  // The count `ambit status` reports a second later, from the one query every
+  // summary uses. Counting the whole table here reported 69 where status
+  // reported 41 in the same run of bootstrap, and a count of its own went on
+  // including a person once people stopped counting as capabilities.
+  const c = { cnt: graphCounts(db).total };
   // Printed by `ambit seed`, bootstrap.sh and the first run alike, any of which
   // may be writing to a pipe or a log.
   const paint = terminalPalette();

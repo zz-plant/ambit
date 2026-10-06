@@ -4,7 +4,7 @@
  * and expire automatically back to confirmation mode.
  */
 import { test, expect } from 'vitest';
-import { canExecute, grantAuthority, parseDuration } from './assurance.ts';
+import { authorityReport, canExecute, grantAuthority, parseDuration } from './assurance.ts';
 import { makeGraph } from './testing/graph.ts';
 
 test('parseDuration parses standard time units', () => {
@@ -124,6 +124,45 @@ test('--by records who declared the grant and does not bind it to them', () => {
   expect(row.promote_set_by).toBe('human:kanav');
   expect(row.note).toContain('declared by human:kanav');
   db.close();
+});
+
+test("a person's grant takes the place of the curated default, until it runs out", () => {
+  // The curated tree says confirm. A person's unscoped grant used to tie with
+  // it, the tie went to the narrower mode, and the grant reported success and
+  // changed nothing, a TTL elevation included.
+  const db = makeGraph({
+    ...deployable,
+    authority: [{ capability: 'combo:deploy', mode: 'confirm', source: 'techtree' }],
+  });
+  grantAuthority(db, { capability: 'combo:deploy', mode: 'autonomous', ttl: '30m', by: 'kanav' });
+  expect(canExecute(db, { capability: 'combo:deploy' }).decision).toBe('ALLOW');
+  expect((authorityReport(db) as any).detail[0].mode).toBe('autonomous');
+
+  // Run out, the default it displaced decides again, in the gate and the report.
+  db.prepare("UPDATE authority SET expires_at = ? WHERE source = 'human'").run(
+    new Date(Date.now() - 60_000).toISOString()
+  );
+  expect(canExecute(db, { capability: 'combo:deploy' }).decision).toBe('CONFIRM');
+  expect((authorityReport(db) as any).detail[0].mode).toBe('confirm');
+  db.close();
+});
+
+test("a curated refusal and a runtime setting still narrow a person's grant", () => {
+  const refused = makeGraph({
+    ...deployable,
+    authority: [{ capability: 'combo:deploy', mode: 'forbidden', source: 'techtree' }],
+  });
+  grantAuthority(refused, { capability: 'combo:deploy', mode: 'autonomous' });
+  expect(canExecute(refused, { capability: 'combo:deploy' }).decision).toBe('DENY');
+  refused.close();
+
+  const asked = makeGraph({
+    ...deployable,
+    authority: [{ capability: 'combo:deploy', mode: 'confirm', source: 'runtime:opencode' }],
+  });
+  grantAuthority(asked, { capability: 'combo:deploy', mode: 'autonomous' });
+  expect(canExecute(asked, { capability: 'combo:deploy' }).decision).toBe('CONFIRM');
+  asked.close();
 });
 
 test('a forbidden grant takes no TTL', () => {

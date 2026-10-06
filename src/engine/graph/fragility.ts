@@ -82,11 +82,58 @@ function sharedCredentials(providers: string[], credsOf: Map<string, string[]>):
   );
 }
 
+type Edge = {
+  from_capability: string;
+  to_capability: string;
+  is_hard_requisite: number;
+  kind: string;
+};
+
+/**
+ * Everything that stops if `capId` goes, however many hops down.
+ *
+ * The map's outage simulation and this walk one rule, so the panel's count
+ * and `ambit impact` agree: a node stops when a required prerequisite stops,
+ * or when every one of its providers has. Providing is the one relation where
+ * another provider can stand in. A hard requirement has no substitute, and an
+ * optional one never stops anything.
+ */
+function outageCascade(
+  edges: Edge[],
+  providers: Map<string, string[]>,
+  capId: string
+): Set<string> {
+  const out = new Map<string, Edge[]>();
+  for (const e of edges) {
+    if (!out.has(e.from_capability)) out.set(e.from_capability, []);
+    out.get(e.from_capability)!.push(e);
+  }
+  const gone = new Set([capId]);
+  const queue = [capId];
+  while (queue.length) {
+    for (const e of out.get(queue.shift()!) || []) {
+      if (gone.has(e.to_capability)) continue;
+      const stops = (PROVISION_EDGES as string[]).includes(e.kind)
+        ? (providers.get(e.to_capability) || [e.from_capability]).every(p => gone.has(p))
+        : Boolean(e.is_hard_requisite);
+      if (stops) {
+        gone.add(e.to_capability);
+        queue.push(e.to_capability);
+      }
+    }
+  }
+  gone.delete(capId);
+  return gone;
+}
+
 /**
  * What would actually be lost if this went away.
  *
- * Only the loss of the *last* provider takes a capability down. Anything else
- * is a reduction in redundancy, which matters but is not the same claim.
+ * Only the loss of the *last* provider takes a capability down by way of its
+ * providers; anything less is a reduction in redundancy, which matters but is
+ * not the same claim. A capability that requires this one goes down with it
+ * whatever supplies it: Version Control has three providers and still stops
+ * without Shell Execution, which this called redundant by counting them.
  */
 function analyzeImpact(db: Db, capId: string) {
   const cap = db
@@ -135,19 +182,16 @@ function analyzeImpact(db: Db, capId: string) {
   // reported as something that decays when the server goes.
   const deps = db
     .prepare(
-      "SELECT from_capability, to_capability, is_hard_requisite FROM dependencies WHERE COALESCE(kind, '') != 'uses'"
+      "SELECT from_capability, to_capability, is_hard_requisite, kind FROM dependencies WHERE COALESCE(kind, '') != 'uses'"
     )
+    .all<Edge>();
+  const allCaps = db
+    .prepare('SELECT id, name, maturity_score, state, kind FROM capabilities')
     .all();
-  const allCaps = db.prepare('SELECT id, name, maturity_score, state FROM capabilities').all();
   const capMap = new Map<string, Record<string, any>>(allCaps.map(c => [c.id, c]));
   const providers = providersOf(db);
   const credsOf = credentialsOf(db);
 
-  /** Nothing else supplies it, so removing this ends it. */
-  const isSoleProvider = (target: string) => {
-    const list = providers.get(target) || [];
-    return list.length > 0 && list.length === 1 && list[0] === capId;
-  };
   const remaining = (target: string) => (providers.get(target) || []).filter(p => p !== capId);
   /**
    * Whether what survives this loss is actually independent. Two providers left
@@ -160,17 +204,17 @@ function analyzeImpact(db: Db, capId: string) {
     return capMap.get(shared[0])?.name || shared[0];
   };
 
+  const stops = outageCascade(deps, providers, capId);
+  const supplies = (d: Edge) => (PROVISION_EDGES as string[]).includes(d.kind);
+
   const decayed = deps
     .filter(d => d.from_capability === capId)
     .map(d => {
       const t = capMap.get(d.to_capability);
-      const others = remaining(d.to_capability);
+      const others = supplies(d) ? remaining(d.to_capability) : [];
       return {
         name: t?.name || d.to_capability,
-        // `is_hard_requisite` comes back from SQLite as 0 or 1, and `&&`
-        // returns the operand rather than a boolean — so this field printed
-        // `false` on some rows and `0` on others in the same report.
-        becomes_unavailable: Boolean(d.is_hard_requisite) && isSoleProvider(d.to_capability),
+        becomes_unavailable: stops.has(d.to_capability),
         also_provided_by: others.length ? others.length : undefined,
         but_all_share: nominal(others),
       };
@@ -186,8 +230,8 @@ function analyzeImpact(db: Db, capId: string) {
     if (!d.to_capability.startsWith('combo:')) continue;
     if (d.from_capability !== capId) continue;
     const combo = capMap.get(d.to_capability);
-    const others = remaining(d.to_capability);
-    const sole = isSoleProvider(d.to_capability);
+    const others = supplies(d) ? remaining(d.to_capability) : [];
+    const sole = stops.has(d.to_capability);
     const shared = nominal(others);
     risk.set(d.to_capability, {
       name: combo?.name || d.to_capability,
@@ -195,20 +239,29 @@ function analyzeImpact(db: Db, capId: string) {
       // credential. Saying redundant there is the overstatement this whole
       // change exists to remove — the survivors are not independent, so the
       // count that makes them look safe is the reason they are not.
-      severity:
-        d.is_hard_requisite && sole
-          ? 'critical'
-          : shared
-            ? 'nominal'
-            : others.length
-              ? 'redundant'
-              : 'warning',
+      severity: sole ? 'critical' : shared ? 'nominal' : others.length ? 'redundant' : 'warning',
       also_provided_by: others.length || undefined,
       but_all_share: shared,
     });
   }
 
-  return { capability: cap.name, decayed, combos_at_risk: [...risk.values()] };
+  // The whole cascade, as the map's outage simulation counts it: what works
+  // now and would not. An action goes with the capability that confers it, so
+  // actions are counted and not listed.
+  const reached = [...stops].map(id => capMap.get(id)).filter(c => c && c.state !== 'locked');
+  const actions = reached.filter(c => c!.kind === 'action').length;
+  const stopped = reached
+    .filter(c => c!.kind !== 'action')
+    .map(c => c!.name)
+    .sort();
+
+  return {
+    capability: cap.name,
+    decayed,
+    combos_at_risk: [...risk.values()],
+    stops: stopped.length ? stopped : undefined,
+    actions_stopped: actions || undefined,
+  };
 }
 
 /**

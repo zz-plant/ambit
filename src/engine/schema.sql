@@ -32,7 +32,15 @@ CREATE TABLE IF NOT EXISTS capabilities (
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     kind TEXT NOT NULL DEFAULT 'provider',
-    lifecycle TEXT NOT NULL DEFAULT 'unknown'
+    lifecycle TEXT NOT NULL DEFAULT 'unknown',
+    -- Which runtime's config last declared this node (`runtime:opencode`), so
+    -- a later seed of that runtime can tell an entry it removed from one it
+    -- never declared. Null for what no seed wrote: a curated node, a person
+    -- declared at the browser, an adapter's or a sync file's rows.
+    declared_by TEXT,
+    -- When that runtime's config stopped declaring it. The node is locked and
+    -- kept, since the ledger refers to it; declared again, it is restored.
+    retired_at TEXT
 );
 
 -- Edges. `kind` is what the edge means; `is_hard_requisite` is how much it

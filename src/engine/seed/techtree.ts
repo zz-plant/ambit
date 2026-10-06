@@ -42,7 +42,10 @@ function seedTechTree(db: Db, insert: any): number {
   // Human-supplied actions are excluded for the same reason, which was already
   // latent before contracts existed.
   const owned: string[] = db
-    .prepare("SELECT id FROM capabilities WHERE kind != 'capability' AND kind != 'action'")
+    // A retired node is not evidence: its config no longer declares it.
+    .prepare(
+      "SELECT id FROM capabilities WHERE kind != 'capability' AND kind != 'action' AND retired_at IS NULL"
+    )
     .all()
     .map((r: any) => r.id);
   const modelCount = owned.filter(id => id.startsWith('model:')).length;

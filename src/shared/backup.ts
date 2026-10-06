@@ -1,18 +1,19 @@
 /**
  * The copy a config write keeps of what it is about to replace.
  *
- * Two writers change a config a person owns: the visualiser's edit
- * (`writeConfig` in src/server/config.ts) and `ambit connect`, which adds the
- * ambit server to every runtime it finds. Each keeps `<file>.bak` first, and
- * this is the one way both make it.
+ * Three writers change a config a person owns: the visualiser's edit
+ * (`writeConfig` in src/server/config.ts), `ambit connect`, which adds the
+ * ambit server to every runtime it finds, and `ambit apply`. Each keeps a
+ * backup first, and this is the one way all three make it.
  */
 import { randomBytes } from 'node:crypto';
 import { constants, copyFileSync, renameSync, rmSync, statSync } from 'node:fs';
 
 /**
- * Copies `path` to `<path>.bak`, byte for byte and with its mode, and returns
- * the backup's path, or undefined when there is no file yet and so nothing to
- * keep.
+ * Copies `path` to `<path>.bak`, or to `backup` when the caller names one,
+ * byte for byte and with its mode, and returns the backup's path, or undefined
+ * when there is no file yet and so nothing to keep. `ambit apply` names one per
+ * proposal, so a second apply does not replace the first one's.
  *
  * The copy keeps the formatting a JSON round trip would lose, and a config
  * that holds a key and is chmod 600 gets a backup no more readable than
@@ -29,14 +30,13 @@ import { constants, copyFileSync, renameSync, rmSync, statSync } from 'node:fs';
  * step failed. A backup that cannot be made throws, and the caller must not
  * write: an edit nobody can undo is not one to make.
  */
-export function keepBackup(path: string): string | undefined {
+export function keepBackup(path: string, backup = `${path}.bak`): string | undefined {
   try {
     statSync(path);
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
     throw e;
   }
-  const backup = `${path}.bak`;
   const beside = `${backup}.${randomBytes(6).toString('hex')}.tmp`;
   try {
     copyFileSync(path, beside, constants.COPYFILE_EXCL);
