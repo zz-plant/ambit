@@ -11,7 +11,7 @@ import type {
 import { useCopied } from '../hooks/useCopied';
 import { budgetBar } from '../utils/budgetBar';
 import { type CapabilityNeeds, needsOf } from '../utils/needs';
-import { formatCount } from '../../shared/format';
+import { formatCount, readerLocale } from '../../shared/format';
 import { HoursSparkline, NUM, StackedBar, money } from './figures';
 import RunSection from './RunTimeline';
 import { Term } from './Term';
@@ -272,6 +272,18 @@ function SavingsBar({ saved, max }: { saved: number; max: number }) {
   );
 }
 
+/**
+ * A payback as people say it: "9 days" under a month, "1.5 months" from one
+ * up. The engine states months to a tenth, and "0.3 months" is a figure nobody
+ * says aloud. `short` is the unit the table's narrow figure has room for.
+ */
+function payback(months: number): { n: number; unit: string; short: string } {
+  if (months >= 1) return { n: months, unit: months === 1 ? 'month' : 'months', short: 'mo' };
+  const days = Math.max(1, Math.round(months * 30.4));
+  const unit = days === 1 ? 'day' : 'days';
+  return { n: days, unit, short: unit };
+}
+
 /** Payback against the month it has to beat. */
 function PaybackMark({ months }: { months: number | null }) {
   // Nothing saved means the setup never pays for itself. A bar drawn at the
@@ -280,22 +292,23 @@ function PaybackMark({ months }: { months: number | null }) {
   const w = 116;
   const scale = 1; // one month, which is the comparison worth making
   const x = (v: number) => 2 + Math.min(v / scale, 1) * (w - 44);
+  const said = payback(months);
   return (
     <svg
       className="fig-row-svg"
       viewBox={`0 0 ${w} 20`}
       role="img"
-      aria-label={`Pays back in ${months} months`}
+      aria-label={`Pays back in ${said.n} ${said.unit}`}
     >
-      <title>{`${months} months to pay back`}</title>
+      <title>{`${said.n} ${said.unit} to pay back`}</title>
       <line className="fig-axis-line" x1={2} y1={10} x2={x(scale)} y2={10} />
       {/* The month it has to beat, marked once. The value rides its own dot:
           at the axis end it read as though the maximum were the measurement. */}
       <line className="fig-axis-tick" x1={x(scale)} y1={4} x2={x(scale)} y2={16} />
       <circle className="fig-dot" cx={x(months)} cy={10} r={4} />
       <text className="fig-inline-label" x={x(months) + 7} y={13.5} style={NUM}>
-        {months}
-        <tspan className="fig-inline-unit"> mo</tspan>
+        {said.n}
+        <tspan className="fig-inline-unit"> {said.short}</tspan>
       </text>
     </svg>
   );
@@ -383,20 +396,20 @@ function InterruptionChart({ attention }: { attention: LoopSnapshot['attention']
   );
 }
 
-/** Dollars as a ceiling is declared: whole when whole, cents when not. */
-const dollars = (n: number) =>
-  `$${n.toLocaleString(undefined, {
-    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
-    maximumFractionDigits: 2,
-  })}`;
-
-/** "Oct 14", from a day the graph stamped. Nothing when the stamp will not read. */
+/**
+ * "Oct 14", or "14 Oct" in British English, from a day the graph stamped, with
+ * the year only when it is not this one. Nothing when the stamp will not read.
+ */
 function dayOf(stamp?: string | null): string | undefined {
   if (!stamp) return undefined;
   const at = new Date(`${stamp.slice(0, 10)}T12:00:00Z`);
-  return Number.isNaN(at.getTime())
-    ? undefined
-    : at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  if (Number.isNaN(at.getTime())) return undefined;
+  return at.toLocaleDateString(readerLocale(), {
+    month: 'short',
+    day: 'numeric',
+    year: at.getUTCFullYear() === new Date().getUTCFullYear() ? undefined : 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 /**
@@ -422,17 +435,17 @@ function BudgetRow({ budget: b }: { budget: LoopAuthority['budgets'][number] }) 
   if (reached) {
     pace = `The ceiling is reached, so a spend is refused until ${turnsOver}.`;
   } else if (lands != null && hits) {
-    pace = `At this pace the period lands at ${dollars(lands)} and the ceiling is reached on ${hits}. After that a spend is refused until ${turnsOver}.`;
+    pace = `At this pace the period lands at ${money(lands)} and the ceiling is reached on ${hits}. After that a spend is refused until ${turnsOver}.`;
   } else if (lands != null) {
-    pace = `At this pace the period lands at ${dollars(lands)}, ${lands > b.ceiling_dollars ? 'past' : 'inside'} the ceiling.`;
+    pace = `At this pace the period lands at ${money(lands)}, ${lands > b.ceiling_dollars ? 'past' : 'inside'} the ceiling.`;
   } else if (b.spent_dollars > 0 && b.period_start) {
     pace = 'Too early in the period to tell a pace.';
   } else if (!(b.spent_dollars > 0)) {
     pace = 'No spend recorded, so there is no pace to draw.';
   }
 
-  const summary = `${dollars(b.spent_dollars)} spent of a ${dollars(b.ceiling_dollars)} ceiling${
-    lands != null ? `; at this pace the period lands at ${dollars(lands)}` : ''
+  const summary = `${money(b.spent_dollars)} spent of a ${money(b.ceiling_dollars)} ceiling${
+    lands != null ? `; at this pace the period lands at ${money(lands)}` : ''
   }`;
 
   return (
@@ -455,14 +468,14 @@ function BudgetRow({ budget: b }: { budget: LoopAuthority['budgets'][number] }) 
           <span
             className="fig-budget-tick"
             style={{ left: pct(bar.lands) }}
-            title={`Lands at ${dollars(lands ?? 0)} at this pace${bar.clipped ? ', beyond the end of this bar' : ''}`}
+            title={`Lands at ${money(lands ?? 0)} at this pace${bar.clipped ? ', beyond the end of this bar' : ''}`}
             aria-hidden="true"
           />
         )}
       </span>
       <span className="fig-bar-count">a {b.period}</span>
       <span className="fig-bar-note">
-        {dollars(b.spent_dollars)} of {dollars(b.ceiling_dollars)} spent.{pace ? ` ${pace}` : ''}
+        {money(b.spent_dollars)} of {money(b.ceiling_dollars)} spent.{pace ? ` ${pace}` : ''}
       </span>
     </li>
   );
@@ -689,7 +702,7 @@ function SinceStrip({ since }: { since: LoopSince | null }) {
     { key: 'lost', names: since.lost, tone: 'bad' },
     { key: 'diminished', names: since.diminished, tone: 'bad' },
   ].filter(p => p.names.length);
-  const from = since.from.slice(0, 10);
+  const from = dayOf(since.from) ?? since.from.slice(0, 10);
   return (
     <p className="loop-since">
       <span className="loop-since-from">Since {from}:</span>
@@ -760,7 +773,7 @@ function OptionCompare({
               <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
                 {a.privacy}
               </span>
-              {a.favoured && <span className="fig-option-favoured">your record favours this</span>}
+              {a.favoured && <span className="fig-option-favoured">your record favors this</span>}
             </span>
             {/* Text to read and to paste, and nothing else: a patch names a
                 command, so a surface shows it and never runs it. */}
@@ -1020,7 +1033,7 @@ function EmptyLedger({
           </li>
           <li>
             <strong>Record the tending.</strong> Copy <code>plugins/ambit-tracker.js</code> beside
-            it for the configuration changes you make, which is what the attention lens colours.
+            it for the configuration changes you make, which is what the attention lens colors.
           </li>
           <li>
             <strong>Come back after a week of sessions.</strong> The same numbers are in the
@@ -1062,6 +1075,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
   const topMove = [...opportunities]
     .filter(o => o.payback_months != null)
     .sort((a, b) => (a.payback_months as number) - (b.payback_months as number))[0];
+  const topPayback = topMove && payback(topMove.payback_months as number);
   const topNode =
     topMove?.capability_id && items.some(i => i.id === topMove.capability_id)
       ? topMove.capability_id
@@ -1088,9 +1102,9 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             {topMove && (
               <div className="loop-move">
                 <p>
-                  Next: <strong>{topMove.title}</strong>. Pays back in {topMove.payback_months}{' '}
-                  {topMove.payback_months === 1 ? 'month' : 'months'} and recovers{' '}
-                  {money(topMove.expected.savings_dollars_month)} a month.
+                  Next: <strong>{topMove.title}</strong>. Pays back in {topPayback?.n}{' '}
+                  {topPayback?.unit} and recovers {money(topMove.expected.savings_dollars_month)} a
+                  month.
                 </p>
                 {onShowOnMap && topNode && (
                   <button type="button" className="fig-cta" onClick={() => onShowOnMap(topNode)}>

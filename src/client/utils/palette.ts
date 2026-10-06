@@ -129,7 +129,7 @@ export function buildActions(ctx: PaletteContext): PaletteAction[] {
       label: `Switch to the ${name} lens`,
       group: 'Map',
       hint: `Key ${key}`,
-      keywords: 'colour view',
+      keywords: 'color colour view',
       browse: true,
       run: () => handlers.lens(lens),
     });

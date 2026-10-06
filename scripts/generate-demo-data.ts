@@ -49,7 +49,7 @@ const FIXTURE = {
   provider: { anthropic: { name: 'Anthropic' }, ollama: { name: 'Ollama' } },
   agent: {
     reviewer: { description: 'Reviews diffs before merge' },
-    researcher: { description: 'Reads docs and summarises' },
+    researcher: { description: 'Reads docs and summarizes' },
     steward: { description: 'Keeps repositories consistent' },
   },
   mcp: {

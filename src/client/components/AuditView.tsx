@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AuditEvent, AuditOutcome } from '../../shared/api';
+import { readerLocale } from '../../shared/format';
 import { useAmbitStore } from '../store/ambitStore';
 import { matchesAudit, parseAuditQuery } from '../utils/auditQuery';
 import { ActorMark } from './ActorMark';
@@ -23,10 +24,10 @@ function when(at: string): string {
   const d = new Date(at);
   return Number.isNaN(d.getTime())
     ? ''
-    : d.toLocaleString(undefined, {
+    : d.toLocaleString(readerLocale(), {
         month: 'short',
         day: 'numeric',
-        hour: '2-digit',
+        hour: 'numeric',
         minute: '2-digit',
       });
 }

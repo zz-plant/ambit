@@ -21,6 +21,7 @@
  *   behind a value a position already carries.
  */
 import { CHECK_HISTORY_RUNS, type CheckRun, type LoopSnapshot } from '../../shared/api';
+import { formatDollars } from '../../shared/format';
 import { describeRuns } from '../utils/checkHistory';
 
 /**
@@ -31,7 +32,8 @@ import { describeRuns } from '../utils/checkHistory';
  */
 export const NUM = { fontVariantNumeric: 'tabular-nums' } as const;
 
-export const money = (n: number) => `$${n.toLocaleString()}`;
+/** Every dollar figure on the page, one way: see `formatDollars`. */
+export const money = formatDollars;
 
 /** One segment of a stacked bar: what it counts, how many, and the word for it. */
 export interface StackSegment {
@@ -159,9 +161,9 @@ export function HoursSparkline({
       className="fig-spark"
       viewBox={`0 0 ${w} ${h}`}
       role="img"
-      aria-label={`Hours a person spent in the loop, ${series[0].month} ${baseline}h down to ${last.month} ${last.hours}h${placed.length ? `; ${placed.map(a => a.text).join(', ')}` : ''}`}
+      aria-label={`Hours a person spent in the loop, ${baseline}h in ${series[0].month} down to ${last.hours}h in ${last.month}${placed.length ? `; ${placed.map(a => a.text).join(', ')}` : ''}`}
     >
-      <title>{series.map(p => `${p.month} ${p.hours}h`).join(' · ')}</title>
+      <title>{series.map(p => `${p.month}: ${p.hours}h`).join(' · ')}</title>
       {/* The band is the saving. Everything else is context for it. */}
       <path className="fig-spark-band" d={band} />
       <line
@@ -201,11 +203,13 @@ export function HoursSparkline({
         cy={y(last.hours)}
         r={3.5}
       />
+      {/* Month and hours apart, the way the annotations above are: "Jan 11h"
+          read as the eleventh of January. */}
       <text className="fig-spark-label" x={x(0)} y={h - 2} textAnchor="start" style={NUM}>
-        {series[0].month} {baseline}h
+        {series[0].month} · {baseline}h
       </text>
       <text className="fig-spark-label" x={w - pad.right} y={h - 2} textAnchor="end" style={NUM}>
-        {last.month} {last.hours}h
+        {last.month} · {last.hours}h
       </text>
     </svg>
   );

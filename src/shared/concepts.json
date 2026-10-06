@@ -47,7 +47,7 @@
       "key": "combo",
       "term": "Combo",
       "short": "A capability several others unlock",
-      "long": "The tech tree nodes are combos, which is why each one's id starts with `combo:`, and you can define your own in a `combos` block for things specific to your work. A combo is a judgement about what composes into something new, which is why the tool never invents one from your config.",
+      "long": "The tech tree nodes are combos, which is why each one's id starts with `combo:`, and you can define your own in a `combos` block for things specific to your work. A combo is a judgment about what composes into something new, which is why the tool never invents one from your config.",
       "seen": "Every node on the map, ambit graph combos, ambit goal"
     },
     {

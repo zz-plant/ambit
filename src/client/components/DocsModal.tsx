@@ -292,8 +292,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Lenses</span>
                   <span className="docs-answers">
-                    Over the map: how it is coloured. Attention is offered once the ledger has
-                    recorded something to colour; Authority shows what each reached node may do
+                    Over the map: how it is colored. Attention is offered once the ledger has
+                    recorded something to color; Authority shows what each reached node may do
                     without asking
                   </span>
                 </div>

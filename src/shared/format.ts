@@ -4,16 +4,31 @@
  */
 
 /**
- * Format a cost in cents to a USD currency string (e.g. 1250 -> "$12.50").
+ * Dollars as a person writes them: whole when whole, cents when not ($9,600,
+ * $43.20). The separators are fixed to en-US because the currency is: a "$"
+ * pasted onto the browser's own grouping read "$9.600" in Berlin, which is
+ * nine dollars sixty to anyone else.
  */
-export function formatCents(cents: number): string {
-  const dollars = cents / 100;
+export function formatDollars(n: number): string {
+  const cents = Number.isInteger(n) ? 0 : 2;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(dollars);
+    minimumFractionDigits: cents,
+    maximumFractionDigits: cents,
+  }).format(n);
+}
+
+/**
+ * The English the reader's browser asks for, so a date reads "6 Oct, 14:05" in
+ * London and "Oct 6, 2:05 PM" in Chicago. The page is written in English, so a
+ * browser that asks for no English at all gets en-US, never "6. Okt." inside an
+ * English sentence.
+ */
+export function readerLocale(): string {
+  const asked =
+    typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language]);
+  return asked.find(l => /^en(-|$)/i.test(l)) ?? 'en-US';
 }
 
 /**

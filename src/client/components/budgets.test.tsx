@@ -10,7 +10,7 @@
  * spend instead of drawing a forecast from zero.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { LoopAuthority } from '../../shared/api';
 import { useAmbitStore } from '../store/ambitStore';
 import { demoSnapshot } from '../utils/demoSnapshot';
@@ -24,7 +24,14 @@ function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
   useAmbitStore.setState(state);
 }
 
+// The budgets below are dated 2026, and a day in another year carries its
+// year, so the clock is held inside the period they describe.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-28T12:00:00Z') });
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   seed({ loop: null, loopSource: null, loopEmpty: false });
 });
 
