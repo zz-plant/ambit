@@ -642,6 +642,79 @@ function renderPlan(
   return lines;
 }
 
+/** What `analyzeImpact` returns for a node the graph holds. */
+interface ImpactReport {
+  capability: string;
+  decayed: {
+    name: string;
+    becomes_unavailable: boolean;
+    also_provided_by?: number;
+    but_all_share?: string;
+  }[];
+}
+
+/**
+ * `ambit impact` as a person reads it: what stops working first, then what
+ * survives and on what.
+ *
+ * It printed through the generic formatter, so the answer was
+ * `becomes unavailable: false` and `also provided by: 5`, and every capability
+ * a second time under `combos at risk`. Four kinds of answer, in the order
+ * they matter: what ends; what survives only on providers that all present
+ * one credential, which is not survival if that key goes; what survives on
+ * others; and what loses an optional input. The row that ends something
+ * carries the `›` that survives a pipe. `--json` gets the report unchanged.
+ */
+function renderImpact(report: ImpactReport, c: Palette = C): string[] {
+  const seen = new Set<string>();
+  const ends: string[] = [];
+  const shared = new Map<string, string[]>();
+  const survives: string[] = [];
+  const weakened: string[] = [];
+  for (const d of report.decayed) {
+    if (seen.has(d.name)) continue;
+    seen.add(d.name);
+    if (d.becomes_unavailable) ends.push(d.name);
+    else if (d.but_all_share) {
+      if (!shared.has(d.but_all_share)) shared.set(d.but_all_share, []);
+      shared.get(d.but_all_share)!.push(d.name);
+    } else if (d.also_provided_by) {
+      const n = d.also_provided_by;
+      survives.push(
+        `${d.name} ${c.grey}(${n} other ${n === 1 ? 'provider' : 'providers'})${c.reset}`
+      );
+    } else weakened.push(d.name);
+  }
+
+  const head = `If ${report.capability} went away`;
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}${head}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(head.length)}${c.reset}`,
+  ];
+  if (!seen.size) {
+    lines.push(`${GUTTER}Nothing on the graph depends on it.`, '');
+    return lines;
+  }
+  const list = (names: string[]) => names.join(', ');
+  if (ends.length) {
+    lines.push(`  ${c.accent}${c.bold}›${c.reset} ${c.bold}Stops working${c.reset}  ${list(ends)}`);
+  } else {
+    lines.push(`${GUTTER}Nothing stops working.`);
+  }
+  for (const [credential, names] of shared) {
+    lines.push(
+      `${GUTTER}${c.yellow}Survives on one key${c.reset}  ${list(names)} ${c.grey}· every other provider uses ${credential}${c.reset}`
+    );
+  }
+  if (survives.length) lines.push(`${GUTTER}Survives  ${list(survives)}`);
+  if (weakened.length) {
+    lines.push(`${GUTTER}${c.grey}Loses an optional input  ${list(weakened)}${c.reset}`);
+  }
+  lines.push('');
+  return lines;
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -692,6 +765,7 @@ export {
   ago,
   briefReport,
   renderBrief,
+  renderImpact,
   renderPlan,
   evidenceReport,
   statusReport,
@@ -699,6 +773,7 @@ export {
   worries,
   explain,
   type BriefReport,
+  type ImpactReport,
   type NextMove,
   type StatusReport,
 };

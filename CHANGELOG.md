@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### `ambit impact` says what ends and what survives
+
+It printed through the generic formatter, so the answer read `becomes unavailable: false` and `also provided by: 5`, with every capability listed twice. It now leads with what stops working, marked `›`, then what survives only on providers that all present one credential, what survives on others and on how many, and what loses an optional input. Two wrong answers went with it: a server's own credential was listed as something that decays when the server goes, and `ambit impact credential:…` answered with nothing at all, because a key's edges point at it. A credential's impact is now what revoking it ends, the same computation as `ambit credentials`. The README carries the example again, captured from the fixture. Closes #76.
+
 ### VS Code's own MCP servers
 
 VS Code keeps the servers it runs in a user-level `mcp.json`, under `servers`, apart from the Cline and Roo Code extensions Ambit already read, so those servers never reached the graph. They do now, as a twelfth runtime, with `VSCODE_MCP_CONFIG` to point elsewhere: contributed by @webdevsamran in #83, closing #77. Every place that lists the runtimes, the social card included, says twelve.

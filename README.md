@@ -184,6 +184,21 @@ $ ambit status
 
 This is a fresh graph, before any check has run: reached and proven lead, the `›` marks the count that wants a person, and the last line is the command to type next. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
 
+### ambit impact — what stops if a piece goes
+
+<!-- example: ambit impact mcp:playwright -->
+```console
+$ ambit impact mcp:playwright
+
+    If playwright went away
+    ───────────────────────
+  › Stops working  Browser Automation, Automated Tests
+    Survives  Tool Protocol (5 other providers)
+```
+<!-- /example -->
+
+What ends comes first, marked with the `›`; what survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, `impact` answers what revoking it ends, the same answer as `ambit credentials`.
+
 ### ambit share — what may leave the graph, and what may not
 
 `ambit share` builds its HTML from an allow-list: name, kind, category, domain, era, state, lifecycle, edges. Commands, URLs, paths, descriptions and economics cannot enter the file, people render as "a person", and `--redact` replaces every non-curated name with its category. Nothing is uploaded; writing the file locally is the whole command.

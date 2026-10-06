@@ -11,7 +11,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { makeGraph, type CapabilityFixture } from '../testing/graph.ts';
 import { asProcess } from '../testing/terminal.ts';
 import { C, PLAIN } from './output.ts';
-import { explain, renderStatus, statusReport, worries } from './reports.ts';
+import { explain, renderImpact, renderStatus, statusReport, worries } from './reports.ts';
+import { analyzeImpact } from '../inference.ts';
 
 /** The escape character, spelled out so no control character sits in the source. */
 const ESC = String.fromCharCode(27);
@@ -281,5 +282,77 @@ describe('the glossary', () => {
     expect(bare).toContain('Where you see it');
     expect(shown(true, '1')).toBe(bare);
     expect(plain(terminal)).toBe(bare);
+  });
+});
+
+describe('renderImpact', () => {
+  // One server, A: Solo has no other provider, Search has two others that both
+  // present one key, Mirror has one other with its own, and Extras takes A
+  // only as an optional input. A's own key must not appear as something lost.
+  const graph = () =>
+    makeGraph({
+      capabilities: [
+        { id: 'combo:solo', name: 'Solo' },
+        { id: 'combo:search', name: 'Search' },
+        { id: 'combo:mirror', name: 'Mirror' },
+        { id: 'combo:extras', name: 'Extras' },
+        { id: 'mcp:a', name: 'A' },
+        { id: 'mcp:b', name: 'B' },
+        { id: 'mcp:c', name: 'C' },
+        { id: 'mcp:d', name: 'D' },
+        { id: 'cred:shared', name: 'Shared key', kind: 'credential', category: 'credential' },
+      ],
+      dependencies: [
+        { from: 'mcp:a', to: 'combo:solo', kind: 'provides', hard: true },
+        { from: 'mcp:a', to: 'combo:search', kind: 'provides' },
+        { from: 'mcp:b', to: 'combo:search', kind: 'provides' },
+        { from: 'mcp:c', to: 'combo:search', kind: 'provides' },
+        { from: 'mcp:a', to: 'combo:mirror', kind: 'provides' },
+        { from: 'mcp:d', to: 'combo:mirror', kind: 'provides' },
+        { from: 'mcp:a', to: 'combo:extras', kind: 'requires', hard: false },
+        { from: 'mcp:a', to: 'cred:shared', kind: 'uses' },
+        { from: 'mcp:b', to: 'cred:shared', kind: 'uses' },
+        { from: 'mcp:c', to: 'cred:shared', kind: 'uses' },
+      ],
+    });
+
+  it('leads with what stops, then what survives on one key, on others, and loses an input', () => {
+    const db = graph();
+    const lines = renderImpact(analyzeImpact(db, 'mcp:a') as any, PLAIN);
+    db.close();
+    const text = lines.join('\n');
+    expect(lines[1]).toBe('    If A went away');
+    expect(text).toContain('  › Stops working  Solo');
+    expect(text).toContain('Survives on one key  Search · every other provider uses Shared key');
+    expect(text).toContain('Survives  Mirror (1 other provider)');
+    expect(text).toContain('Loses an optional input  Extras');
+    expect(text).not.toContain('Shared key,');
+    expect(text.indexOf('Stops working')).toBeLessThan(text.indexOf('Survives'));
+  });
+
+  it('says plainly when nothing depends on the node', () => {
+    const db = graph();
+    const text = renderImpact(analyzeImpact(db, 'mcp:d') as any, PLAIN).join('\n');
+    db.close();
+    expect(text).toContain('Nothing stops working.');
+    expect(text).toContain('Survives  Mirror (1 other provider)');
+  });
+
+  it('answers for a credential with what revoking it ends, as ambit credentials does', () => {
+    const db = graph();
+    const text = renderImpact(analyzeImpact(db, 'cred:shared') as any, PLAIN).join('\n');
+    db.close();
+    // Solo's one provider and all three of Search's present the key, so both
+    // end; Mirror keeps D, which does not.
+    expect(text).toContain('If Shared key went away');
+    expect(text).toContain('› Stops working  Solo, Search');
+    expect(text).toContain('Survives  Mirror (1 other provider)');
+  });
+
+  it('leaves an unknown id to the generic error, with what it was probably meant to be', () => {
+    const db = graph();
+    const answer = analyzeImpact(db, 'mcp:aa') as any;
+    db.close();
+    expect(answer.error).toContain('No capability "mcp:aa"');
   });
 });
