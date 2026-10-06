@@ -57,6 +57,9 @@ import {
   isAllowedHost,
   isAllowedOrigin,
   corsHeaders,
+  apiPort,
+  apiToken,
+  pagePorts,
 } from './config.ts';
 import { buildInfrastructureScan } from './infrastructure.ts';
 import { scanRepos } from './repos.ts';
@@ -105,7 +108,7 @@ function refusalStatus(kind: 'missing' | 'not-draft' | 'changed' | 'unnamed' | '
   return kind === 'not-draft' || kind === 'changed' ? 409 : 400;
 }
 
-const API_PORT = Number(process.env.AMBIT_API_PORT || 3001);
+const API_PORT = apiPort();
 
 /**
  * The built page, two levels above this file in either layout: `src/server`
@@ -693,7 +696,13 @@ const server = createServer(async (req, res) => {
   // simple request is still delivered and executed. Reject it outright so a
   // foreign page cannot rewrite the config it is not allowed to read.
   if (!isAllowedOrigin(origin)) {
-    res.writeHead(403, headers).end('Forbidden origin');
+    // Which ports are accepted is no secret, and a dev server started on a
+    // port the API was not told about otherwise fails with nothing to go on.
+    res
+      .writeHead(403, headers)
+      .end(
+        `Forbidden origin. A page on localhost is accepted from port ${pagePorts().join(' or ')}; a dev server elsewhere sets AMBIT_WEB_PORT for both processes.`
+      );
     return;
   }
   if (req.method === 'OPTIONS') {
@@ -746,6 +755,18 @@ const server = createServer(async (req, res) => {
 
   res.writeHead(404, headers).end('Not found');
 });
+
+// The token is made now, not at the first request that checks one. A bridge
+// that posts telemetry finds it in the file, and nothing else would make it:
+// the page never needs it, and a request without the header is refused before
+// the token is read.
+try {
+  apiToken();
+} catch (error: any) {
+  console.error(
+    `No API token could be written, so token clients will be refused: ${error?.message}`
+  );
+}
 
 server.listen(API_PORT, '127.0.0.1', () => {
   console.log(`API server running on http://127.0.0.1:${API_PORT}`);

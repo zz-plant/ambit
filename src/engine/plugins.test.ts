@@ -9,7 +9,7 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -20,6 +20,9 @@ const PLUGINS = join(import.meta.dirname, '..', '..', 'plugins');
 const load = (name: string) => import(pathToFileURL(join(PLUGINS, name)).href);
 
 const posts: any[] = [];
+/** The X-Ambit-Token each post carried, in the order they arrived. */
+const tokens: Array<string | undefined> = [];
+const TOKEN = 'plugin-test-token';
 let close: () => void;
 const scratch = mkdtempSync(join(tmpdir(), 'ambit-plugins-'));
 const dbPath = join(scratch, 'tracker.db');
@@ -41,18 +44,22 @@ beforeAll(async () => {
     req.on('end', () => {
       const body = JSON.parse(raw);
       posts.push(body);
+      tokens.push(req.headers['x-ambit-token'] as string | undefined);
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(body.run ? { run: `run-${posts.length}` } : { ok: true }));
     });
   });
   await new Promise<void>(r => server.listen(0, '127.0.0.1', () => r()));
   process.env.AMBIT_SERVER = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  // The route refuses a post without the API token; the bridge has to send it.
+  process.env.AMBIT_API_TOKEN = TOKEN;
   close = () => server.close();
 });
 
 afterAll(() => {
   close?.();
   delete process.env.AMBIT_SERVER;
+  delete process.env.AMBIT_API_TOKEN;
   delete process.env.AMBIT_DB;
   rmSync(scratch, { recursive: true, force: true });
 });
@@ -149,6 +156,33 @@ test('telemetry records a session’s tool calls, failures and answered prompts'
     outcome: 'rejected',
   });
   expect(interventions[0].startedAt).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
+  // Every post, the run's opening included, presented the token.
+  expect(tokens.length).toBe(posts.length);
+  expect(new Set(tokens)).toEqual(new Set([TOKEN]));
+});
+
+test('telemetry finds the token in the file the API server made', async () => {
+  // As readApiToken in src/server/config.ts finds it, which this transcribes.
+  const home = mkdtempSync(join(tmpdir(), 'ambit-plugin-home-'));
+  const saved = { HOME: process.env.HOME, AMBIT_API_TOKEN: process.env.AMBIT_API_TOKEN };
+  try {
+    mkdirSync(join(home, '.config', 'opencode'), { recursive: true });
+    writeFileSync(join(home, '.config', 'opencode', 'ambit-api.token'), 'from-the-file\n');
+    process.env.HOME = home;
+    delete process.env.AMBIT_API_TOKEN;
+    const { default: plugin } = await load('ambit-telemetry.js');
+    // OpenCode 1's hooks: an error needs no run, so it is one post.
+    const hooks = await plugin.server({});
+    const before = posts.length;
+    await hooks['tool.execute.error']({ tool: 'bash', error: { message: 'boom' } });
+    await until(() => posts.length > before);
+    expect(posts.at(-1).failure).toMatchObject({ tool: 'bash', message: 'boom' });
+    expect(tokens.at(-1)).toBe('from-the-file');
+  } finally {
+    process.env.HOME = saved.HOME;
+    process.env.AMBIT_API_TOKEN = saved.AMBIT_API_TOKEN;
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 test('the tracker records what a changed config added and removed', async () => {

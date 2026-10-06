@@ -18,11 +18,11 @@ $
 
 ### Your setup
 
-- How you installed it (Homebrew, or a checkout):
-- Which version: `brew list --versions ambit` for Homebrew, `git rev-parse --short HEAD` in a checkout:
+- How you installed it (npx, npm, Homebrew, or a checkout):
+- Which version: `ambit --version` (or `npx ambit-cli --version`), plus `git rev-parse --short HEAD` in a checkout:
 - OS:
 - `node -v`:
-- Agent runtime whose config it read (OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, none):
+- Agent runtime whose config it read (OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, none):
 
 ### Your graph
 

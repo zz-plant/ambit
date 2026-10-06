@@ -98,9 +98,10 @@ check — what is proven, what is permitted, what is currently broken
   check authority sandbox [<target> --by=<person>]   declare somewhere acting
                           does not matter; confirmation is relaxed inside it and
                           a refusal never is
-  check budget [set <cap> [action] --amount=$20 [--period=month] --by=<person>]
-                          a ceiling on spend per period; a spend past it is
-                          refused, and within it the grant's own mode decides
+  check budget [set <cap> [action] --amount=20 [--period=month] --by=<person>]
+                          a ceiling on spend per period, in dollars; a spend
+                          past it is refused, and within it the grant's own
+                          mode decides
   check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
                           ALLOW/CONFIRM/DENY; --spend is in dollars, as
                           --amount is; --exit-code also exits 0/1/2

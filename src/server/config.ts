@@ -9,7 +9,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { opencodeConfigIn } from '../engine/paths.ts';
 import { keepBackup } from '../shared/backup.ts';
 import { normalizeOpencode, parseJsonc } from '../shared/opencode.ts';
@@ -108,18 +108,53 @@ export function pick(updates: unknown, allowed: readonly string[]): Record<strin
   return out;
 }
 
+/** The port this server listens on: AMBIT_API_PORT, which `ambit web` sets, else 3001. */
+export function apiPort(): number {
+  return Number(process.env.AMBIT_API_PORT || 3001);
+}
+
 /**
- * Only local dev origins may talk to this server.
+ * The ports a page of this app is served from, which are the only ports an
+ * Origin may name.
+ *
+ * The API's own port always: an installed copy serves the page itself, and a
+ * browser sends an Origin on a same-origin POST. The Vite dev server's port
+ * only when AMBIT_WEB_PORT names it. Vite proxies `/api` and passes the page's
+ * Origin through untouched, so the API sees Vite's port and has no other way
+ * to learn it; `npm run dev` sets the variable for both processes, and Vite
+ * listens on that port or not at all. Left unset, as `npm start` and an
+ * installed `ambit web` leave it, no second port is accepted: 3000 is where
+ * many other projects' dev servers live, and a page one of them serves is not
+ * this one.
+ */
+export function pagePorts(): number[] {
+  const ports = [apiPort()];
+  const web = Number(process.env.AMBIT_WEB_PORT);
+  if (Number.isInteger(web) && web > 0) ports.push(web);
+  return ports;
+}
+
+/**
+ * Only a page this app serves may talk to this server.
  *
  * Reflecting the caller's Origin (the original behaviour) let any website the
  * user visited read /api/config and POST to /api/config/apply, because the
- * browser would honour the reflected header.
+ * browser would honour the reflected header. Judging the hostname alone was
+ * the next gap: every page on this machine is on `localhost`, so another
+ * project's dev server, or `python -m http.server` in a downloaded folder,
+ * passed as this app's page. An Origin is this app's when it names this
+ * machine (`localhost`, `127.0.0.1` and `[::1]` alike) on one of
+ * `pagePorts()`. A browser leaves a scheme's default port out of an Origin, so
+ * an Origin with no port means 80 over http and 443 over https.
  */
-export function isAllowedOrigin(origin: string): boolean {
+export function isAllowedOrigin(origin: string, ports: readonly number[] = pagePorts()): boolean {
   if (!origin) return true; // same-origin and non-browser clients send no Origin
   try {
-    const { hostname } = new URL(origin);
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+    const url = new URL(origin);
+    const fallback = url.protocol === 'http:' ? 80 : url.protocol === 'https:' ? 443 : null;
+    if (fallback === null) return false;
+    if (!['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) return false;
+    return ports.includes(url.port ? Number(url.port) : fallback);
   } catch {
     return false;
   }
@@ -180,14 +215,16 @@ export function corsHeaders(origin: string): Record<string, string> {
  * agent runtime loads, so "any local process may rewrite it" is a bigger grant
  * than this server means to make.
  *
- * Telemetry is deliberately not on this list: it is append-only observation
- * with no read-back, the agent-runtime plugin posts to it unattended, and
- * requiring a secret there would buy little and break that.
- *
  * The two queue routes are on it though they never touch the config. One
  * request there signs or turns down as many as fifty proposals as the person
  * at the browser, so something with no browser behind it has to hold the token
  * to do it. The per-proposal routes are held to the same rule below.
+ *
+ * Telemetry is on it too. It was left off once as append-only observation, but
+ * a use recorded in a run that ended in success is evidence toward a promotion
+ * threshold a person set (`evidenceCount` in src/engine/assure/promote.ts), so
+ * an open route let anything that could post here push a grant wider. The
+ * bridges that post to it present the token, found as `readApiToken` finds it.
  */
 const CONFIG_ROUTES = [
   '/api/config',
@@ -195,6 +232,7 @@ const CONFIG_ROUTES = [
   '/api/config/mcp-snippet',
   '/api/proposals/approve',
   '/api/proposals/reject',
+  '/api/telemetry',
 ];
 
 /**
@@ -209,17 +247,37 @@ const CONFIG_ROUTES = [
  */
 const DECISION_ROUTE = /^\/api\/proposals\/[^/]+\/(approve|reject)$/;
 
-/** Same shape as the approval key: a 0600 file beside the agent config. */
+/** Where the token is kept: a 0600 file beside the agent config, as the approval key is. */
+export function apiTokenPath(): string {
+  return join(process.env.HOME || '/', '.config', 'opencode', 'ambit-api.token');
+}
+
+/** The token this server checks, made on first use. AMBIT_API_TOKEN overrides the file. */
 export function apiToken(): string {
   const override = process.env.AMBIT_API_TOKEN;
   if (override) return override;
-  const dir = join(process.env.HOME || '/', '.config', 'opencode');
-  const path = join(dir, 'ambit-api.token');
+  const path = apiTokenPath();
   if (existsSync(path)) return readFileSync(path, 'utf8').trim();
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dirname(path), { recursive: true });
   const token = randomBytes(32).toString('hex');
   writeFileSync(path, token + '\n', { mode: 0o600 });
   return token;
+}
+
+/**
+ * The token as a client finds it: AMBIT_API_TOKEN, else the file the server
+ * made when it started. It never makes one, since a token the server has not
+ * seen is refused all the same. The OpenCode bridge, plugins/ambit-telemetry.js,
+ * cannot import this and transcribes it; keep the two in step.
+ */
+export function readApiToken(): string | undefined {
+  const override = process.env.AMBIT_API_TOKEN;
+  if (override) return override;
+  try {
+    return readFileSync(apiTokenPath(), 'utf8').trim() || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function sameToken(a: string, b: string): boolean {
@@ -229,7 +287,7 @@ function sameToken(a: string, b: string): boolean {
 }
 
 /**
- * Whether a request may touch the config routes.
+ * Whether a request may touch the config, decision and telemetry routes.
  *
  * Three cases, and the middle one is why this is not simply "no Origin means
  * no browser". A same-origin `fetch` sends no Origin header at all, so the
@@ -239,7 +297,8 @@ function sameToken(a: string, b: string): boolean {
  * and script cannot override it, because it is a forbidden header.
  *
  *   - an Origin present → judged by the allow-list, as before. This is the
- *     vite dev path, where the page is on :3000 and the API on :3001.
+ *     vite dev path, where the page is on AMBIT_WEB_PORT and the API on its
+ *     own port, and a same-origin POST to the page an installed copy serves.
  *   - a same-origin browser fetch → allowed; it is this server's own page.
  *   - anything else → must present the token.
  *

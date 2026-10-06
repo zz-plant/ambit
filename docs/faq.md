@@ -72,11 +72,11 @@ Privately, through [GitHub security advisories](https://github.com/zz-plant/ambi
 
 ### I ran `ambit attention` and it says nothing is recorded. Is it broken?
 
-No. `attention`, `work`, `usage`, `opportunities`, `roi`, and `audit` price the human cost of running your stack, and they read from a work ledger that starts empty. They become useful after a few weeks of recorded runs. Copying `plugins/ambit-telemetry.js` into `~/.config/opencode/plugins/` records every tool execution and permission prompt from OpenCode sessions; [the deep dive](./deep-dive.md#the-work-ledger) covers the ledger.
+No. `attention`, `work`, `usage`, `opportunities`, `roi`, and `audit` price the human cost of running your stack, and they read from a work ledger that starts empty. They become useful after a few weeks of recorded runs. In Claude Code, the `ambit` plugin records each session's tool runs, failures and approval prompts ([Connect it to your agent](../README.md#claude-code) has the install). In OpenCode, copying `plugins/ambit-telemetry.js` into `~/.config/opencode/plugins/` records every tool execution and permission prompt. Other runtimes do not feed the ledger yet; [the deep dive](./deep-dive.md#the-work-ledger) covers the ledger.
 
 ### What is the difference between "reached" and "verified"?
 
-Reached is structural: something in your config provides the capability, and its prerequisites are met. Verified is evidence: its declared read-only check ran and passed. The database calls these `state` and `lifecycle`, and a capability can be reached and still `degraded` or `broken`, so every availability decision gates on the check. `ambit verify` runs the checks; `ambit status` reports proven, unproven, and failing counts. The README section [Configured is not working](../README.md#configured-is-not-working) is the longer argument.
+Reached is structural: something in your config provides the capability, and its prerequisites are met. Verified is evidence: its declared read-only check ran and passed. The database calls these `state` and `lifecycle`. A capability no check has run on is reached and unproven, and still counts. One whose check fails is `degraded` or `broken` while still reached, and every availability decision leaves it out until the check passes again. `ambit verify` runs the checks; `ambit status` reports proven, unproven, and failing counts. The README section [Configured is not working](../README.md#configured-is-not-working) is the longer argument.
 
 ## Something else?
 

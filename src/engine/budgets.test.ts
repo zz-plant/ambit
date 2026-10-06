@@ -317,3 +317,30 @@ describe('recording spend in a period that has run out', () => {
     expect(row.spent_cents).toBe(1900);
   });
 });
+
+describe('an amount the shell has already read', () => {
+  // Typed unquoted, `--amount=$20` reaches the process as `--amount=0` in bash
+  // ($2, then a 0) and as `--amount=` in zsh ($20, unset).
+  it('sets a zero ceiling only with a warning that says how it may have happened', () => {
+    const db = graph();
+    const zero = setBudget(db, { capability: 'combo:deploy', amount: '0', person: 'kanav' });
+    db.close();
+    expect(zero).toMatchObject({ budget: '$0.00 per month' });
+    expect((zero as { warning?: string }).warning).toMatch(/--amount=\$20 arrives as --amount=0/);
+  });
+
+  it('refuses an empty amount and says to leave the $ off', () => {
+    const db = graph();
+    const empty = setBudget(db, { capability: 'combo:deploy', amount: '', person: 'kanav' });
+    db.close();
+    expect((empty as { error?: string }).error).toMatch(/e\.g\. --amount=20\. A \$ typed/);
+  });
+
+  it('warns about nothing when the amount is a real one', () => {
+    const db = graph();
+    const twenty = setBudget(db, { capability: 'combo:deploy', amount: '20', person: 'kanav' });
+    db.close();
+    expect(twenty).toMatchObject({ budget: '$20.00 per month' });
+    expect(twenty).not.toHaveProperty('warning');
+  });
+});

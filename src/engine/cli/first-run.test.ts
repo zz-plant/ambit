@@ -120,6 +120,14 @@ test('with no config, it says where it looked and claims nothing as yours', () =
   expect(out).not.toContain('AGENTS.md');
 });
 
+test('asking the version answers it, and seeds nothing', () => {
+  const { version } = JSON.parse(
+    readFileSync(join(import.meta.dirname, '..', '..', '..', 'package.json'), 'utf8')
+  );
+  for (const flag of ['--version', '-v', 'version']) expect(bare(flag).trim()).toBe(version);
+  expect(existsSync(join(home, 'graph.db'))).toBe(false);
+});
+
 test('the telemetry note names a bridge file this copy actually carries', () => {
   const [, file] = telemetryBridgeInstall().match(/^cp '?([^']+?)'? ~\/\.config/) ?? [];
   expect(file && existsSync(file)).toBe(true);

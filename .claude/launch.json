@@ -27,6 +27,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "AMBIT_API_PORT=3011",
+        "AMBIT_WEB_PORT=4173",
         "npx",
         "vite",
         "--port",
@@ -40,6 +41,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "AMBIT_API_PORT=3011",
+        "AMBIT_WEB_PORT=4173",
         "node",
         "--experimental-sqlite",
         "--disable-warning=ExperimentalWarning",
