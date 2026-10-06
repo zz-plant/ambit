@@ -54,6 +54,7 @@ interface Step {
 export default function Tour({ style, onDone, onShowProposals, onMapped }: TourProps) {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
+  const ranked = useAmbitStore(s => s.loop?.next);
   const selectItem = useAmbitStore(s => s.selectItem);
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
@@ -67,7 +68,11 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
       if (id === null ? current !== null : current !== id) selectItem(id);
     };
     const outage = coldOpen(items, connections);
-    const { failing, best } = mapFindings(items, connections);
+    const { failing, best } = mapFindings(
+      items,
+      connections,
+      ranked?.map(n => n.id)
+    );
     const broken = failing[0];
     const cost = best ? costOf(best.item) : '';
 
@@ -139,7 +144,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
       },
     });
     return list;
-  }, [items, connections, selectItem, startOutage, startAcquisition, clearSimulation]);
+  }, [items, connections, ranked, selectItem, startOutage, startAcquisition, clearSimulation]);
 
   const step = steps[Math.min(index, steps.length - 1)];
   const last = index >= steps.length - 1;

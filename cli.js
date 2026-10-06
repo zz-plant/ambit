@@ -3,7 +3,7 @@
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
-import { createServer } from 'node:net';
+import { connect, createServer } from 'node:net';
 import { existsSync } from 'node:fs';
 
 /**
@@ -89,16 +89,57 @@ if (!cmd) {
 }
 
 /**
- * The first port from `from` that nothing on loopback is listening on. 3001
- * is a common default for other development servers, and a map that failed
- * with EADDRINUSE taught nothing about which port to pass instead.
+ * Whether Ambit could listen on `host:port`. A machine without IPv6 has no ::1
+ * to bind, and so nothing there to collide with.
  */
-function freePort(from) {
+function listenable(port, host) {
   return new Promise(done => {
     const probe = createServer();
-    probe.once('error', () => done(freePort(from + 1)));
-    probe.listen(from, '127.0.0.1', () => probe.close(() => done(from)));
+    probe.once('error', err =>
+      done(host === '::1' && (err.code === 'EADDRNOTAVAIL' || err.code === 'EAFNOSUPPORT'))
+    );
+    probe.listen(port, host, () => probe.close(() => done(true)));
   });
+}
+
+/**
+ * Whether something already accepts connections on `host:port`. On macOS a
+ * server holding `*:N` does not stop another process binding 127.0.0.1:N, so
+ * only asking it to answer finds it.
+ */
+function answers(port, host) {
+  return new Promise(done => {
+    const socket = connect({ port, host });
+    const settle = busy => {
+      socket.destroy();
+      done(busy);
+    };
+    socket.setTimeout(500, () => settle(false));
+    socket.once('connect', () => settle(true));
+    socket.once('error', () => settle(false));
+  });
+}
+
+/**
+ * The first port from `from` that nothing on loopback holds, over IPv4 or
+ * IPv6. 3001 is a common default for other development servers, and a map
+ * that failed with EADDRINUSE taught nothing about which port to pass instead.
+ * Asking 127.0.0.1 alone was not enough: a server on ::1 or on `*:N` left that
+ * address free, Ambit bound it, and the `localhost` it printed resolved to ::1
+ * and opened the other server.
+ */
+async function freePort(from) {
+  for (let port = from; port < 65536; port++) {
+    let free = true;
+    for (const host of ['127.0.0.1', '::1']) {
+      if (!(await listenable(port, host)) || (await answers(port, host))) {
+        free = false;
+        break;
+      }
+    }
+    if (free) return port;
+  }
+  return from;
 }
 
 if (cmd === 'web') {
@@ -141,7 +182,9 @@ if (cmd === 'web') {
 
     const asked = args.find(a => a.startsWith('--port='))?.slice(7) || process.env.AMBIT_API_PORT;
     const port = asked ? Number(asked) : await freePort(3001);
-    const url = `http://localhost:${port}/`;
+    // The address the server binds, never `localhost`: that name can resolve
+    // to ::1 first, where a different server may be listening on this port.
+    const url = `http://127.0.0.1:${port}/`;
     const child = spawn('node', [...NODE_FLAGS, server], {
       stdio: ['ignore', 'pipe', 'inherit'],
       env: { ...process.env, AMBIT_API_PORT: String(port), NODE_ENV: 'production' },

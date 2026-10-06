@@ -301,6 +301,9 @@ export function stepSelection(
 /** The edge kinds that mean "supplies", as the engine names them. */
 const PROVISION_KINDS = new Set(['provides', 'contributes']);
 
+/** Whether an edge supplies its target, as opposed to being something it requires. */
+export const isProvision = (c: Connection): boolean => PROVISION_KINDS.has(c.kind ?? '');
+
 /**
  * What an outage of `id` does, in two sets: what stops, and what only loses a
  * provider. The cascade used to paint everything downstream red, so losing
@@ -957,7 +960,11 @@ export function jointMark(item: Item): JointMark | undefined {
 export interface MapFindings {
   /** Reached, with a check that failed: configured, and not working. */
   failing: Item[];
-  /** The next step that reaches the most, cheapest first on a tie. */
+  /**
+   * The next step to lead with, and how much it would open: the engine's first
+   * pick when it ranked any, else the one that opens the most, cheapest first
+   * on a tie.
+   */
   best?: { item: Item; reaches: number };
   /** The size of the range there is evidence for: tree nodes with a passing check. */
   verified: number;
@@ -974,11 +981,22 @@ export interface MapFindings {
  * outlined node was worth reaching. Both are answers the page can compute, so
  * it states them, and the circles become the evidence for a sentence.
  */
-export function mapFindings(items: Item[], connections: Connection[]): MapFindings {
+export function mapFindings(
+  items: Item[],
+  connections: Connection[],
+  ranked: string[] = []
+): MapFindings {
   const tree = visibleItems(items).filter(i => !isEntry(i));
   const failing = tree.filter(isFailing);
   let best: MapFindings['best'];
-  for (const item of tree) {
+  // The engine ranks what to reach next for My Setup, Time & cost and `ambit
+  // next`, by what blocked work and then by leverage per hour. The map ranked
+  // by its own rule and named a different step on the same page, so its pick
+  // is the engine's whenever the engine made one that is on the map.
+  const byId = new Map(tree.map(i => [i.id, i]));
+  const pick = ranked.map(id => byId.get(id)).find(i => i && i.status !== 'built' && isNext(i));
+  if (pick) best = { item: pick, reaches: unlockCascade(items, connections, pick.id).size };
+  for (const item of best ? [] : tree) {
     if (item.status === 'built' || !isNext(item)) continue;
     const reaches = unlockCascade(items, connections, item.id).size;
     const cost = Number(item.meta?.setupSeconds) || Number.POSITIVE_INFINITY;

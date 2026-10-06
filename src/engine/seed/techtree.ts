@@ -158,8 +158,11 @@ function seedTechTree(db: Db, insert: any): number {
     }
 
     // Edges from the user's own capabilities to the node they unlock, so
-    // `tt impact` can answer what breaks if a given tool goes away.
-    for (const hit of proof.slice(0, 6)) {
+    // `tt impact` can answer what breaks if a given tool goes away. Every one
+    // of them: the first six only, and a machine with sixty skills showed
+    // fifty-four providing nothing, while impact counted six providers where
+    // there were sixty.
+    for (const hit of proof) {
       link.run(hit, id, 1, 'Provides this capability');
     }
     // Tier progression between tree nodes.

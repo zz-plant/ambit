@@ -176,8 +176,8 @@
             "verify": {
               "command": [
                 "git",
-                "diff",
-                "--exit-code"
+                "var",
+                "GIT_COMMITTER_IDENT"
               ],
               "timeout_seconds": 10
             }

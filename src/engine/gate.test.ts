@@ -6,10 +6,11 @@
  * runtime's own settings decide. It never answers "allow", and a call it
  * cannot read is no answer either.
  */
+import { spawnSync } from 'node:child_process';
 import { expect, test } from 'vitest';
 import { capture } from './cli.ts';
 import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
-import { cli, dir, getDb, join, seed } from './testing/cli.ts';
+import { cli, dir, ENGINE, getDb, join, seed } from './testing/cli.ts';
 
 const WITH_GITHUB = {
   provider: { ollama: { models: { 'qwen3-coder': {} } } },
@@ -84,4 +85,37 @@ test('asked from a terminal, ambit gate prints the entry to paste', () => {
   const r = capture(getDb(join(dir, 'graph.db')), ['gate', '--snippet']);
   expect(JSON.parse(r.snippet).hooks.PreToolUse).toHaveLength(1);
   expect(r.note).toMatch(/never allows/);
+});
+
+/**
+ * Run as the hook runs it: a process, the call on stdin, stdout read as the
+ * answer. A graph the gate cannot open printed a stack trace and exited 1, and
+ * an empty one was seeded with the report on the stdout the hook reads.
+ */
+test('a graph the gate cannot open, or one never seeded, is no answer and exit 0', () => {
+  const hook = (db: string) =>
+    spawnSync('node', ['--experimental-sqlite', ENGINE, 'gate'], {
+      input: JSON.stringify({ tool_name: 'mcp__github__create_issue', tool_input: {} }),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        AMBIT_DB: db,
+        TOOLCHAIN_DB: db,
+        OPENCODE_CONFIG: join(dir, 'missing.json'),
+        NODE_NO_WARNINGS: '1',
+      },
+    });
+
+  const unopenable = hook(join(dir, 'no', 'such', 'dir', 'graph.db'));
+  expect([unopenable.status, unopenable.stdout]).toEqual([0, '']);
+
+  const empty = join(dir, 'empty.db');
+  const unseeded = hook(empty);
+  expect([unseeded.status, unseeded.stdout]).toEqual([0, '']);
+  const db = getDb(empty);
+  try {
+    expect(db.prepare('SELECT COUNT(*) AS n FROM capabilities').get()).toEqual({ n: 0 });
+  } finally {
+    db.close();
+  }
 });

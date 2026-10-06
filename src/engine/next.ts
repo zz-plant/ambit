@@ -20,6 +20,7 @@ import { usable } from './assurance.ts';
 import { deficits } from './planning.ts';
 import { catalogReport } from './catalog.ts';
 import { opportunitiesFor } from './opportunities.ts';
+import { PROVISION_EDGES } from './ontology.ts';
 
 /** How many recommendations a curriculum is. Three is a choice; ten is a list. */
 const HOW_MANY = 3;
@@ -29,7 +30,10 @@ interface Candidate {
   name: string;
   description: string;
   setup_seconds: number;
+  /** Dependents something already supplies: reaching this reaches them. */
   unlocks: string[];
+  /** Dependents nothing supplies yet: reaching this makes them a next step. */
+  opens: string[];
   missing: string[];
   blocked_by_degraded: boolean;
   observed_blocks: number;
@@ -53,12 +57,16 @@ function candidates(db: Db): Candidate[] {
   const byId = new Map(caps.map(c => [c.id, c]));
   const reached = (c: any) => c && c.state !== 'locked' && usable(c.lifecycle);
 
+  // Requirements only. A provider's edge is hard too, and the provider is not
+  // a capability this reads, so it counted as a prerequisite never met: no
+  // supplied capability could be one step away or be reached by one.
   const hard = db
     .prepare(
       `SELECT from_capability f, to_capability t FROM dependencies
-       WHERE is_hard_requisite = 1 AND to_capability LIKE 'combo:%'`
+       WHERE is_hard_requisite = 1 AND to_capability LIKE 'combo:%'
+         AND kind NOT IN (${PROVISION_EDGES.map(() => '?').join(', ')})`
     )
-    .all<{ f: string; t: string }>();
+    .all<{ f: string; t: string }>(...PROVISION_EDGES);
   const prereqs = new Map<string, string[]>();
   const dependents = new Map<string, string[]>();
   for (const d of hard) {
@@ -79,11 +87,13 @@ function candidates(db: Db): Candidate[] {
   // that fills itself could never influence what gets suggested.
   const blocked = new Map<string, number>();
   const supplies = new Map<string, string[]>();
+  const supplied = new Set<string>();
   for (const d of db
     .prepare("SELECT from_capability f, to_capability t FROM dependencies WHERE kind = 'provides'")
     .all<{ f: string; t: string }>()) {
     if (!supplies.has(d.f)) supplies.set(d.f, []);
     supplies.get(d.f)!.push(d.t);
+    supplied.add(d.t);
   }
   const recorded = deficits(db);
   if (Array.isArray(recorded)) {
@@ -100,15 +110,29 @@ function candidates(db: Db): Candidate[] {
   for (const c of caps) {
     if (reached(c)) continue;
     const missing = (prereqs.get(c.id) || []).filter(p => !reached(byId.get(p)));
-    if (missing.length > 1) continue; // more than one step away is a project
+    // One step means every prerequisite is met. The single exception is one
+    // that is configured and failing its check, which the step is to repair.
+    // A prerequisite not yet reached is a step of its own, and listing both
+    // priced the capability without it.
+    const degraded = (m: string) => {
+      const cap = byId.get(m);
+      return Boolean(cap && cap.state !== 'locked' && !usable(cap.lifecycle));
+    };
+    if (missing.length > 1 || (missing.length === 1 && !degraded(missing[0]))) continue;
 
     // What this capability would let the graph reach that nothing else would:
-    // its dependents whose only unmet prerequisite is this one.
-    const unlocks = (dependents.get(c.id) || []).filter(dep => {
+    // its dependents whose only unmet prerequisite is this one. Only those
+    // something already supplies are reached by it; the rest become next steps
+    // of their own. Both were called "already supplied", so Vector Store was
+    // promised on a machine with no vector store, and `goal --simulate`, which
+    // acquires only what is supplied, disagreed.
+    const waiting = (dependents.get(c.id) || []).filter(dep => {
       const depCap = byId.get(dep);
       if (!depCap || reached(depCap)) return false;
       return (prereqs.get(dep) || []).every(p => p === c.id || reached(byId.get(p)));
     });
+    const unlocks = waiting.filter(dep => supplied.has(dep));
+    const opens = waiting.filter(dep => !supplied.has(dep));
 
     out.push({
       id: c.id,
@@ -116,15 +140,29 @@ function candidates(db: Db): Candidate[] {
       description: c.description,
       setup_seconds: c.unlock_cost_setup || 0,
       unlocks: unlocks.map(u => byId.get(u)?.name || u),
+      opens: opens.map(u => byId.get(u)?.name || u),
       missing: missing.map(m => byId.get(m)?.name || m),
-      blocked_by_degraded: missing.some(m => {
-        const cap = byId.get(m);
-        return cap && cap.state !== 'locked' && !usable(cap.lifecycle);
-      }),
+      blocked_by_degraded: missing.some(degraded),
       observed_blocks: blocked.get(c.id) || 0,
     });
   }
   return out;
+}
+
+/**
+ * What reaching a capability does to the ones waiting on it alone, in one
+ * sentence: those already supplied are reached with it, and the rest become
+ * next steps of their own.
+ */
+function whyLeverage(c: Pick<Candidate, 'unlocks' | 'opens'>): string {
+  const and = (names: string[]) => names.join(' and ');
+  const reaches = c.unlocks.length
+    ? `Reaching it also reaches ${and(c.unlocks)}, which ${c.unlocks.length === 1 ? 'is' : 'are'} already supplied and waiting on this alone`
+    : '';
+  const opens = c.opens.length
+    ? `${reaches ? ', and makes' : 'Reaching it makes'} ${and(c.opens)} ${c.opens.length === 1 ? 'a next step' : 'next steps'}`
+    : '';
+  return `${reaches}${opens}.`;
 }
 
 /** Minutes, or hours once minutes stop being readable. */
@@ -174,10 +212,13 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
       // things outranks an expensive one that unblocks three. The +1 counts
       // the capability itself: reaching it is worth something even when
       // nothing waits on it.
-      const leverage = (c.unlocks.length + 1) / hours;
-      return { ...c, score: observed ? c.observed_blocks * 10 + leverage : leverage };
+      const leverage = (c.unlocks.length + c.opens.length + 1) / hours;
+      return { ...c, leverage };
     })
-    .sort((a, b) => b.score - a.score)
+    // What blocked work comes first, as the basis says, and leverage only
+    // orders the rest. A weighted sum let a five-minute capability nothing had
+    // ever waited on outrank one that had blocked work.
+    .sort((a, b) => b.observed_blocks - a.observed_blocks || b.leverage - a.leverage)
     .slice(0, howMany);
 
   return {
@@ -193,8 +234,8 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
         id: c.id,
         why: c.observed_blocks
           ? `It has blocked work ${c.observed_blocks} ${c.observed_blocks === 1 ? 'time' : 'times'}.`
-          : c.unlocks.length
-            ? `Reaching it also reaches ${c.unlocks.join(' and ')}, which ${c.unlocks.length === 1 ? 'is' : 'are'} already supplied and waiting on this alone.`
+          : c.unlocks.length || c.opens.length
+            ? whyLeverage(c)
             : // A seeded description carries its own hint after an em dash.
               // The briefing wants the claim, not the instruction that follows
               // it — `ambit goal <cap>` is where the instruction belongs.

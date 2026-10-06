@@ -2017,6 +2017,14 @@ code, pre, .code, .sp-cli-cmd {
   }
 }
 
+/* Below that the row is the screen's own: the 716px reserve above, kept on a
+   375px phone, left the headline 28px wide, one word to a line. */
+@media (max-width: 768px) {
+  .civ-finding-wrap > :first-child {
+    max-width: calc(100% - 32px);
+  }
+}
+
 /* The header's pill carries the count from 769px up. */
 @media (min-width: 769px) {
   .civ-range-count {

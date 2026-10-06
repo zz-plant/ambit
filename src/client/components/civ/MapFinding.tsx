@@ -177,7 +177,7 @@ export function MapFinding({
           <span>
             Best next step: <strong>{best.item.name}</strong>
             {cost ? ` · ${cost} of setup` : ''}
-            {best.reaches ? ` · reaches ${best.reaches} more` : ''}
+            {best.reaches ? ` · opens ${best.reaches} more` : ''}
           </span>
           <button type="button" className="civ-finding-btn" onClick={() => onPreview(best.item.id)}>
             Preview

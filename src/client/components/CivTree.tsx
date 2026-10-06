@@ -418,7 +418,16 @@ export default function CivTree({
   const hiddenBySimulation = collapse
     ? [...simSet].filter(id => nodePositionMap.has(id) && !collapse.shown.has(id)).length
     : 0;
-  const findings = useMemo(() => mapFindings(items, connections), [items, connections]);
+  const ranked = useAmbitStore(s => s.loop?.next);
+  const findings = useMemo(
+    () =>
+      mapFindings(
+        items,
+        connections,
+        ranked?.map(n => n.id)
+      ),
+    [items, connections, ranked]
+  );
   // The thumbnail's dots: every node the map draws, where it sits and where it stands.
   const minimapNodes = useMemo<MinimapNode[]>(
     () =>

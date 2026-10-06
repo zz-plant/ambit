@@ -102,7 +102,8 @@ check — what is proven, what is permitted, what is currently broken
                           a ceiling on spend per period; a spend past it is
                           refused, and within it the grant's own mode decides
   check can <cap> [--target=X] [--spend=N] [--exit-code]   the decision API:
-                          ALLOW/CONFIRM/DENY; --exit-code also exits 0/1/2
+                          ALLOW/CONFIRM/DENY; --spend is in dollars, as
+                          --amount is; --exit-code also exits 0/1/2
   check gate              the Claude Code PreToolUse hook: denies what is forbidden,
                           asks about what asks first or has no grant, and never allows;
                           run it in a terminal for the settings entry to paste
@@ -112,7 +113,8 @@ check — what is proven, what is permitted, what is currently broken
   check doctor            audit setup health, broken tools, and token-thrash risk
   check connect [runtime] 1-click auto-config for Claude Code, Cursor, OpenCode
   check init-rules        inject pre-flight guidance into workspace agent rules
-  check receipt [hours]   post-session micro-receipt of tools used and saved tokens
+  check receipt [hours]   what the ledger recorded: capabilities used, calls
+                          stopped before running, failures reported
   check ci [--strict]     verify capability invariants for CI/CD pipelines
 
 govern — the reviewable path from proposal to applied change

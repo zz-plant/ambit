@@ -11,8 +11,18 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import type { Db } from './db.ts';
 import { proposalHash, verifyApproval } from './approval.ts';
-import { approveProposal, decideDraft, decideShown, rejectProposal } from './governance.ts';
+import {
+  approveProposal,
+  decideDraft,
+  decideShown,
+  ensureActor,
+  rejectProposal,
+} from './governance.ts';
+import { ledgerSince, recordFrontier } from './ledger.ts';
+import { opportunitiesFor } from './opportunities.ts';
 import { makeGraph } from './testing/graph.ts';
+import { techTreeView } from './views.ts';
+import { graphCounts } from './vocabulary.ts';
 
 const key = process.env.AMBIT_APPROVAL_KEY;
 beforeAll(() => {
@@ -236,5 +246,51 @@ test('a proposal turned down by an earlier release, artifact and all, is still n
     ok: false,
     reason: expect.stringContaining('turned down'),
   });
+  db.close();
+});
+
+test('the person at the browser is not a capability the graph gained', () => {
+  // Deciding from the page declares `human:web`. Counted as a node of the
+  // frontier, the first approval read as a capability gained that week, moved
+  // every reach count by one, and listed the person in My Setup as an entry.
+  const db = makeGraph({
+    capabilities: [{ id: 'combo:thing', name: 'Thing', kind: 'capability' }],
+  });
+  db.prepare(
+    "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES ('prop-1', 'Thing', 'draft', ?, '{}')"
+  ).run(JSON.stringify([{ id: 'combo:thing', name: 'Thing' }]));
+  recordFrontier(db);
+  const before = graphCounts(db);
+
+  expect(ensureActor(db, 'human:web', 'you, at the browser', 'the browser')).toBe(true);
+  approveProposal(db, 'prop-1', 'human:web');
+
+  expect(graphCounts(db)).toEqual(before);
+  expect((ledgerSince(db) as any).gained ?? []).toEqual([]);
+  expect(techTreeView(db).items.map(i => i.id)).not.toContain('human:web');
+  db.close();
+});
+
+test('an approval is about the proposal it decided, not the person deciding', () => {
+  // Approvals are filed under the person, which is how the trail finds them.
+  // Read as the subject, they ranked "Automate you, at the browser" first.
+  const db = makeGraph({
+    capabilities: [
+      { id: 'combo:thing', name: 'Thing', kind: 'capability' },
+      { id: 'human:web', name: 'you, at the browser', category: 'human', kind: 'actor' },
+    ],
+  });
+  const steps = JSON.stringify([{ id: 'combo:thing', name: 'Thing' }]);
+  const insert = db.prepare(
+    "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES (?, 'Thing', 'draft', ?, '{}')"
+  );
+  for (const n of [1, 2]) {
+    insert.run(`prop-${n}`, steps);
+    approveProposal(db, `prop-${n}`, 'human:web');
+  }
+
+  const subjects = (opportunitiesFor(db) as any).opportunities.map((o: any) => o.capability_id);
+  expect(subjects).toContain('combo:thing');
+  expect(subjects).not.toContain('human:web');
   db.close();
 });

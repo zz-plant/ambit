@@ -94,10 +94,15 @@ export interface Showing {
  * is what the product is for; the loss is the guardrail. Null when the graph
  * has nothing to say.
  */
-export function buildCard(items: Item[], connections: Connection[], showing: Showing): Card | null {
+export function buildCard(
+  items: Item[],
+  connections: Connection[],
+  showing: Showing,
+  ranked: string[] = []
+): Card | null {
   let { mode, rootId, cascade, weakened } = showing;
   if (mode === 'none' || !rootId) {
-    const { weakest, best } = mapFindings(items, connections);
+    const { weakest, best } = mapFindings(items, connections, ranked);
     if (best?.reaches) {
       mode = 'acquisition';
       rootId = best.item.id;

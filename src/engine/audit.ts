@@ -103,6 +103,7 @@ function auditProposal(db: Db, proposalId: string) {
   const steps = JSON.parse(row.steps);
   const artifact = row.approval_artifact ? JSON.parse(row.approval_artifact) : undefined;
   const roi = row.observed_roi ? JSON.parse(row.observed_roi) : undefined;
+  const executed = executions(db, row);
 
   // The enforcement decision for each step, re-run — the audit's "was this
   // permitted" column, resolved the same way apply resolved it.
@@ -150,16 +151,48 @@ function auditProposal(db: Db, proposalId: string) {
         }
       : undefined,
     enforcement,
-    applied:
-      row.status === 'applied'
-        ? {
-            at: row.applied_at,
-            keys: row.status === 'applied' ? row.applied_at && undefined : undefined,
-          }
-        : undefined,
+    applied: row.status === 'applied' ? { at: row.applied_at } : undefined,
+    executed: executed.length ? executed : undefined,
     roi,
-    note: row.status === 'applied' ? undefined : `${row.status} — nothing executed.`,
+    note: executed.length
+      ? row.status === 'rolled_back'
+        ? 'Applied, then rolled back: its stored inverse took the change out of the config.'
+        : undefined
+      : `${row.status} — nothing executed.`,
   };
+}
+
+/**
+ * Every apply and rollback of one proposal, oldest first.
+ *
+ * The row's status is only the latest word, so a proposal applied and then
+ * rolled back read as one where nothing had executed. Apply and rollback each
+ * write an act, and those are the history: an apply's note is the id, a colon
+ * and the keys it wrote, a rollback's is the id alone. A graph whose acts
+ * predate this still has the row's `applied_at`, which is kept as the one
+ * apply it can show.
+ */
+function executions(db: Db, row: ProposalRow) {
+  const acts = db
+    .prepare(
+      `SELECT action, notes, timestamp FROM session_learning
+       WHERE session_id = 'apply' AND action IN ('applied', 'rolled_back')
+         AND (notes = ? OR substr(notes, 1, length(?) + 1) = ? || ':')
+       ORDER BY timestamp, id`
+    )
+    .all<Pick<SessionLearningRow, 'action' | 'notes' | 'timestamp'>>(row.id, row.id, row.id);
+  const executed = acts.map(a => {
+    const keys = a.action === 'applied' ? (a.notes ?? '').slice(row.id.length + 1).trim() : '';
+    return {
+      action: a.action,
+      at: a.timestamp,
+      keys: keys ? keys.split(', ') : undefined,
+    };
+  });
+  if (!executed.some(e => e.action === 'applied') && row.applied_at) {
+    executed.unshift({ action: 'applied', at: row.applied_at, keys: undefined });
+  }
+  return executed;
 }
 
 function auditActor(db: Db, actorId: string) {

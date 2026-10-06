@@ -3,8 +3,13 @@ import { backendAvailable } from '../store/ambitStore';
 import { useLatest } from './useLatest';
 
 interface StreamHandlers {
-  /** The graph underneath changed; refetch whichever view is showing. */
-  graphChanged: () => void;
+  /**
+   * The graph underneath changed; refetch whichever view is showing. `changed`
+   * names the counts that moved (`reached`, `failing`, `drafts` and the rest of
+   * the stream's summary), so a new proposal can refresh the badge without
+   * announcing a rebuild that did not happen.
+   */
+  graphChanged: (changed: string[]) => void;
   /** A proposal was approved in the browser broker. */
   proposalApproved: (proposalId: string) => void;
 }
@@ -36,7 +41,7 @@ export function useGraphStream(handlers: StreamHandlers): { connected: boolean }
     backendAvailable().then(ok => {
       if (!ok || cancelled) return;
       es = new EventSource('/api/events');
-      let last = '';
+      let last: Record<string, unknown> | null = null;
       es.onopen = () => setConnected(true);
       es.onmessage = e => {
         try {
@@ -46,13 +51,22 @@ export function useGraphStream(handlers: StreamHandlers): { connected: boolean }
             return;
           }
           if (event.type === 'WorkEvent') return; // telemetry, not a view change
-          if (event.type !== 'StateSnapshot' && event.type !== 'StateDelta') return;
-          const fingerprint =
-            event.type === 'StateDelta'
-              ? 'delta:' + JSON.stringify(event.delta)
-              : JSON.stringify(event.snapshot);
-          if (last && fingerprint !== last) latest.current.graphChanged();
-          last = fingerprint;
+          if (event.type === 'StateSnapshot') {
+            // The first snapshot is the baseline. A later one arrives when the
+            // stream reconnects, and is compared key by key with what came before.
+            const next = (event.snapshot ?? {}) as Record<string, unknown>;
+            const changed = last
+              ? Object.keys({ ...last, ...next }).filter(k => last?.[k] !== next[k])
+              : [];
+            last = next;
+            if (changed.length) latest.current.graphChanged(changed);
+            return;
+          }
+          if (event.type !== 'StateDelta') return;
+          const delta = (event.delta ?? []) as { path: string; value: unknown }[];
+          const changed = delta.map(op => op.path.replace(/^\//, ''));
+          if (last) for (const op of delta) last[op.path.replace(/^\//, '')] = op.value;
+          if (changed.length) latest.current.graphChanged(changed);
         } catch {
           /* a malformed frame should not take the view down */
         }

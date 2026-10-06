@@ -13,6 +13,8 @@
  * SQL takes the fragment from here rather than spelling the list again.
  */
 
+import { NON_FRONTIER_KINDS } from './ontology.ts';
+
 /** States that mean the system can reach a capability. */
 const REACHED_STATES = ['unlocked', 'active'] as const;
 
@@ -47,13 +49,30 @@ const CHECK_RUN = { passed: 'verified', failed: 'failed' } as const;
 const CHECK_RUN_SQL = `action IN (${sqlList([CHECK_RUN.passed, CHECK_RUN.failed])})`;
 
 /**
+ * The capability a row of `session_learning` is about, as an SQL expression
+ * over the row aliased `s`.
+ *
+ * A decision is filed under the person who made it: `capability_id` on an
+ * approval or an apply holds `human:…`, which is how the audit trail finds a
+ * person's acts. Reading that column as a capability made the person the
+ * subject, and the opportunity ranking led with "Automate you, at the
+ * browser". The proposal named in the row's notes says what the decision was
+ * about: its goal, the last of its steps.
+ */
+const DECIDED_CAPABILITY_SQL = `CASE WHEN s.session_id IN ('approval', 'apply')
+  THEN (SELECT json_extract(p.steps, '$[#-1].id') FROM proposals p
+        WHERE substr(s.notes, 1, length(p.id) + 1) = p.id || ':')
+  ELSE s.capability_id END`;
+
+/**
  * The counts every summary reports, from one query.
  *
  * `ambit status`, the briefing, the MCP stats and context tools and the
  * visualiser's live stream each carried their own copy of this, two of them
  * byte-identical. Action nodes are excluded from reach because an action is
- * conferred by a capability rather than acquired, and counting both would
- * report the same thing twice.
+ * conferred by a capability and not acquired, and counting both would report
+ * the same thing twice. The kinds the frontier leaves out, a credential and a
+ * person, are left out here too, so declaring either never moves a reach.
  */
 interface GraphCounts {
   total: number;
@@ -70,7 +89,7 @@ function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }
                 SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) AS reached,
                 SUM(CASE WHEN ${PROVEN_SQL} THEN 1 ELSE 0 END) AS proven,
                 SUM(CASE WHEN ${FAILING_SQL} THEN 1 ELSE 0 END) AS failing
-         FROM capabilities WHERE kind != 'action'`
+         FROM capabilities WHERE kind NOT IN (${sqlList(['action', ...NON_FRONTIER_KINDS])})`
       )
       .get();
     return {
@@ -170,6 +189,7 @@ export {
   PROVEN_SQL,
   CHECK_RUN,
   CHECK_RUN_SQL,
+  DECIDED_CAPABILITY_SQL,
   sqlList,
   graphCounts,
   type GraphCounts,

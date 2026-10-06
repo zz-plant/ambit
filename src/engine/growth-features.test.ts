@@ -1,9 +1,19 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  lstatSync,
+  symlinkSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { cli, seed, LOCAL_ONLY } from './testing/cli.ts';
+import { addEvent, beginRun, cli, dir, getDb, recordUse, seed, LOCAL_ONLY } from './testing/cli.ts';
 import { makeGraph } from './testing/graph.ts';
+import { captureFailure } from './failures.ts';
 import { runDoctor } from './doctor.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
@@ -91,6 +101,65 @@ describe('ambit connect', () => {
     expect(openCodeParsed.mcp.ambit.enabled).toBe(true);
   });
 
+  /**
+   * Run bare, connect rewrites every runtime config it finds with no prompt.
+   * It used to keep nothing, so a person could not put back what it replaced.
+   */
+  test('keeps every file it rewrites in a .bak, and says which and where', () => {
+    const claudeJson = join(testDir, '.claude.json');
+    const before = '{\n\t"mcpServers": { "other": { "command": "other" } }\n}\n';
+    writeFileSync(claudeJson, before);
+    const openCodeJson = join(testDir, '.config', 'opencode', 'opencode.json');
+    mkdirSync(dirname(openCodeJson), { recursive: true });
+    writeFileSync(openCodeJson, '{"mcp":{}}');
+
+    const res = runConnect(undefined, { home: testDir });
+    expect(res.configured.map(c => c.backup)).toEqual([`${claudeJson}.bak`, `${openCodeJson}.bak`]);
+    // Byte for byte, so the person's own formatting comes back with it.
+    expect(readFileSync(`${claudeJson}.bak`, 'utf8')).toBe(before);
+    expect(readFileSync(`${openCodeJson}.bak`, 'utf8')).toBe('{"mcp":{}}');
+    expect(res.note).toBe(
+      'Changed ~/.claude.json, ~/.config/opencode/opencode.json. What each held is in ~/.claude.json.bak, ~/.config/opencode/opencode.json.bak.'
+    );
+
+    // Nothing changes on a second run, so nothing is rewritten or kept.
+    const again = runConnect(undefined, { home: testDir });
+    expect(again.configured.every(c => c.action === 'already_configured' && !c.backup)).toBe(true);
+    expect(again.note).toBeUndefined();
+    expect(readFileSync(`${claudeJson}.bak`, 'utf8')).toBe(before);
+  });
+
+  test('a link planted at the .bak name is replaced and never followed', () => {
+    const claudeJson = join(testDir, '.claude.json');
+    writeFileSync(claudeJson, '{"mcpServers":{}}');
+    const victim = join(testDir, 'victim.txt');
+    writeFileSync(victim, 'not the config');
+    symlinkSync(victim, `${claudeJson}.bak`);
+
+    expect(runConnect('claude-code', { home: testDir }).configured[0].action).toBe('added');
+    expect(readFileSync(victim, 'utf8')).toBe('not the config');
+    expect(lstatSync(`${claudeJson}.bak`).isSymbolicLink()).toBe(false);
+    expect(readFileSync(`${claudeJson}.bak`, 'utf8')).toBe('{"mcpServers":{}}');
+  });
+
+  test('a file it cannot back up is left as it was', () => {
+    const claudeJson = join(testDir, '.claude.json');
+    writeFileSync(claudeJson, '{"mcpServers":{}}');
+    // A directory where the backup belongs fails the copy whoever runs this.
+    mkdirSync(`${claudeJson}.bak`);
+
+    const res = runConnect('claude-code', { home: testDir });
+    expect(res.configured).toEqual([]);
+    expect(res.skipped[0].reason).toBeTruthy();
+    expect(readFileSync(claudeJson, 'utf8')).toBe('{"mcpServers":{}}');
+  });
+
+  test('a file it creates has nothing to keep, and the note says it was created', () => {
+    const res = runConnect('cursor', { home: testDir });
+    expect(res.configured[0].backup).toBeUndefined();
+    expect(res.note).toBe('Created ~/.cursor/mcp.json, which did not exist.');
+  });
+
   test('respects --dry-run without creating files', () => {
     const cursorJson = join(testDir, '.cursor', 'mcp.json');
     const res = runConnect('cursor', { home: testDir, dryRun: true, force: true });
@@ -166,17 +235,46 @@ describe('ambit init-rules', () => {
 });
 
 describe('ambit receipt', () => {
-  test('generates micro-receipt with token savings metrics', () => {
-    const db = seed(LOCAL_ONLY);
-    const receipt = cli('receipt');
-    expect(receipt.summary).toContain('Ambit Session Receipt');
-    expect(receipt.tokens_saved).toBeGreaterThanOrEqual(0);
-    expect(receipt.dollars_saved).toBeGreaterThanOrEqual(0);
-    expect(receipt.verified_ratio).toBeDefined();
-
-    const directReceipt = runReceipt(db, 2);
-    expect(directReceipt.summary).toContain('Ambit Session Receipt');
+  test('a graph with nothing recorded says so, and prices nothing', () => {
+    const db = makeGraph({
+      capabilities: [{ id: 'tool:browser', name: 'Browser Automation', lifecycle: 'broken' }],
+    });
+    const receipt = runReceipt(db, 1);
+    // A failing check is a fact about the graph, not a loop someone stopped.
+    expect(receipt.failing_now).toEqual(['Browser Automation']);
+    expect(receipt.intercepted).toBe(0);
+    expect(receipt.summary).toBe('Ambit Session Receipt: nothing recorded in the last hour.');
+    expect(receipt.note).toMatch(/telemetry bridge/);
+    expect(JSON.stringify(receipt)).not.toMatch(/saved|tokens|\$/);
     db.close();
+  });
+
+  test('counts what the ledger recorded: use, refusals and blocks, and failures', () => {
+    const db = seed(LOCAL_ONLY);
+    db.close();
+    // Two refusals from the decision API, which file themselves.
+    cli('can', 'quantum-teleportation', '--tool=qtp');
+    cli('can', 'quantum-teleportation-two', '--tool=qtp2');
+    const graph = getDb(join(dir, 'graph.db'));
+    const { run } = beginRun(graph, { goal: 'receipt' });
+    addEvent(graph, run, { kind: 'intercept', actor: 'ambit:control_plane', action: 'block' });
+    captureFailure(graph, { source: 'opencode', tool: 'git', message: 'permission denied' });
+    const used = graph
+      .prepare("SELECT id FROM capabilities WHERE kind = 'capability' LIMIT 1")
+      .get<{
+        id: string;
+      }>();
+    recordUse(graph, run, used!.id);
+
+    const receipt = runReceipt(graph, 2);
+    expect(receipt.intercepted).toBe(3);
+    expect(receipt.failures_reported).toBe(1);
+    expect(receipt.capabilities_used).toBe(1);
+    expect(receipt.summary).toBe(
+      'Ambit Session Receipt for the last 2 hours: 1 capability used, 3 calls stopped before running, 1 failure reported.'
+    );
+    expect(receipt.note).toBeUndefined();
+    graph.close();
   });
 });
 

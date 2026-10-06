@@ -48,6 +48,33 @@ function metricByEntity(db: Migratable, entityType: string, metric: string): Map
   return out;
 }
 
+/**
+ * Whose attention a recurring burden is priced at, or null when nobody is
+ * known, which prices it at the default.
+ *
+ * The opportunity ranking and the ROI fallback named one person, the
+ * maintainer, by id, so every other machine priced its burden at the default
+ * whatever its owner had declared. The person is the one who declared a value,
+ * when one did; among several, the one who stepped in most often.
+ */
+function attentionOwner(db: Migratable): string | null {
+  const declared = metricByEntity(db, 'actor', 'attention_value_per_hour');
+  if (declared.size === 1) return [...declared.keys()][0];
+  let busiest: { actor_id: string } | undefined;
+  try {
+    busiest = db
+      .prepare(
+        `SELECT actor_id FROM human_intervention WHERE actor_id IS NOT NULL
+         GROUP BY actor_id ORDER BY COUNT(*) DESC, actor_id LIMIT 1`
+      )
+      .get<{ actor_id: string }>();
+  } catch {
+    /* a graph with no work ledger yet */
+  }
+  if (busiest && (declared.size === 0 || declared.has(busiest.actor_id))) return busiest.actor_id;
+  return [...declared.keys()].sort()[0] ?? busiest?.actor_id ?? null;
+}
+
 /** The cents-per-hour cost of an actor's attention, declared or the default. */
 function attentionValueCentsPerHour(db: Migratable, actorId: string): number {
   const declared = valueCents(db, 'actor', actorId, 'attention_value_per_hour');
@@ -114,4 +141,11 @@ function economicsReport(db: Migratable) {
   };
 }
 
-export { valueCents, metricByEntity, attentionValueCentsPerHour, goalValue, economicsReport };
+export {
+  valueCents,
+  metricByEntity,
+  attentionOwner,
+  attentionValueCentsPerHour,
+  goalValue,
+  economicsReport,
+};

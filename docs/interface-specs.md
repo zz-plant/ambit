@@ -145,7 +145,7 @@ M2 had the weakest case at 35 nodes, and was built with M1: a graph that outgrow
 
 **The question.** Why is this red, and can I turn it off without opening a file?
 
-**Today.** Check output survives only as the first 160 characters in `session_learning.notes`, and a missing binary or a timeout is stored as "exit null" because `verifyCheck` never reads the error. The shipped checks are nearly all silent on failure, but `git diff --exit-code` and any agent-registered check can print source or secrets. `notes` already leaves the graph through `sync export`, `ambit audit` and the evidence MCP tool, so storing more widens that. No route serves it. Enabling and disabling an MCP server already works through `enableMcp` and `disableMcp` behind `ownEntry`, and no other kind of entry has an enabled state. Ambit never lists a server's tools, so a tool count has no source.
+**Today.** Check output survives only as the first 160 characters in `session_learning.notes`, and a missing binary or a timeout is stored as "exit null" because `verifyCheck` never reads the error. The shipped checks are nearly all silent on failure, but any agent-registered check can print source or secrets. `notes` already leaves the graph through `sync export`, `ambit audit` and the evidence MCP tool, so storing more widens that. No route serves it. Enabling and disabling an MCP server already works through `enableMcp` and `disableMcp` behind `ownEntry`, and no other kind of entry has an enabled state. Ambit never lists a server's tools, so a tool count has no source.
 
 **The change.**
 

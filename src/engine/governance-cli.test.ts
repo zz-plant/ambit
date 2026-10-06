@@ -300,6 +300,26 @@ test('rollback reverses exactly what was applied', () => {
   expect(Object.keys(readConfig().mcp)).toEqual(['git']);
 });
 
+/**
+ * The row's status holds only the latest word, so a proposal applied and then
+ * rolled back was audited as one where nothing executed.
+ */
+test('the audit of a rolled-back proposal shows the apply and the rollback', () => {
+  seed(APPLIABLE).close();
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  expect(cli('audit', p.proposal).note).toMatch(/nothing executed/);
+
+  cli('apply', p.proposal);
+  cli('rollback', p.proposal);
+  const audit = cli('audit', p.proposal);
+  expect(audit.status).toBe('rolled_back');
+  expect(audit.executed.map((e: any) => e.action)).toEqual(['applied', 'rolled_back']);
+  expect(audit.executed[0].keys).toEqual(['mcp.fetch']);
+  expect(audit.note).not.toMatch(/nothing executed/);
+  expect(audit.note).toMatch(/rolled back/);
+});
+
 test('applying twice is refused', () => {
   seed(APPLIABLE).close();
   const p = cli('propose', 'web-research');
@@ -568,13 +588,23 @@ test('a budget refuses a spend that would exceed it', () => {
   ).run('combo:offline-capable');
   db.close();
 
-  const ok = cli('can', 'offline-capable', '--spend=5000');
+  // A spend is typed in dollars, as `budget set --amount` is.
+  const ok = cli('can', 'offline-capable', '--spend=50');
   expect(ok.decision).toBe('ALLOW');
   expect(ok.remaining_budget_cents).toBe(6000);
 
-  const over = cli('can', 'offline-capable', '--spend=7000');
+  const over = cli('can', 'offline-capable', '--spend=$70');
   expect(over.decision).toBe('DENY');
   expect(over.reason).toContain('exceeds');
+  expect(cli('can', 'offline-capable', '--spend=7000c').decision).toBe('DENY');
+
+  // A spend nobody can read is refused, never treated as no spend: this one
+  // used to become NaN and pass.
+  for (const unread of ['--spend=twenty', '--spend=', '--spend', '--spend=-5']) {
+    const r = cli('can', 'offline-capable', unread);
+    expect(r.error).toMatch(/--spend takes an amount in dollars/);
+    expect(r.decision).toBeUndefined();
+  }
 });
 
 test('apply refuses a step authority denies, even with an approval', () => {

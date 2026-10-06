@@ -12,7 +12,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeGraph } from './testing/graph.ts';
-import { graphCounts, notSeeded, REACHED_SQL } from './vocabulary.ts';
+import { graphCounts, notSeeded } from './vocabulary.ts';
 import { canExecute, recordSpend } from './assurance.ts';
 import { budgetReport, setBudget } from './budgets.ts';
 import { exportSync, importSync } from './sync.ts';
@@ -42,16 +42,12 @@ describe('one definition of reached', () => {
     expect(status.reached).toBe(counts.reached);
     expect(status.total).toBe(counts.total);
 
-    // The visualiser counts every row including actions, so its total is
-    // larger; what must agree is which states count as reached.
+    // The live stream reports the same counts. It used to count every row, so
+    // it announced the action and the person as capabilities.
     const summary = graphSummary(db);
-    const everything = db
-      .prepare(
-        `SELECT COUNT(*) AS total, SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) AS reached FROM capabilities`
-      )
-      .get();
-    expect(summary.reached).toBe(everything?.reached);
-    expect(summary.total).toBe(everything?.total);
+    expect(summary.reached).toBe(counts.reached);
+    expect(summary.total).toBe(counts.total);
+    expect(counts).toMatchObject({ reached: 2, total: 3 });
     db.close();
   });
 
