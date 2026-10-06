@@ -14,7 +14,7 @@
         "description": "Reviews diffs before merge"
       },
       "researcher": {
-        "description": "Reads docs and summarises"
+        "description": "Reads docs and summarizes"
       },
       "steward": {
         "description": "Keeps repositories consistent"
@@ -109,7 +109,7 @@
         "name": "researcher",
         "type": "agent",
         "status": "built",
-        "description": "Reads docs and summarises",
+        "description": "Reads docs and summarizes",
         "position": {
           "x": 0,
           "y": 0,
@@ -670,7 +670,7 @@
         "name": "researcher",
         "type": "agent",
         "status": "built",
-        "description": "Reads docs and summarises",
+        "description": "Reads docs and summarizes",
         "position": {
           "x": 0,
           "y": 0,

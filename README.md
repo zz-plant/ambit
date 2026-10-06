@@ -205,7 +205,7 @@ What ends comes first, marked with the `›`, as far down as it goes: Continuous
 
 ### From a script, or an agent's shell
 
-`--json` prints any answer as data, colour is drawn only on a terminal, and the exit code says whether the command worked. Two commands can gate a script the way `git diff --exit-code` does:
+`--json` prints any answer as data, color is drawn only on a terminal, and the exit code says whether the command worked. Two commands can gate a script the way `git diff --exit-code` does:
 
 ```bash
 ambit can shell-execution --exit-code     # 0 go ahead, 1 put it to the person, 2 stop

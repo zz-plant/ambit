@@ -1,6 +1,7 @@
 import { ActorMark } from './ActorMark';
 import React from 'react';
 import type { RunAsk, RunView } from '../../shared/api';
+import { readerLocale } from '../../shared/format';
 import { useAmbitStore } from '../store/ambitStore';
 import {
   askMark,
@@ -41,7 +42,11 @@ const H = 138;
 
 /** A clock time, in the reader's own zone. */
 const clock = (t: number) =>
-  new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  new Date(t).toLocaleTimeString(readerLocale(), {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 
 /** A diamond, drawn about (x, y): the mark for an ask that is a point. */
 const diamond = (x: number, y: number, r = 5) =>
@@ -321,7 +326,7 @@ const label = (r: { id: string; goal?: string; started_at: string; asks: number 
   return [
     r.goal || r.id,
     at !== undefined
-      ? new Date(at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+      ? new Date(at).toLocaleString(readerLocale(), { dateStyle: 'medium', timeStyle: 'short' })
       : '',
     `${r.asks} ${r.asks === 1 ? 'ask' : 'asks'}`,
   ]
