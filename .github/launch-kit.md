@@ -34,7 +34,7 @@ The parts I use most:
 - Blast-radius and single-point-of-failure analysis for tools and credentials, the guardrail that makes widening safe to lean on.
 - An attention ledger for permission prompts and other human interventions.
 - Reviewable config proposals with signed approval receipts. Agents may propose changes over MCP, but approval and apply stay outside the MCP surface.
-- Automatic discovery for OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, and Zed. A server two clients both list stays one capability with two providers.
+- Automatic discovery for OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, and VS Code. A server two clients both list stays one capability with two providers.
 
 Zero-install demo: https://zz-plant.github.io/ambit/?demo=1
 
@@ -50,7 +50,7 @@ The repository page is where a visitor decides whether the project is worth reme
 
 **About → Description.** The sidebar is the one line a visitor reads before the README loads, and GitHub search indexes it. The tagline is the brand; this is the answer to "what is it", naming the tools a reader already uses:
 
-> See what you and your AI agents can do, and what one more step would unlock. Ambit maps Claude Code, Cursor, OpenCode and eight more agent configs into one local graph: what works, what to set up next, and what breaks if a piece goes.
+> See what you and your AI agents can do, and what one more step would unlock. Ambit maps Claude Code, Cursor, OpenCode and nine more agent configs into one local graph: what works, what to set up next, and what breaks if a piece goes.
 
 Applied 2026-09-30, with Website and Topics below. It was written first as "What breaks if one MCP server goes down?", which is the guardrail half; see Positioning.
 

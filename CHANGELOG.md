@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### VS Code's own MCP servers
+
+VS Code keeps the servers it runs in a user-level `mcp.json`, under `servers`, apart from the Cline and Roo Code extensions Ambit already read, so those servers never reached the graph. They do now, as a twelfth runtime, with `VSCODE_MCP_CONFIG` to point elsewhere: contributed by @webdevsamran in #83, closing #77. Every place that lists the runtimes, the social card included, says twelve.
+
 ## [0.6.0](https://github.com/zz-plant/ambit/releases/tag/v0.6.0) — 2026-10-01
 
 The first release on npm and in the MCP registry, and the first that helps someone running a product, not only an agent setup. In short:
