@@ -4,7 +4,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { connect, createServer } from 'node:net';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 /**
  * How the engine is launched.
@@ -70,9 +70,18 @@ if (cmd === '--help' || cmd === 'help') {
   ${D}ambit web [--port=N] [--no-open]   Open the map on localhost: the built
                          page from an install, Vite from a checkout
   ambit mcp              Run the MCP server, exposing the same questions to an
-                         agent session: claude mcp add ambit -- ambit mcp${R}
+                         agent session: claude mcp add ambit -- ambit mcp
+  ambit --version        The installed version, for a bug report${R}
 `);
   process.exit(engineHelp.status ?? 0);
+}
+
+// The version a bug report asks for. It answers here, before the engine
+// starts, because an unknown flag reached the engine and began a first-run
+// seed on a machine with no graph.
+if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
+  console.log(JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version);
+  process.exit(0);
 }
 
 // Bare `ambit` used to print help — a list of things to read before doing
