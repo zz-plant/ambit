@@ -7,6 +7,7 @@ import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
 import GettingStartedGuide from './components/GettingStartedGuide';
+import MapYoursDialog from './components/MapYours';
 import NodeDetailPanel from './components/NodeDetailPanel';
 import SetupView from './components/SetupView';
 import Toast from './components/Toast';
@@ -147,6 +148,7 @@ export default function App() {
   // The tour runs on the demo the first time, like the card it replaces there,
   // and again whenever someone asks to watch the outage from the landing.
   const [tourAsked, setTourAsked] = useState(false);
+  const [mapYoursOpen, setMapYoursOpen] = useState(false);
   const [toast, setToast] = useToast();
 
   const { connected } = useGraphStream({
@@ -420,6 +422,12 @@ export default function App() {
     setTourAsked(false);
     dismissGuide();
   };
+  /** A config of the visitor's own was read: the sample is over, and the list shows it. */
+  const mapped = () => {
+    setMapYoursOpen(false);
+    endTour();
+    showView('config');
+  };
 
   // No graph yet: the welcome page, on its own. The chrome around the map (a
   // status pill reading "0 of 0") would otherwise be the first thing a
@@ -463,6 +471,20 @@ export default function App() {
         onShowProposals={showProposals}
         onShowDocs={() => openDocs()}
         asOf={tick ? dayOf(tick.at) : undefined}
+        sample={
+          demo
+            ? {
+                onReplay:
+                  touring || !hasTree
+                    ? undefined
+                    : () => {
+                        showView('tree');
+                        setTourAsked(true);
+                      },
+                onMapYours: () => setMapYoursOpen(true),
+              }
+            : undefined
+        }
       />
 
       <div className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}>
@@ -531,10 +553,7 @@ export default function App() {
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
             onDone={endTour}
             onShowProposals={showProposals}
-            onMapped={() => {
-              endTour();
-              showView('config');
-            }}
+            onMapped={mapped}
           />
         ) : (
           showGuide &&
@@ -579,6 +598,11 @@ export default function App() {
       />
       <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
       <DocsModal isOpen={showDocs} initialTab={docsTab} onClose={closeDocs} />
+      <MapYoursDialog
+        open={mapYoursOpen}
+        onClose={() => setMapYoursOpen(false)}
+        onMapped={mapped}
+      />
 
       {toast && (
         <Toast

@@ -1,7 +1,12 @@
 /**
- * Your loadout, leg by leg: where this setup stands on the way from a pile of
+ * The loadout, leg by leg: where this setup stands on the way from a pile of
  * configs to doing a class of work without you. The list below it is the
  * loadout's pieces; this is what they add up to, and the one move on each leg.
+ *
+ * The page says it in plain words. "Your loadout, leg by leg" and "From A to
+ * B" were the docs' framing used as labels, and a reader who had not read the
+ * docs met three words nothing on the page explained. The framing stays in
+ * the document the link opens.
  *
  * Every sentence is read from the graph and the ledger, and a leg nothing has
  * recorded says so. A command is copied, never run.
@@ -46,8 +51,8 @@ export function Journey() {
   return (
     <section className="journey" aria-labelledby="journey-title">
       <div className="journey-head">
-        <h3 id="journey-title">Your loadout, leg by leg</h3>
-        <a href={DOCS}>From A to B, explained</a>
+        <h3 id="journey-title">Seven steps to work done without you</h3>
+        <a href={DOCS}>What each step means</a>
       </div>
       <p className="journey-sub">Your loadout is the entries below, taken together.</p>
       <ol className="journey-legs">

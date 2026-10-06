@@ -9,6 +9,13 @@
  * first said something was broken. With a check failing, that check is the
  * headline and the range is Time & cost's to report.
  *
+ * The hosted demo is the exception. On someone's own machine a failing check
+ * is news they have to act on; on the sample it is the guardrail, and leading
+ * with it sold the guardrail as the product to every visitor who finished the
+ * tour, which opens on what one more step would reach. There the next step
+ * leads and the failing check is the line under it, still named and still one
+ * click from the node.
+ *
  * Sits where the simulation banner sits, and gives way to it, since a running
  * simulation is its own sentence. Hidden while a node is selected: the panel
  * is then the thing being read.
@@ -41,6 +48,8 @@ interface MapFindingProps {
   rightInset?: number;
   /** The headline's box, which the map measures to start its canvas below it. */
   wrapRef?: Ref<HTMLDivElement>;
+  /** Lead with the best next step even while a check fails: the demo's order. */
+  reachFirst?: boolean;
 }
 
 /**
@@ -146,9 +155,11 @@ export function MapFinding({
   leftInset = 0,
   rightInset = 0,
   wrapRef,
+  reachFirst = false,
 }: MapFindingProps) {
   const { failing, best } = findings;
   const cost = best ? costOf(best.item) : '';
+  const nextLeads = reachFirst && Boolean(best);
   return (
     <div
       ref={wrapRef}
@@ -156,7 +167,7 @@ export function MapFinding({
       data-occludes-map
       style={{ paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset }}
     >
-      {failing.length > 0 ? (
+      {failing.length > 0 && !nextLeads ? (
         <div role="status" className="civ-finding civ-finding--bad">
           <span className="civ-finding-dot" aria-hidden="true">
             !
@@ -184,13 +195,28 @@ export function MapFinding({
           </button>
         </div>
       ) : null}
-      {failing.length === 0 && (
-        <RangeLine
-          findings={findings}
-          since={since}
-          onSimulate={onSimulate}
-          onSpotlight={onSpotlight}
-        />
+      {nextLeads && failing.length > 0 ? (
+        <div role="status" className="civ-range civ-range--bad">
+          <span className="civ-finding-dot" aria-hidden="true">
+            !
+          </span>
+          <span>
+            <strong>{names(failing)}</strong> {failing.length === 1 ? 'is' : 'are'} failing{' '}
+            {failing.length === 1 ? 'its check' : 'their checks'}
+          </span>
+          <button type="button" className="civ-range-sim" onClick={() => onShow(failing[0].id)}>
+            Show
+          </button>
+        </div>
+      ) : (
+        failing.length === 0 && (
+          <RangeLine
+            findings={findings}
+            since={since}
+            onSimulate={onSimulate}
+            onSpotlight={onSpotlight}
+          />
+        )
       )}
     </div>
   );

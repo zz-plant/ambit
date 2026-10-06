@@ -11,7 +11,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import { useAmbitStore } from '../store/ambitStore';
-import { demoConfigGraph, demoTreeGraph } from '../store/demo';
+import { COLD_OPEN_OUTAGE, coldOpen, demoConfigGraph, demoTreeGraph } from '../store/demo';
 import type { Item } from '../utils/configImporter';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import CivTree from './CivTree';
@@ -285,4 +285,129 @@ test('the source line is drawn only while the map is idle', () => {
   const any = merged.items.find(i => i.status === 'built' && i.type === 'possibility')!;
   expect(drawn(any.id)).not.toContain('civ-source');
   expect(drawn(null, true)).not.toContain('civ-source');
+});
+
+test('on the sample the next step leads, and the failing check is the line under it', () => {
+  // The tour opens on what one step would reach, and the map it handed over
+  // to opened on a red banner about the sample's failing check. On a machine
+  // of one's own the failing check still leads.
+  const found = mapFindings(merged.items, merged.connections);
+  const render = (reachFirst: boolean) =>
+    text(
+      renderToStaticMarkup(
+        <MapFinding
+          findings={found}
+          since={null}
+          onShow={() => {}}
+          onPreview={() => {}}
+          reachFirst={reachFirst}
+        />
+      )
+    );
+  const sample = render(true);
+  expect(sample).toMatch(/^Best next step: /);
+  expect(sample).toContain(`${found.failing[0].name} is failing its check`);
+  expect(sample.indexOf('Best next step')).toBeLessThan(sample.indexOf(found.failing[0].name));
+
+  const own = render(false);
+  // The red mark, then the sentence.
+  expect(own).toMatch(new RegExp(`^!${found.failing[0].name} is configured but failing its check`));
+  expect(own).not.toContain('Best next step');
+
+  // The map passes the demo's order on.
+  seed({ items: merged.items, connections: merged.connections, demo: true });
+  const map = renderToStaticMarkup(
+    <CivTree
+      items={merged.items}
+      connections={merged.connections}
+      selectedId={null}
+      hoveredId={null}
+      onSelect={() => {}}
+      onHover={() => {}}
+    />
+  );
+  expect(text(map)).toContain('Best next step');
+  seed({ demo: false });
+});
+
+test('a failing node is called Failing, and the panel says what rests on it', () => {
+  // "Combo · Reached", in red, over "Configured, but not working", then "If
+  // this went down, nothing else would stop working" about a node already down.
+  seed({ ...merged, selectedItem: 'combo:browser-automation' });
+  const html = renderToStaticMarkup(<NodeDetailPanel />);
+  expect(html).toMatch(/sp-status--bad">Failing</);
+  expect(text(html)).toContain('Its check is failing, and nothing else rests on it.');
+  expect(text(html)).not.toContain('If this went down');
+
+  const impact = outageImpact(merged.items, { stops: new Set(['combo:web-research']) });
+  const said = outageSentence('this', impact, true, true);
+  expect(said.before + said.count + said.after).toBe(
+    'Its check is failing, and 1 other capability rests on it.'
+  );
+});
+
+test('an outage fills what stopped and outlines what was never set up', () => {
+  // Drawn alike, the tour's "4 things stop" sat over sixteen red circles.
+  // A static render reads the store's initial state, so the outage is seeded.
+  const split = outageSplit(merged.items, merged.connections, COLD_OPEN_OUTAGE);
+  seed({
+    items: merged.items,
+    connections: merged.connections,
+    simulationMode: 'outage',
+    simulatedNodeId: COLD_OPEN_OUTAGE,
+    simulatedCascadeIds: split.stops,
+    simulatedWeakenedIds: split.weakened,
+  });
+  const html = renderToStaticMarkup(
+    <CivTree
+      items={merged.items}
+      connections={merged.connections}
+      selectedId={null}
+      hoveredId={null}
+      onSelect={() => {}}
+      onHover={() => {}}
+    />
+  );
+  seed({
+    simulationMode: 'none',
+    simulatedNodeId: null,
+    simulatedCascadeIds: new Set(),
+    simulatedWeakenedIds: new Set(),
+  });
+  const impact = coldOpen(merged.items, merged.connections)!;
+  const disc = (name: string) =>
+    nodeOf(html, name).match(/<circle[^>]*fill-opacity[^>]*>/)?.[0] ?? '';
+  expect(impact.stopped.length).toBeGreaterThan(0);
+  for (const item of impact.stopped) expect(disc(item.name)).toContain('fill="var(--error-deep)"');
+  expect(impact.cutOff.length).toBeGreaterThan(0);
+  for (const item of impact.cutOff) {
+    expect(disc(item.name)).toContain('fill="var(--bg-canvas)"');
+    expect(disc(item.name)).toContain('stroke="var(--error)"');
+  }
+});
+
+test('the states are keyed under the map, and a keystone is a wedge, not a box', () => {
+  const idle = drawn(null);
+  const strip = idle.slice(idle.indexOf('civ-strip'));
+  for (const key of ['Reached', 'Next step', 'Blocked', 'Failing']) {
+    expect(strip).toContain(`${key}</button>`);
+  }
+  expect(drawn(null, true)).not.toContain('civ-strip');
+  // The dashed square sat one step from the brackets that mean "selected".
+  expect(idle).toContain('M-5 -4 H5 L3 4 H-3 Z');
+  expect(idle).not.toMatch(/<rect[^>]*stroke="var\(--warn\)"[^>]*stroke-dasharray/);
+});
+
+test('My Setup on the sample says so, and leads with where it stands', () => {
+  const order = (demo: boolean) => {
+    seed({ ...merged, demo, loop: demoSnapshot() });
+    const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+    return {
+      sample: text(html).includes("A sample developer's setup."),
+      findingsFirst: html.indexOf('setup-findings') < html.indexOf('journey-title'),
+    };
+  };
+  expect(order(true)).toEqual({ sample: true, findingsFirst: false });
+  expect(order(false)).toEqual({ sample: false, findingsFirst: true });
+  seed({ demo: false });
 });

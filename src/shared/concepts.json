@@ -27,7 +27,7 @@
       "term": "Reached, next step, blocked",
       "short": "Where you are on a tech tree node",
       "long": "Reached: something in your config provides this and its required prerequisites are reached, and the graph records which entry provides it. Whether it works is a separate question, which its check answers. Next step: every required prerequisite is reached but nothing in your config provides it yet — these sit just past the frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
-      "seen": "The three keys in the map's Key, and the header's counts, where reached is split into verified and unproven"
+      "seen": "The three keys in the map's Key and the strip under the map, and the header's counts, which lead with verified and give the rest in their tooltip"
     },
     {
       "key": "prerequisite",
@@ -41,7 +41,7 @@
       "term": "Keystone",
       "short": "A capability many others depend on",
       "long": "Ranked by how many capabilities would be affected if it disappeared. High-leverage to invest in, and risky to leave unmaintained. `ambit impact <id>` shows exactly what falls over. The map marks a node with three or more dependants; `ambit status` reports the same idea under the heading bottlenecks, counting only the combos a capability unlocks, so the two lists overlap without being identical.",
-      "seen": "The dashed amber square on the map, and bottlenecks in ambit status"
+      "seen": "The amber wedge at a node's upper left on the map, and bottlenecks in ambit status"
     },
     {
       "key": "combo",

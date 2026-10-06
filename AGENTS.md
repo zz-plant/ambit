@@ -223,10 +223,12 @@ src/client/                React frontend
   components/
     AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
                            share, proposals, docs; the map's own tools sit on the map. `mapCounts`
-                           is the map's pill: reached, unproven, and a failing node counted apart
-                           from both. The view tabs are icons with
-                           an `aria-label` up to 1270px and the buttons up to 1420px, so every
-                           control stays on screen from 769px
+                           counts reached, unproven, and a failing node apart from both; the pill
+                           shows verified, failing and next steps, and its tooltip the rest. On
+                           the demo it adds the Sample tag (which replays the tour) and Map yours.
+                           The view tabs are icons with an `aria-label` up to 1270px and the
+                           buttons up to 1420px (1520px on the demo), so every control stays on
+                           screen from 769px
     Finder.tsx             Search by name; a node opens on the map, an entry in My Setup. The same
                            list holds actions (utils/palette.ts), and Enter runs the one chosen. Its
                            hooks are apart from a hook-free `FinderView`, so a test presses keys on
@@ -248,6 +250,8 @@ src/client/                React frontend
     Tour.tsx               The demo narrated, on the hosted site's first visit: the next step and
                            what it opens, then an outage as the guardrail, a failing check, the
                            approval gate, your config
+    MapYours.tsx           The two ways onto the map, paste or install (`YourSetup`), shared by the
+                           tour's last card and the dialog the demo header's Map yours opens
     figures.tsx            The sparkline, reach bar and check-run strip every surface draws the same
                            way, and the seal on something signed
     Term.tsx               A house word with its definition attached — one glossary, two renderings
@@ -273,10 +277,11 @@ src/client/                React frontend
                            beside zoom: the key, the timeline, the saved image
     civ/MapKey.tsx         The key, opened from those tools; it opens itself under a lens
     civ/marks.tsx          The drawings the map and its key share: corner brackets for what the
-                           map points at, stripes for what refuses, the joint mark, each swatch,
-                           and the spec-sheet callout
+                           map points at, the keystone wedge, stripes for what refuses, the joint
+                           mark, each swatch, and the spec-sheet callout
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
-    civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step
+    civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step. On
+                           the demo the next step leads and the failing check is the line under it
     NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, needs and enables
     EraLadder.tsx          An era opened from its header: reached, next and blocked, in order
     FocusControls.tsx      Focus, from the panel of a selected node: which way, how far, and the

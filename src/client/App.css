@@ -49,11 +49,12 @@
      means a check passed, and the two sat side by side on every node. */
   --edge-needs: #b89af0;
 
-  /* A reached node: the quietest filled state on the map. The accent mixed
-     into the ground, so reached reads as done and the next steps, drawn in
-     the accent itself, are what the eye goes to. */
-  --node-reached: #263045;
-  --node-reached-ring: #4f689c;
+  /* A reached node: filled, so what the setup can do reads as ground held,
+     and the next steps, accent rings around nothing, read as its edge. It
+     was the accent mixed almost to the ground, the quietest mark on the map,
+     and a first look took the setup's own capabilities for disabled ones. */
+  --node-reached: #3a5288;
+  --node-reached-ring: #7896dc;
 
   /* The attention lens: one hue, four steps, brighter with more. A magnitude
      wants a sequential ramp, not two colours split at a threshold, and on a
@@ -430,6 +431,49 @@ code, pre, .code, .sp-cli-cmd {
   border-color: var(--border-bright);
   color: var(--text-primary);
   background: var(--bg-elevated);
+}
+
+/* Map yours: the one filled button in the header, and only on the sample. */
+.app-deck-btn--primary {
+  border-color: transparent;
+  background: var(--accent-dim);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.app-deck-btn--primary .app-deck-icon {
+  opacity: 1;
+}
+
+.app-deck-btn--primary:hover {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Whose map this is, beside the name, on the sample only. Pressed, it plays
+   the tour again. */
+.app-sample-tag {
+  padding: 1px 7px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+button.app-sample-tag {
+  cursor: pointer;
+}
+
+button.app-sample-tag:hover {
+  border-color: var(--accent-line);
+  color: var(--text-primary);
 }
 
 /* The two generic buttons the panels and modals share. */
@@ -1512,6 +1556,54 @@ code, pre, .code, .sp-cli-cmd {
   }
 }
 
+/* The states under the map, where the phone's plate would be: each is the
+   same control as its key in the Key, and lights what it names. */
+.civ-strip {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.civ-strip-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.civ-strip-key svg {
+  flex: none;
+  overflow: visible;
+}
+
+.civ-strip-key:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.civ-strip-key.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 /* ─── ERA LADDER ─── */
 /* An era's header opens this in the detail panel: a bar for how far up it you
    are, then one rung per node. The rung's mark is the map's own circle for
@@ -2100,6 +2192,23 @@ code, pre, .code, .sp-cli-cmd {
   background: var(--error-soft);
   border-color: var(--error-line);
   color: var(--text-primary);
+}
+
+/* The sample's failing check, said under its next step: the range line's
+   size, with the finding's red mark. */
+.civ-range--bad {
+  border-color: var(--error-line);
+  gap: 4px 8px;
+}
+
+.civ-range--bad .civ-finding-dot {
+  width: 15px;
+  height: 15px;
+  font-size: var(--fs-xs);
+}
+
+.civ-range--bad .civ-range-sim {
+  margin-left: 2px;
 }
 
 .civ-finding {
@@ -4458,19 +4567,33 @@ code, pre, .code, .sp-cli-cmd {
   }
 }
 
-/* Between a phone and about 1100px the pill wrapped to two lines inside a
-   52px bar. It keeps its words, since a count without its noun says nothing,
-   and keeps the counts a person acts on: verified, failing, the next step.
-   Unproven and blocked are the rest of the map, and each is still a key in
-   the map's Key. */
-@media (min-width: 769px) and (max-width: 1100px) {
-  .app-status-pill .app-status-seg--unproven,
-  .app-status-pill .app-status-seg--blocked {
+/* The sample's header carries Map yours and the Sample tag as well, about
+   170px more, so the buttons give up their words up to 1520px. Map yours
+   keeps its own: it is the one control there that needs a word to be found. */
+@media (min-width: 769px) and (max-width: 1520px) {
+  .app-deck--sample .app-deck-btn .app-deck-btn-label,
+  .app-deck--sample .app-deck-btn .app-deck-key {
     display: none;
   }
 }
 
-/* Narrower still, the bar beside the counts goes: it draws the same numbers. */
+/* Narrower, the sample gives up Share (the address bar is the same link, and
+   the map's Image tool stays), then the Sample tag, which Map yours already
+   implies; past that the pill wraps to two lines, as it does anywhere. At
+   800px the pill was three lines over a 52px bar. */
+@media (max-width: 1100px) {
+  .app-deck--sample .app-deck-btn--share {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .app-deck--sample .app-sample-tag {
+    display: none;
+  }
+}
+
+/* Narrow, the bar beside the counts goes: it draws the same numbers. */
 @media (min-width: 769px) and (max-width: 860px) {
   .app-status-pill .fig-reach {
     display: none;
@@ -4646,6 +4769,23 @@ code, pre, .code, .sp-cli-cmd {
   .civ-lens-hud .app-deck-tab {
     padding: 3px 8px;
     font-size: var(--fs-sm);
+  }
+
+  /* The map's tools take the second row, laid there apart from the first so
+     they do not widen it: as the wider row they set the left column's width,
+     and the lenses beside it ran past a 375px screen at "Authori". */
+  .civ-hud-row {
+    position: relative;
+  }
+
+  .civ-hud-row > .civ-zoom-hud + .civ-zoom-hud {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+  }
+
+  .civ-hud-left > .civ-key {
+    margin-top: 36px;
   }
 
   .tp-filter-chips {
@@ -5168,6 +5308,35 @@ code, pre, .code, .sp-cli-cmd {
   width: calc(100% - 32px);
   max-height: calc(100% - 72px);
   overflow-y: auto;
+  /* The step that opens the detail panel moves the card left of it. It
+     jumped there; it slides, so the move reads as the panel's arrival. */
+  transition: right 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-tour {
+    transition: none;
+  }
+}
+
+/* Map yours, opened from the header of the sample. */
+.docs-panel.map-yours {
+  max-width: 520px;
+}
+
+.map-yours .docs-subtitle {
+  margin-top: 6px;
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+  color: var(--text-secondary);
+}
+
+.map-yours-body {
+  padding: 4px 20px 20px;
+}
+
+.map-yours-body .app-tour-yours {
+  margin-top: 0;
 }
 
 .app-tour-count {

@@ -89,6 +89,7 @@ export function SetupView({ onShow }: SetupViewProps) {
   const selectItem = useAmbitStore(s => s.selectItem);
   const selectedId = useAmbitStore(s => s.selectedItem);
   const backend = useAmbitStore(s => s.backend);
+  const demo = useAmbitStore(s => s.demo);
   const repos = useAmbitStore(s => s.repos);
   const infrastructure = useAmbitStore(s => s.infrastructure);
   const loadRepos = useAmbitStore(s => s.loadRepos);
@@ -184,6 +185,26 @@ export function SetupView({ onShow }: SetupViewProps) {
   const idle = placed
     ? live.filter(i => i.type === 'mcp-server' && (provides.get(i.id) || []).length === 0)
     : [];
+  const findings = (failingEntries.length > 0 || idle.length > 0) && tab === 'entries' && (
+    <ul className="setup-findings">
+      {failingEntries.length > 0 && (
+        <li className="setup-finding setup-finding--bad">
+          <strong>{nameList(failingEntries.map(i => i.name))}</strong>{' '}
+          {failingEntries.length === 1 ? 'provides' : 'provide'} something whose check is failing.
+        </li>
+      )}
+      {idle.length > 0 && (
+        <li className="setup-finding setup-finding--warn">
+          <strong>{nameList(idle.map(i => i.name))}</strong> {idle.length === 1 ? 'is' : 'are'}{' '}
+          enabled but {idle.length === 1 ? 'provides' : 'provide'} nothing on the map.
+        </li>
+      )}
+    </ul>
+  );
+  // On the sample the readout of where it stands leads, and what is failing
+  // follows it, as the map's headline orders them there. A visitor's phone
+  // opened on a failing check before anything said what the page was.
+  const findingsFirst = !(demo && placed);
 
   return (
     <div className="setup">
@@ -204,6 +225,7 @@ export function SetupView({ onShow }: SetupViewProps) {
               </div>
             )}
             <p className="setup-subtitle">
+              {demo ? "A sample developer's setup. " : ''}
               {enabled} of {entries.length} entries enabled.
             </p>
             {anySwitch && tab === 'entries' && (
@@ -213,24 +235,7 @@ export function SetupView({ onShow }: SetupViewProps) {
                 effect.
               </p>
             )}
-            {(failingEntries.length > 0 || idle.length > 0) && tab === 'entries' && (
-              <ul className="setup-findings">
-                {failingEntries.length > 0 && (
-                  <li className="setup-finding setup-finding--bad">
-                    <strong>{nameList(failingEntries.map(i => i.name))}</strong>{' '}
-                    {failingEntries.length === 1 ? 'provides' : 'provide'} something whose check is
-                    failing.
-                  </li>
-                )}
-                {idle.length > 0 && (
-                  <li className="setup-finding setup-finding--warn">
-                    <strong>{nameList(idle.map(i => i.name))}</strong>{' '}
-                    {idle.length === 1 ? 'is' : 'are'} enabled but{' '}
-                    {idle.length === 1 ? 'provides' : 'provide'} nothing on the map.
-                  </li>
-                )}
-              </ul>
-            )}
+            {findingsFirst && findings}
           </div>
           {backend === 'live' && (
             <div className="setup-tabs" role="tablist" aria-label="What this machine has">
@@ -404,6 +409,7 @@ export function SetupView({ onShow }: SetupViewProps) {
         {tab === 'entries' && (
           <>
             {placed && <Journey />}
+            {!findingsFirst && findings}
             <div className="setup-controls">
               <div className="tp-search-wrap">
                 <input

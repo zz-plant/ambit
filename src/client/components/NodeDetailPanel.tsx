@@ -359,7 +359,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           const isSimulated = simulatedNodeId === item.id;
           // Only what was working is said to stop; the banner says the same.
           const impact = split ? outageImpact(items, split) : null;
-          const outage = impact ? outageSentence('this', impact, true) : null;
+          const outage = impact
+            ? outageSentence('this', impact, true, verdict?.tone === 'bad')
+            : null;
           // An outage that stops nothing is a question worth asking, not an
           // alarm: the red button said danger under "nothing else would stop".
           const stops = impact?.stopped.length ?? 0;

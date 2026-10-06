@@ -6,7 +6,7 @@
 // `possibility` read as "Possibility" in the detail panel, "Combo" in the
 // legend and "Tech tree node" in the docs, which is three names for one circle.
 // src/client/vocabulary.test.ts holds these against src/shared/concepts.json.
-import { isNext, isRuntimeNode } from '../components/civ/layout';
+import { isFailing, isNext, isRuntimeNode } from '../components/civ/layout';
 
 export { isRuntimeNode };
 import type { Item } from './configImporter';
@@ -77,6 +77,10 @@ export function statusLabel(status: string, item?: Item): string {
   // On the tree, "not yet reached" is two different situations, and which one
   // is the useful half of the answer: blocked means a prerequisite is missing.
   if (item && status === 'specified') return isNext(item) ? 'Next step' : 'Blocked';
+  // Configured and not working is not reached in any count the map makes
+  // (rule 6), and the panel read "Combo · Reached", in red, over "Configured,
+  // but not working".
+  if (item && status === 'built' && isFailing(item)) return 'Failing';
   return STATUS_LABELS[status] ?? status;
 }
 

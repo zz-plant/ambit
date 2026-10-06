@@ -1,6 +1,7 @@
 /**
  * The small drawings the map and its key share: the joint mark, the lock-on
- * corners, the stripes for what refuses, and the swatch each key is drawn as.
+ * corners, the keystone, the stripes for what refuses, and the swatch each key
+ * is drawn as.
  * One definition each, so the key cannot draw a state the map draws otherwise.
  */
 import type { JointMark } from './layout';
@@ -36,10 +37,8 @@ export function JointIcon({ mark }: { mark: JointMark }) {
  * dozen around it are lit.
  */
 export function Brackets({ r, color }: { r: number; color: string }) {
-  // A pixel outside the keystone's square (r + 6), whose corners are rounded
-  // at 9: six-pixel arms sit clear of its curve, so a selected keystone shows
-  // both. Any further out and a first-row node's top corners sat on its era's
-  // progress bar, 8 to 11 pixels above the node.
+  // Seven pixels outside the ring: any further out and a first-row node's top
+  // corners sat on its era's progress bar, 8 to 11 pixels above the node.
   const s = r + 7;
   const arm = 6;
   const corners = [
@@ -54,6 +53,26 @@ export function Brackets({ r, color }: { r: number; color: string }) {
         <path key={`${dx}${dy}`} d={`M${dx * s} ${dy * (s - arm)} V${dy * s} H${dx * (s - arm)}`} />
       ))}
     </g>
+  );
+}
+
+/**
+ * A keystone: the wedge at the top of an arch, at the node's upper left, the
+ * corner the check badge leaves free. It was a dashed square around the node,
+ * one step from the corners that mean "pointed at", so a keystone read as a
+ * second selection. Outlined at rest, filled when the key or the selection
+ * asks for it.
+ */
+export function KeystoneMark({ lit = true }: { lit?: boolean }) {
+  return (
+    <path
+      d="M-5 -4 H5 L3 4 H-3 Z"
+      fill={lit ? 'var(--warn)' : 'var(--bg-canvas)'}
+      stroke="var(--warn)"
+      strokeWidth={1.25}
+      strokeLinejoin="round"
+      strokeOpacity={lit ? 1 : 0.7}
+    />
   );
 }
 
@@ -82,7 +101,7 @@ export function HazardPattern({ id }: { id: string }) {
 export type LegendKey =
   | { kind: 'label'; label: string }
   | { kind: 'node'; label: string; color: string; sym?: string; hatch?: boolean }
-  | { kind: 'ring' | 'faded' | 'square'; label: string }
+  | { kind: 'ring' | 'faded' | 'keystone'; label: string }
   | { kind: 'line'; label: string; color?: string; dashed?: boolean }
   | { kind: 'joint'; label: string; mark: JointMark };
 
@@ -142,21 +161,8 @@ export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string 
           strokeDasharray="3,2"
         />
       );
-    case 'square':
-      return (
-        <rect
-          x={-8}
-          y={-8}
-          width={16}
-          height={16}
-          rx={3}
-          fill="none"
-          stroke="var(--warn)"
-          strokeOpacity={0.75}
-          strokeWidth={1.25}
-          strokeDasharray="3,2"
-        />
-      );
+    case 'keystone':
+      return <KeystoneMark />;
     case 'line':
       return (
         <line

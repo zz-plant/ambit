@@ -1,11 +1,9 @@
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
-import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
-import { INSTALL } from '../utils/copy';
 import type { Item } from '../utils/configImporter';
 import { costOf, mapFindings } from './civ/layout';
-import ConfigIntake from './ConfigIntake';
+import { YourSetup } from './MapYours';
 
 interface TourProps {
   /** Undefined on narrow screens, where the card is not inset by the panels. */
@@ -60,7 +58,6 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   const clearSimulation = useAmbitStore(s => s.clearSimulation);
   const [index, setIndex] = useState(0);
-  const [copied, copy] = useCopied();
 
   const steps = useMemo<Step[]>(() => {
     const select = (id: string | null) => {
@@ -91,8 +88,9 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
         },
       });
     }
-    // Only what was working counts as stopped. The rest of the red is named
-    // for what it is, because the map draws it in the same colour.
+    // Only what was working counts as stopped, and only that is filled red.
+    // What was never set up is drawn as a red outline and named for what it
+    // is: drawn alike, the title said 4 over sixteen red circles.
     if (outage?.stopped.length) {
       const { stopped, broken, cutOff } = outage;
       list.push({
@@ -104,7 +102,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
             ? ` ${named(broken)} ${broken.length === 1 ? 'was' : 'were'} already failing ${broken.length === 1 ? 'its check' : 'their checks'}.`
             : '') +
           (cutOff.length
-            ? ` ${cutOff.length} more in red ${cutOff.length === 1 ? 'was' : 'were'} not set up yet.`
+            ? ` The ${cutOff.length} outlined in red ${cutOff.length === 1 ? 'was' : 'were'} never set up.`
             : ''),
         enter: () => {
           select(null);
@@ -183,20 +181,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
         </button>
       )}
 
-      {last && (
-        <div className="app-tour-yours">
-          <ConfigIntake onMapped={onMapped} rows={3} />
-          <div className="app-tour-install">
-            <code>{INSTALL}</code>
-            <button type="button" onClick={() => copy('install', INSTALL)}>
-              {copied ? 'Copied ✓' : 'Copy'}
-            </button>
-          </div>
-          <p className="app-tour-note">
-            The install reads every runtime on the machine and places it on the full map.
-          </p>
-        </div>
-      )}
+      {last && <YourSetup onMapped={onMapped} />}
 
       <div className="app-tour-nav">
         <div className="app-tour-dots" aria-hidden="true">
@@ -209,9 +194,12 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
             Back
           </button>
         )}
+        {/* The last card's main action is the paste box's Map it. Leaving for
+            the sample is the quieter choice: it was the one filled button on
+            the card, so the step titled "Now map yours" pointed away from it. */}
         {last ? (
-          <button type="button" className="app-tour-next" onClick={finish}>
-            Explore the sample
+          <button type="button" className="app-tour-back" onClick={finish}>
+            Keep exploring
           </button>
         ) : (
           <button type="button" className="app-tour-next" onClick={() => setIndex(i => i + 1)}>

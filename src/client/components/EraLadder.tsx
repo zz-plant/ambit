@@ -7,10 +7,10 @@ import { Term } from './Term';
 /**
  * The words a rung's state is called. Reached, next step and blocked are the
  * glossary's, as the header and the legend say them; failing is the legend's
- * word for a reached node whose check failed.
+ * word for a reached node whose check failed. `statusLabel` says all four, so
+ * the ladder and the detail panel cannot call one node two things.
  */
-const stateWord = (row: Rung): string =>
-  row.state === 'failing' ? 'Failing' : statusLabel(row.item.status, row.item);
+const stateWord = (row: Rung): string => statusLabel(row.item.status, row.item);
 
 /**
  * An era as a ladder: how far up it you are, then one rung per node saying

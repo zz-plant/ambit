@@ -63,6 +63,11 @@ interface AppDeckProps {
   onShowDocs: () => void;
   /** The day of the observation the map is scrubbed to; the counts are that day's. */
   asOf?: string;
+  /**
+   * The demo only: say the map is a sample, replay its tour, and offer the
+   * visitor's own setup. Absent on a real machine, which is nobody's sample.
+   */
+  sample?: { onReplay?: () => void; onMapYours: () => void };
 }
 
 /**
@@ -71,24 +76,41 @@ interface AppDeckProps {
  * It used to read "42 of 60 reached", counting the machine's entries in with
  * the tree's nodes and leading with the one state the glossary calls least
  * informative. Then it read "16 reached", which counted a capability whose
- * check was failing the same as one whose check passed. The segments count
- * nodes alone, lead with what is verified, and each one is the same control
+ * check was failing the same as one whose check passed. Then five counts in a
+ * row, which wrapped at 1440px and gave the largest number to what is blocked.
+ * It says what a person acts on now: verified, anything failing, and the next
+ * steps. Unproven and blocked are the rest of the map, written out in the
+ * pill's tooltip and lit from the map's Key. Each segment is the same control
  * as its legend key.
  */
 const SEGMENTS: [keyof MapCounts, string][] = [
   ['verified', 'Verified'],
-  ['unproven', 'Unproven'],
   ['failing', 'Failing'],
   ['next', 'Next step'],
-  ['blocked', 'Blocked'],
 ];
 
 /** The same count for an observation with no lifecycles, where reached is not split. */
 const UNSPLIT: [keyof MapCounts, string][] = [
   ['reached', 'Reached'],
   ['next', 'Next step'],
-  ['blocked', 'Blocked'],
 ];
+
+/** A segment's word for its count: "1 next step", "12 next steps". */
+const noun = (group: string, n: number) =>
+  group === 'Next step' && n !== 1 ? 'next steps' : group.toLowerCase();
+
+/** Every count the pill leaves out, for its tooltip. */
+function breakdown(c: MapCounts): string {
+  const parts =
+    c.reached !== undefined
+      ? [`${c.reached} reached`]
+      : [
+          `${c.verified} verified`,
+          `${c.unproven} unproven`,
+          ...(c.failing ? [`${c.failing} failing`] : []),
+        ];
+  return [...parts, `${c.next} ${noun('Next step', c.next)}`, `${c.blocked} blocked`].join(', ');
+}
 
 /** The top bar: search, brand, the count for this view, the view tabs, share, proposals, docs. */
 export default function AppDeck(p: AppDeckProps) {
@@ -99,11 +121,26 @@ export default function AppDeck(p: AppDeckProps) {
   const failing = p.counts && !unsplit ? p.counts.failing : 0;
   const total = p.counts ? reached + failing + p.counts.next + p.counts.blocked : 0;
   return (
-    <header className="app-deck">
+    <header className={`app-deck${p.sample ? ' app-deck--sample' : ''}`}>
       <div className="app-deck-left">
         <div className="app-brand-group">
           <BrandMark size={18} className="app-brand-mark" />
           <span className="app-brand">Ambit</span>
+          {/* The tour said whose map this is; a visitor who skipped it, or came
+              back, was left with no word that it is not their own. */}
+          {p.sample &&
+            (p.sample.onReplay ? (
+              <button
+                type="button"
+                className="app-sample-tag"
+                onClick={p.sample.onReplay}
+                title="A sample developer's setup, drawn from their config files. Replay the tour"
+              >
+                Sample
+              </button>
+            ) : (
+              <span className="app-sample-tag">Sample</span>
+            ))}
         </div>
         <button
           type="button"
@@ -132,7 +169,7 @@ export default function AppDeck(p: AppDeckProps) {
         {p.counts && (
           <div
             className="app-status-pill"
-            title={p.asOf ? `The map by state, as of ${p.asOf}` : 'The map by state'}
+            title={`The map by state${p.asOf ? `, as of ${p.asOf}` : ''}: ${breakdown(p.counts)}`}
           >
             <ReachBar
               proven={unsplit ? undefined : p.counts.verified}
@@ -161,7 +198,7 @@ export default function AppDeck(p: AppDeckProps) {
                   }
                 >
                   <span className="app-status-n">{p.counts![key]}</span>
-                  {group.toLowerCase()}
+                  {noun(group, p.counts![key] ?? 0)}
                 </button>
               )
             )}
@@ -302,9 +339,36 @@ export default function AppDeck(p: AppDeckProps) {
       </div>
 
       <div className="app-deck-right">
+        {/* The way out of the sample, on every screen of it. It lived on the
+            tour's last card alone, so a visitor who skipped the tour had no
+            way from the sample to their own setup. */}
+        {p.sample && (
+          <button
+            type="button"
+            className="app-deck-btn app-deck-btn--primary"
+            onClick={p.sample.onMapYours}
+            title="Paste a config, or install the CLI, and see your own setup on the map"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-deck-icon"
+              aria-hidden="true"
+            >
+              <path d="M8 2 V10 M4.5 6.5 L8 10 L11.5 6.5 M2.5 13.5 H13.5" />
+            </svg>
+            Map yours
+          </button>
+        )}
         <button
           type="button"
-          className="app-deck-btn"
+          className="app-deck-btn app-deck-btn--share"
           onClick={p.onShare}
           title="Copy a link that opens exactly this view — graph, node and lens"
           aria-label="Share view link"

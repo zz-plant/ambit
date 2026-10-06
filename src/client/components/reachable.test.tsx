@@ -132,6 +132,22 @@ test('the deck offers a way to copy the link the URL already describes', () => {
   expect(deck()).toContain('Share');
 });
 
+test('the sample says it is one, and offers the way to your own setup on every screen', () => {
+  // Map yours lived on the tour's last card alone, so a visitor who skipped
+  // the tour had no way from the sample to their own setup.
+  const sample = deck({ sample: { onReplay: () => {}, onMapYours: () => {} } });
+  expect(sample).toContain('app-deck--sample');
+  expect(sample).toMatch(/<button[^>]*class="app-sample-tag"[^>]*>Sample<\/button>/);
+  expect(sample).toMatch(/app-deck-btn--primary[^>]*>.*Map yours<\/button>/);
+  // While the tour plays there is nothing to replay: the tag only says it.
+  expect(deck({ sample: { onMapYours: () => {} } })).toMatch(
+    /<span class="app-sample-tag">Sample<\/span>/
+  );
+  // A machine of one's own is nobody's sample.
+  expect(deck()).not.toContain('app-sample-tag');
+  expect(deck()).not.toContain('Map yours');
+});
+
 test('the live indicator appears only while the stream is attached', () => {
   expect(deck({ connected: false })).not.toContain('app-live-dot');
   expect(deck({ connected: true })).toContain('app-live-dot');
@@ -375,17 +391,25 @@ test('a house word carries its own definition, from the one glossary', () => {
 test('the header leads with what is verified, and each count is a control', () => {
   // It read "42 of 60 reached" over a tree of 33: entries counted with nodes,
   // and the least informative state leading. Then "16 reached", with a failing
-  // check counted like a passing one. Reached is split by its evidence now.
+  // check counted like a passing one. Then five counts, which wrapped at
+  // 1440px with blocked the largest. It says what a person acts on now, and
+  // the tooltip carries the rest.
   const html = deck({ counts: { verified: 9, unproven: 3, failing: 0, next: 5, blocked: 3 } });
   const text = html.replace(/<[^>]+>/g, '');
   expect(text).toMatch(/9\s*verified/);
-  expect(text).toMatch(/3\s*unproven/);
+  expect(text).toMatch(/5\s*next steps/);
+  expect(text).not.toMatch(/unproven|blocked/);
   expect(html).toContain('Highlight Verified on the map');
   expect(html).toContain('Highlight Next step on the map');
-  expect(html).toContain('Highlight Blocked on the map');
+  expect(html).toContain(
+    'title="The map by state: 9 verified, 3 unproven, 5 next steps, 3 blocked"'
+  );
   expect(html).not.toContain('of 20');
   // Nothing failing is no segment at all, not a count of zero.
   expect(text).not.toMatch(/failing/);
+  // One next step is one.
+  const one = deck({ counts: { verified: 9, unproven: 3, failing: 0, next: 1, blocked: 3 } });
+  expect(one.replace(/<[^>]+>/g, '')).toMatch(/1\s*next step(?!s)/);
 
   // A check that fails is its own segment, lit as its legend key lights it.
   const failing = deck({ counts: { verified: 9, unproven: 2, failing: 1, next: 5, blocked: 3 } });
@@ -421,7 +445,7 @@ test('the pill and the era headers count one map: a failing node is apart from r
   // An observation with no lifecycles counts reached whole, and nothing as failing.
   expect(mapCounts(nodes, false).reached).toBe(nodes.filter(i => i.status === 'built').length);
 
-  // Each segment lights what it counts: unproven leaves the failing node dim,
+  // Each segment lights what it counts: verified leaves the failing node dim,
   // and failing lights it.
   const opacityOf = (spotlight: string) => {
     seed({ items, connections, spotlight });
@@ -437,7 +461,7 @@ test('the pill and the era headers count one map: a failing node is apart from r
     );
     return html.match(/opacity="([\d.]+)"[^>]*aria-label="Browser Automation, possibility"/)?.[1];
   };
-  expect(opacityOf('Unproven')).toBe('0.15');
+  expect(opacityOf('Verified')).toBe('0.15');
   expect(opacityOf('Failing')).toBe('1');
 });
 

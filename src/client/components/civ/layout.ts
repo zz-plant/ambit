@@ -876,8 +876,25 @@ export function outageImpact(
 export function outageSentence(
   subject: string,
   impact: OutageImpact,
-  others = false
+  others = false,
+  /**
+   * The subject's own check is failing, so "if it went down" asks about
+   * something already down: the panel read "If this went down, nothing else
+   * would stop working" under "Configured, but not working". Say what rests
+   * on it instead.
+   */
+  failing = false
 ): { before: string; count: string; after: string } {
+  if (failing) {
+    const resting = impact.stopped.length;
+    return resting
+      ? {
+          before: 'Its check is failing, and ',
+          count: `${resting} other ${resting === 1 ? 'capability rests' : 'capabilities rest'}`,
+          after: ' on it.',
+        }
+      : { before: '', count: '', after: 'Its check is failing, and nothing else rests on it.' };
+  }
   const weakened = impact.thinned.length;
   const plural = (n: number) => (n === 1 ? 'capability' : 'capabilities');
   const stopped = impact.stopped.length;
