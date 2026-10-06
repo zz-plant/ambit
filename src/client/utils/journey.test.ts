@@ -37,7 +37,8 @@ test('the demo walks all seven legs, each from a figure the page already has', (
 test('with no ledger the legs it feeds say nothing was recorded, and draw no zero', () => {
   const legs = journeyLegs(null, [], { reached: 4, total: 10, verified: 1 });
   const by = Object.fromEntries(legs.map(l => [l.key, l]));
-  expect(by.stand.said).toBe('4 of 10 reached, 1 proven by a passing check.');
+  // The glossary's word, as the header's count says it.
+  expect(by.stand.said).toBe('4 of 10 reached, 1 verified by a passing check.');
   for (const key of ['next', 'trust', 'paid', 'ask']) {
     expect(by[key].state, key).toBe('unrecorded');
     expect(by[key].said, key).not.toMatch(/\b0\b/);

@@ -6,6 +6,16 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### The hosted demo leads with what one more step opens
+
+The tour opens on the next step and what it would reach, and then the map it handed over to led with a red banner about the sample's failing check: the guardrail, sold as the product. On the demo the headline now names the best next step and the failing check is the smaller line under it. On a machine of your own a failing check still leads, since there it is news. My Setup orders the sample the same way, says it is a sample, and the readout of the seven steps is in plain words: "Your loadout, leg by leg" and "From A to B" were the docs' framing used as labels.
+
+A visitor who skipped the tour had no way from the sample to their own setup, and no sentence saying what the page was. The header now carries a Sample tag, which plays the tour again, and Map yours, which opens the paste box and the install with one line on what an ambit is. On the tour's last card, pasting a config is the main action, and "Keep exploring" is the quieter choice.
+
+The count in the header was five numbers. It wrapped at 1440px, read "12 next step", and gave the largest figure to what is blocked. It says verified, anything failing and the next steps; the tooltip has the rest. My Setup's readout calls the same 13 verified, which it had called proven.
+
+On the map, reached nodes are filled so they read as ground held, where they looked switched off beside the next steps' rings. The four states sit in a strip under the map, the keystone is a small wedge instead of a dashed box that looked like a selection, and the map fits its width again when the window is resized, unless you have zoomed. In the outage, what stopped is filled red and what was never set up is a red outline, so "4 things stop" is four red circles and not sixteen. During the tour the lit part is framed clear of the card, and the card slides when the detail panel opens. The panel calls a node whose check is failing Failing, and no longer says "If this went down, nothing else would stop working" about something already down. On a phone the lens switch fits on screen.
+
 ### A page on another local port is not Ambit's page
 
 The origin check compared the hostname and ignored the port. Every page on a machine is on `localhost`, so another project's dev server, or `python -m http.server` in a downloaded folder, passed as Ambit's own page and, with no token, could read the agent config, switch an existing MCP server on, and approve or turn down drafts. An Origin now has to name a loopback host on a port this app serves its page from: the API's own, and in a checkout the Vite port that `npm run dev` gives both processes as `AMBIT_WEB_PORT`. Vite takes that port or stops, so it never moves to one the API would refuse.

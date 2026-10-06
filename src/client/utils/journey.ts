@@ -38,7 +38,9 @@ export function journeyLegs(
     state: status.reached > 0 ? 'done' : 'open',
     said:
       status.reached > 0
-        ? `${status.reached} of ${status.total} reached, ${status.verified} proven by a passing check.`
+        ? `${status.reached} of ${status.total} reached, ${status.verified} verified by a passing check${
+            status.failing ? `, ${status.failing} failing` : ''
+          }.`
         : 'Nothing mapped yet.',
     command: status.reached > 0 ? 'ambit verify' : 'ambit seed',
   });

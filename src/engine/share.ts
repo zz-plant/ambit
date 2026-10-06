@@ -34,8 +34,8 @@ export const SNAPSHOT_TOKENS = {
   'text-muted': '#8a8e96',
   ok: '#56c28a',
   error: '#ef6461',
-  'node-reached': '#263045',
-  'node-reached-ring': '#4f689c',
+  'node-reached': '#3a5288',
+  'node-reached-ring': '#7896dc',
 } as const;
 
 export function shareSnapshot(db: Db, opts: { redact?: boolean } = {}) {

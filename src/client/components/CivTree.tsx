@@ -23,7 +23,6 @@ import {
   eraOf,
   frameScene,
   headlineReserve,
-  isFailing,
   isNext,
   isProven,
   type JointMark,
@@ -47,7 +46,15 @@ import {
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
 import { hasHistory } from './civ/history.ts';
 import { MapKey } from './civ/MapKey.tsx';
-import { Brackets, Callout, HazardPattern, JointIcon, type LegendKey } from './civ/marks.tsx';
+import {
+  Brackets,
+  Callout,
+  HazardPattern,
+  JointIcon,
+  KeySwatch,
+  KeystoneMark,
+  type LegendKey,
+} from './civ/marks.tsx';
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { usePinchZoom } from './civ/usePinchZoom.ts';
@@ -445,8 +452,11 @@ export default function CivTree({
   // shows: the sentence names it, the corners say which circle that is.
   const findingShown =
     !narrated && !asOf && simulationMode === 'none' && !selectedId && selectedEra === null;
+  // The sample leads with its next step; see MapFinding.
+  const demo = useAmbitStore(s => s.demo);
+  const reachFirst = demo && Boolean(findings.best);
   const findingTarget = findingShown
-    ? findings.failing[0]
+    ? findings.failing[0] && !reachFirst
       ? { id: findings.failing[0].id, color: 'var(--error)' }
       : findings.best
         ? { id: findings.best.item.id, color: 'var(--accent)' }
@@ -543,7 +553,6 @@ export default function CivTree({
     [LOST_THIS_WEEK]: i => weekNames.lost.has(i.name),
     // The header's segments light the same nodes they count.
     Verified: isProven,
-    Unproven: i => i.status === 'built' && !isProven(i) && !isFailing(i),
     'Next step': i => i.status !== 'built' && isNext(i),
     Blocked: i => i.status !== 'built' && !isNext(i),
     Server: i => i.type === 'mcp-server',
@@ -609,7 +618,7 @@ export default function CivTree({
               { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
               { kind: 'ring', label: 'Next step' },
               { kind: 'faded', label: 'Blocked' },
-              { kind: 'square', label: 'Keystone' },
+              { kind: 'keystone', label: 'Keystone' },
               { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
               { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing', hatch: true },
               { kind: 'line', label: 'Required' },
@@ -622,7 +631,7 @@ export default function CivTree({
               { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
               { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
               { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
-              { kind: 'square', label: 'Keystone' },
+              { kind: 'keystone', label: 'Keystone' },
               { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
               { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing', hatch: true },
               { kind: 'line', label: 'Required' },
@@ -644,6 +653,33 @@ export default function CivTree({
   const keyToggled = useAmbitStore(s => s.keyToggled);
   const setKeyToggled = useAmbitStore(s => s.setKeyToggled);
   const keyOpen = keyToggled ?? activeLens !== 'default';
+  const narrow = useNarrow();
+  // The strip under the map: the standard map's states, while nothing else is
+  // explaining the map. A phone has no room under it.
+  const strip: LegendKey[] =
+    isTreeView &&
+    activeLens === 'default' &&
+    !keyOpen &&
+    !narrated &&
+    simulationMode === 'none' &&
+    !narrow
+      ? [
+          { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
+          { kind: 'ring', label: 'Next step' },
+          { kind: 'faded', label: 'Blocked' },
+          ...(findings.failing.length
+            ? [
+                {
+                  kind: 'node',
+                  color: 'var(--error)',
+                  sym: '!',
+                  label: 'Failing',
+                  hatch: true,
+                } satisfies LegendKey,
+              ]
+            : []),
+        ]
+      : [];
   const closeKey = React.useCallback(() => setKeyToggled(false), [setKeyToggled]);
   const history = useAmbitStore(s => s.history);
   const historyOpen = useAmbitStore(s => s.historyOpen);
@@ -697,7 +733,6 @@ export default function CivTree({
     zoomTo,
   ]);
 
-  const narrow = useNarrow();
   // The bottom of the canvas a tour card or a bottom sheet is covering.
   const covered = useBottomOcclusion(containerRef);
 
@@ -735,20 +770,42 @@ export default function CivTree({
   // Open with every column on screen. At 100% the seventh era sat past the
   // right edge with nothing to say it was there, and in the setup view every
   // edge to the runtime column ran off the canvas towards a node nobody could
-  // see. Fits once per dataset; the zoom controls own it after that.
+  // see. Fits once per dataset, and again when the canvas changes width while
+  // the zoom is still the one the fit chose: a window opened narrow and then
+  // widened kept its narrow zoom, or the reverse, with Foundation or Launch
+  // Ready off the edge. Once someone zooms, the zoom controls own it.
+  const [boxWidth, setBoxWidth] = useState<number | null>(null);
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => setBoxWidth(el.clientWidth));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const fittedFor = React.useRef<number | null>(null);
+  const fittedAt = React.useRef<{ width: number; zoom: number } | null>(null);
   React.useLayoutEffect(() => {
     const el = containerRef.current;
-    if (!el || fittedFor.current === contentWidth) return;
-    fittedFor.current = contentWidth;
-    const available = el.clientWidth - leftInset - 16;
+    if (!el) return;
+    // The observer's width once it has reported; the first fit reads the box.
+    const width = boxWidth ?? el.clientWidth;
+    const fresh = fittedFor.current !== contentWidth;
+    const refit =
+      fittedAt.current !== null &&
+      fittedAt.current.width !== width &&
+      fittedAt.current.zoom === zoom;
+    if (!fresh && !refit) return;
+    const available = width - leftInset - 16;
     if (available <= 0) return;
+    fittedFor.current = contentWidth;
     // A phone fits the whole tree at about 0.3, where a node's name is four
     // pixels tall. There the map opens at a scale its names can be read at,
     // two columns or so across, and scrolls sideways; Fit still shows it all.
-    const floor = el.clientWidth < 700 ? 0.72 : ZOOM_MIN;
-    setZoom(Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2))));
-  }, [contentWidth, leftInset]);
+    const floor = width < 700 ? 0.72 : ZOOM_MIN;
+    const fit = Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2)));
+    fittedAt.current = { width, zoom: fit };
+    setZoom(fit);
+  }, [contentWidth, leftInset, boxWidth, zoom]);
 
   // On a wider screen the panel sits over the map's right edge, which is
   // where the Product and Operations eras are, so a route to Launch Ready was
@@ -768,22 +825,47 @@ export default function CivTree({
     const points = [...simSet].flatMap(id => nodePositionMap.get(id) ?? []);
     const hud = 88;
     const right = el.scrollLeft + el.clientWidth - rightInset;
+    // While the tour narrates, its card covers the map's lower right, and a
+    // lit node under it is as hidden as one off screen: the outage's last eras
+    // ran on under the card that was describing them. Measured in the
+    // scroller's own viewport.
+    const box = el.getBoundingClientRect();
+    const tour = narrated ? document.querySelector('.app-tour')?.getBoundingClientRect() : null;
+    const card = tour ? { left: tour.left - box.left, top: tour.top - box.top } : null;
     const inView = points.every(p => {
       const x = p.x * zoom + leftInset;
       const y = p.y * zoom;
+      const underCard =
+        card !== null &&
+        x + NODE_R - el.scrollLeft >= card.left &&
+        // The name hangs below the circle.
+        y + NODE_R + 30 - el.scrollTop >= card.top;
       return (
         x - NODE_R >= el.scrollLeft &&
         x + NODE_R <= right &&
         y >= el.scrollTop + hud &&
-        y <= el.scrollTop + el.clientHeight
+        y <= el.scrollTop + el.clientHeight &&
+        !underCard
       );
     });
     if (inView) return;
-    const frame = frameScene(
-      points,
-      { top: hud, width: el.clientWidth - leftInset - rightInset, height: el.clientHeight - hud },
-      { min: ZOOM_MIN, max: zoom, inset: leftInset }
-    );
+    const open = {
+      top: hud,
+      width: el.clientWidth - leftInset - rightInset,
+      height: el.clientHeight - hud,
+    };
+    const zoomRange = { min: ZOOM_MIN, max: zoom, inset: leftInset };
+    // With a card, the lit part goes beside it or above it, whichever leaves
+    // the larger map.
+    const frame = card
+      ? [
+          frameScene(points, { ...open, width: card.left - leftInset - 16 }, zoomRange),
+          frameScene(points, { ...open, height: card.top - hud - 8 }, zoomRange),
+        ].reduce<ReturnType<typeof frameScene>>(
+          (best, f) => (f && (!best || f.zoom > best.zoom) ? f : best),
+          null
+        )
+      : frameScene(points, open, zoomRange);
     if (!frame) return;
     if (frame.zoom !== zoom) setZoom(frame.zoom);
     requestAnimationFrame(() =>
@@ -791,6 +873,7 @@ export default function CivTree({
     );
   }, [
     narrow,
+    narrated,
     simulationMode,
     simulatedNodeId,
     simSet,
@@ -996,6 +1079,7 @@ export default function CivTree({
           where={where}
           leftInset={leftInset}
           rightInset={rightInset}
+          reachFirst={reachFirst}
         />
       )}
 
@@ -1017,8 +1101,10 @@ export default function CivTree({
         style={
           {
             paddingLeft: leftInset,
-            // Room to scroll the last columns out from under an open panel.
-            paddingRight: rightInset,
+            // Room to scroll the last columns out from under an open panel,
+            // and on a wide screen out from under the tour's card (380px and
+            // its 16px margin): at 800px the lit eras had nowhere to scroll to.
+            paddingRight: rightInset + (narrated && !narrow ? 396 : 0),
             cursor: isDragging ? 'grabbing' : 'default',
             userSelect: isDragging ? 'none' : 'auto',
             '--headline-pad': `${headlinePad}px`,
@@ -1223,9 +1309,17 @@ export default function CivTree({
                       nodeFill = 'var(--error)';
                       sc = 'var(--text-primary)';
                       sw = 2.5;
-                    } else if (isSimAffected) {
+                    } else if (isSimAffected && !reached) {
+                      // Never set up, so nothing stopped: a red outline, cut off
+                      // and empty. Filled like the rest, the tour's "4 things
+                      // stop" sat over sixteen red circles.
+                      nodeFill = 'var(--bg-canvas)';
+                      sc = 'var(--error)';
+                      sw = 2;
+                    } else if (isSimAffected && !failingNode) {
                       // Red for what stops; amber for what keeps another
-                      // provider and only loses one. It was all red.
+                      // provider and only loses one. It was all red. A node
+                      // already failing keeps its stripes: it stopped before.
                       nodeFill = isSimWeak ? 'var(--warn)' : 'var(--error-deep)';
                       sc = 'var(--on-accent)';
                       sw = 2;
@@ -1339,20 +1433,13 @@ export default function CivTree({
                       {/* Quiet until asked for. Five amber squares were the loudest
                           marks on the map, louder than the one failing node, for
                           a structural fact nobody acts on first. The legend's
-                          Keystone key, or selecting the node, draws it in full. */}
-                      {isKeystone && !dimmed && (
-                        <rect
-                          x={-NODE_R - 6}
-                          y={-NODE_R - 6}
-                          width={(NODE_R + 6) * 2}
-                          height={(NODE_R + 6) * 2}
-                          rx={9}
-                          fill="none"
-                          stroke="var(--warn)"
-                          strokeOpacity={spotlight === 'Keystone' || selected ? 0.75 : 0.25}
-                          strokeWidth={1.25}
-                          strokeDasharray="4,3"
-                        />
+                          Keystone key, or selecting the node, fills it in. Not
+                          during a simulation, whose callout takes this corner. */}
+                      {isKeystone && !dimmed && simulationMode === 'none' && (
+                        <g transform={`translate(${-NODE_R + 3}, ${-NODE_R + 3})`}>
+                          <title>{`Keystone: ${(downstream.get(item.id) || []).length} capabilities depend on it`}</title>
+                          <KeystoneMark lit={spotlight === 'Keystone' || selected} />
+                        </g>
                       )}
 
                       {/* The node an outage started at, labelled on the map
@@ -1691,6 +1778,38 @@ export default function CivTree({
       {!narrated && simulationMode === 'none' && !selectedId && (
         <div className="civ-source" style={{ bottom: covered + 10, left: leftInset + 8 }}>
           Ambit · {SITE_HOST}
+        </div>
+      )}
+
+      {/* The states, always in view on the standard map. Four ways to draw a
+          circle plus badges, a keystone and line styles was more than a first
+          look could decode, and the key that names them waited behind a
+          button. The rest of the marks stay in the Key. */}
+      {strip.length > 0 && (
+        <div
+          className="civ-strip"
+          role="toolbar"
+          aria-label="What the circles mean"
+          style={{ bottom: covered + 10, left: leftInset + 8 }}
+        >
+          {strip.map(entry => {
+            const on = spotlight === entry.label;
+            return (
+              <button
+                key={entry.label}
+                type="button"
+                className={`civ-strip-key${on ? ' is-on' : ''}`}
+                aria-pressed={on}
+                onClick={() => setSpotlight(on ? null : entry.label)}
+                title={termTitle(LEGEND_CONCEPTS[entry.label] ?? '')}
+              >
+                <svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true">
+                  <KeySwatch entry={entry} hazard={hazard} />
+                </svg>
+                {entry.label}
+              </button>
+            );
+          })}
         </div>
       )}
 
