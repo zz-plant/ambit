@@ -44,6 +44,8 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p>Written per release, on <a href="https://github.com/zz-plant/ambit/releases">the releases page</a> — each one explains what changed and why, which is more use than a list of commits. The entries below are those notes in full, newest first: what was wrong, what it does now, and why the fix took that shape.</p>
 <p>An entry that refers to the previous entry therefore points down the page, not up.</p>
 <h2 id="unreleased"><a class="anchor" href="#unreleased" aria-hidden="true" tabindex="-1">#</a><a href="https://github.com/zz-plant/ambit/compare/v0.6.0...main">Unreleased</a></h2>
+<h3 id="vs-codes-own-mcp-servers"><a class="anchor" href="#vs-codes-own-mcp-servers" aria-hidden="true" tabindex="-1">#</a>VS Code&#39;s own MCP servers</h3>
+<p>VS Code keeps the servers it runs in a user-level <code>mcp.json</code>, under <code>servers</code>, apart from the Cline and Roo Code extensions Ambit already read, so those servers never reached the graph. They do now, as a twelfth runtime, with <code>VSCODE_MCP_CONFIG</code> to point elsewhere: contributed by @webdevsamran in #83, closing #77. Every place that lists the runtimes, the social card included, says twelve.</p>
 <h2 id="060--2026-10-01"><a class="anchor" href="#060--2026-10-01" aria-hidden="true" tabindex="-1">#</a><a href="https://github.com/zz-plant/ambit/releases/tag/v0.6.0">0.6.0</a> — 2026-10-01</h2>
 <p>The first release on npm and in the MCP registry, and the first that helps someone running a product, not only an agent setup. In short:</p>
 <ul>
