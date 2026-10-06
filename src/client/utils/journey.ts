@@ -80,7 +80,7 @@ export function journeyLegs(
       ? 'Grants are read from the graph.'
       : `${authority.autonomous} may act without asking, ${authority.confirm} ask first, ${authority.forbidden} forbidden.${
           promotable
-            ? ` ${promotable.capability} has earned a threshold nobody set: set one, and the grant widens on evidence and narrows on one failing check.`
+            ? ` ${promotable.capability} has passed often enough to stop asking first. Set the number of passes you want and it stops asking, and asks again after one failing check.`
             : ''
         }`,
     command: promotable?.command,
@@ -115,7 +115,7 @@ export function journeyLegs(
     state: demand.length ? 'done' : 'unrecorded',
     said: demand.length
       ? `Agents have asked for ${plural(demand.length, 'missing capability', 'missing capabilities')}, ${demand[0].name} most.`
-      : 'No agent has asked for anything yet. Register Ambit over MCP and an agent asks ambit_can before a tool it has not used.',
+      : 'No agent has asked for anything yet. Run ambit connect and your agents check with Ambit before using a tool for the first time.',
   });
 
   return legs;

@@ -980,7 +980,7 @@ export default function CivTree({
         rightInset={rightInset}
         lensNote={
           asOf
-            ? 'An observation of the frontier records states and checks, not attention or authority. Back to now to use this lens.'
+            ? 'History keeps what was reached and what its checks said, not who stepped in or what may act. Return to today to use this view.'
             : undefined
         }
         tools={

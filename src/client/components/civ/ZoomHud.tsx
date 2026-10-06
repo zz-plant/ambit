@@ -198,9 +198,9 @@ export function ZoomHud({
                 unavailable && lensNote
                   ? lensNote
                   : unavailable && lens === 'authority'
-                    ? 'No reached capability carries an authority mode yet. Run ambit seed, and ambit authority lists what may act without asking.'
+                    ? 'Nothing reached has an authority mode yet. Install Ambit and run ambit seed on your machine to read them from your configs.'
                     : unavailable
-                      ? 'Nothing recorded yet. This lens shades each capability by how often you had to step in; copy plugins/ambit-tracker.js into ~/.config/opencode/plugins/ and it fills from your own sessions.'
+                      ? 'Nothing recorded yet. This view shades each capability by how often you had to step in, and fills once the Claude Code plugin or OpenCode telemetry plugin records your sessions.'
                       : `${label} lens (${hotkey})`
               }
             >

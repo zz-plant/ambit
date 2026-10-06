@@ -33,7 +33,7 @@ function fakeApi(config: Config, { refuse = false } = {}) {
       if (path === '/api/config/apply') {
         const body = JSON.parse(String(init?.body));
         applied.push(body);
-        if (refuse) return reply({ error: 'Write failed' }, 500);
+        if (refuse) return reply({ error: 'Could not write opencode.json.' }, 500);
         for (const name of body.disableMcp ?? []) {
           if (Object.hasOwn(config.mcp, name)) config.mcp[name].enabled = false;
         }
@@ -63,7 +63,7 @@ const entry = (id: string) => useAmbitStore.getState().items.find(i => i.id === 
 test('switching a server off asks the route to disable that name, then reads the config back', async () => {
   const api = fakeApi({ mcp: { git: { type: 'local', enabled: true } } });
 
-  expect(await useAmbitStore.getState().toggleMcpEnabled('git', false)).toBe(true);
+  expect(await useAmbitStore.getState().toggleMcpEnabled('git', false)).toBeNull();
 
   expect(api.applied).toEqual([{ enableMcp: [], disableMcp: ['git'] }]);
   // The row draws from what came back, not from what was asked for.
@@ -74,7 +74,7 @@ test('switching a server off asks the route to disable that name, then reads the
 test('switching it back on asks the route to enable it', async () => {
   const api = fakeApi({ mcp: { git: { type: 'local', enabled: false } } });
 
-  expect(await useAmbitStore.getState().toggleMcpEnabled('git', true)).toBe(true);
+  expect(await useAmbitStore.getState().toggleMcpEnabled('git', true)).toBeNull();
 
   expect(api.applied).toEqual([{ enableMcp: ['git'], disableMcp: [] }]);
   expect(entry('mcp:git')?.status).toBe('built');
@@ -84,7 +84,9 @@ test('a write the route refused is reported, and nothing on screen changes', asy
   const api = fakeApi({ mcp: { git: { type: 'local', enabled: true } } }, { refuse: true });
   useAmbitStore.setState({ configMcp: { git: { type: 'local', enabled: true } } });
 
-  expect(await useAmbitStore.getState().toggleMcpEnabled('git', false)).toBe(false);
+  expect(await useAmbitStore.getState().toggleMcpEnabled('git', false)).toBe(
+    'Could not write opencode.json.'
+  );
 
   // Nothing was read back, so the row still shows the config as it was.
   expect(api.reads).toEqual([]);
@@ -95,7 +97,7 @@ test('a write the route refused is reported, and nothing on screen changes', asy
     { name: 'git', status: 'built' },
     useAmbitStore.getState().toggleMcpEnabled
   );
-  expect(message).toContain('Could not switch git');
+  expect(message).toBe('Could not switch git. Could not write opencode.json.');
 });
 
 test('a page that cannot reach the API reports it and does not throw', async () => {
@@ -107,5 +109,7 @@ test('a page that cannot reach the API reports it and does not throw', async () 
     })
   );
 
-  expect(await useAmbitStore.getState().toggleMcpEnabled('git', false)).toBe(false);
+  expect(await useAmbitStore.getState().toggleMcpEnabled('git', false)).toBe(
+    'The engine did not answer.'
+  );
 });

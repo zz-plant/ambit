@@ -44,8 +44,8 @@ export function canSwitchMcp(
  */
 export async function flipMcp(
   item: Pick<Item, 'name' | 'status'>,
-  toggle: (name: string, enabled: boolean) => Promise<boolean>
+  toggle: (name: string, enabled: boolean) => Promise<string | null>
 ): Promise<string | null> {
-  const ok = await toggle(item.name, item.status !== 'built');
-  return ok ? null : `Could not switch ${item.name}. Is the agent config writable?`;
+  const refused = await toggle(item.name, item.status !== 'built');
+  return refused === null ? null : `Could not switch ${item.name}. ${refused}`;
 }

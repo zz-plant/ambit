@@ -115,7 +115,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
         title: 'Configured is not the same as working',
         body:
           `${broken.name} is set up, and its check is failing. Ambit runs each ` +
-          `capability's check, so a broken tool never counts as a working one.`,
+          `capability's check and leaves a failing one out of everything it counts.`,
         enter: () => {
           clearSimulation();
           select(broken.id);

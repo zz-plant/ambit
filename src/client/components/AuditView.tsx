@@ -109,7 +109,7 @@ export default function AuditView() {
       <div className="audit-inner">
         <h2 className="audit-title">Audit</h2>
         <p className="audit-sub">
-          Who approved what, what ran, and what came of it, one line per event, newest first.
+          Who approved what, what ran, and what came of it.
           {demo && ' This is sample data.'}
         </p>
 

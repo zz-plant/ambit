@@ -53,7 +53,7 @@ test('a switch asks for the opposite of what the entry is now', async () => {
   const asked: [string, boolean][] = [];
   const toggle = async (name: string, enabled: boolean) => {
     asked.push([name, enabled]);
-    return true;
+    return null;
   };
 
   expect(await flipMcp({ name: 'git', status: 'built' }, toggle)).toBeNull();
@@ -64,8 +64,12 @@ test('a switch asks for the opposite of what the entry is now', async () => {
   ]);
 });
 
-test('a write that did not happen is said, with the server named', async () => {
-  const message = await flipMcp({ name: 'git', status: 'built' }, async () => false);
-  expect(message).toContain('git');
-  expect(message).toContain('writable');
+test('a write that did not happen is said, with the server named and the reason given', async () => {
+  const message = await flipMcp(
+    { name: 'git', status: 'built' },
+    async () => '/home/me/.config/opencode/opencode.json has comments.'
+  );
+  expect(message).toBe(
+    'Could not switch git. /home/me/.config/opencode/opencode.json has comments.'
+  );
 });

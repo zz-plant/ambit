@@ -300,8 +300,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Audit</span>
                   <span className="docs-answers">
-                    Who approved what and what ran, one line per event, newest first. Narrow it with
-                    actor:, action: and target:, or any word
+                    Who approved what and what ran. Narrow it with actor:, action: and target:, or
+                    any word
                   </span>
                 </div>
                 <div className="docs-action">

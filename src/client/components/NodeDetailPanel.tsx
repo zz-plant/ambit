@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import type { Connection, Item } from '../utils/configImporter';
-import { canSwitchMcp } from '../utils/configSwitch';
+import { canSwitchMcp, flipMcp } from '../utils/configSwitch';
 import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 import {
   blockedBy,
@@ -196,7 +196,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             ? {
                 tone: 'bad',
                 title: 'Configured, but not working',
-                body: `The last check failed${checkedAgo ? ` ${checkedAgo}` : ''}${runs}. Anything that needs this is not really available.`,
+                body: `The last check failed${checkedAgo ? ` ${checkedAgo}` : ''}${runs}. Anything that needs it is unavailable until it passes.`,
               }
             : lifecycle === 'configured'
               ? {
@@ -548,8 +548,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
               onClick={async () => {
                 setToggling(true);
                 setToggleError(null);
-                const ok = await toggleMcpEnabled(item.name, !enabled);
-                if (!ok) setToggleError('Could not write the config. Is it writable?');
+                setToggleError(await flipMcp(item, toggleMcpEnabled));
                 setToggling(false);
               }}
             >

@@ -54,10 +54,7 @@ export function Journey() {
         <h3 id="journey-title">Seven steps to work done without you</h3>
         <a href={DOCS}>What each step means</a>
       </div>
-      <p className="journey-sub">
-        Where the entries below stand on the way from a pile of configs to a setup that does a class
-        of work on its own, with a person only where judgment is needed.
-      </p>
+      <p className="journey-sub">Your loadout is the entries below, taken together.</p>
       <ol className="journey-legs">
         {legs.map((leg, i) => (
           <li key={leg.key} className={`journey-leg is-${leg.state}`}>

@@ -389,7 +389,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   if (pathname === '/api/config/apply' && method === 'POST') {
     const body: ConfigApplyRequest = await readJsonBody(req);
     const file = await readConfigFile();
-    if (!file) return json({ error: 'Config not found' }, 404);
+    if (!file) return json({ error: `${CONFIG_PATH} was not found.` }, 404);
     if (!file.plain)
       return json<ConfigApplyResponse>(
         {
@@ -429,7 +429,10 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     }
     return (await writeConfig(raw))
       ? json<ConfigApplyResponse>({ ok: true })
-      : json<ConfigApplyResponse>({ error: 'Write failed' }, 500);
+      : json<ConfigApplyResponse>(
+          { error: `Could not write ${CONFIG_PATH}, or keep a copy of it beside it first.` },
+          500
+        );
   }
 
   // Returns text instead of writing: an MCP entry is executable, so it crosses

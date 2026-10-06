@@ -226,9 +226,7 @@ export function SetupView({ onShow }: SetupViewProps) {
             )}
             <p className="setup-subtitle">
               {demo ? "A sample developer's setup. " : ''}
-              {enabled} of {entries.length} entries enabled. One row per server, agent, model or
-              command {demo ? 'their' : 'your'} configs declare, with its latest check and what it
-              adds to the map.
+              {enabled} of {entries.length} entries enabled.
             </p>
             {anySwitch && tab === 'entries' && (
               <p className="setup-subtitle setup-switch-note">

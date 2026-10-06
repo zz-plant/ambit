@@ -610,12 +610,6 @@ export interface LoopSnapshot {
    * Absent when none were recorded; no price, since the transcripts state none.
    */
   tokens?: LoopTokens;
-  /** Prevented agent token waste and context thrash from failing checks and pre-flight briefings. */
-  context_burn?: {
-    tokens_prevented: number;
-    dollars_prevented: number;
-    loops_intercepted: number;
-  };
 }
 
 export interface LoopTokens {
