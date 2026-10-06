@@ -306,7 +306,8 @@ interface StoreState {
 
   /** The tree and the config read-out, fetched together and merged. */
   loadGraph: () => Promise<void>;
-  toggleMcpEnabled: (name: string, enabled: boolean) => Promise<boolean>;
+  /** Null when the config was written; otherwise why it was not, in the server's words. */
+  toggleMcpEnabled: (name: string, enabled: boolean) => Promise<string | null>;
 
   reset: () => void;
 }
@@ -891,12 +892,14 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       });
       if (res.ok) {
         await get().loadGraph();
-        return true;
+        return null;
       }
+      const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+      return typeof body?.error === 'string' ? body.error : `The engine answered ${res.status}.`;
     } catch (e) {
       console.error(e);
     }
-    return false;
+    return 'The engine did not answer.';
   },
 
   reset: () =>

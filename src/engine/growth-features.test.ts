@@ -21,7 +21,6 @@ import { ambitCommand } from './paths.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
-import { loopView } from './views.ts';
 
 let testDir: string;
 const origEnv = { ...process.env };
@@ -317,20 +316,6 @@ describe('ambit check --ci', () => {
     const res = runCiCheck(db, { strict: true });
     expect(res.ok).toBe(false);
     expect(res.failures.some(f => f.includes('Strict mode violation'))).toBe(true);
-    db.close();
-  });
-});
-
-describe('Loop view context-burn metrics', () => {
-  test('computes context_burn tokens and dollars prevented', () => {
-    const db = makeGraph({
-      capabilities: [{ id: 'tool:failing', name: 'Failing Tool', lifecycle: 'broken' }],
-    });
-    const loop = loopView(db);
-    expect(loop.context_burn).toBeDefined();
-    expect(loop.context_burn?.loops_intercepted).toBeGreaterThan(0);
-    expect(loop.context_burn?.tokens_prevented).toBeGreaterThan(0);
-    expect(loop.context_burn?.dollars_prevented).toBeGreaterThan(0);
     db.close();
   });
 });

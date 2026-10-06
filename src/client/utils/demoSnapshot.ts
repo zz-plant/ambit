@@ -319,10 +319,5 @@ export function demoSnapshot(): LoopSnapshot {
         { model: 'qwen3-coder', input: 910_000, cached: 0, output: 212_000 },
       ],
     },
-    context_burn: {
-      tokens_prevented: 144000,
-      dollars_prevented: 43.2,
-      loops_intercepted: 6,
-    },
   };
 }

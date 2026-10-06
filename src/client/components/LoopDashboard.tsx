@@ -523,7 +523,7 @@ function AuthorityFigure({
 
       {authority.promotable.length > 0 && (
         <div className="fig-block">
-          <h4 className="fig-subtitle">Earned a threshold nobody set</h4>
+          <h4 className="fig-subtitle">Proven enough to stop asking</h4>
           <ul className="fig-promote">
             {authority.promotable.map(p => (
               <li key={`${p.id}/${p.action}`} className="fig-promote-item">
@@ -1002,8 +1002,8 @@ function EmptyLedger({
       <div className="loop-inner">
         <h2 className="loop-title">Nothing recorded yet</h2>
         <p className="loop-subtitle">
-          The graph knows what you can do; the ledger is what says how often you had to step in, and
-          nothing has written to it on this machine.
+          Nothing has recorded your sessions on this machine yet. Install the Claude Code plugin or
+          the OpenCode telemetry plugin and each time you step in for an agent is counted here.
         </p>
         {loop && <SinceStrip since={loop.since ?? null} />}
 
@@ -1192,24 +1192,6 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
           {loop.tokens && <TokenUsage tokens={loop.tokens} />}
 
-          {loop.context_burn && (
-            <figure className="fig fig--kpi">
-              <figcaption className="fig-caption">
-                <span className="fig-caption-title">Context burn prevented</span>
-                <span className="fig-caption-note">
-                  {loop.context_burn.loops_intercepted} loops intercepted
-                </span>
-              </figcaption>
-              <div className="fig-kpi-value" style={NUM}>
-                {money(loop.context_burn.dollars_prevented)}
-                <span className="fig-kpi-unit"> saved</span>{' '}
-                <span className="fig-kpi-second">
-                  {Math.round(loop.context_burn.tokens_prevented / 1000)}k tokens
-                </span>
-              </div>
-            </figure>
-          )}
-
           <AssuranceBar status={status} />
           {!(status.degraded?.length > 0) && <Fragility status={status} />}
         </div>
@@ -1240,7 +1222,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             <OpportunityRows list={filtered} onShowOnMap={onShowOnMap} />
           ) : (
             <p className="fig-note">
-              Nothing ranked at this confidence. An act has to recur before it can be priced.
+              Nothing ranked at this confidence. Something has to interrupt you more than once
+              before it gets a price.
             </p>
           )}
         </section>

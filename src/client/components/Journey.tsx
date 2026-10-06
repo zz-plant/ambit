@@ -49,11 +49,7 @@ export function Journey() {
         <h3 id="journey-title">Your loadout, leg by leg</h3>
         <a href={DOCS}>From A to B, explained</a>
       </div>
-      <p className="journey-sub">
-        The entries below are your loadout. This is what they add up to on the way from a pile of
-        configs to a setup that does a class of work without you, with you only where judgment is
-        needed.
-      </p>
+      <p className="journey-sub">Your loadout is the entries below, taken together.</p>
       <ol className="journey-legs">
         {legs.map((leg, i) => (
           <li key={leg.key} className={`journey-leg is-${leg.state}`}>

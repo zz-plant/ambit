@@ -167,7 +167,7 @@ test('the map as Monday left it draws what Monday held, and none of what no snap
   // The headline, with its week and its simulations, is today's.
   expect(past).not.toContain('civ-range');
   // Attention and grants are not in a snapshot, and the lens says why it is off.
-  expect(past).toContain('records states and checks, not attention or authority');
+  expect(past).toContain('not who stepped in or what may act');
 });
 
 test('the panel as Monday left it says so, and offers nothing drawn on today', () => {

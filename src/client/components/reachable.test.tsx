@@ -464,7 +464,7 @@ test('the governance half is on the page: authority, next steps, and the week', 
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
   expect(html).toContain('What may act without asking');
-  expect(html).toContain('Earned a threshold nobody set');
+  expect(html).toContain('Proven enough to stop asking');
   expect(html).toContain('What to reach next');
   expect(html).toContain('emergent');
 });

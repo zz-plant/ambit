@@ -319,8 +319,8 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
               </button>
             </span>
             <p className="gov-hint">
-              Each is signed or turned down on its own, as it is shown here. A proposal that changed
-              since is refused, and nothing is applied.
+              A proposal that changed after this page loaded is skipped; reopen Proposals to see the
+              new version. Approving signs; applying is still a command you run.
             </p>
           </div>
         )}

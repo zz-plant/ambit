@@ -277,7 +277,7 @@ export default function AppDeck(p: AppDeckProps) {
             onClick={() => p.onShowView('audit')}
             // The name, for where the tab shows only its icon.
             aria-label="Audit"
-            title="Who approved what and what ran, one line per event"
+            title="Who approved what, and what ran"
           >
             <svg
               width="13"
