@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Separate from vite.config.ts on purpose: that config sets `root: src/client`
 // so the app builds from there, which would hide every backend test from the
@@ -15,6 +17,10 @@ export default defineConfig({
     execArgv: ['--experimental-sqlite'],
     // Engine tests seed real SQLite files in temp directories; a seed is
     // slower than a unit assertion and CI runners are not fast.
+    // Every `ambit` command reads the Claude Code spool into its graph and
+    // deletes it. A test that runs the CLI must never consume the developer's
+    // own spool into a throwaway graph, so the whole suite points elsewhere.
+    env: { AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`) },
     testTimeout: 30_000,
     hookTimeout: 30_000,
     coverage: {

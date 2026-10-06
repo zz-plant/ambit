@@ -24,7 +24,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   verify [cap] [--history]   run the declared check, or show past verification
   impact <id>       what actually breaks if a capability goes away
   doctor            setup health audit, broken tools, and token-thrash risk
-  connect [runtime] 1-click auto-config for Claude Code, Cursor, OpenCode
+  connect [runtime] register Ambit's MCP server in each agent runtime it reads
 
   Grouped: graph · plan · check · govern · report — try \`ambit plan\`
   help --all        every command
@@ -111,7 +111,7 @@ check — what is proven, what is permitted, what is currently broken
   check incidents         probe the manifest, open incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
   check doctor            audit setup health, broken tools, and token-thrash risk
-  check connect [runtime] 1-click auto-config for Claude Code, Cursor, OpenCode
+  check connect [runtime] register Ambit's MCP server in each agent runtime it reads
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported

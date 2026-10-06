@@ -38,6 +38,19 @@ export function userDbPath(): string {
  *      evidence and the recorded deficits take months to accumulate and cannot
  *      be rebuilt by re-seeding.
  */
+/**
+ * Where the Claude Code hooks leave what a session did, for the engine to read
+ * into whichever graph it opens next. Apart from the graph on purpose: the
+ * hook runs from Claude Code's plugin cache and cannot know whether the graph
+ * it should feed is an installed copy's or a checkout's. The hook script in
+ * plugins/claude-code/ambit/scripts/spool.js transcribes this.
+ */
+export function spoolPath(): string {
+  if (process.env.AMBIT_SPOOL) return process.env.AMBIT_SPOOL;
+  const base = process.env.XDG_STATE_HOME || join(process.env.HOME || '.', '.local', 'state');
+  return join(base, 'ambit', 'claude-code.jsonl');
+}
+
 export function resolveDbPath(): string {
   const explicit = process.env.AMBIT_DB || process.env.TOOLCHAIN_DB;
   if (explicit) return explicit;

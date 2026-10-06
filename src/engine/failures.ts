@@ -30,6 +30,8 @@ interface RawFailure {
   /** Which bridge observed it — `opencode`, `claude-code`, `api`. */
   source?: string;
   sessionId?: string;
+  /** When it failed, for a failure recorded after the fact; now when absent. */
+  at?: string;
   /** The tool or command that failed, as the runtime names it. */
   tool?: string;
   exitCode?: number | null;
@@ -209,8 +211,8 @@ function captureFailure(db: Db, input: RawFailure) {
     attribute(db, input.tool);
 
   db.prepare(
-    `INSERT INTO failure_signals (source, session_id, tool, class, signal, capability_id, detail)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO failure_signals (source, session_id, tool, class, signal, capability_id, detail, timestamp)
+     VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
   ).run(
     input.source || 'unknown',
     input.sessionId || null,
@@ -218,7 +220,8 @@ function captureFailure(db: Db, input: RawFailure) {
     classified.class,
     classified.signal,
     capability,
-    (input.message || '').slice(0, 300) || null
+    (input.message || '').slice(0, 300) || null,
+    input.at ?? null
   );
 
   if (capability) {

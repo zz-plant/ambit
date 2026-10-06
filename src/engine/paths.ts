@@ -19,6 +19,16 @@ export const ENGINE_DIR = dirname(fileURLToPath(import.meta.url));
  * the file too, two levels above the engine in either layout (`src/engine` or
  * `dist-cli/engine`), so the note can name where it actually is.
  */
+/**
+ * How a runtime should start this copy of Ambit. A copy npx unpacked into its
+ * cache has no `ambit` on the PATH, so a config written with `ambit mcp` named
+ * a command the runtime could not find; that copy is started through npx, and
+ * an installed or checked-out one by name.
+ */
+export function ambitCommand(engineDir = ENGINE_DIR): string[] {
+  return /[\\/]_npx[\\/]/.test(engineDir) ? ['npx', '-y', 'ambit-cli'] : ['ambit'];
+}
+
 export function telemetryBridgeInstall(): string {
   const file = join(ENGINE_DIR, '..', '..', 'plugins', 'ambit-telemetry.js');
   return `cp ${shellQuote(file)} ~/.config/opencode/plugins/`;

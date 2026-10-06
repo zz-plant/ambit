@@ -226,12 +226,14 @@ An agent can try it before anyone registers anything: `ambit status` reads the a
 
 The plugin is the one-step route: it registers the MCP server, reads the briefing at session start, and adds a skill Claude loads when you ask which MCP servers you have, why one is failing, what breaks if one goes, or what to set up next.
 
+It also records which tools each session ran, which failed and with what error, and when you were asked to approve one, so Time & cost, promotion and `ambit next` have something to read. A hook appends one line per event to `~/.local/state/ambit/claude-code.jsonl`, never a tool's input or output, and the next `ambit` command reads it into the graph and removes it. When a session ends, its token counts per model are read from its transcript; only the counts, and no price, since the transcript states none. Nothing leaves the machine; `AMBIT_NO_LEDGER=1` turns it off.
+
 ```bash
 claude plugin marketplace add zz-plant/ambit
 claude plugin install ambit@ambit
 ```
 
-`ambit-gate@ambit` is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. The first plugin runs Ambit through `npx` and needs nothing else installed; the gate runs on every call, so it calls an installed `ambit` (`npm install -g ambit-cli`) to stay fast. By hand, without the plugin:
+`ambit-gate@ambit` is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. The first plugin runs Ambit through `npx` and needs nothing else installed; the gate runs on every call, so it calls an installed `ambit` (`npm install -g ambit-cli`) to stay fast, and without one it says at the start of each session that it is inactive. By hand, without the plugin:
 
 ```bash
 claude mcp add ambit -- ambit mcp --profile=agent

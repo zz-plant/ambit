@@ -2,10 +2,19 @@
   "name": "ambit",
   "displayName": "Ambit",
   "version": "0.6.0",
-  "description": "See what your AI agents can do and what one more step would open. Ambit's MCP server, its briefing at session start, and a skill for questions about your agent setup.",
-  "author": { "name": "Kanav Jain", "url": "https://github.com/zz-plant" },
+  "description": "See what your AI agents can do and what one more step would open. Ambit's MCP server, its briefing at session start, a skill for questions about your agent setup, and a local record of which tools each session ran.",
+  "author": {
+    "name": "Kanav Jain",
+    "url": "https://github.com/zz-plant"
+  },
   "homepage": "https://zz-plant.github.io/ambit/",
   "repository": "https://github.com/zz-plant/ambit",
   "license": "MIT",
-  "keywords": ["mcp", "agent-setup", "capability-graph", "permissions", "audit"]
+  "keywords": [
+    "mcp",
+    "agent-setup",
+    "capability-graph",
+    "permissions",
+    "audit"
+  ]
 }

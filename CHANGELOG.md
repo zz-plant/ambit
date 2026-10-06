@@ -6,6 +6,16 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Claude Code sessions reach the work ledger
+
+The ledger was fed by the OpenCode plugin, the control plane and MCP calls, so for someone on Claude Code the Time & cost view stayed empty, no grant could earn a promotion, and `ambit next` never learned what blocked work. The Claude Code plugin's hooks now record which tool each session ran, which failed and with what error, and when a person was asked to approve one, and a session's token counts per model are read from its transcript when it ends, with cache reads apart from fresh input and no price applied, since none is stated. A hook runs before Claude Code takes its next step, so it does one thing: append a line to `~/.local/state/ambit/claude-code.jsonl`, in about 50 ms, never a tool's input or output. The next `ambit` command, or the MCP server when it opens the graph, reads the file in and removes it; a tool call becomes a work event and a use of each capability it exercises, found the way the gate finds them, and a failure is classified by the engine. `AMBIT_NO_LEDGER=1` turns it off, and the test suite points the spool elsewhere so running it never consumes a developer's own.
+
+The gate plugin, installed without an installed `ambit`, steps aside on each call and says once per session that it is inactive and how to install it, instead of failing on every tool call or staying silent while a person believes a guardrail is on.
+
+`ambit connect` registers the MCP server in the six runtimes it read and could not write: Gemini CLI, Codex CLI (a TOML table appended, the rest of the file kept), Cline, Roo Code, Zed and VS Code, each where its reader looks and in the shape its reader reads. Run from npx's cache, it writes `npx -y ambit-cli mcp`, since a copy npx unpacked has no `ambit` on the PATH.
+
+Budgets still have no meter: a ceiling refuses a caller that states its spend, and nothing yet records spend in dollars, which Claude Code does not report.
+
 ### `ambit impact` says what ends and what survives
 
 It printed through the generic formatter, so the answer read `becomes unavailable: false` and `also provided by: 5`, with every capability listed twice. It now leads with what stops working, marked `›`, then what survives only on providers that all present one credential, what survives on others and on how many, and what loses an optional input. Two wrong answers went with it: a server's own credential was listed as something that decays when the server goes, and `ambit impact credential:…` answered with nothing at all, because a key's edges point at it. A credential's impact is now what revoking it ends, the same computation as `ambit credentials`. The README carries the example again, captured from the fixture. Closes #76.

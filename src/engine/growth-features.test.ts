@@ -16,6 +16,8 @@ import { makeGraph } from './testing/graph.ts';
 import { captureFailure } from './failures.ts';
 import { runDoctor } from './doctor.ts';
 import { runConnect } from './connect.ts';
+import { discoverMcpClients } from './mcp-clients.ts';
+import { ambitCommand } from './paths.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
@@ -330,5 +332,67 @@ describe('Loop view context-burn metrics', () => {
     expect(loop.context_burn?.tokens_prevented).toBeGreaterThan(0);
     expect(loop.context_burn?.dollars_prevented).toBeGreaterThan(0);
     db.close();
+  });
+});
+
+describe('ambit connect on the runtimes it only read before', () => {
+  test('writes each in the shape its reader reads, where its reader looks', () => {
+    const vscode = join(testDir, '.config', 'Code', 'User', 'mcp.json');
+    mkdirSync(dirname(vscode), { recursive: true });
+    writeFileSync(vscode, JSON.stringify({ inputs: [], servers: { other: { command: 'x' } } }));
+    expect(runConnect('vscode', { home: testDir }).configured[0].action).toBe('added');
+    const vs = JSON.parse(readFileSync(vscode, 'utf8'));
+    expect(vs.servers.ambit).toEqual({ type: 'stdio', command: 'ambit', args: ['mcp'] });
+    expect(vs.servers.other).toBeDefined();
+    expect(vs.inputs).toEqual([]);
+
+    const zed = join(testDir, '.config', 'zed', 'settings.json');
+    mkdirSync(dirname(zed), { recursive: true });
+    writeFileSync(zed, JSON.stringify({ theme: 'One Dark' }));
+    runConnect('zed', { home: testDir });
+    const z = JSON.parse(readFileSync(zed, 'utf8'));
+    expect(z.context_servers.ambit).toEqual({ source: 'custom', command: 'ambit', args: ['mcp'] });
+    expect(z.theme).toBe('One Dark');
+
+    // Each comes back as already configured, so a second run writes nothing.
+    expect(runConnect('vscode', { home: testDir }).configured[0].action).toBe('already_configured');
+    expect(runConnect('zed', { home: testDir }).configured[0].action).toBe('already_configured');
+
+    expect(runConnect('gemini-cli', { home: testDir, force: true }).configured[0].path).toBe(
+      join(testDir, '.gemini', 'settings.json')
+    );
+  });
+
+  test('appends a Codex table, keeps the rest of the TOML, and does it once', () => {
+    const codex = join(testDir, '.codex', 'config.toml');
+    mkdirSync(dirname(codex), { recursive: true });
+    writeFileSync(codex, 'model = "o4"\n\n[mcp_servers.git]\ncommand = "git-mcp"\n');
+    const first = runConnect('codex', { home: testDir });
+    expect(first.configured[0].action).toBe('added');
+    expect(first.configured[0].backup).toBeDefined();
+    const text = readFileSync(codex, 'utf8');
+    expect(text).toContain('model = "o4"');
+    expect(text).toContain('[mcp_servers.git]');
+    expect(text).toContain('[mcp_servers.ambit]\ncommand = "ambit"\nargs = ["mcp"]\n');
+    expect(runConnect('codex', { home: testDir }).configured[0].action).toBe('already_configured');
+    // The reader finds what the writer wrote.
+    process.env.CODEX_MCP_CONFIG = codex;
+    try {
+      const found = discoverMcpClients(testDir).find(c => c.runtime === 'codex');
+      expect(Object.keys(found?.config.mcp ?? {})).toContain('ambit');
+    } finally {
+      delete process.env.CODEX_MCP_CONFIG;
+    }
+  });
+
+  test('a copy npx unpacked writes a command the runtime can find', () => {
+    expect(ambitCommand('/Users/x/.npm/_npx/9f2/node_modules/ambit-cli/dist-cli/engine')).toEqual([
+      'npx',
+      '-y',
+      'ambit-cli',
+    ]);
+    expect(ambitCommand('/opt/homebrew/lib/node_modules/ambit-cli/dist-cli/engine')).toEqual([
+      'ambit',
+    ]);
   });
 });

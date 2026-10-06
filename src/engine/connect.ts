@@ -2,12 +2,22 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { keepBackup } from '../shared/backup.ts';
 import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
+import { clientPaths } from './mcp-clients.ts';
+import { ambitCommand } from './paths.ts';
+
+/**
+ * Where a runtime keeps its servers, in the shape it reads them:
+ * `mcpServers` (most JSON clients), OpenCode's `mcp`, VS Code's `servers`,
+ * Zed's `context_servers`, and Codex's `[mcp_servers.<name>]` TOML tables.
+ */
+type ConfigKind = 'mcpServers' | 'opencode' | 'servers' | 'context_servers' | 'codex';
 
 export interface ConnectTarget {
   runtime: string;
   label: string;
-  paths: string[];
-  kind: 'mcpServers' | 'opencode';
+  /** Relative to the home directory, or absolute when the reader supplies them. */
+  paths: string[] | ((home: string) => string[]);
+  kind: ConfigKind;
 }
 
 export interface ConnectResult {
@@ -70,14 +80,91 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
     paths: ['.continue/config.json'],
     kind: 'mcpServers',
   },
+  // The six below take their paths from the readers in mcp-clients.ts, so
+  // connect writes where discovery reads and the two lists cannot drift.
+  {
+    runtime: 'gemini-cli',
+    label: 'Gemini CLI',
+    paths: home => clientPaths('gemini-cli', home),
+    kind: 'mcpServers',
+  },
+  {
+    runtime: 'cline',
+    label: 'Cline',
+    paths: home => clientPaths('cline', home),
+    kind: 'mcpServers',
+  },
+  {
+    runtime: 'roo-code',
+    label: 'Roo Code',
+    paths: home => clientPaths('roo-code', home),
+    kind: 'mcpServers',
+  },
+  {
+    runtime: 'vscode',
+    label: 'VS Code',
+    paths: home => clientPaths('vscode', home),
+    kind: 'servers',
+  },
+  {
+    runtime: 'zed',
+    label: 'Zed',
+    paths: home => clientPaths('zed', home),
+    kind: 'context_servers',
+  },
+  {
+    runtime: 'codex',
+    label: 'Codex CLI',
+    paths: home => clientPaths('codex', home),
+    kind: 'codex',
+  },
 ];
+
+/** The same command for every runtime: `ambit mcp`, or through npx from npx's cache. */
+function serverCommand(): { command: string; args: string[] } {
+  const [command, ...rest] = ambitCommand();
+  return { command, args: [...rest, 'mcp'] };
+}
+
+/** Whether an existing entry already starts this server, in either form. */
+function startsAmbit(entry: any): boolean {
+  const { command, args } = serverCommand();
+  const said = [entry?.command, ...(entry?.args ?? [])].flat().filter(Boolean).join(' ');
+  return said === [command, ...args].join(' ') || said === 'ambit mcp';
+}
+
+/**
+ * Codex keeps servers in TOML, which the engine reads with a reader of its
+ * own and has no writer for. A table is appended when none is named ambit;
+ * one that exists is left alone, since rewriting TOML by hand risks the rest.
+ */
+function configureCodex(
+  filePath: string,
+  dryRun: boolean
+): { action: 'added' | 'already_configured'; backup?: string } {
+  const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '';
+  if (/^\[mcp_servers\.ambit\]\s*$/m.test(text)) return { action: 'already_configured' };
+  const { command, args } = serverCommand();
+  const table = `[mcp_servers.ambit]\ncommand = ${JSON.stringify(command)}\nargs = [${args.map(a => JSON.stringify(a)).join(', ')}]\n`;
+  let backup: string | undefined;
+  if (!dryRun) {
+    backup = keepBackup(filePath);
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(
+      filePath,
+      `${text}${text && !text.endsWith('\n') ? '\n' : ''}${text ? '\n' : ''}${table}`
+    );
+  }
+  return { action: 'added', backup };
+}
 
 /** Add or update the ambit entry in a client configuration. */
 function configureFile(
   filePath: string,
-  kind: 'mcpServers' | 'opencode',
+  kind: ConfigKind,
   dryRun = false
 ): { action: 'added' | 'updated' | 'already_configured'; backup?: string } {
+  if (kind === 'codex') return configureCodex(filePath, dryRun);
   // A file that does not parse is left as it is. Replacing it with `{}` plus
   // one entry deleted every other server, agent and key a person had in it,
   // and a commented `.jsonc` file, which OpenCode reads and JSON.parse does
@@ -103,18 +190,19 @@ function configureFile(
 
   let action: 'added' | 'updated' | 'already_configured' = 'added';
 
-  if (kind === 'mcpServers') {
-    if (!parsed.mcpServers || typeof parsed.mcpServers !== 'object') {
-      parsed.mcpServers = {};
-    }
-    const existing = parsed.mcpServers.ambit;
-    if (existing && existing.command === 'ambit') {
+  if (kind === 'mcpServers' || kind === 'servers' || kind === 'context_servers') {
+    if (!parsed[kind] || typeof parsed[kind] !== 'object') parsed[kind] = {};
+    const servers = parsed[kind];
+    const existing = Object.hasOwn(servers, 'ambit') ? servers.ambit : undefined;
+    if (existing && startsAmbit(existing)) {
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
-      parsed.mcpServers.ambit = {
-        command: 'ambit',
-        args: ['mcp'],
+      // VS Code names the transport, and Zed marks a server it did not install.
+      servers.ambit = {
+        ...(kind === 'servers' ? { type: 'stdio' } : {}),
+        ...(kind === 'context_servers' ? { source: 'custom' } : {}),
+        ...serverCommand(),
       };
     }
   } else if (kind === 'opencode') {
@@ -131,9 +219,10 @@ function configureFile(
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
+      const command = [...ambitCommand(), 'mcp'];
       servers.ambit = v2
-        ? { type: 'local', command: ['ambit', 'mcp'], disabled: false }
-        : { type: 'local', command: ['ambit', 'mcp'], enabled: true };
+        ? { type: 'local', command, disabled: false }
+        : { type: 'local', command, enabled: true };
     }
   }
 
@@ -181,7 +270,10 @@ export function runConnect(
   }
 
   for (const target of targets) {
-    const fullPaths = target.paths.map(p => join(home, p));
+    const fullPaths =
+      typeof target.paths === 'function'
+        ? target.paths(home)
+        : target.paths.map(p => join(home, p));
     let targetPath = fullPaths.find(p => existsSync(p));
 
     if (!targetPath) {
