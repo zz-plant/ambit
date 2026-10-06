@@ -97,15 +97,15 @@ export const PAGES: Page[] = [
     slug: 'ideas',
     title: 'The ideas behind Ambit: what is new, and where it comes from',
     description:
-      "An agent setup's reach is composed, has to be proven, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim.",
-    card: 'Reach is composed, proven, and not the same as permission',
+      "An agent setup's reach is composed, may not work, and differs from permission. What is new in Ambit, its nearest prior work, and what it does not claim.",
+    card: 'Reach is composed. Working and permitted are separate facts',
   },
   {
     src: 'docs/mcp-config-locations.md',
     slug: 'mcp-config-locations',
     title: 'Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more',
     description:
-      'The MCP config file and key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed and VS Code.',
+      'The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.',
     card: 'Twelve agents, twelve config files, one table',
   },
   {
@@ -154,16 +154,16 @@ export const PAGES: Page[] = [
     slug: 'deep-dive',
     title: 'Ambit reference: nodes, authority, ledgers and every MCP tool',
     description:
-      'The Ambit reference: what a node is, capability versus authority, the frontier and work ledgers, delegation records, and the full CLI and MCP surfaces.',
+      'The Ambit reference: what a node is, how a setup reaches further, capability versus authority, the ledgers, delegation records, and the CLI and MCP surfaces.',
     card: 'Every node, grant, ledger and MCP tool, explained',
   },
   {
     src: 'docs/why-ambit.md',
     slug: 'why-ambit',
-    title: 'Why Ambit: effective agency as a governed object',
+    title: 'Why Ambit: widening what an agent stack can do, and governing it',
     description:
-      'Why Ambit exists: agent stacks become capable through composition, and effective agency should be a governed, verified and legible object.',
-    card: 'Agents get capable by composition. Who governs that?',
+      'Why Ambit exists: agent stacks get capable through composition, so their reach is worth widening on purpose, with each widening verified, legible and governed.',
+    card: 'Agents get capable by composition. Grow it on purpose',
   },
   {
     src: 'docs/affordance-frontier.md',

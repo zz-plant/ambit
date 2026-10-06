@@ -10,6 +10,7 @@ Every component had configuration. Nothing had a model of what the whole system 
 
 Ambit is a capability graph for agent stacks. What I wanted from it was the questions no config file answers:
 
+- What could the whole stack do that I was not using, and which one addition would open the most?
 - What does this provider actually support?
 - Which parts of the stack are decaying?
 - Are three different failures actually the same structural deficit?
@@ -33,8 +34,10 @@ So the direction is to move from *what tools exist?* to *what actions are actual
 That means distinguishing:
 
 ```
-installed ≠ callable ≠ working ≠ reliable ≠ authorized ≠ appropriate
+installed ≠ working ≠ authorized
 ```
+
+Something configured is not thereby working, and something working is not thereby permitted. Ambit records the three apart: what is reached, what a passing check has proven, and what a grant allows.
 
 ## What an agent could notice
 
@@ -62,7 +65,7 @@ A workaround gets you through today. A capability that has been verified and lef
 
 What Ambit is doing is closest to accounting. Partly a dependency graph, partly IAM, partly a CMDB, partly an audit ledger — but with *capacity for action* as the thing being accounted for.
 
-The ≠ chain above is the short form. Ordinary tool registries collapse seven different things into one. Something can be **available** without being **authorized**; **authorized** without being **reachable**; reachable without being **verified**; and a **composed** capability can exist that no component declares. Two more decide whether it holds. **Delegated**, where a human or another agent supplies a missing step. **Persistent**, where it survives the current interaction. Together those seven are most of what determines whether a system can actually cause something to happen.
+The ≠ chain above is what the graph records. The argument goes further, because ordinary tool registries collapse several different things into one. Something can be **available** without being **authorized**; **authorized** without being **reachable**; reachable without being **verified**; and a **composed** capability can exist that no component declares. Two more decide whether it holds: whether a person or another agent has to supply a missing step (the map marks the person's case as a joint capability), and whether it survives the current interaction. Together they are most of what determines whether a system can actually cause something to happen, and [the roadmap](./roadmap.md) says which of them the software records today.
 
 The version of this I find most interesting is longitudinal. Instead of describing only today, record what the system could do at time T, and what changed. A system gains a machine, then network access, then credentials, then a scheduler, then memory, then deploy authority, then the ability to create further agents. Each is an infrastructure change *and* a change in the reachable frontier.
 
@@ -80,7 +83,7 @@ Give the same model shell access, persistent execution, credentials, browser con
 
 Those capabilities currently accumulate across JSON files, OAuth scopes, shell scripts, prompts, containers, machines, and human memory. No single artifact represents the total.
 
-Ambit's longer-term thesis is: **make effective agency a governed object.**
+Widening that reach is what Ambit is for. Its longer-term thesis is about what the widening needs: **make effective agency a governed object.**
 
 Capability should be distinct from authority. New abilities should be verified before being trusted. Human approval should remain an explicit dependency where it matters. Revocation and blast radius should be computable. An agent should be able to propose expanding its environment without thereby having unilateral authority to expand it.
 

@@ -2,30 +2,6 @@
 
 Your agents, your tools, your credentials and your machines are your loadout. What you and your loadout can do together is your [ambit](./ideas.md). Every number below is the hosted demo's, so each can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
 
-## Stepping in
-
-If you have seen *Neon Genesis Evangelion*, you already have the picture. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. Your loadout is the Eva, you are the pilot, and what the two of you can do together is your ambit. That is why a list of the tools you own says so little: the reach is in how they combine and how well they answer.
-
-Some of the picture carries over:
-
-| In the Eva | In your loadout | Where Ambit shows it |
-| :--- | :--- | :--- |
-| **Sync ratio**: how much of the Eva actually answers the pilot | How much of what is configured is proven to work | Proven against reached, on the map and in `ambit status` |
-| **The umbilical cable**: power from outside, and what fails when it is cut | What a reach rests on: one token, one server, one machine | The outage simulation and `ambit impact`: what stops, and what only weakens |
-| **The restraints**: what holds the Eva back until it is cleared to move | What must ask before it acts, set per action and per target | The Authority lens, `ambit can` |
-| **MAGI**: the decision taken before NERV acts | A change to the setup is a proposal a person signs before it applies | The Proposals panel, `ambit approve` |
-| **The dummy plug**: the Eva moving with its pilot taken out | What Ambit refuses: autonomy that widens with no person having set the bar | A grant widens only past a threshold a person set in advance |
-
-Where the picture stops matters as much:
-
-- **Sync here is per piece, not one number.** Ambit says which capabilities are proven and which are not; it does not score how well you pilot.
-- **There is no clock.** An outage simulation says what would stop, not how long you would have.
-- **The restraints come off by a rule the show does not have.** In Ambit a person sets a bar once, a grant widens when the evidence meets it, and one failing check narrows it again with nobody asked.
-- **MAGI is three systems voting; Ambit's approval is one person signing.** Several approvers are not built yet.
-- **Autonomy is allowed.** An agent may act without asking where a grant says so. What Ambit refuses is that grant widening with no person behind it, which is the part the dummy plug stands for.
-
-If you have not seen it, the short version is this: a powerful suit is only as useful as the pilot's sync with it, and only as safe as its restraints. Ambit is how you see both.
-
 ## Point A
 
 Most loadouts start the same way. One runtime, Claude Code or Cursor, a handful of MCP servers picked from a "best servers" list, a GitHub token, perhaps a local model. The agent does chores and a person supervises every one of them. Nobody knows which servers actually work, what they combine into, or what to add next. Permission prompts arrive all day, or the setting that approves everything is on and the person hopes. When something breaks, the first sign is an agent behaving strangely, hours later.
@@ -42,7 +18,7 @@ My Setup in the app opens on a readout of these seven legs for the loadout on sc
 
 **1. See where it stands.** Twelve runtimes keep their servers in twelve files ([where each one keeps it](./mcp-config-locations.md)), and none of them says whether a server works. `ambit seed` reads them all into one map, and `ambit verify` runs each declared check. The demo's loadout reaches 16 of the 46 capabilities on its map, and 13 of those are proven. *Easier: this was always possible by hand.*
 
-**2. Pick the next step.** Adding servers from a list is a guess about what they combine into. `ambit next` ranks what to reach by what has actually blocked work, and `ambit graph combos` names the combinations one missing piece away. In the demo, Embeddings is next: it has blocked work four times, and it also reaches Vector Store. Ranked by how much each step opens, the welcome screen's pick is Model Routing, which would open six more. *Tractable: the choice is combinatorial, and without a model people stop at the size they can hold in their heads.*
+**2. Pick the next step.** Adding servers from a list is a guess about what they combine into. `ambit next` ranks what to reach by what has actually blocked work, and `ambit graph combos` names the combinations one missing piece away. In the demo, Embeddings is next: it has blocked work four times, and it also reaches Vector Store. The map, the welcome screen and `ambit next` name the same step, because they read the same ranking. *Tractable: the choice is combinatorial, and without a model people stop at the size they can hold in their heads.*
 
 **3. Add it safely.** `ambit propose` writes the change as a proposal: what it does, what undoes it, what it costs, what it is forecast to save, and, with `--for`, the work it is for. Your approval binds that purpose, so a proposal whose purpose changes after you sign it is no longer covered. You sign it, `ambit apply` applies it, `ambit rollback` undoes it, and a check proves the result. *Easier: no hand-edited JSON, no change without a record.*
 
@@ -50,7 +26,7 @@ My Setup in the app opens on a readout of these seven legs for the loadout on sc
 
 **5. Keep it standing.** A loadout decays: tokens expire, binaries move, services go down. `ambit status` lists what is configured but failing and the pieces the setup rests on alone, and [`ambit impact`](./mcp-outage.md) says what would stop before you revoke or remove one. *Tractable: maintenance grows with every piece added, and a model is what keeps it from growing faster than the loadout.*
 
-**6. Know whether it paid.** The telemetry plugin records each time a person steps in so an agent can continue, against the capability it was waiting on. That is how a next step is priced before you take it, and how `ambit roi` says afterwards whether it saved what it was forecast to save. The demo records 89 interventions and 41 hours a year saved. *Possible: without measurement, B cannot be told apart from a setup that only feels busier.*
+**6. Know whether it paid.** The OpenCode telemetry plugin and the Claude Code plugin record each time a person steps in so an agent can continue, against the capability it was waiting on. That is how a next step is priced before you take it, and how `ambit roi` says afterwards whether it saved what it was forecast to save. The demo records 89 interventions and 41 hours a year saved. *Possible: without measurement, B cannot be told apart from a setup that only feels busier.*
 
 **7. Let the agent ask for what it lacks.** Registered over MCP, an agent reads a briefing before its first tool call and asks `ambit_can` before a tool it has not used. When something missing blocks it, it records the deficit and drafts the step that closes it, for you to sign. In the demo, agents have asked for Vector Store. *Possible: this is what makes the journey compound, because the loadout grows out of the work itself.*
 
@@ -72,13 +48,37 @@ The aim is not more reach for its own sake. It is reach that is legible, earned 
 
 ## Why it compounds
 
-Every proven capability moves the frontier, and that changes what is one step away. A step taken makes the next one cheaper, safer or newly visible, which is why B is a direction more than a destination. The map's eras order capabilities by what they depend on, so the next steps on any route sit at the edge of the eras you have reached, and an era's ladder says how far up it you are. They are not the route itself: a B is a class of work you choose, and Sovereignty is a kind of capability, not the end of the road.
+Every capability reached moves the frontier, and that changes what is a next step. A step taken makes the next one cheaper, safer or newly visible, which is why B is a direction more than a destination. The map's eras order capabilities by what they depend on, so the next steps on any route sit at the edge of the eras you have reached, and an era's ladder says how far up it you are. They are not the route itself: a B is a class of work you choose, and Sovereignty is a kind of capability, not the end of the road.
 
 ## Where the journey still has gaps
 
-- **Leg 4 is enforced where it can be.** Ambit's own `apply`, its control plane, and Claude Code once the `ambit gate` hook is installed. Cursor and the other runtimes still choose whether to ask `ambit_can`, so there the gradual hand-over depends on the agent following its instructions.
-- **Legs 6 and 7 need a record.** The telemetry plugins run in OpenCode, and the figures need weeks of history. On day one those legs say so.
+- **Leg 4 is enforced where it can be.** Ambit's own `apply`, its control plane for execution routed through it, and Claude Code once the `ambit gate` hook is installed. Cursor and the other runtimes still choose whether to ask `ambit_can`, so there the gradual hand-over depends on the agent following its instructions.
+- **Legs 6 and 7 need a record.** The OpenCode telemetry plugin and the Claude Code plugin fill it, other runtimes do not yet, and the figures need weeks of history. On day one those legs say so.
 - **Leg 2 knows the curated tree.** A goal outside it needs the judgment model or an overlay in `.ambit/techtree.json`.
 - **It is one person's journey.** The same path for a team, with shared thresholds and several approvers, is only partly built.
 
 [The roadmap](./roadmap.md#status-at-a-glance) lists every gap of this kind, and [the ideas behind Ambit](./ideas.md) is the claim the journey rests on.
+
+## Stepping in
+
+An aside, for anyone who has seen *Neon Genesis Evangelion*: the show already has the picture. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. Your loadout is the Eva, you are the pilot, and what the two of you can do together is your ambit. That is why a list of the tools you own says so little: the reach is in how they combine and how well they answer.
+
+Some of the picture carries over:
+
+| In the Eva | In your loadout | Where Ambit shows it |
+| :--- | :--- | :--- |
+| **Sync ratio**: how much of the Eva actually answers the pilot | How much of what is configured is proven to work | Proven against reached, on the map and in `ambit status` |
+| **The umbilical cable**: power from outside, and what fails when it is cut | What a reach rests on: one token, one server, one machine | The outage simulation and `ambit impact`: what stops, and what only weakens |
+| **The restraints**: what holds the Eva back until it is cleared to move | What must ask before it acts, set per action and per target | The Authority lens, `ambit can` |
+| **MAGI**: the decision taken before NERV acts | A change to the setup is a proposal a person signs before it applies | The Proposals panel, `ambit approve` |
+| **The dummy plug**: the Eva moving with its pilot taken out | What Ambit refuses: autonomy that widens with no person having set the bar | A grant widens only past a threshold a person set in advance |
+
+Where the picture stops matters as much:
+
+- **Sync here is per piece, not one number.** Ambit says which capabilities are proven and which are not; it does not score how well you pilot.
+- **There is no clock.** An outage simulation says what would stop, not how long you would have.
+- **The restraints come off by a rule the show does not have.** In Ambit a person sets a bar once, a grant widens when the evidence meets it, and one failing check narrows it again with nobody asked.
+- **MAGI is three systems voting; Ambit's approval is one person signing.** Several approvers are not built yet.
+- **Autonomy is allowed.** An agent may act without asking where a grant says so. What Ambit refuses is that grant widening with no person behind it, which is the part the dummy plug stands for.
+
+The short version, for anyone who has not seen it: a powerful suit is only as useful as the pilot's sync with it, and only as safe as its restraints. Ambit is how you see both.

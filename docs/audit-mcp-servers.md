@@ -6,11 +6,11 @@ An audit of an agent's MCP servers answers four questions: which servers are dec
 
 Servers are declared per runtime and sometimes per project, in files with different names, keys and formats. [Where each AI agent keeps its MCP config](./mcp-config-locations.md) lists them. A server can be declared in more than one, on in one project and off in another, or left in a file for a runtime you no longer use.
 
-[Ambit](./README.md) reads them all into one local graph:
+[Ambit](./README.md) reads every runtime's user-level file into one local graph. It does not read project files such as `.mcp.json` or `.cursor/mcp.json` yet, so check those by hand in each repository you audit.
 
 ```bash
 brew install zz-plant/tap/ambit
-ambit seed      # reads every runtime's config that exists on this machine
+ambit seed      # reads every runtime's user-level config on this machine
 ambit status    # what is reached, what is proven, what is failing
 ```
 
@@ -25,7 +25,9 @@ ambit verify            # run every declared check, and record the result
 ambit doctor            # setup health, broken tools, and token-thrash risk
 ```
 
-A capability with a passing check is **proven**; one with a failing check is configured and not working, and every plan and permission decision leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
+A capability with a passing check is **proven**; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
+
+A check exists only where one is declared: the curated tree declares some, and a skill registered with `ambit record skill:` carries its own. Most MCP servers a person adds have none. Those read as reached and unproven, still counted as working, and `ambit verify` cannot tell you whether they work; calling one of the server's tools yourself is the check.
 
 ## 3. See what each one may do without asking
 
@@ -37,7 +39,9 @@ ambit can <capability>           # ALLOW, CONFIRM or DENY for one action
 ambit credentials                # what revoking each credential would end
 ```
 
-The map's **Authority** lens draws the same answer on every reached node.
+The map's **Authority** lens draws the same answer on every reached node. The answer is enforced in three places: `ambit apply`, always; the control plane interceptor, when execution is routed through it (its executor today is a fixture); and the Claude Code `ambit gate` hook, an opt-in plugin that can only deny or ask. Anywhere else it is a record of what should happen, and the runtime's own approval setting decides.
+
+`ambit credentials` knows only the credentials a `credentials` block in the config declares; Ambit does not infer which servers share a token. Until you write one, it says none are declared.
 
 ## 4. Find what was used and never declared
 
@@ -48,7 +52,9 @@ ambit graph unmapped --days=30   # what the agents used that no node accounts fo
 ambit audit 30                   # who approved what, what ran, and what came of it
 ```
 
-`ambit graph unmapped` reads the work ledger, which the telemetry plugin fills from real sessions, and lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs and every grant that narrowed itself because a check failed.
+Both read the work ledger. Four things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Cursor, Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
+
+`ambit graph unmapped` lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs, the runs the ledger recorded, and every grant that narrowed itself because a check failed.
 
 ## Keeping it current
 
