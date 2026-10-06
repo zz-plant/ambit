@@ -354,7 +354,9 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   const codexConfig = join(home, '.codex', 'config.toml');
   // Cline and Roo Code are VS Code extensions, so their settings live in the
   // editor's global storage, one directory per extension id.
-  const vscodeStorage = join(home, '.config', 'Code', 'User', 'globalStorage');
+  const vscodeUserDir = join(home, '.config', 'Code', 'User');
+  const vscodeStorage = join(vscodeUserDir, 'globalStorage');
+  const vscodeConfig = join(vscodeUserDir, 'mcp.json');
   const clineDir = join(vscodeStorage, 'saoudrizwan.claude-dev', 'settings');
   const rooDir = join(vscodeStorage, 'rooveterinaryinc.roo-cline', 'settings');
   const continueConfig = join(home, '.continue', 'config.json');
@@ -453,6 +455,13 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
       context_servers: { search: { command: 'search-mcp', args: [] } },
     })
   );
+  // VS Code keeps MCP servers in a user-level mcp.json under servers.
+  writeFileSync(
+    vscodeConfig,
+    JSON.stringify({
+      servers: { time: { command: 'time-mcp' } },
+    })
+  );
 
   const dbPath = join(dir, 'auto-discovery.db');
   // No config and no mapping: the engine has to find the runtimes under HOME
@@ -468,7 +477,7 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   const db = getDb(dbPath);
   const capabilities = rows(
     db,
-    "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'mcp:fetch', 'mcp:postgres', 'mcp:memory', 'mcp:search', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex', 'runtime:cline', 'runtime:roo-code', 'runtime:continue', 'runtime:zed')"
+    "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'mcp:fetch', 'mcp:postgres', 'mcp:memory', 'mcp:search', 'mcp:time', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex', 'runtime:cline', 'runtime:roo-code', 'runtime:continue', 'runtime:zed', 'runtime:vscode')"
   );
   expect(capabilities.map(row => row.id).sort()).toEqual([
     'mcp:browser',
@@ -482,6 +491,7 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
     'mcp:postgres',
     'mcp:search',
     'mcp:sqlite',
+    'mcp:time',
     'runtime:claude-code',
     'runtime:claude-desktop',
     'runtime:cline',
@@ -491,6 +501,7 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
     'runtime:gemini-cli',
     'runtime:opencode',
     'runtime:roo-code',
+    'runtime:vscode',
     'runtime:windsurf',
     'runtime:zed',
   ]);
@@ -519,6 +530,7 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   expect(contributions).toContainEqual({ f: 'runtime:roo-code', t: 'mcp:postgres' });
   expect(contributions).toContainEqual({ f: 'runtime:continue', t: 'mcp:memory' });
   expect(contributions).toContainEqual({ f: 'runtime:zed', t: 'mcp:search' });
+  expect(contributions).toContainEqual({ f: 'runtime:vscode', t: 'mcp:time' });
   db.close();
 });
 

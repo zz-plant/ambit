@@ -6,7 +6,7 @@
 
 - [Building alone](./solo.md) — for a one-person company: the checklist between you and launch, what an agent may do to production without asking, and how you hear when it breaks.
 - [FAQ](./faq.md) — the short answers, each pointing at the longer one.
-- [Where each AI agent keeps its MCP config](./mcp-config-locations.md) — the file and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue and Zed.
+- [Where each AI agent keeps its MCP config](./mcp-config-locations.md) — the file and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed and VS Code.
 - [What breaks if an MCP server goes down](./mcp-outage.md) — single points of failure in an agent setup, and how to find them before an agent does.
 - [Auditing which MCP servers a coding agent has](./audit-mcp-servers.md) — what is declared, what works, what may run without asking, and what was used but never declared.
 - [Ambit and MCP gateways](./compare.md) — which questions a gateway on the call path answers, which ones Ambit answers, and how the two compose.
