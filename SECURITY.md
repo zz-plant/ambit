@@ -22,7 +22,7 @@ A tech tree overlay (`.ambit/techtree.json` or `.ambit.json` in the directory `a
 ## What is not
 
 - The declared verification checks run commands from the capability model by design. That model is code in this repository; changing it is equivalent to changing any other source file.
-- `ambit apply <id>`, `ambit connect` and the visualizer's config editing modify your configuration on purpose, each writing a backup first: `<config>.ambit-<id>.bak` for `ambit apply`, and `<file>.bak` for the other two, which every write replaces, so it holds the file as it stood before the most recent one. Those two write it by renaming a copy over the old one, so a link planted at that name is replaced and never followed, and `ambit connect` says which files it changed and where each backup is.
+- `ambit apply <id>`, `ambit connect` and the visualizer's config editing modify your configuration on purpose, each writing a backup first: `<config>.ambit-<id>.bak` for `ambit apply`, and `<file>.bak` for the other two, which every write replaces, so it holds the file as it stood before the most recent one. Each backup is a byte copy renamed over the old one, so a link planted at that name is replaced and never followed, and `ambit connect` says which files it changed and where each backup is. `ambit apply` and `ambit rollback` change only the entries they add or remove, so a config's comments and layout survive both, and a rollback gives back the file's own bytes.
 - Findings against a fork's own capability model, or against a configuration you supplied yourself, are not vulnerabilities in Ambit.
 
 ## Where your data is

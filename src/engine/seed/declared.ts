@@ -50,6 +50,19 @@ function seedAuthority(db: Db, config: any): number {
   //
   // Only the sources this run speaks for. Seeding through the OpenCode adapter
   // must not silently drop what Hermes said about itself.
+  //
+  // What a person set on those rows is not the source's to drop: the
+  // threshold that would widen a grant, and a widening it has already earned.
+  // Rebuilt from the source alone, a promotion was undone by the next seed or
+  // apply while `ambit authority promote` still reported it. They are carried
+  // across the rebuild by the key that names the same grant.
+  const carried = db
+    .prepare(
+      `SELECT capability_id, action, holder, scope, source, promote_after, promote_window_days,
+              promote_set_by, promoted_at, promoted_on_evidence
+       FROM authority WHERE source IN ('techtree', ?) AND promote_after IS NOT NULL`
+    )
+    .all<any>(source);
   db.prepare("DELETE FROM authority WHERE source IN ('techtree', ?)").run(source);
 
   // Declared on the curated model.
@@ -110,6 +123,35 @@ function seedAuthority(db: Db, config: any): number {
       grant.run(capId, action, mode, '', value?.scope || '', source, value?.note || null);
       count++;
     }
+  }
+
+  // The threshold goes back on whatever the source still grants short of a
+  // refusal, and an earned promotion only where the source still says
+  // confirm: a source that has since widened needs none, and evidence never
+  // opens a refusal (rule 11), so a grant the source now forbids keeps
+  // neither.
+  const restore = db.prepare(
+    `UPDATE authority SET promote_after = ?, promote_window_days = ?, promote_set_by = ?,
+       promoted_at = CASE WHEN mode = 'confirm' THEN ? END,
+       promoted_on_evidence = CASE WHEN mode = 'confirm' THEN ? END,
+       mode = CASE WHEN mode = 'confirm' AND ? IS NOT NULL THEN 'autonomous' ELSE mode END
+     WHERE capability_id = ? AND action = ? AND holder = ? AND scope = ? AND source = ?
+       AND mode != 'forbidden'`
+  );
+  for (const g of carried) {
+    restore.run(
+      g.promote_after,
+      g.promote_window_days,
+      g.promote_set_by,
+      g.promoted_at,
+      g.promoted_on_evidence,
+      g.promoted_at,
+      g.capability_id,
+      g.action,
+      g.holder,
+      g.scope,
+      g.source
+    );
   }
 
   return count;

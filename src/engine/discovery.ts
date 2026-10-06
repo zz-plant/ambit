@@ -5,7 +5,7 @@ import { normalizeOpencode, opencodeAuthority, parseJsonc } from '../shared/open
 import type { Db } from './db.ts';
 import { deriveLifecycles } from './assurance.ts';
 import { recordFrontier } from './ledger.ts';
-import { nodeWriter, parseMapping } from './seed/writers.ts';
+import { nodeWriter, parseMapping, retireUndeclared } from './seed/writers.ts';
 import { seedTechTree } from './seed/techtree.ts';
 import {
   seedActors,
@@ -138,6 +138,13 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record
   seedAuthority(db, config);
   seedEconomics(db, config);
   seedCatalog(db, config);
+
+  // What this runtime's config declared last time and no longer does is
+  // retired, and the tree is placed again without it. A seed that only added
+  // left a server removed from the config reached, and a rollback, which
+  // re-seeds, moved nothing back.
+  const source = `runtime:${process.env.AMBIT_RUNTIME || 'opencode'}`;
+  if (retireUndeclared(db, source, insert.seen)) seedTechTree(db, insert);
 
   // After the graph is complete and before the frontier is recorded, because
   // lifecycle is derived from both providers and evidence.

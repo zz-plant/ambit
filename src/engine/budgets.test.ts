@@ -174,6 +174,35 @@ describe('one rule for a period that has run out', () => {
   });
 });
 
+describe('every budget that covers a spend', () => {
+  it('holds a spend named for a target to the ceiling with no scope', () => {
+    // Naming a target used to look up the budget scoped to that target only,
+    // so a standing $20 ceiling let a $25 spend on staging through.
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:deploy', name: 'Deploy', category: 'combo' },
+        { id: 'human:kanav', name: 'Kanav', kind: 'actor', category: 'human' },
+      ],
+      authority: [
+        { capability: 'combo:deploy', mode: 'autonomous' },
+        { capability: 'combo:deploy', mode: 'autonomous', scope: 'staging' },
+      ],
+    });
+    setBudget(db, { capability: 'combo:deploy', amount: '$20', person: 'kanav' });
+    expect(canExecute(db, { capability: 'combo:deploy', spendCents: 2500 }).decision).toBe('DENY');
+    const named = canExecute(db, {
+      capability: 'combo:deploy',
+      target: 'staging',
+      spendCents: 2500,
+    });
+    expect(named).toMatchObject({ decision: 'DENY', remaining_budget_cents: 2000 });
+    expect(
+      canExecute(db, { capability: 'combo:deploy', target: 'staging', spendCents: 1500 }).decision
+    ).toBe('ALLOW');
+    db.close();
+  });
+});
+
 describe('what a budget means right now, read without writing', () => {
   it('keeps the spend, the start and the end of a period that is running, and paces it', () => {
     const db = graph();

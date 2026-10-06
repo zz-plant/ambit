@@ -81,6 +81,11 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   // yet; this is where evidence starts carrying one, so *read repository A* and
   // *read repository B* stop being the same recorded fact.
   ['session_learning', 'object', 'TEXT'],
+  // Which runtime declared a node, and when it stopped, so a seed retires what
+  // a config no longer holds. A seed only ever added: a server removed from
+  // the config stayed reached, and a rollback never moved the frontier back.
+  ['capabilities', 'declared_by', 'TEXT'],
+  ['capabilities', 'retired_at', 'TEXT'],
 ];
 
 function addMissingColumns(db: Migratable) {

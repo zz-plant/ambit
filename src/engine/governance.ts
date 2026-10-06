@@ -1,6 +1,14 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { configDefault } from './paths.ts';
-import { configSection, entryInShape, mcpEntries } from '../shared/opencode.ts';
+import {
+  configSection,
+  entryInShape,
+  mcpEntries,
+  parseJsonc,
+  sectionPath,
+} from '../shared/opencode.ts';
+import { keepBackup } from '../shared/backup.ts';
+import { removeIn, setIn } from '../shared/jsonEdit.ts';
 import { getDb, type Db } from './db.ts';
 import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
@@ -466,30 +474,48 @@ function applyProposal(db: Db, proposalId?: string) {
     }
   }
 
+  // Read as OpenCode reads it, comments and trailing commas included: `seed`
+  // already did, and a config it could map was one apply refused to read.
   const configPath = configDefault();
-  let config: any = {};
+  let text: string;
+  let config: any;
   try {
-    config = JSON.parse(readFileSync(configPath, 'utf8'));
+    text = readFileSync(configPath, 'utf8');
+    config = parseJsonc(text);
   } catch {
     return { error: `Cannot read ${configPath}.` };
   }
 
   // Backup before the first byte changes, so a rollback has something to fall
-  // back on even if this process dies midway.
-  const backup = `${configPath}.ambit-${proposalId}.bak`;
-  writeFileSync(backup, JSON.stringify(config, null, 2) + '\n');
+  // back on even if this process dies midway. A copy of the file, not of what
+  // it parsed to: the parse drops the comments, and a backup made from it was
+  // not the file it claimed to back up.
+  let backup: string | undefined;
+  try {
+    backup = keepBackup(configPath, `${configPath}.ambit-${proposalId}.bak`);
+  } catch (e) {
+    return {
+      error: `Refused. ${configPath} could not be backed up (${(e as Error).message}), and nothing is changed without one.`,
+    };
+  }
 
+  // Each entry is spliced into the text where it goes, so the rest of the file
+  // keeps its comments and its formatting, and the rollback that takes the
+  // entry out again gives back the file as it was.
   const applied: string[] = [];
   for (const step of steps) {
     for (const [section, entries] of Object.entries<any>(step.config_patch)) {
-      const bag = configSection(config, section, true) as Record<string, unknown>;
       for (const [key, value] of Object.entries<any>(entries)) {
-        bag[key] = entryInShape(config, section, value);
+        text = setIn(
+          text,
+          [...sectionPath(config, section), key],
+          entryInShape(config, section, value)
+        );
         applied.push(`${section}.${key}`);
       }
     }
   }
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  writeFileSync(configPath, text);
 
   db.prepare(
     "UPDATE proposals SET status = 'applied', applied_at = datetime('now'), backup_path = ? WHERE id = ?"
@@ -505,10 +531,9 @@ function applyProposal(db: Db, proposalId?: string) {
   const failed = verification?.results?.some((r: any) => r.status === 'failed');
 
   if (failed) {
+    // The rollback changes the config back and re-seeds, so the graph reflects
+    // the reverted state without waiting for the next manual seed.
     const undo = rollbackProposal(db, proposalId) as any;
-    // The rollback changed the config back; re-seed so the graph reflects the
-    // reverted state rather than waiting for the next manual seed.
-    seedFromConfig(db);
     return {
       proposal: proposalId,
       applied: false,
@@ -553,13 +578,16 @@ function rollbackProposal(db: Db, proposalId?: string) {
 
   const steps = JSON.parse(row.steps);
   const configPath = configDefault();
-  let config: any = {};
+  let text: string;
+  let config: any;
   try {
-    config = JSON.parse(readFileSync(configPath, 'utf8'));
+    text = readFileSync(configPath, 'utf8');
+    config = parseJsonc(text);
   } catch {
     return { error: `Cannot read ${configPath}.` };
   }
 
+  // The inverse, spliced into the text the same way apply wrote the entry.
   const removed: string[] = [];
   const restored: string[] = [];
   for (const step of steps) {
@@ -568,19 +596,23 @@ function rollbackProposal(db: Db, proposalId?: string) {
       const [section, key] = path.split('.');
       const bag = configSection(config, section);
       if (bag && Object.hasOwn(bag, key)) {
-        delete bag[key];
+        text = removeIn(text, [...sectionPath(config, section), key]);
         removed.push(path);
       }
     }
     for (const [path, value] of Object.entries<any>(inv.restore || {})) {
       const [section, key] = path.split('.');
-      (configSection(config, section, true) as Record<string, unknown>)[key] = value;
+      text = setIn(text, [...sectionPath(config, section), key], value);
       restored.push(path);
     }
   }
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  writeFileSync(configPath, text);
 
   db.prepare("UPDATE proposals SET status = 'rolled_back' WHERE id = ?").run(proposalId);
+  // The graph follows the config back, as it followed it forward on apply.
+  // Without this the frontier stayed where the apply had moved it, and `goal`
+  // went on calling what was rolled back already reached.
+  seedFromConfig(db);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('apply', ?, 'rolled_back', 0, ?)"
   ).run(row.approved_by || 'human:unknown', `${proposalId}`);
@@ -599,13 +631,15 @@ function rollbackProposal(db: Db, proposalId?: string) {
 function applyRemoval(db: Db, capId: string) {
   const configPath = configDefault();
   if (!existsSync(configPath)) return { error: 'Config not found' };
+  // Read with its comments, and the entry taken out of the text in place, so
+  // the comments a person wrote are still there after a removal of one entry.
+  let text: string;
   let config: any;
   try {
-    config = JSON.parse(readFileSync(configPath, 'utf8'));
+    text = readFileSync(configPath, 'utf8');
+    config = parseJsonc(text);
   } catch {
-    // A commented `opencode.jsonc` parses, but writing it back deletes every
-    // comment in it, which no removal of one entry should do.
-    return { error: `${configPath} is not plain JSON; remove ${capId} by hand` };
+    return { error: `Cannot read ${configPath}; remove ${capId} by hand` };
   }
   const prefix = capId.split(':')[0];
   const key = capId.replace(/^[^:]+:/, '');
@@ -626,9 +660,15 @@ function applyRemoval(db: Db, capId: string) {
     return !!bag && typeof bag === 'object' && Object.hasOwn(bag, key);
   });
   if (!section) return { error: 'Not found: ' + capId };
-  writeFileSync(configPath + '.bak', JSON.stringify(config, null, 2));
-  delete bagAt(section)[key];
-  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  let backup: string | undefined;
+  try {
+    backup = keepBackup(configPath);
+  } catch (e) {
+    return {
+      error: `Refused. ${configPath} could not be backed up (${(e as Error).message}), and nothing is changed without one.`,
+    };
+  }
+  writeFileSync(configPath, removeIn(text, [...section.split('.'), key]));
   const db2 = getDb();
   try {
     db2
@@ -639,7 +679,7 @@ function applyRemoval(db: Db, capId: string) {
   } catch {}
   db2.close();
   seedFromConfig(db);
-  return { removed: capId, section, key, backup: configPath + '.bak' };
+  return { removed: capId, section, key, backup };
 }
 
 export {

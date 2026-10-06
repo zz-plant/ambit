@@ -4,7 +4,9 @@
  * End-to-end: each test seeds a real graph by running the engine CLI. Split out
  * of a single 2,300-line file so a failure names a subject.
  */
+import { writeFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
+import { parseJsonc } from '../shared/opencode.ts';
 import { auditStream } from './audit.ts';
 import {
   APPLIABLE,
@@ -622,4 +624,39 @@ test('apply refuses a step authority denies, even with an approval', () => {
   const refused = cli('apply', p.proposal);
   expect(refused.applied).toBeUndefined();
   expect(refused.error).toContain('not permitted');
+});
+
+test('apply and rollback edit a commented config in place, and give back its bytes', () => {
+  // Apply read the config with JSON.parse, so a commented file `seed` maps was
+  // refused, and a plain one was rewritten whole: the backup and the rolled
+  // back file had the content and not the bytes, comments and layout gone.
+  seed(APPLIABLE).close();
+  const path = join(dir, 'config.json');
+  const original = `{
+  // the person's own note
+  "provider": { "ollama": { "models": { "qwen3-coder": {} } } },
+  "mcp": {
+    "git": {}, // kept
+  },
+  "actors": { "kanav": { "name": "Kanav" } }
+}
+`;
+  writeFileSync(path, original);
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  const applied = cli('apply', p.proposal);
+  expect(applied.applied).toBe(true);
+
+  const after = readFileSync(path, 'utf8');
+  expect(after).toContain("// the person's own note");
+  expect(after).toContain('"git": {}, // kept');
+  expect(parseJsonc(after).mcp).toHaveProperty('fetch');
+  expect(readFileSync(applied.backup, 'utf8')).toBe(original);
+
+  cli('rollback', p.proposal);
+  expect(readFileSync(path, 'utf8')).toBe(original);
+  // And the graph followed the config back, without a manual seed.
+  const db = getDb(join(dir, 'graph.db'));
+  expect(rows(db, "SELECT state FROM capabilities WHERE id = 'mcp:fetch'")[0].state).toBe('locked');
+  db.close();
 });

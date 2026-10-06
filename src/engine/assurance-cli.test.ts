@@ -8,6 +8,7 @@ import { test, expect } from 'vitest';
 import {
   LOCAL_ONLY,
   PLUS_EMBEDDINGS,
+  WITH_PEOPLE,
   cli,
   dir,
   getDb,
@@ -458,4 +459,26 @@ test('a contract action can declare a check of its own', () => {
   const evidence = cli('verify', 'act:version-control/commit_changes', '--history');
   expect(evidence.length).toBe(1);
   expect(evidence[0].action).toMatch(/verified|failed/);
+});
+
+test('a promotion a person set survives the next seed', () => {
+  // The seed rebuilds the curated grants from the tree, and the threshold and
+  // the earned promotion were on those rows: the next seed or apply put the
+  // grant back to confirm while `authority promote` still reported it.
+  seed(WITH_PEOPLE).close();
+  cli('authority', 'promote', 'shell-execution', 'execute', '--after=2', '--by=kanav');
+  cli('verify', 'shell-execution');
+  cli('verify', 'shell-execution');
+  expect(cli('can', 'shell-execution').decision).toBe('ALLOW');
+
+  seed(WITH_PEOPLE).close();
+  expect(cli('can', 'shell-execution').decision).toBe('ALLOW');
+  const db = getDb(join(dir, 'graph.db'));
+  expect(
+    rows(
+      db,
+      "SELECT promote_after, promote_set_by FROM authority WHERE capability_id = 'combo:shell-execution' AND action = 'execute' AND source = 'techtree'"
+    )
+  ).toEqual([{ promote_after: 2, promote_set_by: 'human:kanav' }]);
+  db.close();
 });
