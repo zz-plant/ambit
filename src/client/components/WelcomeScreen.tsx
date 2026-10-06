@@ -19,7 +19,7 @@ interface WelcomeProps {
  * question is whether this works with the tool they use, and the tagline alone
  * never said.
  */
-const RUNTIMES = [
+export const RUNTIMES = [
   'Claude Code',
   'Cursor',
   'OpenCode',
@@ -28,6 +28,13 @@ const RUNTIMES = [
   'Claude Desktop',
   'Codex CLI',
 ];
+
+/**
+ * How many runtimes discovery reads in all, so the lede's "and N more" is
+ * counted. The page cannot import the engine's readers; welcome.test.tsx holds
+ * this to them, since the hand-written "four more" outlived a fifth.
+ */
+export const RUNTIMES_READ = 12;
 
 /** The published docs, beside the app on the hosted site. */
 const DOCS = `${import.meta.env.BASE_URL}docs/`;
@@ -98,8 +105,8 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
           What can you and your agents do, and what would one more step open up?
         </h1>
         <p className="app-welcome-lede">
-          That reach is your <em>ambit</em>. Ambit reads the configs of {RUNTIMES.join(', ')} and
-          four more, and draws it as one map: what works, which next step would open the most, and
+          That reach is your <em>ambit</em>. Ambit reads the configs of {RUNTIMES.join(', ')} and{' '}
+          {RUNTIMES_READ - RUNTIMES.length} more, and draws it as one map: what works, which next step would open the most, and
           what stops if a piece goes away.
         </p>
 

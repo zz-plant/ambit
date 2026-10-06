@@ -2,7 +2,7 @@
 
 Ambit — what you, your agents, and your machines can jointly do — and where your own time is going. [README.md](./README.md) says what it does, [docs/deep-dive.md](./docs/deep-dive.md) says what the model means, this file says what must not break, and [CONTRIBUTING.md](./CONTRIBUTING.md) says how to get a pull request merged. [SECURITY.md](./SECURITY.md) is the same posture written for someone reviewing it from outside. See [the roadmap](./docs/roadmap.md) for where the data model is heading; treat it as direction, not as description of what exists.
 
-Capability graph engine, ERAS-era SVG visualizer, MCP server, control plane interceptor, and passive tracking plugins for OpenCode.
+Capability graph engine, an SVG map of the curated tree in era columns, MCP server, control plane interceptor, and the plugins that feed the work ledger from OpenCode and Claude Code.
 
 ## Running it
 
@@ -26,7 +26,7 @@ A checkout keeps its graph in the checkout (`toolchain-viz.db`), so the graph yo
 - **Engine**: Node.js with `--experimental-sqlite`, schema at `src/engine/schema.sql`
 - **Backend**: `node:http` in `src/server/api.ts` — visualizer API, SSE stream, and static `dist/` in production. It is a reader of the graph: every projection comes from `src/engine/views.ts`, never from SQL written here
 - **MCP Server**: JSON-RPC over stdio in `src/mcp/`, one `ambit_*` tool per question the engine answers. The roster is in [the deep dive](./docs/deep-dive.md#the-full-mcp-surface); no test holds a count, so do not write one down here
-- **Plugins**: `plugins/ambit-telemetry.js` (tool executions and permission prompts → the work ledger) and `plugins/ambit-tracker.js` (configuration changes), both copied to `~/.config/opencode/plugins/`. Each default-exports `{ id, setup, server }`: OpenCode 2 runs `setup` and OpenCode 1 calls `server`, and neither version runs the other's half
+- **Plugins**: `plugins/ambit-telemetry.js` (tool executions and permission prompts → the work ledger) and `plugins/ambit-tracker.js` (configuration changes), both copied to `~/.config/opencode/plugins/`. Each default-exports `{ id, setup, server }`: OpenCode 2 runs `setup` and OpenCode 1 calls `server`, and neither version runs the other's half. Claude Code's are under `plugins/claude-code/`: `ambit`, whose hooks spool tool runs, failures and asks into the same ledger (`src/engine/spool.ts`), and `ambit-gate`
 
 ## Core Structure
 

@@ -11,11 +11,12 @@
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
+import { MCP_CLIENTS } from '../../engine/mcp-clients';
 import { mergeGraphs } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { mapFindings } from './civ/layout';
-import WelcomeScreen from './WelcomeScreen';
+import WelcomeScreen, { RUNTIMES, RUNTIMES_READ } from './WelcomeScreen';
 
 const html = renderToStaticMarkup(<WelcomeScreen onExploreDemo={() => {}} onViewLoop={() => {}} />);
 
@@ -57,6 +58,15 @@ test('the landing names the runtimes it reads, so a visitor can tell it reads th
   for (const runtime of ['Claude Code', 'Cursor', 'OpenCode', 'Codex CLI']) {
     expect(html).toContain(runtime);
   }
+});
+
+test('the count of the rest is the engine’s, so it cannot outlive a new reader', () => {
+  // OpenCode and Claude Code have readers of their own; every other runtime
+  // is one entry in the engine's client list.
+  const read = ['OpenCode', 'Claude Code', ...MCP_CLIENTS.map(c => c.label)];
+  expect(RUNTIMES_READ).toBe(read.length);
+  for (const named of RUNTIMES) expect(read).toContain(named);
+  expect(html).toContain(`and ${read.length - RUNTIMES.length} more`);
 });
 
 test('the demo comes before the paste box, so a phone shows it on its first screen', () => {
