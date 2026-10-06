@@ -255,6 +255,15 @@ export function configSection(config: Bag, section: string, create = false): Bag
 }
 
 /**
+ * Where a section sits in the file, as keys from its root: `configSection`'s
+ * answer for an edit made to the text. A V2 file keeps its servers under
+ * `mcp.servers`; every other section is a key of the root.
+ */
+export function sectionPath(config: Bag, section: string): string[] {
+  return section === 'mcp' && mcpEntries(config).v2 ? ['mcp', 'servers'] : [section];
+}
+
+/**
  * An MCP entry from a V1-shaped patch, in the words of the file it is going
  * into: OpenCode 2 switches a server off with `disabled`, never `enabled`.
  */

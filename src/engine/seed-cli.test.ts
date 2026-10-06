@@ -591,3 +591,61 @@ test('opencode.jsonc is read when it is the only config there', () => {
   db.close();
   expect(ids).toContain('mcp:notes');
 });
+
+test('a server removed from the config is retired by the next seed, and restored when it returns', () => {
+  // A seed only ever added: the server stayed reached, and so did what only it
+  // supplied, until someone deleted the graph.
+  const both = { mcp: { git: {}, playwright: {} } };
+  const read = () => {
+    const db = getDb(join(dir, 'graph.db'));
+    const server = rows(
+      db,
+      "SELECT state, retired_at FROM capabilities WHERE id = 'mcp:playwright'"
+    )[0];
+    const browser = rows(
+      db,
+      "SELECT state FROM capabilities WHERE id = 'combo:browser-automation'"
+    )[0];
+    const edges = rows(
+      db,
+      "SELECT COUNT(*) AS n FROM dependencies WHERE from_capability = 'mcp:playwright' AND kind = 'provides'"
+    )[0].n;
+    db.close();
+    return { server, browser: browser.state, edges };
+  };
+
+  seed(both).close();
+  expect(read()).toMatchObject({
+    server: { state: 'unlocked', retired_at: null },
+    browser: 'unlocked',
+  });
+
+  seed({ mcp: { git: {} } }).close();
+  const gone = read();
+  expect(gone.server.state).toBe('locked');
+  expect(gone.server.retired_at).not.toBeNull();
+  expect(gone).toMatchObject({ browser: 'locked', edges: 0 });
+
+  seed(both).close();
+  expect(read()).toMatchObject({
+    server: { state: 'unlocked', retired_at: null },
+    browser: 'unlocked',
+  });
+});
+
+test('a node no seed declared is never retired by one', () => {
+  // A person declared at the browser, or a row another adapter wrote, is not
+  // this runtime's to take back.
+  seed({ mcp: { git: {} } }).close();
+  const db = getDb(join(dir, 'graph.db'));
+  db.prepare(
+    "INSERT INTO capabilities (id, name, domain, description, kind, category, state) VALUES ('mcp:hermes-only', 'h', 'infra', '', 'provider', 'mcp', 'unlocked')"
+  ).run();
+  db.close();
+  seed({ mcp: { git: {} } }).close();
+  const after = getDb(join(dir, 'graph.db'));
+  expect(rows(after, "SELECT state FROM capabilities WHERE id = 'mcp:hermes-only'")[0].state).toBe(
+    'unlocked'
+  );
+  after.close();
+});
