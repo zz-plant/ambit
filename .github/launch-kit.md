@@ -107,4 +107,4 @@ Left, and each needs a person:
 
 1. Add an `NPM_TOKEN` automation token to the repository's secrets, so the release workflow publishes the next version itself, with provenance. 0.5.0 was published from a laptop without it.
 2. Post the Show HN draft, whose install line is now `npx ambit-cli`.
-3. From 0.6.0 the Homebrew formula installs the npm tarball, which carries the built map, so `ambit web` works from Homebrew too. The release workflow's tap job writes the formula once that version is on npm. Without `TAP_TOKEN` it prints the formula in the job log to paste into `zz-plant/homebrew-tap`; if npm was published from a laptop after the tag, re-run that job.
+3. Done for 0.6.0 (2026-10-05): published to npm by hand, the GitHub release made the tag, the MCP registry lists 0.6.0 as latest, and the formula, written by the tap job from the npm tarball, was committed to `zz-plant/homebrew-tap` by hand. The next release is the same four steps until `NPM_TOKEN` and `TAP_TOKEN` are set.
