@@ -11,6 +11,7 @@ import type {
 import { useCopied } from '../hooks/useCopied';
 import { budgetBar } from '../utils/budgetBar';
 import { type CapabilityNeeds, needsOf } from '../utils/needs';
+import { formatCount } from '../../shared/format';
 import { HoursSparkline, NUM, StackedBar, money } from './figures';
 import RunSection from './RunTimeline';
 import { Term } from './Term';
@@ -106,6 +107,45 @@ function ForecastPair({ predicted, observed }: { predicted: number; observed: nu
  * segment carries its own written label. Colour is the last thing doing the
  * work here, not the first.
  */
+/**
+ * What sessions used in tokens, per model, over the page's window. Recorded by
+ * the Claude Code hooks from each session's transcript; no price, because the
+ * transcript states none and a guessed one would be a figure the ledger could
+ * not stand behind. Cache reads are drawn apart, in the quietest colour: they
+ * are most of the count and the cheapest part of it.
+ */
+function TokenUsage({ tokens }: { tokens: NonNullable<LoopSnapshot['tokens']> }) {
+  const all = tokens.models.reduce((n, m) => n + m.input + m.cached + m.output, 0);
+  return (
+    <figure className="fig fig--kpi fig--wide">
+      <figcaption className="fig-caption">
+        <span className="fig-caption-title">Tokens</span>
+        <span className="fig-caption-note">
+          {tokens.sessions} {tokens.sessions === 1 ? 'session' : 'sessions'}, last {tokens.days}{' '}
+          days · counts from transcripts, no price stated
+        </span>
+      </figcaption>
+      <div className="fig-kpi-value" style={NUM}>
+        {formatCount(all)}
+        <span className="fig-kpi-unit"> tokens</span>
+      </div>
+      {tokens.models.map(m => (
+        <div key={m.model} className="loop-token-model">
+          {tokens.models.length > 1 && <div className="loop-token-name">{m.model}</div>}
+          <StackedBar
+            format={formatCount}
+            segments={[
+              { key: 'input', n: m.input, label: 'input' },
+              { key: 'cached', n: m.cached, label: 'cache reads' },
+              { key: 'output', n: m.output, label: 'output' },
+            ]}
+          />
+        </div>
+      ))}
+    </figure>
+  );
+}
+
 function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   const proven = status.verified;
   const unproven = Math.max(status.reached - status.verified - status.failing, 0);
@@ -1135,6 +1175,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
               </p>
             )}
           </figure>
+
+          {loop.tokens && <TokenUsage tokens={loop.tokens} />}
 
           {loop.context_burn && (
             <figure className="fig fig--kpi">

@@ -309,6 +309,16 @@ export function demoSnapshot(): LoopSnapshot {
       lost: [],
       diminished: treeStatus().degraded,
     },
+    // A month of sessions: the hosted model does most of it, and cache reads
+    // are most of its count, as they are in any long session.
+    tokens: {
+      days: 30,
+      sessions: 46,
+      models: [
+        { model: 'claude-sonnet-5-5', input: 2_480_000, cached: 41_300_000, output: 655_000 },
+        { model: 'qwen3-coder', input: 910_000, cached: 0, output: 212_000 },
+      ],
+    },
     context_burn: {
       tokens_prevented: 144000,
       dollars_prevented: 43.2,

@@ -18,7 +18,7 @@ import { budgetStanding } from './budgets.ts';
 import { installText } from './catalog.ts';
 import { frontierSeries, ledgerSince } from './ledger.ts';
 import { machineModes } from './machines.ts';
-import { runTimeline, unmappedUse } from './telemetry.ts';
+import { runTimeline, tokenUsage, unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
@@ -675,6 +675,8 @@ export function loopView(db: Db): LoopResponse {
     loops_intercepted: loopsIntercepted,
   };
 
+  const tokens = tokenUsage(db, LOOP_WINDOW_DAYS);
+
   return {
     source: 'ledger',
     authority: loopAuthority(db),
@@ -682,10 +684,13 @@ export function loopView(db: Db): LoopResponse {
     since: loopSince(db),
     demand: loopDemand(db),
     context_burn: contextBurn,
+    tokens,
     // The ledger is what fills this page. With nothing in it the figures would
     // all be zero, which reads as "you waste no time" rather than "nothing has
     // been recorded" — so the page says which it is instead of drawing it.
-    empty: interventions === 0 && opportunities.length === 0 && monthly.length === 0,
+    // Token counts are a recording too: a Claude Code session that asked for
+    // nothing still has them, and they are the page's to show.
+    empty: interventions === 0 && opportunities.length === 0 && monthly.length === 0 && !tokens,
     status: {
       reached: counts.reached,
       total: counts.total,

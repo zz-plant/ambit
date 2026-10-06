@@ -17,6 +17,16 @@ export function formatCents(cents: number): string {
 }
 
 /**
+ * A large count as a person reads it: 3.8M, 547M, 12K, 940. Token counts run
+ * to hundreds of millions, and nine digits do not compare at a glance.
+ */
+export function formatCount(n: number): string {
+  return new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(
+    n
+  );
+}
+
+/**
  * Format a timestamp as standard ISO 8601 UTC string.
  */
 export function formatIsoTimestamp(date: Date | string | number = new Date()): string {
