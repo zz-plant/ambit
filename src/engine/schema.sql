@@ -286,6 +286,25 @@ CREATE TABLE IF NOT EXISTS outcomes (
     recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- How far each agent session log on this machine has been read into the
+-- ledger (src/engine/session-logs.ts): a Codex rollout, an OpenCode database,
+-- an Amp thread. `size` and `mtime_ms` are what a read compares first, so a
+-- command that finds nothing new costs a stat per file and no parsing.
+-- `byte_offset` is where an appended log resumes, and `state` is what parsing
+-- needs to resume there: counts, model names, ids and times, never anything a
+-- session said. It describes this machine's files, so `ambit sync` leaves it
+-- behind, and losing it costs one re-read: what a run already holds is never
+-- recorded twice.
+CREATE TABLE IF NOT EXISTS session_log_cursors (
+    path TEXT PRIMARY KEY,
+    runtime TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    mtime_ms REAL NOT NULL,
+    byte_offset INTEGER NOT NULL DEFAULT 0,
+    state TEXT,
+    read_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_work_runs_started ON work_runs(started_at);
 CREATE INDEX IF NOT EXISTS idx_work_events_run ON work_events(run_id);
 CREATE INDEX IF NOT EXISTS idx_capability_use_run ON capability_use(run_id, capability_id);

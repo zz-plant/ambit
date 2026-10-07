@@ -95,7 +95,7 @@ test('a budget with no recorded spend draws no tick and no day, and says what re
   expect(html).not.toContain('fig-budget-over');
   expect(said).not.toContain('is reached on');
   expect(said).toContain('No spend recorded, so there is no pace to draw.');
-  expect(said).toContain('recorded as a spend on Hosted Inference when it ends');
+  expect(said).toContain('are recorded as a spend on Hosted Inference');
   expect(said).toContain('ambit economics price');
   expect(said).toContain('Nothing else records spend on its own; an integration calls recordSpend');
 });

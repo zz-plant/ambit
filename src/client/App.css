@@ -5816,6 +5816,14 @@ button.app-sample-tag:hover {
   background: var(--fig-context);
 }
 
+/* Reasoning, where a runtime counts it apart from output, is priced as output,
+   so it is output's colour, set apart from output's own segment by an edge. */
+.fig-stack-seg--reasoning,
+.fig-key-swatch--reasoning {
+  background: var(--fig-data-soft);
+  box-shadow: inset 2px 0 0 var(--fig-data);
+}
+
 .fig-stack-seg--autonomous,
 .fig-key-swatch--autonomous {
   background: var(--fig-good);
