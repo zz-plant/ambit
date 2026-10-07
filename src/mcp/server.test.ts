@@ -1,6 +1,6 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, mkdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -401,6 +401,29 @@ test('ambit_goal routes goals and accepts judge option', () => {
   expect(judgedAnswer.judged).toBeDefined();
 });
 
+test('ambit_goal reads a spec as data and routes its tasks', () => {
+  // The one optional argument the listing's byte budget had room for: a new
+  // tool would have cost a name and a description, this costs one property.
+  const feature = join(dir, 'specs', '001-billing');
+  mkdirSync(feature, { recursive: true });
+  writeFileSync(
+    join(feature, 'tasks.md'),
+    '- [ ] T001 Take payments with a checkout page\n- [ ] T002 Draw the pricing table\n'
+  );
+  const path = copyOfGraph('spec.db');
+  const before = digest(path);
+  const reply = call('ambit_goal', { spec: feature }, path);
+  expect(reply.result.isError).toBeUndefined();
+  const answer = reply.result.structuredContent;
+  expect(answer.needs.map((n: any) => [n.id, n.tasks])).toEqual([['combo:payments', ['T001']]]);
+  expect(answer.unrouted).toEqual([{ id: 'T002', text: 'Draw the pricing table' }]);
+  expect(digest(path)).toEqual(before);
+
+  const missing = call('ambit_goal', { spec: join(dir, 'nope') }).result;
+  expect(missing.isError).toBe(true);
+  expect(missing.structuredContent.error).toMatch(/^No spec at /);
+});
+
 test('a step between two observations reads over MCP as the terminal prints it', () => {
   // The map's timeline, `ambit history since <from> <until>` and this tool
   // are one comparison, so one pair of snapshots is one sentence everywhere.
@@ -715,7 +738,6 @@ test('a call missing what it needs comes back as a failed call that says what to
     ['ambit_plan', 'capId'],
     ['ambit_can', 'capability'],
     ['ambit_run_end', 'runId'],
-    ['ambit_goal', 'goal'],
   ]) {
     const reply = call(name, {});
     expect(reply.error).toBeUndefined();
@@ -725,6 +747,12 @@ test('a call missing what it needs comes back as a failed call that says what to
     expect(answer.takes).toContain(`${missing}*`);
     expect(answer.error).not.toContain('ambit goal');
   }
+  // A goal is the sentence or the spec, so neither is starred and the answer
+  // names both.
+  const goal = call('ambit_goal', {}).result;
+  expect(goal.isError).toBe(true);
+  expect(goal.structuredContent.error).toContain('goal is required, unless spec');
+  expect(goal.structuredContent.takes).toContain('spec (string)');
 });
 
 test('an argument the tool does not take is refused, and nothing runs', () => {

@@ -19,6 +19,8 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                     delta, compare acquisition paths, or check preferences
                     --judge[=url] asks a judgment model on this machine when
                     no words match; it suggests and writes nothing
+  goal --spec <dir|tasks.md>   what a Spec Kit or OpenSpec spec's tasks need,
+                    and the gap; the file is read as data, nothing in it runs
   opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
                     ranked investments — observed burden, priced, compared
   verify [cap] [--history]   run the declared check, or show past verification;
@@ -69,6 +71,11 @@ plan — what to acquire next, and whether it paid
                           preferences; --judge asks a judgment model on this
                           machine (AMBIT_JUDGE_URL, or Kev on 127.0.0.1:8009)
                           when no words match, and suggests without writing
+  plan goal --spec <dir|tasks.md> [--judge[=url]]   a spec's tasks, each routed
+                          as a sentence is: what they need, which is reached,
+                          a next step, blocked or failing, the steps in order,
+                          and the tasks nothing routed. Spec Kit and OpenSpec;
+                          read as data, so no command, link or URL in it runs
   plan opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
                           ranked investments — observed burden, priced, compared;
                           --budget allocates the best combination within $N
