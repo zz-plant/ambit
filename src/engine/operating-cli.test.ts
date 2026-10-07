@@ -463,8 +463,13 @@ test('roi measures before and after an apply, and writes the observation back', 
   cli('approve', p.proposal, 'kanav');
   cli('apply', p.proposal);
 
-  // After the apply: one short intervention remains.
+  // Backdate the apply fifteen days, so the after window has history to
+  // compare: a change applied yesterday cannot be annualized into savings.
+  // Then record one short intervention after the apply.
   const db2 = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  (db2 as any)
+    .prepare("UPDATE proposals SET applied_at = datetime('now', '-15 days') WHERE id = ?")
+    .run(p.proposal);
   const r2 = beginRun(db2, { goal: 'search the web', goalId: 'combo:web-research' });
   recordIntervention(db2, r2.run, 'human:kanav', {
     kind: 'clerical',
@@ -481,7 +486,11 @@ test('roi measures before and after an apply, and writes the observation back', 
   // windows is what must hold, not the exact partition.
   expect(roi.observed.before.human_hours).toBeGreaterThanOrEqual(3);
   expect(roi.observed.before.interventions + roi.observed.after.interventions).toBe(4);
-  expect(roi.observed.projected_hours_saved_per_year).toBeGreaterThan(30);
+  // Windows compared per day: 3 hours over 60 days before, 0.1 hours over 15
+  // days after, annualized. Positive, and well under the old monthly figure.
+  expect(roi.observed.after_window_days).toBeGreaterThan(10);
+  expect(roi.observed.projected_hours_saved_per_year).toBeGreaterThan(10);
+  expect(roi.observed.projected_hours_saved_per_year).toBeLessThan(25);
   expect(typeof roi.observed.verdict).toBe('string');
 
   // The observation is written back, so the next prediction can learn.
@@ -500,6 +509,33 @@ test('roi on an unapplied proposal says so', () => {
   const p = cli('propose', 'web-research');
   const roi = cli('roi', p.proposal);
   expect(roi.error).toContain('apply');
+});
+
+test('roi with no post-apply interventions reports no savings', () => {
+  seed(APPLIABLE).close();
+  // Ten prior hours, then an apply with nothing recorded after it. This used
+  // to annualize the whole before-window as saved; it must read as too early.
+  const db0 = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof recordIntervention>[0];
+  const r0 = beginRun(db0, { goal: 'search the web', goalId: 'combo:web-research' });
+  const past = new Date(Date.now() - 30 * 864e5).toISOString();
+  for (let i = 0; i < 10; i++) {
+    recordIntervention(db0, r0.run, 'human:kanav', {
+      kind: 'clerical',
+      capabilityId: 'combo:web-research',
+      activeSeconds: 3600,
+      startedAt: past,
+    });
+  }
+  (db0 as any).close();
+
+  const p = cli('propose', 'web-research');
+  cli('approve', p.proposal, 'kanav');
+  cli('apply', p.proposal);
+
+  const roi = cli('roi', p.proposal);
+  expect(roi.observed.after.interventions).toBe(0);
+  expect(roi.observed.projected_hours_saved_per_year).toBe(0);
+  expect(roi.observed.verdict).toContain('too early');
 });
 
 // ── Federation (WP-10) ───────────────────────────────────────────────────────

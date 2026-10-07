@@ -218,7 +218,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'digest',
     description:
-      'How much work still runs through the human, and which interventions are reducible: recurring approvals and permission blocks are infrastructure shaped like a person. days: window (default 7).',
+      'How much work still runs through the human, and which interventions are reducible: recurring approvals and permission blocks are candidates for a bounded grant or automation. days: window (default 7).',
     inputSchema: { type: 'object', properties: { days: num } },
     annotations: READS,
   },
@@ -407,7 +407,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'blocked',
     description:
-      'Record that a task was blocked by a missing capability. The same deficit hit repeatedly is infrastructure that should exist.',
+      'Record that a task was blocked by a missing capability. The same deficit hit repeatedly is a capability or workflow worth investigating.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -185,7 +185,7 @@ function humanDigest(db: Migratable, days?: number | string) {
     keepers: keepers.length ? keepers : undefined,
     broken: failing.length ? failing : undefined,
     note: reducible.length
-      ? 'reducible: the same middleware act demanded repeatedly — infrastructure shaped like a person. Grant or automate once instead of asking again. Judgment and knowledge are never flagged.'
+      ? 'reducible: the same middleware act demanded repeatedly is a candidate for a bounded grant or automation, not another reminder. Judgment and knowledge are never flagged.'
       : keepers.length
         ? 'keepers: judgment and knowledge supplied by the human — not reducible, however often they recur.'
         : undefined,

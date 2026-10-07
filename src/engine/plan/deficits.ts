@@ -1,9 +1,9 @@
 /**
  * What keeps stopping work, and whether it is structural.
  *
- * A deficit recorded once is friction; the same one recorded repeatedly is
- * infrastructure that should exist. The classification is the point — a
- * capability blocked four times for four different reasons is a different
+ * A deficit recorded once is friction; the same one recorded repeatedly is a
+ * capability or workflow worth investigating. The classification is the point —
+ * a capability blocked four times for four different reasons is a different
  * finding from one blocked four times for the same reason.
  */
 import { shellQuote } from '../../shared/shell.ts';
@@ -46,9 +46,10 @@ function blockedAction(classifier?: string): string {
  * Records a task failure against the capability that was missing, and why.
  *
  * The point is not the individual failure, it is the pattern. A deficit hit
- * once is bad luck; the same one hit four times is infrastructure that should
- * exist. `tt deficits` reports the recurring ones, which is the signal for
- * turning friction into a capability rather than working around it again.
+ * once is bad luck; the same one hit four times is a capability or workflow
+ * worth investigating. `tt deficits` reports the recurring ones, which is the
+ * signal for turning friction into a capability rather than working around it
+ * again.
  *
  *   tt failed vector-store tool "semantic search over notes"
  *   tt failed vector-store reasoning
@@ -96,7 +97,7 @@ function recordFailure(db: Db, capId?: string, classifier?: string, note?: strin
     times_as_this_class: clsCount?.n ?? undefined,
     note:
       (count?.n ?? 1) >= 3
-        ? 'This has blocked work repeatedly. It is a structural deficit, not a one-off — see ambit goal ' +
+        ? 'This has blocked work repeatedly. Worth investigating as a missing capability or workflow — see ambit goal ' +
           id.replace('combo:', '')
         : undefined,
   };
@@ -144,8 +145,8 @@ function deficits(db: Db) {
   // whether a deficit is an acquisition, a repair, or a permission somebody
   // has to grant. Before failures were captured from the runtime (§12.2) a
   // permission-class deficit was rare enough not to need its own verdict; now
-  // it is the common case, and "was structural; now reached" is the wrong
-  // thing to say about a server that answers 403 three times a week.
+  // it is the common case, and "recurring" with no cause is the honest thing
+  // to say about a server that answers 403 three times a week.
   const dominant = new Map<string, string>();
   for (const r of byClass) if (!dominant.has(r.id)) dominant.set(r.id, r.class);
 
@@ -170,7 +171,7 @@ function deficits(db: Db) {
             : r.times >= 3 && dominant.get(r.id) === 'infrastructure'
               ? 'structural — reached, and unreachable. This is a repair, not an acquisition'
               : r.times >= 3
-                ? 'was structural; now reached'
+                ? 'recurring — investigate what is missing'
                 : 'incidental so far',
     recommendation:
       r.times >= 3 && r.state === 'locked'

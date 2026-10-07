@@ -275,7 +275,7 @@ function priceCluster(
     note: keeper
       ? 'judgment/knowledge is the reason the human is there — not reducible, however often it recurs'
       : middleware
-        ? 'middleware: the human is the duct — automation removes most of the recurring act'
+        ? 'middleware: a candidate for automation — the projection assumes 90% of the recurring act is removable, which roi later measures'
         : undefined,
   };
 }
