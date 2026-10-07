@@ -111,6 +111,38 @@ export function timelineSentence(history: FrontierHistoryResponse, tick: Frontie
 }
 
 /**
+ * How long Play holds each stop before the next. The sentence it changes runs
+ * to a dozen words ("Aug 31: reached 46 to 65, 3 emergent."), and the map
+ * redraws under it, so a stop has to last long enough to read one and glance
+ * at the other; 1.4 seconds does both, and plays the demo's five observations
+ * through to now in seven. Reduced motion keeps the same pace: each step is a
+ * new reading the person asked for, not decoration, and none of it animates.
+ */
+export const PLAY_STEP_MS = 1400;
+
+/**
+ * Where Play starts: the observation on screen, or the first one when the
+ * playhead is on now, since from now nothing is left to play. Null only for a
+ * series with no observation in it.
+ */
+export function playStart(history: FrontierHistoryResponse, at: string | null): string | null {
+  const tick = tickAt(history, at) ?? history.ticks[0];
+  return tick ? tickSecond(tick) : null;
+}
+
+/**
+ * The stop after the playhead: the next observation's second, or null for
+ * now once the newest has been shown. Now is the last stop, so from now the
+ * answer is now again, which is where Play stops.
+ */
+export function nextStop(history: FrontierHistoryResponse, at: string | null): string | null {
+  const tick = tickAt(history, at);
+  if (!tick) return null;
+  const next = history.ticks[history.ticks.indexOf(tick) + 1];
+  return next ? tickSecond(next) : null;
+}
+
+/**
  * Whether there is a history to draw: two observations, the fewest with
  * anything between them. One is a point, and a full-width strip saying so sat
  * under every first look at the map.

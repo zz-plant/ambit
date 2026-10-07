@@ -85,6 +85,8 @@ export default function App() {
   const historyAt = useAmbitStore(s => s.historyAt);
   const setHistoryAt = useAmbitStore(s => s.setHistoryAt);
   const historyOpen = useAmbitStore(s => s.historyOpen);
+  const historyPlaying = useAmbitStore(s => s.historyPlaying);
+  const setHistoryPlaying = useAmbitStore(s => s.setHistoryPlaying);
   const loadHistory = useAmbitStore(s => s.loadHistory);
 
   const selectItem = useAmbitStore(s => s.selectItem);
@@ -418,6 +420,12 @@ export default function App() {
   // holds fewer than two ticks; with no engine behind the page it is absent.
   const showTimeline =
     view === 'tree' && hasTree && !touring && (historyOpen || Boolean(tick)) && hasHistory(history);
+  // Play runs only where it is seen. When the strip goes (another view, the
+  // tour, an emptied graph) it pauses, and does not step on unseen and come
+  // back somewhere else.
+  useEffect(() => {
+    if (!showTimeline && useAmbitStore.getState().historyPlaying) setHistoryPlaying(false);
+  }, [showTimeline, setHistoryPlaying]);
   const endTour = () => {
     setTourAsked(false);
     dismissGuide();
@@ -544,6 +552,8 @@ export default function App() {
             history={history}
             at={tick ? historyAt : null}
             onScrub={setHistoryAt}
+            playing={historyPlaying}
+            onPlay={setHistoryPlaying}
             leftInset={8}
             rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
           />

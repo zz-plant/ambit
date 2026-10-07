@@ -2355,6 +2355,54 @@ button.app-sample-tag:hover {
   background: var(--accent);
 }
 
+/* Play to the left of the bar, with the bar and its dates taking the rest. */
+.civ-timeline-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.civ-timeline-scrub {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Centred on the bar's line: the track starts 4px down and is 24px tall. A
+   map tool's look, ringed so it reads as a control apart from the HUD; lit
+   in the accent while it plays, as an open tool is. */
+.civ-timeline-play {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  padding: 0;
+  border: 1px solid var(--border-bright);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.civ-timeline-play:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.civ-timeline-play.is-on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+.civ-timeline-play svg {
+  fill: currentColor;
+}
+
 /* The ticks sit inside half a thumb at each end, which is where the range
    puts its first and last stops, so a tick and the playhead line up. */
 .civ-timeline-track {

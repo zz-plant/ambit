@@ -311,6 +311,8 @@ test('a past observation states only what it recorded, on the map, the panel and
         history={{ ticks: [tick, later], movedSinceLast: null }}
         at={null}
         onScrub={() => {}}
+        playing={false}
+        onPlay={() => {}}
       />
     ),
     'Timeline'
