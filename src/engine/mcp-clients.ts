@@ -446,6 +446,30 @@ export function clientPaths(runtime: string, home = process.env.HOME || '/'): st
   return CLIENTS.find(c => c.runtime === runtime)?.paths(home) ?? [];
 }
 
+/**
+ * Each client whose config file exists, with the servers its own reader finds
+ * there, or null when the file does not parse. `ambit doctor` reads this, so
+ * it knows every runtime discovery knows, in the shape each one keeps.
+ */
+export function clientConfigs(
+  home = process.env.HOME || '/'
+): { runtime: string; label: string; path: string; servers: Record<string, unknown> | null }[] {
+  const out = [];
+  for (const client of CLIENTS) {
+    const override = process.env[client.env];
+    const path = override || client.paths(home).find(p => existsSync(p));
+    if (!path || !existsSync(path)) continue;
+    let servers: Record<string, unknown> | null = null;
+    try {
+      servers = client.read(readFileSync(path, 'utf8'));
+    } catch {
+      servers = null;
+    }
+    out.push({ runtime: client.runtime, label: client.label, path, servers });
+  }
+  return out;
+}
+
 /** Read MCP-only clients into the same config shape used by the engine seeder. */
 export function discoverMcpClients(home = process.env.HOME || '/'): McpClientSeed[] {
   const found: McpClientSeed[] = [];

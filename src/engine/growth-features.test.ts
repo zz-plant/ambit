@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 import { addEvent, beginRun, cli, dir, getDb, recordUse, seed, LOCAL_ONLY } from './testing/cli.ts';
 import { makeGraph } from './testing/graph.ts';
 import { captureFailure } from './failures.ts';
-import { runDoctor } from './doctor.ts';
+import { detectRuntimes, runDoctor } from './doctor.ts';
 import { CURSOR_LEDGER_EVENTS, cursorLedgerHook, runConnect } from './connect.ts';
 import { discoverMcpClients } from './mcp-clients.ts';
 import { ambitCommand, cursorLedgerScript } from './paths.ts';
@@ -35,6 +35,34 @@ afterEach(() => {
 });
 
 describe('ambit doctor', () => {
+  test("detects every runtime discovery reads, and Ambit in each one's own shape", () => {
+    // Goose keeps YAML and Kiro keeps Cursor's shape: two runtimes the old,
+    // hand-kept list here did not know.
+    mkdirSync(join(testDir, '.config', 'goose'), { recursive: true });
+    writeFileSync(
+      join(testDir, '.config', 'goose', 'config.yaml'),
+      [
+        'extensions:',
+        '  ambit:',
+        '    type: stdio',
+        '    name: ambit',
+        '    enabled: true',
+        '    cmd: ambit',
+        '    args: ["mcp"]',
+        '',
+      ].join('\n')
+    );
+    mkdirSync(join(testDir, '.kiro', 'settings'), { recursive: true });
+    writeFileSync(
+      join(testDir, '.kiro', 'settings', 'mcp.json'),
+      JSON.stringify({ mcpServers: { files: { command: 'files-mcp' } } })
+    );
+    for (const key of ['GOOSE_MCP_CONFIG', 'KIRO_MCP_CONFIG']) delete process.env[key];
+    const found = detectRuntimes(testDir);
+    expect(found.find(r => r.runtime === 'goose')).toMatchObject({ has_ambit: true });
+    expect(found.find(r => r.runtime === 'kiro')).toMatchObject({ has_ambit: false });
+  });
+
   test('evaluates graph health, grade and SPOFs, and prices nothing it did not measure', () => {
     const db = seed(LOCAL_ONLY);
     const doc = cli('doctor');
