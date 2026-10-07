@@ -23,6 +23,11 @@
  * token counts are read from its transcript, per model. A price is applied
  * only where a person declared one for the model, and then the session's cost
  * is a spend against the budget on what the model is a use of, if one is set.
+ *
+ * Cursor's hook (plugins/cursor/ambit-ledger.mjs) appends to the same file,
+ * each line marked `src: "cursor"`, and a Cursor conversation is a run of its
+ * own (`cursorLine` below). Cursor states how long a shell command or an MCP
+ * call ran, its wait for approval left out, so those calls need no pairing.
  */
 import { appendFileSync, existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { spoolPath } from '../shared/db-path.ts';
@@ -39,23 +44,34 @@ import {
   recordToolUse,
 } from './telemetry.ts';
 
-/** One line of the spool, as the hook script writes it. */
+/** One line of the spool, as the hook scripts write it. */
 interface SpoolLine {
   /** When the hook ran, ISO 8601. */
   t?: string;
-  /** Claude Code's hook_event_name. */
+  /**
+   * Which runtime's hook wrote the line: `cursor`, or nothing for Claude
+   * Code, whose hook wrote the spool before any other did.
+   */
+  src?: string;
+  /** The runtime's hook_event_name, spelt as it spells it. */
   e?: string;
-  /** session_id. */
+  /** Claude Code's session_id, or Cursor's conversation_id. */
   s?: string;
   /** tool_use_id, which pairs a call's PreToolUse line with the line that ends it. */
   id?: string;
   /** tool_name. */
   tool?: string;
-  /** tool_error, cut to 500 characters. */
+  /** Cursor's mcp_server_name: the server's key in its mcp.json. */
+  srv?: string;
+  /** How long Cursor says a call ran, in milliseconds, its wait for approval left out. */
+  ms?: number;
+  /** tool_error, or Cursor's error_message, cut to 500 characters. */
   err?: string;
+  /** Cursor's failure_type, as it stated it: `error`, `timeout` or `permission_denied`. */
+  kind?: string;
   /** is_interrupt: the call was stopped, not failed. */
   int?: boolean;
-  /** SessionEnd's reason. */
+  /** SessionEnd's reason, or Cursor's sessionEnd reason. */
   why?: string;
   /** SessionEnd's transcript_path, read here for the session's token counts. */
   tp?: string;
@@ -148,19 +164,134 @@ function timeCalls(lines: SpoolLine[], now = Date.now()) {
   return { timed, waiting };
 }
 
-/** The run a session's events belong to, begun at its first event if it is new. */
-function runOf(db: Db, session: string, at?: string): string {
-  const id = `run-cc-${session.replace(/[^A-Za-z0-9-]/g, '').slice(0, 64)}`;
+/**
+ * The run a session's events belong to, begun at its first event if it is new.
+ * A Cursor conversation's run is named apart from a Claude Code session's, so
+ * the two runtimes' ids can never land in one run.
+ */
+function runOf(db: Db, session: string, at?: string, src?: string): string {
+  const cursor = src === 'cursor';
+  const id = `run-${cursor ? 'cursor' : 'cc'}-${session.replace(/[^A-Za-z0-9-]/g, '').slice(0, 64)}`;
   if (!db.prepare('SELECT 1 AS ok FROM work_runs WHERE id = ?').get(id)) {
     beginRun(db, {
       id,
       at,
-      goal: 'claude code session',
-      source: 'claude-code-hook',
+      goal: cursor ? 'cursor conversation' : 'claude code session',
+      source: cursor ? 'cursor-hook' : 'claude-code-hook',
       runType: 'task',
     });
   }
   return id;
+}
+
+/**
+ * A call that ended without a result: a work event, and a failure signal that
+ * src/engine/failures.ts classifies from what the runtime said (rule 8). A
+ * call someone stopped (Esc, a new prompt) ended without failing, so it is
+ * recorded as stopped and never as a failure signal, which would rank the tool
+ * among what keeps blocking work.
+ */
+function recordFailedCall(
+  db: Db,
+  run: string,
+  call: {
+    source: string;
+    session: string;
+    tool: string;
+    at?: string;
+    interrupted?: boolean;
+    message?: string;
+    errorKind?: string;
+  }
+) {
+  const { tool, at } = call;
+  if (call.interrupted) {
+    addEvent(db, run, { kind: 'tool', action: tool, actor: 'agent', detail: 'interrupted', at });
+    return;
+  }
+  addEvent(db, run, { kind: 'tool', action: tool, actor: 'agent', detail: 'failed', at });
+  captureFailure(db, {
+    source: call.source,
+    sessionId: call.session,
+    tool,
+    message: call.message,
+    errorKind: call.errorKind,
+    at,
+  });
+}
+
+/**
+ * The name the graph knows a Cursor call by, built the way another bridge
+ * already names the same call, so that the one rule mapping a tool to what it
+ * exercises (`capabilitiesFor` in gate.ts, `attribute` in failures.ts) reads it
+ * with no rule of its own for Cursor. An MCP call is named as Claude Code names
+ * one, `mcp__<server>__<tool>`, from the server and tool Cursor states apart. A
+ * shell command is `bash`, as OpenCode names its shell tool and as the graph
+ * holds the entry for running commands (`tool:bash`); Cursor calls the same
+ * tool `Shell` in a failure's tool_name. Any other name is kept as Cursor gave it.
+ */
+function cursorTool(line: SpoolLine): string | undefined {
+  if (line.e === 'afterShellExecution') return 'bash';
+  if (typeof line.tool !== 'string') return undefined;
+  if (line.e === 'afterMCPExecution' && typeof line.srv === 'string') {
+    return `mcp__${line.srv}__${line.tool}`;
+  }
+  return line.tool === 'Shell' ? 'bash' : line.tool;
+}
+
+/**
+ * One Cursor line, read into a conversation's run; false for a line that
+ * records nothing. A shell command or an MCP call that ran is a work event and
+ * a use of what it exercises. Its length is Cursor's own `duration`, which
+ * leaves out any wait for approval, so it holds no person's time, and the use
+ * is dated from when the call began, its end less that length. A failed call
+ * is `recordFailedCall`, with Cursor's failure_type passed on as the error kind
+ * it stated. A conversation's end closes its run. Cursor's hooks report no
+ * token counts, so a Cursor run has none, and none is guessed (rule 16).
+ */
+function cursorLine(db: Db, line: SpoolLine, run: string, at?: string): boolean {
+  const tool = cursorTool(line);
+  switch (line.e) {
+    case 'afterShellExecution':
+    case 'afterMCPExecution': {
+      if (!tool) return false;
+      addEvent(db, run, { kind: 'tool', action: tool, actor: 'agent', at });
+      const end = epochOf(line);
+      const ms = line.ms;
+      const timed =
+        typeof ms === 'number' && Number.isFinite(ms) && ms >= 0 && Number.isFinite(end);
+      recordToolUse(
+        db,
+        run,
+        tool,
+        timed
+          ? {
+              source: 'cursor',
+              at: sqlTime(new Date(end - ms).toISOString()),
+              durationSeconds: ms / 1000,
+            }
+          : { source: 'cursor', at }
+      );
+      return true;
+    }
+    case 'postToolUseFailure':
+      if (!tool) return false;
+      recordFailedCall(db, run, {
+        source: 'cursor',
+        session: line.s as string,
+        tool,
+        at,
+        interrupted: line.int === true,
+        message: line.err,
+        errorKind: line.kind,
+      });
+      return true;
+    case 'sessionEnd':
+      endRun(db, run, line.why || 'ended', undefined, at);
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**
@@ -306,7 +437,12 @@ function ingestSpool(
       for (const line of lines) {
         const session = line.s as string;
         const at = sqlTime(line.t);
-        const run = runOf(db, session, at);
+        const run = runOf(db, session, at, line.src);
+        if (line.src === 'cursor') {
+          if (cursorLine(db, line, run, at)) recorded++;
+          else skipped++;
+          continue;
+        }
         const tool = typeof line.tool === 'string' ? line.tool : undefined;
         switch (line.e) {
           case 'PreToolUse':
@@ -330,26 +466,13 @@ function ingestSpool(
           }
           case 'PostToolUseFailure':
             if (!tool) break;
-            // A call someone stopped (Esc, a new prompt) ended without failing:
-            // recorded as stopped, and never as a failure signal, which would
-            // rank the tool among what keeps blocking work.
-            if (line.int) {
-              addEvent(db, run, {
-                kind: 'tool',
-                action: tool,
-                actor: 'agent',
-                detail: 'interrupted',
-                at,
-              });
-              break;
-            }
-            addEvent(db, run, { kind: 'tool', action: tool, actor: 'agent', detail: 'failed', at });
-            captureFailure(db, {
+            recordFailedCall(db, run, {
               source: 'claude-code',
-              sessionId: session,
+              session,
               tool,
-              message: line.err,
               at,
+              interrupted: line.int === true,
+              message: line.err,
             });
             break;
           case 'PermissionRequest':

@@ -7,7 +7,7 @@
  * the test harness left in it, ships a `web` that fails or a package that
  * carries code nobody runs.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
 
@@ -21,6 +21,10 @@ test('the package carries the built page and the server that serves it, and no t
   }
   // Not the docs pages or the social cards: they are the hosted site's.
   expect(pkg.files).not.toContain('dist');
+  // The bridges a runtime runs from the installed copy, which `ambit connect
+  // cursor --ledger` names by their path in it.
+  expect(pkg.files).toContain('plugins');
+  expect(existsSync(join(ROOT, 'plugins/cursor/ambit-ledger.mjs'))).toBe(true);
   expect(pkg.scripts.prepack).toContain('vite build');
 
   const publish = read('tsconfig.publish.json');
