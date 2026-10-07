@@ -361,6 +361,10 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   const rooDir = join(vscodeStorage, 'rooveterinaryinc.roo-cline', 'settings');
   const continueConfig = join(home, '.continue', 'config.json');
   const zedConfig = join(home, '.config', 'zed', 'settings.json');
+  const copilotConfig = join(home, '.copilot', 'mcp-config.json');
+  const ampConfig = join(home, '.config', 'amp', 'settings.json');
+  const gooseConfig = join(home, '.config', 'goose', 'config.yaml');
+  const kiroConfig = join(home, '.kiro', 'settings', 'mcp.json');
   mkdirSync(join(home, '.config', 'opencode'), { recursive: true });
   mkdirSync(join(home, '.cursor'), { recursive: true });
   mkdirSync(join(home, '.codeium', 'windsurf'), { recursive: true });
@@ -371,6 +375,10 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   mkdirSync(rooDir, { recursive: true });
   mkdirSync(join(home, '.continue'), { recursive: true });
   mkdirSync(join(home, '.config', 'zed'), { recursive: true });
+  mkdirSync(join(home, '.copilot'), { recursive: true });
+  mkdirSync(join(home, '.config', 'amp'), { recursive: true });
+  mkdirSync(join(home, '.config', 'goose'), { recursive: true });
+  mkdirSync(join(home, '.kiro', 'settings'), { recursive: true });
   writeFileSync(
     openCodeConfig,
     JSON.stringify({
@@ -462,6 +470,43 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
       servers: { time: { command: 'time-mcp' } },
     })
   );
+  writeFileSync(
+    copilotConfig,
+    JSON.stringify({
+      mcpServers: { tickets: { type: 'local', command: 'tickets-mcp', tools: ['*'] } },
+    })
+  );
+  // Amp's servers are under one key with a dot in it, beside its other settings.
+  writeFileSync(
+    ampConfig,
+    JSON.stringify({
+      'amp.notifications.enabled': false,
+      'amp.mcpServers': { notes: { command: 'notes-mcp' } },
+    })
+  );
+  // Goose is the one YAML config; a builtin extension is Goose's own and is skipped.
+  writeFileSync(
+    gooseConfig,
+    [
+      'GOOSE_PROVIDER: anthropic',
+      'extensions:',
+      '  developer:',
+      '    type: builtin',
+      '    enabled: true',
+      '  calendar:',
+      '    args:',
+      '    - calendar-mcp',
+      '    cmd: uvx',
+      '    enabled: true',
+      '    type: stdio',
+    ].join('\n')
+  );
+  writeFileSync(
+    kiroConfig,
+    JSON.stringify({
+      mcpServers: { weather: { command: 'weather-mcp', args: [], disabled: false } },
+    })
+  );
 
   const dbPath = join(dir, 'auto-discovery.db');
   // No config and no mapping: the engine has to find the runtimes under HOME
@@ -477,10 +522,11 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   const db = getDb(dbPath);
   const capabilities = rows(
     db,
-    "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'mcp:fetch', 'mcp:postgres', 'mcp:memory', 'mcp:search', 'mcp:time', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex', 'runtime:cline', 'runtime:roo-code', 'runtime:continue', 'runtime:zed', 'runtime:vscode')"
+    "SELECT id FROM capabilities WHERE id IN ('mcp:filesystem', 'mcp:browser', 'mcp:github', 'mcp:linear', 'mcp:maps', 'mcp:sqlite', 'mcp:docs', 'mcp:fetch', 'mcp:postgres', 'mcp:memory', 'mcp:search', 'mcp:time', 'mcp:tickets', 'mcp:notes', 'mcp:calendar', 'mcp:weather', 'mcp:developer', 'runtime:opencode', 'runtime:claude-code', 'runtime:cursor', 'runtime:windsurf', 'runtime:gemini-cli', 'runtime:claude-desktop', 'runtime:codex', 'runtime:cline', 'runtime:roo-code', 'runtime:continue', 'runtime:zed', 'runtime:vscode', 'runtime:copilot-cli', 'runtime:amp', 'runtime:goose', 'runtime:kiro')"
   );
   expect(capabilities.map(row => row.id).sort()).toEqual([
     'mcp:browser',
+    'mcp:calendar',
     'mcp:docs',
     'mcp:fetch',
     'mcp:filesystem',
@@ -488,17 +534,24 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
     'mcp:linear',
     'mcp:maps',
     'mcp:memory',
+    'mcp:notes',
     'mcp:postgres',
     'mcp:search',
     'mcp:sqlite',
+    'mcp:tickets',
     'mcp:time',
+    'mcp:weather',
+    'runtime:amp',
     'runtime:claude-code',
     'runtime:claude-desktop',
     'runtime:cline',
     'runtime:codex',
     'runtime:continue',
+    'runtime:copilot-cli',
     'runtime:cursor',
     'runtime:gemini-cli',
+    'runtime:goose',
+    'runtime:kiro',
     'runtime:opencode',
     'runtime:roo-code',
     'runtime:vscode',
@@ -531,6 +584,10 @@ test('seed combines OpenCode, Claude Code, and every MCP client it knows', () =>
   expect(contributions).toContainEqual({ f: 'runtime:continue', t: 'mcp:memory' });
   expect(contributions).toContainEqual({ f: 'runtime:zed', t: 'mcp:search' });
   expect(contributions).toContainEqual({ f: 'runtime:vscode', t: 'mcp:time' });
+  expect(contributions).toContainEqual({ f: 'runtime:copilot-cli', t: 'mcp:tickets' });
+  expect(contributions).toContainEqual({ f: 'runtime:amp', t: 'mcp:notes' });
+  expect(contributions).toContainEqual({ f: 'runtime:goose', t: 'mcp:calendar' });
+  expect(contributions).toContainEqual({ f: 'runtime:kiro', t: 'mcp:weather' });
   db.close();
 });
 

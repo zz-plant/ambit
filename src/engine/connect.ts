@@ -80,8 +80,11 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
     paths: ['.continue/config.json'],
     kind: 'mcpServers',
   },
-  // The six below take their paths from the readers in mcp-clients.ts, so
+  // The ones below take their paths from the readers in mcp-clients.ts, so
   // connect writes where discovery reads and the two lists cannot drift.
+  // Copilot CLI, Amp and Goose are read and not written: every entry Copilot
+  // documents names its transport, which the shared writer leaves out; Amp's
+  // sit under a dotted key; and Goose keeps YAML, which nothing here writes.
   {
     runtime: 'gemini-cli',
     label: 'Gemini CLI',
@@ -117,6 +120,12 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
     label: 'Codex CLI',
     paths: home => clientPaths('codex', home),
     kind: 'codex',
+  },
+  {
+    runtime: 'kiro',
+    label: 'Kiro',
+    paths: home => clientPaths('kiro', home),
+    kind: 'mcpServers',
   },
 ];
 
