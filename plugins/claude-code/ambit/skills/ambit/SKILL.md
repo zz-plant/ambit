@@ -9,7 +9,7 @@ Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Wi
 
 ## Before you run anything, tell the user what it touches
 
-It reads the agent configs on this machine and writes only its own SQLite file (`~/.local/share/ambit/graph.db`). It changes no agent config without a proposal the user approves, and it sends nothing anywhere: there is no telemetry. Deleting that file undoes it. This plugin also keeps a local record of which tools each session ran and which failed, never their inputs or outputs, in `~/.local/state/ambit/claude-code.jsonl` until the next `ambit` command reads it in; `AMBIT_NO_LEDGER=1` turns that off.
+It reads the agent configs on this machine and writes only its own SQLite file (`~/.local/share/ambit/graph.db`). It changes no agent config without a proposal the user approves, and it sends nothing anywhere: there is no telemetry. Deleting that file undoes it. This plugin also keeps a local record of which tools each session ran, for how long, and which failed, never their inputs or outputs, in `~/.local/state/ambit/claude-code.jsonl` until the next `ambit` command reads it in; `AMBIT_NO_LEDGER=1` turns that off.
 
 Run it as `npx ambit-cli <command>` when `ambit` is not installed (Node 22.18 or newer); `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` installs it for good. Do not install it without the user's go-ahead.
 

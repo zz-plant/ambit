@@ -5,6 +5,14 @@
         "hooks": [{ "type": "command", "command": "npx -y ambit-cli briefing", "timeout": 10 }]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/spool.mjs\"", "timeout": 5 }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "*",

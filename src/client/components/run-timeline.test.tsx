@@ -199,6 +199,21 @@ test('a use is a bar where a length was measured and a point where it was not', 
   expect(svg).toContain('Git, duration not recorded');
 });
 
+test('a call the plugins timed at under a second is still a bar, and says so', () => {
+  // Most tool calls are this short, and the plugins time them to the millisecond.
+  const svg = chart(
+    draw(
+      view({
+        uses: [{ capability: 'Read', capability_id: 'combo:read', at: at(10), seconds: 0.042 }],
+        uses_total: 1,
+      })
+    )
+  );
+  expect(svg.match(/class="fig-run-use"/g)).toHaveLength(1);
+  expect(svg).not.toContain('fig-run-use-pt');
+  expect(svg).toContain('Read, under 1s');
+});
+
 test('events are points, one for each that was sent', () => {
   const events = [30, 90, 150].map(s => ({ at: at(s), kind: 'tool', action: 'bash' }));
   expect(
