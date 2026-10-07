@@ -607,7 +607,8 @@ export interface LoopSnapshot {
   demand: LoopDemand[];
   /**
    * Tokens sessions used in the window, per model, from session transcripts.
-   * Absent when none were recorded; no price, since the transcripts state none.
+   * Absent when none were recorded. Priced only where a person declared a
+   * price for the model, since the transcripts state none.
    */
   tokens?: LoopTokens;
 }
@@ -618,7 +619,19 @@ export interface LoopTokens {
   /** Sessions with a token count in the window. */
   sessions: number;
   /** Most used first. Cache reads apart from fresh input, which they dwarf. */
-  models: { model: string; input: number; cached: number; output: number }[];
+  models: {
+    model: string;
+    input: number;
+    cached: number;
+    output: number;
+    /**
+     * What the priced part cost, at the price declared when each session was
+     * recorded. Absent when none of it was priced: undeclared, never $0.
+     */
+    spend_dollars?: number;
+    /** Some of these tokens carry no price, because none was declared for them. */
+    unpriced?: true;
+  }[];
 }
 
 export interface LoopResponse extends LoopSnapshot {
@@ -660,7 +673,10 @@ export interface RunAsk {
 export interface RunUse {
   capability: string;
   capability_id: string;
-  /** When the use was recorded; the bar drawn from it lasts `seconds`. */
+  /**
+   * When the use began, where it was timed, else when it was recorded. The bar
+   * drawn from it lasts `seconds`.
+   */
   at: string;
   /** How long it lasted, where that was measured. */
   seconds: number | null;

@@ -125,11 +125,12 @@ test('telemetry records a session’s tool calls, failures and answered prompts'
     error: { message: 'ECONNREFUSED' },
   });
 
-  // Each failure is posted after its call's event, so wait for those too.
+  // Each failure or use is posted after its call's event, so wait for those too.
   await until(
     () =>
       posts.filter(p => p.event).length === 3 &&
       posts.filter(p => p.failure).length === 2 &&
+      posts.some(p => p.use) &&
       posts.some(p => p.intervention)
   );
   cleanup?.();
@@ -148,6 +149,11 @@ test('telemetry records a session’s tool calls, failures and answered prompts'
       expect.objectContaining({ tool: 'webfetch', message: 'ECONNREFUSED' }),
     ])
   );
+  // The call that worked is a use, named by its tool for the engine to place.
+  // No start was seen, so it carries no length, and not a zero either.
+  expect(posts.filter(p => p.use).map(p => p.use)).toEqual([
+    { runId: expect.any(String), tool: 'read', source: 'opencode' },
+  ]);
   const interventions = posts.filter(p => p.intervention).map(p => p.intervention);
   expect(interventions).toHaveLength(1);
   expect(interventions[0]).toMatchObject({
@@ -159,6 +165,81 @@ test('telemetry records a session’s tool calls, failures and answered prompts'
   // Every post, the run's opening included, presented the token.
   expect(tokens.length).toBe(posts.length);
   expect(new Set(tokens)).toEqual(new Set([TOKEN]));
+});
+
+test('telemetry times a call from its start, and leaves the length off where it cannot say one', async () => {
+  const hooks: Record<string, (e: any) => void> = {};
+  let ask!: () => void;
+  const asking = new Promise<void>(r => {
+    ask = r;
+  });
+  const ctx = {
+    tool: {
+      hook: async (name: string, cb: (e: any) => void) => {
+        hooks[name] = cb;
+        return { dispose: async () => {} };
+      },
+    },
+    event: {
+      subscribe: () =>
+        (async function* () {
+          await asking;
+          yield { type: 'permission.asked', data: { id: 'p9', sessionID: 's2', action: 'shell' } };
+          yield {
+            type: 'permission.replied',
+            data: { sessionID: 's2', requestID: 'p9', reply: 'once' },
+          };
+        })(),
+    },
+  };
+  const { default: plugin } = await load('ambit-telemetry.js');
+  const cleanup = await plugin.setup(ctx);
+  const from = posts.length;
+  const call = { sessionID: 's2', agent: 'build', messageID: 'm', input: {} };
+  const done = { ...call, status: 'completed', result: {} };
+
+  hooks['execute.before']({ ...call, id: 'timed', tool: 'read' });
+  await new Promise(r => setTimeout(r, 30));
+  hooks['execute.after']({ ...done, id: 'timed', tool: 'read' });
+  // Its start was never seen.
+  hooks['execute.after']({ ...done, id: 'unseen', tool: 'grep' });
+  // A person was asked while it ran, so its span holds their wait.
+  hooks['execute.before']({ ...call, id: 'waited', tool: 'shell' });
+  ask();
+  await until(() => posts.slice(from).some(p => p.intervention));
+  hooks['execute.after']({ ...done, id: 'waited', tool: 'shell' });
+
+  const uses = () => posts.slice(from).flatMap(p => (p.use ? [p.use] : []));
+  await until(() => uses().length === 3);
+  cleanup?.();
+
+  const byTool = Object.fromEntries(uses().map(u => [u.tool, u]));
+  expect(byTool.read.durationSeconds).toBeGreaterThanOrEqual(0.02);
+  expect(byTool.read.durationSeconds).toBeLessThan(5);
+  expect(byTool.read.at).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
+  expect(byTool.grep).not.toHaveProperty('durationSeconds');
+  expect(byTool.shell).not.toHaveProperty('durationSeconds');
+});
+
+test('under OpenCode 1 a call is timed the same way, and a permission ask costs it its length', async () => {
+  const { default: plugin } = await load('ambit-telemetry.js');
+  const hooks = await plugin.server({});
+  const from = posts.length;
+  await hooks['tool.execute.before']({ tool: 'read', sessionID: 'v1', callID: 'a' });
+  await new Promise(r => setTimeout(r, 20));
+  await hooks['tool.execute.after']({ tool: 'read', sessionID: 'v1', callID: 'a' });
+  await hooks['tool.execute.before']({ tool: 'bash', sessionID: 'v1', callID: 'b' });
+  await hooks['permission.ask']({ sessionID: 'v1', type: 'bash' }, { status: 'ask' });
+  await hooks['tool.execute.after']({ tool: 'bash', sessionID: 'v1', callID: 'b' });
+  await hooks['tool.execute.after']({ tool: 'glob', sessionID: 'v1', callID: 'c' });
+
+  const uses = posts.slice(from).flatMap(p => (p.use ? [p.use] : []));
+  expect(uses.map(u => [u.tool, typeof u.durationSeconds])).toEqual([
+    ['read', 'number'],
+    ['bash', 'undefined'],
+    ['glob', 'undefined'],
+  ]);
+  expect(uses[0].durationSeconds).toBeGreaterThanOrEqual(0.015);
 });
 
 test('telemetry finds the token in the file the API server made', async () => {

@@ -310,13 +310,22 @@ export function demoSnapshot(): LoopSnapshot {
       diminished: treeStatus().degraded,
     },
     // A month of sessions: the hosted model does most of it, and cache reads
-    // are most of its count, as they are in any long session.
+    // are most of its count, as they are in any long session. The hosted model
+    // has a price declared, at $3, $0.30 and $15 per million, which is where
+    // the spend on Hosted Inference's budget comes from; the local one has
+    // none, so it shows undeclared.
     tokens: {
       days: 30,
       sessions: 46,
       models: [
-        { model: 'claude-sonnet-5-5', input: 2_480_000, cached: 41_300_000, output: 655_000 },
-        { model: 'qwen3-coder', input: 910_000, cached: 0, output: 212_000 },
+        {
+          model: 'claude-sonnet-5-5',
+          input: 2_480_000,
+          cached: 41_300_000,
+          output: 655_000,
+          spend_dollars: 29.66,
+        },
+        { model: 'qwen3-coder', input: 910_000, cached: 0, output: 212_000, unpriced: true },
       ],
     },
   };

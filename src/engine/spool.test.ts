@@ -6,14 +6,18 @@
  * is what the ledger's readers depend on: one run per session, a work event
  * and a use per tool call, a failure the engine classifies, a person asked,
  * the session's end, each at the time the hook ran, and nothing read twice.
+ * A call is timed from its start to its end only where nobody was asked in
+ * between, and a call still running waits in the spool for its end.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
-import { ingestSpool } from './spool.ts';
-import { tokenUsage } from './telemetry.ts';
+import { canExecute } from './assurance.ts';
+import { budgetReport } from './budgets.ts';
+import { ingestSpool, type SpoolLine } from './spool.ts';
+import { runTimeline, tokenUsage } from './telemetry.ts';
 import { loopView } from './views.ts';
-import { dir, getDb, join, seed } from './testing/cli.ts';
+import { cli, dir, getDb, join, seed } from './testing/cli.ts';
 
 const HOOK = join(
   import.meta.dirname,
@@ -31,6 +35,22 @@ const WITH_GITHUB = {
   mcp: { github: { type: 'local', command: ['github-mcp-server'] } },
 };
 
+const ISSUE = 'mcp__github__create_issue';
+
+/** Spool lines, written as the hook writes them. */
+const spooled = (lines: SpoolLine[]) => lines.map(l => `${JSON.stringify(l)}\n`).join('');
+
+/** An ISO time `ms` before now. */
+const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+/** Each length the uses of a session's run were recorded with. */
+const lengths = (db: ReturnType<typeof getDb>, session: string) =>
+  (
+    db
+      .prepare('SELECT duration_seconds d FROM capability_use WHERE run_id = ?')
+      .all(`run-cc-${session}`) as Array<{ d: number | null }>
+  ).map(u => u.d);
+
 /** Run the plugin's hook on one event, the way Claude Code pipes it. */
 function hook(spool: string, event: Record<string, unknown>) {
   execFileSync(process.execPath, [HOOK], {
@@ -45,10 +65,19 @@ test('a session becomes one run, with its tool calls, a failure, an ask and its 
   const session = { session_id: 'abc-123', transcript_path: '/tmp/t.jsonl', cwd: '/tmp' };
   hook(spool, {
     ...session,
+    hook_event_name: 'PreToolUse',
+    tool_name: ISSUE,
+    tool_use_id: 'toolu_01',
+    tool_input: { title: 'secret-in-input' },
+  });
+  hook(spool, {
+    ...session,
     hook_event_name: 'PostToolUse',
-    tool_name: 'mcp__github__create_issue',
+    tool_name: ISSUE,
+    tool_use_id: 'toolu_01',
     tool_input: { title: 'secret-in-input' },
     tool_output: 'secret-in-output',
+    tool_response: 'secret-in-response',
   });
   hook(spool, {
     ...session,
@@ -60,9 +89,15 @@ test('a session becomes one run, with its tool calls, a failure, an ask and its 
   hook(spool, { ...session, hook_event_name: 'Stop' });
   hook(spool, { ...session, hook_event_name: 'SessionEnd', reason: 'logout' });
 
+  // The spool holds the call's id and when each hook ran, and nothing the call
+  // was given or gave back.
+  const written = readFileSync(spool, 'utf8');
+  expect(written).toContain('"id":"toolu_01"');
+  expect(written).not.toMatch(/secret-in-/);
+
   const db = getDb(join(dir, 'graph.db'));
   try {
-    expect(ingestSpool(db, spool)).toEqual({ recorded: 4, skipped: 0 });
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 5, skipped: 0, waiting: 0 });
     expect(existsSync(spool)).toBe(false);
 
     const run = db.prepare("SELECT * FROM work_runs WHERE id = 'run-cc-abc-123'").get() as any;
@@ -78,10 +113,10 @@ test('a session becomes one run, with its tool calls, a failure, an ask and its 
       ['mcp__github__create_issue', 'failed'],
     ]);
     // A use for each capability the server supplies, found as the gate finds them.
-    const uses = db
-      .prepare("SELECT capability_id FROM capability_use WHERE run_id = 'run-cc-abc-123'")
-      .all() as any[];
+    const uses = lengths(db, 'abc-123');
     expect(uses.length).toBeGreaterThan(0);
+    // Timed from one hook to the other: the ask came after the call ended.
+    for (const d of uses) expect(d).toBeGreaterThan(0);
 
     const failure = db
       .prepare("SELECT source, class FROM failure_signals WHERE session_id = 'abc-123'")
@@ -98,14 +133,14 @@ test('a session becomes one run, with its tool calls, a failure, an ask and its 
 
     // Nothing a tool was given or returned reached the database.
     const everything = JSON.stringify(
-      ['work_events', 'failure_signals', 'human_intervention', 'work_runs'].map(t =>
-        db.prepare(`SELECT * FROM ${t}`).all()
+      ['work_events', 'failure_signals', 'human_intervention', 'work_runs', 'capability_use'].map(
+        t => db.prepare(`SELECT * FROM ${t}`).all()
       )
     );
     expect(everything).not.toMatch(/secret-in-(input|output)/);
 
     // Read once: a second pass finds nothing.
-    expect(ingestSpool(db, spool)).toEqual({ recorded: 0, skipped: 0 });
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 0, skipped: 0, waiting: 0 });
   } finally {
     db.close();
   }
@@ -124,7 +159,7 @@ test('events keep the time the hook ran, and a line that does not parse is skipp
   );
   const db = getDb(join(dir, 'graph.db'));
   try {
-    expect(ingestSpool(db, spool)).toEqual({ recorded: 1, skipped: 2 });
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 1, skipped: 2, waiting: 0 });
     const run = db
       .prepare("SELECT started_at FROM work_runs WHERE id = 'run-cc-early'")
       .get() as any;
@@ -133,6 +168,135 @@ test('events keep the time the hook ran, and a line that does not parse is skipp
       .prepare("SELECT at FROM work_events WHERE run_id = 'run-cc-early'")
       .get() as any;
     expect(event.at).toBe('2026-09-01 10:00:00');
+  } finally {
+    db.close();
+  }
+});
+
+test('a call is timed from its start to its end, and its use begins at the start', () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  writeFileSync(
+    spool,
+    spooled([
+      { t: '2026-09-01T10:00:00.000Z', e: 'PreToolUse', s: 'timed', id: 'toolu_1', tool: ISSUE },
+      { t: '2026-09-01T10:00:02.500Z', e: 'PostToolUse', s: 'timed', id: 'toolu_1', tool: ISSUE },
+    ])
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 2, skipped: 0, waiting: 0 });
+    const uses = db
+      .prepare("SELECT used_at, duration_seconds FROM capability_use WHERE run_id = 'run-cc-timed'")
+      .all() as any[];
+    expect(uses.length).toBeGreaterThan(0);
+    for (const u of uses) {
+      expect(u).toEqual({ used_at: '2026-09-01 10:00:00', duration_seconds: 2.5 });
+    }
+    // The event is the call's end, as it was before calls were timed.
+    const event = db.prepare("SELECT at FROM work_events WHERE run_id = 'run-cc-timed'").get();
+    expect(event).toEqual({ at: '2026-09-01 10:00:02' });
+    // The run view draws each use as a bar of that length.
+    const view = runTimeline(db, 'run-cc-timed').run;
+    expect(view?.uses.map(u => u.seconds)).toEqual(uses.map(() => 2.5));
+  } finally {
+    db.close();
+  }
+});
+
+test('a call someone was asked about has no length, nor does a call open beside it', () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  const T0 = Date.parse('2026-09-01T10:00:00.000Z');
+  const at = (s: number) => new Date(T0 + s * 1000).toISOString();
+  const call = (s: string, id: string, from: number, to: number): SpoolLine[] => [
+    { t: at(from), e: 'PreToolUse', s, id, tool: ISSUE },
+    { t: at(to), e: 'PostToolUse', s, id, tool: ISSUE },
+  ];
+  writeFileSync(
+    spool,
+    spooled([
+      // An ask that names no call costs every call open in its session its
+      // length, and none in another session.
+      ...call('asked', 'toolu_a', 0, 30),
+      ...call('asked', 'toolu_b', 0, 31),
+      { t: at(1), e: 'PermissionRequest', s: 'asked', tool: 'Bash' },
+      ...call('other', 'toolu_c', 0, 2),
+      // One that names its call costs that call alone.
+      ...call('named', 'toolu_x', 0, 40),
+      ...call('named', 'toolu_y', 0, 3),
+      { t: at(1), e: 'PermissionRequest', s: 'named', id: 'toolu_x', tool: 'Bash' },
+      // An ask after a call ended has nothing to do with it.
+      ...call('later', 'toolu_z', 0, 4),
+      { t: at(5), e: 'PermissionRequest', s: 'later', tool: 'Bash' },
+    ])
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  const distinct = (session: string) =>
+    [...new Set(lengths(db, session))].sort((a, b) => (a ?? Infinity) - (b ?? Infinity));
+  try {
+    ingestSpool(db, spool);
+    expect(distinct('asked')).toEqual([null]);
+    expect(distinct('other')).toEqual([2]);
+    expect(distinct('named')).toEqual([3, null]);
+    expect(distinct('later')).toEqual([4]);
+    // The asks themselves are recorded as they always were.
+    expect(db.prepare('SELECT COUNT(*) n FROM human_intervention').get()).toEqual({ n: 3 });
+  } finally {
+    db.close();
+  }
+});
+
+test('an end with no start has no length, and a start with no end waits in the spool', () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  writeFileSync(
+    spool,
+    spooled([
+      { t: ago(5000), e: 'PostToolUse', s: 'lone', id: 'toolu_l', tool: ISSUE },
+      { t: ago(3000), e: 'PreToolUse', s: 'open', id: 'toolu_o', tool: ISSUE },
+      // A call whose session ended will not finish, nor will one a day old.
+      { t: ago(3000), e: 'PreToolUse', s: 'ended', id: 'toolu_e', tool: ISSUE },
+      { t: ago(1000), e: 'SessionEnd', s: 'ended', why: 'logout' },
+      { t: ago(2 * 86_400_000), e: 'PreToolUse', s: 'stale', id: 'toolu_s', tool: ISSUE },
+      // A failed call closes its pair and is not a use.
+      { t: ago(3000), e: 'PreToolUse', s: 'failed', id: 'toolu_f', tool: ISSUE },
+      { t: ago(2000), e: 'PostToolUseFailure', s: 'failed', id: 'toolu_f', tool: ISSUE, err: 'x' },
+      // Asked while it runs and before the read: the ask goes back with it.
+      { t: ago(3000), e: 'PreToolUse', s: 'wait', id: 'toolu_w', tool: ISSUE },
+      { t: ago(2000), e: 'PermissionRequest', s: 'wait', tool: 'Bash' },
+    ])
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 7, skipped: 0, waiting: 2 });
+    expect(lengths(db, 'lone').length).toBeGreaterThan(0);
+    expect(new Set(lengths(db, 'lone'))).toEqual(new Set([null]));
+    expect(lengths(db, 'failed')).toEqual([]);
+
+    // Only the two calls still running went back, the asked one marked so.
+    const back = readFileSync(spool, 'utf8')
+      .trim()
+      .split('\n')
+      .map(l => JSON.parse(l));
+    expect(back.map(l => [l.id, l.asked ?? false])).toEqual([
+      ['toolu_o', false],
+      ['toolu_w', true],
+    ]);
+
+    // Their ends arrive after the read, and pair with the starts that waited.
+    appendFileSync(
+      spool,
+      spooled([
+        { t: ago(0), e: 'PostToolUse', s: 'open', id: 'toolu_o', tool: ISSUE },
+        { t: ago(0), e: 'PostToolUse', s: 'wait', id: 'toolu_w', tool: ISSUE },
+      ])
+    );
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 4, skipped: 0, waiting: 0 });
+    expect(existsSync(spool)).toBe(false);
+    expect(lengths(db, 'open').length).toBeGreaterThan(0);
+    for (const d of lengths(db, 'open')) expect(d).toBeCloseTo(3, 0);
+    expect(new Set(lengths(db, 'wait'))).toEqual(new Set([null]));
   } finally {
     db.close();
   }
@@ -147,7 +311,7 @@ test('the hook writes nothing when the ledger is turned off', () => {
   expect(existsSync(spool)).toBe(false);
 });
 
-test("a session's tokens come from its transcript, each message once, and a resume replaces them", () => {
+test("a session's tokens come from its transcript, each message once, and a resume adds what is new", () => {
   seed(WITH_GITHUB).close();
   const spool = join(dir, 'claude-code.jsonl');
   const transcript = join(dir, 'transcript.jsonl');
@@ -172,7 +336,8 @@ test("a session's tokens come from its transcript, each message once, and a resu
     const rows = () =>
       db
         .prepare(
-          "SELECT unit, quantity, cost_cents FROM resource_consumption WHERE run_id = 'run-cc-tok' ORDER BY unit"
+          `SELECT unit, SUM(quantity) AS quantity, MAX(cost_cents) AS cost_cents
+           FROM resource_consumption WHERE run_id = 'run-cc-tok' GROUP BY unit ORDER BY unit`
         )
         .all() as any[];
     expect(rows()).toEqual([
@@ -181,7 +346,8 @@ test("a session's tokens come from its transcript, each message once, and a resu
       { unit: 'output tokens', quantity: 12, cost_cents: null },
     ]);
 
-    // Resumed and ended again with a longer transcript: the totals are replaced.
+    // Resumed and ended again with a longer transcript: the run holds the
+    // totals of the whole of it, each token counted once.
     writeFileSync(transcript, [msg('m1', 10, 5), msg('m2', 20, 7), msg('m3', 1, 1)].join('\n'));
     hook(spool, end);
     ingestSpool(db, spool);
@@ -220,9 +386,200 @@ test('Time & cost reads the tokens, and a ledger with only tokens is not empty',
     expect(view.tokens).toEqual({
       days: 30,
       sessions: 1,
-      models: [{ model: 'claude-opus-5-5', input: 40, cached: 900, output: 60 }],
+      models: [{ model: 'claude-opus-5-5', input: 40, cached: 900, output: 60, unpriced: true }],
     });
     expect(view.empty).toBe(false);
+  } finally {
+    db.close();
+  }
+});
+
+// ── The spend meter ──────────────────────────────────────────────────────────
+
+/** A transcript of assistant messages, each with its own usage. */
+function transcriptOf(
+  path: string,
+  ...messages: { id: string; input: number; cached: number; output: number }[]
+) {
+  writeFileSync(
+    path,
+    messages
+      .map(m =>
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            id: m.id,
+            model: 'claude-opus-5-5',
+            usage: {
+              input_tokens: m.input,
+              cache_read_input_tokens: m.cached,
+              output_tokens: m.output,
+            },
+          },
+        })
+      )
+      .join('\n')
+  );
+}
+
+// A million fresh input at $5, two million cache reads at $0.50 and a hundred
+// thousand output at $25: $5 + $1 + $2.50.
+const SESSION = { id: 'm1', input: 1_000_000, cached: 2_000_000, output: 100_000 };
+const SESSION_CENTS = 850;
+const PRICE = ['claude-opus-5-5', '--input=5', '--cache-read=0.5', '--output=25'];
+
+/** End a session through the hook, and read the spool into the ledger. */
+function endSession(transcript: string, session = 'meter') {
+  const spool = join(dir, 'claude-code.jsonl');
+  hook(spool, { session_id: session, transcript_path: transcript, hook_event_name: 'SessionEnd' });
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    ingestSpool(db, spool);
+  } finally {
+    db.close();
+  }
+}
+
+/** What the graph holds once the spool is read: the budget, the rows, the reports. */
+function read<T>(fn: (db: ReturnType<typeof getDb>) => T): T {
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    return fn(db);
+  } finally {
+    db.close();
+  }
+}
+
+const spent = () =>
+  read(
+    db =>
+      (
+        db
+          .prepare("SELECT spent_cents FROM budgets WHERE capability_id = 'combo:hosted-inference'")
+          .get() as any
+      )?.spent_cents
+  );
+
+const costed = () =>
+  read(
+    db =>
+      db
+        .prepare(
+          "SELECT SUM(cost_cents) AS cents, COUNT(cost_cents) AS priced, COUNT(*) AS rows FROM resource_consumption WHERE kind = 'tokens'"
+        )
+        .get() as any
+  );
+
+test("a session's tokens on a priced model are a spend against Hosted Inference's budget, once", () => {
+  seed(WITH_GITHUB).close();
+  cli('people', 'add', 'kanav');
+  cli('budget', 'set', 'hosted-inference', '--amount=20', '--by=kanav');
+  expect(cli('economics', 'price', ...PRICE).note).toContain(
+    'recorded against the budget on Hosted Inference'
+  );
+  const transcript = join(dir, 'transcript.jsonl');
+  transcriptOf(transcript, SESSION);
+
+  endSession(transcript);
+  expect(spent()).toBeCloseTo(SESSION_CENTS, 6);
+  expect(costed().cents).toBeCloseTo(SESSION_CENTS, 6);
+
+  // The budget report, the gate and the page all read the same spend.
+  read(db => {
+    const [budget] = budgetReport(db).budgets as any[];
+    expect(budget.spent).toBe('$8.50');
+    expect(budget.remaining).toBe('$11.50');
+    const decision = canExecute(db, { capability: 'combo:hosted-inference' }) as any;
+    expect(decision.remaining_budget_cents).toBeCloseTo(2000 - SESSION_CENTS, 6);
+    expect(loopView(db).authority.budgets[0].spent_dollars).toBe(8.5);
+    expect(tokenUsage(db)?.models).toEqual([
+      { model: 'claude-opus-5-5', ...withoutId(SESSION), spend_dollars: 8.5 },
+    ]);
+  });
+
+  // The same end read again, from a spool that carries it twice: nothing new.
+  const spool = join(dir, 'claude-code.jsonl');
+  const end = { session_id: 'meter', transcript_path: transcript, hook_event_name: 'SessionEnd' };
+  hook(spool, end);
+  hook(spool, end);
+  read(db => ingestSpool(db, spool));
+  expect(spent()).toBeCloseTo(SESSION_CENTS, 6);
+
+  // Resumed: only the tokens the session added are priced. 200K input at $5.
+  transcriptOf(transcript, SESSION, { id: 'm2', input: 200_000, cached: 0, output: 0 });
+  endSession(transcript);
+  expect(spent()).toBeCloseTo(SESSION_CENTS + 100, 6);
+  expect(costed().cents).toBeCloseTo(SESSION_CENTS + 100, 6);
+});
+
+test('with no budget the cost stays on the session, and no budget row is made', () => {
+  seed(WITH_GITHUB).close();
+  const declared = cli('economics', 'price', ...PRICE);
+  expect(declared.note).toContain('no budget is set on Hosted Inference');
+  const transcript = join(dir, 'transcript.jsonl');
+  transcriptOf(transcript, SESSION);
+  endSession(transcript);
+
+  expect(read(db => db.prepare('SELECT COUNT(*) AS n FROM budgets').get() as any).n).toBe(0);
+  expect(costed().cents).toBeCloseTo(SESSION_CENTS, 6);
+  expect(read(db => tokenUsage(db)?.models[0].spend_dollars)).toBe(8.5);
+});
+
+test('a model with no declared price records no spend, and is reported undeclared', () => {
+  seed(WITH_GITHUB).close();
+  cli('people', 'add', 'kanav');
+  cli('budget', 'set', 'hosted-inference', '--amount=20', '--by=kanav');
+  const transcript = join(dir, 'transcript.jsonl');
+  transcriptOf(transcript, SESSION);
+  endSession(transcript);
+
+  expect(spent()).toBe(0);
+  expect(costed()).toMatchObject({ cents: null, priced: 0 });
+  const [model] = read(db => loopView(db).tokens?.models ?? []);
+  expect(model.spend_dollars).toBeUndefined();
+  expect(model.unpriced).toBe(true);
+
+  // A price declared afterwards does not reach back to what was recorded: the
+  // same end read again adds nothing, and a resume prices only what is new.
+  cli('economics', 'price', ...PRICE);
+  endSession(transcript);
+  expect(spent()).toBe(0);
+  transcriptOf(transcript, SESSION, { id: 'm2', input: 0, cached: 0, output: 40_000 });
+  endSession(transcript);
+  expect(spent()).toBeCloseTo(100, 6);
+  const [after] = read(db => tokenUsage(db)?.models ?? []);
+  expect(after).toMatchObject({ spend_dollars: 1, unpriced: true });
+});
+
+function withoutId({ id: _, ...counts }: typeof SESSION) {
+  return counts;
+}
+
+test('a call someone stopped is recorded as stopped, never as a failure', () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  const session = { session_id: 'esc-1', transcript_path: '/tmp/t.jsonl', cwd: '/tmp' };
+  hook(spool, {
+    ...session,
+    hook_event_name: 'PostToolUseFailure',
+    tool_name: ISSUE,
+    tool_use_id: 'toolu_esc',
+    tool_error: 'Interrupted by user',
+    is_interrupt: true,
+  });
+  expect(readFileSync(spool, 'utf8')).toContain('"int":true');
+
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    ingestSpool(db, spool);
+    const events = db
+      .prepare("SELECT detail FROM work_events WHERE run_id = 'run-cc-esc-1'")
+      .all() as any[];
+    expect(events.map(e => e.detail)).toEqual(['interrupted']);
+    const failures = db
+      .prepare("SELECT COUNT(*) AS n FROM failure_signals WHERE session_id = 'esc-1'")
+      .get() as any;
+    expect(failures.n).toBe(0);
   } finally {
     db.close();
   }

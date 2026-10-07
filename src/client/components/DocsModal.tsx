@@ -309,7 +309,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   <span className="docs-answers">
                     From History beside zoom, once two observations are recorded. Drag the playhead
                     or step it with the arrow keys, and the map redraws as that observation left it,
-                    with today's names and edges. Lenses and simulations wait for now
+                    with today's names and edges. Play steps through them on its own up to now, and
+                    Space on the playhead plays or pauses. Lenses and simulations wait for now
                   </span>
                 </div>
                 <div className="docs-action">

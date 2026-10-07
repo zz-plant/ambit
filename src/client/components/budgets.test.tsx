@@ -95,14 +95,15 @@ test('a budget with no recorded spend draws no tick and no day, and says what re
   expect(html).not.toContain('fig-budget-over');
   expect(said).not.toContain('is reached on');
   expect(said).toContain('No spend recorded, so there is no pace to draw.');
-  expect(said).toContain('recordSpend');
-  expect(said).toContain('Nothing that ships with Ambit records spend yet');
+  expect(said).toContain('recorded as a spend on Hosted Inference when it ends');
+  expect(said).toContain('ambit economics price');
+  expect(said).toContain('Nothing else records spend on its own; an integration calls recordSpend');
 });
 
 test('the note about what records spend is drawn once, and only while a budget needs it', () => {
   const both = text(page(budget(), budget({ capability: 'Search', spent_dollars: 4 })));
-  expect(both.match(/Nothing that ships with Ambit records spend yet/g)).toHaveLength(1);
-  expect(text(page(budget({ spent_dollars: 4 })))).not.toContain('records spend yet');
+  expect(both.match(/Nothing else records spend on its own/g)).toHaveLength(1);
+  expect(text(page(budget({ spent_dollars: 4 })))).not.toContain('records spend on its own');
 });
 
 test('a pace that stays inside the ceiling names no day', () => {

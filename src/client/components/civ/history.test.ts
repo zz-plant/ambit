@@ -9,7 +9,16 @@
 import { expect, test } from 'vitest';
 import type { FrontierHistoryResponse, FrontierTick } from '../../../shared/api';
 import type { Connection, Item } from '../../utils/configImporter';
-import { dayOf, itemsAsOf, momentOf, tickAt, tickSecond, timelineSentence } from './history';
+import {
+  dayOf,
+  itemsAsOf,
+  momentOf,
+  nextStop,
+  playStart,
+  tickAt,
+  tickSecond,
+  timelineSentence,
+} from './history';
 
 const node = (id: string, era: number, meta: Record<string, unknown>): Item => ({
   id,
@@ -117,4 +126,24 @@ test('the timeline says what moved at the tick, or since the newest one', () => 
   expect(timelineSentence({ ...HISTORY, movedSinceLast: 'reached 1, verified 0 to 1' }, null)).toBe(
     'Since Sep 25: reached 1, verified 0 to 1.'
   );
+});
+
+// ── Play ─────────────────────────────────────────────────────────────────────
+// Play walks the same stops the scrub bar has, one at a time: each observation
+// in order, then now, where it stops.
+
+test('Play starts on the observation on screen, or on the first one from now', () => {
+  expect(playStart(HISTORY, tickSecond(FRIDAY))).toBe(tickSecond(FRIDAY));
+  // From now there is nothing left to play, so it goes round to the start.
+  expect(playStart(HISTORY, null)).toBe(tickSecond(MONDAY));
+  // A second no tick has is now, as it is everywhere else.
+  expect(playStart(HISTORY, '2026-01-01T00:00:00Z')).toBe(tickSecond(MONDAY));
+  expect(playStart({ ticks: [], movedSinceLast: null }, null)).toBeNull();
+});
+
+test('each stop is followed by the next observation, the newest by now, and now by now', () => {
+  expect(nextStop(HISTORY, tickSecond(MONDAY))).toBe(tickSecond(FRIDAY));
+  expect(nextStop(HISTORY, tickSecond(FRIDAY))).toBeNull();
+  expect(nextStop(HISTORY, null)).toBeNull();
+  expect(nextStop(HISTORY, '2026-01-01T00:00:00Z')).toBeNull();
 });

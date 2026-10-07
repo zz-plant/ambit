@@ -85,6 +85,34 @@ test('a run records events, interventions, usage and an outcome', () => {
   (db as any).close();
 });
 
+test('a length summed over some uses says how many it covers, and none is no figure', () => {
+  // Most bridges cannot time every call: one a person was asked about, or
+  // whose start was missed, has no length. A sum that silently took the timed
+  // ones for all of them would state a figure the ledger does not hold.
+  seed(LOCAL_ONLY).close();
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+  const b = beginRun(db, { goal: 'some timed, some not' });
+  recordUse(db, b.run, 'combo:observability', { durationSeconds: 40 });
+  recordUse(db, b.run, 'combo:observability', {});
+  // The zero a recorder writes when it could not measure is not a length.
+  recordUse(db, b.run, 'combo:observability', { durationSeconds: 0 });
+  recordUse(db, b.run, 'combo:shell-execution', {});
+
+  const usage = usageReport(db, 30);
+  const of = (name: string) => usage.find((u: any) => u.capability === name);
+  expect(of('Observability')).toMatchObject({ times: 3, duration_seconds: 40, timed: 1 });
+  expect(of('Shell Execution')).toMatchObject({ times: 1, duration_seconds: null, timed: 0 });
+
+  const caps = workReport(db, 5)[0].capabilities;
+  expect(caps.find((c: any) => c.capability === 'Observability')).toEqual({
+    capability: 'Observability',
+    times: 3,
+    duration_seconds: 40,
+    timed: 1,
+  });
+  (db as any).close();
+});
+
 test('a run without an end is open and reports no outcome', () => {
   seed(LOCAL_ONLY).close();
   const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
@@ -228,6 +256,58 @@ test('economics reports declared values in dollars and names their source', () =
   expect(g.success_value_dollars).toBe(40);
   expect(g.failure_cost_dollars).toBe(500);
   expect(report.note).toContain('$250/hr');
+});
+
+test('a model price is declared per million tokens, in the config block or from the terminal', () => {
+  seed({
+    ...WITH_ECONOMICS,
+    economics: {
+      ...WITH_ECONOMICS.economics,
+      models: {
+        'gpt-5': { input_per_mtok: 1.25, cache_read_per_mtok: 0.125, output_per_mtok: 10 },
+      },
+    },
+  }).close();
+  const db = getDb(join(dir, 'graph.db'));
+  expect(
+    rows(
+      db,
+      "SELECT metric, value_cents, period FROM economics WHERE entity_type = 'model' AND entity_id = 'gpt-5' ORDER BY metric"
+    )
+  ).toEqual([
+    { metric: 'cache_read_per_mtok', value_cents: 12.5, period: 'per_mtok' },
+    { metric: 'input_per_mtok', value_cents: 125, period: 'per_mtok' },
+    { metric: 'output_per_mtok', value_cents: 1000, period: 'per_mtok' },
+  ]);
+  db.close();
+
+  // Dollars as typed, cents as stored, and a fraction of a cent kept.
+  const declared = cli(
+    'economics',
+    'price',
+    'claude-opus-5-5',
+    '--input=5',
+    '--cache-read=0.075',
+    '--output=25'
+  );
+  expect(declared.per_million_tokens).toEqual({ input: '$5', cache_read: '$0.075', output: '$25' });
+  expect(declared.note).toContain('Hosted Inference');
+  const report = cli('economics');
+  const cache = report.economics.find(
+    (e: any) => e.entity === 'model:claude-opus-5-5' && e.metric === 'cache_read_per_mtok'
+  );
+  expect(cache).toMatchObject({ value_dollars: 0.075, period: 'per_mtok', source: 'declared' });
+  expect(report.note).toContain('never defaults');
+});
+
+test('a model price needs all three parts, and a refused one writes nothing', () => {
+  seed(WITH_ECONOMICS).close();
+  const refused = cli('economics', 'price', 'claude-opus-5-5', '--input=5', '--output=25');
+  expect(refused.error).toContain('--cache-read is missing');
+  expect(cli('economics', 'price', '--input=5').error).toContain('Usage: ambit economics price');
+  const db = getDb(join(dir, 'graph.db'));
+  expect(rows(db, "SELECT 1 FROM economics WHERE entity_type = 'model'")).toEqual([]);
+  db.close();
 });
 
 // ── Opportunity engine (WP-5) ────────────────────────────────────────────────

@@ -36,7 +36,9 @@ const SCHEMA_VERSION = 1;
 /**
  * The tables that travel, and how a row is identified when it arrives.
  *
- * `key` names the columns that make a row the same row on both machines.
+ * `key` names the columns that make a row the same row on both machines, and
+ * a row missing any of them is skipped, except the ones `nullable` names: those
+ * may be empty, and an empty one matches an empty one.
  * `mutable` tables update in place when the incoming row is newer; the rest are
  * append-only observations, and a matching key means it is already here.
  */
@@ -44,6 +46,7 @@ const TABLES: Array<{
   table: string;
   columns: string[];
   key: string[];
+  nullable?: string[];
   mutable?: string;
 }> = [
   {
@@ -161,7 +164,11 @@ const TABLES: Array<{
   {
     table: 'resource_consumption',
     columns: ['run_id', 'resource_id', 'kind', 'quantity', 'unit', 'cost_cents', 'recorded_at'],
-    key: ['run_id', 'recorded_at', 'kind'],
+    // A session's tokens are several rows written in the same second, one per
+    // model and part, so run, time and kind alone made them one row, and an
+    // import kept the first of them. A resource with no unit is still a row.
+    key: ['run_id', 'recorded_at', 'kind', 'resource_id', 'unit'],
+    nullable: ['resource_id', 'unit'],
   },
 ];
 
@@ -284,7 +291,9 @@ function importSync(db: Db, path?: string) {
     updated[spec.table] = 0;
     skipped[spec.table] = 0;
 
-    const where = spec.key.map(k => `${k} = ?`).join(' AND ');
+    const where = spec.key
+      .map(k => (spec.nullable?.includes(k) ? `${k} IS ?` : `${k} = ?`))
+      .join(' AND ');
     const find = db.prepare(
       `SELECT ${spec.mutable ? spec.mutable : spec.key[0]} AS marker FROM ${spec.table} WHERE ${where}`
     );
@@ -294,7 +303,7 @@ function importSync(db: Db, path?: string) {
 
     for (const row of rows) {
       const keyValues = spec.key.map(k => row[k] ?? null);
-      if (keyValues.some(v => v === null)) {
+      if (spec.key.some((k, i) => keyValues[i] === null && !spec.nullable?.includes(k))) {
         skipped[spec.table]++;
         continue;
       }

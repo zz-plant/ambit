@@ -13,6 +13,12 @@
  * reports how a person answered a permission prompt, which V1 never did, so
  * the intervention it records has an outcome and a length.
  *
+ * A call that worked is also a use, posted with the tool's name: which
+ * capabilities that is, the engine decides. Under both versions the use says
+ * how long the call ran when this saw it begin and nobody was asked for
+ * permission while it ran (`callClock` below), and says nothing about it
+ * otherwise.
+ *
  * Install: copy to ~/.config/opencode/plugins/ and restart opencode. The
  * visualizer API must be running (npm run server), as the same user, so the
  * token it writes is the one this reads.
@@ -58,6 +64,53 @@ async function post(body) {
   try {
     await send(body);
   } catch {}
+}
+
+/** SQLite's `datetime('now')` shape, so a time sent from here sorts with the rest. */
+const sqlTime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+
+/** A tool call's id: `callID` under OpenCode 1, the call's own `id` under OpenCode 2. */
+const callOf = input => input?.callID ?? input?.id;
+
+/**
+ * When each tool call began, by its call id, so the use it ends in can say how
+ * long it ran.
+ *
+ * OpenCode runs the before hook ahead of the tool, and a tool that needs a
+ * person's permission asks for it while it runs, so a call someone was asked
+ * about would count their wait as its run time. Such a call gets no length:
+ * the part that was the tool's cannot be told from the part that was the
+ * person's. A permission that names its call marks that call; one that does
+ * not marks every call open in its session, or every open call when it names
+ * no session, since a parallel call that loses a figure is the cheaper
+ * mistake. A call whose start was not seen has no length, never a zero.
+ */
+function callClock() {
+  const open = new Map();
+  return {
+    start(callID, sessionID) {
+      if (!callID) return;
+      // A call whose end never came is forgotten, oldest first.
+      if (open.size >= 500) open.delete(open.keys().next().value);
+      open.set(callID, { at: Date.now(), sessionID, asked: false });
+    },
+    asked(sessionID, callID) {
+      for (const [id, call] of open) {
+        if (
+          callID ? id === callID : !sessionID || !call.sessionID || call.sessionID === sessionID
+        ) {
+          call.asked = true;
+        }
+      }
+    },
+    /** When the call began and how long it ran, or nothing when that cannot be said. */
+    stop(callID) {
+      const call = callID ? open.get(callID) : undefined;
+      open.delete(callID);
+      if (!call || call.asked) return {};
+      return { at: sqlTime(call.at), durationSeconds: (Date.now() - call.at) / 1000 };
+    },
+  };
 }
 
 /** One run per process, opened lazily so a session that never uses a tool
@@ -107,11 +160,18 @@ function failureFrom(input) {
 }
 
 export const AmbitTelemetry = async _ctx => {
+  const clock = callClock();
   return {
+    // Only the time: the tool waits on this hook, so it does nothing else.
+    'tool.execute.before': async input => {
+      clock.start(callOf(input), input?.sessionID);
+    },
     // The tool ran. Recorded as a work event under the process run — the
     // observation "this session exercised a tool" is the base of the ledger,
     // and the economic loop's frequency counts come from it.
     'tool.execute.after': async input => {
+      // Read first, so the length is the tool's and not the time to post it.
+      const timing = clock.stop(callOf(input));
       const id = await ensureRun();
       if (!id) return;
       await post({
@@ -123,11 +183,15 @@ export const AmbitTelemetry = async _ctx => {
       // deficits opened by saying nothing had been observed.
       const failure = failureFrom(input);
       if (failure) await post({ failure });
+      else if (input?.tool) {
+        await post({ use: { runId: id, tool: input.tool, source: 'opencode', ...timing } });
+      }
     },
     // Present in some versions and not others; both paths reach the same
     // recorder, and a duplicate is deduplicated by nothing — an error reported
     // twice is two observations, which is honest about how it was reported.
     'tool.execute.error': async input => {
+      clock.stop(callOf(input));
       const failure = failureFrom(input) || {
         tool: input?.tool || 'unknown',
         message: String(input?.error?.message || input?.error || '').slice(0, 500),
@@ -135,9 +199,15 @@ export const AmbitTelemetry = async _ctx => {
       };
       await post({ failure });
     },
+    // OpenCode 1 calls this when a tool needs a person's permission, before
+    // the prompt shows. It only marks the call as waiting on a person.
+    'permission.ask': async input => {
+      clock.asked(input?.sessionID, input?.callID);
+    },
     // A permission prompt is human agency of the authority kind. The reply is
     // not observable through a hook yet, so this records the ask only.
     'permission.asked': async input => {
+      clock.asked(input?.sessionID, input?.callID);
       const id = await ensureRun();
       if (!id) return;
       await post({
@@ -210,15 +280,15 @@ function failureFromV2(event) {
   };
 }
 
-const sqlTime = ms => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
-
 /** How a person answered, in the ledger's words. OpenCode says once, always or reject. */
 const REPLY_OUTCOME = { once: 'approved', always: 'approved always', reject: 'rejected' };
 
 async function setup(ctx) {
+  const clock = callClock();
   // Nothing here may be awaited by the tool it observes: a slow or dead
   // server would otherwise add its timeout to every tool call.
   await ctx.tool.hook('execute.after', event => {
+    const timing = clock.stop(callOf(event));
     void (async () => {
       const id = await runFor(event?.sessionID);
       if (!id) return;
@@ -227,8 +297,18 @@ async function setup(ctx) {
       });
       const failure = failureFromV2(event);
       if (failure) await post({ failure });
+      else if (event?.tool) {
+        await post({ use: { runId: id, tool: event.tool, source: 'opencode', ...timing } });
+      }
     })().catch(() => {});
   });
+  // The start of each call, for its length. Where this hook is not offered,
+  // every use is posted with no length, which is what was seen.
+  try {
+    await ctx.tool.hook('execute.before', event => {
+      clock.start(callOf(event), event?.sessionID);
+    });
+  } catch {}
 
   // A prompt is recorded when it is answered, so the record says what the
   // person decided and how long the agent waited for it. A prompt that is
@@ -238,6 +318,9 @@ async function setup(ctx) {
   void (async () => {
     for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
       const data = event?.data;
+      if (event?.type === 'permission.asked') {
+        clock.asked(data?.sessionID, data?.tool?.callID ?? data?.callID);
+      }
       if (event?.type === 'permission.asked' && data?.id) {
         asked.set(data.id, { at: Date.now(), action: data.action, sessionID: data.sessionID });
       } else if (event?.type === 'permission.replied' && data?.requestID) {

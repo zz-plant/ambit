@@ -158,7 +158,12 @@ function nextMove(
   const [first] = found.degraded;
   if (first) {
     return {
-      command: `ambit verify ${shellQuote(first.id.replace(/^combo:/, ''))}`,
+      // One failing check is named; several are re-run together, since the
+      // fix for one (a token, a server) is often the fix for the rest.
+      command:
+        found.degraded.length === 1
+          ? `ambit verify ${shellQuote(first.id.replace(/^combo:/, ''))}`
+          : 'ambit verify --failing',
       why:
         found.degraded.length === 1
           ? `${first.name} is configured and failing its check`

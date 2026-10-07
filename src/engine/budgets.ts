@@ -145,15 +145,20 @@ function budgetStanding(
   };
 }
 
-/** `$20`, `20`, `2000c` — dollars declare, cents store. */
-function parseAmount(input?: string | number): number | undefined {
+/**
+ * `$20`, `20`, `2000c` — dollars declare, cents store. Whole cents for an
+ * amount of money; `whole` false keeps a fraction of one, for a price per
+ * million tokens, which can be less than a cent.
+ */
+function parseAmount(input?: string | number, whole = true): number | undefined {
   if (input == null || input === '') return undefined;
   const raw = String(input).trim().replace(/^\$/, '');
   const cents = /c$/i.test(raw);
   const n = Number(raw.replace(/c$/i, ''));
   if (!Number.isFinite(n) || n < 0) return undefined;
   // Dollars declare, cents store — the convention the economics module set.
-  return cents ? Math.round(n) : Math.round(n * 100);
+  const value = cents ? n : n * 100;
+  return whole ? Math.round(value) : Math.round(value * 1e4) / 1e4;
 }
 
 /**
@@ -230,7 +235,7 @@ function setBudget(
     scope: input.scope,
     budget: `$${(cents / 100).toFixed(2)} per ${period}`,
     granted_by: humanId,
-    note: "A spend past this ceiling is refused until the period turns over, for any caller that states its spend. Nothing records a spend on its own yet, so a caller that states none is not counted. Within it the grant's own mode still decides: a budget bounds an autonomous grant and does not create one.",
+    note: "A spend past this ceiling is refused until the period turns over, for any caller that states its spend. One spend is recorded on its own: a Claude Code session's tokens, when a price is declared for the model (ambit economics price), land on Hosted Inference's budget after the session ends. Anything else is counted only when its caller states it. Within the ceiling the grant's own mode still decides: a budget bounds an autonomous grant and does not create one.",
     ...(cents === 0
       ? {
           warning:
@@ -288,18 +293,23 @@ function budgetReport(db: Db) {
     };
   }
   return {
-    budgets: rows.map(r => ({
-      capability: r.name || r.capability_id,
-      id: r.capability_id,
-      action: r.action,
-      scope: r.scope || undefined,
-      budget: `$${(r.budget_cents / 100).toFixed(2)} per ${r.period}`,
-      spent: `$${(r.spent_cents / 100).toFixed(2)}`,
-      remaining: `$${((r.budget_cents - r.spent_cents) / 100).toFixed(2)}`,
-      exhausted: r.spent_cents >= r.budget_cents ? true : undefined,
-      period_started: r.period_start,
-      granted_by: r.granted_by,
-    })),
+    budgets: rows.map(r => {
+      // A metered spend carries fractions of a cent. Rounded once, so what is
+      // spent and what remains add up to the ceiling.
+      const spent = Math.round(r.spent_cents);
+      return {
+        capability: r.name || r.capability_id,
+        id: r.capability_id,
+        action: r.action,
+        scope: r.scope || undefined,
+        budget: `$${(r.budget_cents / 100).toFixed(2)} per ${r.period}`,
+        spent: `$${(spent / 100).toFixed(2)}`,
+        remaining: `$${((r.budget_cents - spent) / 100).toFixed(2)}`,
+        exhausted: r.spent_cents >= r.budget_cents ? true : undefined,
+        period_started: r.period_start,
+        granted_by: r.granted_by,
+      };
+    }),
     note: 'A spent budget refuses rather than overspends, and the period resets on its own. That is what makes a ceiling safer than approving each purchase.',
   };
 }

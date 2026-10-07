@@ -44,7 +44,7 @@ Budgets and approvals name the person deciding, so declare yourself once: `ambit
 
 An ask-first default can be widened where a mistake is cheap. `ambit authority grant hosting autonomous --scope=staging --by=you` lets an agent deploy to staging without asking, while production, and any call that does not say where it is going, still asks. No grant widens a refusal, at any scope; that is what makes it one.
 
-A ceiling on spend is one line: `ambit budget set hosted-inference --amount=50 --period=month --by=you`, in dollars and without a `$`, which the shell would read. Past it, any caller that states what it is about to spend is refused until the month turns over, whether that is `ambit can --spend` or an agent's `ambit_can`. Nothing records a spend on its own yet, so the ceiling holds against callers that state one.
+A ceiling on spend is one line: `ambit budget set hosted-inference --amount=50 --period=month --by=you`, in dollars and without a `$`, which the shell would read. Past it, any caller that states what it is about to spend is refused until the month turns over, whether that is `ambit can --spend` or an agent's `ambit_can`. Claude Code sessions are the one spend recorded on their own: declare what a model costs with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and each session's tokens on it are charged to this budget when the session ends. A session under way is never stopped by the ceiling, and anything else counts only when its caller states it.
 
 ## When something breaks
 

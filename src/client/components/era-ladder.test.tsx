@@ -8,17 +8,16 @@
  * does, and what closes the ladder. The shell that decides the panel is open
  * for an era is rendered the way ui-density.test.tsx renders it.
  */
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import App from '../App';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
+import { findAll, type Props } from '../testing/elements';
 import { eraLadder } from './civ/layout';
-import { ColumnHead } from './CivTree';
+import { ColumnHead } from './civ/MapScene';
 import { EraLadderView } from './EraLadder';
-
-type Props = Record<string, any>;
 
 /** The props the shell last handed the deck, so a test can press a view tab's own handler. */
 const deck: { props?: Props } = {};
@@ -32,22 +31,6 @@ vi.mock('./AppDeck', async importOriginal => {
     },
   };
 });
-
-/** Every element in a tree of elements that satisfies `match`, in document order. */
-function findAll(
-  node: ReactNode,
-  match: (el: ReactElement<Props>) => boolean,
-  out: ReactElement<Props>[] = []
-): ReactElement<Props>[] {
-  if (Array.isArray(node)) {
-    for (const child of node) findAll(child, match, out);
-  } else if (node && typeof node === 'object' && 'props' in node) {
-    const el = node as ReactElement<Props>;
-    if (match(el)) out.push(el);
-    findAll(el.props?.children, match, out);
-  }
-  return out;
-}
 
 const progress = { total: 5, reached: 4, failing: 1, next: 0, blocked: 0, seconds: 0 };
 

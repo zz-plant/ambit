@@ -80,6 +80,7 @@ export {
   endRun,
   addEvent,
   recordUse,
+  recordToolUse,
   recordIntervention,
   recordResource,
   recordOutcome,

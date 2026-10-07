@@ -213,7 +213,7 @@ describe('the last line', () => {
       { id: 'combo:a', name: 'Alpha', lifecycle: 'broken' },
       { id: 'combo:b', name: 'Beta', lifecycle: 'degraded' },
     ]);
-    expect(report.next?.command).toBe('ambit verify a');
+    expect(report.next?.command).toBe('ambit verify --failing');
     expect(report.next?.why).toBe(
       '2 capabilities are configured and failing their check, starting with Alpha'
     );

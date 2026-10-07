@@ -133,6 +133,30 @@ describe('sync export and import round-trip', () => {
     expect(resource.cost_cents).toBe(50);
   });
 
+  it("keeps every part of a session's tokens, and a unit-less resource, once each", () => {
+    beginRun(sourceDb as never, { id: 'run-t', goal: 'session', runType: 'task', source: 'test' });
+    // A session end writes these in the same second: one row per model and part.
+    for (const unit of ['input tokens', 'cache read tokens', 'output tokens']) {
+      recordResource(sourceDb as never, 'run-t', 'model:m', 'tokens', { quantity: 10, unit });
+    }
+    recordResource(sourceDb as never, 'run-t', 'res-1', 'cpu', { quantity: 2 });
+    sourceDb.prepare("UPDATE resource_consumption SET recorded_at = '2026-10-06 12:00:00'").run();
+
+    exportSync(sourceDb, syncFile);
+    importSync(targetDb, syncFile);
+    const again = importSync(targetDb, syncFile) as any;
+    const rows = targetDb
+      .prepare("SELECT unit FROM resource_consumption WHERE run_id = 'run-t' ORDER BY unit")
+      .all() as any[];
+    expect(rows.map(r => r.unit)).toEqual([
+      null,
+      'cache read tokens',
+      'input tokens',
+      'output tokens',
+    ]);
+    expect(again.added.resource_consumption).toBe(0);
+  });
+
   it('is strictly idempotent on repeat imports', () => {
     sourceDb
       .prepare(

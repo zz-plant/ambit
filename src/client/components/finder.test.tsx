@@ -15,7 +15,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { ProposalRow } from '../../shared/api';
@@ -33,6 +33,7 @@ import {
   paletteRows,
   type Row,
 } from '../utils/palette';
+import { findAll } from '../testing/elements';
 import Finder, { FinderView } from './Finder';
 import NodeDetailPanel from './NodeDetailPanel';
 
@@ -431,22 +432,6 @@ test('the palette never reaches the network, and never decides on a proposal', (
     expect(source, path).not.toMatch(/approveProposal|rejectProposal/);
   }
 });
-
-/** Every element in a tree of elements that satisfies `match`, in document order. */
-function findAll(
-  node: ReactNode,
-  match: (el: ReactElement<Record<string, any>>) => boolean,
-  out: ReactElement<Record<string, any>>[] = []
-): ReactElement<Record<string, any>>[] {
-  if (Array.isArray(node)) {
-    for (const child of node) findAll(child, match, out);
-  } else if (node && typeof node === 'object' && 'props' in node) {
-    const el = node as ReactElement<Record<string, any>>;
-    if (match(el)) out.push(el);
-    findAll(el.props?.children, match, out);
-  }
-  return out;
-}
 
 /**
  * The finder as drawn, with a hand on its dialog: press a key on the handler

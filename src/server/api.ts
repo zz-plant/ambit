@@ -38,6 +38,7 @@ import {
   endRun,
   addEvent,
   recordUse,
+  recordToolUse,
   recordIntervention,
   recordResource,
   recordOutcome,
@@ -185,6 +186,10 @@ function broadcast(payload: Record<string, unknown>): void {
  * closes it, and event / use / intervention / resource / outcome each record
  * one row. Never a command.
  *
+ * A use may name the `tool` that ran in place of a capability, as the OpenCode
+ * plugin's do: the engine records one for each capability the tool exercises,
+ * found as the gate finds them, so the bridge never decides what a tool is.
+ *
  * { failure } is the §12.2 verb: a tool failed, here is what the runtime said
  * about it. Ambit classifies it rather than the bridge doing so — a bridge that
  * decides what counts as a permission error is a second place for that rule to
@@ -195,7 +200,11 @@ function ingestTelemetry(db: Db, body: any): Record<string, unknown> {
   if (body.run) return beginRun(ledger, body.run);
   if (body.end) return endRun(ledger, body.end.runId, body.end.outcome, body.end.outcomeValueCents);
   if (body.event) return addEvent(ledger, body.event.runId, body.event);
-  if (body.use) return recordUse(ledger, body.use.runId, body.use.capabilityId, body.use);
+  if (body.use) {
+    const u = body.use;
+    if (!u.capabilityId && typeof u.tool === 'string') return recordToolUse(db, u.runId, u.tool, u);
+    return recordUse(ledger, u.runId, u.capabilityId, u);
+  }
   if (body.intervention) {
     const i = body.intervention;
     return recordIntervention(ledger, i.runId, i.actorId, i);

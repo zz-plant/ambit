@@ -7,7 +7,8 @@
  * click away and never in the way. A key that lights nodes is a button; the
  * rest are rows.
  */
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
+import { usePressAway } from '../../hooks/usePressAway';
 import { termTitle } from '../Term';
 import { KeySwatch, type LegendKey } from './marks';
 
@@ -35,16 +36,7 @@ export function MapKey({
   onClose,
 }: MapKeyProps) {
   const box = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (!onClose) return;
-    const away = (e: PointerEvent) => {
-      const target = e.target as Element | null;
-      if (box.current?.contains(target) || target?.closest?.('[data-key-toggle]')) return;
-      onClose();
-    };
-    document.addEventListener('pointerdown', away);
-    return () => document.removeEventListener('pointerdown', away);
-  }, [onClose]);
+  usePressAway(box, onClose, '[data-key-toggle]');
   return (
     <section className="civ-key" aria-label="Key" ref={box}>
       <ul className="civ-key-list">

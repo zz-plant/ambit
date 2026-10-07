@@ -297,7 +297,9 @@ function seedCredentials(db: Db, config: any, mapping: any, insert: any): number
  *
  *   "economics": { "actors": { "kanav": { "attention_value_per_hour": 250 } },
  *                  "resources": { "device:nuc": { "purchase_cost": 3000 } },
- *                  "providers": { "provider:acme": { "recurring_cost_per_month": 80 } } }
+ *                  "providers": { "provider:acme": { "recurring_cost_per_month": 80 } },
+ *                  "models": { "claude-opus-4-5": { "input_per_mtok": 5,
+ *                                "cache_read_per_mtok": 0.5, "output_per_mtok": 25 } } }
  *
  *   "goals": { "recover-production": { "name": "Recover production service",
  *               "occurrence_rate_per_month": 2, "success_value_cents": 4000,
@@ -305,7 +307,10 @@ function seedCredentials(db: Db, config: any, mapping: any, insert: any): number
  *
  * A metric is declared or it is not; nothing is guessed at seed time. An
  * undeclared actor has no attention value until one is declared, and the
- * opportunity engine says "estimate" rather than pretending to know.
+ * opportunity engine says "estimate" rather than pretending to know. A model's
+ * three prices are per million tokens, under the name a Claude Code transcript
+ * records; `ambit economics price` writes the same rows, for an install with no
+ * config block to put them in.
  */
 function seedEconomics(db: Db, config: any): number {
   const put = db.prepare(
@@ -320,6 +325,7 @@ function seedEconomics(db: Db, config: any): number {
     resources: 'resource',
     providers: 'provider',
     services: 'service',
+    models: 'model',
   };
   const periodOf = (metric: string) =>
     metric.includes('_per_hour')
@@ -330,7 +336,9 @@ function seedEconomics(db: Db, config: any): number {
           ? 'per_request'
           : metric.includes('_per_kwh')
             ? 'per_kwh'
-            : 'one_time';
+            : metric.includes('_per_mtok')
+              ? 'per_mtok'
+              : 'one_time';
 
   for (const [block, entityType] of Object.entries(entityTypeOf)) {
     for (const [id, metrics] of Object.entries<any>(config.economics?.[block] || {})) {

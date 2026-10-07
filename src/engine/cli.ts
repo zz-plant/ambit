@@ -84,7 +84,7 @@ import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport, unmappedUse } from './telemetry.ts';
 import { capacityReport } from './capacity.ts';
-import { economicsReport } from './economics.ts';
+import { declareModelPrice, economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
 import { roiFor, roiSummary } from './roi.ts';
 import { exportSummary, importSummary } from './federation.ts';
@@ -264,7 +264,16 @@ async function runCommand(
       emit(usageReport(db, parseInt(arg, 10) || 30));
       break;
     case 'economics':
-      emit(economicsReport(db));
+      if (arg === 'price')
+        emit(
+          declareModelPrice(db, {
+            model: positional[1],
+            input: value('input'),
+            cacheRead: value('cache-read'),
+            output: value('output'),
+          })
+        );
+      else emit(economicsReport(db));
       break;
     case 'opportunities': {
       const byFlag = [...flags].find(f => f.startsWith('--by='));
@@ -334,13 +343,19 @@ async function runCommand(
             : { error: 'Usage: ambit verify <id> --history' }
         );
       } else {
-        const ran: any = runVerification(db, arg, value('target'));
+        const failing = flags.has('--failing');
+        const ran: any = runVerification(db, arg, value('target'), { failing });
         emit(ran);
         // --exit-code lets a script gate on the checks as `git diff --exit-code`
         // lets one gate on a diff: 0 only when every check that ran passed. A
         // capability with no check to run has proved nothing, so it exits 1
-        // with the flag as a failing check does.
-        if (flags.has('--exit-code') && !(ran.checked > 0 && ran.verified === ran.checked))
+        // with the flag as a failing check does. With --failing, nothing left
+        // failing is the answer a script wants, so no checks to run is a 0.
+        const allPassed = ran.verified === ran.checked;
+        if (
+          flags.has('--exit-code') &&
+          !(failing ? !ran.error && allPassed : ran.checked > 0 && allPassed)
+        )
           raiseExitCode(1);
       }
       break;

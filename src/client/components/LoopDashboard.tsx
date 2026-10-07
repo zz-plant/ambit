@@ -98,31 +98,34 @@ function ForecastPair({ predicted, observed }: { predicted: number; observed: nu
   );
 }
 
-/**
- * The assurance split as one bar rather than four chips.
- *
- * Order matters and is not cosmetic: proven is green and failing is red, and
- * at ΔE 5.6 under deuteranopia those two are the same colour — so the grey
- * unproven segment sits between them, they never share an edge, and every
- * segment carries its own written label. Colour is the last thing doing the
- * work here, not the first.
- */
+type TokenModel = NonNullable<LoopSnapshot['tokens']>['models'][number];
+
+/** What one model's tokens cost, as far as a price was declared for them. */
+function priceOf(m: TokenModel): string {
+  if (m.spend_dollars == null) return 'price undeclared';
+  return `${money(m.spend_dollars)} at the declared price${m.unpriced ? '; some tokens have none' : ''}`;
+}
+
 /**
  * What sessions used in tokens, per model, over the page's window. Recorded by
- * the Claude Code hooks from each session's transcript; no price, because the
- * transcript states none and a guessed one would be a figure the ledger could
- * not stand behind. Cache reads are drawn apart, in the quietest colour: they
- * are most of the count and the cheapest part of it.
+ * the Claude Code hooks from each session's transcript, which states no price,
+ * so a cost is drawn only where a person declared one for the model; a model
+ * with none says so, never $0. Cache reads are drawn apart, in the quietest
+ * colour: they are most of the count and the cheapest part of it.
  */
 function TokenUsage({ tokens }: { tokens: NonNullable<LoopSnapshot['tokens']> }) {
   const all = tokens.models.reduce((n, m) => n + m.input + m.cached + m.output, 0);
+  const priced = tokens.models.filter(m => m.spend_dollars != null);
+  const spent = priced.reduce((n, m) => n + (m.spend_dollars ?? 0), 0);
+  const named = tokens.models.length > 1;
   return (
     <figure className="fig fig--kpi fig--wide">
       <figcaption className="fig-caption">
         <span className="fig-caption-title">Tokens</span>
         <span className="fig-caption-note">
           {tokens.sessions} {tokens.sessions === 1 ? 'session' : 'sessions'}, last {tokens.days}{' '}
-          days · counts from transcripts, no price stated
+          days · counts from transcripts,{' '}
+          {priced.length ? `${money(spent)} at declared prices` : 'no price declared'}
         </span>
       </figcaption>
       <div className="fig-kpi-value" style={NUM}>
@@ -131,7 +134,14 @@ function TokenUsage({ tokens }: { tokens: NonNullable<LoopSnapshot['tokens']> })
       </div>
       {tokens.models.map(m => (
         <div key={m.model} className="loop-token-model">
-          {tokens.models.length > 1 && <div className="loop-token-name">{m.model}</div>}
+          {/* The caption carries one model's whole price; a line says the rest. */}
+          {(named || (m.spend_dollars != null && m.unpriced)) && (
+            <div className="loop-token-name">
+              {[named ? m.model : null, priced.length ? priceOf(m) : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
+          )}
           <StackedBar
             format={formatCount}
             segments={[
@@ -146,6 +156,15 @@ function TokenUsage({ tokens }: { tokens: NonNullable<LoopSnapshot['tokens']> })
   );
 }
 
+/**
+ * The assurance split as one bar rather than four chips.
+ *
+ * Order matters and is not cosmetic: proven is green and failing is red, and
+ * at ΔE 5.6 under deuteranopia those two are the same colour — so the grey
+ * unproven segment sits between them, they never share an edge, and every
+ * segment carries its own written label. Colour is the last thing doing the
+ * work here, not the first.
+ */
 function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   const proven = status.verified;
   const unproven = Math.max(status.reached - status.verified - status.failing, 0);
@@ -568,9 +587,10 @@ function AuthorityFigure({
           </ul>
           {authority.budgets.some(b => !(b.spent_dollars > 0)) && (
             <p className="fig-note">
-              Nothing that ships with Ambit records spend yet. An integration records it by calling{' '}
-              <code>recordSpend</code> from the engine, and until one does a budget has no pace to
-              draw.
+              A Claude Code session's tokens are recorded as a spend on Hosted Inference when it
+              ends, priced at what <code>ambit economics price</code> declares for its model.
+              Nothing else records spend on its own; an integration calls <code>recordSpend</code>.
+              Until a spend is recorded a budget has no pace to draw.
             </p>
           )}
         </div>

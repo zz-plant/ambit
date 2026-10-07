@@ -6,15 +6,17 @@
  * left it under a header counting today, beside a panel naming today's
  * grants, would be three dates on one screen with nothing saying so.
  */
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterAll, afterEach, beforeAll, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import type { FrontierHistoryResponse, FrontierTick } from '../../shared/api';
 import App from '../App';
 import { useAmbitStore } from '../store/ambitStore';
+import { findAll } from '../testing/elements';
 import type { Connection, Item } from '../utils/configImporter';
 import AppDeck from './AppDeck';
 import CivTree from './CivTree';
-import { itemsAsOf, tickSecond } from './civ/history';
+import { itemsAsOf, PLAY_STEP_MS, tickSecond } from './civ/history';
 import { Timeline } from './civ/Timeline';
 import NodeDetailPanel from './NodeDetailPanel';
 
@@ -65,6 +67,9 @@ const FRIDAY: FrontierTick = {
 };
 const HISTORY: FrontierHistoryResponse = { ticks: [MONDAY, FRIDAY], movedSinceLast: null };
 
+/** The strip as most tests draw it: not playing, and nothing to tell when asked to. */
+const PAUSED = { playing: false, onPlay: () => {} };
+
 /** Both halves of the store, since a server render reads the initial state. */
 function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
   Object.assign(useAmbitStore.getInitialState(), state);
@@ -98,9 +103,13 @@ afterEach(() => {
     history: null,
     historyAt: null,
     historyOpen: false,
+    historyPlaying: false,
     attentionInterventions: {},
     backend: 'unknown',
   });
+  // Clears Play's timer too, so a test that left it running cannot step the next one.
+  useAmbitStore.getState().setHistoryPlaying(false);
+  vi.useRealTimers();
 });
 
 afterAll(() => {
@@ -108,7 +117,9 @@ afterAll(() => {
 });
 
 test('with two observations the timeline is offered, its playhead on now', () => {
-  const html = renderToStaticMarkup(<Timeline history={HISTORY} at={null} onScrub={() => {}} />);
+  const html = renderToStaticMarkup(
+    <Timeline history={HISTORY} at={null} onScrub={() => {}} {...PAUSED} />
+  );
   // A range input: it drags, and the arrow keys, Home and End step it.
   expect(html).toContain('type="range"');
   expect(html).toContain('min="0"');
@@ -123,7 +134,7 @@ test('with two observations the timeline is offered, its playhead on now', () =>
 
 test('scrubbed to a tick, it says what moved then, and offers the way back', () => {
   const html = renderToStaticMarkup(
-    <Timeline history={HISTORY} at={tickSecond(MONDAY)} onScrub={() => {}} />
+    <Timeline history={HISTORY} at={tickSecond(MONDAY)} onScrub={() => {}} {...PAUSED} />
   );
   expect(html).toContain('value="0"');
   expect(html).toContain('aria-valuetext="Sep 21, 2026, 09:00 UTC"');
@@ -136,7 +147,12 @@ test('with fewer than two observations there is no strip at all', () => {
   // every first look at the map.
   for (const ticks of [[FRIDAY], []]) {
     const html = renderToStaticMarkup(
-      <Timeline history={{ ticks, movedSinceLast: null }} at={null} onScrub={() => {}} />
+      <Timeline
+        history={{ ticks, movedSinceLast: null }}
+        at={null}
+        onScrub={() => {}}
+        {...PAUSED}
+      />
     );
     expect(html).toBe('');
   }
@@ -259,4 +275,186 @@ test('the page tells one date: the timeline under the map, the header, the panel
   const nowNode = text(renderToStaticMarkup(<App />));
   expect(nowNode).toContain('Nothing has moved since Sep 25.');
   expect(nowNode).not.toContain('as of');
+});
+
+// ── Play ─────────────────────────────────────────────────────────────────────
+// The scrub bar replayed the ledger only as fast as a hand could step it. Play
+// steps it on its own, one observation at a time, and stops at now. The store
+// keeps the timer, so these drive the store's clock and the strip's handlers.
+
+const store = () => useAmbitStore.getState();
+
+/** Wednesday, between the two, so Play has a stop in the middle to pass. */
+const WEDNESDAY: FrontierTick = { ...MONDAY, at: '2026-09-23 12:00:00', moved: 'reached 1' };
+const WEEK: FrontierHistoryResponse = { ticks: [MONDAY, WEDNESDAY, FRIDAY], movedSinceLast: null };
+
+/** The strip as App wires it to the store, with a hand on its controls. */
+function strip(playing = store().historyPlaying) {
+  const tree = Timeline({
+    history: store().history ?? WEEK,
+    at: store().historyAt,
+    onScrub: store().setHistoryAt,
+    playing,
+    onPlay: store().setHistoryPlaying,
+  }) as ReactElement;
+  const range = findAll(tree, e => e.props?.type === 'range')[0];
+  const [play] = findAll(tree, e => e.props?.className?.startsWith('civ-timeline-play'));
+  const back = findAll(tree, e => e.props?.className === 'civ-timeline-now')[0];
+  return { range, play, back };
+}
+
+/** A key pressed on the scrub bar, and whether the browser's own use of it was stopped. */
+function pressOn(el: ReactElement<Record<string, any>>, key: string, held = {}) {
+  let prevented = false;
+  el.props.onKeyDown({
+    key,
+    ctrlKey: false,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    ...held,
+    currentTarget: { tagName: 'INPUT', type: 'range' },
+    preventDefault: () => (prevented = true),
+  });
+  return prevented;
+}
+
+test('Play sits beside the bar as a toggle: one name, and pressed while it plays', () => {
+  const paused = renderToStaticMarkup(
+    <Timeline history={WEEK} at={null} {...PAUSED} onScrub={() => {}} />
+  );
+  expect(paused).toContain('aria-label="Play"');
+  expect(paused).toContain('aria-pressed="false"');
+  // The sentence each stop changes is a polite status, as a scrub's always was.
+  expect(paused).toMatch(/class="civ-timeline-sentence" role="status"/);
+
+  const playing = renderToStaticMarkup(
+    <Timeline history={WEEK} at={tickSecond(MONDAY)} playing onPlay={() => {}} onScrub={() => {}} />
+  );
+  expect(playing).toContain('aria-label="Play"');
+  expect(playing).toContain('aria-pressed="true"');
+  expect(playing).toContain('civ-timeline-play is-on');
+});
+
+test('from now, Play starts at the first observation and steps one at a time', () => {
+  vi.useFakeTimers();
+  seed({ history: WEEK, historyAt: null, historyOpen: true });
+  strip().play.props.onClick();
+  expect(store()).toMatchObject({ historyPlaying: true, historyAt: tickSecond(MONDAY) });
+
+  // Each stop holds long enough to read its sentence, and then the next one comes.
+  vi.advanceTimersByTime(PLAY_STEP_MS - 1);
+  expect(store().historyAt).toBe(tickSecond(MONDAY));
+  vi.advanceTimersByTime(1);
+  expect(store().historyAt).toBe(tickSecond(WEDNESDAY));
+  vi.advanceTimersByTime(PLAY_STEP_MS);
+  expect(store().historyAt).toBe(tickSecond(FRIDAY));
+  expect(store().historyPlaying).toBe(true);
+});
+
+test('Play stops by itself at now, and the button goes back to Play', () => {
+  vi.useFakeTimers();
+  seed({ history: WEEK, historyAt: tickSecond(WEDNESDAY), historyOpen: true });
+  // From the playhead, not from the start: Wednesday stays on screen first.
+  store().setHistoryPlaying(true);
+  expect(store().historyAt).toBe(tickSecond(WEDNESDAY));
+  vi.advanceTimersByTime(PLAY_STEP_MS);
+  expect(store().historyAt).toBe(tickSecond(FRIDAY));
+  vi.advanceTimersByTime(PLAY_STEP_MS);
+  // Now is the last stop: the live map, with the strip still open on it.
+  expect(store()).toMatchObject({ historyAt: null, historyPlaying: false, historyOpen: true });
+  expect(strip().play.props['aria-pressed']).toBe(false);
+  vi.advanceTimersByTime(PLAY_STEP_MS * 5);
+  expect(store().historyAt).toBeNull();
+
+  // Pressed again at now, it goes round to the start.
+  strip().play.props.onClick();
+  expect(store()).toMatchObject({ historyPlaying: true, historyAt: tickSecond(MONDAY) });
+  strip().play.props.onClick();
+  expect(store()).toMatchObject({ historyPlaying: false, historyAt: tickSecond(MONDAY) });
+});
+
+test('a hand on the playhead pauses Play, and no step lands after it', () => {
+  vi.useFakeTimers();
+  seed({ history: WEEK, historyAt: null, historyOpen: true });
+
+  // A drag or an arrow key reaches the store through the range's change.
+  store().setHistoryPlaying(true);
+  strip().range.props.onChange({ target: { value: '2' } });
+  expect(store()).toMatchObject({ historyPlaying: false, historyAt: tickSecond(FRIDAY) });
+  vi.advanceTimersByTime(PLAY_STEP_MS * 3);
+  expect(store().historyAt).toBe(tickSecond(FRIDAY));
+
+  // Back to now is a hand on it too.
+  store().setHistoryPlaying(true);
+  strip().back.props.onClick();
+  expect(store()).toMatchObject({ historyPlaying: false, historyAt: null });
+  vi.advanceTimersByTime(PLAY_STEP_MS * 3);
+  expect(store().historyAt).toBeNull();
+});
+
+test('closing the strip, starting a simulation or selecting a node pauses Play', () => {
+  vi.useFakeTimers();
+  seed({ items: [vc, ci], connections: EDGES, history: WEEK, historyOpen: true });
+  const pausers: [string, () => void][] = [
+    ['closing the strip', () => store().setHistoryOpen(false)],
+    ['an outage', () => store().startOutageSimulation(vc.id)],
+    ['an unlock', () => store().startAcquisitionSimulation(ci.id)],
+    ['a gap', () => store().startGapSimulation(ci.id)],
+    ['a lens on now', () => store().setActiveLens('attention')],
+    ['a node', () => store().selectItem(vc.id)],
+    ['an era', () => store().selectEra(1)],
+  ];
+  for (const [what, pause] of pausers) {
+    useAmbitStore.setState({ historyAt: null, selectedItem: null, selectedEra: null });
+    store().setHistoryPlaying(true);
+    const at = store().historyAt;
+    pause();
+    expect(store().historyPlaying, what).toBe(false);
+    const after = store().historyAt;
+    vi.advanceTimersByTime(PLAY_STEP_MS * 3);
+    expect(store().historyAt, what).toBe(after);
+    expect(at).toBe(tickSecond(MONDAY));
+  }
+  store().clearSimulation();
+  store().setActiveLens('default');
+
+  // Clearing a selection is not looking at anything, so Play goes on.
+  useAmbitStore.setState({ historyAt: null, selectedItem: vc.id });
+  store().setHistoryPlaying(true);
+  store().selectItem(vc.id);
+  expect(store().historyPlaying).toBe(true);
+});
+
+test('Space on the scrub bar plays and pauses, and its arrows still step it', () => {
+  const asked: boolean[] = [];
+  const at = (playing: boolean) =>
+    findAll(
+      Timeline({
+        history: WEEK,
+        at: tickSecond(WEDNESDAY),
+        onScrub: () => {},
+        playing,
+        onPlay: on => asked.push(on),
+      }) as ReactElement,
+      e => e.props?.type === 'range'
+    )[0];
+
+  expect(pressOn(at(false), ' ')).toBe(true);
+  expect(pressOn(at(true), ' ')).toBe(true);
+  expect(asked).toEqual([true, false]);
+  // The bar's own keys are the browser's to turn into a change, and a held
+  // Space is the browser's too.
+  for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End'])
+    expect(pressOn(at(false), key)).toBe(false);
+  expect(pressOn(at(false), ' ', { metaKey: true })).toBe(false);
+  expect(asked).toEqual([true, false]);
+});
+
+test('a page that is playing draws the pressed button where App puts the strip', () => {
+  seed({ items: [vc, ci], connections: EDGES, history: WEEK, historyOpen: true });
+  seed({ historyAt: tickSecond(WEDNESDAY), historyPlaying: true });
+  const html = renderToStaticMarkup(<App />);
+  expect(html).toContain('class="civ-timeline-play is-on" aria-label="Play" aria-pressed="true"');
+  expect(text(html)).toContain('Sep 23: reached 1.');
 });

@@ -262,6 +262,23 @@ test('verify --exit-code exits 1 unless every check it ran passed', () => {
     ]);
     // Retrieval declares no check, so nothing was proved and the gate stays shut.
     expect([status('retrieval'), status('retrieval', '--exit-code')]).toEqual([0, 1]);
+    // --failing re-runs only what fails, and it still fails.
+    expect(status('--failing', '--exit-code')).toBe(1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('verify --failing --exit-code is 0 when nothing is failing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ambit-exit-'));
+  try {
+    run(dir, 'seed');
+    run(dir, 'record', 'skill:holds', '--verify=true');
+    const out = piped(dir, 'verify', '--failing', '--exit-code');
+    expect(out.status).toBe(0);
+    expect(out.stdout).toContain('Nothing is failing its check.');
+    // Naming a capability with it is a usage error.
+    expect(piped(dir, 'verify', 'retrieval', '--failing', '--exit-code').status).toBe(1);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -1,9 +1,9 @@
 /**
  * The page's rules for keys, apart from any listener that applies them: what
  * one press of Escape closes, where the page's own keys stand aside, where Tab
- * goes inside a dialog, and what the shell's keys and the map's are. Free of
- * the DOM's types, so the rules are checked and tested with the client's
- * other pure code.
+ * goes inside a dialog, and what the shell's keys, the map's and the
+ * timeline's are. Free of the DOM's types, so the rules are checked and tested
+ * with the client's other pure code.
  */
 import type { ActiveLens } from '../linkState';
 
@@ -149,6 +149,21 @@ export function pageKey(e: KeyPress): PageKey | undefined {
   if (e.key === 'g' || e.key === 'G') return 'proposals';
   if (e.key === 'Escape') return 'escape';
   return undefined;
+}
+
+/**
+ * The timeline's own key: Space plays or pauses it, pressed on the scrub bar.
+ *
+ * The bar is a range input, which `typingIn` counts as a field so the page's
+ * letters and the map's arrows stand aside there; it has its own use for the
+ * arrows, Home and End, and none for Space. Anywhere else Space keeps the
+ * meaning it has: a button pressed with it is pressed, the play button
+ * included, and a text field types it. A modified press is the browser's.
+ */
+export function timelineKey(e: KeyPress, target: unknown): 'play' | undefined {
+  if (held(e) || e.key !== ' ') return undefined;
+  const el = target as { tagName?: unknown; type?: unknown } | null;
+  return el?.tagName === 'INPUT' && el.type === 'range' ? 'play' : undefined;
 }
 
 /** The map's own keys: a lens, the zoom, and a step through the nodes. */
