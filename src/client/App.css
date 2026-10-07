@@ -5816,6 +5816,14 @@ button.app-sample-tag:hover {
   background: var(--fig-context);
 }
 
+/* Reasoning, where a runtime counts it apart from output, is priced as output,
+   so it is output's colour, set apart from output's own segment by an edge. */
+.fig-stack-seg--reasoning,
+.fig-key-swatch--reasoning {
+  background: var(--fig-data-soft);
+  box-shadow: inset 2px 0 0 var(--fig-data);
+}
+
 .fig-stack-seg--autonomous,
 .fig-key-swatch--autonomous {
   background: var(--fig-good);
@@ -7107,4 +7115,14 @@ button.app-sample-tag:hover {
   margin-bottom: 4px;
   font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+/* One runtime's window under way, beside the Tokens figure; a second one, on
+   its own clock, sits below the first. */
+.loop-window + .loop-window {
+  margin-top: 16px;
+}
+
+.loop-window .fig-note {
+  margin: 2px 0 10px;
 }

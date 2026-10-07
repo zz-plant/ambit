@@ -393,7 +393,17 @@ test('Time & cost reads the tokens, and a ledger with only tokens is not empty',
     expect(view.tokens).toEqual({
       days: 30,
       sessions: 1,
-      models: [{ model: 'claude-opus-5-5', input: 40, cached: 900, output: 60, unpriced: true }],
+      runtimes: [{ runtime: 'Claude Code', sessions: 1 }],
+      models: [
+        {
+          model: 'claude-opus-5-5',
+          input: 40,
+          cached: 900,
+          output: 60,
+          runtimes: ['Claude Code'],
+          unpriced: true,
+        },
+      ],
     });
     expect(view.empty).toBe(false);
   } finally {
@@ -500,7 +510,12 @@ test("a session's tokens on a priced model are a spend against Hosted Inference'
     expect(decision.remaining_budget_cents).toBeCloseTo(2000 - SESSION_CENTS, 6);
     expect(loopView(db).authority.budgets[0].spent_dollars).toBe(8.5);
     expect(tokenUsage(db)?.models).toEqual([
-      { model: 'claude-opus-5-5', ...withoutId(SESSION), spend_dollars: 8.5 },
+      {
+        model: 'claude-opus-5-5',
+        ...withoutId(SESSION),
+        runtimes: ['Claude Code'],
+        spend_dollars: 8.5,
+      },
     ]);
   });
 

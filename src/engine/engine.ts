@@ -87,6 +87,7 @@ export {
   workReport,
   usageReport,
   unmappedUse,
+  usageWindows,
 } from './telemetry.ts';
 export {
   valueCents,

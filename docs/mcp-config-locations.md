@@ -20,6 +20,10 @@ Paths are for macOS and Linux, with `~` as your home directory. Windows keeps th
 | [Continue](#continue) | `~/.continue/config.json` | `mcpServers`, or `experimental.modelContextProtocolServers` |
 | [Zed](#zed) | `~/.config/zed/settings.json`, or `~/Library/Application Support/Zed/settings.json` | `context_servers` |
 | [VS Code](#vs-code) | `~/Library/Application Support/Code/User/mcp.json` (macOS), `~/.config/Code/User/mcp.json` (Linux) | `servers` |
+| [Copilot CLI](#copilot-cli) | `~/.copilot/mcp-config.json` | `mcpServers` |
+| [Amp](#amp) | `~/.config/amp/settings.json`, or `settings.jsonc` | `amp.mcpServers`, one key with a dot in its name |
+| [Goose](#goose) | `~/.config/goose/config.yaml` | `extensions`, those of type `stdio` or `streamable_http` |
+| [Kiro](#kiro) | `~/.kiro/settings/mcp.json` | `mcpServers` |
 
 VS Code's `globalStorage` directory is `~/Library/Application Support/Code/User/globalStorage` on macOS and `~/.config/Code/User/globalStorage` on Linux.
 
@@ -34,13 +38,15 @@ Each is read only when the runtime works in that repository, and is usually chec
 | [Gemini CLI](#gemini-cli) | `.gemini/settings.json` | `mcpServers` |
 | [OpenCode](#opencode) | `opencode.json` at the project root | `mcp` |
 | [VS Code](#vs-code) | `.vscode/mcp.json` | `servers` |
+| [Amp](#amp) | `.amp/settings.json` | `amp.mcpServers` |
+| [Kiro](#kiro) | `.kiro/settings/mcp.json` | `mcpServers` |
 
 ## Why the same server breaks when you copy it
 
 Three differences account for most failed copies:
 
-- **The key.** Most runtimes use `mcpServers`. OpenCode uses `mcp`, Zed uses `context_servers`, VS Code uses `servers`, and Codex CLI uses TOML tables named `mcp_servers`. A block pasted under the wrong key is valid JSON that the runtime ignores.
-- **The file format.** Codex CLI reads TOML, OpenCode accepts JSON with comments, and the rest read plain JSON. A trailing comma or a comment breaks a plain JSON file.
+- **The key.** Most runtimes use `mcpServers`. OpenCode uses `mcp`, Zed uses `context_servers`, VS Code uses `servers`, Amp uses `amp.mcpServers`, Goose uses `extensions`, and Codex CLI uses TOML tables named `mcp_servers`. A block pasted under the wrong key is valid JSON that the runtime ignores.
+- **The file format.** Codex CLI reads TOML and Goose reads YAML, OpenCode accepts JSON with comments, and the rest read plain JSON. A trailing comma or a comment breaks a plain JSON file.
 - **Where a project's servers live.** A server in a project file exists only in that repository, and Claude Code also keeps private per-project servers inside `~/.claude.json`, keyed by the project's path. The same server can be on in one repository and absent in another.
 
 ## Claude Code
@@ -98,6 +104,33 @@ Zed's `settings.json`, under `context_servers`. Linux keeps it in `~/.config/zed
 ## VS Code
 
 VS Code's user-level `mcp.json`, under `servers`. Linux keeps it in `~/.config/Code/User/mcp.json`, macOS in `~/Library/Application Support/Code/User/mcp.json`. A workspace can carry its own in `.vscode/mcp.json`, in the same shape, which Ambit does not read. `VSCODE_MCP_CONFIG` overrides the user-level path for Ambit.
+
+## Copilot CLI
+
+GitHub Copilot CLI keeps `~/.copilot/mcp-config.json`, with `mcpServers` at the top. Each entry names its transport in `type`: `local` or `stdio` with a `command`, or `http` or `sse` with a `url`. `copilot mcp disable` switches a server off and keeps it configured; Copilot's documentation does not say where that is recorded, so Ambit cannot see it. `COPILOT_MCP_CONFIG` overrides the path for Ambit.
+
+## Amp
+
+Amp's user settings, `~/.config/amp/settings.json` or `settings.jsonc`. The servers are under `"amp.mcpServers"`, one key with a dot in its name, beside Amp's other settings, which are named the same way. Each is a `command` and `args`, or a `url` and `headers`. A workspace can declare more in `.amp/settings.json`, which Ambit does not read. `AMP_MCP_CONFIG` overrides the user-level path for Ambit.
+
+## Goose
+
+`~/.config/goose/config.yaml`, where each extension is an entry under `extensions`:
+
+```yaml
+extensions:
+  filesystem:
+    type: stdio
+    enabled: true
+    cmd: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+```
+
+The command is `cmd`, and a remote server is `type: streamable_http` with its address in `uri`, so an entry copied from an `mcpServers` file has to be renamed field by field. `enabled: false` keeps an extension configured and off. Ambit reads the `stdio` and `streamable_http` extensions, and the older `sse` ones; a `builtin` or `platform` extension ships inside Goose and is no server anyone added. `GOOSE_MCP_CONFIG` overrides the path for Ambit.
+
+## Kiro
+
+`~/.kiro/settings/mcp.json`, with `mcpServers` at the top: a `command`, `args` and `env`, or a `url` and `headers`. `disabled: true` keeps a server configured and off. A workspace's `.kiro/settings/mcp.json` can add more, in the same shape, which Ambit does not read. `KIRO_MCP_CONFIG` overrides the user-level path for Ambit.
 
 ## Seeing every runtime's servers at once
 

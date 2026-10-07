@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { readSessionLogs, SESSION_LOG_BUDGET_MS, sessionLogReport } from './session-logs.ts';
 import { ingestSpool } from './spool.ts';
 import { ingestTrackerSpool } from './tracker-spool.ts';
 import { resolveDbPath } from '../shared/db-path.ts';
@@ -18,6 +19,7 @@ import {
   explain,
   renderBrief,
   renderImpact,
+  renderWindows,
   renderPlan,
   renderStatus,
   statusReport,
@@ -83,7 +85,7 @@ import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
-import { workReport, usageReport, unmappedUse } from './telemetry.ts';
+import { workReport, usageReport, unmappedUse, usageWindows } from './telemetry.ts';
 import { capacityReport } from './capacity.ts';
 import { declareModelPrice, economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
@@ -262,7 +264,17 @@ async function runCommand(
       emit(workReport(db, parseInt(arg, 10) || 20));
       break;
     case 'usage':
-      emit(usageReport(db, parseInt(arg, 10) || 30));
+      // A full re-read of every agent session log, cursors set aside. What a
+      // run already holds is not recorded again, so it only adds what an
+      // earlier read missed.
+      if (flags.has('--refresh')) emit(sessionLogReport(readSessionLogs(db, { refresh: true })));
+      // The five-hour windows a subscription plan resets in, the last day's
+      // unless a number of days is given.
+      else if (flags.has('--windows'))
+        emit(usageWindows(db, { days: parseInt(arg, 10) || 1 }), r =>
+          renderWindows(r, terminalPalette())
+        );
+      else emit(usageReport(db, parseInt(arg, 10) || 30));
       break;
     case 'economics':
       if (arg === 'price')
@@ -944,6 +956,18 @@ async function main() {
       ingestTrackerSpool(db);
     } catch {
       /* likewise */
+    }
+    // The tokens Codex, OpenCode and Amp sessions used, from their own logs:
+    // what changed since the last read, for at most a second and a half, so a
+    // first read of a long history spreads over a few commands. `seed` reads it
+    // all, and `usage --refresh` reads it all again from the top.
+    const refresh = cmd === 'usage' && flags.has('--refresh');
+    if (!refresh) {
+      try {
+        readSessionLogs(db, { budgetMs: cmd === 'seed' ? undefined : SESSION_LOG_BUDGET_MS });
+      } catch {
+        /* the logs wait for the next command */
+      }
     }
   }
   if (!cmd || cmd === 'help') {

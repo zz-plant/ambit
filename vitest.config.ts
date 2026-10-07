@@ -20,7 +20,22 @@ export default defineConfig({
     // Every `ambit` command reads the Claude Code spool into its graph and
     // deletes it. A test that runs the CLI must never consume the developer's
     // own spool into a throwaway graph, so the whole suite points elsewhere.
-    env: { AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`) },
+    // Every seed also lists the models Ollama and LM Studio keep on disk, and
+    // every command reads token counts from the transcripts Claude Code keeps
+    // and the session logs Codex, OpenCode and Amp keep, so all of them point
+    // at folders that do not exist: the developer's own models and sessions
+    // must never decide an assertion. A set CLAUDE_CONFIG_DIR is the only
+    // place Claude Code's are looked for, so ~/.claude is never read. A test
+    // that wants models or logs makes them.
+    env: {
+      AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`),
+      OLLAMA_MODELS: join(tmpdir(), `ambit-test-no-ollama-${process.pid}`),
+      AMBIT_LMSTUDIO_MODELS: join(tmpdir(), `ambit-test-no-lmstudio-${process.pid}`),
+      CLAUDE_CONFIG_DIR: join(tmpdir(), `ambit-test-no-logs-${process.pid}`, 'claude'),
+      CODEX_HOME: join(tmpdir(), `ambit-test-no-logs-${process.pid}`, 'codex'),
+      OPENCODE_DATA_DIR: join(tmpdir(), `ambit-test-no-logs-${process.pid}`, 'opencode'),
+      AMP_DATA_DIR: join(tmpdir(), `ambit-test-no-logs-${process.pid}`, 'amp'),
+    },
     testTimeout: 30_000,
     hookTimeout: 30_000,
     coverage: {

@@ -7,6 +7,7 @@ import type {
   LoopOpportunity,
   LoopSince,
   LoopSnapshot,
+  UsageWindow,
 } from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
 import { budgetBar } from '../utils/budgetBar';
@@ -106,25 +107,40 @@ function priceOf(m: TokenModel): string {
   return `${money(m.spend_dollars)} at the declared price${m.unpriced ? '; some tokens have none' : ''}`;
 }
 
+/** Where the counts came from: one runtime by name, several with their sessions. */
+function sourcesOf(tokens: NonNullable<LoopSnapshot['tokens']>): string {
+  const [only, ...rest] = tokens.runtimes;
+  if (!only) return 'session logs';
+  if (!rest.length) return `${only.runtime} session logs`;
+  return `${tokens.runtimes.map(r => `${r.runtime} (${r.sessions})`).join(', ')} session logs`;
+}
+
 /**
- * What sessions used in tokens, per model, over the page's window. Recorded by
- * the Claude Code hooks from each session's transcript, which states no price,
- * so a cost is drawn only where a person declared one for the model; a model
- * with none says so, never $0. Cache reads are drawn apart, in the quietest
- * colour: they are most of the count and the cheapest part of it.
+ * What sessions used in tokens, per model, over the page's window. Recorded
+ * from the transcripts Claude Code keeps and the session logs Codex, OpenCode
+ * and Amp keep, none of which states a price, so a cost is drawn only
+ * where a person declared one for the model; a model with none says so, never
+ * $0. With more than one runtime, each model says whose sessions used it.
+ * Cache reads are drawn apart, in the quietest colour: they are most of the
+ * count and the cheapest part of it. Reasoning gets a segment only where a
+ * runtime counted it apart from output.
  */
 function TokenUsage({ tokens }: { tokens: NonNullable<LoopSnapshot['tokens']> }) {
-  const all = tokens.models.reduce((n, m) => n + m.input + m.cached + m.output, 0);
+  const all = tokens.models.reduce(
+    (n, m) => n + m.input + m.cached + m.output + (m.reasoning ?? 0),
+    0
+  );
   const priced = tokens.models.filter(m => m.spend_dollars != null);
   const spent = priced.reduce((n, m) => n + (m.spend_dollars ?? 0), 0);
   const named = tokens.models.length > 1;
+  const several = tokens.runtimes.length > 1;
   return (
     <figure className="fig fig--kpi fig--wide">
       <figcaption className="fig-caption">
         <span className="fig-caption-title">Tokens</span>
         <span className="fig-caption-note">
           {tokens.sessions} {tokens.sessions === 1 ? 'session' : 'sessions'}, last {tokens.days}{' '}
-          days · counts from transcripts,{' '}
+          days · counts from {sourcesOf(tokens)},{' '}
           {priced.length ? `${money(spent)} at declared prices` : 'no price declared'}
         </span>
       </figcaption>
@@ -135,9 +151,13 @@ function TokenUsage({ tokens }: { tokens: NonNullable<LoopSnapshot['tokens']> })
       {tokens.models.map(m => (
         <div key={m.model} className="loop-token-model">
           {/* The caption carries one model's whole price; a line says the rest. */}
-          {(named || (m.spend_dollars != null && m.unpriced)) && (
+          {(named || several || (m.spend_dollars != null && m.unpriced)) && (
             <div className="loop-token-name">
-              {[named ? m.model : null, priced.length ? priceOf(m) : null]
+              {[
+                named ? m.model : null,
+                several ? m.runtimes.join(', ') : null,
+                priced.length ? priceOf(m) : null,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </div>
@@ -148,10 +168,86 @@ function TokenUsage({ tokens }: { tokens: NonNullable<LoopSnapshot['tokens']> })
               { key: 'input', n: m.input, label: 'input' },
               { key: 'cached', n: m.cached, label: 'cache reads' },
               { key: 'output', n: m.output, label: 'output' },
+              { key: 'reasoning', n: m.reasoning ?? 0, label: 'reasoning' },
             ]}
           />
         </div>
       ))}
+    </figure>
+  );
+}
+
+/** "2h 05m" from a count of milliseconds, never less than a minute. */
+function hoursAndMinutes(ms: number): string {
+  const minutes = Math.max(1, Math.round(ms / 60_000));
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours}h ${String(minutes % 60).padStart(2, '0')}m` : `${minutes}m`;
+}
+
+/**
+ * Each runtime's five-hour window under way, beside the month's tokens: what
+ * it has used per model, when it ends, and how long that is from now by the
+ * reader's clock, which moves on each minute. A window that ends while the
+ * page is open leaves the figure, and with none under way there is no figure.
+ * It draws no limit and no share of one: Ambit knows no plan's (AGENTS.md
+ * rule 16), so it says what was used and when the window resets, and stops.
+ */
+function CurrentWindows({ windows }: { windows: UsageWindow[] }) {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(tick);
+  }, []);
+  const live = windows.filter(w => Date.parse(w.end) > now);
+  if (!live.length) return null;
+  const clock = new Intl.DateTimeFormat(readerLocale(), { hour: 'numeric', minute: '2-digit' });
+  const several = live.length > 1;
+  return (
+    <figure className="fig fig--kpi">
+      <figcaption className="fig-caption">
+        <span className="fig-caption-title">This five-hour window</span>
+        <span className="fig-caption-note">
+          {several
+            ? 'one per runtime, each on its own clock'
+            : `${live[0].runtime}, ${clock.format(new Date(live[0].start))} to ${clock.format(new Date(live[0].end))}`}
+        </span>
+      </figcaption>
+      {live.map(w => {
+        const priced = w.spend_dollars != null;
+        return (
+          <div key={`${w.runtime}/${w.start}`} className="loop-window">
+            {several && (
+              <div className="loop-token-name">
+                {w.runtime}, {clock.format(new Date(w.start))} to {clock.format(new Date(w.end))}
+              </div>
+            )}
+            <div className="fig-kpi-value" style={NUM}>
+              {formatCount(w.tokens)}
+              <span className="fig-kpi-unit"> tokens</span>
+            </div>
+            <p className="fig-note">
+              Ends in {hoursAndMinutes(Date.parse(w.end) - now)}
+              {priced
+                ? ` · ${money(w.spend_dollars ?? 0)} at declared prices${w.unpriced ? '; some tokens have none' : ''}`
+                : ' · no price declared'}
+            </p>
+            {w.models.map(m => (
+              <div key={m.model} className="loop-token-model">
+                {w.models.length > 1 && <div className="loop-token-name">{m.model}</div>}
+                <StackedBar
+                  format={formatCount}
+                  segments={[
+                    { key: 'input', n: m.input, label: 'input' },
+                    { key: 'cached', n: m.cached, label: 'cache reads' },
+                    { key: 'output', n: m.output, label: 'output' },
+                    { key: 'reasoning', n: m.reasoning ?? 0, label: 'reasoning' },
+                  ]}
+                />
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </figure>
   );
 }
@@ -587,10 +683,11 @@ function AuthorityFigure({
           </ul>
           {authority.budgets.some(b => !(b.spent_dollars > 0)) && (
             <p className="fig-note">
-              A Claude Code session's tokens are recorded as a spend on Hosted Inference when it
-              ends, priced at what <code>ambit economics price</code> declares for its model.
-              Nothing else records spend on its own; an integration calls <code>recordSpend</code>.
-              Until a spend is recorded a budget has no pace to draw.
+              A session's tokens, read from the Claude Code transcripts and the Codex, OpenCode and
+              Amp logs as they grow, are recorded as a spend on Hosted Inference, priced at what{' '}
+              <code>ambit economics price</code> declares for its model. Nothing else records spend
+              on its own; an integration calls <code>recordSpend</code>. Until a spend is recorded a
+              budget has no pace to draw.
             </p>
           )}
         </div>
@@ -1211,6 +1308,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
           </figure>
 
           {loop.tokens && <TokenUsage tokens={loop.tokens} />}
+          {loop.windows?.length ? <CurrentWindows windows={loop.windows} /> : null}
 
           <AssuranceBar status={status} />
           {!(status.degraded?.length > 0) && <Fragility status={status} />}

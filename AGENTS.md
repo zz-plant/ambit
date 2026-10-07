@@ -50,7 +50,7 @@ src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority,
                            proposals, proposal_rejections, schema_meta, work ledger,
                            economics, goals, budgets, federation_imports, failure_signals,
                            declared_checks, sandboxes, delegation_records,
-                           delegation_sources)
+                           delegation_sources, session_log_cursors)
 ```
 
 ### Engine (discovery and seeding)
@@ -69,8 +69,11 @@ src/engine/techtree.json   The curated tree itself: authored content, the same f
                            and 9 (Product, Operations) are what running a product needs; Launch
                            Ready is a capstone (`detect.requires_met`), reached by its steps
 src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code,
-                           Continue, Zed and VS Code config readers: the ten besides OpenCode and Claude Code
+                           Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro config readers:
+                           every runtime besides OpenCode and Claude Code
 src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts
+src/engine/local-models.ts The models Ollama and LM Studio keep on disk, by folder and file name
+                           only: never a model file, a manifest's contents, or a socket
 ```
 
 ### Engine (inference and assurance)
@@ -123,8 +126,13 @@ src/engine/spool.ts        What a Claude Code session did, read into that ledger
                            command but `gate`, and the MCP server on open, reads it in
 src/engine/tracker-spool.ts  What OpenCode's tracker saw change in its config, read in from
                            `trackerSpoolPath()` alongside the Claude Code spool
+src/engine/session-logs.ts The tokens Codex, OpenCode and Amp sessions used, read at the same
+                           two places from the logs those agents keep: counts, model names,
+                           session ids and times, never content. A cursor per file makes a read
+                           that finds nothing new a `stat` per log, and stays out of `ambit sync`
 src/engine/attention.ts    Human-agency accounting — what is reducible, what is keeper
-src/engine/economics.ts    Declared costs and goal values (dollars declare, cents store)
+src/engine/economics.ts    Declared costs and goal values (dollars declare, cents store), and
+                           `recordTokens`, the one rule a session's tokens are priced and spent by
 src/engine/opportunities.ts The opportunity engine — ranked structural changes worth making
 src/engine/catalog.ts      The acquisition catalog — the supply side for a ranked opportunity;
                            `installText` says what a way to acquire would write, from the tree
