@@ -438,7 +438,8 @@ check      verify [cap] [--history] [--target=<object>] · verify --failing
            authority sandbox [<target> --by=<person>] · budget [set|clear]
            can <cap> [--target=X] [--spend=N] · gate (the Claude Code hook) · credentials
            incidents · incident resolve <svc> <outcome>
-           doctor · connect [runtime] [--ledger] [--dry-run] · init-rules [target] [--dry-run]
+           doctor · connect [runtime] [--ledger] [--statusline] [--dry-run]
+           init-rules [target] [--dry-run]
            receipt [hours] · ci [--strict] [--markdown]
 govern     people [add <id> ["Name"]]
            proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
@@ -452,6 +453,7 @@ report     work [limit] · usage [days] · economics [price <model>] · attentio
            digest [days] · notify <topic> · notify-approvals <topic>
            record <cap> [class] [note] · record skill:<name> --provides= --verify=
            signals [days] · preferences [--observed] · federation export|import
+           statusline [--json] (the Claude Code status line)
 ```
 
 Two more sit outside the groups because they start a process instead of answering a question: `ambit web` opens the visualizer (Vite in a checkout, and the built page with the loopback API server in an installed copy) and `ambit mcp` runs the MCP server. `ambit --version` prints the installed version and starts nothing.
@@ -485,7 +487,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit budget set <cap> --amount=20 --by=<person>` | A ceiling on what can be spent in a period. A spend past it is refused until the period turns over. It bounds a grant and does not widen one: within the ceiling the grant's own mode still decides. One meter feeds it: when a Claude Code session ends, its tokens on a model with a price declared by `ambit economics price` are recorded as a spend against the unscoped budget on Hosted Inference. The limits: only a declared price, only Claude Code sessions, only a budget that exists, and only once the session has ended, so a spent ceiling stops no session under way and refuses only a caller that states its spend. `apply` and the control plane state none |
 | `ambit incidents` | Probe the infrastructure manifest, record each answer as a check run and when each device and service was last seen; open an incident run for every offline service with the authority decision for its recovery. `incident resolve <svc> <outcome>` closes it with MTTR |
 | `ambit doctor` | A graded summary of the setup: what is reached, proven and failing, the single points of failure, which runtimes it read, and what to run next. `ambit check` with no argument is the same report |
-| `ambit connect [runtime]` | Register Ambit's MCP server in each runtime it reads except Copilot CLI, Amp and Goose, or the one named, in the shape that runtime's file uses, keeping a `.bak` of each file it changes. `--dry-run` says what it would write. `cursor --ledger` also adds the hook that records each Cursor conversation into the work ledger, beside any hooks already in `~/.cursor/hooks.json` |
+| `ambit connect [runtime]` | Register Ambit's MCP server in each runtime it reads except Copilot CLI, Amp and Goose, or the one named, in the shape that runtime's file uses, keeping a `.bak` of each file it changes. `--dry-run` says what it would write. `cursor --ledger` also adds the hook that records each Cursor conversation into the work ledger, beside any hooks already in `~/.cursor/hooks.json`. `claude-code --statusline` sets `ambit statusline` as the status line in `~/.claude/settings.json` where none is set, and never replaces one |
 | `ambit init-rules [target]` | Write the one line an agent should follow before a tool it has not used (ask `ambit_can`) into `CLAUDE.md`, `AGENTS.md` or `.cursorrules`, for a client that does not pass a server's instructions to its model. `rules` is the same command |
 | `ambit receipt [hours]` | What the ledger recorded in the last few hours: capabilities used, calls stopped before running, failures reported. It counts what was recorded and prices none of it |
 | `ambit ci [--strict]` | A check for a pipeline: it fails on any capability whose declared check is failing, and with `--strict` also on anything reached and unproven or resting on a single provider, which are otherwise warnings. `--markdown` prints the result as Markdown, and under GitHub Actions it is also written to the step summary |
@@ -504,6 +506,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit signals [days]` | Failures observed without anyone recording them, by class and by tool — including the ones no capability could be attributed to |
 | `ambit preferences [--observed]` | What someone declared they prefer, or what they have actually approved and refused |
 | `ambit federation export\|import` | The signed summary a portfolio layer reads — aggregates only, no credentials, no raw sessions |
+| `ambit statusline` | What is worth a glance after every message in Claude Code: the capabilities failing their check, the proposals waiting on a decision, and the verified count, in one line of at most 60 characters with each empty part left out. It opens the graph read-only and runs no migration, seed or spool read, and from an installed copy it answers in about a twentieth of a second. `--json` is the same reading, for a script that draws its own line |
 
 Every command prints for a person by default and takes `--json` for scripts.
 

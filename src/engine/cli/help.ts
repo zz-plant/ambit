@@ -120,7 +120,9 @@ check — what is proven, what is permitted, what is currently broken
   check doctor            setup health: what works, what fails, what rests on one piece
   check connect [runtime] register Ambit's MCP server in each runtime config it can
                           write; cursor --ledger also adds the hooks that record
-                          each conversation's tool runs into the work ledger
+                          each conversation's tool runs into the work ledger;
+                          claude-code --statusline sets ambit statusline as the
+                          status line where none is set, and never replaces one
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported
@@ -184,6 +186,9 @@ report — what the system cost to operate
   report preferences [--observed] [who]   what someone declared, or what they
                           have actually approved and refused
   report federation export|import   the signed summary a portfolio layer reads
+  report statusline [--json]   one line for Claude Code's status line: what fails
+                          its check, the proposals to decide, the verified count.
+                          Reads the graph and writes nothing
 
   help [term]       this list, or one concept explained`;
 
