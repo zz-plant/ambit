@@ -456,11 +456,12 @@ function briefReport(db: any) {
 
 type BriefReport = ReturnType<typeof briefReport>;
 
-/** "Claude Code (3 servers) and Cursor (2 servers)". */
-function readFrom(read: { label: string; servers: string[] }[]): string {
-  const parts = read.map(
-    r => `${r.label} (${r.servers.length} ${r.servers.length === 1 ? 'server' : 'servers'})`
-  );
+/** "Claude Code (3 servers), Cursor (2 servers) and Ollama (4 models)". */
+function readFrom(read: { label: string; servers: string[]; models?: string[] }[]): string {
+  const parts = read.map(r => {
+    const n = (r.models ?? r.servers).length;
+    return `${r.label} (${n} ${r.models ? 'model' : 'server'}${n === 1 ? '' : 's'})`;
+  });
   return parts.length > 1
     ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
     : parts[0];

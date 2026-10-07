@@ -71,6 +71,8 @@ src/engine/techtree.json   The curated tree itself: authored content, the same f
 src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code,
                            Continue, Zed and VS Code config readers: the ten besides OpenCode and Claude Code
 src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts
+src/engine/local-models.ts The models Ollama and LM Studio keep on disk, by folder and file name
+                           only: never a model file, a manifest's contents, or a socket
 ```
 
 ### Engine (inference and assurance)

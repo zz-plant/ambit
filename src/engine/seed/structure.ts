@@ -4,10 +4,12 @@
  * Models under their providers, declared dependencies, the runtime that
  * contributed each node, compound capabilities, and the device and service
  * topology. Everything here is inferred from the config rather than stated in
- * it.
+ * it, except the models a local server keeps on disk, which are read from its
+ * folder.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import type { Db } from '../db.ts';
+import { localModelStores } from '../local-models.ts';
 import { infraManifestPath } from '../paths.ts';
 import { edgeWriter } from './writers.ts';
 
@@ -30,6 +32,54 @@ function seedModels(_db: Db, config: any, insert: any): number {
         'unlocked',
         0.6
       );
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * The models on this machine's disk, under the local server that serves them.
+ *
+ * An agent config names the models a runtime is pointed at; the model server's
+ * own folder says which are actually here, including the ones no config names
+ * yet. Each store becomes a `provider:local-…` node with a `runs_on` edge to
+ * each of its models, the shape `seedModels` gives a configured provider, so
+ * the curated tree reads them with the patterns it already has: the runtime's
+ * name for Local Runtime, a model's family for Local Tool Calling, and
+ * `local…embed` for Local Embeddings. The `local` prefix is what keeps them
+ * out of Hosted Inference and so off the spend meter.
+ *
+ * Every seed reads the stores again, so a model deleted from disk is retired by
+ * the next one, like a server removed from a config.
+ */
+function seedLocalModels(db: Db, insert: any, stores = localModelStores()): number {
+  const link = edgeWriter(db);
+  let count = 0;
+  for (const store of stores) {
+    const provider = `provider:${store.provider}`;
+    insert.run(
+      provider,
+      store.label,
+      'ai-ml',
+      'Model server on this machine, its models read from disk',
+      'provider',
+      'unlocked',
+      0.6
+    );
+    count++;
+    for (const name of store.models) {
+      const id = `model:${store.provider}/${name}`;
+      insert.run(
+        id,
+        name,
+        'ai-ml',
+        `${store.label} model on this machine`,
+        'model',
+        'unlocked',
+        0.6
+      );
+      link.run(provider, id, 1, 'Model served by provider');
       count++;
     }
   }
@@ -230,4 +280,11 @@ function seedInfrastructure(db: Db, insert: any): number {
   return count;
 }
 
-export { seedModels, seedDependencies, attributeToRuntime, seedCombos, seedInfrastructure };
+export {
+  seedModels,
+  seedLocalModels,
+  seedDependencies,
+  attributeToRuntime,
+  seedCombos,
+  seedInfrastructure,
+};
