@@ -21,7 +21,7 @@ Run it as `npx ambit-cli <command>` when `ambit` is not installed (Node 22.18 or
 | A tool keeps failing with an auth error, or a server stopped answering | `ambit status`, then `ambit impact <id>` | What is configured but failing, and what else stops with it |
 | They are about to revoke or rotate a token | `ambit credentials` | Everything that rests on each credential |
 | "What should I add next?", or the same missing ability keeps blocking you | `ambit next` | The ranked next step, why, and its setup time |
-| They approve the same permission prompts all day | `ambit authority` | What may run without asking, and grants that have earned a threshold |
+| They approve the same permission prompts all day | `ambit authority` | What may run without asking, and grants proven enough to stop asking |
 | They are building a product alone: what to set up before launch, or how to keep an agent off production | `ambit goal "launch my saas"` | The steps left before real users, in order, and what an agent may do to hosting, the database and payments without asking |
 
 Lead with one command and what it found. That is usually the whole case for the tool.

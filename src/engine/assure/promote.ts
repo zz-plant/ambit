@@ -376,7 +376,7 @@ function promotionReport(db: Db) {
   if (!rows.length) {
     return {
       note: suggested.length
-        ? 'No thresholds set, and there are grants that have earned one. `ambit authority promote <cap> <action> --after=N --by=<person>` is how a person says "stop asking me once this has proved itself".'
+        ? 'No thresholds set, and there are grants proven enough to stop asking once one is. `ambit authority promote <cap> <action> --after=N --by=<person>` is how a person says "stop asking me once this has proved itself".'
         : 'No promotion thresholds set. `ambit authority promote <cap> <action> --after=N --by=<person>` is how a person says "stop asking me once this has proved itself".',
       worth_promoting: suggested.length ? suggested : undefined,
       ...changes,
