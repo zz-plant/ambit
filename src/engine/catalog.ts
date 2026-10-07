@@ -122,4 +122,4 @@ function installText(
   return alternative ? JSON.stringify(alternative.config_patch, null, 2) : undefined;
 }
 
-export { catalogReport, installText };
+export { catalogReport, installText, shippedTree };

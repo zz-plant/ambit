@@ -230,6 +230,58 @@ test('economics reports declared values in dollars and names their source', () =
   expect(report.note).toContain('$250/hr');
 });
 
+test('a model price is declared per million tokens, in the config block or from the terminal', () => {
+  seed({
+    ...WITH_ECONOMICS,
+    economics: {
+      ...WITH_ECONOMICS.economics,
+      models: {
+        'gpt-5': { input_per_mtok: 1.25, cache_read_per_mtok: 0.125, output_per_mtok: 10 },
+      },
+    },
+  }).close();
+  const db = getDb(join(dir, 'graph.db'));
+  expect(
+    rows(
+      db,
+      "SELECT metric, value_cents, period FROM economics WHERE entity_type = 'model' AND entity_id = 'gpt-5' ORDER BY metric"
+    )
+  ).toEqual([
+    { metric: 'cache_read_per_mtok', value_cents: 12.5, period: 'per_mtok' },
+    { metric: 'input_per_mtok', value_cents: 125, period: 'per_mtok' },
+    { metric: 'output_per_mtok', value_cents: 1000, period: 'per_mtok' },
+  ]);
+  db.close();
+
+  // Dollars as typed, cents as stored, and a fraction of a cent kept.
+  const declared = cli(
+    'economics',
+    'price',
+    'claude-opus-5-5',
+    '--input=5',
+    '--cache-read=0.075',
+    '--output=25'
+  );
+  expect(declared.per_million_tokens).toEqual({ input: '$5', cache_read: '$0.075', output: '$25' });
+  expect(declared.note).toContain('Hosted Inference');
+  const report = cli('economics');
+  const cache = report.economics.find(
+    (e: any) => e.entity === 'model:claude-opus-5-5' && e.metric === 'cache_read_per_mtok'
+  );
+  expect(cache).toMatchObject({ value_dollars: 0.075, period: 'per_mtok', source: 'declared' });
+  expect(report.note).toContain('never defaults');
+});
+
+test('a model price needs all three parts, and a refused one writes nothing', () => {
+  seed(WITH_ECONOMICS).close();
+  const refused = cli('economics', 'price', 'claude-opus-5-5', '--input=5', '--output=25');
+  expect(refused.error).toContain('--cache-read is missing');
+  expect(cli('economics', 'price', '--input=5').error).toContain('Usage: ambit economics price');
+  const db = getDb(join(dir, 'graph.db'));
+  expect(rows(db, "SELECT 1 FROM economics WHERE entity_type = 'model'")).toEqual([]);
+  db.close();
+});
+
 // ── Opportunity engine (WP-5) ────────────────────────────────────────────────
 test('opportunities price observed middleware burden and never judge judgement', () => {
   seed({ ...LOCAL_ONLY, actors: { kanav: { name: 'Kanav' } } }).close();

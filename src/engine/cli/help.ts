@@ -162,6 +162,10 @@ report — what the system cost to operate
   report work [limit]     recent runs, each with what it cost
   report usage [days]     where capability effort actually went
   report economics        declared costs and goal values
+  report economics price <model> --input=5 --cache-read=0.5 --output=25
+                          declare a model's price, in dollars per million
+                          tokens, so a Claude Code session's tokens on it are a
+                          spend against Hosted Inference's budget
   report attention [days] how much work still runs through the human
   report notify <topic>   push the attention digest to ntfy — nothing is sent
                           without a topic

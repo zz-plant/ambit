@@ -10,10 +10,12 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
+import { canExecute } from './assurance.ts';
+import { budgetReport } from './budgets.ts';
 import { ingestSpool } from './spool.ts';
 import { tokenUsage } from './telemetry.ts';
 import { loopView } from './views.ts';
-import { dir, getDb, join, seed } from './testing/cli.ts';
+import { cli, dir, getDb, join, seed } from './testing/cli.ts';
 
 const HOOK = join(
   import.meta.dirname,
@@ -147,7 +149,7 @@ test('the hook writes nothing when the ledger is turned off', () => {
   expect(existsSync(spool)).toBe(false);
 });
 
-test("a session's tokens come from its transcript, each message once, and a resume replaces them", () => {
+test("a session's tokens come from its transcript, each message once, and a resume adds what is new", () => {
   seed(WITH_GITHUB).close();
   const spool = join(dir, 'claude-code.jsonl');
   const transcript = join(dir, 'transcript.jsonl');
@@ -172,7 +174,8 @@ test("a session's tokens come from its transcript, each message once, and a resu
     const rows = () =>
       db
         .prepare(
-          "SELECT unit, quantity, cost_cents FROM resource_consumption WHERE run_id = 'run-cc-tok' ORDER BY unit"
+          `SELECT unit, SUM(quantity) AS quantity, MAX(cost_cents) AS cost_cents
+           FROM resource_consumption WHERE run_id = 'run-cc-tok' GROUP BY unit ORDER BY unit`
         )
         .all() as any[];
     expect(rows()).toEqual([
@@ -181,7 +184,8 @@ test("a session's tokens come from its transcript, each message once, and a resu
       { unit: 'output tokens', quantity: 12, cost_cents: null },
     ]);
 
-    // Resumed and ended again with a longer transcript: the totals are replaced.
+    // Resumed and ended again with a longer transcript: the run holds the
+    // totals of the whole of it, each token counted once.
     writeFileSync(transcript, [msg('m1', 10, 5), msg('m2', 20, 7), msg('m3', 1, 1)].join('\n'));
     hook(spool, end);
     ingestSpool(db, spool);
@@ -220,10 +224,171 @@ test('Time & cost reads the tokens, and a ledger with only tokens is not empty',
     expect(view.tokens).toEqual({
       days: 30,
       sessions: 1,
-      models: [{ model: 'claude-opus-5-5', input: 40, cached: 900, output: 60 }],
+      models: [{ model: 'claude-opus-5-5', input: 40, cached: 900, output: 60, unpriced: true }],
     });
     expect(view.empty).toBe(false);
   } finally {
     db.close();
   }
 });
+
+// ── The spend meter ──────────────────────────────────────────────────────────
+
+/** A transcript of assistant messages, each with its own usage. */
+function transcriptOf(
+  path: string,
+  ...messages: { id: string; input: number; cached: number; output: number }[]
+) {
+  writeFileSync(
+    path,
+    messages
+      .map(m =>
+        JSON.stringify({
+          type: 'assistant',
+          message: {
+            id: m.id,
+            model: 'claude-opus-5-5',
+            usage: {
+              input_tokens: m.input,
+              cache_read_input_tokens: m.cached,
+              output_tokens: m.output,
+            },
+          },
+        })
+      )
+      .join('\n')
+  );
+}
+
+// A million fresh input at $5, two million cache reads at $0.50 and a hundred
+// thousand output at $25: $5 + $1 + $2.50.
+const SESSION = { id: 'm1', input: 1_000_000, cached: 2_000_000, output: 100_000 };
+const SESSION_CENTS = 850;
+const PRICE = ['claude-opus-5-5', '--input=5', '--cache-read=0.5', '--output=25'];
+
+/** End a session through the hook, and read the spool into the ledger. */
+function endSession(transcript: string, session = 'meter') {
+  const spool = join(dir, 'claude-code.jsonl');
+  hook(spool, { session_id: session, transcript_path: transcript, hook_event_name: 'SessionEnd' });
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    ingestSpool(db, spool);
+  } finally {
+    db.close();
+  }
+}
+
+/** What the graph holds once the spool is read: the budget, the rows, the reports. */
+function read<T>(fn: (db: ReturnType<typeof getDb>) => T): T {
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    return fn(db);
+  } finally {
+    db.close();
+  }
+}
+
+const spent = () =>
+  read(
+    db =>
+      (
+        db
+          .prepare("SELECT spent_cents FROM budgets WHERE capability_id = 'combo:hosted-inference'")
+          .get() as any
+      )?.spent_cents
+  );
+
+const costed = () =>
+  read(
+    db =>
+      db
+        .prepare(
+          "SELECT SUM(cost_cents) AS cents, COUNT(cost_cents) AS priced, COUNT(*) AS rows FROM resource_consumption WHERE kind = 'tokens'"
+        )
+        .get() as any
+  );
+
+test("a session's tokens on a priced model are a spend against Hosted Inference's budget, once", () => {
+  seed(WITH_GITHUB).close();
+  cli('people', 'add', 'kanav');
+  cli('budget', 'set', 'hosted-inference', '--amount=20', '--by=kanav');
+  expect(cli('economics', 'price', ...PRICE).note).toContain(
+    'recorded against the budget on Hosted Inference'
+  );
+  const transcript = join(dir, 'transcript.jsonl');
+  transcriptOf(transcript, SESSION);
+
+  endSession(transcript);
+  expect(spent()).toBeCloseTo(SESSION_CENTS, 6);
+  expect(costed().cents).toBeCloseTo(SESSION_CENTS, 6);
+
+  // The budget report, the gate and the page all read the same spend.
+  read(db => {
+    const [budget] = budgetReport(db).budgets as any[];
+    expect(budget.spent).toBe('$8.50');
+    expect(budget.remaining).toBe('$11.50');
+    const decision = canExecute(db, { capability: 'combo:hosted-inference' }) as any;
+    expect(decision.remaining_budget_cents).toBeCloseTo(2000 - SESSION_CENTS, 6);
+    expect(loopView(db).authority.budgets[0].spent_dollars).toBe(8.5);
+    expect(tokenUsage(db)?.models).toEqual([
+      { model: 'claude-opus-5-5', ...withoutId(SESSION), spend_dollars: 8.5 },
+    ]);
+  });
+
+  // The same end read again, from a spool that carries it twice: nothing new.
+  const spool = join(dir, 'claude-code.jsonl');
+  const end = { session_id: 'meter', transcript_path: transcript, hook_event_name: 'SessionEnd' };
+  hook(spool, end);
+  hook(spool, end);
+  read(db => ingestSpool(db, spool));
+  expect(spent()).toBeCloseTo(SESSION_CENTS, 6);
+
+  // Resumed: only the tokens the session added are priced. 200K input at $5.
+  transcriptOf(transcript, SESSION, { id: 'm2', input: 200_000, cached: 0, output: 0 });
+  endSession(transcript);
+  expect(spent()).toBeCloseTo(SESSION_CENTS + 100, 6);
+  expect(costed().cents).toBeCloseTo(SESSION_CENTS + 100, 6);
+});
+
+test('with no budget the cost stays on the session, and no budget row is made', () => {
+  seed(WITH_GITHUB).close();
+  const declared = cli('economics', 'price', ...PRICE);
+  expect(declared.note).toContain('no budget is set on Hosted Inference');
+  const transcript = join(dir, 'transcript.jsonl');
+  transcriptOf(transcript, SESSION);
+  endSession(transcript);
+
+  expect(read(db => db.prepare('SELECT COUNT(*) AS n FROM budgets').get() as any).n).toBe(0);
+  expect(costed().cents).toBeCloseTo(SESSION_CENTS, 6);
+  expect(read(db => tokenUsage(db)?.models[0].spend_dollars)).toBe(8.5);
+});
+
+test('a model with no declared price records no spend, and is reported undeclared', () => {
+  seed(WITH_GITHUB).close();
+  cli('people', 'add', 'kanav');
+  cli('budget', 'set', 'hosted-inference', '--amount=20', '--by=kanav');
+  const transcript = join(dir, 'transcript.jsonl');
+  transcriptOf(transcript, SESSION);
+  endSession(transcript);
+
+  expect(spent()).toBe(0);
+  expect(costed()).toMatchObject({ cents: null, priced: 0 });
+  const [model] = read(db => loopView(db).tokens?.models ?? []);
+  expect(model.spend_dollars).toBeUndefined();
+  expect(model.unpriced).toBe(true);
+
+  // A price declared afterwards does not reach back to what was recorded: the
+  // same end read again adds nothing, and a resume prices only what is new.
+  cli('economics', 'price', ...PRICE);
+  endSession(transcript);
+  expect(spent()).toBe(0);
+  transcriptOf(transcript, SESSION, { id: 'm2', input: 0, cached: 0, output: 40_000 });
+  endSession(transcript);
+  expect(spent()).toBeCloseTo(100, 6);
+  const [after] = read(db => tokenUsage(db)?.models ?? []);
+  expect(after).toMatchObject({ spend_dollars: 1, unpriced: true });
+});
+
+function withoutId({ id: _, ...counts }: typeof SESSION) {
+  return counts;
+}
