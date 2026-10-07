@@ -56,7 +56,7 @@ A tech tree overlay (`.ambit/techtree.json` or `.ambit.json` in the directory `a
 
 ## Known limits
 
-- An approval covers a proposal and the capability it names, not the command a later call carries. Under the Docker adapter the approved agent chooses `payload.command`, so what bounds that command is the container's isolation, not the signature.
+- An approval covers the command too. A blocked call's `payload.command` is written into the step the person is shown, the proposal hash the approval signs covers the steps, and a retry with any other command is refused. Break-glass is the agent's own say-so: it never outranks a forbidden grant or a spent budget, and with the Docker adapter it is refused outright, so nothing runs in a container without a person's approval. Any path that runs a command a person did not approve is in scope.
 - The token rule stops a page you visit and a script acting casually. It is not a boundary against a determined process running as you, which can read the token file, record work toward a promotion threshold with it, or open the graph directly; loopback binding and the token file's `0600` permissions carry that weight.
 
 ## Where your data is

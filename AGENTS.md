@@ -217,7 +217,9 @@ src/mcp/protocol.ts        JSON-RPC over stdio: how a result or an error leaves 
                            which answers are `isError`
 src/control_plane/proxy.ts Autonomous control plane interceptor, DAG gate & OpenTelemetry trace logger;
                            `EnvironmentAdapter`, the seam below the gate, and `simulatedAdapter`, the
-                           default behind it. Every span names the adapter
+                           default behind it. Every span names the adapter. `approvalBindsCommand` holds
+                           an approved retry to the command the signed step names, and break-glass
+                           never outranks a refusal and runs nothing under any other adapter
 src/control_plane/docker.ts The opt-in Docker adapter: an approved step's `payload.command` in a
                            throwaway container, with no network, no pull and no host mount by
                            default. `selectAdapter` reads `--adapter` and `AMBIT_ADAPTER`, and refuses

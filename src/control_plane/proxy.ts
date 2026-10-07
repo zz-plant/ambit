@@ -261,6 +261,40 @@ export function approvalCovers(db: Db, proposalId: string, capabilityId: string)
   return Array.isArray(steps) && steps.some(s => s?.id === capabilityId);
 }
 
+/** The request's command as the gate keeps it: an argument array, or nothing. */
+function commandOf(request: AgentExecutionRequest): unknown[] | undefined {
+  return Array.isArray(request.payload?.command) ? request.payload.command : undefined;
+}
+
+/**
+ * True when the approved proposal's step for this capability names exactly the
+ * command about to run, or neither names one.
+ *
+ * `approvalCovers` ties an approval to a capability; with an adapter that runs
+ * what it is given, that left the command free: a person approved a deploy,
+ * and the bearer of the approval chose what the deploy ran. A blocked call's
+ * command is written into the step the person is shown, and the proposal hash
+ * the approval signs covers the steps, so the approval names the command and
+ * a different one is refused.
+ */
+export function approvalBindsCommand(
+  db: Db,
+  proposalId: string,
+  capabilityId: string,
+  command: unknown[] | undefined
+): boolean {
+  const row = db.prepare('SELECT steps FROM proposals WHERE id = ?').get(proposalId);
+  let steps: Array<{ id?: string; command?: unknown }>;
+  try {
+    steps = JSON.parse(row?.steps ?? '[]');
+  } catch {
+    return false;
+  }
+  const step = Array.isArray(steps) ? steps.find(s => s?.id === capabilityId) : undefined;
+  if (!step) return false;
+  return JSON.stringify(step.command ?? null) === JSON.stringify(command ?? null);
+}
+
 /**
  * Execute an agent tool invocation through Ambit's Control Plane Proxy.
  */
@@ -431,6 +465,9 @@ export function executeThroughControlPlane(
         // because verifyApproval only ever looked at the artifact's integrity.
         blockedReason = `Approval ${proposalId} does not cover ${capabilityId}; it authorises a different proposal`;
         missingAuthorizationNode = 'human:security-lead';
+      } else if (!approvalBindsCommand(db, proposalId, capabilityId, commandOf(request))) {
+        blockedReason = `Approval ${proposalId} was for a different command; it authorises only the command the person was shown`;
+        missingAuthorizationNode = 'human:security-lead';
       }
     }
   }
@@ -438,7 +475,21 @@ export function executeThroughControlPlane(
   // Emergency Break-Glass evaluation
   let breakGlassUsed = false;
   if (request.break_glass) {
-    if (!request.break_glass_reason?.trim()) {
+    // Break-glass is the agent's own say-so, so it never outranks a refusal
+    // someone wrote (a forbidden grant, a spent budget: AGENTS.md rule 9), and
+    // it is the simulator's alone. With an adapter that runs commands, an
+    // agent could otherwise authorise its own, so there it changes nothing and
+    // the step waits for a person's approval like any other.
+    if (decision.decision === 'DENY') {
+      spanEvents.push({
+        name: 'break_glass_refused',
+        timestamp: new Date().toISOString(),
+        attributes: { reason: 'a refusal outranks break-glass', actor: request.agent_id },
+      });
+    } else if (adapterName !== 'simulated') {
+      blockedReason = `Break-glass is refused with the ${adapterName} adapter: a step it runs needs a person's approval`;
+      missingAuthorizationNode = 'human:security-lead';
+    } else if (!request.break_glass_reason?.trim()) {
       blockedReason =
         'Emergency break-glass invoked without required justification (break_glass_reason)';
       missingAuthorizationNode = 'human:security-lead';
@@ -489,6 +540,9 @@ export function executeThroughControlPlane(
         setup_seconds: 60,
         requires_person: true,
         inverse: { remove: [] },
+        // What the call asked to run, shown to the person and covered by the
+        // hash their approval signs; approvalBindsCommand holds the retry to it.
+        ...(commandOf(request) ? { command: commandOf(request) } : {}),
       },
     ];
 
@@ -607,7 +661,7 @@ export function executeThroughControlPlane(
   const step: ExecutionStep = {
     capability_id: capabilityId,
     tool: request.tool,
-    command: Array.isArray(request.payload?.command) ? request.payload.command : undefined,
+    command: commandOf(request),
     network:
       canExecute(db, {
         actor: request.agent_id,

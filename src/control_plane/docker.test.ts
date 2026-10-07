@@ -456,17 +456,55 @@ describe('the Docker adapter behind the gate', () => {
     expect(networkOf('bridge')).toBe('--network=bridge');
   });
 
-  test('break-glass runs the step and still gets no network without a grant', () => {
+  test('break-glass runs nothing in a container: the agent cannot authorise its own command', () => {
     const docker = fakeDocker();
     const adapter = dockerAdapter(envDir, { run: docker.run, network: 'bridge' });
+    verifyStaging();
     const result = executeThroughControlPlane(
       db,
       envDir,
       { ...DEPLOY, break_glass: true, break_glass_reason: 'Sev-1' },
       adapter
     );
-    expect(result.status_code).toBe('AMBIT_EXECUTION_BREAK_GLASS');
-    expect(docker.runs()[0]).toContain('--network=none');
+    expect(result.status_code).toBe('AMBIT_BLOCKED_UNAUTHORIZED');
+    expect(result.intercept_reason).toMatch(/Break-glass is refused with the docker adapter/);
+    expect(docker.runs()).toEqual([]);
+  });
+
+  test('an approval runs the command the person was shown, and no other', () => {
+    const docker = fakeDocker();
+    const adapter = dockerAdapter(envDir, { run: docker.run });
+    const token = approved(adapter);
+    const steps = JSON.parse(
+      db.prepare('SELECT steps FROM proposals WHERE id = ?').get<{ steps: string }>(token)!.steps
+    );
+    expect(steps.find((s: { id: string }) => s.id === DEPLOY.capability_id).command).toEqual([
+      'echo',
+      HOSTILE,
+    ]);
+
+    const swapped = executeThroughControlPlane(
+      db,
+      envDir,
+      {
+        ...DEPLOY,
+        hmac_approval_token: token,
+        payload: { ...DEPLOY.payload, command: ['sh', '-c', 'cat /etc/passwd'] },
+      },
+      adapter
+    );
+    expect(swapped.status_code).toBe('AMBIT_BLOCKED_UNAUTHORIZED');
+    expect(swapped.intercept_reason).toMatch(/was for a different command/);
+    expect(docker.runs()).toEqual([]);
+
+    const shown = executeThroughControlPlane(
+      db,
+      envDir,
+      { ...DEPLOY, hmac_approval_token: token },
+      adapter
+    );
+    expect(shown.ok).toBe(true);
+    expect(docker.runs()).toHaveLength(1);
   });
 
   test('a step that fails ends the run failed and leaves the deploy unrecorded', () => {
