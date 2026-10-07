@@ -14,7 +14,7 @@ import { evaluatePromotions } from './promote.ts';
 import { pullDelegationSources, recordDelegationState } from '../delegation.ts';
 import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
-import { CHECK_RUN_SQL } from '../vocabulary.ts';
+import { CHECK_RUN_SQL, FAILING_SQL } from '../vocabulary.ts';
 
 /**
  * A check declared outside the curated model — §12.5.
@@ -132,7 +132,64 @@ function evidenceFor(db: Db, id: string) {
     .all(id);
 }
 
-function runVerification(db: Db, which?: string, target?: string) {
+/**
+ * The check of everything whose check is failing, and nothing else.
+ *
+ * A failing check takes a capability out of every plan until it passes
+ * again, and the only way back was to name each one: a broken token took
+ * three servers down, and bringing them back meant reading `ambit status` and
+ * typing three commands. This runs those checks and only those, so the
+ * command to type after fixing something is the same whatever it was. It
+ * still runs only when typed: a check is a command, and nothing re-runs one
+ * on its own.
+ */
+function failingChecks(db: Db) {
+  const ids = db
+    .prepare(`SELECT id FROM capabilities WHERE ${FAILING_SQL} ORDER BY id`)
+    .all<{ id: string }>()
+    .map(r => r.id);
+  const tree = loadTechTree();
+  const nodes = new Map<string, any>((tree?.nodes || []).map((n: any) => [`combo:${n.id}`, n]));
+  return ids.flatMap(id => {
+    if (id.startsWith('act:')) {
+      const [capId, actionName] = id.replace(/^act:/, '').split('/');
+      const node = nodes.get(`combo:${capId}`);
+      const action = node?.contract?.can?.find((a: any) => (a.id ?? a) === actionName);
+      return action?.verify?.command ? [verifyAction(db, node, action)] : [];
+    }
+    const node = nodes.get(id);
+    if (node?.verify?.command) return [verifyCapability(db, node.id, node)];
+    const declared = declaredCheck(db, id);
+    if (!declared) return [];
+    const name = db.prepare('SELECT name FROM capabilities WHERE id = ?').get(id)?.name || id;
+    return [verifyCheck(db, id, String(name), declared)];
+  });
+}
+
+function runVerification(
+  db: Db,
+  which?: string,
+  target?: string,
+  options: { failing?: boolean } = {}
+) {
+  if (options.failing) {
+    if (which) {
+      return {
+        error: `--failing runs every check that is failing, so it takes no capability. ambit verify ${which} runs that one.`,
+      };
+    }
+    const results = failingChecks(db);
+    if (!results.length) {
+      return {
+        checked: 0,
+        verified: 0,
+        failed: 0,
+        results: [],
+        note: 'Nothing is failing its check.',
+      };
+    }
+    return settle(db, results, target);
+  }
   // A registered skill is not in the curated model, so it is answered before
   // the model is consulted at all — otherwise `ambit verify skill:x` would say
   // no such capability about something the agent just put on the map.
@@ -223,7 +280,15 @@ function runVerification(db: Db, which?: string, target?: string) {
         : [verifyCapability(db, n.id, n)];
   });
 
-  const withReliability = results.map((r: Record<string, any>) => {
+  return settle(db, results, target);
+}
+
+/**
+ * What a batch of check runs comes to: each one's reliability, the lifecycles
+ * and grants that move on the new evidence, and what is now unavailable.
+ */
+function settle(db: Db, results: any[], target?: string) {
+  const withReliability = results.map((r: any) => {
     const history = evidenceFor(db, r.id);
     const runs = history.length;
     const passes = history.filter((h: any) => h.action === 'verified').length;

@@ -98,7 +98,7 @@ The graph holds every entry your configs declare and every capability as a node.
 | `degraded` | the last run passed, and recent ones did not |
 | `broken` | the last run failed |
 
-`verified` and `reliable` are proven. `configured` is reached and unproven, and counts. `degraded` and `broken` are failing: still reached in `state`, and left out of everything that decides availability. Nothing writes the column directly. It is recomputed from the evidence on seed and after verification, which are the two moments the inputs can change.
+`verified` and `reliable` are proven. `configured` is reached and unproven, and counts. `degraded` and `broken` are failing: still reached in `state`, and left out of everything that decides availability. Nothing writes the column directly. It is recomputed from the evidence on seed and after verification, which are the two moments the inputs can change. A failing capability comes back the same way it left, on a check: `ambit verify <id>` re-runs one, and `ambit verify --failing` re-runs every check that is failing now, which is the command to type after fixing a shared token or a server. One pass leaves it degraded and still out of every plan, since its last five runs have to pass, so after a fix the command may need typing more than once. Nothing re-runs a check on its own, since a check is a command.
 
 **Credentials.** A credential is declared, never read. A `credentials` block names one and the providers that present it:
 
@@ -413,7 +413,7 @@ plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · 
            opportunities [--by=…] [--budget=N] · opportunity <id>
            propose <cap> [option] [--for="…"] [--by=<who>] · roi [proposal-id]
            portfolio [--budget=N]
-check      verify [cap] [--history] [--target=<object>]
+check      verify [cap] [--history] [--target=<object>] · verify --failing
            authority [cap] [scope <target>]
            authority promote [<cap> <action> --after=N --window=30d --scope=X --by=<person>]
            authority grant <cap> <mode> [--ttl=30m] [--scope=X] [--by=<person>]

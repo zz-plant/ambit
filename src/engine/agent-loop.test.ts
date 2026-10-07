@@ -16,6 +16,8 @@ import { nextSteps } from './next.ts';
 import { briefing, briefingText } from './briefing.ts';
 import { graphCounts } from './vocabulary.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
+import { runVerification } from './assure/verify.ts';
+import { existsSync, writeFileSync } from 'node:fs';
 import { exportSync, importSync } from './sync.ts';
 import { deficits } from './planning.ts';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -489,6 +491,78 @@ describe('the verdict on a recurring deficit', () => {
       });
     }
     expect((deficits(db) as any[])[0].verdict).toContain('This is a repair');
+    db.close();
+  });
+});
+
+// ── §4 a failing check comes back on a check ─────────────────────────────────
+
+describe('re-running what is failing', () => {
+  const runs = (db: ReturnType<typeof environment>, id: string) =>
+    (
+      db
+        .prepare(
+          "SELECT COUNT(*) AS n FROM session_learning WHERE capability_id = ? AND session_id = 'verify'"
+        )
+        .get(id) as { n: number }
+    ).n;
+
+  it('re-runs the failing checks and nothing else, and the capability comes back', () => {
+    const db = environment();
+    const dir = mkdtempSync(join(tmpdir(), 'ambit-failing-'));
+    const marker = join(dir, 'token-rotated');
+    try {
+      registerSkill(db, {
+        id: 'skill:deploy-notes',
+        provides: 'version-control',
+        // Split on spaces with no shell, so the path goes unquoted; tmpdir has none.
+        verify: `test -f ${marker}`,
+      });
+      registerSkill(db, {
+        id: 'skill:steady',
+        provides: 'version-control',
+        verify: 'node --version',
+      });
+      const lifecycle = (id: string) =>
+        (db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get(id) as any)?.lifecycle;
+      expect(lifecycle('skill:deploy-notes')).toMatch(/degraded|broken/);
+      const steadyBefore = runs(db, 'skill:steady');
+
+      writeFileSync(marker, '');
+      expect(existsSync(marker)).toBe(true);
+      const again = runVerification(db, undefined, undefined, { failing: true }) as any;
+
+      expect(again).toMatchObject({ checked: 1, verified: 1, failed: 0 });
+      expect(again.results[0].id).toBe('skill:deploy-notes');
+      expect(runs(db, 'skill:steady')).toBe(steadyBefore);
+      // One pass after a failure is degraded, still out of every plan: the
+      // last five runs have to pass. Each later --failing re-runs it until then.
+      expect(lifecycle('skill:deploy-notes')).toBe('degraded');
+      for (let i = 0; i < 4; i++) runVerification(db, undefined, undefined, { failing: true });
+      expect(lifecycle('skill:deploy-notes')).toBe('reliable');
+      expect(runVerification(db, undefined, undefined, { failing: true })).toMatchObject({
+        checked: 0,
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      db.close();
+    }
+  });
+
+  it('says so when nothing is failing, and runs nothing', () => {
+    const db = environment();
+    expect(runVerification(db, undefined, undefined, { failing: true })).toMatchObject({
+      checked: 0,
+      note: 'Nothing is failing its check.',
+    });
+    db.close();
+  });
+
+  it('takes no capability, since it runs every failing one', () => {
+    const db = environment();
+    expect(runVerification(db, 'version-control', undefined, { failing: true })).toMatchObject({
+      error: expect.stringContaining('takes no capability'),
+    });
     db.close();
   });
 });

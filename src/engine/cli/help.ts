@@ -21,7 +21,8 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                     no words match; it suggests and writes nothing
   opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
                     ranked investments — observed burden, priced, compared
-  verify [cap] [--history]   run the declared check, or show past verification
+  verify [cap] [--history]   run the declared check, or show past verification;
+                             --failing re-runs only the checks now failing
   impact <id>       what actually breaks if a capability goes away
   doctor            setup health audit, broken tools, and token-thrash risk
   connect [runtime] register Ambit's MCP server in each agent runtime it reads
@@ -86,6 +87,8 @@ check — what is proven, what is permitted, what is currently broken
                           the evidence against that object rather than the verb
                           in general; --exit-code also exits 1 unless every
                           check that ran passed
+  check verify --failing  re-run only the checks that are failing now, after
+                          fixing what broke them
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
   check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]
