@@ -53,3 +53,20 @@ test('a phone opens the demo on the map when the tour will narrate it, and on th
   expect(landingView(link, true, false)).toBe('config');
   expect(landingView(readLinkState('?demo=1&view=loop'), true, true)).toBe('loop');
 });
+
+test('a docs page can open the tour on the step it is about', () => {
+  // A visitor who searched for what breaks when a server goes down reads the
+  // page on outages, and its link into the demo opens on the outage, not on
+  // the tour's first card.
+  expect(landing('?tour=outage', true)).toMatchObject({ demo: true, view: 'tree', tour: 'outage' });
+  expect(readLinkState('?demo=1&tour=yours').tour).toBe('yours');
+  expect(readLinkState('?demo=1&tour=sideways').tour).toBeNull();
+  expect(readLinkState('?demo=1').tour).toBeNull();
+});
+
+test('a phone follows a tour link onto the map', () => {
+  // The tour narrates the map, so a link that asks for it opens there even
+  // for a visitor who has seen it: App passes the link's step as touring.
+  const link = readLinkState('?demo=1&tour=failing');
+  expect(landingView(link, true, Boolean(link.tour))).toBe('tree');
+});

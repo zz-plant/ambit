@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
+import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
 import { costOf, mapFindings } from './civ/layout';
 import { YourSetup } from './MapYours';
@@ -13,6 +14,8 @@ interface TourProps {
   onShowProposals: () => void;
   /** A config of the visitor's own was read; the view that shows it is the caller's. */
   onMapped: () => void;
+  /** The step a link asked to open on; the first when it names none, or one this sample lacks. */
+  start?: TourStep | null;
 }
 
 /** "A, B and C", the way the step reads a list of capabilities out. */
@@ -25,6 +28,8 @@ const named = (list: Item[]) =>
         .join(', ')} and ${list[list.length - 1].name}`;
 
 interface Step {
+  /** The name a link opens this step by (`?tour=`). */
+  key: TourStep;
   title: string;
   body: string;
   /** What the map does when the step is entered. */
@@ -49,7 +54,7 @@ interface Step {
  * because a person looking at their own machine needs the controls, not the
  * pitch.
  */
-export default function Tour({ style, onDone, onShowProposals, onMapped }: TourProps) {
+export default function Tour({ style, onDone, onShowProposals, onMapped, start }: TourProps) {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
   const ranked = useAmbitStore(s => s.loop?.next);
@@ -57,7 +62,6 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const startAcquisition = useAmbitStore(s => s.startAcquisitionSimulation);
   const clearSimulation = useAmbitStore(s => s.clearSimulation);
-  const [index, setIndex] = useState(0);
 
   const steps = useMemo<Step[]>(() => {
     const select = (id: string | null) => {
@@ -76,6 +80,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
     const list: Step[] = [];
     if (best) {
       list.push({
+        key: 'next',
         title: `One step would open ${best.reaches} more`,
         body:
           `This is a sample developer's agent setup, drawn from their config files. ` +
@@ -94,6 +99,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
     if (outage?.stopped.length) {
       const { stopped, broken, cutOff } = outage;
       list.push({
+        key: 'outage',
         title: `And if ${COLD_OPEN_PLAIN} went down? ${stopped.length} things stop.`,
         body:
           `The same map says what a reach rests on. ` +
@@ -112,6 +118,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
     }
     if (broken) {
       list.push({
+        key: 'failing',
         title: 'Configured is not the same as working',
         body:
           `${broken.name} is set up, and its check is failing. Ambit runs each ` +
@@ -123,6 +130,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
       });
     }
     list.push({
+      key: 'approval',
       title: 'Nothing changes without you',
       body:
         'Ambit writes a change as a proposal, with what it costs and whether it can be undone. ' +
@@ -134,6 +142,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
       },
     });
     list.push({
+      key: 'yours',
       title: 'Now map yours',
       body: 'Paste the config of the agent you use and see what it adds up to.',
       enter: () => {
@@ -144,13 +153,23 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
     return list;
   }, [items, connections, ranked, selectItem, startOutage, startAcquisition, clearSimulation]);
 
-  const step = steps[Math.min(index, steps.length - 1)];
+  // The step on screen, by name. The list is rebuilt as the sample's ranking
+  // arrives, and the next step is put first when it does, so a position held
+  // across that rebuild named a different card: a link asking for the outage
+  // opened on the next step. Null is the first step, whichever that is.
+  const [current, setCurrent] = useState<TourStep | null>(start ?? null);
+  const index = Math.max(
+    0,
+    steps.findIndex(s => s.key === current)
+  );
+  const step = steps[index];
   const last = index >= steps.length - 1;
+  const go = (to: number) => setCurrent(steps[to]?.key ?? null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: entering a step runs once per step; `steps` is rebuilt when the graph changes, and replaying the step then would restart the animation under the reader.
   useEffect(() => {
     step.enter();
-  }, [index]);
+  }, [step.key]);
 
   const finish = () => {
     clearSimulation();
@@ -186,11 +205,11 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
       <div className="app-tour-nav">
         <div className="app-tour-dots" aria-hidden="true">
           {steps.map((s, i) => (
-            <span key={s.title} className={i === index ? 'is-on' : undefined} />
+            <span key={s.key} className={i === index ? 'is-on' : undefined} />
           ))}
         </div>
         {index > 0 && (
-          <button type="button" className="app-tour-back" onClick={() => setIndex(i => i - 1)}>
+          <button type="button" className="app-tour-back" onClick={() => go(index - 1)}>
             Back
           </button>
         )}
@@ -202,7 +221,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
             Keep exploring
           </button>
         ) : (
-          <button type="button" className="app-tour-next" onClick={() => setIndex(i => i + 1)}>
+          <button type="button" className="app-tour-next" onClick={() => go(index + 1)}>
             Next
           </button>
         )}

@@ -49,7 +49,19 @@ export interface Page {
    * term two ways.
    */
   render?: 'glossary';
+  /**
+   * For a page people reach by searching a question that is not about Ambit:
+   * what Ambit does about that question, said where the answer starts, and
+   * the step of the demo that shows it. A visitor who came for a config path
+   * found the path and left, and the page had not said what it belonged to
+   * until its last paragraph.
+   */
+  pitch?: { text: string; href: string; action: string };
 }
+
+/** The demo on the hosted site, and the tour step a link may open it on. */
+const DEMO = `${BASE}?demo=1`;
+const tourAt = (step: 'outage' | 'failing' | 'yours') => `${DEMO}&tour=${step}`;
 
 export const PAGES: Page[] = [
   {
@@ -107,6 +119,11 @@ export const PAGES: Page[] = [
     description:
       'The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.',
     card: 'Twelve agents, twelve config files, one table',
+    pitch: {
+      text: 'reads the user-level files below into one local map of what your agents can do together: which servers each runtime has, what one more step would open, and which pieces fail their checks.',
+      href: tourAt('yours'),
+      action: 'Paste one into the demo',
+    },
   },
   {
     src: 'docs/mcp-outage.md',
@@ -115,6 +132,11 @@ export const PAGES: Page[] = [
     description:
       'Find the single points of failure in an AI agent setup: what stops, what only weakens, and what was already broken if one MCP server, model or token goes.',
     card: 'One server goes down. What else stops?',
+    pitch: {
+      text: 'answers this for your own setup. It maps every agent config on your machine and, for any server or model, splits what would stop from what would keep another provider.',
+      href: tourAt('outage'),
+      action: 'Take a server away in the demo',
+    },
   },
   {
     src: 'docs/audit-mcp-servers.md',
@@ -123,6 +145,11 @@ export const PAGES: Page[] = [
     description:
       'Audit an AI coding agent four ways: every MCP server declared, which ones work, what each may do without asking, and what was used but never declared.',
     card: 'Audit every MCP server your agent can reach',
+    pitch: {
+      text: 'runs this audit from the terminal, against one local map of every runtime\u2019s config: what is declared, which checks pass, what may run without asking, and what the agents used that nothing declares.',
+      href: tourAt('failing'),
+      action: 'See a failing check in the demo',
+    },
   },
   {
     src: 'docs/compare.md',
@@ -284,16 +311,54 @@ export function renderBody(src: string, markdown: string): { html: string; asset
   return { html, assets };
 }
 
+/**
+ * The header's links. Each is a word a reader who has never heard of Ambit
+ * can follow; a page on one integration (Jev) is reached from the docs index
+ * and the FAQ. The demo is drawn as the one button, last, where a row of links
+ * ends.
+ */
 const NAV: Array<[string, string]> = [
-  ['Live demo', `${BASE}?demo=1`],
   ['Guide', `${BASE}docs/guide/`],
   ['FAQ', `${BASE}docs/faq/`],
   ['Reference', `${BASE}docs/deep-dive/`],
-  ['Jev', `${BASE}docs/jev/`],
   ['Glossary', `${BASE}docs/glossary/`],
   ['All docs', `${BASE}docs/`],
   ['GitHub', 'https://github.com/zz-plant/ambit'],
 ];
+
+/** The box a pitched page opens its answer with, placed before the page's first section. */
+export function withPitch(page: Page, body: string): string {
+  if (!page.pitch) return body;
+  const { text, href, action } = page.pitch;
+  const box = `<aside class="pitch" aria-label="What Ambit does about this">
+<p><strong>Ambit</strong> ${escapeHtml(text)}</p>
+<p class="actions"><a class="button" href="${href.replace(/&/g, '&amp;')}">${escapeHtml(action)}</a><span class="alt">or run <code>npx ambit-cli</code> on your machine</span></p>
+</aside>
+`;
+  const at = body.indexOf('<h2');
+  return at < 0 ? body + box : body.slice(0, at) + box + body.slice(at);
+}
+
+/** The picture the closing card shows: the map itself, on the demo's data. */
+const SHOT = 'docs/assets/screenshot-tree.png';
+
+/**
+ * The card every page ends on, except the one written for contributors: what
+ * Ambit is, the map it draws, and the two ways to try it. A reader who got to
+ * the end of a page is the one most likely to try it, and the way to try it
+ * used to be a sentence in the last paragraph, when the page had one.
+ */
+export function tryCard(page: Page): string {
+  if (page.slug === 'contributing') return '';
+  return `<section class="try" aria-labelledby="try-ambit">
+<a class="shot" href="${DEMO}" tabindex="-1" aria-hidden="true"><img src="${BASE}${SHOT}" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>
+<p class="try-title" id="try-ambit">See what your own agents can reach</p>
+<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and nine more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p class="actions"><a class="button" href="${DEMO}">Open the live demo</a><span class="alt">a sample setup in your browser, nothing to install</span></p>
+<p>On your machine: <code>npx ambit-cli</code>, with Node 22.18 or newer on macOS or Linux.</p>
+<p class="trust">MIT licensed · one local SQLite file, no telemetry · on npm and in the official MCP registry</p>
+</section>`;
+}
 
 /** Markdown inline syntax dropped, for text a search engine shows as an answer. */
 const plain = (md: string) =>
@@ -419,7 +484,7 @@ export function renderPage(
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 <style>
 ${FONT_FACES}
-:root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
+:root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 "Mona Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
 header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
@@ -431,12 +496,20 @@ pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}p
 table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
 img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
 footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text-decoration:none;border-radius:8px}header a.cta{padding:3px 11px}header a.cta:hover{color:var(--bg);filter:brightness(1.08)}
+.button{display:inline-block;padding:7px 14px}.button:hover{filter:brightness(1.08)}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}.alt,.trust{color:var(--muted);font-size:14px}
+.pitch{margin:1.5em 0;padding:14px 16px;border:1px solid var(--line);border-left:3px solid var(--link);border-radius:8px;background:var(--panel)}.pitch p{margin:0 0 .7em}.pitch p:last-child{margin:0}
+.try{margin-top:3.5em;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.try p:last-child{margin-bottom:0}
+.try .shot img{display:block;border:1px solid var(--line);border-radius:8px}
+.try-title{font-family:"Hubot Sans","Mona Sans",sans-serif;font-stretch:112.5%;font-weight:750;font-size:1.35em;line-height:1.3;margin:.9em 0 .3em}
 </style>
 </head>
 <body>
-<header><a class="brand" href="${BASE}">Ambit</a>${NAV.map(([t, h]) => `<a href="${h}">${t}</a>`).join('')}</header>
+<header><a class="brand" href="${BASE}">Ambit</a>${NAV.map(([t, h]) => `<a href="${h}">${t}</a>`).join('')}<a class="cta" href="${DEMO}">Live demo</a></header>
 <main>
-${body}
+${withPitch(page, body)}
+${tryCard(page)}
 </main>
 <footer>Ambit is MIT licensed. <a href="${REPO}${page.src}">Edit this page on GitHub</a>.</footer>
 </body>
@@ -515,6 +588,7 @@ export function buildDocs(out: string): { pages: number; assets: number } {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, 'index.html'), renderPage(page, html, { modified, data }));
   }
+  if (PAGES.some(p => tryCard(p))) assets.add(SHOT);
   mkdirSync(join(out, 'docs', 'assets'), { recursive: true });
   for (const a of assets) copyFileSync(join(ROOT, a), join(out, 'docs', 'assets', basename(a)));
   mkdirSync(join(out, 'docs', 'fonts'), { recursive: true });

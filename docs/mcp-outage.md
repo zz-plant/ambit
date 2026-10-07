@@ -31,6 +31,8 @@ This stops scaling at a few runtimes and a dozen servers, and it misses what onl
 [Ambit](./README.md) does the same for the whole setup. It reads every agent config on the machine into one graph and answers from it:
 
 ```bash
+npx ambit-cli              # reads every agent config on this machine into the graph
+npm install -g ambit-cli   # keeps the `ambit` command
 ambit status               # what is failing, and what has a single provider
 ambit impact mcp:github    # what stops, and what only weakens, if this one goes
 ambit credentials          # what revoking each declared credential would end
@@ -45,7 +47,7 @@ Two of the answers need something from you first:
 
 ## Seeing it on the map
 
-The [hosted demo](https://zz-plant.github.io/ambit/?demo=1) draws the same answer. Select a node and press **Simulate an outage**: what stops turns red, what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop. Its headline names the one piece whose loss would stop the most, with a button that simulates it.
+The [hosted demo](https://zz-plant.github.io/ambit/?demo=1&tour=outage) opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press **Simulate an outage** to ask it of that one: what stops turns red, what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.
 
 ## Acting on the answer
 

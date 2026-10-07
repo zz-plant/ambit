@@ -39,6 +39,15 @@ export type FocusDepth = (typeof FOCUS_DEPTHS)[number];
 export const FOCUS_DIRECTIONS = ['needs', 'both', 'enables'] as const;
 export type FocusDirection = (typeof FOCUS_DIRECTIONS)[number];
 export const DEFAULT_FOCUS_DEPTH: FocusDepth = 2;
+
+/**
+ * The tour's steps a link may open on. A docs page reached from a search links
+ * into the demo, and the visitor came for one answer: the page on outages
+ * opens the outage, the page on config files opens the paste box. Each used to
+ * start on the tour's first card, which is about something else.
+ */
+export const TOUR_STEPS = ['next', 'outage', 'failing', 'approval', 'yours'] as const;
+export type TourStep = (typeof TOUR_STEPS)[number];
 export const DEFAULT_FOCUS_DIRECTION: FocusDirection = 'both';
 
 /**
@@ -74,6 +83,12 @@ export interface LinkState {
   depth: FocusDepth;
   /** `?dir=`: `needs`, `both` or `enables`. */
   dir: FocusDirection;
+  /**
+   * `?tour=`: run the demo's tour from this step, seen before or not. Read
+   * once and never written back, so the address bar a reader shares is the
+   * view and not the tour.
+   */
+  tour?: TourStep | null;
 }
 
 /**
@@ -119,6 +134,9 @@ export function readLinkState(search: string): LinkState {
     collapse: params.get('collapse') === '1',
     depth: depthOf(params.get('depth')),
     dir: oneOf(FOCUS_DIRECTIONS, params.get('dir'), DEFAULT_FOCUS_DIRECTION),
+    tour: (TOUR_STEPS as readonly string[]).includes(params.get('tour') ?? '')
+      ? (params.get('tour') as TourStep)
+      : null,
   };
 }
 
@@ -172,7 +190,10 @@ export function initialView(link: LinkState, narrow: boolean, touring = false): 
  * read-side facts. The collapse fields are optional: a caller that never
  * collapses has nothing to say about them, and a link without them is today's map.
  */
-export type ShareState = Omit<LinkState, 'guideOff' | 'viewStated' | 'collapse' | 'depth' | 'dir'> &
+export type ShareState = Omit<
+  LinkState,
+  'guideOff' | 'viewStated' | 'collapse' | 'depth' | 'dir' | 'tour'
+> &
   Partial<Pick<LinkState, 'collapse' | 'depth' | 'dir'>>;
 
 /** Where an address is written: the page's location and history, or a stand-in for them. */
