@@ -84,7 +84,7 @@ import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport, unmappedUse } from './telemetry.ts';
 import { capacityReport } from './capacity.ts';
-import { economicsReport } from './economics.ts';
+import { declareModelPrice, economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
 import { roiFor, roiSummary } from './roi.ts';
 import { exportSummary, importSummary } from './federation.ts';
@@ -264,7 +264,16 @@ async function runCommand(
       emit(usageReport(db, parseInt(arg, 10) || 30));
       break;
     case 'economics':
-      emit(economicsReport(db));
+      if (arg === 'price')
+        emit(
+          declareModelPrice(db, {
+            model: positional[1],
+            input: value('input'),
+            cacheRead: value('cache-read'),
+            output: value('output'),
+          })
+        );
+      else emit(economicsReport(db));
       break;
     case 'opportunities': {
       const byFlag = [...flags].find(f => f.startsWith('--by='));
