@@ -110,6 +110,20 @@ test('a row shows the worst node it provides, and says whose runs they are', () 
   expect(row).toContain('check failing');
 });
 
+test('a recovering row says so, with how its runs went, and offers nothing to repair', () => {
+  // The last check passed after one that failed. "check passed" over a strip
+  // with a red bar in it would read as fixed; "check failing" would be wrong.
+  const mending = node('browser-automation', 'degraded', [run(3, false), run(4, true)]);
+  const playwright = entry('playwright');
+  seed({ items: [playwright, mending], connections: provides(playwright, mending) });
+  const row = rowOf(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'playwright');
+
+  expect(row).toContain('>recovering<');
+  expect(row).toContain('title="Recovering: browser-automation, 1 of the last 2 passed"');
+  expect(row).not.toContain('check failing');
+  expect(row).not.toContain('Copy ambit verify');
+});
+
 test('a failing row copies ambit verify for the failing node, where a reason link will go', () => {
   const broken = node('browser-automation', 'broken', [run(4, false)]);
   const fine = node('tool-protocol', 'reliable', [run(1, true), run(2, true)]);

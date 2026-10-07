@@ -261,8 +261,9 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                   <span className="docs-cmd">Click an era</span>
                   <span className="docs-answers">
                     Opens its ladder: how far up the era you are, then each node as reached, a next
-                    step with its setup time, or blocked with what it waits for. A node whose check
-                    is failing is listed as failing, and is not counted as reached
+                    step with its setup time, or blocked with what it waits for. A node whose last
+                    check failed is listed as failing, and is not counted as reached; one that
+                    passed after a failure is reached, and says how its recent runs went
                   </span>
                 </div>
                 <div className="docs-action">

@@ -16,11 +16,12 @@
  *   assure/reports.ts    the same model, read rather than enforced
  */
 export {
-  FAILING_LIFECYCLES,
   usable,
   RECENT_RUNS,
   lifecycleFrom,
   deriveLifecycles,
+  recentRuns,
+  recovering,
 } from './assure/lifecycle.ts';
 export {
   verifyCheck,

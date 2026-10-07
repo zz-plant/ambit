@@ -12,7 +12,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
 
   seed              seed from the agent config
   briefing          what an agent should know before its first tool call
-  status            health · degraded · sole providers · deficits · waiting approvals
+  status            health · failing · sole providers · deficits · waiting approvals
   next              the three capabilities worth reaching next, and why
   graph [surface|combos|affordances|unmapped|capacity]   the graph, or a view of it
   goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
@@ -23,6 +23,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                     ranked investments — observed burden, priced, compared
   verify [cap] [--history]   run the declared check, or show past verification;
                              --failing re-runs only the checks now failing
+                             or recovering
   impact <id>       what actually breaks if a capability goes away
   doctor            setup health audit, broken tools, and token-thrash risk
   connect [runtime] register Ambit's MCP server in each agent runtime it reads
@@ -40,7 +41,7 @@ Five groups. Every verb also works on its own — \`ambit impact x\` and
   briefing [--json] [--peek]   what an agent should know before its first tool
                     call — broken, waiting, blocked, next. --peek does not
                     move the "since last briefing" mark
-  status            health · degraded · sole providers · deficits · waiting approvals
+  status            health · failing · sole providers · deficits · waiting approvals
 
 graph — the structure, and what it would cost to lose a piece
   graph [surface|combos|affordances|unmapped|capacity]   the graph, or a view of it
@@ -87,8 +88,9 @@ check — what is proven, what is permitted, what is currently broken
                           the evidence against that object rather than the verb
                           in general; --exit-code also exits 1 unless every
                           check that ran passed
-  check verify --failing  re-run only the checks that are failing now, after
-                          fixing what broke them
+  check verify --failing  re-run only the checks that are failing or recovering
+                          now, after fixing what broke them; one pass brings a
+                          capability back
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
   check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]

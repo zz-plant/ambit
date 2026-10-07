@@ -29,7 +29,9 @@ import {
   columnProgress,
   costOf,
   edgePath,
+  isFailing,
   isNext,
+  isProven,
   jointMark,
   layoutNodes,
   NODE_R,
@@ -396,7 +398,6 @@ export function MapScene({
   };
   const largestColumn = Math.max(...colOrder.map(c => (cols[c] || []).length), 1);
   const isTreeView = colOrder.some(c => c.startsWith('era:'));
-  const lifecycleOf = (item: Item) => (item.meta?.lifecycle as string | undefined) ?? '';
   const keystone = (item: Item) =>
     (downstream.get(item.id) || []).length >= 3 || isRuntimeNode(item);
 
@@ -536,7 +537,7 @@ export function MapScene({
               // top came out near 3:1, too faint to read the name.
               const baseOpacity =
                 isSimRoot || isSimAffected ? 1 : !isSpotlit ? 0.15 : dimmed ? 0.25 : 1;
-              const failingNode = reached && ['degraded', 'broken'].includes(lifecycleOf(item));
+              const failingNode = isFailing(item);
 
               // Reached is done, so it is the quietest filled state; a next
               // step is the recommendation, so it is the loudest ring on the
@@ -770,48 +771,39 @@ export function MapScene({
                     </text>
                   )}
 
-                  {reached &&
-                    !dimmed &&
-                    ['verified', 'reliable'].includes(item.meta?.lifecycle as string) && (
-                      <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
-                        <circle
-                          r={6.5}
-                          fill="var(--ok)"
-                          stroke="var(--bg-canvas)"
-                          strokeWidth={2}
-                        />
-                        <text
-                          y={3}
-                          textAnchor="middle"
-                          fill="var(--on-accent)"
-                          fontSize={9}
-                          fontWeight={700}
-                        >
-                          ✓
-                        </text>
-                      </g>
-                    )}
-                  {reached &&
-                    !dimmed &&
-                    ['degraded', 'broken'].includes(item.meta?.lifecycle as string) && (
-                      <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
-                        <circle
-                          r={6.5}
-                          fill="var(--error)"
-                          stroke="var(--bg-canvas)"
-                          strokeWidth={2}
-                        />
-                        <text
-                          y={3}
-                          textAnchor="middle"
-                          fill="var(--on-accent)"
-                          fontSize={9}
-                          fontWeight={700}
-                        >
-                          !
-                        </text>
-                      </g>
-                    )}
+                  {!dimmed && isProven(item) && (
+                    <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
+                      <circle r={6.5} fill="var(--ok)" stroke="var(--bg-canvas)" strokeWidth={2} />
+                      <text
+                        y={3}
+                        textAnchor="middle"
+                        fill="var(--on-accent)"
+                        fontSize={9}
+                        fontWeight={700}
+                      >
+                        ✓
+                      </text>
+                    </g>
+                  )}
+                  {!dimmed && failingNode && (
+                    <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
+                      <circle
+                        r={6.5}
+                        fill="var(--error)"
+                        stroke="var(--bg-canvas)"
+                        strokeWidth={2}
+                      />
+                      <text
+                        y={3}
+                        textAnchor="middle"
+                        fill="var(--on-accent)"
+                        fontSize={9}
+                        fontWeight={700}
+                      >
+                        !
+                      </text>
+                    </g>
+                  )}
                   {!dimmed && jointMark(item) && (
                     <g transform={`translate(${-NODE_R + 3}, ${NODE_R - 3})`}>
                       {/* Who and which: names a person can read on the page,

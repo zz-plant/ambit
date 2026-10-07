@@ -276,7 +276,7 @@ test('verify --failing --exit-code is 0 when nothing is failing', () => {
     run(dir, 'record', 'skill:holds', '--verify=true');
     const out = piped(dir, 'verify', '--failing', '--exit-code');
     expect(out.status).toBe(0);
-    expect(out.stdout).toContain('Nothing is failing its check.');
+    expect(out.stdout).toContain('Nothing is failing its check or recovering from a failure.');
     // Naming a capability with it is a usage error.
     expect(piped(dir, 'verify', 'retrieval', '--failing', '--exit-code').status).toBe(1);
   } finally {

@@ -193,7 +193,7 @@ function authorityReport(db: Db) {
       ? sandboxes.map(s => `${s.target} (sandbox, declared by ${s.declared_by})`)
       : undefined,
     spendable_without_asking: budgets.length ? budgets : undefined,
-    note: 'reached means the system can perform it; mode says whether it may without asking. A degraded or broken capability is not listed as reached however its permission reads.',
+    note: 'reached means the system can perform it; mode says whether it may without asking. A capability whose last check failed is not listed as reached however its permission reads.',
     also:
       sandboxes.length || budgets.length
         ? 'A sandbox relaxes confirmation inside itself and never a refusal; a budget bounds what a grant may spend and widens nothing. Neither is a grant.'

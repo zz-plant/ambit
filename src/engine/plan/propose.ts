@@ -49,8 +49,8 @@ function simulateFrontier(db: Db, assume: string[]) {
 
   const nameOf = new Map(combos.map((c: any) => [c.id, c.name]));
   // Only usable capabilities count toward the frontier and can satisfy
-  // prerequisites. A degraded or broken one is configured but failing
-  // verification, so it neither is reached nor can it unblock an acquisition.
+  // prerequisites. One whose last check failed is configured but not working,
+  // so it neither is reached nor can it unblock an acquisition.
   const before = new Set(
     combos.filter((c: any) => c.state !== 'locked' && usable(c.lifecycle)).map((c: any) => c.id)
   );

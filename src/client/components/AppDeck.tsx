@@ -8,8 +8,9 @@ import { termTitle } from './Term';
 /**
  * The map's nodes, counted over the nodes alone. Reached is split by the
  * evidence behind it: verified has a passing check, unproven is configured
- * with none. A node whose check fails is configured and not working, so it is
- * counted apart and is not reached, as the era headers count it.
+ * with none or recovering, its last check passed after one that failed. A node
+ * whose last check failed is configured and not working, so it is counted
+ * apart and is not reached, as the era headers count it.
  */
 export interface MapCounts {
   verified: number;

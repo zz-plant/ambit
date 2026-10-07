@@ -4,7 +4,7 @@
  * silent.
  */
 import { test, expect } from 'vitest';
-import { deficits, simulateFrontier } from './planning.ts';
+import { deficits, planFor, simulateFrontier } from './planning.ts';
 import { economicsReport, attentionValueCentsPerHour, valueCents } from './economics.ts';
 import { makeGraph, learn } from './testing/graph.ts';
 
@@ -82,16 +82,39 @@ test('assuming nothing changes nothing', () => {
   db.close();
 });
 
-test('a degraded capability is not counted as reached', () => {
+test('the latest check decides: a broken capability is not reached, a recovering one is', () => {
   const db = makeGraph({
     capabilities: [
       { id: 'combo:ok', category: 'combo', state: 'unlocked', lifecycle: 'verified' },
-      { id: 'combo:sick', category: 'combo', state: 'unlocked', lifecycle: 'degraded' },
+      { id: 'combo:sick', category: 'combo', state: 'unlocked', lifecycle: 'broken' },
+      { id: 'combo:mending', category: 'combo', state: 'unlocked', lifecycle: 'degraded' },
     ],
   });
-  // Configured but failing verification is not a capability you have.
-  expect((simulateFrontier(db, []) as any).frontier_before).toBe(1);
+  // Configured and failing its last check is not a capability you have. One
+  // whose last check passed after a failure is, whatever came before.
+  expect((simulateFrontier(db, []) as any).frontier_before).toBe(2);
   db.close();
+});
+
+test('a recovering prerequisite is met, and a plan builds on it', () => {
+  const graph = (lifecycle: 'degraded' | 'broken') =>
+    makeGraph({
+      capabilities: [
+        { id: 'combo:prereq', name: 'Prereq', category: 'combo', state: 'unlocked', lifecycle },
+        { id: 'combo:goal', name: 'Goal', category: 'combo', state: 'locked' },
+      ],
+      dependencies: [{ from: 'combo:prereq', to: 'combo:goal', hard: true }],
+    });
+  const mending = graph('degraded');
+  expect((planFor(mending, 'combo:goal') as any).degraded).toBeUndefined();
+  expect((simulateFrontier(mending, ['combo:goal']) as any).frontier_after).toBe(2);
+  mending.close();
+
+  const broken = graph('broken');
+  expect((planFor(broken, 'combo:goal') as any).degraded.map((d: any) => d.id)).toEqual([
+    'combo:prereq',
+  ]);
+  broken.close();
 });
 
 test('a failing prerequisite does not unblock what depends on it', () => {

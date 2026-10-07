@@ -321,9 +321,9 @@ Discovered capabilities are placed in a curated tree of nine eras: seven for the
 Ambit keeps two properties apart, and the distinction is load-bearing:
 
 - `state` is **structural**: is this thing configured, and what does it depend on. This is what the frontier ledger records.
-- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `degraded` or `broken`.
+- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `broken`, or `degraded`: recovering, its last check passed after one that failed.
 
-Every availability decision gates on lifecycle, not state. Checks only ever take something away: a capability no check has run on stays in every plan, and a broken one is excluded from plans, simulations, goals, authority checks and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan. `ambit status` reports proven, unproven and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified.
+Every availability decision gates on lifecycle, not state. Checks only ever take something away: a capability no check has run on stays in every plan, and a broken one is excluded from plans, simulations, goals, authority checks and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan. The latest check decides, so one pass after a fix brings it back; it counts as unproven, and is named as recovering, until its last five runs pass. `ambit status` reports proven, unproven and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified, or recovering.
 
 ### Fragility is computed, not guessed
 

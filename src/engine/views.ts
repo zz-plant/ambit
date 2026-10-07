@@ -680,7 +680,7 @@ export function loopView(db: Db): LoopResponse {
       total: counts.total,
       verified: counts.proven,
       failing: counts.failing,
-      degraded: namesOfDegraded(db),
+      degraded: namesOfFailing(db),
       spofs: namesOf(singlePointsOfFailure(db), 'capability'),
       deficits: namesOf(deficits(db), 'name'),
       pending,
@@ -924,7 +924,7 @@ function namesOf(report: unknown, field: string): string[] {
 }
 
 /** Reached, and its check is failing: configured but not working. */
-function namesOfDegraded(db: Db): string[] {
+function namesOfFailing(db: Db): string[] {
   try {
     return db
       .prepare(

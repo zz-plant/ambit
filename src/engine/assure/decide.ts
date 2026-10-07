@@ -13,7 +13,7 @@
 import type { Db } from '../db.ts';
 import { periodElapsed } from '../budgets.ts';
 import { usable } from './lifecycle.ts';
-import { CHECK_RUN_SQL, FAILING } from '../vocabulary.ts';
+import { CHECK_RUN_SQL, FAILING, FAILING_SQL } from '../vocabulary.ts';
 import type { AuthorityRow, CapabilityRow } from '../rows.ts';
 import { runtimesReaching } from './reach.ts';
 
@@ -42,7 +42,7 @@ function missingPrerequisites(db: Db, capability: string): string[] {
     .prepare(
       `SELECT c.name FROM dependencies d JOIN capabilities c ON c.id = d.from_capability
        WHERE d.to_capability = ? AND d.is_hard_requisite = 1
-         AND (c.state = 'locked' OR c.lifecycle IN ('degraded','broken'))
+         AND (c.state = 'locked' OR c.${FAILING_SQL})
        ORDER BY c.name`
     )
     .all<Pick<CapabilityRow, 'name'>>(capability)
@@ -50,7 +50,7 @@ function missingPrerequisites(db: Db, capability: string): string[] {
 }
 
 /**
- * Hard prerequisites the system can reach but whose checks are failing.
+ * Hard prerequisites the system can reach but whose last check failed.
  *
  * `missingPrerequisites` answers what is absent. This answers the harder case:
  * everything is installed, the capability's own check still passes, and the
@@ -328,7 +328,8 @@ function canExecute(
   const overBudget = input.spendCents != null && remaining != null && input.spendCents > remaining;
 
   // The lifecycle gate: configured but failing is not working, and permission
-  // does not repair a broken implementation.
+  // does not repair a broken implementation. The latest check decides, so one
+  // that passed after a failure is past this and asks what its grant says.
   if (cap.state !== 'locked' && !usable(cap.lifecycle)) {
     return {
       decision: 'DENY',

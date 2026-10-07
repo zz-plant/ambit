@@ -159,7 +159,7 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 
 **The question.** What stands between me and the next era?
 
-**Today.** Nothing new needs projecting. Tree nodes already carry era, era name, state, next, setup seconds and lifecycle, and "blocked by" is `gapOf`, already shown in the detail panel. The "3 of 6, 35m left" line is computed inside the SVG component (`CivTree.tsx`) and is untested. Time comes from the tech tree's `setup_seconds`, and built-ins carry 0 and stay absent (rule 16). Two traps under rule 6: the era header counts degraded and broken nodes as reached, and `isNext` in `views.ts` is state-only, unlike `next.ts`.
+**Today.** Nothing new needs projecting. Tree nodes already carry era, era name, state, next, setup seconds and lifecycle, and "blocked by" is `gapOf`, already shown in the detail panel. The "3 of 6, 35m left" line is computed inside the SVG component (`CivTree.tsx`) and is untested. Time comes from the tech tree's `setup_seconds`, and built-ins carry 0 and stay absent (rule 16). Two traps under rule 6: the era header counts broken nodes as reached, and `isNext` in `views.ts` is state-only, unlike `next.ts`.
 
 **The change.** Clicking an era header opens its ladder in the detail panel: a progress bar, then one row per node showing reached, next step with its time, or blocked with what it waits for. Failing nodes show as failing and never as reached. Extract the era math from `CivTree.tsx` into `civ/layout.ts`, test it, and use `isFailing` so the count and the rows agree.
 
@@ -436,7 +436,7 @@ Closed:
 
 Open:
 
-- `isNext` in `views.ts` is state-only, so a next step whose prerequisite is `degraded` or `broken` still counts as a next step and is drawn as one. Rule 6 says an availability decision excludes it. The era ladder names the failing prerequisite on that row, but the map and the header count still call it a next step. Recommended: take `usable(lifecycle)` in `isNext` and regenerate the demo, which is a change to a count on the header, so it wants a person's yes.
+- `isNext` in `views.ts` is state-only, so a next step whose prerequisite is `broken` still counts as a next step and is drawn as one. Rule 6 says an availability decision excludes it. The era ladder names the failing prerequisite on that row, but the map and the header count still call it a next step. Recommended: take `usable(lifecycle)` in `isNext` and regenerate the demo, which is a change to a count on the header, so it wants a person's yes.
 - `data-access` in `techtree.json` has two alternatives named "read-only database MCP", one with a patch. The catalog keeps the later, which has none, so the patch never reaches the page. `installText` refuses to show the earlier one's patch against the later, and a test holds that. Recommended: name them apart.
 - `/api/frontier` returns every snapshot with its full state maps, and `runTimeline` reads every intervention of a run before it caps the list, so a long-lived graph, or one filled through `/api/telemetry` by anything holding the token, could make either response large.
 - The CLI formatters print names and ids raw, so a control sequence in one reaches the terminal.

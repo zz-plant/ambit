@@ -283,7 +283,7 @@ test('a signed approval does not excuse a failing prerequisite', () => {
   approveProposal(db, proposalId, 'human:security-lead');
 
   // Staging regresses after the approval was granted.
-  db.prepare("UPDATE capabilities SET lifecycle = 'degraded' WHERE id = ?").run(
+  db.prepare("UPDATE capabilities SET lifecycle = 'broken' WHERE id = ?").run(
     'combo:staging-healthcheck'
   );
 
