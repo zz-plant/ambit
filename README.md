@@ -256,6 +256,19 @@ Ambit also publishes `ambit://briefing`, a resource a client reads on connect: w
 
 The `PreToolUse` entry makes the gate binding in Claude Code. Before each tool call, `ambit gate` finds the capability the call exercises and answers: forbidden is a deny, asking first or having no grant yet is put to you, and anything allowed or unknown gets no answer, so Claude Code's own permissions decide. It can only narrow what Claude Code would do, never widen it, and it adds about a fifth of a second to each call. Run `ambit gate` in a terminal for the entry on its own.
 
+`ambit statusline` is a line for Claude Code's status line, which Claude Code refreshes after every message: what is failing its check, how many proposals wait on your decision, and how many capabilities are verified, as in `! 1 failing: Browser Automation · › 2 proposals to decide`. A part with nothing to say is left out, so a quiet graph reads `12 verified`. It opens the graph read-only, writes nothing, and answers in about a twentieth of a second from an installed copy. A plugin cannot set a status line, so `ambit connect claude-code --statusline` adds it to `~/.claude/settings.json` when none is set there, keeping the file in `settings.json.bak`; one you already have is never replaced. By hand:
+
+```json
+{ "statusLine": { "type": "command", "command": "ambit statusline" } }
+```
+
+Claude Code runs one status line command. To keep yours and add Ambit's, save these two lines as a script, with your command in place of `npx ccstatusline`, and point `command` at the script:
+
+```bash
+input=$(cat)
+printf '%s  %s\n' "$(printf '%s' "$input" | npx ccstatusline)" "$(printf '%s' "$input" | ambit statusline)"
+```
+
 ### OpenCode
 
 `ambit connect opencode` adds the entry to `~/.config/opencode/opencode.json` in whichever shape the file already uses, OpenCode 1's or 2's, and keeps what the file held in `opencode.json.bak` first. A file with comments is left alone, since writing it back would delete them. By hand, in OpenCode 1's shape:

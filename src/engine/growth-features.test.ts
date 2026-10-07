@@ -15,7 +15,7 @@ import { addEvent, beginRun, cli, dir, getDb, recordUse, seed, LOCAL_ONLY } from
 import { makeGraph } from './testing/graph.ts';
 import { captureFailure } from './failures.ts';
 import { runDoctor } from './doctor.ts';
-import { CURSOR_LEDGER_EVENTS, cursorLedgerHook, runConnect } from './connect.ts';
+import { CURSOR_LEDGER_EVENTS, cursorLedgerHook, runConnect, statusLineEntry } from './connect.ts';
 import { discoverMcpClients } from './mcp-clients.ts';
 import { ambitCommand, cursorLedgerScript } from './paths.ts';
 import { runInitRules } from './init-rules.ts';
@@ -282,6 +282,97 @@ describe('ambit connect cursor --ledger', () => {
     mkdirSync(join(testDir, '.cursor'));
     runConnect(undefined, { home: testDir, ledger: true });
     expect(JSON.parse(readFileSync(hooksJson(), 'utf8')).hooks.sessionEnd).toEqual([ours]);
+  });
+});
+
+describe('ambit connect claude-code --statusline', () => {
+  const settings = () => join(testDir, '.claude', 'settings.json');
+  const label = 'Claude Code status line';
+  const entry = (res: ReturnType<typeof runConnect>) => res.configured.find(c => c.label === label);
+  const refusal = (res: ReturnType<typeof runConnect>) => res.skipped.find(s => s.label === label);
+  /** Settings someone already has, kept as they wrote them, comment and all. */
+  const theirs =
+    '{\n  // mine\n  "model": "opus",\n  "permissions": { "allow": ["Bash(ls:*)"] }\n}\n';
+
+  test("adds the status line to the file's own text and keeps the old bytes in a .bak", () => {
+    mkdirSync(dirname(settings()), { recursive: true });
+    writeFileSync(settings(), theirs);
+    const res = runConnect('claude-code', { home: testDir, statusline: true });
+    expect(entry(res)).toMatchObject({
+      action: 'added',
+      path: settings(),
+      backup: `${settings()}.bak`,
+      hook: 'ambit statusline',
+    });
+    expect(statusLineEntry()).toEqual({ type: 'command', command: 'ambit statusline' });
+    expect(readFileSync(`${settings()}.bak`, 'utf8')).toBe(theirs);
+    const written = readFileSync(settings(), 'utf8');
+    expect(written.startsWith('{\n  // mine\n  "model": "opus",')).toBe(true);
+    expect(written).toContain(
+      '"statusLine": {\n    "type": "command",\n    "command": "ambit statusline"\n  }'
+    );
+
+    // A second run finds it and writes nothing.
+    expect(entry(runConnect('claude-code', { home: testDir, statusline: true }))?.action).toBe(
+      'already_configured'
+    );
+    expect(readFileSync(settings(), 'utf8')).toBe(written);
+  });
+
+  test('never replaces a status line someone set, and says how to show both', () => {
+    mkdirSync(dirname(settings()), { recursive: true });
+    const own = JSON.stringify({ statusLine: { type: 'command', command: 'npx ccstatusline' } });
+    writeFileSync(settings(), own);
+    const res = runConnect('claude-code', { home: testDir, statusline: true });
+    expect(entry(res)).toBeUndefined();
+    expect(refusal(res)?.reason).toMatch(/never replaces one.*ambit statusline/);
+    expect(readFileSync(settings(), 'utf8')).toBe(own);
+    expect(existsSync(`${settings()}.bak`)).toBe(false);
+
+    // One that already runs it inside a longer command is already configured.
+    const composed = JSON.stringify({
+      statusLine: { type: 'command', command: 'sh -c "npx ccstatusline; ambit statusline"' },
+    });
+    writeFileSync(settings(), composed);
+    expect(entry(runConnect('claude-code', { home: testDir, statusline: true }))?.action).toBe(
+      'already_configured'
+    );
+    expect(readFileSync(settings(), 'utf8')).toBe(composed);
+  });
+
+  test('--dry-run writes nothing, and a file it cannot read is left as it was', () => {
+    process.env.HOME = testDir;
+    const res = cli('connect', 'claude-code', '--statusline', '--dry-run');
+    expect(entry(res)).toMatchObject({ action: 'added', hook: 'ambit statusline' });
+    expect(existsSync(settings())).toBe(false);
+
+    mkdirSync(dirname(settings()), { recursive: true });
+    for (const text of ['{ "model": ', '[]']) {
+      writeFileSync(settings(), text);
+      const r = runConnect('claude-code', { home: testDir, statusline: true });
+      expect(refusal(r)?.reason).toContain(settings());
+      expect(readFileSync(settings(), 'utf8')).toBe(text);
+    }
+  });
+
+  test('creates the settings file when Claude Code has none, and only for Claude Code', () => {
+    const res = runConnect('claude-code', { home: testDir, statusline: true });
+    expect(entry(res)?.action).toBe('added');
+    expect(JSON.parse(readFileSync(settings(), 'utf8'))).toEqual({
+      statusLine: { type: 'command', command: 'ambit statusline' },
+    });
+
+    const other = runConnect('cursor', { home: testDir, statusline: true, force: true });
+    expect(refusal(other)?.reason).toMatch(/Claude Code, the one runtime/);
+
+    // Run bare, it is added only where Claude Code is installed.
+    rmSync(join(testDir, '.claude'), { recursive: true, force: true });
+    expect(refusal(runConnect(undefined, { home: testDir, statusline: true }))).toEqual({
+      runtime: 'claude-code',
+      label,
+      reason: 'Claude Code not found on host',
+    });
+    expect(existsSync(settings())).toBe(false);
   });
 });
 

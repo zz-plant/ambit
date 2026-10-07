@@ -107,6 +107,7 @@ import {
 } from './governance.ts';
 import { runDoctor } from './doctor.ts';
 import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
+import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
@@ -697,7 +698,14 @@ async function runCommand(
     case 'connect': {
       const dryRun = flags.has('--dry-run');
       const force = flags.has('--force');
-      emit(runConnect(arg, { dryRun, force, ledger: flags.has('--ledger') }));
+      emit(
+        runConnect(arg, {
+          dryRun,
+          force,
+          ledger: flags.has('--ledger'),
+          statusline: flags.has('--statusline'),
+        })
+      );
       break;
     }
     case 'init-rules':
@@ -863,6 +871,15 @@ async function main() {
   // stack trace and exited 1, and an empty one was seeded on the spot, with
   // the seed's report on the stdout the hook reads. Neither is an answer: it
   // says nothing and exits 0, and the runtime's own settings decide.
+  // The status line runs after every message, in Claude Code's interface. It
+  // opens the graph read-only and nothing else: no migration, no seed, no
+  // spool. cli.js answers it without starting this file; this is the same
+  // answer for `node engine.ts statusline` and `ambit report statusline`.
+  if (cmd === 'statusline') {
+    const line = statusLine(resolved.argv);
+    if (line) process.stdout.write(`${line}\n`);
+    return;
+  }
   if (cmd === 'gate') {
     const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
     let db: Db | null = null;
