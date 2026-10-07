@@ -181,12 +181,35 @@ export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string 
 }
 
 /**
+ * The `.civ-era-name` and `.civ-callout` rule in App.css, as attributes, for a
+ * map saved as a file, which carries no stylesheet. The capitals the rule
+ * sets with `text-transform` are the text's own there.
+ */
+export const CAPS = {
+  fontFamily: 'var(--font-display)',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  style: { fontStretch: 'var(--stretch-narrow)' },
+} as const;
+
+/**
  * A spec-sheet callout, as the saved image draws one: a leader from the
  * node's upper left to a short rule, and a label in capitals on the rule.
  * Up and to the left, since the upper right carries a node's check badge and
  * its setup cost, and the name sits below.
  */
-export function Callout({ r, text, color }: { r: number; text: string; color: string }) {
+export function Callout({
+  r,
+  text,
+  color,
+  still,
+}: {
+  r: number;
+  text: string;
+  color: string;
+  /** Drawn into a file: its type set by attributes, not by the page's class. */
+  still?: boolean;
+}) {
   const from = -r * 0.72;
   const elbowX = -r - 12;
   const elbowY = -r - 12;
@@ -203,13 +226,14 @@ export function Callout({ r, text, color }: { r: number; text: string; color: st
         strokeOpacity={0.8}
       />
       <text
-        className="civ-callout"
+        className={still ? undefined : 'civ-callout'}
         x={elbowX - 2}
         y={elbowY - 5}
         textAnchor="end"
         fill={color}
         fontSize={11}
         fontWeight={700}
+        {...(still ? CAPS : {})}
       >
         {text}
       </text>

@@ -15,7 +15,7 @@ import App from '../App';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { eraLadder } from './civ/layout';
-import { ColumnHead } from './CivTree';
+import { ColumnHead } from './civ/MapScene';
 import { EraLadderView } from './EraLadder';
 
 type Props = Record<string, any>;
