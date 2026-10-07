@@ -40,4 +40,4 @@ A user with one runtime who wants to install a single server and nothing more; a
 
 ## The gate, if they want it
 
-The separate `ambit-gate` plugin puts Ambit's decision in front of every tool call. It can deny what is forbidden and ask about what asks first; it never allows anything Claude Code would otherwise ask about, and it adds about a fifth of a second per call. Suggest it only to a user who has set grants and wants them binding.
+The separate `ambit-gate` plugin puts Ambit's decision in front of every tool call. It can deny what is forbidden and ask about what asks first; it never allows anything Claude Code would otherwise ask about, and it adds about an eighth of a second per call. Suggest it only to a user who has set grants and wants them binding.

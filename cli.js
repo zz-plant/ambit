@@ -74,6 +74,29 @@ if (cmd === 'statusline') {
 }
 
 /**
+ * The gate, answered in this process for the same reason: Claude Code runs it
+ * before every tool call, and the engine's start was most of its 200 ms. Only
+ * a call on stdin is answered here; a terminal, or --snippet, asks for the
+ * settings entry, which the engine prints. src/engine/gate-hook.ts is the same
+ * answer cli.ts's `gate` gives, and a failure is no answer and exit 0, so the
+ * runtime's own permissions decide (AGENTS.md rule 20).
+ */
+if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
+  let out = '';
+  try {
+    process.removeAllListeners('warning');
+    const entry = existsSync(srcEngine)
+      ? resolve(ROOT, 'src', 'engine', 'gate-hook.ts')
+      : resolve(ROOT, 'dist-cli', 'engine', 'gate-hook.js');
+    const { gateHook } = await import(pathToFileURL(entry).href);
+    out = gateHook();
+  } catch {}
+  process.stdout.on('error', () => {});
+  if (out) await new Promise(done => process.stdout.write(`${out}\n`, done));
+  process.exit(0);
+}
+
+/**
  * Help is the engine's to print, not this wrapper's.
  *
  * This file used to carry its own hand-written command list. It drifted: the

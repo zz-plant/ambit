@@ -12,6 +12,8 @@ import { capture } from './cli.ts';
 import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
 import { cli, dir, ENGINE, getDb, join, seed } from './testing/cli.ts';
 
+const WRAPPER = join(import.meta.dirname, '..', '..', 'cli.js');
+
 const WITH_GITHUB = {
   provider: { ollama: { models: { 'qwen3-coder': {} } } },
   mcp: { github: { type: 'local', command: ['github-mcp-server'] } },
@@ -143,4 +145,41 @@ test('a graph the gate cannot open, or one never seeded, is no answer and exit 0
   } finally {
     db.close();
   }
+});
+
+/**
+ * cli.js answers the hook in its own process, without starting the engine.
+ * The two must give one answer: a deny, a question, nothing for a call the
+ * gate cannot read, and nothing for a graph it cannot open, each with exit 0.
+ */
+test('the wrapper answers the hook as the engine does, in its own process', () => {
+  seed(WITH_GITHUB).close();
+  const graph = join(dir, 'graph.db');
+  const run = (input: string, args: string[], db = graph) =>
+    spawnSync(process.execPath, args, {
+      input,
+      encoding: 'utf8',
+      env: { ...process.env, AMBIT_DB: db, TOOLCHAIN_DB: db, NODE_NO_WARNINGS: '1' },
+    });
+  const wrapper = (input: string, db?: string) => run(input, [WRAPPER, 'gate'], db);
+  const engine = (input: string) => run(input, ['--experimental-sqlite', ENGINE, 'gate']);
+  const call = JSON.stringify({ tool_name: 'mcp__github__create_issue', tool_input: {} });
+
+  // Nothing granted: a question, the same from both.
+  const asked = wrapper(call);
+  expect([asked.status, JSON.parse(asked.stdout).hookSpecificOutput.permissionDecision]).toEqual([
+    0,
+    'ask',
+  ]);
+  expect(asked.stdout).toBe(engine(call).stdout);
+
+  const target = decide('mcp__github__create_issue').capabilities[0].replace(/^combo:/, '');
+  cli('authority', 'grant', target, 'forbidden', '--by=kanav');
+  const denied = wrapper(call);
+  expect(JSON.parse(denied.stdout).hookSpecificOutput.permissionDecision).toBe('deny');
+  expect(denied.stdout).toBe(engine(call).stdout);
+
+  expect([wrapper('not json').status, wrapper('not json').stdout]).toEqual([0, '']);
+  const nowhere = wrapper(call, join(dir, 'no', 'such', 'dir', 'graph.db'));
+  expect([nowhere.status, nowhere.stdout]).toEqual([0, '']);
 });

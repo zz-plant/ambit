@@ -252,7 +252,7 @@ Authority is recorded per action, and from two sources. The curated model says w
 
 - `ambit apply`, always. It needs a signed, unexpired approval artifact and refuses any step `canExecute` denies.
 - The control plane interceptor, when execution is routed through it. The executor behind it today is a fixture, `simulatedAdapter`.
-- Claude Code, if you opt in with the `ambit-gate` plugin or the same hook added by hand. `ambit gate` is a PreToolUse hook that finds the capability a call exercises (by the tree's own `detect` patterns, the matching failures use) and answers. It can only narrow. Forbidden or over budget is a deny; no grant yet, a failing check, or asking first is put to the person; allowed, or a tool the graph does not know, is no answer, so Claude Code's own permission settings decide. It never answers allow, and a call it cannot read is no answer. It adds about a fifth of a second to each call.
+- Claude Code, if you opt in with the `ambit-gate` plugin or the same hook added by hand. `ambit gate` is a PreToolUse hook that finds the capability a call exercises (by the tree's own `detect` patterns, the matching failures use) and answers. It can only narrow. Forbidden or over budget is a deny; no grant yet, a failing check, or asking first is put to the person; allowed, or a tool the graph does not know, is no answer, so Claude Code's own permission settings decide. It never answers allow, and a call it cannot read is no answer. It adds about an eighth of a second to each call.
 
 No other runtime is interposed yet: one that never calls `ambit can` is unaffected by any grant here.
 
