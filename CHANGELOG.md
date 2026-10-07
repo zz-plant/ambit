@@ -6,6 +6,24 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### An approval names the command, and the control plane can run one
+
+The control plane gains a real environment adapter, chosen only by `AMBIT_ADAPTER=docker` or `--adapter=docker`: an approved step's command runs in a throwaway container with no network, no image pull, a read-only root, no Linux capabilities, an unprivileged user, resource limits, and no host mount but a named working directory, read-only. A step reaches the network only through a grant for the `network` action on its capability. When Docker cannot run the step the control plane refuses, and never falls back to the simulator; every span names its adapter.
+
+Running something real exposed two gaps the simulator had hidden. An approval named a proposal and its capability, not the command, so whoever held one chose what ran: a blocked call's command is now written into the step the person signs, and a retry carrying any other command is refused. And break-glass, the agent's own say-so, could stand in for a person and outrank a forbidden grant: it never outranks a refusal now, and with the Docker adapter it runs nothing at all.
+
+### A status line, and a faster gate
+
+`ambit statusline` is a line for Claude Code's status bar: what is failing, what is waiting on you, and how much is verified, in at most 60 characters, nothing when there is nothing to say. It opens the graph read-only and writes nothing, and answers in about 45 ms on an installed copy. `ambit connect claude-code --statusline` sets it where no status line is set and never replaces one; the README shows how to print it beside a status line you already have.
+
+`ambit gate` runs before every Claude Code tool call, and the wrapper started the whole engine to answer it. It now answers in its own process, as the status line does: about 120 ms a call on an installed copy, down from about 180, with the same answer byte for byte.
+
+### What a spec needs
+
+`ambit goal --spec <dir|tasks.md>` reads a Spec Kit feature (its `tasks.md`, and the plan's dependencies, storage and testing) or an OpenSpec change, routes each task the way `ambit goal` routes a sentence, and reports the capabilities the spec needs, which are reached, what stands in the way and how long closing it takes, and the tasks that route nowhere. The spec is read as data: only markdown is opened, code blocks and links are dropped, and nothing in it runs. `ambit_goal` takes the same as an optional `spec`.
+
+`ambit goal` also stopped matching a goal phrase inside a word: "rag" matched "coverage", "ship" matched "relationship" and "ci" matched "specific". A phrase now has to start a word, and "deploy" still matches "deployment".
+
 ### Tokens from Codex, OpenCode and Amp, with nothing installed
 
 Only Claude Code sessions reached the spend meter. Ambit now reads the session logs Codex, OpenCode and Amp already keep, the same records ccusage reports from: each session's id, model names, times and token counts, never what a session said or ran. Each session is one run, counted once however often its log is read, and a read that finds nothing new costs a stat per file. Time & cost names which agent each count came from, and a declared price makes those tokens a spend on Hosted Inference. Tokens from before a budget's current period are priced and not spent against it, so a first read of months of history cannot use up this month. `ambit usage --refresh` rereads every log, and `AMBIT_NO_LEDGER=1` stops the reading.
