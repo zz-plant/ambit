@@ -21,6 +21,7 @@ import {
   renderImpact,
   renderWindows,
   renderPlan,
+  renderSpec,
   renderStatus,
   statusReport,
 } from './cli/reports.ts';
@@ -83,6 +84,7 @@ import {
 import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
+import { judgeUnrouted, specGoal } from './spec.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport, unmappedUse, usageWindows } from './telemetry.ts';
@@ -109,6 +111,7 @@ import {
 } from './governance.ts';
 import { runDoctor } from './doctor.ts';
 import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
+import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
@@ -206,7 +209,20 @@ async function runCommand(
     case 'goal': {
       // One entry for the gap-to-capability question, with the folds as flags:
       // paths, simulation and preferences are views of the same decision.
-      if (flags.has('--prefs')) emit(preferencesReport(db, arg));
+      if (flags.has('--spec') || value('spec') !== undefined) {
+        // A spec's tasks, each routed as a sentence would be. Read as data:
+        // nothing in the file runs, and only --judge opens a socket, to this
+        // machine, for the tasks the words could not route.
+        const report = specGoal(db, value('spec') || arg);
+        const judged =
+          flags.has('--judge') || value('judge') !== undefined
+            ? await judgeUnrouted(report, value('judge'))
+            : report;
+        // A path that is not a spec is an error and reads as one.
+        emit(judged, r =>
+          r.error ? formatGeneric(r, terminalPalette()) : renderSpec(r, terminalPalette())
+        );
+      } else if (flags.has('--prefs')) emit(preferencesReport(db, arg));
       else if (flags.has('--paths'))
         emit(arg ? pathsFor(db, arg) : { error: 'Usage: ambit goal <capability> --paths' });
       else if (flags.has('--simulate')) {
@@ -709,7 +725,14 @@ async function runCommand(
     case 'connect': {
       const dryRun = flags.has('--dry-run');
       const force = flags.has('--force');
-      emit(runConnect(arg, { dryRun, force, ledger: flags.has('--ledger') }));
+      emit(
+        runConnect(arg, {
+          dryRun,
+          force,
+          ledger: flags.has('--ledger'),
+          statusline: flags.has('--statusline'),
+        })
+      );
       break;
     }
     case 'init-rules':
@@ -875,6 +898,15 @@ async function main() {
   // stack trace and exited 1, and an empty one was seeded on the spot, with
   // the seed's report on the stdout the hook reads. Neither is an answer: it
   // says nothing and exits 0, and the runtime's own settings decide.
+  // The status line runs after every message, in Claude Code's interface. It
+  // opens the graph read-only and nothing else: no migration, no seed, no
+  // spool. cli.js answers it without starting this file; this is the same
+  // answer for `node engine.ts statusline` and `ambit report statusline`.
+  if (cmd === 'statusline') {
+    const line = statusLine(resolved.argv);
+    if (line) process.stdout.write(`${line}\n`);
+    return;
+  }
   if (cmd === 'gate') {
     const flags = new Set(resolved.argv.filter(a => a.startsWith('--')));
     let db: Db | null = null;

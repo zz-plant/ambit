@@ -31,6 +31,21 @@ import { edgeWriter } from './writers.ts';
  * Nodes are stored with a `combo:` prefix and category, because that is what
  * the existing unlock analyses select on.
  */
+/**
+ * Whether one of a node's `detect` patterns names a tool in `text`: a config
+ * id at seed time, and the tools a spec's plan says it is built on for
+ * `ambit goal --spec`. A pattern that is not a valid expression names nothing.
+ */
+function detects(node: { detect?: { any?: string[] } }, text: string): boolean {
+  return (node.detect?.any || []).some(p => {
+    try {
+      return new RegExp(p, 'i').test(text);
+    } catch {
+      return false;
+    }
+  });
+}
+
 function seedTechTree(db: Db, insert: any): number {
   const tree = loadTechTree();
   if (!tree?.nodes?.length) return 0;
@@ -55,16 +70,7 @@ function seedTechTree(db: Db, insert: any): number {
   // Which of the user's capabilities, if any, prove each node.
   const evidence = new Map<string, string[]>();
   for (const node of tree.nodes || []) {
-    const patterns: string[] = node.detect?.any || [];
-    const hits = owned.filter(id =>
-      patterns.some(p => {
-        try {
-          return new RegExp(p, 'i').test(id);
-        } catch {
-          return false;
-        }
-      })
-    );
+    const hits = owned.filter(id => detects(node, id));
     const meetsMin = !node.detect?.min_models || modelCount >= node.detect.min_models;
     evidence.set(node.id, hits.length && meetsMin ? hits : []);
   }
@@ -180,4 +186,4 @@ function seedTechTree(db: Db, insert: any): number {
   return count;
 }
 
-export { seedTechTree };
+export { detects, seedTechTree };

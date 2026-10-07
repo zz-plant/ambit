@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { connect, createServer } from 'node:net';
 import { existsSync, readFileSync } from 'node:fs';
@@ -45,6 +45,56 @@ const mcpEntry = existsSync(resolve(ROOT, 'src', 'mcp', 'server.ts'))
 
 const cmd = process.argv[2];
 const args = process.argv.slice(3);
+
+/**
+ * The status line, answered in this process. Claude Code runs it after every
+ * message, and starting the engine as every other command does made it two
+ * Node starts and the whole engine loaded for one line. The module is the
+ * engine's own, so nothing is transcribed: TypeScript in a checkout, which
+ * Node from 22.18 strips as it does for engine.ts, and the compiled copy in an
+ * install. Node's notice that SQLite is experimental would reach a person who
+ * types it, so this process prints its one line and no warning. Anything that
+ * fails prints nothing and exits 0: a broken status line must not clutter the
+ * screen. src/engine/statusline.ts says what the line holds.
+ */
+if (cmd === 'statusline') {
+  let line = '';
+  try {
+    process.removeAllListeners('warning');
+    const entry = existsSync(srcEngine)
+      ? resolve(ROOT, 'src', 'engine', 'statusline.ts')
+      : resolve(ROOT, 'dist-cli', 'engine', 'statusline.js');
+    const { statusLine } = await import(pathToFileURL(entry).href);
+    line = statusLine(args);
+  } catch {}
+  // Claude Code cancels a run when the next one starts, closing the pipe.
+  process.stdout.on('error', () => {});
+  if (line) await new Promise(done => process.stdout.write(`${line}\n`, done));
+  process.exit(0);
+}
+
+/**
+ * The gate, answered in this process for the same reason: Claude Code runs it
+ * before every tool call, and the engine's start was most of its 200 ms. Only
+ * a call on stdin is answered here; a terminal, or --snippet, asks for the
+ * settings entry, which the engine prints. src/engine/gate-hook.ts is the same
+ * answer cli.ts's `gate` gives, and a failure is no answer and exit 0, so the
+ * runtime's own permissions decide (AGENTS.md rule 20).
+ */
+if (cmd === 'gate' && !process.stdin.isTTY && !args.includes('--snippet')) {
+  let out = '';
+  try {
+    process.removeAllListeners('warning');
+    const entry = existsSync(srcEngine)
+      ? resolve(ROOT, 'src', 'engine', 'gate-hook.ts')
+      : resolve(ROOT, 'dist-cli', 'engine', 'gate-hook.js');
+    const { gateHook } = await import(pathToFileURL(entry).href);
+    out = gateHook();
+  } catch {}
+  process.stdout.on('error', () => {});
+  if (out) await new Promise(done => process.stdout.write(`${out}\n`, done));
+  process.exit(0);
+}
 
 /**
  * Help is the engine's to print, not this wrapper's.

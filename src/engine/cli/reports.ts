@@ -661,6 +661,138 @@ function renderPlan(
   return lines;
 }
 
+/** What `specGoal` returns for a spec it could read. */
+interface SpecReport {
+  spec: string;
+  format: 'spec-kit' | 'openspec' | 'markdown';
+  tasks: number;
+  routed: number;
+  needs: {
+    id: string;
+    name: string;
+    status?: 'reached' | 'failing' | 'next' | 'blocked';
+    tasks: string[];
+    plan?: string[];
+  }[];
+  steps: (PlanStep & { for?: string[] })[];
+  setup_seconds?: number;
+  failing: { id: string; name: string; check: string }[];
+  unrouted: { id?: string; text: string; suggested?: { name: string; probability: number } }[];
+  judged?: { error?: string; asked?: string };
+}
+
+const FORMAT_NAME = { 'spec-kit': 'Spec Kit', openspec: 'OpenSpec', markdown: 'a task list' };
+
+/** How many unrouted tasks a terminal shows before counting the rest. */
+const UNROUTED_ROWS = 6;
+
+/**
+ * `ambit goal --spec` as a person reads it: what the spec's tasks need and the
+ * gap, laid out as one goal's plan is (reached, failing, then the steps in the
+ * order they close), and then the tasks nothing routed. Each need says which
+ * tasks, or which line of the plan, put it there, so a route that looks wrong
+ * can be traced to the words that made it.
+ */
+function renderSpec(report: SpecReport, c: Palette = C): string[] {
+  const ids = (tasks: string[]) => {
+    const named = tasks.every(t => /^(T\d+|N?FR-\d+|\d+(\.\d+)*)$/.test(t));
+    if (!named) return `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`;
+    return tasks.length > 4
+      ? `${tasks.slice(0, 4).join(', ')} +${tasks.length - 4}`
+      : tasks.join(', ');
+  };
+  const why = (n: { tasks: string[]; plan?: string[] }) =>
+    [n.tasks.length ? ids(n.tasks) : '', n.plan?.length ? `plan: ${n.plan.join(', ')}` : '']
+      .filter(Boolean)
+      .join(' · ');
+  const byId = new Map(report.needs.map(n => [n.id, n]));
+  const count = (status: string) => report.needs.filter(n => n.status === status).length;
+
+  const lines = [''];
+  lines.push(
+    `${GUTTER}${c.bold}${report.spec}${c.reset} ${c.grey}· ${FORMAT_NAME[report.format]} · ${report.tasks} ${report.tasks === 1 ? 'task' : 'tasks'}, ${report.routed} routed${c.reset}`
+  );
+  const time = report.setup_seconds ? `, about ${readableCost(report.setup_seconds)}` : '';
+  const tally = [
+    `${report.needs.length} ${report.needs.length === 1 ? 'capability' : 'capabilities'} needed`,
+    `${count('reached')} reached`,
+    ...(report.failing.length ? [`${report.failing.length} failing`] : []),
+    ...(report.steps.length
+      ? [`${report.steps.length} ${report.steps.length === 1 ? 'step' : 'steps'} left${time}`]
+      : []),
+  ];
+  lines.push(`${GUTTER}${tally.join(' · ')}`);
+
+  const reached = report.needs.filter(n => n.status === 'reached');
+  if (reached.length) lines.push('');
+  for (const n of reached)
+    lines.push(`  ${c.green}✓${c.reset} ${n.name}  ${c.grey}${why(n)}${c.reset}`);
+  for (const f of report.failing) {
+    lines.push(
+      `  ${c.yellow}!${c.reset} ${f.name} is configured and failing its check ${c.grey}· ${f.check}${c.reset}`
+    );
+  }
+
+  report.steps.forEach((step, i) => {
+    const cost = step.setup_seconds
+      ? ` ${c.grey}· about ${readableCost(step.setup_seconds)}${c.reset}`
+      : '';
+    const asked = byId.get(step.id);
+    const said = asked ? `  ${c.grey}${why(asked)}${c.reset}` : '';
+    lines.push('', `  ${c.bold}${i + 1}. ${step.name}${c.reset}${cost}${said}`);
+    if (step.for?.length) lines.push(`     ${c.grey}needed by ${step.for.join(', ')}${c.reset}`);
+    if (step.configured?.length) {
+      lines.push(`     ${c.green}✓${c.reset} ${step.configured.join(', ')} is already configured`);
+    }
+    if (step.requires_person?.length) {
+      lines.push(`     ${c.accent}› needs ${step.requires_person.join(', ')}${c.reset}`);
+    }
+  });
+  // Routed to a node this graph has not seeded: the tree is newer than the graph.
+  const unseeded = report.needs.filter(n => !n.status);
+  if (unseeded.length) {
+    lines.push(
+      '',
+      `${GUTTER}${c.grey}Not in this graph yet: ${unseeded.map(n => n.name).join(', ')} · ambit seed reads the tree again${c.reset}`
+    );
+  }
+
+  if (report.unrouted.length) {
+    lines.push('', `${GUTTER}${c.grey}Routed nowhere:${c.reset}`);
+    for (const t of report.unrouted.slice(0, UNROUTED_ROWS)) {
+      const text = t.text.length > 72 ? `${t.text.slice(0, 71)}…` : t.text;
+      lines.push(`  ${c.grey}·${c.reset} ${t.id ? `${t.id} ` : ''}${text}`);
+      if (t.suggested) {
+        lines.push(
+          `     ${c.grey}› the judge suggests ${t.suggested.name} (${t.suggested.probability.toFixed(2)})${c.reset}`
+        );
+      }
+    }
+    if (report.unrouted.length > UNROUTED_ROWS) {
+      lines.push(
+        `    ${c.grey}… ${report.unrouted.length - UNROUTED_ROWS} more · --json for all${c.reset}`
+      );
+    }
+  }
+  if (report.judged?.error) lines.push(`${GUTTER}${c.grey}${report.judged.error}${c.reset}`);
+
+  lines.push('');
+  const first = report.steps[0];
+  if (first) {
+    lines.push(
+      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${first.name}${c.reset}${c.grey}, then ambit seed: the list moves as each step lands${c.reset}`
+    );
+  } else if (report.failing.length) {
+    lines.push(
+      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${report.failing[0].check}${c.reset}`
+    );
+  } else if (report.needs.length) {
+    lines.push(`${GUTTER}Everything these tasks need is reached.`);
+  }
+  lines.push('');
+  return lines;
+}
+
 /** What `analyzeImpact` returns for a node the graph holds. */
 interface ImpactReport {
   capability: string;
@@ -887,6 +1019,7 @@ export {
   renderImpact,
   renderWindows,
   renderPlan,
+  renderSpec,
   evidenceReport,
   statusReport,
   renderStatus,
@@ -895,5 +1028,6 @@ export {
   type BriefReport,
   type ImpactReport,
   type NextMove,
+  type SpecReport,
   type StatusReport,
 };

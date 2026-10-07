@@ -15,7 +15,8 @@ const tool = (name: string): ToolDef => {
 
 const plan = tool('plan'); // capId*
 const digest = tool('digest'); // days (number)
-const goal = tool('goal'); // goal*, judge (boolean), judgeUrl
+const goal = tool('goal'); // goal, judge (boolean), judgeUrl, spec
+const runEnd = tool('run_end'); // runId*, outcome*, outcomeValueCents (number)
 const verify = tool('verify'); // capId, optional
 
 describe('what is accepted', () => {
@@ -88,13 +89,18 @@ describe('what is refused', () => {
   });
 
   test('everything wrong at once, so one retry is enough', () => {
-    const r = checkArguments(goal, { judge: 'maybe', color: 'red', size: 1 });
+    const r = checkArguments(runEnd, {
+      runId: 'r',
+      outcomeValueCents: 'lots',
+      color: 'red',
+      size: 1,
+    });
     expect(r.ok).toBe(false);
     if (r.ok) return;
-    expect(r.error).toContain('judge must be a boolean, got "maybe"');
-    expect(r.error).toContain('goal is required');
+    expect(r.error).toContain('outcomeValueCents must be a number, got "lots"');
+    expect(r.error).toContain('outcome is required');
     expect(r.error).toContain('no arguments named color, size');
-    expect(r.takes).toBe('goal* (string), judge (boolean), judgeUrl (string)');
+    expect(r.takes).toBe('runId* (string), outcome* (string), outcomeValueCents (number)');
   });
 
   test('a value of the wrong kind, said the way a model can act on it', () => {

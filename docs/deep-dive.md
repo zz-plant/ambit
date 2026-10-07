@@ -124,6 +124,8 @@ The curated tree is authored content, the same for everyone: each node names the
 
 `ambit next` names a few capabilities worth reaching, each with why and a price. It ranks by what has actually blocked work first, from the deficits the ledger holds, then by how much each opens per hour of setup, and it says which basis it used. `ambit graph combos` lists the combos not yet reached whose required prerequisites all are: compositions you already hold every piece of. `ambit goal <cap>` routes the longer way to one capability, step by step, and `--simulate` shows what reaching it would bring with it ([Previewing a change](#previewing-a-change)).
 
+**A spec asks the same question once per task.** `ambit goal --spec specs/001-team-billing` reads a [Spec Kit](https://github.com/github/spec-kit) feature (its `tasks.md`, and the tools its `plan.md` names under Technical Context) or an [OpenSpec](https://github.com/Fission-AI/OpenSpec) change, and answers before an agent starts on it. Each task line goes through the words `ambit goal "<sentence>"` matches and counts toward the capability those words recommend; the plan's Primary Dependencies, Storage and Testing go through the patterns a seed matches config entries with, so `Stripe` reaches Payments. The answer lists what is reached, what is failing its check, and the steps left in the order one plan would close them, a prerequisite several needs share listed once, ahead of them all. A task no words cover is listed as routed nowhere, never guessed; `--judge` puts those to a judgment model on this machine. The spec is read as data: no command in it runs, no link is followed, a fenced block is skipped, and only markdown is opened. `ambit_goal` takes the same path as `spec`.
+
 **What the reach rests on.** A wider reach is worth what holds it up. Fragility is the guardrail on widening, not its purpose: it says which reach is safe to lean on. `ambit impact <id>` follows dependencies all the way down and names what would stop if one piece went, and what survives on another provider. `ambit status` lists the single points of failure, reached capabilities with one provider, and the map's outage simulation draws the same cascade.
 
 **Redundancy is counted by what fails together.** A capability with three providers survives losing one, unless all three present the same token. Counting providers assumes they fail independently, and providers sharing a credential do not: one revocation takes all of them at once, while the capability reads as robust and, having several providers, stays off the single-point-of-failure report. Once a [`credentials` block](#what-a-node-is) declares the sharing, `ambit status` lists the capability among its spofs, `ambit impact` calls what survives `nominal` and not `redundant`, and `ambit credentials` answers the question you have before rotating a token: what stops working. Only a credential *every* provider presents counts: given providers holding `{A}`, `{A,B}` and `{B}`, losing either leaves one standing, and calling that fragile would be the same overstatement inverted.
@@ -251,8 +253,8 @@ Authority is recorded per action, and from two sources. The curated model says w
 **Where it is enforced.** `ambit can <cap> [--target=X] [--spend=N]` is the decision API, with the spend in dollars as a budget is set in them: it returns ALLOW, CONFIRM or DENY with the governing grant, the scope, and the remaining budget. Three places act on that answer:
 
 - `ambit apply`, always. It needs a signed, unexpired approval artifact and refuses any step `canExecute` denies.
-- The control plane interceptor, when execution is routed through it. The executor behind it today is a fixture, `simulatedAdapter`.
-- Claude Code, if you opt in with the `ambit-gate` plugin or the same hook added by hand. `ambit gate` is a PreToolUse hook that finds the capability a call exercises (by the tree's own `detect` patterns, the matching failures use) and answers. It can only narrow. Forbidden or over budget is a deny; no grant yet, a failing check, or asking first is put to the person; allowed, or a tool the graph does not know, is no answer, so Claude Code's own permission settings decide. It never answers allow, and a call it cannot read is no answer. It adds about a fifth of a second to each call.
+- The control plane interceptor, when execution is routed through it. Behind it sits `simulatedAdapter`, a fixture, unless the person starting it chose the Docker adapter (`AMBIT_ADAPTER=docker`), which runs an approved step's command, the one the signed step names and no other, in a throwaway container with no network and no host mount. The gate decides before either is reached, and whether a step may use the network is a grant of its own: the `network` action on the step's capability has to answer ALLOW, which neither the approval nor break-glass supplies.
+- Claude Code, if you opt in with the `ambit-gate` plugin or the same hook added by hand. `ambit gate` is a PreToolUse hook that finds the capability a call exercises (by the tree's own `detect` patterns, the matching failures use) and answers. It can only narrow. Forbidden or over budget is a deny; no grant yet, a failing check, or asking first is put to the person; allowed, or a tool the graph does not know, is no answer, so Claude Code's own permission settings decide. It never answers allow, and a call it cannot read is no answer. It adds about an eighth of a second to each call.
 
 No other runtime is interposed yet: one that never calls `ambit can` is unaffected by any grant here.
 
@@ -413,7 +415,7 @@ The standard describes the loop an institution runs when it delegates consequent
 
 **The source that works is another Ambit.** A peer runs the same tech tree, so it names capabilities identically, which is the whole reason its discrepancies are legible here; nothing else in the loop shares the vocabulary. A source must say which environment it is (`--instance`), because two graphs on the same tree produce identical record ids, and declaring this environment as a source is refused. When the laptop reports `combo:shell-execution` broken, the server records that as evidence attributed to `std07:ambit/laptop` and its own grant on `act:shell-execution/read_output` still returns ALLOW; on the laptop, where the check actually failed, the same grant returns CONFIRM. A peer can tell this graph something. It cannot revoke anything in it.
 
-**What is not there yet.** `action` and `outcome` records: the environment adapter is simulated, so an action record from here would attest to a fixture. Only Claude Code can be made to consult the gate, through the `ambit gate` hook; any other runtime that never calls `ambit can` is unaffected by any of this. And no sibling yet consumes what Ambit emits; the reading edge runs one way.
+**What is not there yet.** `action` and `outcome` records: the environment adapter is simulated by default, and the opt-in Docker one runs a step in a container on this machine that nothing else depends on, so an action record from either would attest to no change in a system anyone relies on. Only Claude Code can be made to consult the gate, through the `ambit gate` hook; any other runtime that never calls `ambit can` is unaffected by any of this. And no sibling yet consumes what Ambit emits; the reading edge runs one way.
 
 ---
 
@@ -429,6 +431,7 @@ graph      impact <id> · catalog <cap> · where · skills · objects [target]
            share [--redact] [--out=path] · sync export|import <path>
            graph [surface|combos|affordances|unmapped|capacity]
 plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · next [n]
+           goal --spec <dir|tasks.md> [--judge[=url]]
            reversible
            opportunities [--by=…] [--budget=N] · opportunity <id>
            propose <cap> [option] [--for="…"] [--by=<who>] · roi [proposal-id]
@@ -440,7 +443,8 @@ check      verify [cap] [--history] [--target=<object>] · verify --failing
            authority sandbox [<target> --by=<person>] · budget [set|clear]
            can <cap> [--target=X] [--spend=N] · gate (the Claude Code hook) · credentials
            incidents · incident resolve <svc> <outcome>
-           doctor · connect [runtime] [--ledger] [--dry-run] · init-rules [target] [--dry-run]
+           doctor · connect [runtime] [--ledger] [--statusline] [--dry-run]
+           init-rules [target] [--dry-run]
            receipt [hours] · ci [--strict] [--markdown]
 govern     people [add <id> ["Name"]]
            proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
@@ -454,6 +458,7 @@ report     work [limit] · usage [days] [--windows] · economics [price <model>]
            digest [days] · notify <topic> · notify-approvals <topic>
            record <cap> [class] [note] · record skill:<name> --provides= --verify=
            signals [days] · preferences [--observed] · federation export|import
+           statusline [--json] (the Claude Code status line)
 ```
 
 Two more sit outside the groups because they start a process instead of answering a question: `ambit web` opens the visualizer (Vite in a checkout, and the built page with the loopback API server in an installed copy) and `ambit mcp` runs the MCP server. `ambit --version` prints the installed version and starts nothing.
@@ -472,6 +477,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit graph` | The whole graph as JSON; `graph surface` is the runtime-owned vocabulary a runtime would publish, `graph combos` the ones whose required prerequisites are all in place, `graph affordances` the structural domains, `graph unmapped` what the agents used that no node on the map accounts for (presence, never frequency) and the overlay that would add it, `graph capacity` the machines on your tailnet and this machine's memory, naming the online ones no manifest declares |
 | **plan** — *what to acquire next, and whether it paid* | |
 | `ambit goal <sentence>` | Route a free-form goal — "deploy without me" — to the capabilities whose words cover it, each with its plan delta |
+| `ambit goal --spec <dir\|tasks.md>` | What a spec's tasks need before an agent starts on them: each task routed as a sentence would be, each capability reached, a next step, blocked or failing, the steps in order with their setup time, and the tasks nothing routed. Spec Kit and OpenSpec, read as data |
 | `ambit goal <cap> --paths` | The alternative ways to reach a capability, compared by setup time, risk and lock-in |
 | `ambit goal --prefs [who]` | Who prefers what, and where a plan's default choice would fight them |
 | `ambit reversible` | Which unreached capabilities could be acquired without a person, and which need hands. The same list, read backwards, is what an agent can never do for itself |
@@ -487,7 +493,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit budget set <cap> --amount=20 --by=<person>` | A ceiling on what can be spent in a period. A spend past it is refused until the period turns over. It bounds a grant and does not widen one: within the ceiling the grant's own mode still decides. One meter feeds it: a session's tokens on a model with a price declared by `ambit economics price`, read from the Claude Code, Codex, OpenCode and Amp logs as they grow, are recorded as a spend against the unscoped budget on Hosted Inference, for each hour inside the budget's period. The limits: only a declared price, only a budget that exists, and only as far as the last `ambit` command read, so a spent ceiling stops no session under way and refuses only a caller that states its spend. `apply` and the control plane state none |
 | `ambit incidents` | Probe the infrastructure manifest, record each answer as a check run and when each device and service was last seen; open an incident run for every offline service with the authority decision for its recovery. `incident resolve <svc> <outcome>` closes it with MTTR |
 | `ambit doctor` | A graded summary of the setup: what is reached, proven and failing, the single points of failure, which runtimes it read, and what to run next. `ambit check` with no argument is the same report |
-| `ambit connect [runtime]` | Register Ambit's MCP server in each runtime it reads except Copilot CLI, Amp and Goose, or the one named, in the shape that runtime's file uses, keeping a `.bak` of each file it changes. `--dry-run` says what it would write. `cursor --ledger` also adds the hook that records each Cursor conversation into the work ledger, beside any hooks already in `~/.cursor/hooks.json` |
+| `ambit connect [runtime]` | Register Ambit's MCP server in each runtime it reads except Copilot CLI, Amp and Goose, or the one named, in the shape that runtime's file uses, keeping a `.bak` of each file it changes. `--dry-run` says what it would write. `cursor --ledger` also adds the hook that records each Cursor conversation into the work ledger, beside any hooks already in `~/.cursor/hooks.json`. `claude-code --statusline` sets `ambit statusline` as the status line in `~/.claude/settings.json` where none is set, and never replaces one |
 | `ambit init-rules [target]` | Write the one line an agent should follow before a tool it has not used (ask `ambit_can`) into `CLAUDE.md`, `AGENTS.md` or `.cursorrules`, for a client that does not pass a server's instructions to its model. `rules` is the same command |
 | `ambit receipt [hours]` | What the ledger recorded in the last few hours: capabilities used, calls stopped before running, failures reported. It counts what was recorded and prices none of it |
 | `ambit ci [--strict]` | A check for a pipeline: it fails on any capability whose declared check is failing, and with `--strict` also on anything reached and unproven or resting on a single provider, which are otherwise warnings. `--markdown` prints the result as Markdown, and under GitHub Actions it is also written to the step summary |
@@ -507,6 +513,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit signals [days]` | Failures observed without anyone recording them, by class and by tool — including the ones no capability could be attributed to |
 | `ambit preferences [--observed]` | What someone declared they prefer, or what they have actually approved and refused |
 | `ambit federation export\|import` | The signed summary a portfolio layer reads — aggregates only, no credentials, no raw sessions |
+| `ambit statusline` | What is worth a glance after every message in Claude Code: the capabilities failing their check, the proposals waiting on a decision, and the verified count, in one line of at most 60 characters with each empty part left out. It opens the graph read-only and runs no migration, seed or spool read, and from an installed copy it answers in about a twentieth of a second. `--json` is the same reading, for a script that draws its own line |
 
 Every command prints for a person by default and takes `--json` for scripts.
 
