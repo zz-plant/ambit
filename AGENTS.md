@@ -69,7 +69,8 @@ src/engine/techtree.json   The curated tree itself: authored content, the same f
                            and 9 (Product, Operations) are what running a product needs; Launch
                            Ready is a capstone (`detect.requires_met`), reached by its steps
 src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code,
-                           Continue, Zed and VS Code config readers: the ten besides OpenCode and Claude Code
+                           Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro config readers:
+                           every runtime besides OpenCode and Claude Code
 src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts
 ```
 

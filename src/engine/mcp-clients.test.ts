@@ -1,5 +1,5 @@
 import { test, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { discoverMcpClients } from './mcp-clients.ts';
@@ -210,4 +210,190 @@ test('skips invalid VS Code settings', () => {
 
   const found = discoverMcpClients(dir);
   expect(found.find(c => c.runtime === 'vscode')).toBeUndefined();
+});
+
+test('discovers Copilot CLI mcp-config.json, local and http', () => {
+  const copilotFile = join(dir, 'mcp-config.json');
+  writeFileSync(
+    copilotFile,
+    JSON.stringify({
+      mcpServers: {
+        playwright: {
+          type: 'local',
+          command: 'npx',
+          args: ['@playwright/mcp@latest'],
+          env: {},
+          tools: ['*'],
+        },
+        context7: { type: 'http', url: 'https://mcp.context7.com/mcp', tools: ['*'] },
+      },
+    })
+  );
+  process.env.COPILOT_MCP_CONFIG = copilotFile;
+
+  const copilot = discoverMcpClients(dir).find(c => c.runtime === 'copilot-cli');
+  expect(copilot?.label).toBe('Copilot CLI');
+  expect(copilot?.config.mcp.playwright).toMatchObject({ command: 'npx', type: 'local' });
+  expect(copilot?.config.mcp.context7).toMatchObject({
+    url: 'https://mcp.context7.com/mcp',
+    type: 'remote',
+  });
+});
+
+test('discovers Amp servers under the one dotted key, from settings.jsonc under HOME', () => {
+  // No override: the second of Amp's two documented file names, found by itself.
+  const ampDir = join(dir, '.config', 'amp');
+  mkdirSync(ampDir, { recursive: true });
+  writeFileSync(
+    join(ampDir, 'settings.jsonc'),
+    `// Amp settings
+{
+  "amp.notifications.enabled": false,
+  "amp.mcpServers": {
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] },
+    "linear": { "url": "https://mcp.linear.app/sse" },
+  },
+}
+`
+  );
+
+  const amp = discoverMcpClients(dir).find(c => c.runtime === 'amp');
+  expect(amp?.label).toBe('Amp');
+  expect(amp?.path).toBe(join(ampDir, 'settings.jsonc'));
+  expect(Object.keys(amp?.config.mcp ?? {})).toEqual(['playwright', 'linear']);
+  expect(amp?.config.mcp.linear).toEqual({ url: 'https://mcp.linear.app/sse', type: 'remote' });
+});
+
+test('an Amp settings file with the servers nested, not under the dotted key, is not read', () => {
+  const ampFile = join(dir, 'settings.json');
+  writeFileSync(ampFile, JSON.stringify({ amp: { mcpServers: { x: { command: 'x' } } } }));
+  process.env.AMP_MCP_CONFIG = ampFile;
+  expect(discoverMcpClients(dir).find(c => c.runtime === 'amp')).toBeUndefined();
+});
+
+test('discovers Goose extensions in the documented inline form', () => {
+  const gooseFile = join(dir, 'config.yaml');
+  writeFileSync(
+    gooseFile,
+    `GOOSE_PROVIDER: anthropic
+extensions:
+  developer:
+    type: builtin
+    name: developer
+    enabled: true
+    bundled: true
+    timeout: 300
+  filesystem:
+    type: stdio
+    name: filesystem
+    enabled: true
+    cmd: npx
+    args: ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    env_keys: []
+    envs: {}
+    timeout: 300
+  remote-tools:
+    type: streamable_http
+    name: remote-tools
+    enabled: false
+    uri: "https://example.com/mcp"
+    headers: {}
+    timeout: 300
+GOOSE_MODEL: claude-sonnet
+`
+  );
+  process.env.GOOSE_MCP_CONFIG = gooseFile;
+
+  const goose = discoverMcpClients(dir).find(c => c.runtime === 'goose');
+  expect(goose?.label).toBe('Goose');
+  // A builtin ships inside Goose and is not a server anyone added.
+  expect(Object.keys(goose?.config.mcp ?? {})).toEqual(['filesystem', 'remote-tools']);
+  expect(goose?.config.mcp.filesystem).toEqual({
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+    enabled: true,
+    type: 'local',
+  });
+  // Switched off in Goose, and read that way.
+  expect(goose?.config.mcp['remote-tools']).toEqual({
+    url: 'https://example.com/mcp',
+    enabled: false,
+    type: 'remote',
+  });
+});
+
+test('discovers Goose extensions in the block form Goose writes, leaving envs behind', () => {
+  const gooseFile = join(dir, 'config.yaml');
+  writeFileSync(
+    gooseFile,
+    `# written by goose configure
+extensions:
+  github:
+    args:
+    - -y
+    - '@modelcontextprotocol/server-github'
+    cmd: npx
+    description: |
+      GitHub: issues: and pull requests
+      cmd: not-this
+    enabled: false
+    envs:
+      GITHUB_PERSONAL_ACCESS_TOKEN: ghp_secret
+    name: github
+    type: stdio
+  "quoted name":
+    cmd: uvx # the runner
+    args:
+      - mcp-server-fetch
+    type: stdio
+  memory:
+    type: builtin
+    enabled: true
+`
+  );
+  process.env.GOOSE_MCP_CONFIG = gooseFile;
+
+  const goose = discoverMcpClients(dir).find(c => c.runtime === 'goose');
+  expect(goose?.config.mcp.github).toEqual({
+    command: 'npx',
+    args: ['-y', '@modelcontextprotocol/server-github'],
+    enabled: false,
+    type: 'local',
+  });
+  expect(goose?.config.mcp['quoted name']).toEqual({
+    command: 'uvx',
+    args: ['mcp-server-fetch'],
+    type: 'local',
+  });
+  expect(goose?.config.mcp.memory).toBeUndefined();
+  expect(JSON.stringify(goose?.config)).not.toContain('ghp_secret');
+});
+
+test('a Goose config with only builtin extensions, or none, is not a client', () => {
+  const gooseFile = join(dir, 'config.yaml');
+  writeFileSync(gooseFile, 'extensions:\n  developer:\n    type: builtin\n    enabled: true\n');
+  process.env.GOOSE_MCP_CONFIG = gooseFile;
+  expect(discoverMcpClients(dir).find(c => c.runtime === 'goose')).toBeUndefined();
+
+  writeFileSync(gooseFile, 'GOOSE_PROVIDER: openai\n');
+  expect(discoverMcpClients(dir).find(c => c.runtime === 'goose')).toBeUndefined();
+});
+
+test('discovers Kiro mcp.json and keeps a server it marks disabled', () => {
+  const kiroFile = join(dir, 'mcp.json');
+  writeFileSync(
+    kiroFile,
+    JSON.stringify({
+      mcpServers: {
+        fetch: { command: 'uvx', args: ['mcp-server-fetch'], env: {}, disabled: false },
+        remote: { url: 'https://endpoint.to.connect.to', headers: {}, disabled: true },
+      },
+    })
+  );
+  process.env.KIRO_MCP_CONFIG = kiroFile;
+
+  const kiro = discoverMcpClients(dir).find(c => c.runtime === 'kiro');
+  expect(kiro?.label).toBe('Kiro');
+  expect(kiro?.config.mcp.fetch).toMatchObject({ command: 'uvx', disabled: false, type: 'local' });
+  expect(kiro?.config.mcp.remote).toMatchObject({ disabled: true, type: 'remote' });
 });

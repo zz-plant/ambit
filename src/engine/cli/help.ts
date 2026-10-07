@@ -26,7 +26,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                              or recovering
   impact <id>       what actually breaks if a capability goes away
   doctor            setup health: what works, what fails, what rests on one piece
-  connect [runtime] register Ambit's MCP server in each agent runtime it reads
+  connect [runtime] register Ambit's MCP server in each runtime config it can write
 
   Grouped: graph · plan · check · govern · report — try \`ambit plan\`
   help --all        every command
@@ -118,9 +118,9 @@ check — what is proven, what is permitted, what is currently broken
                           incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
   check doctor            setup health: what works, what fails, what rests on one piece
-  check connect [runtime] register Ambit's MCP server in each agent runtime it reads;
-                          cursor --ledger also adds the hooks that record each
-                          conversation's tool runs into the work ledger
+  check connect [runtime] register Ambit's MCP server in each runtime config it can
+                          write; cursor --ledger also adds the hooks that record
+                          each conversation's tool runs into the work ledger
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported

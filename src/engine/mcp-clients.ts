@@ -14,7 +14,11 @@ export interface McpClientSeed {
     | 'roo-code'
     | 'continue'
     | 'zed'
-    | 'vscode';
+    | 'vscode'
+    | 'copilot-cli'
+    | 'amp'
+    | 'goose'
+    | 'kiro';
   label: string;
   path: string;
   config: { mcp: Record<string, unknown> };
@@ -83,30 +87,168 @@ function readContinueJson(raw: string): Record<string, unknown> | null {
   return servers;
 }
 
-/** Zed's settings, reading the context_servers table. */
-function readZedJson(raw: string): Record<string, unknown> | null {
-  let parsed: any;
-  try {
-    parsed = parseJsonc(raw);
-  } catch {
-    return null;
-  }
-  const servers = parsed?.context_servers;
-  if (!servers || typeof servers !== 'object') return null;
-  return servers;
+/**
+ * The servers under one top-level key of a JSON file that may carry comments:
+ * Zed's `context_servers`, VS Code's `servers`, and Amp's `amp.mcpServers`,
+ * which is one key with a dot in it, not a nested object.
+ */
+function serversUnder(key: string): (raw: string) => Record<string, unknown> | null {
+  return raw => {
+    let parsed: any;
+    try {
+      parsed = parseJsonc(raw);
+    } catch {
+      return null;
+    }
+    const servers = parsed?.[key];
+    if (!servers || typeof servers !== 'object') return null;
+    return servers;
+  };
 }
 
-/** VS Code's user-level mcp.json, reading the servers object. */
-function readVsCodeJson(raw: string): Record<string, unknown> | null {
-  let parsed: any;
-  try {
-    parsed = parseJsonc(raw);
-  } catch {
-    return null;
+/** One YAML scalar: quoted either way, or plain with any trailing comment cut. */
+function yamlScalar(text: string): unknown {
+  const t = text.trim();
+  const double = t.match(/^"((?:[^"\\]|\\.)*)"/);
+  if (double) {
+    try {
+      return JSON.parse(`"${double[1]}"`);
+    } catch {
+      return double[1];
+    }
   }
-  const servers = parsed?.servers;
-  if (!servers || typeof servers !== 'object') return null;
-  return servers;
+  const single = t.match(/^'((?:[^']|'')*)'/);
+  if (single) return single[1].replace(/''/g, "'");
+  const plain = t.replace(/(^|\s+)#.*$/, '');
+  if (plain === 'true' || plain === 'false') return plain === 'true';
+  if (plain === '' || plain === 'null' || plain === '~') return null;
+  return plain;
+}
+
+/** The items of an inline `[a, "b"]` or `{k: v}`, split on commas outside quotes. */
+function yamlFlow(inner: string): string[] {
+  const items: string[] = [];
+  let quote = '';
+  let item = '';
+  for (const ch of inner) {
+    if (quote) quote = ch === quote ? '' : quote;
+    else if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === ',') {
+      items.push(item);
+      item = '';
+      continue;
+    }
+    item += ch;
+  }
+  items.push(item);
+  return items.map(i => i.trim()).filter(Boolean);
+}
+
+/** `key: value` on one line, the key plain or quoted; null for anything else. */
+function yamlKey(text: string): { name: string; value?: string } | null {
+  const m = text.match(/^(?:"([^"]*)"|'([^']*)'|([^\s:#'"-][^:]*?))\s*:(?:\s+(.*))?$/);
+  if (!m) return null;
+  const value = m[4]?.trim();
+  return { name: m[1] ?? m[2] ?? m[3], value: value && !value.startsWith('#') ? value : undefined };
+}
+
+/** A value after `key:`: an inline list or map, or one scalar. */
+function yamlValue(text: string): unknown {
+  const t = text.trim();
+  if (t.startsWith('[') && t.includes(']'))
+    return yamlFlow(t.slice(1, t.lastIndexOf(']'))).map(yamlScalar);
+  if (t.startsWith('{') && t.includes('}')) {
+    const map: Record<string, unknown> = {};
+    for (const pair of yamlFlow(t.slice(1, t.lastIndexOf('}')))) {
+      const kv = yamlKey(pair);
+      if (kv?.value !== undefined) map[kv.name] = yamlScalar(kv.value);
+    }
+    return map;
+  }
+  return yamlScalar(t);
+}
+
+/**
+ * Reads the `extensions:` mapping out of a Goose config.yaml.
+ *
+ * Not a YAML parser: a reader for the shape Goose documents and writes, one
+ * mapping per extension holding scalars (`type`, `cmd`, `uri`, `enabled`), a
+ * list (`args`, inline or one `- item` a line) and a map (`envs`), and nothing
+ * nested deeper. Like the Codex reader, it trades generality for no
+ * dependency, and a line it cannot read is skipped, never guessed at.
+ *
+ * Only `stdio`, `sse` and `streamable_http` extensions are servers a person
+ * added; `builtin` and `platform` ones ship inside Goose and start nothing of
+ * their own. `enabled: false` is kept on the entry, as the other readers keep
+ * a runtime's own off switch. `envs` stays behind: Goose writes secret values
+ * there, and nothing downstream reads them.
+ */
+function readGooseYaml(raw: string): Record<string, unknown> | null {
+  const extensions: Record<string, Record<string, any>> = {};
+  let inside = false;
+  let nameIndent = -1;
+  let keyIndent = -1;
+  let entry: Record<string, any> | null = null;
+  // The key whose block list or map the next, deeper lines fill.
+  let open: string | null = null;
+  for (const line of raw.split('\n')) {
+    const text = line.trim();
+    if (text === '' || text.startsWith('#')) continue;
+    const indent = line.length - line.trimStart().length;
+    if (indent === 0) {
+      inside = /^extensions\s*:\s*(#.*)?$/.test(text);
+      entry = null;
+      nameIndent = -1;
+      continue;
+    }
+    if (!inside) continue;
+    if (nameIndent < 0) nameIndent = indent;
+    if (indent <= nameIndent) {
+      const key = yamlKey(text);
+      entry = key && key.value === undefined ? (extensions[key.name] = {}) : null;
+      keyIndent = -1;
+      open = null;
+      continue;
+    }
+    if (!entry) continue;
+    if (keyIndent < 0) keyIndent = indent;
+    // Goose writes a list's items at its key's own indent, so `- ` decides.
+    const item = text === '-' || text.startsWith('- ');
+    if (indent === keyIndent && !item) {
+      const key = yamlKey(text);
+      open = key && key.value === undefined ? key.name : null;
+      // A `|` or `>` block's lines are skipped, since `open` stays unset.
+      if (key?.value !== undefined && !/^[|>]/.test(key.value))
+        entry[key.name] = yamlValue(key.value);
+      continue;
+    }
+    if (!open || indent < keyIndent) continue;
+    if (item) {
+      if (!Array.isArray(entry[open])) entry[open] = [];
+      entry[open].push(yamlScalar(text.slice(1)));
+    } else if (indent > keyIndent) {
+      const key = yamlKey(text);
+      if (key?.value === undefined) continue;
+      if (!entry[open] || typeof entry[open] !== 'object' || Array.isArray(entry[open]))
+        entry[open] = {};
+      entry[open][key.name] = yamlScalar(key.value);
+    }
+  }
+
+  const servers: Record<string, unknown> = {};
+  for (const [name, ext] of Object.entries(extensions)) {
+    const on = typeof ext.enabled === 'boolean' ? { enabled: ext.enabled } : {};
+    if (ext.type === 'stdio' && typeof ext.cmd === 'string') {
+      const args = Array.isArray(ext.args) ? { args: ext.args.map(String) } : {};
+      servers[name] = { command: ext.cmd, ...args, ...on };
+    } else if (
+      (ext.type === 'streamable_http' || ext.type === 'sse') &&
+      typeof ext.uri === 'string'
+    ) {
+      servers[name] = { url: ext.uri, ...on };
+    }
+  }
+  return Object.keys(servers).length ? servers : null;
 }
 
 const CLIENTS = [
@@ -221,7 +363,7 @@ const CLIENTS = [
       join(home, '.config', 'zed', 'settings.json'),
       join(home, 'Library', 'Application Support', 'Zed', 'settings.json'),
     ],
-    read: readZedJson,
+    read: serversUnder('context_servers'),
   },
   {
     runtime: 'vscode' as const,
@@ -231,7 +373,51 @@ const CLIENTS = [
       join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json'),
       join(home, '.config', 'Code', 'User', 'mcp.json'),
     ],
-    read: readVsCodeJson,
+    read: serversUnder('servers'),
+  },
+  // https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers
+  // `mcpServers`, each `type: "local"` (or `stdio`) with a command, or `http`
+  // (or `sse`) with a url. `copilot mcp disable` switches one off, and the
+  // page does not say where that is kept, so it is not read.
+  {
+    runtime: 'copilot-cli' as const,
+    label: 'Copilot CLI',
+    env: 'COPILOT_MCP_CONFIG',
+    paths: (home: string) => [join(home, '.copilot', 'mcp-config.json')],
+    read: readMcpServersJson,
+  },
+  // https://ampcode.com/docs/customize/mcp and https://ampcode.com/docs/cli/settings
+  // The user settings file, `.json` or `.jsonc`, with the servers under the
+  // one key `amp.mcpServers`: a command and args, or a url and headers.
+  {
+    runtime: 'amp' as const,
+    label: 'Amp',
+    env: 'AMP_MCP_CONFIG',
+    paths: (home: string) => [
+      join(home, '.config', 'amp', 'settings.json'),
+      join(home, '.config', 'amp', 'settings.jsonc'),
+    ],
+    read: serversUnder('amp.mcpServers'),
+  },
+  // https://goose-docs.ai/docs/guides/config-files
+  // YAML, each extension under `extensions:` with its `type` and `enabled`,
+  // and `cmd` and `args` for stdio or `uri` for streamable_http.
+  {
+    runtime: 'goose' as const,
+    label: 'Goose',
+    env: 'GOOSE_MCP_CONFIG',
+    paths: (home: string) => [join(home, '.config', 'goose', 'config.yaml')],
+    read: readGooseYaml,
+  },
+  // https://kiro.dev/docs/mcp/configuration/
+  // `mcpServers`, each a command, args and env or a url and headers, and
+  // `disabled: true` on one kept configured and off.
+  {
+    runtime: 'kiro' as const,
+    label: 'Kiro',
+    env: 'KIRO_MCP_CONFIG',
+    paths: (home: string) => [join(home, '.kiro', 'settings', 'mcp.json')],
+    read: readMcpServersJson,
   },
 ];
 

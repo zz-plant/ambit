@@ -10,7 +10,7 @@ A list shows what is configured, one server at a time. Ambit records what each c
 
 ### Do I need Claude Code for this?
 
-No. Ambit reads twelve runtimes from each one's standard config path: OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, and VS Code. [Where each AI agent keeps its MCP config](./mcp-config-locations.md) gives every path. It also reads the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`. A server that two clients both list is one capability with two providers, not two capabilities. Adding a reader for another client is one of the most useful contributions; [CONTRIBUTING.md](../CONTRIBUTING.md) points at where they live.
+No. Ambit reads each of these runtimes from its standard config path: OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, and Kiro. [Where each AI agent keeps its MCP config](./mcp-config-locations.md) gives every path. It also reads the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`. A server that two clients both list is one capability with two providers, not two capabilities. Adding a reader for another client is one of the most useful contributions; [CONTRIBUTING.md](../CONTRIBUTING.md) points at where they live.
 
 ### I use Jev. Where does it fit?
 

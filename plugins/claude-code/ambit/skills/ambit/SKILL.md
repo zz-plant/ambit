@@ -5,7 +5,7 @@ description: Use when the user asks which MCP servers or agent tools they have, 
 
 # Ambit
 
-Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code) into one local graph: what the setup can do, what is proven to work, what may run without asking, and what to set up next.
+Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, Kiro) into one local graph: what the setup can do, what is proven to work, what may run without asking, and what to set up next.
 
 ## Before you run anything, tell the user what it touches
 

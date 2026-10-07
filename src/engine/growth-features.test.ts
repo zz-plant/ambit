@@ -462,6 +462,25 @@ describe('ambit connect on the runtimes it only read before', () => {
     expect(runConnect('gemini-cli', { home: testDir, force: true }).configured[0].path).toBe(
       join(testDir, '.gemini', 'settings.json')
     );
+
+    // Kiro keeps `mcpServers`, so its entry is the one Cursor gets, and a
+    // server it holds switched off stays as it was.
+    const kiro = join(testDir, '.kiro', 'settings', 'mcp.json');
+    mkdirSync(dirname(kiro), { recursive: true });
+    writeFileSync(kiro, JSON.stringify({ mcpServers: { off: { command: 'x', disabled: true } } }));
+    expect(runConnect('kiro', { home: testDir }).configured[0].action).toBe('added');
+    const k = JSON.parse(readFileSync(kiro, 'utf8'));
+    expect(k.mcpServers.ambit).toEqual({ command: 'ambit', args: ['mcp'] });
+    expect(k.mcpServers.off).toEqual({ command: 'x', disabled: true });
+    expect(runConnect('kiro', { home: testDir }).configured[0].action).toBe('already_configured');
+  });
+
+  test('leaves the runtimes it reads and has no writer for alone', () => {
+    for (const runtime of ['copilot-cli', 'amp', 'goose']) {
+      const result = runConnect(runtime, { home: testDir, force: true });
+      expect(result.ok).toBe(false);
+      expect(result.configured).toEqual([]);
+    }
   });
 
   test('appends a Codex table, keeps the rest of the TOML, and does it once', () => {

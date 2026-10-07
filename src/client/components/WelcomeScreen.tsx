@@ -34,7 +34,7 @@ export const RUNTIMES = [
  * counted. The page cannot import the engine's readers; welcome.test.tsx holds
  * this to them, since the hand-written "four more" outlived a fifth.
  */
-export const RUNTIMES_READ = 12;
+export const RUNTIMES_READ = 16;
 
 /** The published docs, beside the app on the hosted site. */
 const DOCS = `${import.meta.env.BASE_URL}docs/`;
