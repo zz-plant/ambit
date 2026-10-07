@@ -54,7 +54,7 @@ ambit status    # what is reached, what is proven, what is failing
 <h2 id="2-check-which-ones-work"><a class="anchor" href="#2-check-which-ones-work" aria-hidden="true" tabindex="-1">#</a>2. Check which ones work</h2>
 <p>A server in a config file is configured, not working. Tokens expire, binaries move and services go offline, and the config file still says the same thing.</p>
 <pre><code class="language-bash">ambit verify            # run every declared check, and record the result
-ambit doctor            # setup health, broken tools, and token-thrash risk
+ambit doctor            # setup health: what works, what fails, what rests on one piece
 </code></pre>
 <p>A capability with a passing check is <strong>proven</strong>; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. <code>ambit verify &lt;capability&gt; --history</code> shows its past runs.</p>
 <p>A check exists only where one is declared: the curated tree declares some, and a skill registered with <code>ambit record skill:</code> carries its own. Most MCP servers a person adds have none. Those read as reached and unproven, still counted as working, and <code>ambit verify</code> cannot tell you whether they work; calling one of the server&#39;s tools yourself is the check.</p>

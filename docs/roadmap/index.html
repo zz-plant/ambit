@@ -129,7 +129,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#2-put-the-human-and-the-machines-in-the-graph--partly-built">2</a></td>
 <td align="left">Put the human and the machines in the graph</td>
 <td align="left">partly built</td>
-<td align="left">Cost and risk tolerance are not modeled: a preference is a word matched to an alternative&#39;s properties, not a budget or a threshold, so a plan cannot say <em>this step is not worth your attention</em> or <em>you asked not to spend more than this</em>. Reachability gates nothing: a device or service that stops answering moves no lifecycle, and <code>ambit incidents</code> records it as an incident run and stops there. What <code>ambit graph capacity</code> reads from the tailnet and this machine&#39;s memory is printed and never seeded.</td>
+<td align="left">Cost and risk tolerance are not modeled: a preference is a word matched to an alternative&#39;s properties, not a budget or a threshold, so a plan cannot say <em>this step is not worth your attention</em> or <em>you asked not to spend more than this</em>. A device or service is probed only when someone types <code>ambit incidents</code>, so nothing notices one stop answering between runs. What <code>ambit graph capacity</code> reads from the tailnet and this machine&#39;s memory is printed and never seeded.</td>
 </tr>
 <tr>
 <td align="left"><a href="#3-acquisition-recipes--partly-built">3</a></td>
@@ -141,7 +141,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#4-detection-becomes-verification--built-and-gates">4</a></td>
 <td align="left">Detection becomes verification</td>
 <td align="left">built, and gates</td>
-<td align="left">Outside the three places §9 names, the gate is read and not obeyed. A failing check is re-run only when someone types it (<code>ambit verify --failing</code> runs every one at once), and a capability that failed counts again only once its last five runs pass.</td>
+<td align="left">Outside the three places §9 names, the gate is read and not obeyed. A failing check is re-run only when someone types it (<code>ambit verify --failing</code> runs every failing or recovering one at once).</td>
 </tr>
 <tr>
 <td align="left"><a href="#5-goal--capability-delta--partly-built">5</a></td>
@@ -159,7 +159,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#7-the-ledger--shipped">7</a></td>
 <td align="left">The ledger</td>
 <td align="left">shipped</td>
-<td align="left">Use carries no object, so which capability was exercised <em>on what</em> is unanswered (§13.9). The Claude Code plugin records an ask and not its answer, since no hook says how a person replied, and the OpenCode plugin does the same under OpenCode 1, so those asks are drawn as points (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l1-spans-with-a-lane-for-you">L1</a>). Both plugins time a use between the hooks before and after it, except a call someone was asked to approve, whose span holds the person&#39;s wait, and the control plane still writes a fixed value. Runtimes other than OpenCode and Claude Code have no bridge of their own.</td>
+<td align="left">Use carries no object, so which capability was exercised <em>on what</em> is unanswered (§13.9). The Claude Code plugin records an ask and not its answer, since no hook says how a person replied, and the OpenCode plugin does the same under OpenCode 1, so those asks are drawn as points (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l1-spans-with-a-lane-for-you">L1</a>). Both plugins time a use between the hooks before and after it, except a call someone was asked to approve, whose span holds the person&#39;s wait, and the control plane still writes a fixed value. Cursor feeds it through its hooks (<code>ambit connect cursor --ledger</code>), without tokens, since its hooks report none; other runtimes have no bridge of their own.</td>
 </tr>
 <tr>
 <td align="left"><a href="#7b-affordance-domains--built-derived">7b</a></td>
@@ -225,7 +225,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#16-federation-fleet-governance-and-team-agency--partly-built">16</a></td>
 <td align="left">Federation, fleet governance, and team agency</td>
 <td align="left">partly built</td>
-<td align="left">Multi-tenant graph synchronization, GitOps PR-driven governance, enterprise role-based access control, and compliance audit exports (SOC2) are unbuilt. Machine tags and last-seen time are recorded nowhere yet, and only delegation records are hash-chained.</td>
+<td align="left">Multi-tenant graph synchronization, GitOps PR-driven governance, enterprise role-based access control, and compliance audit exports (SOC2) are unbuilt. Only delegation records are hash-chained, and a machine&#39;s last-seen time moves only when <code>ambit incidents</code> runs.</td>
 </tr>
 </tbody></table>
 <h2 id="1-separate-capability-from-implementation--built"><a class="anchor" href="#1-separate-capability-from-implementation--built" aria-hidden="true" tabindex="-1">#</a>1. Separate capability from implementation — built</h2>
@@ -340,7 +340,7 @@ rollback:
 <p>Built: nodes may declare a read-only <code>verify</code> command; <code>ambit verify</code> runs it and records the outcome in <code>session_learning</code>. <code>ambit verify &lt;id&gt; --history</code> returns the history, and reliability is reported as passes over runs: one success is a weaker claim than forty-seven of fifty.</p>
 <p>Checks execute, so a curated check lives in this repository, a skill&#39;s is registered with the skill (§12.5), and none runs until asked. Nothing verifies on seed. Most capabilities, and most MCP servers a person adds, declare no check at all.</p>
 <p>What the checks decide is narrow on purpose. A capability is <strong>reached</strong> when a config provides it and its required prerequisites are reached, and <strong>proven</strong> when it is reached and its declared check last passed. One that has never been checked is reached and unproven, and still counts everywhere. A failing check takes a capability out of every plan, permission and ranking. Checks only ever take away; permission is a separate layer (§9), so the chain is <code>installed ≠ working ≠ authorized</code>.</p>
-<p>The lifecycle is built and stored. <code>capabilities.lifecycle</code> holds <code>unknown</code>, <code>detected</code>, <code>configured</code>, <code>verified</code>, <code>reliable</code>, <code>degraded</code> or <code>broken</code>, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is <code>reliable</code>, one passing run is <code>verified</code>, and a check that has started failing is <code>broken</code>.</p>
+<p>The lifecycle is built and stored. <code>capabilities.lifecycle</code> holds <code>unknown</code>, <code>detected</code>, <code>configured</code>, <code>verified</code>, <code>reliable</code>, <code>degraded</code> or <code>broken</code>, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is <code>reliable</code>, one passing run is <code>verified</code>, a check whose last run failed is <code>broken</code>, and a pass after a failure is <code>degraded</code>, which reads as recovering. The latest check decides availability: only <code>broken</code> is left out, and a recovering capability is usable and counted as unproven until its window is clean.</p>
 <p><code>state</code> is untouched beside it, deliberately: <code>state</code> is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore <code>broken</code> and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.</p>
 <p>Promotion on evidence is built, at the grain where it changes what happens: §12.6. A person sets a threshold on a grant once — <em>stop asking me about this after three passing checks in thirty days</em> — and the evidence decides when it takes effect. A single failing check afterwards puts the grant back, and that half needs nobody. The lifecycle itself still only moves on the evidence of its own check, which is what it should do.</p>
 <h2 id="5-goal--capability-delta--partly-built"><a class="anchor" href="#5-goal--capability-delta--partly-built" aria-hidden="true" tabindex="-1">#</a>5. Goal → capability delta — partly built</h2>

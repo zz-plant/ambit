@@ -321,6 +321,18 @@ claude plugin install ambit@ambit
 </code></pre>
 <p>OpenCode 2 puts the same entry under <code>mcp.servers</code>, with <code>&quot;disabled&quot;: false</code> in place of <code>&quot;enabled&quot;: true</code>.</p>
 <p>Both clients assume <code>ambit</code> is on your PATH, which Homebrew and <code>bootstrap.sh</code> both arrange; failing that, use the absolute path to <code>cli.js</code>. An agent can read the map, ask what a goal is missing, and <strong>propose</strong> a configuration change. Applying one always requires your approval.</p>
+<h3 id="cursor"><a class="anchor" href="#cursor" aria-hidden="true" tabindex="-1">#</a>Cursor</h3>
+<p><code>ambit connect cursor</code> adds the server to <code>~/.cursor/mcp.json</code>. With <code>--ledger</code> it also adds a hook to <code>~/.cursor/hooks.json</code> on four events, beside any hooks already there, keeping what the file held in <code>hooks.json.bak</code>; <code>--dry-run</code> prints the hook&#39;s command and events and writes nothing. The hook appends one line per event to the file the Claude Code plugin writes, <code>~/.local/state/ambit/claude-code.jsonl</code>: when it ran and the conversation&#39;s id; for a shell command or MCP call that ran, the server&#39;s and tool&#39;s names and how long Cursor says it took, your wait for approval left out; for a failed call, Cursor&#39;s id for it, its error text, its failure kind and whether you stopped it; and why a conversation ended. Never a command&#39;s text or output, an MCP call&#39;s arguments or result, a file, your prompt or your email. Cursor&#39;s hooks report no token counts and no approval prompts, so a Cursor run records neither. The hook asks Cursor for nothing, so it can neither block a call nor allow one, and <code>AMBIT_NO_LEDGER=1</code> turns it off. By hand, with the path the dry run prints:</p>
+<pre><code class="language-json">{
+  &quot;version&quot;: 1,
+  &quot;hooks&quot;: {
+    &quot;afterShellExecution&quot;: [{ &quot;command&quot;: &quot;node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs&quot;, &quot;timeout&quot;: 5 }],
+    &quot;afterMCPExecution&quot;: [{ &quot;command&quot;: &quot;node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs&quot;, &quot;timeout&quot;: 5 }],
+    &quot;postToolUseFailure&quot;: [{ &quot;command&quot;: &quot;node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs&quot;, &quot;timeout&quot;: 5 }],
+    &quot;sessionEnd&quot;: [{ &quot;command&quot;: &quot;node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs&quot;, &quot;timeout&quot;: 5 }]
+  }
+}
+</code></pre>
 <h3 id="the-one-habit-worth-teaching"><a class="anchor" href="#the-one-habit-worth-teaching" aria-hidden="true" tabindex="-1">#</a>The one habit worth teaching</h3>
 <blockquote>
 <p>Before running a tool you have not used this session, call <code>ambit_can</code> with
@@ -352,9 +364,9 @@ already recorded the deficit, so do not retry it under another name.</p>
 <p>Ambit keeps two properties apart, and the distinction is load-bearing:</p>
 <ul>
 <li><code>state</code> is <strong>structural</strong>: is this thing configured, and what does it depend on. This is what the frontier ledger records.</li>
-<li><code>lifecycle</code> is <strong>health</strong>: did its declared verification command actually pass. A capability can be fully configured and still <code>degraded</code> or <code>broken</code>.</li>
+<li><code>lifecycle</code> is <strong>health</strong>: did its declared verification command actually pass. A capability can be fully configured and still <code>broken</code>, or <code>degraded</code>: recovering, its last check passed after one that failed.</li>
 </ul>
-<p>Every availability decision gates on lifecycle, not state. Checks only ever take something away: a capability no check has run on stays in every plan, and a broken one is excluded from plans, simulations, goals, authority checks and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan. <code>ambit status</code> reports proven, unproven and failing counts, and the map badges each reached node: <code>✓</code> for a passing check, <code>!</code> for a failing one, nothing for configured but never verified.</p>
+<p>Every availability decision gates on lifecycle, not state. Checks only ever take something away: a capability no check has run on stays in every plan, and a broken one is excluded from plans, simulations, goals, authority checks and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan. The latest check decides, so one pass after a fix brings it back; it counts as unproven, and is named as recovering, until its last five runs pass. <code>ambit status</code> reports proven, unproven and failing counts, and the map badges each reached node: <code>✓</code> for a passing check, <code>!</code> for a failing one, nothing for configured but never verified, or recovering.</p>
 <h3 id="fragility-is-computed-not-guessed"><a class="anchor" href="#fragility-is-computed-not-guessed" aria-hidden="true" tabindex="-1">#</a>Fragility is computed, not guessed</h3>
 <ul>
 <li><strong>Single points of failure</strong>: capabilities with exactly one provider.</li>
