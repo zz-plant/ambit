@@ -47,6 +47,18 @@ const RECOVERING = ['degraded'] as const;
 /** Lifecycles that mean a check has passed. */
 const PROVEN = ['verified', 'reliable'] as const;
 
+/** The lifecycle of a reached node no check has run against yet. */
+const CONFIGURED = 'configured';
+
+/**
+ * Lifecycles that mean reached and not proven: no check has run yet, or the
+ * last one passed after recent failures. With PROVEN and FAILING this is
+ * every lifecycle a reached node can be derived into; a reached node with
+ * none of them carries no check of its own (an MCP server, a model, a
+ * runtime), and a check runs on the capability it provides.
+ */
+const UNPROVEN = [CONFIGURED, ...RECOVERING] as const;
+
 /** A quoted, comma-separated list for an SQL `IN (…)`. */
 const sqlList = (values: readonly string[]) => values.map(v => `'${v}'`).join(',');
 
@@ -59,6 +71,16 @@ const isReached = (state: string | null | undefined): boolean =>
 const FAILING_SQL = `lifecycle IN (${sqlList(FAILING)})`;
 const RECOVERING_SQL = `lifecycle IN (${sqlList(RECOVERING)})`;
 const PROVEN_SQL = `lifecycle IN (${sqlList(PROVEN)})`;
+const UNPROVEN_SQL = `lifecycle IN (${sqlList(UNPROVEN)})`;
+
+/**
+ * The kinds a summary counts: everything but an action, a credential and a
+ * person. An action is conferred by a capability and counted through it, and
+ * the kinds the frontier leaves out are left out here, so declaring either
+ * never moves a reach. The head of a report, its evidence rows and its domain
+ * totals take this one fragment, so they count one set of nodes.
+ */
+const COUNTED_SQL = `kind NOT IN (${sqlList(['action', ...NON_FRONTIER_KINDS])})`;
 
 /**
  * What one run of a declared check is recorded as, in `session_learning.action`.
@@ -109,37 +131,48 @@ const DECIDED_CAPABILITY_SQL = `CASE WHEN s.session_id IN ('approval', 'apply')
  *
  * `ambit status`, the briefing, the MCP stats and context tools and the
  * visualiser's live stream each carried their own copy of this, two of them
- * byte-identical. Action nodes are excluded from reach because an action is
- * conferred by a capability and not acquired, and counting both would report
- * the same thing twice. The kinds the frontier leaves out, a credential and a
- * person, are left out here too, so declaring either never moves a reach.
+ * byte-identical. The nodes counted are the ones `COUNTED_SQL` names.
+ *
+ * Proven, unproven, failing and entries split the reached figure four ways,
+ * so a report that prints all four prints a column that adds up to its head.
+ * Reached counts the config's own entries as well as the curated capabilities
+ * they provide, and the evidence rows under it counted only what carries a
+ * check, so `ambit status` read "39 reached" over rows summing to 15. An
+ * entry is the rest: reached, with no check of its own.
  */
 interface GraphCounts {
   total: number;
   reached: number;
   proven: number;
+  unproven: number;
   failing: number;
+  entries: number;
 }
 
 function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }): GraphCounts {
+  const of = (test: string) => `SUM(CASE WHEN ${REACHED_SQL} AND ${test} THEN 1 ELSE 0 END)`;
   try {
     const row = db
       .prepare(
         `SELECT COUNT(*) AS total,
                 SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) AS reached,
-                SUM(CASE WHEN ${PROVEN_SQL} THEN 1 ELSE 0 END) AS proven,
-                SUM(CASE WHEN ${FAILING_SQL} THEN 1 ELSE 0 END) AS failing
-         FROM capabilities WHERE kind NOT IN (${sqlList(['action', ...NON_FRONTIER_KINDS])})`
+                ${of(PROVEN_SQL)} AS proven,
+                ${of(UNPROVEN_SQL)} AS unproven,
+                ${of(FAILING_SQL)} AS failing,
+                ${of(`lifecycle NOT IN (${sqlList([...PROVEN, ...UNPROVEN, ...FAILING])})`)} AS entries
+         FROM capabilities WHERE ${COUNTED_SQL}`
       )
       .get();
     return {
       total: row?.total ?? 0,
       reached: row?.reached ?? 0,
       proven: row?.proven ?? 0,
+      unproven: row?.unproven ?? 0,
       failing: row?.failing ?? 0,
+      entries: row?.entries ?? 0,
     };
   } catch {
-    return { total: 0, reached: 0, proven: 0, failing: 0 };
+    return { total: 0, reached: 0, proven: 0, unproven: 0, failing: 0, entries: 0 };
   }
 }
 
@@ -224,11 +257,15 @@ export {
   FAILING,
   RECOVERING,
   PROVEN,
+  CONFIGURED,
+  UNPROVEN,
   REACHED_SQL,
   isReached,
   FAILING_SQL,
   RECOVERING_SQL,
   PROVEN_SQL,
+  UNPROVEN_SQL,
+  COUNTED_SQL,
   CHECK_RUN,
   CHECK_RUN_SQL,
   PROBE_COMMAND,

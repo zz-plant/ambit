@@ -167,24 +167,24 @@ $ ambit status
     39 of 70 reached · 0 proven · 9 with a single provider
     ──────────────────────────────────────────────────────
     proven          0
-  › unproven       15
+  › unproven       15  11 provable now · 4 with no check
     failing         0
+    entries        24  from your config; checks run on what they provide
     last check  never
 
     actions: 18/66 reached
-    provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution
+    provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution and 3 more
     domains:
       ████░░░░░░ ai-ml     5/13
       ██████░░░░ backend   7/11
       █████░░░░░ devops    4/8
-      █████░░░░░ frontend  1/2
     …
 
     Next  ambit verify · turns 11 of the unproven into evidence
 ```
 <!-- /example -->
 
-This is a fresh graph, before any check has run: reached and proven lead, the `›` marks the count that wants a person, and the last line is the command to type next. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
+This is a fresh graph, before any check has run: reached and proven lead, the four counts under the rule add up to the reached figure, the `›` marks the count that wants a person, and the last line is the command to type next. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
 
 ### ambit impact — what stops if a piece goes
 

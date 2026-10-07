@@ -11,7 +11,15 @@ import { describe, expect, it, vi } from 'vitest';
 import { learn, makeGraph, type CapabilityFixture } from '../testing/graph.ts';
 import { asProcess } from '../testing/terminal.ts';
 import { C, PLAIN } from './output.ts';
-import { explain, renderImpact, renderStatus, statusReport, worries } from './reports.ts';
+import {
+  briefReport,
+  explain,
+  renderBrief,
+  renderImpact,
+  renderStatus,
+  statusReport,
+  worries,
+} from './reports.ts';
 import { analyzeImpact } from '../inference.ts';
 
 /** The escape character, spelled out so no control character sits in the source. */
@@ -43,9 +51,20 @@ const ALL_PROVEN: CapabilityFixture[] = [
   { id: 'combo:b', name: 'Beta', lifecycle: 'reliable' },
 ];
 
-/** The four evidence rows of a rendering, wherever they sit. */
+/** The five evidence rows of a rendering, wherever they sit. */
 const evidenceRows = (lines: string[]) =>
-  lines.filter(l => /^( {4}| {2}› )(proven|unproven|failing|last check) /.test(l));
+  lines.filter(l => /^( {4}| {2}› )(proven|unproven|failing|entries|last check) /.test(l));
+
+/** A row up to the end of its value, leaving out what is said beside it. */
+const cellsOf = (row: string) => row.match(/^( {4}| {2}› )\S+(?: \S+)? +\S+/)?.[0] ?? row;
+
+/** A graph holding these nodes, with a declared check on each of `checked`. */
+function graphWithChecks(capabilities: CapabilityFixture[], checked: string[]) {
+  const db = makeGraph({ capabilities });
+  const declare = db.prepare('INSERT INTO declared_checks (capability_id, command) VALUES (?, ?)');
+  for (const id of checked) declare.run(id, 'true');
+  return db;
+}
 
 describe('the head of the report', () => {
   it('leads with the two numbers that matter, then what is wrong', () => {
@@ -99,12 +118,103 @@ describe('the evidence counts', () => {
     const rows = evidenceRows(renderStatus(reportOf(MIXED), PLAIN));
     expect(rows).toEqual([
       '    proven          1',
-      '    unproven        1',
+      '    unproven        1  1 with no check',
       '  › failing         1',
+      '    entries         0',
       '    last check  never',
     ]);
-    // Aligned means every row ends in the same column, whatever it says.
-    expect(new Set(rows.map(r => r.length)).size).toBe(1);
+    // Aligned means every value ends in the same column, whatever is said beside it.
+    expect(new Set(rows.map(r => cellsOf(r).length)).size).toBe(1);
+  });
+
+  // The head counted the config's own entries with the capabilities they
+  // provide, and the rows under it counted only what carries a check, so the
+  // README's example read "39 of 70 reached" over rows that summed to 15.
+  it('add up to the reached figure in the head', () => {
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:a', name: 'Alpha', lifecycle: 'verified' },
+        { id: 'combo:b', name: 'Beta', lifecycle: 'configured' },
+        { id: 'combo:c', name: 'Gamma', lifecycle: 'broken' },
+        { id: 'combo:d', name: 'Delta', lifecycle: 'degraded' },
+        { id: 'combo:e', name: 'Epsilon', state: 'locked', lifecycle: 'unknown' },
+        { id: 'mcp:git', name: 'git', kind: 'provider', category: 'mcp', lifecycle: 'unknown' },
+        { id: 'provider:ollama', name: 'Ollama', kind: 'resource', lifecycle: 'unknown' },
+        { id: 'runtime:opencode', name: 'OpenCode', kind: 'runtime', lifecycle: 'unknown' },
+        // Not counted in the head, so not counted under it either.
+        { id: 'act:a/x', name: 'x', kind: 'action', lifecycle: 'configured' },
+        { id: 'cred:gh', name: 'GitHub token', kind: 'credential', lifecycle: 'unknown' },
+        { id: 'human:pat', name: 'Pat', kind: 'actor', lifecycle: 'unknown' },
+      ],
+    });
+    try {
+      const report = statusReport(db);
+      const ev = report.evidence[0];
+      expect(ev).toMatchObject({ proven: 1, unproven: 2, failing: 1, entries: 3 });
+      expect(ev.proven + ev.unproven + ev.failing + ev.entries).toBe(report.reached);
+
+      const lines = renderStatus(report, PLAIN);
+      const reached = Number(lines[1].match(/(\d+) of \d+ reached/)?.[1]);
+      const rowSum = evidenceRows(lines)
+        .filter(r => !r.includes('last check'))
+        .reduce((sum, r) => sum + Number(cellsOf(r).match(/(\d+)$/)?.[1]), 0);
+      expect(reached).toBe(7);
+      expect(rowSum).toBe(reached);
+      expect(evidenceRows(lines)).toContain(
+        '    entries         3  from your config; checks run on what they provide'
+      );
+
+      // The domains are counted over the same nodes, so their totals add up too.
+      const domains = report.domains as { total: number }[];
+      expect(domains.reduce((sum, d) => sum + d.total, 0)).toBe(report.total);
+    } finally {
+      db.close();
+    }
+  });
+
+  it('say how the unproven split, in parts that add up to it', () => {
+    const db = graphWithChecks(
+      [
+        { id: 'skill:a', name: 'A', kind: 'provider', lifecycle: 'configured' },
+        { id: 'skill:b', name: 'B', kind: 'provider', lifecycle: 'configured' },
+        { id: 'combo:c', name: 'C', lifecycle: 'configured' },
+        { id: 'skill:d', name: 'D', kind: 'provider', lifecycle: 'degraded' },
+      ],
+      ['skill:a', 'skill:b', 'skill:d']
+    );
+    try {
+      const report = statusReport(db);
+      expect(report.evidence[0]).toMatchObject({ unproven: 4, recovering: 1, no_check: 1 });
+      expect(report.evidence[0].provable_now).toEqual(['A', 'B']);
+      expect(evidenceRows(renderStatus(report, PLAIN))).toContain(
+        '  › unproven        4  2 provable now · 1 recovering · 1 with no check'
+      );
+      // The last line counts the same two.
+      expect(report.next).toEqual({
+        command: 'ambit verify',
+        why: 'turns 2 of the unproven into evidence',
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  // The list stopped at eight names under a last line that said eleven.
+  it('list eight of what verify would check, and count the rest', () => {
+    const ids = Array.from({ length: 11 }, (_, i) => `skill:s${String(i).padStart(2, '0')}`);
+    const db = graphWithChecks(
+      ids.map(id => ({ id, name: id.slice(6), kind: 'provider', lifecycle: 'configured' })),
+      ids
+    );
+    try {
+      const report = statusReport(db);
+      expect(report.evidence[0].provable_now).toHaveLength(11);
+      const text = renderStatus(report, PLAIN).join('\n');
+      expect(text).toContain('provable now: s00, s01, s02, s03, s04, s05, s06, s07 and 3 more');
+      expect(text).toContain('turns 11 of the unproven into evidence');
+    } finally {
+      db.close();
+    }
   });
 
   it('mark a failing check before an unproven one, since a repair comes first', () => {
@@ -208,7 +318,7 @@ describe('a capability recovering from a failed check', () => {
     expect(report.failing).toBe(0);
     expect(report.degraded).toBeUndefined();
     expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual([
-      expect.stringMatching(/^ {2}› unproven +1$/),
+      expect.stringMatching(/^ {2}› unproven +1 {2}1 recovering$/),
     ]);
     // Nothing to repair, so the report does not end on re-running its check.
     expect(report.next?.command ?? '').not.toContain('verify');
@@ -426,5 +536,43 @@ describe('renderImpact', () => {
     const answer = analyzeImpact(db, 'mcp:aa') as any;
     db.close();
     expect(answer.error).toContain('No capability "mcp:aa"');
+  });
+});
+
+describe('the short screen bare ambit shows', () => {
+  // It said "ambit verify runs their checks" of every unproven capability,
+  // and verify runs only the checks that are declared.
+  const leanLine = (db: ReturnType<typeof makeGraph>) =>
+    renderBrief(briefReport(db), PLAIN).find(l => l.includes('not yet proven'));
+
+  it('says how many of the unproven verify would check when some declare none', () => {
+    const db = graphWithChecks(
+      [
+        { id: 'skill:a', name: 'A', kind: 'provider', lifecycle: 'configured' },
+        { id: 'combo:b', name: 'B', lifecycle: 'configured' },
+      ],
+      ['skill:a']
+    );
+    try {
+      expect(leanLine(db)).toBe(
+        '    2 configured and not yet proven · ambit verify checks 1 of them'
+      );
+    } finally {
+      db.close();
+    }
+  });
+
+  it('keeps the short form when every one has a check', () => {
+    const db = graphWithChecks(
+      [{ id: 'skill:a', name: 'A', kind: 'provider', lifecycle: 'configured' }],
+      ['skill:a']
+    );
+    try {
+      expect(leanLine(db)).toBe(
+        '    1 configured and not yet proven · ambit verify runs their checks'
+      );
+    } finally {
+      db.close();
+    }
   });
 });
