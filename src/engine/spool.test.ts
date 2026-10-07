@@ -554,3 +554,33 @@ test('a model with no declared price records no spend, and is reported undeclare
 function withoutId({ id: _, ...counts }: typeof SESSION) {
   return counts;
 }
+
+test('a call someone stopped is recorded as stopped, never as a failure', () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  const session = { session_id: 'esc-1', transcript_path: '/tmp/t.jsonl', cwd: '/tmp' };
+  hook(spool, {
+    ...session,
+    hook_event_name: 'PostToolUseFailure',
+    tool_name: ISSUE,
+    tool_use_id: 'toolu_esc',
+    tool_error: 'Interrupted by user',
+    is_interrupt: true,
+  });
+  expect(readFileSync(spool, 'utf8')).toContain('"int":true');
+
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    ingestSpool(db, spool);
+    const events = db
+      .prepare("SELECT detail FROM work_events WHERE run_id = 'run-cc-esc-1'")
+      .all() as any[];
+    expect(events.map(e => e.detail)).toEqual(['interrupted']);
+    const failures = db
+      .prepare("SELECT COUNT(*) AS n FROM failure_signals WHERE session_id = 'esc-1'")
+      .get() as any;
+    expect(failures.n).toBe(0);
+  } finally {
+    db.close();
+  }
+});

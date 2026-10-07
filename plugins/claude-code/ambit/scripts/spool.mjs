@@ -59,6 +59,9 @@ process.stdin.on('end', () => {
       id: typeof input.tool_use_id === 'string' ? input.tool_use_id.slice(0, 128) : undefined,
       tool: typeof input.tool_name === 'string' ? input.tool_name : undefined,
       err: typeof input.tool_error === 'string' ? input.tool_error.slice(0, 500) : undefined,
+      // Claude Code's own flag that the call was interrupted, reported as it
+      // was said; what an interrupt means is the engine's to decide.
+      int: input.is_interrupt === true ? true : undefined,
       why: typeof input.reason === 'string' ? input.reason : undefined,
       // At a session's end, where its transcript is, so the engine can count
       // its tokens later; the file is not read here, inside Claude Code's wait.

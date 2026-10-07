@@ -53,6 +53,8 @@ interface SpoolLine {
   tool?: string;
   /** tool_error, cut to 500 characters. */
   err?: string;
+  /** is_interrupt: the call was stopped, not failed. */
+  int?: boolean;
   /** SessionEnd's reason. */
   why?: string;
   /** SessionEnd's transcript_path, read here for the session's token counts. */
@@ -328,6 +330,19 @@ function ingestSpool(
           }
           case 'PostToolUseFailure':
             if (!tool) break;
+            // A call someone stopped (Esc, a new prompt) ended without failing:
+            // recorded as stopped, and never as a failure signal, which would
+            // rank the tool among what keeps blocking work.
+            if (line.int) {
+              addEvent(db, run, {
+                kind: 'tool',
+                action: tool,
+                actor: 'agent',
+                detail: 'interrupted',
+                at,
+              });
+              break;
+            }
             addEvent(db, run, { kind: 'tool', action: tool, actor: 'agent', detail: 'failed', at });
             captureFailure(db, {
               source: 'claude-code',
