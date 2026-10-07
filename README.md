@@ -164,7 +164,7 @@ Everything above answers on a graph Ambit builds by itself. A second group (`att
 ```console
 $ ambit status
 
-    39 of 70 reached · 0 proven · 9 with a single provider
+    39 of 70 reached · 0 proven · 8 with a single provider
     ──────────────────────────────────────────────────────
     proven          0
   › unproven       15

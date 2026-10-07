@@ -624,6 +624,62 @@ test('a Linear server reaches Issue Tracking, and an agent with "linear" inside 
   expect(proof).not.toContain('agent:nonlinear-notes');
 });
 
+test('a filesystem server provides File Editing, under its package name too, and a longer name does not', () => {
+  const db = seed({
+    mcp: {
+      filesystem: { type: 'local', command: ['npx', '@modelcontextprotocol/server-filesystem'] },
+      '@modelcontextprotocol/server-filesystem': { type: 'local', command: ['npx'] },
+      'filesystem-snapshots': { type: 'local', command: ['snap-mcp'] },
+    },
+  });
+  const proof = rows(
+    db,
+    "SELECT from_capability AS f FROM dependencies WHERE to_capability = 'combo:file-editing' AND kind = 'provides' ORDER BY f"
+  ).map(r => r.f);
+  db.close();
+  expect(proof).toEqual([
+    'mcp:@modelcontextprotocol/server-filesystem',
+    'mcp:filesystem',
+    'tool:edit',
+  ]);
+});
+
+test('the servers most developers install reach the node each one supplies', () => {
+  // Keyed as their own READMEs tell a person to key them. A server the tree
+  // has no node for (Context7, Notion, Figma, Sequential Thinking) is absent
+  // here on purpose: it reaches Tool Protocol and nothing more.
+  const expected: Record<string, string[]> = {
+    github: ['version-control'],
+    git: ['version-control'],
+    filesystem: ['file-editing'],
+    playwright: ['automated-tests', 'browser-automation'],
+    puppeteer: ['browser-automation'],
+    'chrome-devtools': ['browser-automation'],
+    'brave-search': ['web-research'],
+    fetch: ['web-research'],
+    postgres: ['data-access'],
+    sqlite: ['data-access'],
+    supabase: ['data-access', 'production-database'],
+    memory: ['persistent-memory'],
+    slack: ['notifications'],
+    linear: ['issue-tracking'],
+    sentry: ['error-tracking', 'observability'],
+  };
+  const db = seed({
+    mcp: Object.fromEntries(Object.keys(expected).map(k => [k, { type: 'local', command: ['x'] }])),
+  });
+  const supplied = (server: string) =>
+    rows(
+      db,
+      `SELECT to_capability AS t FROM dependencies
+       WHERE from_capability = 'mcp:${server}' AND kind = 'provides'
+         AND to_capability != 'combo:tool-protocol' ORDER BY t`
+    ).map(r => r.t.replace('combo:', ''));
+  const actual = Object.fromEntries(Object.keys(expected).map(k => [k, supplied(k)]));
+  db.close();
+  expect(actual).toEqual(expected);
+});
+
 test('a server removed from the config is retired by the next seed, and restored when it returns', () => {
   // A seed only ever added: the server stayed reached, and so did what only it
   // supplied, until someone deleted the graph.
