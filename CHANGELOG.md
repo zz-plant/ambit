@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Usage in five-hour windows, as it happens
+
+Claude Code's token counts arrived only when a session ended, from its transcript, so a long session counted for nothing until it closed, and every agent's tokens were kept as one total per session, so no one could say how much the last few hours had used. Claude Code transcripts are now read as they grow, with or without the plugin, and every agent's tokens are kept per hour. `ambit usage --windows` (and `ambit_usage` with `windows`) reports the five-hour windows Claude Code and Codex plans reset in, counted as ccusage's blocks count them: tokens per model, the cost where a price is declared, and the time left in the current one. Time & cost shows the current window beside the month. Ambit knows no plan's limit, so it shows none, and no share of one. Only counts, model names, message ids and times are read from a transcript, and `AMBIT_NO_LEDGER=1` stops the reading.
+
 ### Tokens from Codex, OpenCode and Amp, with nothing installed
 
 Only Claude Code sessions reached the spend meter. Ambit now reads the session logs Codex, OpenCode and Amp already keep, the same records ccusage reports from: each session's id, model names, times and token counts, never what a session said or ran. Each session is one run, counted once however often its log is read, and a read that finds nothing new costs a stat per file. Time & cost names which agent each count came from, and a declared price makes those tokens a spend on Hosted Inference. Tokens from before a budget's current period are priced and not spent against it, so a first read of months of history cannot use up this month. `ambit usage --refresh` rereads every log, and `AMBIT_NO_LEDGER=1` stops the reading.

@@ -111,3 +111,82 @@ test('one runtime is named once, and reasoning counted apart gets its own segmen
   // One runtime: the caption names it, so no model's line repeats it.
   expect(said).not.toContain('OpenCode ·');
 });
+
+// ── The five-hour window under way ──────────────────────────────────────────
+
+/** A window under way that ends `minutes` from now, as /api/loop sends one. */
+function windowEnding(minutes: number, runtime = 'Claude Code', extra: object = {}) {
+  const end = Date.now() + minutes * 60_000;
+  return {
+    runtime,
+    start: new Date(end - 5 * 3_600_000).toISOString(),
+    end: new Date(end).toISOString(),
+    current: true,
+    seconds_left: minutes * 60,
+    tokens: 1_234_000,
+    models: [
+      {
+        model: 'claude-opus-5-5',
+        input: 4_000,
+        cached: 1_200_000,
+        output: 30_000,
+        unpriced: true as const,
+      },
+    ],
+    unpriced: true as const,
+    ...extra,
+  };
+}
+
+/** The window figure's text alone. */
+function windowFigure(html: string) {
+  const at = html.indexOf('This five-hour window');
+  return at < 0 ? '' : text(html.slice(at, html.indexOf('</figure>', at)));
+}
+
+test('the window under way sits beside the month: its tokens by model, and when it ends', () => {
+  seed({
+    loop: { ...demoSnapshot(), windows: [windowEnding(125)] },
+    loopSource: 'sample',
+    loopEmpty: false,
+  });
+  const figure = windowFigure(renderToStaticMarkup(<LoopDashboard />));
+  expect(figure).toContain('Claude Code,');
+  expect(figure).toContain('1.2M tokens');
+  expect(figure).toContain('Ends in 2h 05m · no price declared');
+  expect(figure).toContain('1.2M cache reads');
+  expect(figure).toContain('30K output');
+  // No limit is known, so none is drawn and nothing reads as one.
+  expect(figure).not.toMatch(/limit|remaining|%/i);
+});
+
+test('with a price declared the window says what it cost, and two runtimes are each named', () => {
+  seed({
+    loop: {
+      ...demoSnapshot(),
+      windows: [
+        windowEnding(30, 'Claude Code', { spend_dollars: 4.2, unpriced: undefined }),
+        windowEnding(200, 'Codex'),
+      ],
+    },
+    loopSource: 'sample',
+    loopEmpty: false,
+  });
+  const figure = windowFigure(renderToStaticMarkup(<LoopDashboard />));
+  expect(figure).toContain('one per runtime, each on its own clock');
+  expect(figure).toContain('Ends in 30m · $4.20 at declared prices');
+  expect(figure).toContain('Ends in 3h 20m · no price declared');
+  expect(figure).toMatch(/Claude Code, .* Codex, /);
+});
+
+test('with no window under way there is no window figure', () => {
+  seed({ loop: { ...demoSnapshot(), windows: undefined }, loopSource: 'sample', loopEmpty: false });
+  expect(windowFigure(renderToStaticMarkup(<LoopDashboard />))).toBe('');
+  // One the reader's clock has already seen end is not drawn either.
+  seed({
+    loop: { ...demoSnapshot(), windows: [windowEnding(-1)] },
+    loopSource: 'sample',
+    loopEmpty: false,
+  });
+  expect(windowFigure(renderToStaticMarkup(<LoopDashboard />))).toBe('');
+});

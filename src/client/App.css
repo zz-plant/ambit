@@ -7116,3 +7116,13 @@ button.app-sample-tag:hover {
   font-size: var(--fs-sm);
   color: var(--text-muted);
 }
+
+/* One runtime's window under way, beside the Tokens figure; a second one, on
+   its own clock, sits below the first. */
+.loop-window + .loop-window {
+  margin-top: 16px;
+}
+
+.loop-window .fig-note {
+  margin: 2px 0 10px;
+}

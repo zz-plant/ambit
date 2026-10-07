@@ -150,92 +150,180 @@ const PRICED_AS: Record<TokenUnit, TokenPart> = {
 type TokenCounts = Partial<Record<TokenUnit, number>>;
 
 /**
- * Whether tokens used at `usedAt` belong to the period a budget is counting.
- * A session read from a log for the first time can be months old, and its
- * cost spent against this month's ceiling would refuse callers for work done
- * long before the ceiling's period began. With no start recorded, or no time
- * for the tokens, the spend is the period's, as it always was.
+ * A session's tokens on each model, per hour of use: model, then the hour's
+ * start (`hourOf`), then the counts. A record its log gives no time is held
+ * under `UNTIMED`, and is counted in the hour its run began.
  */
-function inBudgetPeriod(db: Migratable, capability: string, usedAt?: string): boolean {
-  if (!usedAt) return true;
+type HourlyTokens = Map<string, Map<string, TokenCounts>>;
+
+/** The key a session's tokens with no time of their own are held under. */
+const UNTIMED = '';
+
+/**
+ * The hour an instant falls in, as the ledger stores a token row's time: the
+ * hour's start in UTC, in SQLite's `datetime('now')` shape, so it sorts with
+ * every other time the ledger holds. An hour is the grain ccusage's blocks
+ * report floors a five-hour window's start to (`floor_to_hour` in
+ * rust/crates/ccusage/src/blocks.rs, https://github.com/ryoppippi/ccusage).
+ */
+function hourOf(ms: number): string {
+  const d = new Date(ms);
+  d.setUTCMinutes(0, 0, 0);
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+/**
+ * Whether tokens used in the hour starting at `hour` belong to the period a
+ * budget is counting. A session read from a log for the first time can be
+ * months old, and its cost spent against this month's ceiling would refuse
+ * callers for work done long before the ceiling's period began. An hour that
+ * ended by the time the period began is history; one the period began inside
+ * is the period's. With no start recorded, the spend is the period's, as it
+ * always was.
+ */
+function inBudgetPeriod(db: Migratable, capability: string, hour: string): boolean {
   const row = db
     .prepare(
-      `SELECT julianday(?) < julianday(period_start) AS before FROM budgets
+      `SELECT julianday(?, '+1 hour') <= julianday(period_start) AS before FROM budgets
        WHERE capability_id = ? AND action = 'execute' AND scope = '' AND period_start IS NOT NULL`
     )
-    .get<{ before: number | null }>(usedAt, capability);
+    .get<{ before: number | null }>(hour, capability);
   return row?.before !== 1;
 }
 
 /**
- * Add a session's tokens to its run, and what they cost where a price is
- * declared, once. The one rule every reader of a session's tokens records by:
- * the Claude Code transcript at a session's end (spool.ts) and the session
- * logs Codex, OpenCode and Amp keep (session-logs.ts).
+ * Add a session's tokens to its run, per hour of use, and what they cost where
+ * a price is declared, once. The one rule every reader of a session's tokens
+ * records by: the Claude Code transcripts (session-logs.ts, also at a
+ * session's end from spool.ts) and the session logs Codex, OpenCode and Amp
+ * keep.
  *
- * `totals` are the session's whole counts so far, per model. A log is read
- * again as it grows and a spool can carry the same end twice, so only what
- * the run has not recorded yet is written: the totals less what its earlier
- * rows already hold, which is nothing when the session has not grown. Each row
- * is priced when it is written, at the price declared then (`modelPrice`), and
- * never again, so a price declared later does not reach back to sessions that
- * ran before it and a second read cannot count a session twice. A model with
- * no price leaves `cost_cents` empty, which says undeclared, never zero, and is
- * named in what this returns.
+ * `totals` are the session's whole counts so far, per model and hour. A log is
+ * read again as it grows and a spool can carry the same end twice, so only
+ * what the run has not recorded yet is written: per model, part and hour, the
+ * total less what the run's rows for that hour already hold, which is nothing
+ * when the hour has not grown. A row's `recorded_at` is the start of the hour
+ * the tokens were used in and `written_at` is when it was first written; an
+ * hour that grows grows its own row, so a live session read on every command
+ * keeps one row per model, part and hour, not one per read. Two readers that
+ * see the same session, such as the transcript read as it grows and the read
+ * at its end, compute the same hours and so can never count one twice.
+ *
+ * Rows written before tokens were kept per hour carry no `written_at`, and
+ * their time is their session's: they are left as they are, never split or
+ * rewritten. Such a row still holds its tokens, so it covers that many of the
+ * session's earliest tokens in that model and part, and only what lies beyond
+ * it is written, in the hours it was used. A session read again after the
+ * change is therefore counted once, and its new tokens land in their hours.
+ *
+ * Each row is priced when it is written, at the price declared then
+ * (`modelPrice`), and never again, so a price declared later does not reach
+ * back to tokens recorded before it. An hour's tokens grow a row of the same
+ * pricing: unpriced tokens never join a priced row, so a priced hour that also
+ * holds unpriced tokens keeps two rows. A model with no price leaves
+ * `cost_cents` empty, which says undeclared, never zero, and is named in what
+ * this returns.
  *
  * The cost is a spend on the capability the model's tokens are a use of
  * (`spentOn`, Hosted Inference for a hosted model), recorded by `recordSpend`
  * against the unscoped budget on it, since a session names no target, and only
- * when the tokens were used inside the period that budget is counting
- * (`usedAt`, the latest time the session's new tokens carry). With no such
- * budget it writes nothing, and no row is made for it (AGENTS.md rule 13).
+ * for the hours inside the period that budget is counting (`inBudgetPeriod`).
+ * With no such budget it writes nothing, and no row is made for it (AGENTS.md
+ * rule 13).
  */
 function recordTokens(
   db: Db,
   run: string,
-  totals: Map<string, TokenCounts>,
-  usedAt?: string
+  totals: HourlyTokens
 ): { tokens: number; cents: number; undeclared: string[] } {
   const out = { tokens: 0, cents: 0, undeclared: [] as string[] };
   if (!totals.size) return out;
+  const started = db
+    .prepare("SELECT strftime('%Y-%m-%d %H:00:00', started_at) AS hour FROM work_runs WHERE id = ?")
+    .get<{ hour: string | null }>(run)?.hour;
+  // What the run holds per model, part and hour; '' is what it held before
+  // hours were kept, which has no hour.
   const held = new Map<string, number>();
   for (const r of db
     .prepare(
-      `SELECT resource_id, unit, SUM(quantity) AS quantity FROM resource_consumption
-       WHERE run_id = ? AND kind = 'tokens' GROUP BY resource_id, unit`
+      `SELECT resource_id, unit,
+              CASE WHEN written_at IS NULL THEN '' ELSE strftime('%Y-%m-%d %H:00:00', recorded_at) END AS hour,
+              SUM(quantity) AS quantity
+       FROM resource_consumption WHERE run_id = ? AND kind = 'tokens' GROUP BY 1, 2, 3`
     )
-    .all<{ resource_id: string; unit: string; quantity: number }>(run)) {
-    held.set(`${r.resource_id}|${r.unit}`, r.quantity);
+    .all<{ resource_id: string; unit: string; hour: string; quantity: number }>(run)) {
+    held.set(`${r.resource_id}|${r.unit}|${r.hour}`, r.quantity);
   }
+  const sameRow = db.prepare(
+    `SELECT id FROM resource_consumption
+     WHERE run_id = ? AND kind = 'tokens' AND resource_id = ? AND unit = ? AND recorded_at = ?
+       AND written_at IS NOT NULL AND (cost_cents IS NULL) = ?
+     ORDER BY id DESC LIMIT 1`
+  );
+  const grow = db.prepare(
+    'UPDATE resource_consumption SET quantity = quantity + ?, cost_cents = cost_cents + ? WHERE id = ?'
+  );
   const spend = new Map<string, number>();
-  for (const [model, counts] of totals) {
+  for (const [model, byHour] of totals) {
     const resource = `model:${model}`;
     const price = modelPrice(db, model);
-    let cents = 0;
+    // A record with no time of its own is counted in the hour its run began:
+    // the session's time, the only one there is, and the same on every read.
+    const hours = new Map<string, TokenCounts>();
+    for (const [at, counts] of byHour) {
+      const hour = at === UNTIMED ? started : at;
+      if (!hour) continue;
+      const into = hours.get(hour) ?? {};
+      for (const unit of Object.keys(TOKEN_UNITS) as TokenUnit[]) {
+        if (counts[unit]) into[unit] = (into[unit] ?? 0) + (counts[unit] as number);
+      }
+      hours.set(hour, into);
+    }
+    const ordered = [...hours.keys()].sort();
+    const centsByHour = new Map<string, number>();
     let fresh = 0;
     for (const unit of Object.keys(TOKEN_UNITS) as TokenUnit[]) {
-      const added = (counts[unit] ?? 0) - (held.get(`${resource}|${TOKEN_UNITS[unit]}`) ?? 0);
-      if (!(added > 0)) continue;
-      const cost = price ? (added * price[PRICED_AS[unit]]) / 1_000_000 : undefined;
-      recordResource(db, run, resource, 'tokens', {
-        quantity: added,
-        unit: TOKEN_UNITS[unit],
-        costCents: cost,
-      });
-      fresh += added;
-      cents += cost ?? 0;
+      const label = TOKEN_UNITS[unit];
+      let cover = held.get(`${resource}|${label}|`) ?? 0;
+      for (const hour of ordered) {
+        const total = hours.get(hour)?.[unit] ?? 0;
+        const covered = Math.min(total, cover);
+        cover -= covered;
+        const added = total - covered - (held.get(`${resource}|${label}|${hour}`) ?? 0);
+        if (!(added > 0)) continue;
+        const cost = price ? (added * price[PRICED_AS[unit]]) / 1_000_000 : undefined;
+        const row = sameRow.get<{ id: number }>(
+          run,
+          resource,
+          label,
+          hour,
+          cost === undefined ? 1 : 0
+        );
+        if (row) grow.run(added, cost ?? null, row.id);
+        else
+          recordResource(db, run, resource, 'tokens', {
+            quantity: added,
+            unit: label,
+            costCents: cost,
+            at: hour,
+          });
+        fresh += added;
+        if (cost) centsByHour.set(hour, (centsByHour.get(hour) ?? 0) + cost);
+      }
     }
+    const cents = [...centsByHour.values()].reduce((n, c) => n + c, 0);
     out.tokens += fresh;
     out.cents += cents;
     if (fresh > 0 && !price) out.undeclared.push(model);
     const capability = cents > 0 ? spentOn(db, model) : null;
-    if (capability) spend.set(capability, (spend.get(capability) ?? 0) + cents);
-  }
-  for (const [capability, cents] of spend) {
-    if (inBudgetPeriod(db, capability, usedAt)) {
-      recordSpend(db, capability, 'execute', '', cents);
+    if (!capability) continue;
+    for (const [hour, c] of centsByHour) {
+      if (inBudgetPeriod(db, capability, hour)) {
+        spend.set(capability, (spend.get(capability) ?? 0) + c);
+      }
     }
   }
+  for (const [capability, cents] of spend) recordSpend(db, capability, 'execute', '', cents);
   return out;
 }
 
@@ -346,7 +434,7 @@ function declareModelPrice(
       cache_read: perMillion(parts.cached as number),
       output: perMillion(parts.output as number),
     },
-    note: `Tokens on ${model} recorded from now on, from a Claude Code session's end or the Codex, OpenCode and Amp session logs, are priced at these, and tokens already recorded are not priced again. ${
+    note: `Tokens on ${model} recorded from now on, from Claude Code's transcripts or the Codex, OpenCode and Amp session logs, are priced at these, and tokens already recorded are not priced again. ${
       !capability
         ? 'No node of the tree covers this model, so the spend is kept on the session and counts against no budget.'
         : budgeted
@@ -431,9 +519,12 @@ export {
   spentOn,
   declareModelPrice,
   recordTokens,
+  hourOf,
+  UNTIMED,
   TOKEN_PRICES,
   type TokenPart,
   type TokenCounts,
+  type HourlyTokens,
   attentionOwner,
   attentionValueCentsPerHour,
   goalValue,

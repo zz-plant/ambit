@@ -232,8 +232,8 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'usage',
     description:
-      'Where effort went over a window in days (default 30): times exercised, duration and interventions per capability. unmapped: tools used that no node covers.',
-    inputSchema: { type: 'object', properties: { days: num, unmapped: bool } },
+      "Where effort went over a window in days (default 30): times exercised, duration and interventions per capability. unmapped: tools used that no node covers. windows: tokens per five-hour window, and the current one's time left.",
+    inputSchema: { type: 'object', properties: { days: num, unmapped: bool, windows: bool } },
     annotations: READS,
   },
   {

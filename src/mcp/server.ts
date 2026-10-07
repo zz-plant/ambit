@@ -51,6 +51,7 @@ import {
   workReport,
   usageReport,
   unmappedUse,
+  usageWindows,
   economicsReport,
   goalValue,
   opportunitiesFor,
@@ -579,7 +580,11 @@ async function handleLine(line: string) {
               break;
             case 'tt_usage':
               res = tt(db =>
-                args?.unmapped ? unmappedUse(db, args?.days) : usageReport(db, args?.days)
+                args?.windows
+                  ? usageWindows(db, { days: args?.days })
+                  : args?.unmapped
+                    ? unmappedUse(db, args?.days)
+                    : usageReport(db, args?.days)
               );
               break;
             case 'tt_run_begin':
