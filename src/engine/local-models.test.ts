@@ -237,3 +237,26 @@ test('a model deleted from disk is retired by the next seed', () => {
   // Qwen was the only tool-calling model; gemma3 is not one the tree names.
   expect(toolCalling.state).toBe('locked');
 });
+
+test('an embedding model is not tool-calling evidence, and every local embedding model is one', () => {
+  // The ids local models get put "local" before the name: bge-m3 and
+  // all-minilm matched Embeddings and not Local Embeddings, and qwen3-embedding
+  // counted as a model that calls tools.
+  const tree = JSON.parse(readFileSync(new URL('./techtree.json', import.meta.url), 'utf8')) as {
+    nodes: Array<{ id: string; detect?: { any?: string[] } }>;
+  };
+  const matches = (node: string, id: string) =>
+    (tree.nodes.find(n => n.id === node)?.detect?.any ?? []).some(p => new RegExp(p, 'i').test(id));
+
+  expect(matches('local-tool-calling', 'model:local-ollama/qwen3-coder:30b-128k')).toBe(true);
+  expect(matches('local-tool-calling', 'model:local-ollama/qwen3-embedding:8b')).toBe(false);
+  for (const id of [
+    'model:local-ollama/bge-m3:latest',
+    'model:local-ollama/all-minilm:latest',
+    'model:local-ollama/qwen3-embedding:8b',
+    'model:local-lmstudio/BAAI/bge-small-en-v1.5',
+  ]) {
+    expect([id, matches('local-embeddings', id)]).toEqual([id, true]);
+  }
+  expect(matches('local-embeddings', 'model:claude-sonnet-4')).toBe(false);
+});

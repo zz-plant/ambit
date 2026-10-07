@@ -268,7 +268,7 @@
       ],
       "detect": {
         "any": [
-          "qwen",
+          "qwen(?![^/]*embed)",
           "hermes",
           "firefunction",
           "command-r",
@@ -1388,7 +1388,8 @@
           "nomic-embed",
           "bge-.*local",
           "local.*embed",
-          "embed.*local"
+          "embed.*local",
+          "^model:local-[^/]+/.*(bge-|minilm|gte-)"
         ]
       },
       "setup_seconds": 900,
