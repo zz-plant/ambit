@@ -99,7 +99,7 @@ export function seedFixtureGraph(label = 'ambit-fixture'): Sandbox {
     OLLAMA_MODELS: join(home, '.ollama', 'models'),
     AMBIT_LMSTUDIO_MODELS: join(home, '.lmstudio', 'models'),
     AMBIT_APPROVAL_KEY: 'fixture-key',
-    // The same for session logs: a CODEX_HOME or AMP_DATA_DIR in the generating
+    // The same for session logs: a CLAUDE_CONFIG_DIR, CODEX_HOME or AMP_DATA_DIR in the generating
     // shell outlives the HOME above, so the fixture reads none.
     AMBIT_NO_LEDGER: '1',
   };

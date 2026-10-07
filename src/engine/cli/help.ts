@@ -175,8 +175,14 @@ govern — the reviewable path from proposal to applied change
 report — what the system cost to operate
   report work [limit]     recent runs, each with what it cost
   report usage [days]     where capability effort actually went
-  report usage --refresh  read every Codex, OpenCode and Amp session log again
-                          from the top, for token counts an earlier read missed
+  report usage --windows [days]
+                          tokens per five-hour window, each runtime's apart,
+                          the current one's time left, and the last 7 days;
+                          the last 24 hours unless days are given. No plan's
+                          limit is known, so none is shown
+  report usage --refresh  read every Claude Code, Codex, OpenCode and Amp
+                          session log again from the top, for token counts an
+                          earlier read missed
   report economics        declared costs and goal values
   report economics price <model> --input=5 --cache-read=0.5 --output=25
                           declare a model's price, in dollars per million

@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Usage in five-hour windows, as it happens
+
+Claude Code's token counts arrived only when a session ended, from its transcript, so a long session counted for nothing until it closed, and every agent's tokens were kept as one total per session, so no one could say how much the last few hours had used. Claude Code transcripts are now read as they grow, with or without the plugin, and every agent's tokens are kept per hour. `ambit usage --windows` (and `ambit_usage` with `windows`) reports the five-hour windows Claude Code and Codex plans reset in, counted as ccusage's blocks count them: tokens per model, the cost where a price is declared, and the time left in the current one. Time & cost shows the current window beside the month. Ambit knows no plan's limit, so it shows none, and no share of one. Only counts, model names, message ids and times are read from a transcript, and `AMBIT_NO_LEDGER=1` stops the reading.
+
 ### An approval names the command, and the control plane can run one
 
 The control plane gains a real environment adapter, chosen only by `AMBIT_ADAPTER=docker` or `--adapter=docker`: an approved step's command runs in a throwaway container with no network, no image pull, a read-only root, no Linux capabilities, an unprivileged user, resource limits, and no host mount but a named working directory, read-only. A step reaches the network only through a grant for the `network` action on its capability. When Docker cannot run the step the control plane refuses, and never falls back to the simulator; every span names its adapter.

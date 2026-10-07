@@ -19,10 +19,11 @@
  * call is a work event and a failure signal, which
  * src/engine/failures.ts classifies: this only reports what Claude Code said
  * (AGENTS.md rule 8). A permission request is a person asked, recorded as
- * asked, since no hook says how they answered. When a session ends, its
- * token counts are read from its transcript, per model. A price is applied
- * only where a person declared one for the model, and then the session's cost
- * is a spend against the budget on what the model is a use of, if one is set.
+ * asked, since no hook says how they answered. A session's token counts are
+ * read from its transcript as it grows (session-logs.ts), and the whole of it
+ * again when the session ends, per model and hour, each token once. A price is
+ * applied only where a person declared one for the model, and then the cost is
+ * a spend against the budget on what the model is a use of, if one is set.
  *
  * Cursor's hook (plugins/cursor/ambit-ledger.mjs) appends to the same file,
  * each line marked `src: "cursor"`, and a Cursor conversation is a run of its
@@ -32,8 +33,9 @@
 import { appendFileSync, existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { spoolPath } from '../shared/db-path.ts';
 import type { Db } from './db.ts';
-import { recordTokens, type TokenCounts } from './economics.ts';
+import { recordTokens } from './economics.ts';
 import { captureFailure } from './failures.ts';
+import { transcriptTokens } from './session-logs.ts';
 import { addEvent, beginRun, endRun, recordIntervention, recordToolUse } from './telemetry.ts';
 
 /** One line of the spool, as the hook scripts write it. */
@@ -65,7 +67,7 @@ interface SpoolLine {
   int?: boolean;
   /** SessionEnd's reason, or Cursor's sessionEnd reason. */
   why?: string;
-  /** SessionEnd's transcript_path, read here for the session's token counts. */
+  /** SessionEnd's transcript_path, read at the session's end for its token counts. */
   tp?: string;
   /**
    * Written by the engine, never by the hook: on a PreToolUse line put back for
@@ -287,45 +289,6 @@ function cursorLine(db: Db, line: SpoolLine, run: string, at?: string): boolean 
 }
 
 /**
- * A session's tokens, per model, from its transcript. Claude Code's hooks carry
- * no usage or cost, and the transcript does: each assistant message records its
- * `usage`, once on every line its content spans, so a message is counted once
- * by its id. Only the counts and the model name are read. The transcript states
- * no price, and none is guessed here: a guessed one would be a number the
- * ledger could not stand behind (AGENTS.md rule 16).
- */
-function tokensOf(transcript?: string): Map<string, TokenCounts> {
-  const totals = new Map<string, Required<Pick<TokenCounts, 'input' | 'cached' | 'output'>>>();
-  if (!transcript || !existsSync(transcript)) return totals;
-  const seen = new Set<string>();
-  for (const raw of readFileSync(transcript, 'utf8').split('\n')) {
-    if (!raw.includes('"usage"')) continue;
-    let line: any;
-    try {
-      line = JSON.parse(raw);
-    } catch {
-      continue;
-    }
-    const message = line?.message;
-    const usage = message?.usage;
-    if (!usage || typeof message?.model !== 'string') continue;
-    const id = message.id ?? line.requestId ?? line.uuid;
-    if (id) {
-      if (seen.has(id)) continue;
-      seen.add(id);
-    }
-    // Cache reads apart from fresh input: in a long session they are most of
-    // the tokens and a fraction of the price, and one sum would hide that.
-    const t = totals.get(message.model) ?? { input: 0, cached: 0, output: 0 };
-    t.input += (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
-    t.cached += usage.cache_read_input_tokens || 0;
-    t.output += usage.output_tokens || 0;
-    totals.set(message.model, t);
-  }
-  return totals;
-}
-
-/**
  * Read the spool into the ledger and remove it. Returns how many lines were
  * recorded, skipped, and put back to wait for the end of a call still running.
  * The file is renamed before it is read, so a hook that appends meanwhile
@@ -416,9 +379,15 @@ function ingestSpool(
             break;
           case 'SessionEnd':
             endRun(db, run, line.why || 'ended', undefined, at);
-            // Priced and spent by the rule every token reader shares
-            // (`recordTokens` in economics.ts), dated at the session's end.
-            recordTokens(db, run, tokensOf(typeof line.tp === 'string' ? line.tp : undefined), at);
+            // The whole transcript, per hour, by the rule the reading of it
+            // as it grows follows (session-logs.ts), and priced and spent by
+            // the rule every token reader shares (`recordTokens`): what that
+            // reading already recorded is not recorded again.
+            recordTokens(
+              db,
+              run,
+              transcriptTokens(typeof line.tp === 'string' ? line.tp : undefined)
+            );
             break;
           default:
             skipped++;

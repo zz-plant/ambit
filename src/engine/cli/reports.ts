@@ -23,6 +23,7 @@ import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
 import { recovering } from '../assurance.ts';
+import type { usageWindows } from '../telemetry.ts';
 import {
   CHECK_RUN_SQL,
   FAILING_SQL,
@@ -877,6 +878,94 @@ function renderImpact(report: ImpactReport, c: Palette = C): string[] {
   return lines;
 }
 
+/** "2h 05m" from a count of seconds. */
+function span(seconds: number): string {
+  const minutes = Math.max(0, Math.round(seconds / 60));
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours}h ${String(minutes % 60).padStart(2, '0')}m` : `${minutes}m`;
+}
+
+/** A paragraph cut into lines of about `width`, each after `indent`. */
+function wrapped(text: string, indent: string, width = 76): string[] {
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if (line && line.length + word.length + 1 > width) {
+      out.push(indent + line);
+      line = '';
+    }
+    line = line ? `${line} ${word}` : word;
+  }
+  if (line) out.push(indent + line);
+  return out;
+}
+
+/**
+ * `ambit usage --windows` as a person reads it: each runtime's five-hour
+ * windows, newest first and in local time, the current one with the time left
+ * in it, each model's tokens by part, then each runtime's last seven days. A
+ * cost is shown only where a price was declared, and "unpriced" otherwise. The
+ * note closes it, since it says what no window states: a limit. `--json` gets
+ * the report, its times in UTC.
+ */
+function renderWindows(report: ReturnType<typeof usageWindows>, c: Palette = C): string[] {
+  const { windows, last_7_days: week } = report;
+  if (!windows || !week) return formatGeneric(report, c);
+  const when = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const clock = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const count = (n: number) => Math.round(n).toLocaleString('en-US');
+  const cost = (w: { spend_dollars?: number; unpriced?: true }) =>
+    w.spend_dollars === undefined
+      ? 'unpriced'
+      : `$${w.spend_dollars.toFixed(2)} at declared prices${w.unpriced ? ', some unpriced' : ''}`;
+  const head = `Five-hour windows, last ${report.days === 1 ? '24 hours' : `${report.days} days`}`;
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}${head}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(head.length)}${c.reset}`,
+  ];
+  if (!windows.length) lines.push(`${GUTTER}No tokens were used in one.`);
+  for (const runtime of [...new Set(windows.map(w => w.runtime))]) {
+    lines.push(`${GUTTER}${c.bold}${runtime}${c.reset}`);
+    for (const w of windows.filter(x => x.runtime === runtime)) {
+      const range = `${when.format(new Date(w.start))} to ${clock.format(new Date(w.end))}`;
+      const now = w.current ? `  ${c.bold}now, ${span(w.seconds_left ?? 0)} left${c.reset}` : '';
+      lines.push(
+        `${GUTTER}  ${range}${now}  ${count(w.tokens)} tokens ${c.grey}· ${cost(w)}${c.reset}`
+      );
+      for (const m of w.models) {
+        const parts = [
+          `input ${count(m.input)}`,
+          `cache reads ${count(m.cached)}`,
+          `output ${count(m.output)}`,
+          ...(m.reasoning ? [`reasoning ${count(m.reasoning)}`] : []),
+        ];
+        lines.push(`${GUTTER}    ${c.grey}${m.model}  ${parts.join(' · ')}${c.reset}`);
+      }
+    }
+  }
+  if (week.length) {
+    lines.push('', `${GUTTER}${c.bold}Last 7 days${c.reset}`);
+    for (const r of week) {
+      lines.push(
+        `${GUTTER}  ${r.runtime}  ${count(r.tokens)} tokens ${c.grey}· ${cost(r)}${c.reset}`
+      );
+    }
+  }
+  lines.push('', ...wrapped(report.note, `${GUTTER}${c.grey}`).map(l => `${l}${c.reset}`), '');
+  return lines;
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -928,6 +1017,7 @@ export {
   briefReport,
   renderBrief,
   renderImpact,
+  renderWindows,
   renderPlan,
   renderSpec,
   evidenceReport,
