@@ -165,7 +165,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       )
       .all<any>();
   } catch {
-    // degraded query fallback
+    // a database too old to answer: nothing named
   }
 
   const hasConnected = runtimes.some(r => r.has_ambit);
@@ -186,7 +186,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   const recommendations: string[] = [];
   if (counts.failing > 0) {
     recommendations.push(
-      `Fix ${counts.failing} degraded capabilities: run "ambit verify" to inspect failing declared checks`
+      `Fix ${counts.failing} failing capabilities: run "ambit verify --failing" to re-run their declared checks`
     );
   }
   if (counts.reached > counts.proven) {

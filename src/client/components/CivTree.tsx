@@ -16,6 +16,7 @@ import {
   eraOf,
   frameScene,
   headlineReserve,
+  isFailing,
   isNext,
   isProven,
   type JointMark,
@@ -295,7 +296,6 @@ export default function CivTree({
   // The tree view is one kind of node in era columns; the setup view is many
   // kinds in domain columns. The legend and the spotlights follow.
   const isTreeView = filtered.some(i => eraOf(i) !== undefined);
-  const lifecycleOf = (item: Item) => (item.meta?.lifecycle as string | undefined) ?? '';
   const keystone = (item: Item) =>
     (downstream.get(item.id) || []).length >= 3 || isRuntimeNode(item);
   /** The glossary entry each legend key is a picture of. */
@@ -332,8 +332,8 @@ export default function CivTree({
     Skill: i => i.type === 'skill',
     Combo: i => i.type === 'possibility',
     Keystone: keystone,
-    Passing: i => ['verified', 'reliable'].includes(lifecycleOf(i)),
-    Failing: i => ['degraded', 'broken'].includes(lifecycleOf(i)),
+    Passing: isProven,
+    Failing: isFailing,
     ...Object.fromEntries(
       (Object.keys(AUTHORITY_LABEL) as AuthorityMark[]).map(m => [
         AUTHORITY_LABEL[m],

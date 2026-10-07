@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeGraph, learn, daysAgo } from './testing/graph.ts';
 import { classifySignal, captureFailure, signalReport } from './failures.ts';
-import { canExecute } from './assurance.ts';
+import { canExecute, deriveLifecycles, usable } from './assurance.ts';
 import { setPromotion, evaluatePromotions, promotionReport } from './assure/promote.ts';
 import { nextSteps } from './next.ts';
 import { briefing, briefingText } from './briefing.ts';
@@ -283,6 +283,26 @@ describe('the session briefing', () => {
     db.close();
   });
 
+  it('names a recovering capability with how its runs went, and does not count it failing', () => {
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:version-control', name: 'Version Control', lifecycle: 'degraded' },
+      ],
+    });
+    learn(db, 'combo:version-control', 'failed', { score: 0 });
+    learn(db, 'combo:version-control', 'verified');
+    const b = briefing(db) as any;
+    expect(b.environment).toBe('1/1 capabilities reached · 0 proven · 0 failing');
+    expect(b.broken).toBeUndefined();
+    expect(b.recovering).toEqual([
+      { id: 'combo:version-control', name: 'Version Control', recent: '1 of the last 2 passed' },
+    ]);
+    expect(briefingText(db)).toContain(
+      'Recovering: Version Control (combo:version-control), 1 of the last 2 passed'
+    );
+    db.close();
+  });
+
   it('refuses to let an unseeded graph read as an empty environment', () => {
     const db = makeGraph();
     expect(briefingText(db)).toContain('has not run in this environment');
@@ -397,6 +417,35 @@ describe('authority that widens on evidence', () => {
     learn(db, 'combo:version-control', 'failed', { score: 0, at: daysAgo(1) });
     expect(evaluatePromotions(db).promoted).toHaveLength(0);
     expect((promotionReport(db) as any).thresholds[0].status).toContain('held');
+    db.close();
+  });
+
+  it('does not widen a grant for a recovering capability while its failure is in the window', () => {
+    // The latest check decides whether it may be used; it does not decide
+    // whether it has earned running unattended. That asks for a clean window.
+    const db = environment();
+    setPromotion(db, { capability: 'version-control', after: 3, person: 'kanav' });
+    learn(db, 'combo:version-control', 'failed', { score: 0, at: daysAgo(2) });
+    for (let i = 0; i < 4; i++) learn(db, 'combo:version-control', 'verified');
+    deriveLifecycles(db);
+    const lifecycle = () =>
+      (
+        db
+          .prepare("SELECT lifecycle FROM capabilities WHERE id = 'combo:version-control'")
+          .get() as any
+      ).lifecycle;
+    expect(lifecycle()).toBe('degraded');
+
+    expect(evaluatePromotions(db).promoted).toHaveLength(0);
+    // Usable, so the grant decides, and the grant still asks.
+    expect(canExecute(db, { capability: 'combo:version-control' })).toMatchObject({
+      verdict: 'ask',
+    });
+
+    // A window the person set short enough to have left the failure behind
+    // is clean, and the threshold they set is met.
+    setPromotion(db, { capability: 'version-control', after: 3, window: '1d', person: 'kanav' });
+    expect(evaluatePromotions(db).promoted).toHaveLength(1);
     db.close();
   });
 });
@@ -525,7 +574,7 @@ describe('re-running what is failing', () => {
       });
       const lifecycle = (id: string) =>
         (db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get(id) as any)?.lifecycle;
-      expect(lifecycle('skill:deploy-notes')).toMatch(/degraded|broken/);
+      expect(lifecycle('skill:deploy-notes')).toBe('broken');
       const steadyBefore = runs(db, 'skill:steady');
 
       writeFileSync(marker, '');
@@ -535,9 +584,17 @@ describe('re-running what is failing', () => {
       expect(again).toMatchObject({ checked: 1, verified: 1, failed: 0 });
       expect(again.results[0].id).toBe('skill:deploy-notes');
       expect(runs(db, 'skill:steady')).toBe(steadyBefore);
-      // One pass after a failure is degraded, still out of every plan: the
-      // last five runs have to pass. Each later --failing re-runs it until then.
+      // One pass brings it back: the latest check decides. Its record is
+      // still mixed, so it is recovering, usable and not yet proven, and the
+      // run says how its recent checks went.
       expect(lifecycle('skill:deploy-notes')).toBe('degraded');
+      expect(usable(lifecycle('skill:deploy-notes'))).toBe(true);
+      expect(again.now_unavailable).toBeUndefined();
+      expect(again.recovering).toEqual([
+        { id: 'skill:deploy-notes', name: expect.any(String), recent: '1 of the last 2 passed' },
+      ]);
+      // --failing keeps re-running a recovering check, since each pass is
+      // evidence, and five in a row make it reliable.
       for (let i = 0; i < 4; i++) runVerification(db, undefined, undefined, { failing: true });
       expect(lifecycle('skill:deploy-notes')).toBe('reliable');
       expect(runVerification(db, undefined, undefined, { failing: true })).toMatchObject({
@@ -553,7 +610,7 @@ describe('re-running what is failing', () => {
     const db = environment();
     expect(runVerification(db, undefined, undefined, { failing: true })).toMatchObject({
       checked: 0,
-      note: 'Nothing is failing its check.',
+      note: 'Nothing is failing its check or recovering from a failure.',
     });
     db.close();
   });

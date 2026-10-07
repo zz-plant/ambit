@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from '../engine/db.ts';
 import { migrate } from '../engine/migrate.ts';
-import { canExecute } from '../engine/assurance.ts';
+import { canExecute, usable } from '../engine/assurance.ts';
 import { beginRun, endRun, addEvent, recordIntervention, recordUse } from '../engine/telemetry.ts';
 import { verifyApproval } from '../engine/approval.ts';
 import { auditFor } from '../engine/audit.ts';
@@ -155,7 +155,7 @@ export function setupControlPlaneGraph(db: Db): void {
               VALUES ('combo:db-migration', 'Database Migration', 'infra', 'Executes database schema migration', 'skill', 'unlocked', 'capability', 'verified')`).run();
 
   db.prepare(`INSERT OR REPLACE INTO capabilities (id, name, domain, description, category, state, kind, lifecycle)
-              VALUES ('combo:staging-healthcheck', 'Staging Health Check', 'infra', 'Validates staging environment health and smoke tests', 'skill', 'unlocked', 'capability', 'degraded')`).run();
+              VALUES ('combo:staging-healthcheck', 'Staging Health Check', 'infra', 'Validates staging environment health and smoke tests', 'skill', 'unlocked', 'capability', 'broken')`).run();
 
   db.prepare(`INSERT OR REPLACE INTO capabilities (id, name, domain, description, category, state, kind, lifecycle)
               VALUES ('combo:api-key-rotation', 'API Key Rotation', 'sec', 'Rotates sensitive external API credentials', 'skill', 'unlocked', 'capability', 'verified')`).run();
@@ -296,9 +296,9 @@ export function executeThroughControlPlane(
     state: string;
   }>;
 
-  const unverifiedDeps = deps.filter(
-    d => d.lifecycle === 'degraded' || d.lifecycle === 'broken' || d.lifecycle === 'unknown'
-  );
+  // A prerequisite whose last check failed, or one nothing supplies. A
+  // recovering one passed its last check, and the latest check decides.
+  const unverifiedDeps = deps.filter(d => !usable(d.lifecycle) || d.lifecycle === 'unknown');
   const capabilityPath = deps.map(d => d.from_capability).concat([capabilityId]);
 
   spanEvents.push({

@@ -57,7 +57,7 @@ describe('ambit doctor', () => {
     const doc = runDoctor(db, testDir);
     expect(doc.capabilities.failing).toBe(1);
     expect(JSON.stringify(doc)).not.toMatch(/tokens|dollars/);
-    expect(doc.recommendations.some(r => r.includes('Fix 1 degraded'))).toBe(true);
+    expect(doc.recommendations.some(r => r.includes('Fix 1 failing'))).toBe(true);
     db.close();
   });
 });
@@ -410,7 +410,7 @@ describe('ambit check --ci', () => {
     db.close();
   });
 
-  test('fails and generates markdown summary when capabilities are degraded', () => {
+  test('fails and generates markdown summary when a capability is failing its check', () => {
     const db = makeGraph({
       capabilities: [
         { id: 'tool:docker', name: 'Docker Daemon', lifecycle: 'broken' },

@@ -465,6 +465,37 @@ test('the pill and the era headers count one map: a failing node is apart from r
   expect(opacityOf('Failing')).toBe('1');
 });
 
+test('a recovering node is reached and unproven, and the panel says it is recovering', () => {
+  // The latest check decides. Its last check passed after one that failed, so
+  // the pill files it with the unproven, not as failing, and nowhere else is
+  // there a count of it; the panel, where a reader would take it for fixed,
+  // says how its recent runs went.
+  const runs = [true, false, false, true, true].map((passed, i) => ({ id: i + 1, passed }));
+  const node = (id: string, lifecycle: string): Item => ({
+    id,
+    name: id,
+    type: 'possibility',
+    status: 'built',
+    description: '',
+    position: { x: 0, y: 0, z: 0 },
+    meta: { era: 3, state: 'unlocked', lifecycle, history: runs },
+  });
+  const mending = node('combo:mending', 'degraded');
+  expect(mapCounts([mending, node('combo:fine', 'verified')])).toEqual({
+    verified: 1,
+    unproven: 1,
+    failing: 0,
+    next: 0,
+    blocked: 0,
+  });
+
+  seed({ items: [mending], selectedItem: mending.id, backend: 'live' });
+  const panel = renderToStaticMarkup(<NodeDetailPanel />);
+  expect(panel).toContain('Recovering, 3 of the last 5 passed');
+  expect(panel).not.toContain('Configured, but not working');
+  expect(panel).toContain('Reached');
+});
+
 test('the detail panel words a status for the graph the node came from', () => {
   // "Tool server · Reached" sat directly above a switch reading "Enabled":
   // two words for one fact, disagreeing. A config entry is enabled or not.

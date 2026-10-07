@@ -663,11 +663,38 @@ export function headlineReserve(height: number | null): number {
 }
 
 /**
- * Reached, and its check failed: configured, and not working. The engine's
- * `usable(lifecycle)` is the same rule; the client has no engine to ask.
+ * Reached, and its last check failed: configured, and not working. The
+ * engine's `usable(lifecycle)` is the same rule, and `FAILING` in its
+ * vocabulary.ts the same list, transcribed; the client has no engine to ask.
  */
 export const isFailing = (item: Item): boolean =>
-  item.status === 'built' && ['degraded', 'broken'].includes(String(item.meta?.lifecycle ?? ''));
+  item.status === 'built' && ['broken'].includes(String(item.meta?.lifecycle ?? ''));
+
+/**
+ * Reached, and recovering: its last check passed, and some of the recent ones
+ * did not. The latest check decides, so it counts as reached; its evidence is
+ * mixed, so it is not proven, and every count files it with the unproven.
+ * `RECOVERING` in the engine's vocabulary.ts, transcribed.
+ */
+export const isRecovering = (item: Item): boolean =>
+  item.status === 'built' && ['degraded'].includes(String(item.meta?.lifecycle ?? ''));
+
+/** How many runs the engine's lifecycle reads: `RECENT_RUNS` in assure/lifecycle.ts, transcribed. */
+const RECENT_RUNS = 5;
+
+/**
+ * What a node's recent runs say: "2 of the last 5 passed". The window is the
+ * one its lifecycle reads, so the words and the lifecycle count the same runs.
+ * Empty when no run was sent. `meta.history` is oldest first.
+ */
+export function recentRuns(item: Pick<Item, 'meta'>): string {
+  const history = Array.isArray(item.meta?.history) ? (item.meta.history as unknown[]) : [];
+  const recent = history
+    .filter((r): r is { passed: boolean } => typeof (r as any)?.passed === 'boolean')
+    .slice(-RECENT_RUNS);
+  if (!recent.length) return '';
+  return `${recent.filter(r => r.passed).length} of the last ${recent.length} passed`;
+}
 
 /**
  * Reached, and its check passed: the part of the range there is evidence for.
@@ -678,9 +705,10 @@ export const isProven = (item: Item): boolean =>
 
 /**
  * Where a node stands on its era's ladder. Failing is a state of its own:
- * `status` is structural, and a reached node whose check failed is configured
- * and not working. The era header counted it as reached and read "5 of 5"
- * over a column with a red node in it.
+ * `status` is structural, and a reached node whose last check failed is
+ * configured and not working. The era header counted it as reached and read
+ * "5 of 5" over a column with a red node in it. A recovering node is reached:
+ * its last check passed.
  */
 export type RungState = 'reached' | 'failing' | 'next' | 'blocked';
 
@@ -803,6 +831,11 @@ export function eraLadder(items: Item[], connections: Connection[], era: number)
       state === 'reached' || state === 'failing' ? [] : failingNeeds(items, connections, item.id);
     const clauses: string[] = [];
     if (state === 'failing') clauses.push('Configured, but not working');
+    // Reached, and the rung would say no more; a pass after a failure is not
+    // the same news as a clean record.
+    if (isRecovering(item)) {
+      clauses.push(['Recovering', recentRuns(item)].filter(Boolean).join(', '));
+    }
     if (state === 'blocked') {
       const { names, more, seconds } = blockedBy(items, connections, item.id);
       if (names.length) {

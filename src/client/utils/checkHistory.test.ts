@@ -76,9 +76,17 @@ test('of two nodes that both fail now, the one that failed last', () => {
   // `ambit verify` checks everything inside one second, so a timestamp cannot
   // say which failed last. The row can.
   const early = node('combo:early', 'broken', [run(10, false)]);
-  const late = node('combo:late', 'degraded', [run(11, false), run(12, true)]);
+  const late = node('combo:late', 'broken', [run(9, true), run(11, false)]);
   expect(trailOf(entry(), [early, late])?.node.id).toBe('combo:late');
   expect(trailOf(entry(), [late, early])?.node.id).toBe('combo:late');
+});
+
+test('a node failing now leads one recovering from a later failure', () => {
+  // The row calls the entry failing on the broken node's account, so its strip
+  // is the one shown, though the recovering node failed more recently.
+  const broken = node('combo:broken', 'broken', [run(10, false)]);
+  const mending = node('combo:mending', 'degraded', [run(11, false), run(12, true)]);
+  expect(trailOf(entry(), [mending, broken])?.node.id).toBe('combo:broken');
 });
 
 test('with nothing failing now, the most recent failure still leads', () => {

@@ -38,7 +38,7 @@ installed ≠ working ≠ authorized
 ```
 
 - **Reached** is installed: something in a config provides the capability, and every one of its required prerequisites is reached too. A capability can be provided and still blocked, and when its last prerequisite arrives it is reached with nothing new added for it. That is how composition shows up. Reached is the capability's `state`.
-- **Proven** is working: reached, and its declared check last passed (lifecycle `verified` or `reliable`). A capability never checked, or with no check declared, is reached and unproven: it still counts and stays usable. A failing check (`degraded` or `broken`) takes it out of every plan, permission and ranking. Checks only ever take away; nothing waits for a check before it counts.
+- **Proven** is working: reached, and its declared check last passed with a clean record (lifecycle `verified` or `reliable`). A capability never checked, or with no check declared, is reached and unproven: it still counts and stays usable. A failed last check (`broken`) takes it out of every plan, permission and ranking, and the next pass puts it back. Checks only ever take away; nothing waits for a check before it counts.
 - **Permitted** is authorized: a grant says whether an action may run without asking, after asking, or not at all ([Capability and authority are different things](#capability-and-authority-are-different-things)).
 
 Your ambit is everything reached. Proven is the part of it there is evidence for, and permission is a separate layer over both. Ambit records the first two per capability, as `state` and `lifecycle`, and resolves the third from grants each time it is asked.
@@ -95,10 +95,10 @@ The graph holds every entry your configs declare and every capability as a node.
 | `configured` | reachable, with no check run against it |
 | `verified` | its check passed, and has not been run often |
 | `reliable` | five runs or more, and the last five all passed |
-| `degraded` | the last run passed, and recent ones did not |
+| `degraded` | the last run passed, and recent ones did not: recovering |
 | `broken` | the last run failed |
 
-`verified` and `reliable` are proven. `configured` is reached and unproven, and counts. `degraded` and `broken` are failing: still reached in `state`, and left out of everything that decides availability. Nothing writes the column directly. It is recomputed from the evidence on seed and after verification, which are the two moments the inputs can change. A failing capability comes back the same way it left, on a check: `ambit verify <id>` re-runs one, and `ambit verify --failing` re-runs every check that is failing now, which is the command to type after fixing a shared token or a server. One pass leaves it degraded and still out of every plan, since its last five runs have to pass, so after a fix the command may need typing more than once. Nothing re-runs a check on its own, since a check is a command.
+`verified` and `reliable` are proven. `configured` is reached and unproven, and counts. `broken` is failing: still reached in `state`, and left out of everything that decides availability. The latest check decides, so `degraded` is recovering: usable, counted with the unproven because its record is mixed, and named wherever a summary would otherwise read as fixed, with how its recent runs went ("2 of the last 5 passed"). Nothing writes the column directly. It is recomputed from the evidence on seed and after verification, which are the two moments the inputs can change. A failing capability comes back the same way it left, on a check: `ambit verify <id>` re-runs one, and `ambit verify --failing` re-runs every check that is failing or recovering now, which is the command to type after fixing a shared token or a server. One pass brings a capability back into every plan, permission and ranking. It reads as proven once its last five runs pass, and a grant waiting on a threshold still widens only on a window with no failure in it. Nothing re-runs a check on its own, since a check is a command.
 
 **Credentials.** A credential is declared, never read. A `credentials` block names one and the providers that present it:
 
@@ -445,7 +445,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | :--- | :--- |
 | **first session** — *the commands listed above the groups* | |
 | `ambit briefing` | What an agent should know before its first tool call — reached and proven, configured but failing, waiting on a person, blocked recently, worth reaching next, and what changed since the last briefing. Prose, capped near 1,200 tokens, also served as the MCP resource `ambit://briefing` |
-| `ambit status` | How are we doing — reached, verified, failing, degraded, SPOFs, recurring deficits, pending approvals, all in one report that ends on the one command to type next. `--json` carries that as `next`, a command and the reason for it |
+| `ambit status` | How are we doing — reached, verified, failing, recovering, SPOFs, recurring deficits, pending approvals, all in one report that ends on the one command to type next. `--json` carries that as `next`, a command and the reason for it |
 | `ambit next [n]` | What to reach next and why — ranked by what has actually blocked work once the ledger has observations, and by leverage per hour of setup before then. The answer says which basis it used |
 | **graph** — *the structure, and what it would cost to lose a piece* | |
 | `ambit impact <id>` | What becomes unavailable if this disappears — and what survives on another provider? |

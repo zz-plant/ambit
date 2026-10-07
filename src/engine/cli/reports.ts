@@ -22,7 +22,15 @@ import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
-import { CHECK_RUN_SQL, FAILING_SQL, PROVEN, REACHED_SQL, graphCounts } from '../vocabulary.ts';
+import { recovering } from '../assurance.ts';
+import {
+  CHECK_RUN_SQL,
+  FAILING_SQL,
+  PROVEN,
+  REACHED_SQL,
+  RECOVERING,
+  graphCounts,
+} from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
 function ago(ts: string | null | undefined): string | undefined {
@@ -75,7 +83,8 @@ function checkableNames(db: any): string[] {
  * What the graph can prove versus what it merely lists.
  *
  * Reached capabilities split by the worth of their evidence: proven (check
- * passed), unproven (configured, never checked), failing (check now fails).
+ * passed), unproven (configured and never checked, or recovering: the last
+ * run passed and recent ones did not), failing (the last check failed).
  * The unproven-with-a-declared-check set is named, because it is the one a
  * single command turns into evidence — and an inventory that cannot say
  * "installed is not working" is the failure this project exists to prevent.
@@ -101,7 +110,7 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
 
   return {
     proven: count(...PROVEN),
-    unproven: count('configured'),
+    unproven: count('configured', ...RECOVERING),
     // The summary's own count, so this row and the head cannot disagree.
     failing: graphCounts(db).failing,
     last_check: ago(last?.t) || 'never',
@@ -118,15 +127,9 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
  * draws both take their worries from here, so the two cannot disagree about
  * what counted.
  */
-function worries(found: {
-  failing: number;
-  degraded?: unknown[];
-  spofs?: unknown;
-  pending?: unknown[];
-}): string[] {
+function worries(found: { failing: number; spofs?: unknown; pending?: unknown[] }): string[] {
   return [
     found.failing ? `${found.failing} failing` : null,
-    found.degraded?.length ? `${found.degraded.length} degraded` : null,
     Array.isArray(found.spofs) && found.spofs.length
       ? `${found.spofs.length} with a single provider`
       : null,
@@ -219,12 +222,13 @@ function statusReport(db: any) {
     )
     .get();
 
-  // Degraded means configured but not working — the decision-relevant reading
-  // of "decay". A lifecycle-failing capability is a repair, not an acquisition.
-  // These are the nodes `graphCounts` counts as failing, by name, so the head,
-  // the evidence row and the line the report ends on all count one set. An
-  // action is left out as the summary leaves it out; the capability that
-  // confers it is what the report names.
+  // Configured but not working: the decision-relevant reading of "decay". A
+  // capability whose last check failed is a repair, not an acquisition. These
+  // are the nodes `graphCounts` counts as failing, by name, so the head, the
+  // evidence row and the line the report ends on all count one set. An action
+  // is left out as the summary leaves it out; the capability that confers it
+  // is what the report names. The key is `degraded` because scripts read it;
+  // the head said "1 failing · 1 degraded" of one node, and says it once now.
   const degraded = db
     .prepare(
       `SELECT id, name, domain FROM capabilities
@@ -258,7 +262,8 @@ function statusReport(db: any) {
   }
 
   const spofs = singlePointsOfFailure(db);
-  const worried = worries({ failing: g.failing, degraded, spofs, pending });
+  const recoveringNow = recovering(db);
+  const worried = worries({ failing: g.failing, spofs, pending });
   const checkable = checkableNames(db);
 
   return {
@@ -288,6 +293,9 @@ function statusReport(db: any) {
     evidence: [evidenceReport(db, checkable)],
     domains,
     degraded: degraded.length ? degraded : undefined,
+    // Counted with the unproven above, and named here with how their recent
+    // runs went, since a pass after a failure reads as fixed.
+    recovering: recoveringNow.length ? recoveringNow : undefined,
     spofs,
     bottlenecks: findBottlenecks(db).slice(0, 10),
     // The empty case belongs to `ambit deficits`, which explains how they get
@@ -364,8 +372,14 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   ];
 
   // What the head does not say, as it was always drawn. The names `verify`
-  // would check stay here, since the head only has room for how many.
-  const rest = Object.fromEntries(Object.entries(report).filter(([key]) => !SAID_IN_HEAD.has(key)));
+  // would check stay here, since the head only has room for how many. The
+  // failing list keeps its old key for scripts and is labelled for a person,
+  // since a degraded capability is one that is recovering.
+  const rest = Object.fromEntries(
+    Object.entries(report)
+      .filter(([key]) => !SAID_IN_HEAD.has(key))
+      .map(([key, value]) => [key === 'degraded' ? 'not_working' : key, value])
+  );
   const details = formatGeneric(
     { actions: rest.actions, provable_now: ev.provable_now, ...rest },
     c

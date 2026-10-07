@@ -71,24 +71,28 @@ test('a prerequisite that is reached and failing is not met, and says why', () =
   const needs = needsOf(
     [
       item('combo:goal'),
-      reached('combo:broken', { lifecycle: 'degraded' }),
+      reached('combo:broken', { lifecycle: 'broken' }),
       reached('combo:fine'),
+      reached('combo:mending', { lifecycle: 'degraded' }),
       item('combo:absent'),
     ],
     [
       required('combo:fine', 'combo:goal'),
       required('combo:broken', 'combo:goal'),
+      required('combo:mending', 'combo:goal'),
       required('combo:absent', 'combo:goal'),
     ],
     'combo:goal'
   );
-  // Never reached first, then failing, then met.
+  // Never reached first, then failing, then met. Recovering is met: its last
+  // check passed, and the latest check decides.
   expect(needs?.required.map(n => [n.id, n.met, n.why])).toEqual([
     ['combo:absent', false, 'not reached'],
     ['combo:broken', false, 'check failing'],
     ['combo:fine', true, undefined],
+    ['combo:mending', true, undefined],
   ]);
-  expect(needs?.met).toBe(1);
+  expect(needs?.met).toBe(2);
 });
 
 test('a capability that is already reached is asked for its own prerequisites only', () => {
@@ -166,13 +170,14 @@ test('with none declared, there are no credentials to name', () => {
 
 test('the answer is the engine plan: what it would acquire and what it says is failing', () => {
   // G needs A (reached), and B; B needs C, which is reached and failing. The
-  // plan orders B then G and lists C as degraded: exactly the missing ones.
+  // plan orders B then G and lists C under `degraded`, the older name of its
+  // failing list: exactly the missing ones.
   const db = makeGraph({
     capabilities: [
       { id: 'combo:g', name: 'G', category: 'combo', state: 'locked' },
       { id: 'combo:a', name: 'A', category: 'combo', lifecycle: 'verified' },
       { id: 'combo:b', name: 'B', category: 'combo', state: 'locked' },
-      { id: 'combo:c', name: 'C', category: 'combo', lifecycle: 'degraded' },
+      { id: 'combo:c', name: 'C', category: 'combo', lifecycle: 'broken' },
     ],
     dependencies: [
       { from: 'combo:a', to: 'combo:g' },

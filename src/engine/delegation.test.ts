@@ -85,10 +85,15 @@ describe('a grant whose foundation stopped holding', () => {
     expect(stored.mode).toBe('autonomous');
   });
 
-  it('treats degraded the same as broken, and ignores a failing soft prerequisite', () => {
+  it('narrows on a broken foundation, not a recovering one, and ignores a failing soft prerequisite', () => {
+    expect(
+      (canExecute(environment('broken'), { capability: 'combo:deploy' }) as any).decision
+    ).toBe('CONFIRM');
+    // The latest check decides: a credential whose last check passed after a
+    // failure holds the grant up again.
     expect(
       (canExecute(environment('degraded'), { capability: 'combo:deploy' }) as any).decision
-    ).toBe('CONFIRM');
+    ).toBe('ALLOW');
 
     const db = environment('verified');
     db.prepare("UPDATE capabilities SET lifecycle = 'broken' WHERE id = 'combo:lint'").run();
@@ -274,7 +279,9 @@ describe('what Ambit claims about its own records', () => {
   it('maps its seven lifecycles onto the four states the shape defines', () => {
     expect(recordStateFor('reliable')).toBe('verified');
     expect(recordStateFor('verified')).toBe('verified');
-    expect(recordStateFor('degraded')).toBe('broken');
+    // Recovering: it may be relied on, and its record is not clean enough to
+    // call verified.
+    expect(recordStateFor('degraded')).toBe('configured');
     expect(recordStateFor('broken')).toBe('broken');
     expect(recordStateFor('configured')).toBe('configured');
     expect(recordStateFor('unknown')).toBe('absent');

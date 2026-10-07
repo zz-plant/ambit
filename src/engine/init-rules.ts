@@ -14,7 +14,7 @@ const AMBIT_RULE_BLOCK = `
 Before running multi-step tooling, invoking external binaries, or assuming authority:
 1. Inspect \`ambit://briefing\` (via MCP) or run \`ambit brief\` to verify working capabilities and authority limits.
 2. Before running a tool you have not used this session, ask: \`ambit_can\` over MCP, or \`ambit can <capability> --exit-code\` in a shell, which exits 0 to go ahead, 1 to put it to the person and 2 to stop. A stop files the deficit itself, so do not retry it under another name.
-3. Do not retry capabilities marked as degraded, ungranted, or failing declared checks.
+3. Do not retry capabilities marked as broken, ungranted, or failing declared checks.
 4. Propose permanent capability fixes using \`ambit propose\` when hitting recurring deficits.
 `;
 

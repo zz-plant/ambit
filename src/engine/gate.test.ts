@@ -64,6 +64,31 @@ test('the gate never answers allow, even for a capability that may run unattende
   expect(decide('mcp__github__create_issue').decision).toBe('ask');
 });
 
+test('a failing check is put to the person, and a recovering one is decided by its grant', () => {
+  seed({
+    ...WITH_GITHUB,
+    mcp: { ...WITH_GITHUB.mcp, zzlocal: { type: 'local', command: ['zz'] } },
+  }).close();
+  cli('authority', 'grant', 'tool-protocol', 'autonomous', '--by=kanav');
+  const set = (lifecycle: string) => {
+    const db = getDb(join(dir, 'graph.db'));
+    db.prepare("UPDATE capabilities SET lifecycle = ? WHERE id = 'combo:tool-protocol'").run(
+      lifecycle
+    );
+    db.close();
+  };
+
+  set('broken');
+  const failing = decide('mcp__zzlocal__run');
+  expect(failing.decision).toBe('ask');
+  expect(failing.reason).toMatch(/broken/);
+
+  // The last check passed after one that failed: the latest check decides,
+  // so the grant answers, and an unattended grant is no answer from the gate.
+  set('degraded');
+  expect(decide('mcp__zzlocal__run').decision).toBeNull();
+});
+
 test('the hook output is the shape Claude Code reads, and the snippet registers it on every tool', () => {
   const out = JSON.parse(
     claudeHookOutput({ decision: 'deny', reason: 'Ambit: no', capabilities: ['combo:x'] })

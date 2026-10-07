@@ -359,7 +359,9 @@ test('a check whose timestamp cannot be read drops the interval, not prints it',
  * fails here until it is either rendered above or argued out of the list.
  */
 test('every surface that reads a node’s metadata is swept above', () => {
-  const swept = ['CivTree', 'NodeDetailPanel', 'SetupView'];
+  // CivTree is still rendered above, and reads a lifecycle only through the
+  // helpers in civ/layout.ts now, so it is no longer a reader of its own.
+  const swept = ['NodeDetailPanel', 'SetupView'];
 
   // `.meta` on anything but `import`, which is Vite's and not a node's.
   const readsMeta = /(?<!import)\.meta\b/;
