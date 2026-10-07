@@ -9,9 +9,10 @@ const MAX_CONFIG_BYTES = 2_000_000;
  * to "drop your config" has to know which file that is, and most do not.
  *
  * Only runtimes whose file this tab can read are listed: the importer takes an
- * OpenCode config or an `mcpServers` block. Codex keeps TOML, Zed keeps
- * `context_servers` and Continue may nest its servers under `experimental`,
- * which only the engine's readers understand.
+ * OpenCode config or an `mcpServers` block. Codex keeps TOML, Goose keeps
+ * YAML, Zed keeps `context_servers`, Amp keeps `amp.mcpServers` and Continue
+ * may nest its servers under `experimental`, which only the engine's readers
+ * understand.
  */
 export const CONFIG_PATHS: { runtime: string; path: string }[] = [
   { runtime: 'Claude Code', path: '~/.claude.json' },
@@ -31,6 +32,8 @@ export const CONFIG_PATHS: { runtime: string; path: string }[] = [
     runtime: 'Roo Code',
     path: '~/Library/Application Support/Code/User/globalStorage/rooveterinaryinc.roo-cline/settings/cline_mcp_settings.json',
   },
+  { runtime: 'Copilot CLI', path: '~/.copilot/mcp-config.json' },
+  { runtime: 'Kiro', path: '~/.kiro/settings/mcp.json' },
 ];
 
 /**
