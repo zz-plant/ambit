@@ -10,6 +10,7 @@
  *   {"end": {"runId": "...", "outcome": "success"}}
  *   {"event": {"runId": "...", "kind": "tool", "action": "bash"}}
  *   {"use": {"runId": "...", "capabilityId": "combo:observability", "durationSeconds": 90}}
+ *   {"use": {"runId": "...", "tool": "bash", "durationSeconds": 2.5}}   what the tool exercises
  *   {"intervention": {"runId": "...", "actorId": "human:kanav", "kind": "authority", ...}}
  *   {"resource": {...}} / {"outcome": {...}}
  *

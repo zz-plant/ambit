@@ -660,7 +660,10 @@ export interface RunAsk {
 export interface RunUse {
   capability: string;
   capability_id: string;
-  /** When the use was recorded; the bar drawn from it lasts `seconds`. */
+  /**
+   * When the use began, where it was timed, else when it was recorded. The bar
+   * drawn from it lasts `seconds`.
+   */
   at: string;
   /** How long it lasted, where that was measured. */
   seconds: number | null;

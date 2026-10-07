@@ -9,6 +9,7 @@ import type {
 } from '../shared/api.ts';
 import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
+import { capabilitiesFor } from './gate.ts';
 import type { Migratable } from './migrate.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import { loadTechTree, telemetryBridgeInstall } from './paths.ts';
@@ -175,6 +176,34 @@ function recordUse(
   return { run: runId, capability: capabilityId };
 }
 
+/**
+ * A tool call, recorded as a use of each capability the tool exercises.
+ *
+ * A bridge says which tool ran and, where it timed the call, when it began and
+ * for how long. Which capabilities that is, the engine decides the way the gate
+ * does (`capabilitiesFor` in gate.ts), so the ledger, the gate and a failure's
+ * attribution cannot disagree about what a tool is, and no bridge holds a copy
+ * of that rule (AGENTS.md rule 8). A tool the graph cannot name records nothing.
+ * A length that is not a finite count of seconds is left off, never read as one.
+ */
+function recordToolUse(
+  db: Db,
+  runId: string,
+  tool: string,
+  input: { durationSeconds?: unknown; source?: string; at?: string } = {}
+) {
+  if (!db.prepare('SELECT id FROM work_runs WHERE id = ?').get(runId)) {
+    return { error: `No run ${runId}. Begin one first.` };
+  }
+  const d = input.durationSeconds;
+  const durationSeconds = typeof d === 'number' && Number.isFinite(d) && d >= 0 ? d : undefined;
+  const capabilities = capabilitiesFor(db, tool);
+  for (const capability of capabilities) {
+    recordUse(db, runId, capability, { durationSeconds, source: input.source, at: input.at });
+  }
+  return { run: runId, tool, capabilities };
+}
+
 export interface InterventionInput {
   kind: string;
   startedAt?: string;
@@ -251,6 +280,17 @@ function recordOutcome(
 // ─── Reports ──────────────────────────────────────────────────────────────────
 
 /**
+ * The time uses took, summed only over the uses something measured, and how
+ * many uses that sum covers. A bridge that could not time a call leaves its use
+ * with no length, and a zero is a recorder that did not know, so a sum over all
+ * of them would state what some uses took as what every one did (AGENTS.md
+ * rule 16). A report prints the count beside the sum, and with nothing timed
+ * the sum is null.
+ */
+const TIMED_SECONDS = 'SUM(CASE WHEN duration_seconds > 0 THEN duration_seconds END)';
+const TIMED_USES = 'SUM(CASE WHEN duration_seconds > 0 THEN 1 ELSE 0 END)';
+
+/**
  * The runs themselves, each with what it cost.
  *
  *   ambit work
@@ -283,9 +323,10 @@ function workReport(db: Migratable, limit = 20): any {
       .get<{ n: number }>(r.id)!.n;
     const uses = db
       .prepare(
-        'SELECT capability_id, SUM(duration_seconds) total FROM capability_use WHERE run_id = ? GROUP BY capability_id'
+        `SELECT capability_id, COUNT(*) times, ${TIMED_SECONDS} total, ${TIMED_USES} timed
+         FROM capability_use WHERE run_id = ? GROUP BY capability_id`
       )
-      .all<{ capability_id: string; total: number | null }>(r.id);
+      .all<{ capability_id: string; times: number; total: number | null; timed: number }>(r.id);
     const interventions = db
       .prepare(
         'SELECT kind, COUNT(*) n, SUM(active_seconds) active FROM human_intervention WHERE run_id = ? GROUP BY kind'
@@ -310,7 +351,9 @@ function workReport(db: Migratable, limit = 20): any {
       events,
       capabilities: uses.map(u => ({
         capability: nameOf.get(u.capability_id) || u.capability_id,
+        times: u.times,
         duration_seconds: u.total,
+        timed: u.timed,
       })),
       interventions: interventions.map(i => ({
         kind: i.kind,
@@ -557,14 +600,17 @@ function runTimeline(db: Migratable, id?: string): RunResponse {
 function usageReport(db: Migratable, days = 30): any {
   const rows = db
     .prepare(
-      `SELECT u.capability_id, COUNT(*) times, SUM(u.duration_seconds) duration_seconds
-     FROM capability_use u
-     WHERE u.used_at >= datetime('now', ?)
-     GROUP BY u.capability_id ORDER BY times DESC`
+      `SELECT capability_id, COUNT(*) times, ${TIMED_SECONDS} duration_seconds, ${TIMED_USES} timed
+     FROM capability_use
+     WHERE used_at >= datetime('now', ?)
+     GROUP BY capability_id ORDER BY times DESC`
     )
-    .all<{ capability_id: string; times: number; duration_seconds: number | null }>(
-      `-${days} days`
-    );
+    .all<{
+      capability_id: string;
+      times: number;
+      duration_seconds: number | null;
+      timed: number;
+    }>(`-${days} days`);
   if (rows.length === 0) return { note: `No capability use recorded in the last ${days} days.` };
 
   const nameOf = new Map(
@@ -596,6 +642,7 @@ function usageReport(db: Migratable, days = 30): any {
     id: r.capability_id,
     times: r.times,
     duration_seconds: r.duration_seconds,
+    timed: r.timed,
     interventions: byIntervention.get(r.capability_id) || 0,
   }));
 }
@@ -780,6 +827,7 @@ export {
   endRun,
   addEvent,
   recordUse,
+  recordToolUse,
   recordIntervention,
   recordResource,
   recordOutcome,

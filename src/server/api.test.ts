@@ -805,6 +805,30 @@ test('a run is served in time from what the ledger recorded, and reading it reco
   expect(again).toEqual(body);
 });
 
+test('a use may name its tool, and the engine says what the tool exercises', async () => {
+  // How the OpenCode plugin posts a call: the tool's name, and its start and
+  // length when it saw them. Which capabilities that is, the bridge never says.
+  await report({ run: { id: 'run-tool-use', goal: 'tools, timed', runType: 'task' } });
+  const use = (extra: Record<string, unknown>) =>
+    report({ use: { runId: 'run-tool-use', tool: 'mcp__git__status', ...extra } }).then(json);
+  const timed = await use({ durationSeconds: 2.5, at: '2026-09-29 10:00:00' });
+  expect(timed.capabilities.length).toBeGreaterThan(0);
+  // A length that is not a number of seconds is left off, not stored as one.
+  await use({ durationSeconds: 'soon' });
+  await use({});
+  const unknown = await report({ use: { runId: 'run-tool-use', tool: 'nothing-known' } });
+  expect((await json(unknown)).capabilities).toEqual([]);
+
+  const run = (await json(await fetch(`${base}/api/run?id=run-tool-use`))).run;
+  const n = timed.capabilities.length;
+  expect(run.uses_total).toBe(3 * n);
+  expect(run.uses.map((u: any) => u.seconds)).toEqual([
+    ...Array(n).fill(2.5),
+    ...Array(2 * n).fill(null),
+  ]);
+  expect(run.uses[0].at).toBe('2026-09-29T10:00:00.000Z');
+});
+
 test('the infrastructure scan says what an agent may do on each machine it found', async () => {
   // The manifest is read per request, so writing it here is what the next scan sees.
   const manifest = join(dir, 'none.json');

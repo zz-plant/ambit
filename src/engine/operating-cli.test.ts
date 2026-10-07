@@ -85,6 +85,34 @@ test('a run records events, interventions, usage and an outcome', () => {
   (db as any).close();
 });
 
+test('a length summed over some uses says how many it covers, and none is no figure', () => {
+  // Most bridges cannot time every call: one a person was asked about, or
+  // whose start was missed, has no length. A sum that silently took the timed
+  // ones for all of them would state a figure the ledger does not hold.
+  seed(LOCAL_ONLY).close();
+  const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
+  const b = beginRun(db, { goal: 'some timed, some not' });
+  recordUse(db, b.run, 'combo:observability', { durationSeconds: 40 });
+  recordUse(db, b.run, 'combo:observability', {});
+  // The zero a recorder writes when it could not measure is not a length.
+  recordUse(db, b.run, 'combo:observability', { durationSeconds: 0 });
+  recordUse(db, b.run, 'combo:shell-execution', {});
+
+  const usage = usageReport(db, 30);
+  const of = (name: string) => usage.find((u: any) => u.capability === name);
+  expect(of('Observability')).toMatchObject({ times: 3, duration_seconds: 40, timed: 1 });
+  expect(of('Shell Execution')).toMatchObject({ times: 1, duration_seconds: null, timed: 0 });
+
+  const caps = workReport(db, 5)[0].capabilities;
+  expect(caps.find((c: any) => c.capability === 'Observability')).toEqual({
+    capability: 'Observability',
+    times: 3,
+    duration_seconds: 40,
+    timed: 1,
+  });
+  (db as any).close();
+});
+
 test('a run without an end is open and reports no outcome', () => {
   seed(LOCAL_ONLY).close();
   const db = getDb(join(dir, 'graph.db')) as unknown as Parameters<typeof beginRun>[0];
