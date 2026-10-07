@@ -24,7 +24,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   verify [cap] [--history]   run the declared check, or show past verification;
                              --failing re-runs only the checks now failing
   impact <id>       what actually breaks if a capability goes away
-  doctor            setup health audit, broken tools, and token-thrash risk
+  doctor            setup health: what works, what fails, what rests on one piece
   connect [runtime] register Ambit's MCP server in each agent runtime it reads
 
   Grouped: graph · plan · check · govern · report — try \`ambit plan\`
@@ -114,7 +114,7 @@ check — what is proven, what is permitted, what is currently broken
   check credentials       what revoking each credential would end
   check incidents         probe the manifest, open incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
-  check doctor            audit setup health, broken tools, and token-thrash risk
+  check doctor            setup health: what works, what fails, what rests on one piece
   check connect [runtime] register Ambit's MCP server in each agent runtime it reads
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls

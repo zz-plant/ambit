@@ -287,15 +287,6 @@ function statusReport(db: any) {
         : undefined,
     evidence: [evidenceReport(db, checkable)],
     domains,
-    context_thrash:
-      g.failing > 0
-        ? [
-            {
-              at_risk_tokens: g.failing * 32000,
-              note: `${g.failing} degraded capabilities risk triggering agent retry thrash loops`,
-            },
-          ]
-        : undefined,
     degraded: degraded.length ? degraded : undefined,
     spofs,
     bottlenecks: findBottlenecks(db).slice(0, 10),

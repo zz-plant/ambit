@@ -35,20 +35,19 @@ afterEach(() => {
 });
 
 describe('ambit doctor', () => {
-  test('evaluates graph health, grade, SPOFs, and context-thrash risk', () => {
+  test('evaluates graph health, grade and SPOFs, and prices nothing it did not measure', () => {
     const db = seed(LOCAL_ONLY);
     const doc = cli('doctor');
     expect(doc.score).toBeGreaterThan(0);
     expect(['A', 'B', 'C', 'D', 'F']).toContain(doc.grade);
     expect(doc.capabilities.total).toBeGreaterThan(0);
     expect(doc.capabilities.reached).toBeGreaterThan(0);
-    expect(doc.context_thrash).toBeDefined();
-    expect(doc.context_thrash.prevented_tokens).toBeGreaterThanOrEqual(0);
+    expect(doc).not.toHaveProperty('context_thrash');
     expect(doc.recommendations.length).toBeGreaterThan(0);
     db.close();
   });
 
-  test('penalizes failing checks and warns about token thrash', () => {
+  test('penalizes failing checks and says which to fix', () => {
     const db = makeGraph({
       capabilities: [
         { id: 'tool:browser', name: 'Browser Automation', lifecycle: 'broken' },
@@ -57,8 +56,7 @@ describe('ambit doctor', () => {
     });
     const doc = runDoctor(db, testDir);
     expect(doc.capabilities.failing).toBe(1);
-    expect(doc.context_thrash.at_risk_tokens).toBe(32000);
-    expect(doc.context_thrash.estimated_risk_dollars).toBe(0.1);
+    expect(JSON.stringify(doc)).not.toMatch(/tokens|dollars/);
     expect(doc.recommendations.some(r => r.includes('Fix 1 degraded'))).toBe(true);
     db.close();
   });

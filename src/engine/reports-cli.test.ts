@@ -687,7 +687,6 @@ test('status keeps every field it had, and adds next at the end', () => {
     'unattended',
     'evidence',
     'domains',
-    'context_thrash',
     'degraded',
     'spofs',
     'bottlenecks',

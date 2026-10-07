@@ -22,7 +22,7 @@ A server in a config file is configured, not working. Tokens expire, binaries mo
 
 ```bash
 ambit verify            # run every declared check, and record the result
-ambit doctor            # setup health, broken tools, and token-thrash risk
+ambit doctor            # setup health: what works, what fails, what rests on one piece
 ```
 
 A capability with a passing check is **proven**; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
