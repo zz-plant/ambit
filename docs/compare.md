@@ -27,7 +27,7 @@ Ambit does have a gate. `ambit can` returns ALLOW, CONFIRM or DENY for an action
 | What it sees | Calls as they are made | The whole setup, including what was never called |
 | Main question | May this call go ahead? | What can this setup do, does it work, and what breaks if a piece goes? |
 | Approvals | Per call, as it happens | Per change to the setup, as a signed, reviewable proposal |
-| Where data lives | Varies; often a hosted service | One local SQLite file; nothing leaves the machine |
+| Where data lives | Varies; often a hosted service | One local SQLite file; nothing leaves except through a command you typed |
 
 ## Using both
 

@@ -126,7 +126,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped }: TourP
       title: 'Nothing changes without you',
       body:
         'Ambit writes a change as a proposal, with what it costs and whether it can be undone. ' +
-        'It is applied only after a person approves it, and the approval is a signed receipt.',
+        'It is applied only after an approval, a separate local operation outside the MCP surface, and the approval is a signed receipt.',
       proposal: true,
       enter: () => {
         clearSimulation();

@@ -94,7 +94,7 @@ BCIs also introduce **cognitive affordances** — remember, communicate intentio
 
 ## Intellectual genealogy
 
-No existing field studies this frontier directly. Its concepts are distributed:
+No existing field studies this frontier as its own object. Its concepts are distributed:
 
 | Field | Asks | Contributes |
 | :--- | :--- | :--- |
@@ -115,6 +115,8 @@ What appears underdeveloped is the intersection: given an evolving assemblage of
 C(S_t) = { outcomes S can reliably and legitimately cause at time t }
 ΔC     = C(S_t+1) − C(S_t)
 ```
+
+For a set, the difference has two parts: the outcomes newly reachable, `C(S_t+1) \ C(S_t)`, and the ones no longer reachable, `C(S_t) \ C(S_t+1)`. One number hides a contraction, so the ledger records the two apart, as gained and lost.
 
 Ambit's [ledger](./deep-dive.md#the-frontier-ledger) is a first, narrow implementation of ΔC over one kind of system.
 
