@@ -141,7 +141,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#4-detection-becomes-verification--built-and-gates">4</a></td>
 <td align="left">Detection becomes verification</td>
 <td align="left">built, and gates</td>
-<td align="left">Outside the three places §9 names, the gate is read and not obeyed. A check whose failure flipped a capability to <code>broken</code> is re-verified by hand.</td>
+<td align="left">Outside the three places §9 names, the gate is read and not obeyed. A failing check is re-run only when someone types it (<code>ambit verify --failing</code> runs every one at once), and a capability that failed counts again only once its last five runs pass.</td>
 </tr>
 <tr>
 <td align="left"><a href="#5-goal--capability-delta--partly-built">5</a></td>
@@ -159,7 +159,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#7-the-ledger--shipped">7</a></td>
 <td align="left">The ledger</td>
 <td align="left">shipped</td>
-<td align="left">Use carries no object, so which capability was exercised <em>on what</em> is unanswered (§13.9). The Claude Code plugin records an ask and not its answer, since no hook says how a person replied, and the OpenCode plugin does the same under OpenCode 1, so those asks are drawn as points (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l1-spans-with-a-lane-for-you">L1</a>). Neither plugin records a use&#39;s duration, and the control plane writes fixed values; only the MCP work-event tool and <code>/api/telemetry</code> can time a use. Runtimes other than OpenCode and Claude Code have no bridge of their own.</td>
+<td align="left">Use carries no object, so which capability was exercised <em>on what</em> is unanswered (§13.9). The Claude Code plugin records an ask and not its answer, since no hook says how a person replied, and the OpenCode plugin does the same under OpenCode 1, so those asks are drawn as points (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l1-spans-with-a-lane-for-you">L1</a>). Both plugins time a use between the hooks before and after it, except a call someone was asked to approve, whose span holds the person&#39;s wait, and the control plane still writes a fixed value. Runtimes other than OpenCode and Claude Code have no bridge of their own.</td>
 </tr>
 <tr>
 <td align="left"><a href="#7b-affordance-domains--built-derived">7b</a></td>
@@ -195,7 +195,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#11-the-visualizer-becomes-a-negotiating-surface--built-and-shipping">11</a></td>
 <td align="left">The visualizer becomes a negotiating surface</td>
 <td align="left">built and shipping</td>
-<td align="left">AG-UI&#39;s tool-call and reasoning events are not emitted, by design. Playback that advances the timeline on its own, a light theme, and high-resolution SVG or PNG export of the whole map are unbuilt.</td>
+<td align="left">AG-UI&#39;s tool-call and reasoning events are not emitted, by design. A light theme is unbuilt. The whole-map export draws the standard lens only, since the Attention and Authority lenses show who stepped in and what may act without asking.</td>
 </tr>
 <tr>
 <td align="left"><a href="#12-the-long-running-agent--built">12</a></td>
@@ -213,7 +213,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <td align="left"><a href="#14-the-economic-half--partly-built">14</a></td>
 <td align="left">The economic half</td>
 <td align="left">partly built</td>
-<td align="left">The marketplace, deliberately, until observed demand fills the catalog; and the reports need weeks of recorded work before they are worth trusting. Token and dollar attribution per capability, and local against hosted provider arbitrage, are unbuilt. Nothing shipped records spend against a budget (<code>recordSpend</code> has no caller), so <code>spent</code> stays at zero and the ceiling-and-pace bar (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l2-a-ceiling-with-a-forecast-tick">L2</a>) has nothing to forecast from on a stock install.</td>
+<td align="left">The marketplace, deliberately, until observed demand fills the catalog; and the reports need weeks of recorded work before they are worth trusting. Token and dollar attribution per capability, and local against hosted provider arbitrage, are unbuilt. Spend is recorded only from Claude Code sessions, only on a model whose price a person declared (<code>ambit economics price</code>), and only when the session ends, against the unscoped Hosted Inference budget; OpenCode sessions and anything else that does not state its spend record none, so the ceiling-and-pace bar (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l2-a-ceiling-with-a-forecast-tick">L2</a>) moves only once a price and a budget are set.</td>
 </tr>
 <tr>
 <td align="left"><a href="#15-the-control-plane--built-against-a-simulated-environment">15</a></td>
