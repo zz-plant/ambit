@@ -51,6 +51,21 @@ export function spoolPath(): string {
   return join(base, 'ambit', 'claude-code.jsonl');
 }
 
+/**
+ * Where the OpenCode tracker leaves the configuration changes it saw, for the
+ * engine to read into whichever graph it opens next. Apart from the graph for
+ * the reason the Claude Code spool is: the plugin runs from OpenCode's plugins
+ * directory, and a graph it guessed from there was the wrong one for a
+ * checkout, and for anyone with an old `~/.config/opencode/toolchain-viz.db`,
+ * the old default it kept finding beside itself. plugins/ambit-tracker.js
+ * transcribes this.
+ */
+export function trackerSpoolPath(): string {
+  if (process.env.AMBIT_TRACKER_SPOOL) return process.env.AMBIT_TRACKER_SPOOL;
+  const base = process.env.XDG_STATE_HOME || join(process.env.HOME || '.', '.local', 'state');
+  return join(base, 'ambit', 'opencode-config.jsonl');
+}
+
 export function resolveDbPath(): string {
   const explicit = process.env.AMBIT_DB || process.env.TOOLCHAIN_DB;
   if (explicit) return explicit;

@@ -1,5 +1,6 @@
 #!/usr/bin/env node --experimental-sqlite
 import { ingestSpool } from '../engine/spool.ts';
+import { ingestTrackerSpool } from '../engine/tracker-spool.ts';
 import { readFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { nearest } from '../shared/nearest.ts';
@@ -227,6 +228,11 @@ function getWarmDb() {
       ingestSpool(dbHandle);
     } catch {
       /* the spool waits for the next reader */
+    }
+    try {
+      ingestTrackerSpool(dbHandle);
+    } catch {
+      /* likewise: OpenCode's config changes, from its tracker */
     }
   }
   return dbHandle;

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { ingestSpool } from './spool.ts';
+import { ingestTrackerSpool } from './tracker-spool.ts';
 import { resolveDbPath } from '../shared/db-path.ts';
 import { getDb, migrate, type Db } from './db.ts';
 import {
@@ -929,14 +930,20 @@ async function main() {
       if (!json) console.log('');
     }
   }
-  // What Claude Code sessions did since the last command, read into the
-  // ledger first so every report sees it. Not on `gate`, which runs before
-  // every tool call and must stay quick; a failed read never stops a command.
+  // What Claude Code sessions did, and what OpenCode's tracker saw change in
+  // its config, since the last command, read in first so every report sees
+  // it. Not on `gate`, which runs before every tool call and must stay quick;
+  // a failed read never stops a command.
   if (cmd !== 'gate') {
     try {
       ingestSpool(db);
     } catch {
       /* the spool waits for the next command */
+    }
+    try {
+      ingestTrackerSpool(db);
+    } catch {
+      /* likewise */
     }
   }
   if (!cmd || cmd === 'help') {
