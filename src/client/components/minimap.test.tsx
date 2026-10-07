@@ -11,35 +11,19 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
 import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import type { Item } from '../utils/configImporter';
+import { findAll, type Props } from '../testing/elements';
 import CivTree from './CivTree';
 import { mapFindings, rungOf, visibleItems } from './civ/layout';
 import { MapFinding } from './civ/MapFinding';
 import { Minimap, MinimapView, type MinimapNode, readGeometry } from './civ/Minimap';
 import { layoutNodes, buildColumns } from './civ/layout';
 import { minimapModel } from './civ/viewport';
-
-type Props = Record<string, any>;
-
-function findAll(
-  node: ReactNode,
-  match: (el: ReactElement<Props>) => boolean,
-  out: ReactElement<Props>[] = []
-): ReactElement<Props>[] {
-  if (Array.isArray(node)) {
-    for (const child of node) findAll(child, match, out);
-  } else if (node && typeof node === 'object' && 'props' in node) {
-    const el = node as ReactElement<Props>;
-    if (match(el)) out.push(el);
-    findAll(el.props?.children, match, out);
-  }
-  return out;
-}
 
 const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
 const tree = visibleItems(items);
