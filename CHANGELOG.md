@@ -6,6 +6,22 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Tokens from Codex, OpenCode and Amp, with nothing installed
+
+Only Claude Code sessions reached the spend meter. Ambit now reads the session logs Codex, OpenCode and Amp already keep, the same records ccusage reports from: each session's id, model names, times and token counts, never what a session said or ran. Each session is one run, counted once however often its log is read, and a read that finds nothing new costs a stat per file. Time & cost names which agent each count came from, and a declared price makes those tokens a spend on Hosted Inference. Tokens from before a budget's current period are priced and not spent against it, so a first read of months of history cannot use up this month. `ambit usage --refresh` rereads every log, and `AMBIT_NO_LEDGER=1` stops the reading.
+
+### Copilot CLI, Amp, Goose and Kiro
+
+Discovery reads four more runtimes, each from the location its own documentation gives: Copilot CLI's `~/.copilot/mcp-config.json`, Amp's `~/.config/amp/settings.json` (under the one dotted key `amp.mcpServers`), Goose's `~/.config/goose/config.yaml` (its extensions, read by a small reader for the documented shape; the secrets under `envs` are left behind), and Kiro's `~/.kiro/settings/mcp.json`. `ambit connect` can register Ambit in Kiro, whose file has Cursor's shape; the other three would each need a writer of their own. `ambit doctor` kept its own list of runtimes and knew seven of them; it now takes them from discovery, so it sees all sixteen and reads whether Ambit is connected in each file's own shape.
+
+### Local models, from disk
+
+Discovery lists the models Ollama and LM Studio keep on disk, by folder and file name only: no model file is opened and no model server is asked, so seeding still opens no socket. They reach Local Runtime, Local Tool Calling, Extended Context and Local Embeddings, never Hosted Inference, and are never priced as hosted. Two patterns that read the new names wrongly were fixed: an embedding model such as qwen3-embedding no longer counts as a model that calls tools, and bge-m3, all-minilm and bge-small reach Local Embeddings.
+
+### The servers most people install, recognised
+
+A filesystem MCP server now provides File Editing, and the agent memory tools (claude-mem, cognee, Letta, Graphiti) Persistent Memory; mem0 and anything named memory already did. A test holds the curated tree to the servers most developers install, keyed as their own READMEs key them. Context7, Notion, Figma and Sequential Thinking reach only Tool Protocol, since the tree models nothing they provide.
+
 ### The latest check decides
 
 A capability whose check failed came back only after five passes in a row, each typed by hand, so fixing a revoked token still kept three servers out of every plan until someone ran `ambit verify` five times. Now one passing check brings it back into every plan, permission and ranking. Until its last five runs pass it reads as recovering ("2 of the last 5 passed"): usable, counted with the unproven, and named in `ambit status`, the briefing, `ambit verify`, the map's panel and My Setup. A check whose last run failed is the only kind left out. `ambit verify --failing` re-runs recovering checks too, the Claude Code gate asks only when the last check failed, and a grant still widens only after a window with no failure in it. The `degraded` fields in JSON output keep their names and now list only capabilities whose last check failed.
