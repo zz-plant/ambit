@@ -260,7 +260,7 @@ test('a repeated deficit is distinguished from incidental friction', () => {
   cli('record', 'vector-store');
   const third = cli('record', 'vector-store');
   expect(third.times_blocked).toBe(3);
-  expect(third.note).toContain('structural');
+  expect(third.note).toContain('repeatedly');
 
   const report = cli('status').deficits;
   expect(report[0].id).toBe('combo:vector-store');

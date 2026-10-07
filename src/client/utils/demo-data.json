@@ -778,7 +778,7 @@
         "name": "Backups",
         "type": "possibility",
         "status": "specified",
-        "description": "The production data can be restored to an earlier point, and someone has seen a restore work. Turn on point-in-time restore, or schedule a copy off the database host, then restore it once to prove it",
+        "description": "The production data has a scheduled copy a restore could come from; a restore should be tried once to prove it works. Turn on point-in-time restore, or schedule a copy off the database host, then restore it once to prove it",
         "position": {
           "x": 0,
           "y": 0,
@@ -1357,7 +1357,7 @@
         "name": "Launch Ready",
         "type": "possibility",
         "status": "specified",
-        "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person. Reached when all six are in place, with nothing of its own to install",
+        "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person: the launch infrastructure checklist, each item as strong as what detected or verified it. Reached when all six are in place, with nothing of its own to install",
         "position": {
           "x": 0,
           "y": 0,

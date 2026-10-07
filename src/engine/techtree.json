@@ -2072,7 +2072,7 @@
       ],
       "era": 9,
       "domain": "infra",
-      "description": "The production data can be restored to an earlier point, and someone has seen a restore work",
+      "description": "The production data has a scheduled copy a restore could come from; a restore should be tried once to prove it works",
       "requires": [
         "production-database"
       ],
@@ -2142,7 +2142,7 @@
       ],
       "era": 9,
       "domain": "devops",
-      "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person",
+      "description": "The app is hosted, its data is in a managed database with backups, changes ship through CI, and errors and outages reach a person: the launch infrastructure checklist, each item as strong as what detected or verified it",
       "requires": [
         "hosting",
         "production-database",

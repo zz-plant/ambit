@@ -10,7 +10,7 @@ It does not choose your stack, review your code, or hold your secrets. Those lim
 npx ambit-cli goal "launch my saas"
 ```
 
-The sentence is routed to **Launch Ready**, a capstone reached when six things are in place, and the answer is a checklist in order: each step's setup time, what to do, and the usual ways to do it. A step you have half done says so. Sentry configured before any host is listed as configured and waiting on Hosting, instead of as something to set up again.
+The sentence is routed to **Launch Ready**, the launch infrastructure checklist, reached when six things are in place, and the answer is a checklist in order: each step's setup time, what to do, and the usual ways to do it. A step you have half done says so. Sentry configured before any host is listed as configured and waiting on Hosting, instead of as something to set up again. An item is as strong as what detected or verified it: detection shows a tool is present, not that a restore has been tried.
 
 | Step | What it gives the agent |
 | :--- | :--- |
@@ -57,7 +57,7 @@ A ceiling on spend is one line: `ambit budget set hosted-inference --amount=50 -
 
 - **Choose your stack.** The ways to close a step are a short list of common options, not a recommendation drawn from your situation.
 - **Review your code.** A passing check means a tool answers. It says nothing about whether your app is correct.
-- **Hold your secrets.** It reads which servers you have, never their keys, and sends nothing anywhere.
+- **Hold your secrets.** It reads which servers you have, never their keys, and sends nothing except what a command you typed sends.
 - **Stand in for a security review** before you take money or store personal data.
 - **Run on Windows**, where it does not read the agent configs yet.
 

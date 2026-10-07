@@ -88,6 +88,6 @@ test('the skill says when to load it, and that the gate never allows', () => {
   expect(description).toMatch(/MCP servers/);
   expect(description.length).toBeLessThan(500);
   // What it touches is said before anything runs; the gate only narrows.
-  expect(skill).toContain('sends nothing anywhere');
+  expect(skill).toContain('sends nothing on its own');
   expect(skill).toContain('never allows');
 });

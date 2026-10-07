@@ -14,12 +14,21 @@ import type { CapabilityRow, ProposalRow } from './rows.ts';
  * proposal, so the next prediction has evidence to learn from.
  *
  * The windows are honest about what they can measure: interventions and their
- * time are ledger facts. The attention rate is the declared model. And the
- * verdict is a range, not a precision — near forecast, above, below, or "too
- * early to say" when the after window has not accumulated anything yet.
+ * time are ledger facts. Windows of different lengths are compared per day, so
+ * a change applied yesterday cannot be annualized into a savings figure. The
+ * attention rate is the declared model. The verdict is a range, not a
+ * precision: near forecast, above, below, or "too early to say" until the
+ * after window has recorded interventions across at least a week. The figure
+ * is a before/after observation of recorded intervention time, never a proof
+ * of causation.
  */
 
 const WINDOW_DAYS = 60;
+/** The after window needs this many days of history before a comparison
+ *  between windows of different lengths says anything at all. */
+const MIN_AFTER_DAYS = 7;
+const DAY_MS = 864e5;
+const DAYS_PER_YEAR = 365.25;
 
 /** SQLite's datetime('now') shape: space, not T, no zone. */
 function sqliteDatetime(d: Date): string {
@@ -104,11 +113,26 @@ function roiFor(db: Migratable, proposalId?: string) {
   // second as the apply counts as *before*, never as post-apply savings — an
   // ambiguous second must not inflate the measured result.
   const appliedDate = parseDatetime(applied);
-  const beforeStart = sqliteDatetime(new Date(appliedDate.getTime() - WINDOW_DAYS * 864e5));
+  const afterWindowDays = Math.max((Date.now() - appliedDate.getTime()) / DAY_MS, 0);
+  const beforeStart = sqliteDatetime(new Date(appliedDate.getTime() - WINDOW_DAYS * DAY_MS));
   const before = capId ? windowStats(db, capId, beforeStart, applied, rate, true) : null;
   const after = capId
     ? windowStats(db, capId, applied, sqliteDatetime(new Date()), rate, true, true)
     : null;
+
+  // Before and after windows have different lengths, so the comparison is
+  // per day. And a change that just landed has no after window worth reading:
+  // with nothing recorded since the apply, every prior hour would otherwise
+  // read as saved. The observed figure is recorded intervention time before
+  // and after the change, annualized; it is not a controlled experiment, so
+  // it is never presented as one.
+  const beforePerDay = before ? before.human_hours / WINDOW_DAYS : 0;
+  const afterPerDay = after && afterWindowDays > 0 ? after.human_hours / afterWindowDays : 0;
+  const enoughAfterEvidence =
+    !!after && after.interventions > 0 && afterWindowDays >= MIN_AFTER_DAYS;
+  const reductionPerDay = enoughAfterEvidence ? beforePerDay - afterPerDay : 0;
+  const projectedHoursSavedYear = Math.round(reductionPerDay * DAYS_PER_YEAR * 10) / 10;
+  const projectedDollarsYear = Math.round(reductionPerDay * rate * DAYS_PER_YEAR) / 100;
 
   const prediction = row.economic_case
     ? (() => {
@@ -120,11 +144,6 @@ function roiFor(db: Migratable, proposalId?: string) {
       })()
     : null;
 
-  // Observed, annualized from the after window's monthly rate.
-  const observedReduction = before && after ? before.human_hours - after.human_hours : 0;
-  const projectedHoursSavedYear = Math.round(observedReduction * 12 * 10) / 10;
-  const projectedDollarsYear = Math.round(observedReduction * rate * 12) / 100;
-
   // Reliability: did the capability keep working after it was acquired?
   const reliability = {
     before_failures: before?.failures || 0,
@@ -135,8 +154,10 @@ function roiFor(db: Migratable, proposalId?: string) {
   const predictedHours = prediction?.predicted?.human_hours_saved_per_year;
   let verdict: string;
   if (!predictedHours) verdict = 'no forecast to compare — the proposal carried no economic case';
-  else if (!after || (after.interventions === 0 && observedReduction === 0))
-    verdict = 'too early to say — no after-window activity yet';
+  else if (!after || after.interventions === 0)
+    verdict = 'too early to say — nothing has been recorded since the apply yet';
+  else if (afterWindowDays < MIN_AFTER_DAYS)
+    verdict = 'too early to say — the after window is under a week, too short to compare';
   else {
     const ratio = projectedHoursSavedYear / predictedHours;
     verdict =
@@ -149,7 +170,7 @@ function roiFor(db: Migratable, proposalId?: string) {
 
   const observed = {
     before_window_days: WINDOW_DAYS,
-    after_window_days: 0,
+    after_window_days: Math.round(afterWindowDays * 10) / 10,
     before,
     after,
     projected_hours_saved_per_year: projectedHoursSavedYear,
@@ -171,13 +192,13 @@ function roiFor(db: Migratable, proposalId?: string) {
     applied_at: row.applied_at,
     predicted: prediction?.predicted || null,
     observed,
-    note: 'windows are 60 days before and everything since the apply; attention dollars use the declared rate; the verdict is a range, not a precision.',
+    note: 'windows are 60 days before and everything since the apply, compared per day and annualized; attention dollars use the declared rate; recorded intervention time before and after, not a controlled experiment; the verdict is a range, not a precision.',
   };
 }
 
 /**
- * The cumulative headline: what every applied proposal has saved, and whether
- * the predictions held.
+ * The cumulative headline: what every applied proposal recorded in
+ * intervention time, and whether the predictions held.
  *
  *   ambit roi            → this environment, year to date
  *
@@ -261,7 +282,7 @@ function roiSummary(db: Migratable) {
     note:
       applied.length === 0
         ? 'Nothing applied yet — roi has nothing to measure until a proposal is approved and applied. Try `ambit opportunities` for what to propose first.'
-        : 'observed figures come from before/after windows in the work ledger — measured, not estimated.',
+        : 'observed figures come from before/after windows in the work ledger, compared per day: recorded intervention time, not a controlled experiment.',
   };
 }
 

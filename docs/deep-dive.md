@@ -38,7 +38,7 @@ installed ≠ working ≠ authorized
 ```
 
 - **Reached** is installed: something in a config provides the capability, and every one of its required prerequisites is reached too. A capability can be provided and still blocked, and when its last prerequisite arrives it is reached with nothing new added for it. That is how composition shows up. Reached is the capability's `state`.
-- **Proven** is working: reached, and its declared check last passed with a clean record (lifecycle `verified` or `reliable`). A capability never checked, or with no check declared, is reached and unproven: it still counts and stays usable. A failed last check (`broken`) takes it out of every plan, permission and ranking, and the next pass puts it back. Checks only ever take away; nothing waits for a check before it counts.
+- **Proven** means reached, and its declared check last passed with a clean record (lifecycle `verified` or `reliable`); how much that proves is what the check tests. A capability never checked, or with no check declared, is reached and unproven: it still counts and stays usable. A failed last check (`broken`) takes it out of every plan, permission and ranking, and the next pass puts it back. Checks only ever take away; nothing waits for a check before it counts.
 - **Permitted** is authorized: a grant says whether an action may run without asking, after asking, or not at all ([Capability and authority are different things](#capability-and-authority-are-different-things)).
 
 Your ambit is everything reached. Proven is the part of it there is evidence for, and permission is a separate layer over both. Ambit records the first two per capability, as `state` and `lifecycle`, and resolves the third from grants each time it is asked.
@@ -98,7 +98,7 @@ The graph holds every entry your configs declare and every capability as a node.
 | `degraded` | the last run passed, and recent ones did not: recovering |
 | `broken` | the last run failed |
 
-`verified` and `reliable` are proven. `configured` is reached and unproven, and counts. `broken` is failing: still reached in `state`, and left out of everything that decides availability. The latest check decides, so `degraded` is recovering: usable, counted with the unproven because its record is mixed, and named wherever a summary would otherwise read as fixed, with how its recent runs went ("2 of the last 5 passed"). Nothing writes the column directly. It is recomputed from the evidence on seed and after verification, which are the two moments the inputs can change. A failing capability comes back the same way it left, on a check: `ambit verify <id>` re-runs one, and `ambit verify --failing` re-runs every check that is failing or recovering now, which is the command to type after fixing a shared token or a server. One pass brings a capability back into every plan, permission and ranking. It reads as proven once its last five runs pass, and a grant waiting on a threshold still widens only on a window with no failure in it. Nothing re-runs a check on its own, since a check is a command.
+`verified` and `reliable` are proven by their checks, as strong as the checks are. `configured` is reached and unproven, and counts. `broken` is failing: still reached in `state`, and left out of everything that decides availability. The latest check decides, so `degraded` is recovering: usable, counted with the unproven because its record is mixed, and named wherever a summary would otherwise read as fixed, with how its recent runs went ("2 of the last 5 passed"). Nothing writes the column directly. It is recomputed from the evidence on seed and after verification, which are the two moments the inputs can change. A failing capability comes back the same way it left, on a check: `ambit verify <id>` re-runs one, and `ambit verify --failing` re-runs every check that is failing or recovering now, which is the command to type after fixing a shared token or a server. One pass brings a capability back into every plan, permission and ranking. It reads as proven once its last five runs pass, and a grant waiting on a threshold still widens only on a window with no failure in it. Nothing re-runs a check on its own, since a check is a command.
 
 **Credentials.** A credential is declared, never read. A `credentials` block names one and the providers that present it:
 
@@ -157,7 +157,7 @@ diagnose hardware failure → request replacement → human approves expenditure
 
 A capability a person approves or supplies is a **Joint capability**, one the agent cannot supply alone, and so is one that runs on your machines. It belongs to the human-machine system, not to either half, which lets partial, structured autonomy be described as it actually is instead of forced into "fully autonomous" or "human controlled". The map marks a joint capability with a person or a device, and the detail panel names who.
 
-Every intervention is recorded. `ambit attention` counts the human acts in a window (approvals, applications, permission blocks, failed checks) and names the reducible ones: an approval given three times for the same capability is infrastructure shaped like a person, and the fix is a grant, not another reminder.
+Every intervention is recorded. `ambit attention` counts the human acts in a window (approvals, applications, permission blocks, failed checks) and names the reducible ones: an approval given three times for the same capability is a candidate for a bounded grant, reviewed before it widens, not another reminder.
 
 ```
 ambit attention 30
@@ -326,14 +326,14 @@ flowchart TD
     OPP --> PROP["5. Proposal Drafted\n(Steps, Inverses, Costs, Forecast)"]
     PROP --> APP["6. A Person Approves\n(Mints a Signed, Expiring Artifact)"]
     APP --> APPLY["7. Apply Spends the Artifact\n(canExecute per Step, Then the Check)"]
-    APPLY --> ROI["8. Realized ROI Written Back\n(Forecast vs Actual Savings)"]
+    APPLY --> ROI["8. Realized ROI Written Back\n(Forecast vs Recorded Time)"]
     ROI -.->|"Evidence for the Next Forecast"| ATTN
 ```
 
 - `ambit attention` prices the human half of the ledger and **classifies agency**: clerical, exception, physical and authority-as-repeated-gate are reducible (*the human is the duct*), while judgment and knowledge are keepers, never proposed for removal however often they recur.
 - `ambit economics` is the declared model: attention value per hour, purchase and recurring costs, goal values, and what a model's tokens cost. Dollars declare, cents store. An undeclared actor's attention defaults to $250/hr and is reported as such; a model's price has no default. `ambit economics price <model> --input=5 --cache-read=0.5 --output=25` declares one in dollars per million tokens, all three parts, under the exact name a Claude Code transcript records, and a config's `economics.models` block takes the same three as `input_per_mtok`, `cache_read_per_mtok` and `output_per_mtok`. Cache writes are counted with fresh input, so the input price covers both.
 - `ambit opportunities` ranks the durable fixes: observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence (high = observed five-plus times, low = deficits only). Rank by `--by=attention|cash|roi|reliability|frontier`, or allocate a budget: `--budget=N` returns the best combination of investments within $N. Each opportunity carries its acquisition options from the catalog, so it is a purchase decision, not a report.
-- `ambit roi` closes the loop. With a proposal id it measures before/after on the affected capability (interventions, human hours, attention dollars, verification failures) and returns a verdict (performing near forecast, above, below, too early). With no argument it is the cumulative headline: hours and dollars saved per year and forecast accuracy, written back so the next prediction has evidence to learn from.
+- `ambit roi` closes the loop. With a proposal id it measures before/after on the affected capability (interventions, human hours, attention dollars, verification failures), compared per day once the after window holds evidence, and returns a verdict (performing near forecast, above, below, too early). With no argument it is the cumulative headline: recorded hours and dollars per year and forecast accuracy, written back so the next prediction has evidence to learn from.
 - `ambit incidents` probes the infrastructure manifest, records each answer as a check run on the device or service it asked, opens an incident run for every offline service, records detection, resolves the recovery against authority, and closes it with MTTR from the ledger's own timestamps.
 - `ambit audit` is the governance trail: a run end to end, a proposal's steps/approval/enforcement/result, or one person's approvals and interventions.
 - `ambit portfolio` reads `federation` imports across environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most. A portfolio layer reads signed receipts; it never merges graphs, and the receipts carry aggregates only, no credentials and no raw sessions.
@@ -470,7 +470,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit goal --prefs [who]` | Who prefers what, and where a plan's default choice would fight them |
 | `ambit reversible` | Which unreached capabilities could be acquired without a person, and which need hands. The same list, read backwards, is what an agent can never do for itself |
 | `ambit opportunities` | Ranked structural changes worth making — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence. `--by=attention\|cash\|roi\|reliability\|frontier`; `--budget=N` allocates the best combination within $N |
-| `ambit roi [proposal]` | One proposal's before/after verdict, or — with no argument — the cumulative headline: hours and dollars saved per year and forecast accuracy |
+| `ambit roi [proposal]` | One proposal's before/after verdict, or — with no argument — the cumulative headline: recorded hours and dollars per year and forecast accuracy |
 | `ambit portfolio [--budget=N]` | Across imported environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most |
 | **check** — *what is proven, what is permitted, what is currently broken* | |
 | `ambit authority <cap>` | Which concrete actions does this confer, and which of them may run unattended? |
