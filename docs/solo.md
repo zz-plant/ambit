@@ -25,6 +25,16 @@ Payments, user accounts, transactional email and product analytics are on the ma
 
 After each step, `ambit seed` reads the configs again and the list moves.
 
+## Before an agent starts on a spec
+
+A feature planned with [Spec Kit](https://github.com/github/spec-kit) or [OpenSpec](https://github.com/Fission-AI/OpenSpec) already lists its work, task by task. Ask the same question of the list:
+
+```bash
+npx ambit-cli goal --spec specs/001-team-billing
+```
+
+Each task is routed the way a sentence is, and the tools the plan names under Technical Context (Stripe, PostgreSQL, Playwright) count as well. The answer names the capabilities the tasks lean on, which are reached and which are failing a check, and the steps left in order with their setup time. A task about Stripe webhooks that waits on an account nobody has opened shows up here, before the agent reaches it. Tasks that name no capability are listed as routed nowhere, never guessed at. The spec is read as data: nothing in it runs and no link in it is followed.
+
 ## What an agent may do without you
 
 Every capability in those two eras carries defaults a careful CTO would set. The agent may read freely, must ask before anything a customer would notice, and may not do the few things that cannot be undone.
