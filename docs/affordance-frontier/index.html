@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/affordance-frontier.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"The affordance frontier · Ambit","description":"The theory under Ambit: the affordance frontier of human-machine systems, and how robots and brain-computer interfaces test it.","url":"https://zz-plant.github.io/ambit/docs/affordance-frontier/","dateModified":"2026-10-06","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"The affordance frontier · Ambit","item":"https://zz-plant.github.io/ambit/docs/affordance-frontier/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"The affordance frontier · Ambit","description":"The theory under Ambit: the affordance frontier of human-machine systems, and how robots and brain-computer interfaces test it.","url":"https://zz-plant.github.io/ambit/docs/affordance-frontier/","dateModified":"2026-10-07","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"The affordance frontier · Ambit","item":"https://zz-plant.github.io/ambit/docs/affordance-frontier/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
@@ -105,7 +105,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <p>&quot;Human in the loop&quot; implies two pre-existing entities passing control. A tight enough interface produces a coupled system whose relevant cognition spans both, and which has abilities neither participant has alone. Calling the human a supervisor misses what is happening.</p>
 <p>BCIs also introduce <strong>cognitive affordances</strong> — remember, communicate intention, retrieve external knowledge, control a device, maintain attention — where the frontier of a person with a memory prosthesis differs from the same person without one.</p>
 <h2 id="intellectual-genealogy"><a class="anchor" href="#intellectual-genealogy" aria-hidden="true" tabindex="-1">#</a>Intellectual genealogy</h2>
-<p>No existing field studies this frontier directly. Its concepts are distributed:</p>
+<p>No existing field studies this frontier as its own object. Its concepts are distributed:</p>
 <table>
 <thead>
 <tr>
@@ -151,6 +151,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <pre><code>C(S_t) = { outcomes S can reliably and legitimately cause at time t }
 ΔC     = C(S_t+1) − C(S_t)
 </code></pre>
+<p>For a set, the difference has two parts: the outcomes newly reachable, <code>C(S_t+1) \ C(S_t)</code>, and the ones no longer reachable, <code>C(S_t) \ C(S_t+1)</code>. One number hides a contraction, so the ledger records the two apart, as gained and lost.</p>
 <p>Ambit&#39;s <a href="/ambit/docs/deep-dive/#the-frontier-ledger">ledger</a> is a first, narrow implementation of ΔC over one kind of system.</p>
 <h2 id="the-agi-thesis"><a class="anchor" href="#the-agi-thesis" aria-hidden="true" tabindex="-1">#</a>The AGI thesis</h2>
 <p>This section is speculation, further from the software than anything else on this page.</p>

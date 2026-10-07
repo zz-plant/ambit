@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/solo.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Building alone: a launch checklist and production guardrails for your agents","description":"For a one-person company: what to set up before real users arrive, what an agent may do to production without asking, and how you hear when it breaks.","url":"https://zz-plant.github.io/ambit/docs/solo/","dateModified":"2026-10-06","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Building alone: a launch checklist and production guardrails for your agents","item":"https://zz-plant.github.io/ambit/docs/solo/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Building alone: a launch checklist and production guardrails for your agents","description":"For a one-person company: what to set up before real users arrive, what an agent may do to production without asking, and how you hear when it breaks.","url":"https://zz-plant.github.io/ambit/docs/solo/","dateModified":"2026-10-07","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Building alone: a launch checklist and production guardrails for your agents","item":"https://zz-plant.github.io/ambit/docs/solo/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
@@ -47,7 +47,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <h2 id="what-stands-between-you-and-launch"><a class="anchor" href="#what-stands-between-you-and-launch" aria-hidden="true" tabindex="-1">#</a>What stands between you and launch</h2>
 <pre><code class="language-bash">npx ambit-cli goal &quot;launch my saas&quot;
 </code></pre>
-<p>The sentence is routed to <strong>Launch Ready</strong>, a capstone reached when six things are in place, and the answer is a checklist in order: each step&#39;s setup time, what to do, and the usual ways to do it. A step you have half done says so. Sentry configured before any host is listed as configured and waiting on Hosting, instead of as something to set up again.</p>
+<p>The sentence is routed to <strong>Launch Ready</strong>, the launch infrastructure checklist, reached when six things are in place, and the answer is a checklist in order: each step&#39;s setup time, what to do, and the usual ways to do it. A step you have half done says so. Sentry configured before any host is listed as configured and waiting on Hosting, instead of as something to set up again. An item is as strong as what detected or verified it: detection shows a tool is present, not that a restore has been tried.</p>
 <table>
 <thead>
 <tr>
@@ -145,7 +145,7 @@ footer{padding-bottom:32px;color:var(--muted);font-size:14px}
 <ul>
 <li><strong>Choose your stack.</strong> The ways to close a step are a short list of common options, not a recommendation drawn from your situation.</li>
 <li><strong>Review your code.</strong> A passing check means a tool answers. It says nothing about whether your app is correct.</li>
-<li><strong>Hold your secrets.</strong> It reads which servers you have, never their keys, and sends nothing anywhere.</li>
+<li><strong>Hold your secrets.</strong> It reads which servers you have, never their keys, and sends nothing except what a command you typed sends.</li>
 <li><strong>Stand in for a security review</strong> before you take money or store personal data.</li>
 <li><strong>Run on Windows</strong>, where it does not read the agent configs yet.</li>
 </ul>
