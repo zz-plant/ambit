@@ -27,6 +27,8 @@ import { affordanceDomains, singlePointsOfFailure } from './inference.ts';
 import { deficits } from './planning.ts';
 import { auditStream } from './audit.ts';
 import { proposalHash } from './approval.ts';
+import type { CapabilityRow } from './rows.ts';
+import { storedTags } from './seed/structure.ts';
 import {
   AUTHORITY_MODES,
   CHECK_HISTORY_RUNS,
@@ -38,6 +40,7 @@ import {
   type ConferredAction,
   type FailureCount,
   type FrontierHistoryResponse,
+  type InfraRecord,
   type LoopAuthority,
   type LoopDemand,
   type LoopNext,
@@ -1039,6 +1042,28 @@ function monthlyHours(db: Db): { month: string; hours: number; acquired?: string
 /** What an agent may do on each machine, from the gate; the engine's answer, as served. */
 export function machineView(db: Db, ids: string[]): MachineModes[] {
   return machineModes(db, ids);
+}
+
+/**
+ * What the graph holds about each device and service a scan found: when
+ * `ambit incidents` last got an answer from it, and the manifest's tags.
+ *
+ * Read only. The scan probes on every request and writes nothing; the time
+ * here is the one a typed probe left, so it can be old, and the page says
+ * whose it is. A node the graph does not hold, such as a container the
+ * Docker socket reported, has nothing to say and is left out.
+ */
+export function infraRecordView(db: Db, nodes: { id: string; kind: string }[]): InfraRecord[] {
+  const stored = db.prepare('SELECT last_seen_at, tags FROM capabilities WHERE id = ?');
+  return nodes.flatMap(n => {
+    // The graph names a machine `device:<id>`; the scan carries the manifest's
+    // own id, except for the local engine, which already has the prefix.
+    const id = n.kind === 'device' && !n.id.startsWith('device:') ? `device:${n.id}` : n.id;
+    const row = stored.get<Pick<CapabilityRow, 'last_seen_at' | 'tags'>>(id);
+    const tags = storedTags(row?.tags);
+    if (!row?.last_seen_at && !tags) return [];
+    return [{ id: n.id, lastSeenAt: row?.last_seen_at ?? undefined, tags }];
+  });
 }
 
 /** One run laid out in time, from what the ledger recorded; the engine's report, as served. */

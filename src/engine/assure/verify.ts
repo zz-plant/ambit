@@ -14,7 +14,14 @@ import { evaluatePromotions } from './promote.ts';
 import { pullDelegationSources, recordDelegationState } from '../delegation.ts';
 import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
-import { CHECK_RUN_SQL, FAILING_SQL, RECOVERING, RECOVERING_SQL } from '../vocabulary.ts';
+import {
+  CHECK_RUN_SQL,
+  FAILING_SQL,
+  PROBE_COMMAND,
+  RECOVERING,
+  RECOVERING_SQL,
+  recheckCommand,
+} from '../vocabulary.ts';
 
 /**
  * A check declared outside the curated model — §12.5.
@@ -182,16 +189,30 @@ function runVerification(
       };
     }
     const results = failingChecks(db);
+    // A device or service the manifest names fails a probe, which this
+    // command cannot run. Named with the command that can, so "nothing is
+    // failing" is never the answer while one is.
+    const probed = db
+      .prepare(
+        `SELECT id, name FROM capabilities WHERE ${FAILING_SQL} OR ${RECOVERING_SQL} ORDER BY id`
+      )
+      .all<{ id: string; name: string }>()
+      .filter(r => recheckCommand(r.id) === PROBE_COMMAND)
+      .map(r => ({ id: r.id, name: r.name, command: PROBE_COMMAND }));
+    const notRun = probed.length ? probed : undefined;
     if (!results.length) {
       return {
         checked: 0,
         verified: 0,
         failed: 0,
         results: [],
-        note: 'Nothing is failing its check or recovering from a failure.',
+        not_run: notRun,
+        note: notRun
+          ? `Nothing failing or recovering has a check this command runs. ${probed.map(p => p.name).join(', ')} answers to a probe of the manifest, and ${PROBE_COMMAND} probes again.`
+          : 'Nothing is failing its check or recovering from a failure.',
       };
     }
-    return settle(db, results, target);
+    return { ...settle(db, results, target), not_run: notRun };
   }
   // A registered skill is not in the curated model, so it is answered before
   // the model is consulted at all — otherwise `ambit verify skill:x` would say
@@ -224,6 +245,11 @@ function runVerification(
           authority.promoted.length || authority.demoted.length ? authority : undefined,
       };
     }
+  }
+  if (which && recheckCommand(which) === PROBE_COMMAND) {
+    return {
+      error: `${which} is checked by probing the URL the infrastructure manifest gives it, which ${PROBE_COMMAND} does.`,
+    };
   }
   const tree = loadTechTree();
   if (!tree?.nodes?.length) {

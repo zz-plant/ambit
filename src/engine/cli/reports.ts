@@ -26,10 +26,12 @@ import { recovering } from '../assurance.ts';
 import {
   CHECK_RUN_SQL,
   FAILING_SQL,
+  PROBE_COMMAND,
   PROVEN,
   REACHED_SQL,
   RECOVERING,
   graphCounts,
+  recheckCommand,
 } from '../vocabulary.ts';
 
 /** "2h ago" from a SQLite timestamp, because a raw ISO string answers nothing at a glance. */
@@ -160,13 +162,18 @@ function nextMove(
 ): NextMove | undefined {
   const [first] = found.degraded;
   if (first) {
+    // One failing check is named; several are re-run together, since the
+    // fix for one (a token, a server) is often the fix for the rest. When
+    // every one of them is a probe of the manifest, the one command that
+    // re-runs them all is the probe.
+    const probesOnly = found.degraded.every(d => recheckCommand(d.id) === PROBE_COMMAND);
     return {
-      // One failing check is named; several are re-run together, since the
-      // fix for one (a token, a server) is often the fix for the rest.
       command:
         found.degraded.length === 1
-          ? `ambit verify ${shellQuote(first.id.replace(/^combo:/, ''))}`
-          : 'ambit verify --failing',
+          ? recheckCommand(first.id)
+          : probesOnly
+            ? PROBE_COMMAND
+            : 'ambit verify --failing',
       why:
         found.degraded.length === 1
           ? `${first.name} is configured and failing its check`
@@ -453,7 +460,7 @@ function briefReport(db: any) {
     unproven: ev.unproven,
     failing: failing.map(f => ({
       name: f.name,
-      command: `ambit verify ${shellQuote(f.id.replace(/^combo:/, ''))}`,
+      command: recheckCommand(f.id),
     })),
     next,
   };
@@ -604,7 +611,7 @@ function renderPlan(
   }
   for (const d of plan.degraded ?? []) {
     lines.push(
-      `  ${c.yellow}!${c.reset} ${d.name} is configured and failing its check ${c.grey}· ambit verify ${shellQuote(d.id.replace(/^combo:/, ''))}${c.reset}`
+      `  ${c.yellow}!${c.reset} ${d.name} is configured and failing its check ${c.grey}· ${recheckCommand(d.id)}${c.reset}`
     );
   }
 

@@ -5,9 +5,11 @@
  * The tab listed devices with a status and no answer to the question a person
  * has about a machine, which is what an agent is allowed to do there. That
  * answer is the gate's with the machine as the target, so it differs between
- * machines only where a grant is scoped to one. And the time on it has one rule:
- * it is how old the reading in front of you is, computed now, never a "last
- * seen" that goes on being true after the machine has gone quiet.
+ * machines only where a grant is scoped to one. And the times on it are two,
+ * kept apart: Probed is how old the reading in front of you is, computed now,
+ * and Last seen is the last answer a typed `ambit incidents` got, read from the
+ * graph and shown as its age, so a machine that has gone quiet reads as old
+ * and never as probed just now.
  */
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -170,6 +172,52 @@ test('a time that will not read is left out, never printed', () => {
   // The column is still there; the sentence about when is not.
   expect(text(html)).not.toMatch(/unknown\.\s*Probed/);
   expect(rowOf(html, 'NUC')).toMatch(/online\s+NUC\s+device · Host NUC\s+—\s/);
+});
+
+test('last seen is the age of the last answer a probe recorded, and a dash where none did', () => {
+  clockAt(1000);
+  const html = renderToStaticMarkup(
+    <InfrastructurePanel
+      scan={scan({
+        recorded: [
+          // SQLite's own form: UTC with no zone, an hour before the scan.
+          { id: 'nuc', lastSeenAt: '2026-09-29 09:00:00' },
+          { id: 'gpu-box', lastSeenAt: '2026-09-26 10:00:00' },
+        ],
+      })}
+    />
+  );
+  expect(rowOf(html, 'NUC')).toContain('just now 1 hour ago');
+  expect(html).toContain('<time dateTime="2026-09-29T09:00:00.000Z">1 hour ago</time>');
+  // Probed just now and quiet for three days: the two never read as one.
+  expect(rowOf(html, 'GPU box')).toContain('just now 3 days ago');
+  // Nothing recorded for the service: the slot is kept, and holds a dash.
+  expect(rowOf(html, 'Ollama')).toMatch(/just now\s+—\s+—\s*$/);
+  expect(text(html)).toContain('Last seen is the last answer ambit incidents got.');
+});
+
+test('the manifest’s tags sit under the name, and a row with none has no list', () => {
+  clockAt(1000);
+  const html = renderToStaticMarkup(
+    <InfrastructurePanel scan={scan({ recorded: [{ id: 'nuc', tags: ['gpu', 'always-on'] }] })} />
+  );
+  expect(rowOf(html, 'NUC')).toContain('device · Host NUC gpu always-on');
+  expect(html).toContain('aria-label="Tags on NUC"');
+  expect(html.match(/infra-tags/g)).toHaveLength(1);
+  // Tags without a time: the time is still a dash, never "never".
+  expect(rowOf(html, 'NUC')).toMatch(/just now\s+—/);
+  expect(html).not.toContain('never');
+});
+
+test('a last seen that will not read is a dash, never printed', () => {
+  clockAt(1000);
+  const html = renderToStaticMarkup(
+    <InfrastructurePanel scan={scan({ recorded: [{ id: 'nuc', lastSeenAt: 'not a time' }] })} />
+  );
+  for (const marker of ['undefined', 'NaN', 'Invalid Date', 'not a time']) {
+    expect(html.includes(marker), `rendered "${marker}"`).toBe(false);
+  }
+  expect(rowOf(html, 'NUC')).toMatch(/just now\s+—/);
 });
 
 test('the reading can be taken again, and the button is there only where something can answer it', () => {

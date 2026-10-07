@@ -74,13 +74,20 @@ function lifecycleFrom(
  * wrote and proved should degrade on a failing check exactly as a curated
  * capability does, and a lifecycle that never moved would leave it reading as
  * configured for ever however much evidence accumulated.
+ *
+ * The fourth is anything else a check has run against. A device or service
+ * the infrastructure manifest names declares no command here: its check is
+ * `ambit incidents` probing the URL the manifest gives it, and the run is
+ * recorded as any other. A probe that goes unanswered leaves it broken, and
+ * the next answered one brings it back, by the same rule as every check.
  */
 function deriveLifecycles(db: Db): number {
   const nodes = db
     .prepare(
       `SELECT id, state FROM capabilities
        WHERE kind IN ('capability', 'action')
-          OR id IN (SELECT capability_id FROM declared_checks)`
+          OR id IN (SELECT capability_id FROM declared_checks)
+          OR id IN (SELECT capability_id FROM session_learning WHERE ${CHECK_RUN_SQL})`
     )
     .all();
   const provided = new Set(

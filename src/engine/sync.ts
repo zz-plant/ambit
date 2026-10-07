@@ -41,6 +41,14 @@ const SCHEMA_VERSION = 1;
  * may be empty, and an empty one matches an empty one.
  * `mutable` tables update in place when the incoming row is newer; the rest are
  * append-only observations, and a matching key means it is already here.
+ *
+ * Two capability columns stay behind on purpose. `last_seen_at` is when this
+ * machine last got an answer from a device or service the manifest names: a
+ * reading of this machine's network, which the machine importing it may not
+ * share, and a merge that takes the newer row by `updated_at` could write an
+ * older time over a newer one. `tags` come from the manifest, which each
+ * machine seeds from its own copy of. The probes' check runs still travel in
+ * `session_learning`, as every check run does, with the time each ran.
  */
 const TABLES: Array<{
   table: string;
@@ -239,6 +247,7 @@ function exportSync(db: Db, path?: string) {
       'approval artifacts',
       'budgets',
       'sandboxes',
+      'when each device and service was last seen',
     ],
   };
 

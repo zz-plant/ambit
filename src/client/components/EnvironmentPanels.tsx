@@ -169,10 +169,11 @@ function useTick(ms = 15_000) {
 }
 
 /**
- * When the scan was taken, from the scan itself and the clock now. Nothing is
- * stored: a "last seen" kept somewhere would be a time that goes on being true
- * after the machine has gone quiet, and this one only ever says how old the
- * reading in front of you is. A clock a little ahead of ours is still just now.
+ * When the scan was taken, from the scan itself and the clock now: how old the
+ * reading in front of you is, and never when a machine last answered. That
+ * one is a record `ambit incidents` leaves in the graph, and it has a column
+ * of its own, so a machine that has gone quiet never reads as probed just now.
+ * A clock a little ahead of ours is still just now.
  */
 function probedLabel(generatedAt: string): string | undefined {
   const at = Date.parse(generatedAt);
@@ -202,12 +203,15 @@ function MachineModesList({ machine }: { machine: MachineModes }) {
 
 /**
  * The devices and services in the manifest, and the local Docker engine, as a
- * live reading: a status, a name, how old the reading is, and for each machine
- * what an agent may do there without asking.
+ * live reading: a status, a name, how old the reading is, when each last
+ * answered, and for each machine what an agent may do there without asking.
  *
  * The modes are the gate's answer with the machine as the target, from this
  * machine's own grants. A service is not a machine and is not asked. A row the
  * scan had nothing to probe says so and never claims it was probed just now.
+ * Last seen and the tags come from the graph: the time is the last answer a
+ * typed `ambit incidents` got, the scan here records nothing, and a row with
+ * neither in the graph shows a dash and no tags.
  */
 export function InfrastructurePanel({
   scan,
@@ -231,12 +235,14 @@ export function InfrastructurePanel({
   const { online, degraded, offline, unknown } = scan.summary;
   const probed = probedLabel(scan.generatedAt);
   const modes = new Map((scan.machines ?? []).map(m => [m.id, m]));
+  const recorded = new Map((scan.recorded ?? []).map(r => [r.id, r]));
   return (
     <div className="tp-list">
       <div className="infra-head">
         <p className="tp-note">
           {online} online · {degraded} degraded · {offline} offline · {unknown} unknown.
-          {probed ? ` Probed ${probed}.` : ''}
+          {probed ? ` Probed ${probed}.` : ''} Last seen is the last answer{' '}
+          <code>ambit incidents</code> got.
         </p>
         {onProbe && (
           <button type="button" className="tp-inline-btn" onClick={onProbe}>
@@ -252,19 +258,23 @@ export function InfrastructurePanel({
       <div className="infra-table-wrap">
         <table className="infra-table">
           <caption className="sr-only">
-            Devices and services, when each was probed, and what an agent may do on each machine
+            Devices and services, when each was probed and last seen, and what an agent may do on
+            each machine
           </caption>
           <thead>
             <tr>
               <th scope="col">Status</th>
               <th scope="col">Name</th>
               <th scope="col">Probed</th>
+              <th scope="col">Last seen</th>
               <th scope="col">Agents may, on this machine</th>
             </tr>
           </thead>
           <tbody>
             {scan.nodes.map(n => {
               const machine = modes.get(n.id);
+              const record = recorded.get(n.id);
+              const seen = record?.lastSeenAt ? stampDate(record.lastSeenAt) : undefined;
               return (
                 <tr key={n.id}>
                   <td>
@@ -275,8 +285,22 @@ export function InfrastructurePanel({
                     <span className="infra-kind">
                       {n.kind} · {n.description}
                     </span>
+                    {record?.tags && (
+                      <ul className="infra-tags" aria-label={`Tags on ${n.name}`}>
+                        {record.tags.map(t => (
+                          <li key={t}>{t}</li>
+                        ))}
+                      </ul>
+                    )}
                   </td>
                   <td>{n.status === 'unknown' ? 'not probed' : (probed ?? '—')}</td>
+                  <td>
+                    {seen ? (
+                      <time dateTime={seen.toISOString()}>{formatRelativeTime(seen)}</time>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td>{machine ? <MachineModesList machine={machine} /> : '—'}</td>
                 </tr>
               );
@@ -288,10 +312,16 @@ export function InfrastructurePanel({
   );
 }
 
-/** SQLite's `datetime('now')` is UTC with no zone; a label, or nothing if it will not parse. */
-function usedAgo(stamp: string): string {
+/** SQLite's `datetime('now')` is UTC with no zone; the moment it names, or nothing if it will not parse. */
+function stampDate(stamp: string): Date | undefined {
   const d = new Date(stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`);
-  return Number.isNaN(d.getTime()) ? '' : formatRelativeTime(d);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+/** A stored time as a label, or nothing if it will not parse. */
+function usedAgo(stamp: string): string {
+  const d = stampDate(stamp);
+  return d ? formatRelativeTime(d) : '';
 }
 
 /**

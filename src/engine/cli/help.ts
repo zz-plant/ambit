@@ -114,7 +114,8 @@ check — what is proven, what is permitted, what is currently broken
                           asks about what asks first or has no grant, and never allows;
                           run it in a terminal for the settings entry to paste
   check credentials       what revoking each credential would end
-  check incidents         probe the manifest, open incident runs for offline services
+  check incidents         probe the manifest, record each answer as a check, open
+                          incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
   check doctor            setup health: what works, what fails, what rests on one piece
   check connect [runtime] register Ambit's MCP server in each agent runtime it reads;

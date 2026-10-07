@@ -29,6 +29,7 @@ import {
   loopView,
   auditView,
   machineView,
+  infraRecordView,
   runView,
 } from '../engine/views.ts';
 import { decideDraft, decideShown, ensureActor } from '../engine/governance.ts';
@@ -673,11 +674,15 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
 
   // The scan is a reading taken now, and what an agent may do on each machine
   // it found is the gate's answer for that machine, from this graph's grants.
+  // When each was last seen is read from the graph, where only a typed
+  // `ambit incidents` writes it: this route probes and records nothing.
   if (pathname === '/api/infrastructure/scan' && method === 'GET') {
     const scan = await buildInfrastructureScan();
     const devices = scan.nodes.filter(n => n.kind === 'device').map(n => n.id);
-    const machines = existsSync(GRAPH_DB_PATH) ? withGraph(db => machineView(db, devices)) : [];
-    return json<InfrastructureScanResponse>({ ...scan, machines });
+    const graph = existsSync(GRAPH_DB_PATH);
+    const machines = graph ? withGraph(db => machineView(db, devices)) : [];
+    const recorded = graph ? withGraph(db => infraRecordView(db, scan.nodes)) : [];
+    return json<InfrastructureScanResponse>({ ...scan, machines, recorded });
   }
 
   if (pathname === '/api/repos/scan' && method === 'GET') {
