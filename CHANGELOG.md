@@ -6,6 +6,30 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### Budgets have a meter
+
+A budget's ceiling refused a caller that stated its spend, and nothing stated one: `recordSpend` had no caller, so `spent` stayed at zero and the pace bar on Time & cost had nothing to draw. Declare a model's price with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and from then on each Claude Code session's tokens on that model are priced when the session ends and recorded as a spend against the unscoped Hosted Inference budget, if one is set. A model with no price declared records no spend and is reported as undeclared, never as $0. Each session's tokens are counted once, a resumed session adds only what is new, and a price declared later does not reach back. OpenCode sessions, and anything else that does not state its spend, still record none, and spend lands when a session ends, so a spent ceiling refuses the next caller and stops nothing already running.
+
+`ambit sync` kept one of a session's token rows and dropped the rest, since they share a run, a second and a kind. The key now adds the resource and its unit.
+
+### A use has a length
+
+Neither plugin timed a tool call, so the run view drew uses without lengths and Time & cost could not say where an agent's time went. The Claude Code hooks now spool `PreToolUse` beside `PostToolUse` with Claude Code's id for the call, and the engine pairs them. The OpenCode plugin times each call between its before and after hooks and records it as a use of what the tool exercises, which it did not record at all before. A call someone was asked to approve is left untimed, since its span holds the person's wait, and so is one whose start was not seen. To get this, update the Claude Code plugin with the next release, and copy `plugins/ambit-telemetry.js` into `~/.config/opencode/plugins/` again.
+
+A Claude Code call stopped with Esc was recorded as a tool failure, because the hook dropped the `is_interrupt` flag Claude Code sends. It is recorded as stopped now, and no longer ranks the tool among what keeps blocking work.
+
+### Re-run what is failing
+
+`ambit verify --failing` re-runs the checks of everything degraded or broken now, and nothing else, so the command after fixing a shared token or a server is the same whatever broke. `ambit status` names it when more than one check is failing, and with `--exit-code` nothing left failing is a 0. A capability that failed needs its last five runs to pass before it counts again, so after a fix the command may need typing more than once.
+
+### The timeline plays
+
+**Play** on the map's timeline, or Space on the scrub bar, steps through each observation of the frontier in turn up to now, at a pace the sentence under it can be read at. Dragging, stepping, selecting or simulating pauses it, and the address follows the playhead without adding to the browser's history.
+
+### The whole map, saved
+
+**Image** on the map is a menu now: the card to post, as before, or the whole map, every era, node and edge whatever is on screen, as a self-contained SVG or a PNG at twice its size. The file is drawn from the graph, not the screen, so zoom, focus and scroll do not crop it, and it uses the standard lens, since the Attention and Authority lenses show who stepped in and what may act without asking. Fonts and colours are written into the file, and it carries no URL, path, command or person's name.
+
 ### The hosted demo leads with what one more step opens
 
 The tour opens on the next step and what it would reach, and then the map it handed over to led with a red banner about the sample's failing check: the guardrail, sold as the product. On the demo the headline now names the best next step and the failing check is the smaller line under it. On a machine of your own a failing check still leads, since there it is news. My Setup orders the sample the same way, says it is a sample, and the readout of the seven steps is in plain words: "Your loadout, leg by leg" and "From A to B" were the docs' framing used as labels.
