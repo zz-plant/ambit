@@ -226,7 +226,7 @@ test('a service that stops answering reads broken, leaves every decision, and ke
   expect(cli('verify', 'svc:ollama').error).toContain('ambit incidents');
 });
 
-test('the next answer takes it off broken, and answers in a row make it usable again', async () => {
+test('the next answer makes it usable again, recovering until answers in a row', async () => {
   const svc = await endpoint();
   const manifest = seedManifest({
     services: [{ key: 'ollama', label: 'Ollama', url: svc.url }],
@@ -239,13 +239,15 @@ test('the next answer takes it off broken, and answers in a row make it usable a
   svc.answering = true;
   await probeWith(manifest);
   expect(checkRuns('svc:ollama')[0].action).toBe('verified');
-  expect(node('svc:ollama').lifecycle).not.toBe('broken');
+  // The latest check decides: one answer after a failure is recovering,
+  // which is usable, and a run of answers clears the failure from the window.
+  expect(node('svc:ollama').lifecycle).toBe('degraded');
+  expect(usable(node('svc:ollama').lifecycle)).toBe(true);
   expect(node('svc:ollama').last_seen_at).not.toBe(LONG_AGO);
 
-  // A pass after failures is worth what the derivation says it is; a run of
-  // them is worth everything, under any reading of the one before.
   for (let i = 1; i < RECENT_RUNS; i++) await probeWith(manifest);
   const back = node('svc:ollama').lifecycle;
+  expect(back).toBe('reliable');
   expect(usable(back)).toBe(true);
   const db = getDb(join(dir, 'graph.db'));
   expect(canExecute(db, { capability: 'svc:ollama', action: 'execute' }).refused).not.toBe(
