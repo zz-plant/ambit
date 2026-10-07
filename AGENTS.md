@@ -200,7 +200,7 @@ src/control_plane/cli.ts   Control plane CLI execution wrapper
 
 ### Client
 
-One renderer: `CivTree.tsx` (SVG), the curated tree in era columns — the 3D modes and their Three.js bundle were sunset, and so was the second map that drew the machine's entries in domain columns; those are the rows of My Setup. The store holds one list, the engine's tree merged with the config read-out by id, so every view counts and lists the same things. The client is a view over the graph, and `/api/events` (AG-UI state + work/proposal events) keeps it live.
+One renderer: `CivTree.tsx` (SVG, drawn by `civ/MapScene.tsx`, which also draws a saved map), the curated tree in era columns — the 3D modes and their Three.js bundle were sunset, and so was the second map that drew the machine's entries in domain columns; those are the rows of My Setup. The store holds one list, the engine's tree merged with the config read-out by id, so every view counts and lists the same things. The client is a view over the graph, and `/api/events` (AG-UI state + work/proposal events) keeps it live.
 
 ```
 src/client/                React frontend
@@ -208,7 +208,7 @@ src/client/                React frontend
   fonts.ts                 The three faces, from this origin and latin only: Hubot Sans reads out
                            (titles and figures wide, labels narrow), Mona Sans is the text, Monaspace
                            Neon is code. Which selectors take Hubot is listed once, under TYPE ROLES
-                           at the end of App.css; the share card embeds the same files
+                           at the end of App.css; the saved images embed the same files
   linkState.ts             The URL in both directions — which view, node, lens, focus and timeline
                            moment it asks for, and how a view is written back to it. A bare visit
                            to the hosted site is the demo, on the map. `linkFocus` says which node a
@@ -219,7 +219,8 @@ src/client/                React frontend
                            state stream, and whether it is attached) · useUrlSync (the address bar
                            follows the view) · useGuide · useToast · useLatest · useConfigImport
                            (a pasted or dropped config, read in the tab) · useDialogFocus (a dialog
-                           takes the focus when it opens, keeps Tab inside, and gives it back)
+                           takes the focus when it opens, keeps Tab inside, and gives it back) ·
+                           usePressAway (a panel opened from a button closes on a press elsewhere)
   components/
     AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
                            share, proposals, docs; the map's own tools sit on the map. `mapCounts`
@@ -258,8 +259,12 @@ src/client/                React frontend
                            (a popover in HTML, a <title> in the SVG map)
     GettingStartedGuide.tsx  The first-run card on a real graph; the demo gets the tour instead
     Toast.tsx              A transient notice from the graph stream
-    CivTree.tsx            The SVG map: era columns, one-hop highlighting of what a node needs and
-                           enables, the two simulations, and the callout on an outage's root
+    CivTree.tsx            The map on the page: zoom, selection, one-hop highlighting of what a node
+                           needs and enables, focus, the lenses, the two simulations, and the tools
+    civ/MapScene.tsx       What the map draws: era heads, edges, nodes and their marks, and the
+                           callout on an outage's root. CivTree draws it live; `MapStill` draws it
+                           whole, at rest and in the standard lens, for a saved file, with no
+                           control, tooltip or class in it
     civ/layout.ts          Column and row placement, the cascade walks (an outage, an unlock, a
                            focus's neighbourhood), `routeTo` (the gap numbered in the order it
                            closes), `unlockedSince` (what a rebuild reached, as the toast says
@@ -278,6 +283,8 @@ src/client/                React frontend
     civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree, and the map's tools
                            beside zoom: the key, the timeline, the saved image
     civ/MapKey.tsx         The key, opened from those tools; it opens itself under a lens
+    civ/ImageMenu.tsx      What Image offers, opened where the key opens: the finding as a card to
+                           post, or the whole map as an SVG or a PNG at twice its size
     civ/marks.tsx          The drawings the map and its key share: corner brackets for what the
                            map points at, the keystone wedge, stripes for what refuses, the joint
                            mark, each swatch, and the spec-sheet callout
@@ -322,6 +329,9 @@ src/client/                React frontend
     keys.ts                What one press of Escape closes, where the page's keys stand aside, where
                            Tab goes in a dialog, and the shell's, the map's and the timeline's own
                            keys, held apart from a modified press. Pure, free of DOM types
+    saveImage.ts           A drawing made into a file: `standalone` writes the page's custom
+                           properties out and embeds the faces, `svgToPng` draws it on a canvas,
+                           `pngScale` keeps a PNG inside every browser's canvas limit
 ```
 
 ### Shared, scripts and plugins

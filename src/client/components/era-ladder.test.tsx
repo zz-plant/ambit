@@ -16,7 +16,7 @@ import { mergeGraphs, useAmbitStore } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { findAll, type Props } from '../testing/elements';
 import { eraLadder } from './civ/layout';
-import { ColumnHead } from './CivTree';
+import { ColumnHead } from './civ/MapScene';
 import { EraLadderView } from './EraLadder';
 
 /** The props the shell last handed the deck, so a test can press a view tab's own handler. */

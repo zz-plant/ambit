@@ -24,7 +24,16 @@ import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
 import { escapeLayer } from './utils/keys';
 import type { PaletteHandlers } from './utils/palette';
-import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg } from './utils/shareCard';
+import {
+  mapFileName,
+  pageToken,
+  pngScale,
+  renderStill,
+  standalone,
+  svgToPng,
+} from './utils/saveImage';
+import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg, type Showing } from './utils/shareCard';
+import type { ImageKind } from './components/civ/ImageMenu';
 import { embeddedFontCss, FACES } from './fonts';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
@@ -33,21 +42,8 @@ const CivTree = React.lazy(() => import('./components/CivTree'));
 const LoopDashboard = React.lazy(() => import('./components/LoopDashboard'));
 const AuditView = React.lazy(() => import('./components/AuditView'));
 
-/** An SVG document drawn onto a canvas, at its own size, as a PNG. */
-function svgToPng(svg: string, width: number, height: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(b => (b ? resolve(b) : reject(new Error('no image'))), 'image/png');
-    };
-    img.onerror = () => reject(new Error('the card did not draw'));
-    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  });
-}
+/** The text and readout faces a saved image is set in, inlined: neither sets code. */
+const DRAWN_FACES = FACES.filter(f => f.family !== 'Monaspace Neon');
 
 /** The width of the detail panel. */
 const PANEL_W = 340;
@@ -318,33 +314,66 @@ export default function App() {
     }
   };
 
-  // The map's finding as a portrait image: the share sheet on a phone, where
-  // it goes straight to a post or a message, and a download elsewhere.
-  const saveImage = async () => {
-    const st = useAmbitStore.getState();
-    const card = buildCard(
-      items,
-      connections,
-      {
-        mode: st.simulationMode,
-        rootId: st.simulatedNodeId,
-        cascade: st.simulatedCascadeIds,
-        weakened: st.simulatedWeakenedIds,
-      },
-      st.loop?.next.map(n => n.id)
+  /**
+   * The whole map as a file: every era, node and edge, drawn from the graph
+   * and not from the screen, at rest in the standard lens (see MapStill). The
+   * page's colours are written into it and its faces embedded, and a PNG is
+   * drawn at twice the map's size, or as large as a canvas allows.
+   */
+  const mapFile = async (format: 'svg' | 'png', showing: Showing, fonts: string) => {
+    // Fetched with the map's own chunk, which the page has loaded by now.
+    const { MapStill, stillLayout } = await import('./components/civ/MapScene');
+    const layout = stillLayout(items, connections);
+    const scale = format === 'png' ? pngScale(layout.width, layout.height) : 1;
+    const still = (
+      <MapStill
+        items={items}
+        connections={connections}
+        layout={layout}
+        simulation={showing}
+        scale={scale}
+      />
     );
-    if (!card) {
+    const svg = standalone(renderStill(still), pageToken, fonts);
+    const blob =
+      format === 'png'
+        ? await svgToPng(svg, Math.round(layout.width * scale), Math.round(layout.height * scale))
+        : new Blob([svg], { type: 'image/svg+xml' });
+    return new File([blob], mapFileName(format), { type: blob.type });
+  };
+
+  // The map's finding as a portrait image, or the whole map: the share sheet
+  // on a phone, where it goes straight to a post or a message, and a download
+  // elsewhere.
+  const saveImage = async (kind: ImageKind) => {
+    const st = useAmbitStore.getState();
+    const showing: Showing = {
+      mode: st.simulationMode,
+      rootId: st.simulatedNodeId,
+      cascade: st.simulatedCascadeIds,
+      weakened: st.simulatedWeakenedIds,
+    };
+    const card =
+      kind === 'card'
+        ? buildCard(
+            items,
+            connections,
+            showing,
+            st.loop?.next.map(n => n.id)
+          )
+        : null;
+    if (kind === 'card' && !card) {
       setToast('The map has no finding to put in an image yet.');
       return;
     }
     try {
-      // The text and readout faces, inlined: the card sets no code. A face
-      // that cannot be read leaves the card in its fallback, never unsaved.
-      const fonts = await embeddedFontCss(FACES.filter(f => f.family !== 'Monaspace Neon')).catch(
-        () => ''
-      );
-      const png = await svgToPng(cardSvg(card, fonts), CARD_W, CARD_H);
-      const file = new File([png], cardFileName(card), { type: 'image/png' });
+      // A face that cannot be read leaves the image in its fallback, never unsaved.
+      const fonts = await embeddedFontCss(DRAWN_FACES).catch(() => '');
+      const file = card
+        ? new File([await svgToPng(cardSvg(card, fonts), CARD_W, CARD_H)], cardFileName(card), {
+            type: 'image/png',
+          })
+        : await mapFile(kind === 'svg' ? 'svg' : 'png', showing, fonts);
       if (isNarrow && navigator.canShare?.({ files: [file] })) {
         try {
           await navigator.share({ files: [file] });
@@ -353,7 +382,7 @@ export default function App() {
           if ((e as Error).name === 'AbortError') return;
         }
       }
-      const url = URL.createObjectURL(png);
+      const url = URL.createObjectURL(file);
       const a = document.createElement('a');
       a.href = url;
       a.download = file.name;

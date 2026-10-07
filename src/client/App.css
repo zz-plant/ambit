@@ -1947,6 +1947,14 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
+/* The file a row of the Image choices saves, set apart at the row's end. */
+.civ-key-note {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
 /* The zoom reading is also the reset to actual size, so it is a button. */
 .civ-zoom-badge {
   min-width: 44px;
