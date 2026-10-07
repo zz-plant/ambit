@@ -39,7 +39,7 @@ ambit can <capability>           # ALLOW, CONFIRM or DENY for one action
 ambit credentials                # what revoking each credential would end
 ```
 
-The map's **Authority** lens draws the same answer on every reached node. The answer is enforced in three places: `ambit apply`, always; the control plane interceptor, when execution is routed through it (its executor today is a fixture); and the Claude Code `ambit gate` hook, an opt-in plugin that can only deny or ask. Anywhere else it is a record of what should happen, and the runtime's own approval setting decides.
+The map's **Authority** lens draws the same answer on every reached node. The answer is enforced in three places: `ambit apply`, always; the control plane interceptor, when execution is routed through it (its executor is simulated unless a person opts in to the Docker adapter); and the Claude Code `ambit gate` hook, an opt-in plugin that can only deny or ask. Anywhere else it is a record of what should happen, and the runtime's own approval setting decides.
 
 `ambit credentials` knows only the credentials a `credentials` block in the config declares; Ambit does not infer which servers share a token. Until you write one, it says none are declared.
 
