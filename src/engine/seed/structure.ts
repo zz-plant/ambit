@@ -172,6 +172,11 @@ function seedCombos(db: Db, config: any, mapping: any, insert: any): number {
  * a `runs_on` edge to every service hosted on them, so `tt impact device:nuc`
  * can say what actually breaks. Without a manifest, seeding continues — a
  * machine that is not declared cannot be assumed.
+ *
+ * A device or service may carry `tags`, the person's own labels for it
+ * (`"tags": ["gpu", "always-on"]`). They are written on every seed, so a tag
+ * taken out of the manifest leaves the node too, and an entry with none
+ * stores none.
  */
 function seedInfrastructure(db: Db, insert: any): number {
   const path = infraManifestPath();
@@ -185,6 +190,7 @@ function seedInfrastructure(db: Db, insert: any): number {
 
   const link = edgeWriter(db);
   const has = (id: string) => !!db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id);
+  const tag = db.prepare('UPDATE capabilities SET tags = ? WHERE id = ?');
   let count = 0;
 
   for (const device of manifest.devices || []) {
@@ -198,6 +204,7 @@ function seedInfrastructure(db: Db, insert: any): number {
       0.7
     );
     count++;
+    tag.run(tagsOf(device.tags), `device:${device.id}`);
     // A declared status endpoint is what makes it observable; record it.
     if (device.statusUrl) {
       db.prepare('UPDATE capabilities SET description = ? WHERE id = ?').run(
@@ -219,6 +226,7 @@ function seedInfrastructure(db: Db, insert: any): number {
       0.5
     );
     count++;
+    tag.run(tagsOf(service.tags), id);
     if (service.host && has(`device:${service.host}`)) {
       link.run(`device:${service.host}`, id, 1, 'Hosts this service');
     }
@@ -230,4 +238,36 @@ function seedInfrastructure(db: Db, insert: any): number {
   return count;
 }
 
-export { seedModels, seedDependencies, attributeToRuntime, seedCombos, seedInfrastructure };
+/**
+ * A manifest entry's tags as the column stores them: a JSON array of the
+ * non-empty strings it lists, each once, or null. A value that is not a list
+ * states no tags, and is not guessed into one.
+ */
+function tagsOf(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  const tags = [
+    ...new Set(value.filter((t): t is string => typeof t === 'string').map(t => t.trim())),
+  ].filter(Boolean);
+  return tags.length ? JSON.stringify(tags) : null;
+}
+
+/** The column read back: a list of tags, or nothing when none is stored or it will not read. */
+function storedTags(stored: string | null | undefined): string[] | undefined {
+  if (!stored) return undefined;
+  try {
+    const tags = JSON.parse(stored);
+    return Array.isArray(tags) && tags.length ? tags.map(String) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export {
+  seedModels,
+  seedDependencies,
+  attributeToRuntime,
+  seedCombos,
+  seedInfrastructure,
+  tagsOf,
+  storedTags,
+};

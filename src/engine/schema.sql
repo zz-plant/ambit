@@ -17,6 +17,11 @@
 -- value belongs in whatever already holds it. What Ambit needs is only which
 -- providers present the same one, because that is what decides whether their
 -- redundancy is real.
+--
+-- `last_seen_at` is when `ambit incidents` last got an answer from a device or
+-- service the infrastructure manifest names: null until one answers, and left
+-- alone by a probe that gets none. `tags` is the manifest's own labels for
+-- one, as a JSON array, and null when it states none.
 CREATE TABLE IF NOT EXISTS capabilities (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -40,7 +45,9 @@ CREATE TABLE IF NOT EXISTS capabilities (
     declared_by TEXT,
     -- When that runtime's config stopped declaring it. The node is locked and
     -- kept, since the ledger refers to it; declared again, it is restored.
-    retired_at TEXT
+    retired_at TEXT,
+    last_seen_at TEXT,
+    tags TEXT
 );
 
 -- Edges. `kind` is what the edge means; `is_hard_requisite` is how much it

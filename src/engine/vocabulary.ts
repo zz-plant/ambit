@@ -13,13 +13,36 @@
  * SQL takes the fragment from here rather than spelling the list again.
  */
 
+import { shellQuote } from '../shared/shell.ts';
 import { NON_FRONTIER_KINDS } from './ontology.ts';
 
 /** States that mean the system can reach a capability. */
 const REACHED_STATES = ['unlocked', 'active'] as const;
 
-/** Lifecycles that mean configured-but-not-working. */
-const FAILING = ['degraded', 'broken'] as const;
+/**
+ * Lifecycles that mean configured-but-not-working: the last check failed.
+ *
+ * The latest check decides. `degraded` was on this list as well, so a
+ * capability fixed after a token rotation stayed out of every plan,
+ * permission and ranking until its last five runs had passed, each one typed
+ * by hand. That protected nothing: the most recent run is the best evidence
+ * of whether it works now.
+ *
+ * A plan's `degraded` list, `blocked_by_degraded`, and the `degraded` fields of
+ * `ambit status`, `ambit doctor`, a near miss, a portfolio row and `/api/loop`
+ * are older than this rule. They are wire names, kept so that nothing reading
+ * them breaks, and they hold what this list says: the nodes whose last check
+ * failed.
+ */
+const FAILING = ['broken'] as const;
+
+/**
+ * Lifecycles that mean recovering: the last check passed, and some of the
+ * recent ones did not. Usable, because the latest check decides, and not
+ * proven, because its evidence is mixed, so a summary counts it with the
+ * unproven and says, where it names one, how many of its recent runs passed.
+ */
+const RECOVERING = ['degraded'] as const;
 
 /** Lifecycles that mean a check has passed. */
 const PROVEN = ['verified', 'reliable'] as const;
@@ -34,6 +57,7 @@ const REACHED_SQL = `state IN (${sqlList(REACHED_STATES)})`;
 const isReached = (state: string | null | undefined): boolean =>
   (REACHED_STATES as readonly string[]).includes(state ?? '');
 const FAILING_SQL = `lifecycle IN (${sqlList(FAILING)})`;
+const RECOVERING_SQL = `lifecycle IN (${sqlList(RECOVERING)})`;
 const PROVEN_SQL = `lifecycle IN (${sqlList(PROVEN)})`;
 
 /**
@@ -47,6 +71,22 @@ const PROVEN_SQL = `lifecycle IN (${sqlList(PROVEN)})`;
  */
 const CHECK_RUN = { passed: 'verified', failed: 'failed' } as const;
 const CHECK_RUN_SQL = `action IN (${sqlList([CHECK_RUN.passed, CHECK_RUN.failed])})`;
+
+/**
+ * The command that runs a node's check again, as a surface prints it.
+ *
+ * A device or service the infrastructure manifest names has no command for
+ * `ambit verify` to run: its check is `ambit incidents` asking the URL the
+ * manifest gives it. The seed names those nodes `device:` and `svc:`, and
+ * nothing else writes either prefix, so the id is enough to tell. Everything
+ * else is `ambit verify`, with the id made safe to paste.
+ */
+const PROBE_COMMAND = 'ambit incidents';
+
+function recheckCommand(id: string): string {
+  if (id.startsWith('device:') || id.startsWith('svc:')) return PROBE_COMMAND;
+  return `ambit verify ${shellQuote(id.replace(/^combo:/, ''))}`;
+}
 
 /**
  * The capability a row of `session_learning` is about, as an SQL expression
@@ -182,13 +222,17 @@ const RUN_FAILED = ['failure', 'failed', 'error', 'abandoned', 'blocked_unauthor
 export {
   REACHED_STATES,
   FAILING,
+  RECOVERING,
   PROVEN,
   REACHED_SQL,
   isReached,
   FAILING_SQL,
+  RECOVERING_SQL,
   PROVEN_SQL,
   CHECK_RUN,
   CHECK_RUN_SQL,
+  PROBE_COMMAND,
+  recheckCommand,
   DECIDED_CAPABILITY_SQL,
   sqlList,
   graphCounts,

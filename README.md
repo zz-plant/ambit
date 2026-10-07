@@ -276,6 +276,22 @@ OpenCode 2 puts the same entry under `mcp.servers`, with `"disabled": false` in 
 
 Both clients assume `ambit` is on your PATH, which Homebrew and `bootstrap.sh` both arrange; failing that, use the absolute path to `cli.js`. An agent can read the map, ask what a goal is missing, and **propose** a configuration change. Applying one always requires your approval.
 
+### Cursor
+
+`ambit connect cursor` adds the server to `~/.cursor/mcp.json`. With `--ledger` it also adds a hook to `~/.cursor/hooks.json` on four events, beside any hooks already there, keeping what the file held in `hooks.json.bak`; `--dry-run` prints the hook's command and events and writes nothing. The hook appends one line per event to the file the Claude Code plugin writes, `~/.local/state/ambit/claude-code.jsonl`: when it ran and the conversation's id; for a shell command or MCP call that ran, the server's and tool's names and how long Cursor says it took, your wait for approval left out; for a failed call, Cursor's id for it, its error text, its failure kind and whether you stopped it; and why a conversation ended. Never a command's text or output, an MCP call's arguments or result, a file, your prompt or your email. Cursor's hooks report no token counts and no approval prompts, so a Cursor run records neither. The hook asks Cursor for nothing, so it can neither block a call nor allow one, and `AMBIT_NO_LEDGER=1` turns it off. By hand, with the path the dry run prints:
+
+```json
+{
+  "version": 1,
+  "hooks": {
+    "afterShellExecution": [{ "command": "node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs", "timeout": 5 }],
+    "afterMCPExecution": [{ "command": "node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs", "timeout": 5 }],
+    "postToolUseFailure": [{ "command": "node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs", "timeout": 5 }],
+    "sessionEnd": [{ "command": "node /path/to/ambit-cli/plugins/cursor/ambit-ledger.mjs", "timeout": 5 }]
+  }
+}
+```
+
 ### The one habit worth teaching
 
 > Before running a tool you have not used this session, call `ambit_can` with
@@ -321,9 +337,9 @@ Discovered capabilities are placed in a curated tree of nine eras: seven for the
 Ambit keeps two properties apart, and the distinction is load-bearing:
 
 - `state` is **structural**: is this thing configured, and what does it depend on. This is what the frontier ledger records.
-- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `degraded` or `broken`.
+- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `broken`, or `degraded`: recovering, its last check passed after one that failed.
 
-Every availability decision gates on lifecycle, not state. Checks only ever take something away: a capability no check has run on stays in every plan, and a broken one is excluded from plans, simulations, goals, authority checks and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan. `ambit status` reports proven, unproven and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified.
+Every availability decision gates on lifecycle, not state. Checks only ever take something away: a capability no check has run on stays in every plan, and a broken one is excluded from plans, simulations, goals, authority checks and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan. The latest check decides, so one pass after a fix brings it back; it counts as unproven, and is named as recovering, until its last five runs pass. `ambit status` reports proven, unproven and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified, or recovering.
 
 ### Fragility is computed, not guessed
 

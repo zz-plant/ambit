@@ -9,7 +9,7 @@ import { canSwitchMcp, flipMcp } from '../utils/configSwitch';
 import { INSTALL } from '../utils/copy';
 import { isConfigEntry, statusLabel, typeLabel } from '../utils/labels';
 import { typeColor, typeSymbol } from '../utils/typeColors';
-import { eraOf, isEntry } from './civ/layout';
+import { eraOf, isEntry, isFailing, isProven, isRecovering, recentRuns } from './civ/layout';
 import { InfrastructurePanel, RepoDriftPanel, UnmappedPanel } from './EnvironmentPanels';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
@@ -40,33 +40,39 @@ const KINDS: { type: string; label: string; term?: string }[] = [
   { type: 'config', label: 'Configuration' },
 ];
 
-type Evidence = { text: string; tone: 'ok' | 'error' | 'muted'; failing?: Item[] };
-
-const FAILING = ['degraded', 'broken'];
-const PASSED = ['reliable', 'verified'];
+type Evidence = {
+  text: string;
+  tone: 'ok' | 'error' | 'muted';
+  failing?: Item[];
+  /** Said in the tooltip with how each one's recent runs went. */
+  recovering?: Item[];
+};
 
 /**
  * What the engine has demonstrated about an entry, as a few words and a colour.
  *
  * An entry read out of a config carries no lifecycle of its own; the checks run
  * against the tree nodes it provides. So an entry answers for those: failing if
- * any of them fails, passed when every one it provides has passed, and never
- * checked otherwise. The column used to be blank for every config entry, beside
- * a status column that read "Enabled" twenty-eight times.
+ * any of them fails, recovering if one passed its last check after a failure,
+ * passed when every one it provides has passed, and never checked otherwise.
+ * The column used to be blank for every config entry, beside a status column
+ * that read "Enabled" twenty-eight times.
  */
 function evidenceOf(item: Item, proves: Item[]): Evidence | null {
   if (item.status !== 'built') return null;
   const own = item.meta?.lifecycle as string | undefined;
   if (own && own !== 'unknown' && own !== 'detected') {
-    if (PASSED.includes(own)) return { text: 'check passed', tone: 'ok' };
-    if (FAILING.includes(own)) return { text: 'check failing', tone: 'error' };
+    if (isProven(item)) return { text: 'check passed', tone: 'ok' };
+    if (isFailing(item)) return { text: 'check failing', tone: 'error' };
+    if (isRecovering(item)) return { text: 'recovering', tone: 'muted', recovering: [item] };
     return { text: 'never checked', tone: 'muted' };
   }
   if (!proves.length) return null;
-  const life = (n: Item) => String(n.meta?.lifecycle ?? '');
-  const failing = proves.filter(n => FAILING.includes(life(n)));
+  const failing = proves.filter(isFailing);
   if (failing.length) return { text: 'check failing', tone: 'error', failing };
-  if (proves.every(n => PASSED.includes(life(n)))) return { text: 'check passed', tone: 'ok' };
+  const recovering = proves.filter(isRecovering);
+  if (recovering.length) return { text: 'recovering', tone: 'muted', recovering };
+  if (proves.every(isProven)) return { text: 'check passed', tone: 'ok' };
   return { text: 'never checked', tone: 'muted' };
 }
 
@@ -539,7 +545,11 @@ export function SetupView({ onShow }: SetupViewProps) {
                             title={
                               evidence?.failing
                                 ? `Failing: ${evidence.failing.map(n => n.name).join(', ')}`
-                                : undefined
+                                : evidence?.recovering
+                                  ? `Recovering: ${evidence.recovering
+                                      .map(n => [n.name, recentRuns(n)].filter(Boolean).join(', '))
+                                      .join('; ')}`
+                                  : undefined
                             }
                           >
                             {evidence?.text ?? ''}

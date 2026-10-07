@@ -150,9 +150,10 @@ function planFor(db: Db, goal?: string) {
         walk(p, stack);
         continue;
       }
-      // A degraded or broken prerequisite is not satisfied — the capability is
-      // broken, and a plan must say so rather than silently planning on top of
-      // it. Re-verify, do not re-add.
+      // A prerequisite whose last check failed is not satisfied — the
+      // capability is broken, and a plan must say so rather than silently
+      // planning on top of it. Re-verify, do not re-add. The list keeps its
+      // older name, `degraded`.
       if (!usable(c.lifecycle)) degradedHits.add(c.id);
     }
     stack.delete(node);

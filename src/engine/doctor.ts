@@ -25,11 +25,6 @@ export interface DoctorReport {
   };
   spofs: { capability: string; provider: string }[];
   runtimes_detected: DoctorRuntime[];
-  context_thrash: {
-    at_risk_tokens: number;
-    prevented_tokens: number;
-    estimated_risk_dollars: number;
-  };
   recommendations: string[];
 }
 
@@ -170,7 +165,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       )
       .all<any>();
   } catch {
-    // degraded query fallback
+    // a database too old to answer: nothing named
   }
 
   const hasConnected = runtimes.some(r => r.has_ambit);
@@ -183,15 +178,15 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
     hasConnected
   );
 
-  // Calculate token thrash risk
-  const atRiskTokens = counts.failing * 32000;
-  const preventedTokens = counts.proven * 12000;
-  const estimatedRiskDollars = Math.round((atRiskTokens / 1000000) * 300) / 100;
+  // It also reported a token-thrash risk in dollars: 32,000 tokens per failing
+  // check, 12,000 "prevented" per proven one, at $3 a million. Nothing measured
+  // any of it, so it is gone, as the same figure went from the receipt and the
+  // loop page (AGENTS.md rule 16).
 
   const recommendations: string[] = [];
   if (counts.failing > 0) {
     recommendations.push(
-      `Fix ${counts.failing} degraded capabilities: run "ambit verify" to inspect failing declared checks`
+      `Fix ${counts.failing} failing capabilities: run "ambit verify --failing" to re-run their declared checks`
     );
   }
   if (counts.reached > counts.proven) {
@@ -230,11 +225,6 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       provider: String(s.provider || ''),
     })),
     runtimes_detected: runtimes,
-    context_thrash: {
-      at_risk_tokens: atRiskTokens,
-      prevented_tokens: preventedTokens,
-      estimated_risk_dollars: estimatedRiskDollars,
-    },
     recommendations,
   };
 }

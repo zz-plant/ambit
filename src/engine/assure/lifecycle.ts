@@ -3,13 +3,13 @@
  * declared.
  *
  * `usable` is the gate the rest of the engine reads: configured-but-failing is
- * not a capability you have, so a degraded or broken node counts toward
+ * not a capability you have, so a node whose last check failed counts toward
  * neither the frontier nor unblocking anything. Split out of assurance.ts,
  * which was 749 lines holding this, the verification runner and the whole
  * authority model.
  */
 import type { Db } from '../db.ts';
-import { CHECK_RUN_SQL } from '../vocabulary.ts';
+import { CHECK_RUN, CHECK_RUN_SQL, FAILING, REACHED_SQL, RECOVERING_SQL } from '../vocabulary.ts';
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -21,7 +21,7 @@ import { CHECK_RUN_SQL } from '../vocabulary.ts';
  *   configured  reachable, with no check run against it
  *   verified    its check passed, and has not been run often
  *   reliable    five runs or more, and the last five all passed
- *   degraded    the last run passed, and recent ones did not
+ *   degraded    the last run passed, and recent ones did not: recovering
  *   broken      the last run failed
  *
  * `state` is left alone. It is what every stored frontier snapshot records, and
@@ -34,19 +34,17 @@ import { CHECK_RUN_SQL } from '../vocabulary.ts';
 const RECENT_RUNS = 5;
 
 /**
- * Lifecycle values that mean the capability is not currently working.
+ * Whether a lifecycle value counts as usable. Unknown/detected imply unreached.
  *
  * `state` answers what the system can reach; `lifecycle` answers how much its
  * evidence is worth. The gate is the second, applied where availability is
- * decided: a capability that is reachable but degraded or broken must not be
- * relied on, planned on top of, or reported as exercisable — configured is not
- * working, and a check failing is evidence that it is not.
+ * decided: a capability whose last check failed must not be relied on,
+ * planned on top of, or reported as exercisable. The latest check decides, so
+ * a recovering one, whose last run passed after a failure, is usable and
+ * unproven. The list is `FAILING` in vocabulary.ts.
  */
-export const FAILING_LIFECYCLES = ['degraded', 'broken'] as const;
-
-/** Whether a lifecycle value counts as usable. Unknown/detected imply unreached. */
 export const usable = (lifecycle?: string): boolean =>
-  !lifecycle || !FAILING_LIFECYCLES.includes(lifecycle as any);
+  !lifecycle || !(FAILING as readonly string[]).includes(lifecycle);
 
 function lifecycleFrom(
   reached: boolean,
@@ -76,13 +74,20 @@ function lifecycleFrom(
  * wrote and proved should degrade on a failing check exactly as a curated
  * capability does, and a lifecycle that never moved would leave it reading as
  * configured for ever however much evidence accumulated.
+ *
+ * The fourth is anything else a check has run against. A device or service
+ * the infrastructure manifest names declares no command here: its check is
+ * `ambit incidents` probing the URL the manifest gives it, and the run is
+ * recorded as any other. A probe that goes unanswered leaves it broken, and
+ * the next answered one brings it back, by the same rule as every check.
  */
 function deriveLifecycles(db: Db): number {
   const nodes = db
     .prepare(
       `SELECT id, state FROM capabilities
        WHERE kind IN ('capability', 'action')
-          OR id IN (SELECT capability_id FROM declared_checks)`
+          OR id IN (SELECT capability_id FROM declared_checks)
+          OR id IN (SELECT capability_id FROM session_learning WHERE ${CHECK_RUN_SQL})`
     )
     .all();
   const provided = new Set(
@@ -108,4 +113,42 @@ function deriveLifecycles(db: Db): number {
   return count;
 }
 
-export { RECENT_RUNS, lifecycleFrom, deriveLifecycles };
+/**
+ * How a recovering capability's recent runs went, as a person reads them:
+ * "2 of the last 5 passed". The window is the one the lifecycle reads, so the
+ * phrase and the lifecycle cannot disagree about which runs count.
+ */
+function recentRuns(db: Db, id: string): string {
+  const runs = db
+    .prepare(
+      `SELECT action FROM session_learning WHERE capability_id = ?
+       AND ${CHECK_RUN_SQL} ORDER BY timestamp DESC, id DESC LIMIT ?`
+    )
+    .all<{ action: string }>(id, RECENT_RUNS);
+  const passed = runs.filter(r => r.action === CHECK_RUN.passed).length;
+  return `${passed} of the last ${runs.length} passed`;
+}
+
+/**
+ * Every reached node that is recovering, with how its recent runs went.
+ *
+ * A recovering capability counts as available and is counted with the
+ * unproven, and a reader who saw it there would take it for one never
+ * checked. This is what a report names it with instead. Actions are left out,
+ * as the summary counts leave them out.
+ */
+function recovering(db: Db): { id: string; name: string; recent: string }[] {
+  try {
+    return db
+      .prepare(
+        `SELECT id, name FROM capabilities
+         WHERE ${REACHED_SQL} AND ${RECOVERING_SQL} AND kind != 'action' ORDER BY id`
+      )
+      .all<{ id: string; name: string }>()
+      .map(r => ({ id: r.id, name: r.name, recent: recentRuns(db, r.id) }));
+  } catch {
+    return [];
+  }
+}
+
+export { RECENT_RUNS, lifecycleFrom, deriveLifecycles, recentRuns, recovering };

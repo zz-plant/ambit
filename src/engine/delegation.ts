@@ -28,6 +28,8 @@
 import { createHash } from 'node:crypto';
 import type { Db } from './db.ts';
 import { brokenFoundations } from './assure/decide.ts';
+import { usable } from './assure/lifecycle.ts';
+import { PROVEN, RECOVERING } from './vocabulary.ts';
 
 export const RECORD_SCHEMA_VERSION = '0.1.0';
 
@@ -80,16 +82,17 @@ export type DelegationRecord = {
  * Ambit's lifecycle vocabulary mapped onto the four states STD-07 defines.
  *
  * Ambit distinguishes seven; the record shape distinguishes four, because a
- * consumer only needs to know whether it may be relied on. `degraded` maps to
- * broken rather than to configured: the standard's `verified` means a check
- * passed, and a degraded capability's recent checks did not.
+ * consumer only needs to know whether it may be relied on. `degraded` is
+ * recovering and maps to configured: it may be relied on, since its last
+ * check passed, and it is not `verified`, which the standard keeps for a
+ * check record that holds, because some of its recent checks failed.
  */
 export function recordStateFor(
   lifecycle?: string
 ): 'absent' | 'configured' | 'verified' | 'broken' {
-  if (lifecycle === 'verified' || lifecycle === 'reliable') return 'verified';
-  if (lifecycle === 'degraded' || lifecycle === 'broken') return 'broken';
-  if (lifecycle === 'configured' || lifecycle === 'detected') return 'configured';
+  if (lifecycle && (PROVEN as readonly string[]).includes(lifecycle)) return 'verified';
+  if (lifecycle && !usable(lifecycle)) return 'broken';
+  if (['configured', 'detected', ...RECOVERING].includes(lifecycle ?? '')) return 'configured';
   return 'absent';
 }
 

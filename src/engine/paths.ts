@@ -35,6 +35,15 @@ export function telemetryBridgeInstall(): string {
 }
 
 /**
+ * Where this copy's Cursor ledger hook is. It ships beside the OpenCode bridge,
+ * two levels above the engine in a checkout and an install alike, so
+ * `ambit connect cursor --ledger` can name it in hooks.json by its absolute path.
+ */
+export function cursorLedgerScript(engineDir = ENGINE_DIR): string {
+  return join(engineDir, '..', '..', 'plugins', 'cursor', 'ambit-ledger.mjs');
+}
+
+/**
  * Which capability model to read.
  *
  * `AMBIT_TECHTREE` points the engine at another tree, the same way

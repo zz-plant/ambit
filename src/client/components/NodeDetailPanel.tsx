@@ -8,11 +8,14 @@ import {
   collapseTo,
   costOf,
   gapOf,
+  isFailing,
   isProvision,
+  isRecovering,
   outageImpact,
   outageSentence,
   outageSplit,
   readableSeconds,
+  recentRuns,
   routeTo,
   unlockCascade,
 } from './civ/layout';
@@ -178,7 +181,8 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   // A passing check is good news and stays one quiet line. Never checked and
   // failing are the findings the panel exists for: "configured is not working"
   // used to be muted grey under a green "Reached", so the header contradicted
-  // the only sentence that mattered.
+  // the only sentence that mattered. Recovering is said too: a pass after a
+  // failure reads as fixed, and the record behind it is still mixed.
   const verdict: { tone: 'ok' | 'warn' | 'bad'; title: string; body?: string } | undefined =
     item.status !== 'built' || !lifecycle
       ? undefined
@@ -192,19 +196,25 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
               tone: 'ok',
               title: `✓ Check passed${checkedAgo ? ` · last run ${checkedAgo}` : ''}${runs}`,
             }
-          : lifecycle === 'degraded' || lifecycle === 'broken'
+          : isFailing(item)
             ? {
                 tone: 'bad',
                 title: 'Configured, but not working',
                 body: `The last check failed${checkedAgo ? ` ${checkedAgo}` : ''}${runs}. Anything that needs it is unavailable until it passes.`,
               }
-            : lifecycle === 'configured'
+            : isRecovering(item)
               ? {
                   tone: 'warn',
-                  title: 'Configured, never checked',
-                  body: 'Nothing has shown this works. One command finds out.',
+                  title: `Recovering${recentRuns(item) ? `, ${recentRuns(item)}` : ''}`,
+                  body: `The last check passed${checkedAgo ? ` ${checkedAgo}` : ''}, after one that failed, so anything that needs it can use it again. It reads as proven once its last five runs pass.`,
                 }
-              : undefined;
+              : lifecycle === 'configured'
+                ? {
+                    tone: 'warn',
+                    title: 'Configured, never checked',
+                    body: 'Nothing has shown this works. One command finds out.',
+                  }
+                : undefined;
   // The header's status takes the verdict's colour, so "Reached" is green only
   // when something proved it.
   const statusTone = item.status !== 'built' ? item.status : verdict ? verdict.tone : item.status;

@@ -8,6 +8,7 @@
  * illustrative, not fabricated-as-live: the page labels it sample data.
  */
 import type { LoopSnapshot } from '../../shared/api';
+import { isFailing, isProven } from '../components/civ/layout';
 import { demoTreeGraph } from '../store/demo';
 
 /**
@@ -19,13 +20,12 @@ import { demoTreeGraph } from '../store/demo';
  */
 function treeStatus() {
   const combos = demoTreeGraph().items.filter(i => i.id.startsWith('combo:'));
-  const lifecycle = (i: (typeof combos)[number]) => String(i.meta?.lifecycle ?? '');
   const reached = combos.filter(i => i.status === 'built');
-  const failing = reached.filter(i => ['degraded', 'broken'].includes(lifecycle(i)));
+  const failing = reached.filter(isFailing);
   return {
     reached: reached.length,
     total: combos.length,
-    verified: reached.filter(i => ['verified', 'reliable'].includes(lifecycle(i))).length,
+    verified: reached.filter(isProven).length,
     failing: failing.length,
     degraded: failing.map(i => i.name),
   };

@@ -40,7 +40,7 @@ export function runCiCheck(
 
   if (counts.failing > 0 || degraded.length > 0) {
     for (const d of degraded) {
-      failures.push(`Degraded capability failing declared check: ${d.name} (${d.id})`);
+      failures.push(`Capability failing its declared check: ${d.name} (${d.id})`);
     }
   }
 

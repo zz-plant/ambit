@@ -118,7 +118,7 @@ test('required is the glossary word, and the line carries its definition', () =>
 test('a prerequisite that is reached and failing is missing, and says its check is failing', () => {
   const said = text(
     page({
-      items: [node('combo:goal'), reached('combo:flaky', { lifecycle: 'degraded' })],
+      items: [node('combo:goal'), reached('combo:flaky', { lifecycle: 'broken' })],
       connections: [requires('combo:flaky', 'combo:goal')],
     })
   );

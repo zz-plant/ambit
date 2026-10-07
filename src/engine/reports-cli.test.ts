@@ -674,7 +674,7 @@ test('with nothing to repair, decide or check, status points at the best next st
   expect(status.next.why).toContain(top.capability);
 });
 
-test('status keeps every field it had, and adds next at the end', () => {
+test('status keeps every field it had, names what is recovering, and adds next at the end', () => {
   seed(LOCAL_ONLY).close();
   const status = cli('status');
   expect(Object.keys(status)).toEqual([
@@ -687,8 +687,8 @@ test('status keeps every field it had, and adds next at the end', () => {
     'unattended',
     'evidence',
     'domains',
-    'context_thrash',
     'degraded',
+    'recovering',
     'spofs',
     'bottlenecks',
     'deficits',

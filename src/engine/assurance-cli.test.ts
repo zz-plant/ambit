@@ -341,22 +341,26 @@ test('simulating an id the graph does not hold is an error, not a larger frontie
   expect(byName.frontier_after).toBe(byId.frontier_after);
 });
 
-test('a re-passing verification releases the gate', () => {
+test('one passing check after a failure releases the gate', () => {
   seed(LOCAL_ONLY).close();
   recordVerification('combo:shell-execution', 'failed');
   recordVerification('combo:shell-execution', 'verified');
   seed(LOCAL_ONLY).close();
 
-  // One pass after a failure is a weaker claim than a clean record: the
-  // lifecycle moves broken → degraded, and the gate stays closed.
+  // The latest check decides, so one pass opens the gate. The record is
+  // still mixed: the lifecycle moves broken → degraded, which is recovering,
+  // usable and not proven.
   const db = getDb(join(dir, 'graph.db'));
   expect(
     rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle
   ).toBe('degraded');
   db.close();
-  expect(cli('goal', 'shell-execution').reachable).toBe(false);
+  const p = cli('goal', 'shell-execution');
+  expect(p.reachable).toBe(true);
+  expect(p.degraded).toBeUndefined();
+  expect(cli('status').evidence[0].proven).toBe(0);
 
-  // Five consecutive passes are a different claim, and the gate opens.
+  // Five consecutive passes are a different claim: proven.
   for (let i = 0; i < 4; i++) recordVerification('combo:shell-execution', 'verified');
   seed(LOCAL_ONLY).close();
 
@@ -366,12 +370,10 @@ test('a re-passing verification releases the gate', () => {
       .lifecycle
   ).toBe('reliable');
   after.close();
-  const p = cli('goal', 'shell-execution');
-  expect(p.reachable).toBe(true);
-  expect(p.degraded).toBeUndefined();
+  expect(cli('status').evidence[0].proven).toBe(1);
 });
 
-test('a plan names a degraded prerequisite as broken, not missing', () => {
+test('a plan names a failing prerequisite as broken, not missing', () => {
   seed(LOCAL_ONLY).close();
   // Local Embeddings is still locked (Embeddings is missing) and requires
   // Local Runtime, which declares a check. Break the prerequisite: the plan

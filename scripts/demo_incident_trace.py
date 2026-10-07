@@ -60,7 +60,7 @@ def render_dag():
                    │ (requires)
                    ▼
        ┌────────────────────────┐
-       │   staging-healthcheck  │ {RED}{BOLD}[Status: DEGRADED / UNVERIFIED ✗]{CYAN}
+       │   staging-healthcheck  │ {RED}{BOLD}[Status: BROKEN / UNVERIFIED ✗]{CYAN}
        └───────────┬────────────┘
                    │ (requires)
                    ▼

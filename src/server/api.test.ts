@@ -10,7 +10,7 @@
  */
 import { type ChildProcess, execFileSync, spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { request } from 'node:http';
+import { createServer as createHttpServer, request } from 'node:http';
 import { createServer } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
@@ -863,6 +863,64 @@ test('the infrastructure scan says what an agent may do on each machine it found
     expect(body.machines.map((m: any) => m.id).sort()).toEqual([...devices].sort());
   } finally {
     rmSync(manifest, { force: true });
+  }
+});
+
+test('the scan reads when each machine was last seen, and records nothing itself', async () => {
+  // Something that answers, so a scan that recorded would have an answer to record.
+  const answering = createHttpServer((_req, res) => res.end('{}'));
+  await new Promise<void>(done => answering.listen(0, '127.0.0.1', done));
+  const url = `http://127.0.0.1:${(answering.address() as { port: number }).port}/health`;
+  const manifest = join(dir, 'none.json');
+  writeFileSync(
+    manifest,
+    JSON.stringify({
+      devices: [{ id: 'nuc', name: 'NUC', statusUrl: url }],
+      services: [{ key: 'ollama', label: 'Ollama', host: 'nuc', url }],
+    })
+  );
+  const SEEN = '2026-01-01 00:00:00';
+  const graph = getDb(join(dir, 'graph.db'));
+  graph
+    .prepare(
+      `INSERT INTO capabilities (id, name, domain, description, category, state, kind, last_seen_at, tags)
+       VALUES ('device:nuc', 'NUC', 'physical', 'Host NUC', 'device', 'unlocked', 'resource', ?, '["gpu"]'),
+              ('svc:ollama', 'Ollama', 'physical', 'Service ollama', 'service', 'unlocked', 'resource', NULL, NULL)`
+    )
+    .run(SEEN);
+  const evidence = () =>
+    graph
+      .prepare(
+        `SELECT COUNT(*) AS n FROM session_learning
+         WHERE capability_id IN ('device:nuc', 'svc:ollama')`
+      )
+      .get<{ n: number }>()?.n;
+  const seen = () =>
+    graph
+      .prepare(
+        "SELECT id, last_seen_at, lifecycle FROM capabilities WHERE id IN ('device:nuc', 'svc:ollama') ORDER BY id"
+      )
+      .all();
+  const before = seen();
+  try {
+    const body = await json(await fetch(`${base}/api/infrastructure/scan`));
+    // The scan probed both, and both answered.
+    expect(body.nodes.map((n: any) => [n.id, n.status])).toEqual(
+      expect.arrayContaining([
+        ['nuc', 'online'],
+        ['svc:ollama', 'online'],
+      ])
+    );
+    // What the graph holds is read back, and only for a node that holds something.
+    expect(body.recorded).toEqual([{ id: 'nuc', lastSeenAt: SEEN, tags: ['gpu'] }]);
+    // And nothing was written: no check run, no time seen, no lifecycle moved.
+    expect(evidence()).toBe(0);
+    expect(seen()).toEqual(before);
+  } finally {
+    graph.prepare("DELETE FROM capabilities WHERE id IN ('device:nuc', 'svc:ollama')").run();
+    graph.close();
+    rmSync(manifest, { force: true });
+    await new Promise<void>(done => answering.close(() => done()));
   }
 });
 

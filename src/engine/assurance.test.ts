@@ -6,7 +6,17 @@
  * so in practice it was checked through whatever that happened to print.
  */
 import { test, expect } from 'vitest';
-import { authorityReport, canExecute, scopeCovers, deriveLifecycles } from './assurance.ts';
+import {
+  authorityReport,
+  canExecute,
+  scopeCovers,
+  deriveLifecycles,
+  lifecycleFrom,
+  recentRuns,
+  recovering,
+  usable,
+} from './assurance.ts';
+import { graphCounts } from './vocabulary.ts';
 import { makeGraph, learn } from './testing/graph.ts';
 
 // ── Scope ────────────────────────────────────────────────────────────────────
@@ -204,6 +214,68 @@ test('a recent failure under a passing head reads as degraded, not reliable', ()
     db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get('combo:x')!.lifecycle
   ).toBe('degraded');
   db.close();
+});
+
+test('the latest check decides: one pass after a failure is usable, and five clean runs are proven', () => {
+  // A capability fixed after a token rotation stayed out of every plan,
+  // permission and ranking until its last five runs had passed. The most
+  // recent run is the best evidence of whether it works now.
+  const db = makeGraph({
+    capabilities: [{ id: 'combo:x', name: 'X', state: 'unlocked' }],
+    authority: [
+      { capability: 'combo:x', action: 'execute', mode: 'autonomous', source: 'declared' },
+    ],
+  });
+  const lifecycle = () =>
+    db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get('combo:x')!.lifecycle;
+  const decide = () => canExecute(db, { capability: 'combo:x' }) as any;
+
+  learn(db, 'combo:x', 'verified');
+  learn(db, 'combo:x', 'failed');
+  deriveLifecycles(db);
+  expect(lifecycle()).toBe('broken');
+  expect(usable(lifecycle())).toBe(false);
+  expect(decide()).toMatchObject({ decision: 'DENY', refused: 'failing' });
+  expect(graphCounts(db)).toMatchObject({ proven: 0, failing: 1 });
+
+  learn(db, 'combo:x', 'verified');
+  deriveLifecycles(db);
+  expect(lifecycle()).toBe('degraded');
+  expect(usable(lifecycle())).toBe(true);
+  expect(decide()).toMatchObject({ decision: 'ALLOW' });
+  // Recovering is neither proven nor failing: its record is mixed.
+  expect(graphCounts(db)).toMatchObject({ reached: 1, proven: 0, failing: 0 });
+  expect(recovering(db)).toEqual([{ id: 'combo:x', name: 'X', recent: '2 of the last 3 passed' }]);
+
+  // Four more passes: the failure is still one of the last five.
+  for (let i = 0; i < 3; i++) learn(db, 'combo:x', 'verified');
+  deriveLifecycles(db);
+  expect(lifecycle()).toBe('degraded');
+  expect(recentRuns(db, 'combo:x')).toBe('4 of the last 5 passed');
+
+  learn(db, 'combo:x', 'verified');
+  deriveLifecycles(db);
+  expect(lifecycle()).toBe('reliable');
+  expect(graphCounts(db)).toMatchObject({ proven: 1, failing: 0 });
+  expect(recovering(db)).toEqual([]);
+  db.close();
+});
+
+test('the lifecycle is read off the evidence, newest first', () => {
+  const runs = (...actions: string[]) => actions.map(action => ({ action }));
+  expect(lifecycleFrom(true, true, runs('verified', 'failed'))).toBe('degraded');
+  expect(lifecycleFrom(true, true, runs('failed', 'verified', 'verified'))).toBe('broken');
+  expect(
+    lifecycleFrom(
+      true,
+      true,
+      runs('verified', 'verified', 'verified', 'verified', 'verified', 'failed')
+    )
+  ).toBe('reliable');
+  for (const l of ['verified', 'reliable', 'degraded', 'configured', 'unknown', undefined]) {
+    expect(usable(l)).toBe(true);
+  }
+  expect(usable('broken')).toBe(false);
 });
 
 /**

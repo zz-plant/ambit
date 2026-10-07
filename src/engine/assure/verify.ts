@@ -9,12 +9,19 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import type { Db } from '../db.ts';
 import { loadTechTree } from '../paths.ts';
-import { deriveLifecycles } from './lifecycle.ts';
+import { deriveLifecycles, recentRuns, usable } from './lifecycle.ts';
 import { evaluatePromotions } from './promote.ts';
 import { pullDelegationSources, recordDelegationState } from '../delegation.ts';
 import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
-import { CHECK_RUN_SQL, FAILING_SQL } from '../vocabulary.ts';
+import {
+  CHECK_RUN_SQL,
+  FAILING_SQL,
+  PROBE_COMMAND,
+  RECOVERING,
+  RECOVERING_SQL,
+  recheckCommand,
+} from '../vocabulary.ts';
 
 /**
  * A check declared outside the curated model — §12.5.
@@ -22,7 +29,7 @@ import { CHECK_RUN_SQL, FAILING_SQL } from '../vocabulary.ts';
  * techtree.json holds the checks for capabilities Ambit ships knowledge of.
  * This holds the ones an agent registered for something it wrote itself. Same
  * runner, same evidence table, same gate: a registered skill whose check fails
- * is degraded exactly like a git MCP server whose check fails.
+ * is broken exactly like a git MCP server whose check fails.
  */
 function declaredCheck(db: Db, id: string): { command: string[]; timeout_seconds: number } | null {
   let row: { command: string; timeout_seconds: number } | undefined;
@@ -133,19 +140,22 @@ function evidenceFor(db: Db, id: string) {
 }
 
 /**
- * The check of everything whose check is failing, and nothing else.
+ * The check of everything whose check is failing or recovering, and nothing
+ * else.
  *
  * A failing check takes a capability out of every plan until it passes
  * again, and the only way back was to name each one: a broken token took
  * three servers down, and bringing them back meant reading `ambit status` and
  * typing three commands. This runs those checks and only those, so the
- * command to type after fixing something is the same whatever it was. It
+ * command to type after fixing something is the same whatever it was. One
+ * pass brings a capability back. A recovering one is run again as well,
+ * since it is usable already and each pass is evidence toward proven. It
  * still runs only when typed: a check is a command, and nothing re-runs one
  * on its own.
  */
 function failingChecks(db: Db) {
   const ids = db
-    .prepare(`SELECT id FROM capabilities WHERE ${FAILING_SQL} ORDER BY id`)
+    .prepare(`SELECT id FROM capabilities WHERE ${FAILING_SQL} OR ${RECOVERING_SQL} ORDER BY id`)
     .all<{ id: string }>()
     .map(r => r.id);
   const tree = loadTechTree();
@@ -179,16 +189,30 @@ function runVerification(
       };
     }
     const results = failingChecks(db);
+    // A device or service the manifest names fails a probe, which this
+    // command cannot run. Named with the command that can, so "nothing is
+    // failing" is never the answer while one is.
+    const probed = db
+      .prepare(
+        `SELECT id, name FROM capabilities WHERE ${FAILING_SQL} OR ${RECOVERING_SQL} ORDER BY id`
+      )
+      .all<{ id: string; name: string }>()
+      .filter(r => recheckCommand(r.id) === PROBE_COMMAND)
+      .map(r => ({ id: r.id, name: r.name, command: PROBE_COMMAND }));
+    const notRun = probed.length ? probed : undefined;
     if (!results.length) {
       return {
         checked: 0,
         verified: 0,
         failed: 0,
         results: [],
-        note: 'Nothing is failing its check.',
+        not_run: notRun,
+        note: notRun
+          ? `Nothing failing or recovering has a check this command runs. ${probed.map(p => p.name).join(', ')} answers to a probe of the manifest, and ${PROBE_COMMAND} probes again.`
+          : 'Nothing is failing its check or recovering from a failure.',
       };
     }
-    return settle(db, results, target);
+    return { ...settle(db, results, target), not_run: notRun };
   }
   // A registered skill is not in the curated model, so it is answered before
   // the model is consulted at all — otherwise `ambit verify skill:x` would say
@@ -221,6 +245,11 @@ function runVerification(
           authority.promoted.length || authority.demoted.length ? authority : undefined,
       };
     }
+  }
+  if (which && recheckCommand(which) === PROBE_COMMAND) {
+    return {
+      error: `${which} is checked by probing the URL the infrastructure manifest gives it, which ${PROBE_COMMAND} does.`,
+    };
   }
   const tree = loadTechTree();
   if (!tree?.nodes?.length) {
@@ -328,8 +357,11 @@ function settle(db: Db, results: any[], target?: string) {
   // why a check is worth declaring in the first place. A capability that was
   // never reached reads as detected or unknown rather than failing, so it is
   // not listed here; there was nothing available to lose.
-  const nowUnavailable = withReliability.filter(
-    (r: any) => r.lifecycle === 'degraded' || r.lifecycle === 'broken'
+  const nowUnavailable = withReliability.filter((r: any) => r.lifecycle && !usable(r.lifecycle));
+  // Back on one pass, and not yet proven. Said, because a pass after a
+  // failure reads as fixed and the evidence is still mixed.
+  const nowRecovering = withReliability.filter((r: any) =>
+    (RECOVERING as readonly string[]).includes(r.lifecycle)
   );
 
   return {
@@ -342,7 +374,10 @@ function settle(db: Db, results: any[], target?: string) {
       : undefined,
     object: target,
     gate: nowUnavailable.length
-      ? 'these now read as degraded or broken — configured, but their check is failing. They are excluded from plans, simulations and authority until re-verified.'
+      ? 'these now read as broken: configured, but their last check failed. They are excluded from plans, simulations and authority until a check passes.'
+      : undefined,
+    recovering: nowRecovering.length
+      ? nowRecovering.map((r: any) => ({ id: r.id, name: r.name, recent: recentRuns(db, r.id) }))
       : undefined,
     // §12.6: what this evidence just earned, or just cost. Reported here
     // because a promotion nobody is told about is indistinguishable from a

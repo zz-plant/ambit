@@ -6,6 +6,26 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### The latest check decides
+
+A capability whose check failed came back only after five passes in a row, each typed by hand, so fixing a revoked token still kept three servers out of every plan until someone ran `ambit verify` five times. Now one passing check brings it back into every plan, permission and ranking. Until its last five runs pass it reads as recovering ("2 of the last 5 passed"): usable, counted with the unproven, and named in `ambit status`, the briefing, `ambit verify`, the map's panel and My Setup. A check whose last run failed is the only kind left out. `ambit verify --failing` re-runs recovering checks too, the Claude Code gate asks only when the last check failed, and a grant still widens only after a window with no failure in it. The `degraded` fields in JSON output keep their names and now list only capabilities whose last check failed.
+
+### A service that stops answering stops counting
+
+`ambit incidents` probed the services the infrastructure manifest names and opened an incident run for each one down, and that was all: a dead service stayed in every plan. Each probe of a device or service is now a check run on its node, the same row `ambit verify` writes, so one that stops answering reads broken and leaves every plan and permission, and the next answer brings it back. A grant resting on it asks a person meanwhile. Each answer also records when the device or service was last seen, and manifest entries can carry `tags`; both show on the Infra tab and in the incidents report, and neither travels in `ambit sync`. The probes still run only when typed, and the server's scan still writes nothing.
+
+### Cursor feeds the work ledger
+
+`ambit connect cursor --ledger` adds Ambit's hook to `~/.cursor/hooks.json`, beside any hooks already there and keeping a `.bak`. Each conversation becomes a run, each shell command and MCP call a use timed by Cursor's own duration, which leaves out the wait for approval, and each failure a signal the engine classifies. The hook records names, lengths, ids, error text and why a conversation ended, never commands, outputs, arguments, files or prompts. It is on no permission hook, so it cannot block or allow a call, and `AMBIT_NO_LEDGER=1` turns it off. Cursor's hooks report no tokens, so Cursor sessions record no spend.
+
+### The OpenCode tracker no longer picks a graph
+
+The tracker opened a graph itself, resolving it from where it was loaded. Copied into `~/.config/opencode/plugins/` as its install says, "the graph beside the engine" was `~/.config/opencode/toolchain-viz.db`, the old default, on any machine that still had one, and a checkout's graph was never found, so configuration changes landed where nothing read them. It now appends each change to a spool, and the next `ambit` command or the MCP server reads it into whichever graph it opens, as with Claude Code. Copy `plugins/ambit-tracker.js` into `~/.config/opencode/plugins/` again to get this.
+
+### doctor and status price nothing they did not measure
+
+`ambit doctor` reported a token-thrash risk in dollars, and `ambit status --json` a `context_thrash` block: 32,000 tokens per failing check and 12,000 "prevented" per proven one, at $3 a million, with nothing measured behind any of it. Both are gone.
+
 ### Budgets have a meter
 
 A budget's ceiling refused a caller that stated its spend, and nothing stated one: `recordSpend` had no caller, so `spent` stayed at zero and the pace bar on Time & cost had nothing to draw. Declare a model's price with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and from then on each Claude Code session's tokens on that model are priced when the session ends and recorded as a spend against the unscoped Hosted Inference budget, if one is set. A model with no price declared records no spend and is reported as undeclared, never as $0. Each session's tokens are counted once, a resumed session adds only what is new, and a price declared later does not reach back. OpenCode sessions, and anything else that does not state its spend, still record none, and spend lands when a session ends, so a spent ceiling refuses the next caller and stops nothing already running.

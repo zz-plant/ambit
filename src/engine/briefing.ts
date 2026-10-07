@@ -16,6 +16,7 @@
  */
 import type { Db } from './db.ts';
 import { evaluatePromotions } from './assure/promote.ts';
+import { recovering } from './assure/lifecycle.ts';
 import { listProposals } from './governance.ts';
 import { ledgerSince } from './ledger.ts';
 import { nextSteps } from './next.ts';
@@ -80,6 +81,8 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
       )
       .get<any>()?.n ?? 0;
 
+  const back = recovering(db).slice(0, 5);
+
   // A threshold a person set earlier takes effect here. The alternative is a
   // promotion that waits for someone to run a command, which is the
   // confirmation prompt it was meant to replace.
@@ -118,6 +121,9 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
         ? ` · ${failingActions} failing ${failingActions === 1 ? 'action' : 'actions'}`
         : ''),
     broken: broken.length ? broken.map(b => ({ id: b.id, name: b.name })) : undefined,
+    // Usable, and counted as such above. Named, so an agent that meets a
+    // failure from one knows its record was already mixed.
+    recovering: back.length ? back : undefined,
     waiting_on_a_person: waiting.length
       ? waiting.slice(0, 3).map(p => ({ id: p.id, goal: p.goal, status: p.status }))
       : undefined,
@@ -166,6 +172,13 @@ function briefingText(db: Db, options: { mark?: boolean } = {}): string {
       'Broken',
       b.broken?.map((x: any) => `${x.name} (${x.id})`).join(', ') &&
         `${b.broken.map((x: any) => `${x.name} (${x.id})`).join(', ')} — configured, failing their checks, excluded from plans and authority until re-verified`
+    ),
+    line(
+      'Recovering',
+      b.recovering
+        ?.map((x: any) => `${x.name} (${x.id}), ${x.recent}`)
+        .join('; ')
+        .concat(' — usable, their last check passed after a failure')
     ),
     line(
       'Waiting on a person',

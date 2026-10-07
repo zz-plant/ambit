@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { getDb, migrate } from './testing/cli.ts';
+import { ingestTrackerSpool } from './tracker-spool.ts';
 
 const PLUGINS = join(import.meta.dirname, '..', '..', 'plugins');
 const load = (name: string) => import(pathToFileURL(join(PLUGINS, name)).href);
@@ -26,10 +27,12 @@ const TOKEN = 'plugin-test-token';
 let close: () => void;
 const scratch = mkdtempSync(join(tmpdir(), 'ambit-plugins-'));
 const dbPath = join(scratch, 'tracker.db');
+const trackerSpool = join(scratch, 'tracker.jsonl');
 
 beforeAll(async () => {
-  // The tracker resolves its graph on import, and from a checkout that is the
-  // checkout's own. Set before the first import, or a test writes there.
+  // The tracker spools its changes for the engine; the spool and the graph
+  // that reads it are this test's own, so nothing reaches a real one.
+  process.env.AMBIT_TRACKER_SPOOL = trackerSpool;
   const db = getDb(dbPath);
   migrate(db);
   db.close();
@@ -282,6 +285,7 @@ test('the tracker records what a changed config added and removed', async () => 
     const cleanup = await plugin.setup(ctx);
     const learned = () => {
       const g = getDb(dbPath);
+      ingestTrackerSpool(g, trackerSpool);
       const r = g
         .prepare(
           "SELECT capability_id c, action a FROM session_learning WHERE session_id = 'config'"

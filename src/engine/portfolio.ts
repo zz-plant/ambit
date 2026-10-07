@@ -1,5 +1,6 @@
 import type { Migratable } from './migrate.ts';
 import type { FederationImportRow } from './rows.ts';
+import { usable } from './assurance.ts';
 
 /**
  * The portfolio layer: what the imported environments, taken together, look
@@ -56,9 +57,9 @@ function portfolio(db: Migratable, budgetDollars?: number) {
       received_at: imp.received_at,
       capabilities: s.capabilities?.length || 0,
       reached: s.capabilities?.filter((c: any) => c.reached).length || 0,
-      degraded:
-        s.capabilities?.filter((c: any) => c.lifecycle === 'degraded' || c.lifecycle === 'broken')
-          .length || 0,
+      // The receiving machine's rule, applied to the lifecycles a summary
+      // carries: a capability whose last check failed. The key is older.
+      degraded: s.capabilities?.filter((c: any) => c.lifecycle && !usable(c.lifecycle)).length || 0,
       person_spofs: s.person_spofs?.length || 0,
       human_hours_month: Math.round(hoursOf(s.burden) * 10) / 10,
       attention_dollars_month: Math.round(attentionOf(s.opportunities)),

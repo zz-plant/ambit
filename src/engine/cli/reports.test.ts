@@ -8,7 +8,7 @@
  * one thing to type next. Colour is added on top and never changes a line.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { makeGraph, type CapabilityFixture } from '../testing/graph.ts';
+import { learn, makeGraph, type CapabilityFixture } from '../testing/graph.ts';
 import { asProcess } from '../testing/terminal.ts';
 import { C, PLAIN } from './output.ts';
 import { explain, renderImpact, renderStatus, statusReport, worries } from './reports.ts';
@@ -51,7 +51,7 @@ describe('the head of the report', () => {
   it('leads with the two numbers that matter, then what is wrong', () => {
     const lines = renderStatus(reportOf(MIXED), PLAIN);
     expect(lines[0]).toBe('');
-    expect(lines[1]).toBe('    3 of 4 reached · 1 proven · 1 failing · 1 degraded');
+    expect(lines[1]).toBe('    3 of 4 reached · 1 proven · 1 failing');
   });
 
   it('says so when nothing is wrong', () => {
@@ -134,7 +134,8 @@ describe('the evidence counts', () => {
 describe('one count of what is failing', () => {
   // The head counted failing nodes of every kind but actions, the evidence row
   // counted only curated capabilities, and the degraded list and the last line
-  // counted actions too, so one screen said three different numbers.
+  // counted actions too, so one screen said three different numbers. Then the
+  // head said "1 failing · 1 degraded" of one node.
   it('counts a registered skill failing its check in the head, the row and the last line', () => {
     const report = reportOf([
       { id: 'combo:a', name: 'Alpha', lifecycle: 'verified' },
@@ -147,7 +148,7 @@ describe('one count of what is failing', () => {
       },
     ]);
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · 1 failing · 1 degraded');
+    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · 1 failing');
     expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual(['  › failing         1']);
     expect(report.next?.command).toBe('ambit verify skill:pdf');
   });
@@ -169,7 +170,7 @@ describe('one count of what is failing', () => {
       },
     ]);
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    1 of 1 reached · 0 proven · 1 failing · 1 degraded');
+    expect(lines[1]).toBe('    1 of 1 reached · 0 proven · 1 failing');
     expect(report.failing).toBe(1);
     expect(report.degraded?.map((d: { id: string }) => d.id)).toEqual(['combo:shell-execution']);
     expect(evidenceRows(lines)).toContain('  › failing         1');
@@ -180,12 +181,58 @@ describe('one count of what is failing', () => {
   });
 });
 
+describe('a capability recovering from a failed check', () => {
+  // The latest check decides: its last run passed, so it is not failing and
+  // nothing asks for a repair. Its record is mixed, so it is not proven.
+  const recovering = () => {
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:a', name: 'Alpha', lifecycle: 'verified' },
+        { id: 'combo:b', name: 'Beta', lifecycle: 'degraded' },
+      ],
+    });
+    for (const action of ['verified', 'failed', 'failed', 'verified', 'failed', 'verified']) {
+      learn(db, 'combo:b', action, { session: 'verify' });
+    }
+    try {
+      return statusReport(db);
+    } finally {
+      db.close();
+    }
+  };
+
+  it('is counted with the unproven, and nothing is failing', () => {
+    const report = recovering();
+    const lines = renderStatus(report, PLAIN);
+    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · nothing failing');
+    expect(report.failing).toBe(0);
+    expect(report.degraded).toBeUndefined();
+    expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual([
+      expect.stringMatching(/^ {2}› unproven +1$/),
+    ]);
+    // Nothing to repair, so the report does not end on re-running its check.
+    expect(report.next?.command ?? '').not.toContain('verify');
+  });
+
+  it('is named, with how many of its last five runs passed', () => {
+    const report = recovering();
+    expect(report.recovering).toEqual([
+      { id: 'combo:b', name: 'Beta', recent: '2 of the last 5 passed' },
+    ]);
+    const text = renderStatus(report, PLAIN).join('\n');
+    expect(text).toContain('recovering:');
+    expect(text).toContain('2 of the last 5 passed');
+  });
+});
+
 describe('what the head does not say', () => {
   it('follows beneath it as it always has been drawn', () => {
     const text = renderStatus(reportOf(MIXED), PLAIN).join('\n');
     expect(text).toContain('actions: 1/1 reached');
     expect(text).toContain('domains:');
-    expect(text).toContain('degraded:');
+    // The list keeps its key for scripts, and is labelled for a person.
+    expect(text).toContain('not working:');
+    expect(text).not.toContain('degraded:');
     expect(text).toContain('combo:c');
     // The scalars the head replaced are not printed twice.
     expect(text).not.toMatch(/^ {4}(reached|total|verified|failing|summary):/m);
@@ -211,7 +258,7 @@ describe('the last line', () => {
   it('names how many are failing, and the first to look at', () => {
     const report = reportOf([
       { id: 'combo:a', name: 'Alpha', lifecycle: 'broken' },
-      { id: 'combo:b', name: 'Beta', lifecycle: 'degraded' },
+      { id: 'combo:b', name: 'Beta', lifecycle: 'broken' },
     ]);
     expect(report.next?.command).toBe('ambit verify --failing');
     expect(report.next?.why).toBe(

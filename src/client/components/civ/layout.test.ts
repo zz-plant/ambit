@@ -32,12 +32,15 @@ import {
   neighbourhood,
   NODE_R,
   authorityMark,
+  isFailing,
   isProven,
+  isRecovering,
   jointMark,
   outageCascade,
   outageImpact,
   outageSentence,
   outageSplit,
+  recentRuns,
   ROW_H,
   rungOf,
   sceneSize,
@@ -351,26 +354,28 @@ test('an unlock claims only what depends on it, not what another step already al
 test('an outage stops only what was working; the rest is cut off or already failing', () => {
   // Hosted Inference in the demo cut off twelve and reached none, and the
   // banner said twelve would stop working.
+  // A recovering node passed its last check, so it is working and would stop.
   const items = [
     item('root'),
     item('ok', { lifecycle: 'proven' }),
-    item('failing', { lifecycle: 'degraded' }),
+    item('mending', { lifecycle: 'degraded' }),
+    item('failing', { lifecycle: 'broken' }),
     item('down', { lifecycle: 'broken' }),
     { ...item('never'), status: 'specified' as const },
   ];
-  const edges = ['ok', 'failing', 'down', 'never'].map(to => ({
+  const edges = ['ok', 'mending', 'failing', 'down', 'never'].map(to => ({
     from: 'root',
     to,
     type: 'hard-dep' as const,
   }));
   const impact = outageImpact(items, outageSplit(items, edges, 'root'));
-  expect(impact.stopped.map(i => i.id)).toEqual(['ok']);
+  expect(impact.stopped.map(i => i.id)).toEqual(['ok', 'mending']);
   expect(impact.broken.map(i => i.id)).toEqual(['failing', 'down']);
   expect(impact.cutOff.map(i => i.id)).toEqual(['never']);
 
   const said = outageSentence('Root', impact);
   expect(said.before + said.count + said.after).toBe(
-    'If Root went down, 1 capability would stop working. 1 not set up yet would be cut off, and 2 were already failing.'
+    'If Root went down, 2 capabilities would stop working. 1 not set up yet would be cut off, and 2 were already failing.'
   );
 });
 
@@ -489,11 +494,12 @@ const rung = (
   era = 3
 ): Item => ({ ...item(id, { era, ...meta }), status }) as Item;
 
-test('a reached node whose check failed is failing, and never reached', () => {
+test('a reached node whose last check failed is failing, and never reached', () => {
   expect(rungOf(rung('a', 'built', { lifecycle: 'verified' }))).toBe('reached');
   // Unproven is still reached: only a failed check moves a node out of it.
   expect(rungOf(rung('a', 'built', { lifecycle: 'configured' }))).toBe('reached');
-  expect(rungOf(rung('a', 'built', { lifecycle: 'degraded' }))).toBe('failing');
+  // The latest check decides: a pass after a failure is reached, and recovering.
+  expect(rungOf(rung('a', 'built', { lifecycle: 'degraded' }))).toBe('reached');
   expect(rungOf(rung('a', 'built', { lifecycle: 'broken' }))).toBe('failing');
   expect(rungOf(rung('n', 'specified', { next: true }))).toBe('next');
   expect(rungOf(rung('b', 'specified', { next: false }))).toBe('blocked');
@@ -537,7 +543,7 @@ test('the rungs put what needs attention first: failing, then next steps cheapes
     rung('blocked', 'specified'),
     rung('next-slow', 'specified', { next: true, setupSeconds: 1800 }),
     rung('next-unpriced', 'specified', { next: true, setupSeconds: 0 }),
-    rung('failing', 'built', { lifecycle: 'degraded' }),
+    rung('failing', 'built', { lifecycle: 'broken' }),
     rung('next-fast', 'specified', { next: true, setupSeconds: 300 }),
     rung('reached-a', 'built', { lifecycle: 'verified' }),
   ];
@@ -600,8 +606,9 @@ test('a next step whose prerequisite is failing stays a next step, and says what
   // while a prerequisite is configured and not working.
   const items = [
     rung('p', 'built', { lifecycle: 'broken' }, 2),
-    rung('q', 'built', { lifecycle: 'degraded' }, 2),
+    rung('q', 'built', { lifecycle: 'broken' }, 2),
     rung('ok', 'built', { lifecycle: 'verified' }, 2),
+    rung('mending', 'built', { lifecycle: 'degraded' }, 2),
     rung('n', 'specified', { next: true }, 3),
   ];
   const edges: Connection[] = [
@@ -617,8 +624,29 @@ test('a next step whose prerequisite is failing stays a next step, and says what
 
   // An optional prerequisite gates nothing, so its failure is not a reason.
   expect(failingNeeds(items, [{ from: 'p', to: 'n', type: 'soft-dep' }], 'n')).toEqual([]);
-  // And a passing one is not named.
+  // And a passing one is not named, nor one whose last check passed after a failure.
   expect(failingNeeds(items, [{ from: 'ok', to: 'n', type: 'hard-dep' }], 'n')).toEqual([]);
+  expect(failingNeeds(items, [{ from: 'mending', to: 'n', type: 'hard-dep' }], 'n')).toEqual([]);
+});
+
+test('a recovering node counts as reached and unproven, and its rung says how its runs went', () => {
+  const runs = (...passed: boolean[]) => passed.map((p, i) => ({ id: i + 1, passed: p }));
+  const mending = rung('m', 'built', {
+    lifecycle: 'degraded',
+    history: runs(true, true, false, true, false, false, true),
+  });
+  expect(isRecovering(mending)).toBe(true);
+  expect(isFailing(mending)).toBe(false);
+  expect(isProven(mending)).toBe(false);
+  // The last five are the lifecycle's window: false, true, false, false, true.
+  expect(recentRuns(mending)).toBe('2 of the last 5 passed');
+  expect(recentRuns(rung('x', 'built', { lifecycle: 'degraded' }))).toBe('');
+
+  const era = [mending, rung('b', 'built', { lifecycle: 'broken' })];
+  expect(columnProgress(era)).toMatchObject({ reached: 1, failing: 1 });
+  const rows = new Map(eraLadder(era, [], 3)!.rows.map(r => [r.item.id, r]));
+  expect(rows.get('m')!.state).toBe('reached');
+  expect(rows.get('m')!.detail).toBe('Recovering, 2 of the last 5 passed');
 });
 
 test('the failing rung says the node is configured and not working, and a reached one says nothing', () => {

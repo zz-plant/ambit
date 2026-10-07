@@ -8,11 +8,16 @@
  * hook is given, finds the capability it exercises, and answers.
  *
  * It can only narrow. Forbidden, or over a budget, is a deny. A capability
- * with no grant yet, one whose check is failing, or one that asks first is put
- * to the person. Allowed, or a tool the graph does not know, is no answer at
- * all, so the runtime's own permission settings decide as they did before:
+ * with no grant yet, one whose last check failed, or one that asks first is
+ * put to the person. Allowed, or a tool the graph does not know, is no answer
+ * at all, so the runtime's own permission settings decide as they did before:
  * the gate never answers "allow", because that would let the graph widen what
  * the person set in their runtime.
+ *
+ * A recovering capability, whose last check passed after a failure, is
+ * decided by its grant like any other. The latest check decides, here as in
+ * every plan; asking on mixed evidence would put each tool a fix brought back
+ * to the person until five passes in a row had been typed by hand.
  */
 import { canExecute } from './assurance.ts';
 import type { Db } from './db.ts';

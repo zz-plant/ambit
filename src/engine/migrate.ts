@@ -86,6 +86,12 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   // the config stayed reached, and a rollback never moved the frontier back.
   ['capabilities', 'declared_by', 'TEXT'],
   ['capabilities', 'retired_at', 'TEXT'],
+  // When a device or service the infrastructure manifest names last answered
+  // a probe, and the labels the manifest gives it. The scan the server takes
+  // per request stores neither, so a machine that went quiet had no record of
+  // when it was last there.
+  ['capabilities', 'last_seen_at', 'TEXT'],
+  ['capabilities', 'tags', 'TEXT'],
 ];
 
 function addMissingColumns(db: Migratable) {
