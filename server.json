@@ -55,7 +55,7 @@
             "action",
             "outcome"
           ],
-          "why": "Ambit holds the capability and authorization steps. Its environment adapter is simulated, so an action record from here would attest to a fixture."
+          "why": "Ambit holds the capability and authorization steps. Its environment adapter is simulated by default, and the opt-in Docker one runs a step in a throwaway container on this machine, so an action record from either would attest to no change in a system anyone relies on."
         },
         "enforced": "An unattended grant whose hard prerequisite is failing returns CONFIRM at every decision, whether or not any record has been written.",
         "export": "ambit delegation --export",

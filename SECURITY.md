@@ -24,6 +24,7 @@ Ambit reads your agent configuration and, through the visualizer, writes back to
   - `ambit incidents`, an empty GET to each device status URL and service URL your own manifest names. It sends nothing else; what each answer says is recorded in the local graph, as a check run on that device or service and, for an answer, the time it was last seen.
   - `ambit goal --judge`, the goal you typed, to a judgment model on this machine. A URL whose host is not `127.0.0.1`, `localhost` or `[::1]`, or that carries credentials, is refused.
   - A declared check, because a check is a command. `ambit verify` runs them, `ambit apply` runs the check of what it applied, and so does an agent calling `ambit_verify` over MCP; the curated check for Web Research fetches `https://example.com`. Checks run only when you type one of those commands or an agent calls that tool, never from the server, whose page copies `ambit verify <id>` for you to type.
+  - A step the control plane's Docker adapter runs, only when you started the control plane with both `AMBIT_ADAPTER=docker` and `AMBIT_DOCKER_NETWORK=bridge`, and a grant for the `network` action on the step's capability answers ALLOW. Without all three the step's container has `--network=none`. The adapter never pulls (`--pull=never`), so no registry is reached unless you type `docker pull` yourself.
 
   What stays on the machine:
   - The server reads the local Docker socket when one exists, over a unix socket and read-only. It never starts or stops anything.
@@ -33,6 +34,15 @@ Ambit reads your agent configuration and, through the visualizer, writes back to
   - The map's page loads nothing from another origin, fonts included, so opening it, locally or on the hosted demo, sends no request anywhere but the server that served it.
 
 Also in scope: anything that causes the engine to execute content from a scanned configuration or infrastructure manifest, and any path by which `ambit gate`, the Claude Code PreToolUse hook, answers *allow*, or by which Cursor's ledger hook blocks or allows a call. The gate may only narrow what Claude Code would do: it denies what is forbidden or over budget, asks about the rest of what it can name, and otherwise prints nothing. It reads the call from stdin and the local graph, writes nothing, opens no socket, and on any error prints nothing, so a broken gate leaves Claude Code's own permissions in charge.
+
+The control plane's Docker adapter is never the default: a person chooses it with `AMBIT_ADAPTER=docker` or `--adapter=docker`, and when Docker cannot run the step it refuses before anything runs. It runs only what the gate already let through, one container per step from the image the person named, never one the request names. What the container gets:
+- No network, unless the three conditions under *No egress you did not type* all hold, and never the host's network, which would put it on the loopback where the API listens.
+- A read-only root with a small `/tmp`, every Linux capability dropped, `no-new-privileges`, user `65534`, and limits on memory, CPU and processes. It is removed when the step ends, by name if `--rm` did not get to it.
+- No host path, unless `AMBIT_DOCKER_WORKDIR` names a directory, which is mounted read-only at `/work`. A directory that is the home directory or holds it, one inside a dot-directory of home (`.ssh`, `.aws`, `.config` and the rest, where keys, cloud credentials and the approval key live), and one holding the Docker socket are refused, links resolved first.
+- No environment variable from this machine. The docker client itself starts with only what finds the daemon (`PATH`, `HOME`, `DOCKER_*` and a few like them), so not even the client holds the approval key.
+- The request's `payload.command` as its argument vector, after the image, with no shell anywhere on the host and no request value in a docker option.
+
+A path that breaks any of those is in scope, as is any path by which the adapter runs a step the gate refused, or by which a Docker refusal ends with the step run in the simulator.
 
 A tech tree overlay (`.ambit/techtree.json` or `.ambit.json` in the directory `ambit` runs from, or `AMBIT_OVERLAY_TECHTREE`) may add nodes and detection patterns and may narrow the authority the curated tree states, never widen it. A cloned repository can ship either file, so the merge keeps every curated mode, takes the narrower of the curated and the overlay's for each key (`forbidden` over `confirm` over `autonomous`, with `override: true` no exception), and caps at `confirm` any mode the curated tree never stated, a node only the overlay names included. Any overlay that yields a grant wider than the shipped tree's is in scope.
 
@@ -44,6 +54,7 @@ A tech tree overlay (`.ambit/techtree.json` or `.ambit.json` in the directory `a
 
 ## Known limits
 
+- An approval covers a proposal and the capability it names, not the command a later call carries. Under the Docker adapter the approved agent chooses `payload.command`, so what bounds that command is the container's isolation, not the signature.
 - The token rule stops a page you visit and a script acting casually. It is not a boundary against a determined process running as you, which can read the token file, record work toward a promotion threshold with it, or open the graph directly; loopback binding and the token file's `0600` permissions carry that weight.
 
 ## Where your data is
