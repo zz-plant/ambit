@@ -19,6 +19,7 @@ import {
   explain,
   renderBrief,
   renderImpact,
+  renderWindows,
   renderPlan,
   renderStatus,
   statusReport,
@@ -84,7 +85,7 @@ import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
-import { workReport, usageReport, unmappedUse } from './telemetry.ts';
+import { workReport, usageReport, unmappedUse, usageWindows } from './telemetry.ts';
 import { capacityReport } from './capacity.ts';
 import { declareModelPrice, economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
@@ -267,6 +268,12 @@ async function runCommand(
       // run already holds is not recorded again, so it only adds what an
       // earlier read missed.
       if (flags.has('--refresh')) emit(sessionLogReport(readSessionLogs(db, { refresh: true })));
+      // The five-hour windows a subscription plan resets in, the last day's
+      // unless a number of days is given.
+      else if (flags.has('--windows'))
+        emit(usageWindows(db, { days: parseInt(arg, 10) || 1 }), r =>
+          renderWindows(r, terminalPalette())
+        );
       else emit(usageReport(db, parseInt(arg, 10) || 30));
       break;
     case 'economics':

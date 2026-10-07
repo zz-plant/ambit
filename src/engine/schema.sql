@@ -273,7 +273,13 @@ CREATE TABLE IF NOT EXISTS resource_consumption (
     quantity REAL NOT NULL DEFAULT 0,
     unit TEXT,
     cost_cents REAL,
-    recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+    -- When it was consumed. A token row's is the start of the hour the tokens
+    -- were used in, so a five-hour window can be told from its rows.
+    recorded_at TEXT NOT NULL DEFAULT (datetime('now')),
+    -- When the row was first written. Empty on a row written before token
+    -- rows were kept per hour, whose recorded_at is when it was written and
+    -- whose tokens belong to their session as a whole.
+    written_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS outcomes (
