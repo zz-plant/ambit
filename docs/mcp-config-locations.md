@@ -104,11 +104,10 @@ VS Code's user-level `mcp.json`, under `servers`. Linux keeps it in `~/.config/C
 Each file answers for one runtime. To see all of them together, with which servers are on, which are failing a check, and what stops working if one goes down:
 
 ```bash
-brew install zz-plant/tap/ambit
-ambit seed
-ambit status
+npx ambit-cli          # reads every user-level file above that exists, and says what it found
+npx ambit-cli status   # which servers are on, what is failing, what has one provider
 ```
 
-`ambit seed` reads every file under [user files](#user-files) that exists, and `ambit status` reports on the result. Nothing leaves the machine. Or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and paste one config into the page, where it is read in the tab and never uploaded.
+The first run reads every file under [user files](#user-files) that exists, and `status` reports on the result. Nothing leaves the machine, and `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` keeps the `ambit` command. Or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1&tour=yours) and paste one of the JSON files into the page, where it is read in the tab and never uploaded.
 
 Related: [what breaks if an MCP server goes down](./mcp-outage.md) and [auditing which MCP servers a coding agent has](./audit-mcp-servers.md).

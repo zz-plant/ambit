@@ -9,9 +9,9 @@ Servers are declared per runtime and sometimes per project, in files with differ
 [Ambit](./README.md) reads every runtime's user-level file into one local graph. It does not read project files such as `.mcp.json` or `.cursor/mcp.json` yet, so check those by hand in each repository you audit.
 
 ```bash
-brew install zz-plant/tap/ambit
-ambit seed      # reads every runtime's user-level config on this machine
-ambit status    # what is reached, what is proven, what is failing
+npx ambit-cli              # reads every runtime's user-level config on this machine
+npm install -g ambit-cli   # keeps the `ambit` command the steps below use
+ambit status               # what is reached, what is proven, what is failing
 ```
 
 The map's **My Setup** view is the same list, one row per server, agent, model or command, with which runtime declared it and whether it is enabled.
@@ -52,7 +52,7 @@ ambit graph unmapped --days=30   # what the agents used that no node accounts fo
 ambit audit 30                   # who approved what, what ran, and what came of it
 ```
 
-Both read the work ledger. Four things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Cursor, Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
+Both read the work ledger. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
 
 `ambit graph unmapped` lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs, the runs the ledger recorded, and every grant that narrowed itself because a check failed.
 

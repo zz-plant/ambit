@@ -1,8 +1,8 @@
 # Ambit documentation
 
-[The README](../README.md) is the front door: what Ambit is, how to get it running, and what each command answers. The claim under all of it is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do.
+Ambit reads the configs of Claude Code, Cursor, OpenCode and nine more agent runtimes into one local map: what you and your agents can do now, what one more step would open, and which pieces fail their checks. The quickest look is [the live demo](https://zz-plant.github.io/ambit/?demo=1), a sample setup with nothing to install. On your own machine it is `npx ambit-cli`, and [the guide](../README.md) has the other ways in and what each command answers.
 
-To see what using it is like, start with [Your loadout, from A to B](./loadout.md). For the argument, [The ideas behind Ambit](./ideas.md) is the one-page version. The pages below are grouped by the kind of claim each one makes, because whether a page describes the code, argues for it, runs ahead of it, or records what was said at the time is the thing a file listing cannot tell you.
+The claim underneath is that what an agent setup can do is not written in any config file: it is composed, a configured piece may not work, and none of it says what the setup is allowed to do. To see what using it is like, start with [Your loadout, from A to B](./loadout.md). For the argument, [The ideas behind Ambit](./ideas.md) is the one-page version. The pages below are grouped by the kind of claim each one makes, because whether a page describes the code, argues for it, runs ahead of it, or records what was said at the time is the thing a file listing cannot tell you.
 
 ## Description: true of the code today
 

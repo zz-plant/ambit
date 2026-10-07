@@ -6,6 +6,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, expect, test } from 'vitest';
+import { readLinkState } from '../src/client/linkState.ts';
 import {
   BASE,
   ORIGIN,
@@ -64,7 +65,17 @@ test('every internal link resolves to a built page and an anchor on it', () => {
     const page = pagePath(p);
     for (const [, href] of html(page).matchAll(/ (?:href|src)="([^"]+)"/g)) {
       const link = href.replace(/&amp;/g, '&');
-      if (/^https?:/.test(link) || link === `${BASE}?demo=1` || link === BASE) continue;
+      if (/^https?:/.test(link) || link === BASE) continue;
+      // A link into the demo is to the app, and holds if the app reads every
+      // parameter it carries: a tour step it does not know opens the tour's
+      // first card, which is the mismatch the link was written to avoid.
+      if (link.startsWith(`${BASE}?`)) {
+        const query = link.slice(BASE.length);
+        const state = readLinkState(query);
+        if (!state.demo || (new URLSearchParams(query).has('tour') && !state.tour))
+          broken.push(`${page}: ${link}`);
+        continue;
+      }
       const [path, anchor] = link.split('#');
       const target = path || page;
       // The site's own root files, such as the favicon, are Vite's public
@@ -133,4 +144,36 @@ test('the glossary defines every concept the app does, and every page says where
     const crumbs = graphOf(pagePath(p)).find(n => n['@type'] === 'BreadcrumbList')!;
     expect(crumbs.itemListElement.at(-1).item, p.src).toBe(ORIGIN + pagePath(p));
   }
+});
+
+test('a page reached by a search question says what Ambit does about it before the answer', () => {
+  const pitched = PAGES.filter(p => p.pitch);
+  expect(pitched.map(p => p.slug)).toEqual([
+    'mcp-config-locations',
+    'mcp-outage',
+    'audit-mcp-servers',
+  ]);
+  for (const p of pitched) {
+    const page = html(pagePath(p));
+    const box = page.indexOf('<aside class="pitch"');
+    expect(box, p.slug).toBeGreaterThan(page.indexOf('<h1'));
+    // Before the first section, so it is on the first screen, after the
+    // paragraph that answers the question the reader typed.
+    expect(box, p.slug).toBeLessThan(page.indexOf('<h2'));
+    expect(page.slice(box), p.slug).toContain(`href="${BASE}?demo=1&amp;tour=`);
+  }
+});
+
+test('every page ends on the way to try it, except the one written for contributors', () => {
+  for (const p of PAGES) {
+    const page = html(pagePath(p));
+    const card = page.indexOf('<section class="try"');
+    if (p.slug === 'contributing') {
+      expect(card).toBe(-1);
+      continue;
+    }
+    expect(card, p.slug).toBeGreaterThan(0);
+    expect(page.slice(card), p.slug).toContain('npx ambit-cli');
+  }
+  expect(existsSync(join(out, 'docs/assets/screenshot-tree.png'))).toBe(true);
 });

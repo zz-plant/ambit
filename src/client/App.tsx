@@ -112,7 +112,7 @@ export default function App() {
   );
   const { showGuide, dismissGuide } = useGuide(link.guideOff);
   const [view, setView] = useState<View>(() =>
-    initialView(link, isNarrowScreen(), link.demo && showGuide)
+    initialView(link, isNarrowScreen(), link.demo && (showGuide || Boolean(link.tour)))
   );
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
@@ -144,8 +144,12 @@ export default function App() {
 
   const isNarrow = useNarrow();
   // The tour runs on the demo the first time, like the card it replaces there,
-  // and again whenever someone asks to watch the outage from the landing.
-  const [tourAsked, setTourAsked] = useState(false);
+  // and again whenever someone asks: Replay in the header, or a link from a
+  // docs page that names the step it is about.
+  const [tourAsked, setTourAsked] = useState(() => Boolean(link.demo && link.tour));
+  // The step a link opened the tour on. Replaying it from the header starts
+  // at the beginning, so the link's step is spent when the tour ends.
+  const [tourStart, setTourStart] = useState(link.tour ?? null);
   const [mapYoursOpen, setMapYoursOpen] = useState(false);
   const [toast, setToast] = useToast();
 
@@ -457,6 +461,7 @@ export default function App() {
   }, [showTimeline, setHistoryPlaying]);
   const endTour = () => {
     setTourAsked(false);
+    setTourStart(null);
     dismissGuide();
   };
   /** A config of the visitor's own was read: the sample is over, and the list shows it. */
@@ -593,6 +598,7 @@ export default function App() {
             onDone={endTour}
             onShowProposals={showProposals}
             onMapped={mapped}
+            start={tourStart}
           />
         ) : (
           showGuide &&

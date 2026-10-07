@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### A docs page says what Ambit is before its answer, and opens the demo on it
+
+Most visitors from a search land on a docs page that answers a question about MCP servers, not about Ambit, and those pages named what Ambit does in their last paragraph, under a `brew install`. The pages on config locations, outages and audits now open their answer with two lines on what Ambit does about that question and a link into the demo, and every page but the contributor guide ends on a card with the map, the demo and `npx ambit-cli`. A demo link can name the tour step it is about (`?tour=outage`, `failing`, `yours`), so the page on outages opens the outage and the page on config files opens the paste box; the tour also keeps its place by step name, because the sample's ranking arriving after it opened moved every step along by one. The header drops Jev, a page about one integration, for a Live demo button. The audit page now counts Cursor's hook among what fills the ledger, the no-JavaScript home text says what an approval covers, and the outage page no longer describes a headline the map stopped drawing.
+
 ### The latest check decides
 
 A capability whose check failed came back only after five passes in a row, each typed by hand, so fixing a revoked token still kept three servers out of every plan until someone ran `ambit verify` five times. Now one passing check brings it back into every plan, permission and ranking. Until its last five runs pass it reads as recovering ("2 of the last 5 passed"): usable, counted with the unproven, and named in `ambit status`, the briefing, `ambit verify`, the map's panel and My Setup. A check whose last run failed is the only kind left out. `ambit verify --failing` re-runs recovering checks too, the Claude Code gate asks only when the last check failed, and a grant still widens only after a window with no failure in it. The `degraded` fields in JSON output keep their names and now list only capabilities whose last check failed.
