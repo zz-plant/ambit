@@ -9,7 +9,14 @@
  * authority model.
  */
 import type { Db } from '../db.ts';
-import { CHECK_RUN, CHECK_RUN_SQL, FAILING, REACHED_SQL, RECOVERING_SQL } from '../vocabulary.ts';
+import {
+  CHECK_RUN,
+  CHECK_RUN_SQL,
+  COUNTED_SQL,
+  FAILING,
+  REACHED_SQL,
+  RECOVERING_SQL,
+} from '../vocabulary.ts';
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -142,7 +149,7 @@ function recovering(db: Db): { id: string; name: string; recent: string }[] {
     return db
       .prepare(
         `SELECT id, name FROM capabilities
-         WHERE ${REACHED_SQL} AND ${RECOVERING_SQL} AND kind != 'action' ORDER BY id`
+         WHERE ${REACHED_SQL} AND ${RECOVERING_SQL} AND ${COUNTED_SQL} ORDER BY id`
       )
       .all<{ id: string; name: string }>()
       .map(r => ({ id: r.id, name: r.name, recent: recentRuns(db, r.id) }));

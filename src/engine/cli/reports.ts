@@ -25,11 +25,11 @@ import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
 import { recovering } from '../assurance.ts';
 import {
   CHECK_RUN_SQL,
+  CONFIGURED,
+  COUNTED_SQL,
   FAILING_SQL,
   PROBE_COMMAND,
-  PROVEN,
   REACHED_SQL,
-  RECOVERING,
   graphCounts,
   recheckCommand,
 } from '../vocabulary.ts';
@@ -46,8 +46,9 @@ function ago(ts: string | null | undefined): string | undefined {
 }
 
 /**
- * The unproven capabilities that carry a declared check: the set one `ambit
- * verify` turns into evidence.
+ * The unproven capabilities that carry a declared check and have never run
+ * it: the set one `ambit verify` turns into evidence. Counted over the nodes
+ * `graphCounts` counts, so it is a part of the unproven figure and never more.
  */
 function checkableNames(db: any): string[] {
   try {
@@ -70,7 +71,7 @@ function checkableNames(db: any): string[] {
       return db
         .prepare(
           `SELECT name FROM capabilities WHERE id IN (${placeholders})
-         AND state IN ('unlocked','active') AND lifecycle = 'configured' ORDER BY name`
+         AND ${COUNTED_SQL} AND ${REACHED_SQL} AND lifecycle = '${CONFIGURED}' ORDER BY name`
         )
         .all(...withCheck)
         .map((r: any) => r.name);
@@ -84,39 +85,36 @@ function checkableNames(db: any): string[] {
 /**
  * What the graph can prove versus what it merely lists.
  *
- * Reached capabilities split by the worth of their evidence: proven (check
- * passed), unproven (configured and never checked, or recovering: the last
- * run passed and recent ones did not), failing (the last check failed).
- * The unproven-with-a-declared-check set is named, because it is the one a
- * single command turns into evidence — and an inventory that cannot say
- * "installed is not working" is the failure this project exists to prevent.
+ * Reached nodes split by the worth of their evidence: proven (check passed),
+ * unproven (configured and never checked, or recovering: the last run passed
+ * and recent ones did not), failing (the last check failed), and entries,
+ * which carry no check of their own. The four are `graphCounts`'s, so they add
+ * up to the reached figure the head prints. The unproven-with-a-declared-check
+ * set is named, because it is the one a single command turns into evidence —
+ * and an inventory that cannot say "installed is not working" is the failure
+ * this project exists to prevent.
  */
 function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
-  // The nodes the summary counts, which is every kind but an action. A skill an
-  // agent registered carries a check and a derived lifecycle as a curated
-  // capability does, and counting capabilities alone left a failing skill out
-  // of the row while the head counted it. An action is conferred by a
-  // capability and is counted through it, as `graphCounts` counts it.
-  const rows = db
-    .prepare(
-      `SELECT lifecycle, COUNT(*) AS n FROM capabilities
-       WHERE kind != 'action' AND ${REACHED_SQL} GROUP BY lifecycle`
-    )
-    .all();
-  const count = (...ls: string[]) =>
-    rows.filter((r: any) => ls.includes(r.lifecycle)).reduce((s: number, r: any) => s + r.n, 0);
+  const { proven, unproven, failing, entries } = graphCounts(db);
+  // The unproven, split by what would move each: a check never run, a check
+  // passing again after failures, or no check at all. The third is the
+  // remainder, which is why `checkableNames` and `recovering` count over the
+  // same nodes.
+  const recoveringNow = recovering(db).length;
 
   const last = db
     .prepare(`SELECT MAX(timestamp) AS t FROM session_learning WHERE ${CHECK_RUN_SQL}`)
     .get();
 
   return {
-    proven: count(...PROVEN),
-    unproven: count('configured', ...RECOVERING),
-    // The summary's own count, so this row and the head cannot disagree.
-    failing: graphCounts(db).failing,
+    proven,
+    unproven,
+    failing,
+    entries,
+    recovering: recoveringNow,
+    no_check: unproven - recoveringNow - checkable.length,
     last_check: ago(last?.t) || 'never',
-    provable_now: checkable.slice(0, 8),
+    provable_now: checkable,
     note: checkable.length
       ? `configured is not working — ambit verify would turn ${checkable.length} of the unproven into evidence`
       : undefined,
@@ -216,10 +214,11 @@ function nextMove(
 function statusReport(db: any) {
   const counts = graphCounts(db);
   const g = { ...counts, verified: counts.proven };
+  // Over the nodes the head counts, so the domains' totals add up to its total.
   const domains = db
     .prepare(
       `SELECT domain, COUNT(*) as total, SUM(CASE WHEN ${REACHED_SQL} THEN 1 ELSE 0 END) as reached
-       FROM capabilities WHERE kind != 'action' GROUP BY domain ORDER BY domain`
+       FROM capabilities WHERE ${COUNTED_SQL} GROUP BY domain ORDER BY domain`
     )
     .all();
   const actions = db
@@ -239,7 +238,7 @@ function statusReport(db: any) {
   const degraded = db
     .prepare(
       `SELECT id, name, domain FROM capabilities
-       WHERE kind != 'action' AND ${FAILING_SQL} ORDER BY id`
+       WHERE ${COUNTED_SQL} AND ${REACHED_SQL} AND ${FAILING_SQL} ORDER BY id`
     )
     .all();
 
@@ -340,12 +339,14 @@ const SAID_IN_HEAD = new Set([
  *
  * The head carries the two numbers that matter, reached and proven, and the
  * worries the report's own summary names. Under a rule come the evidence
- * counts in one aligned column, with a marker on the one that wants a person:
- * a failing check before an unproven one, since a repair comes before an
- * acquisition. The marker is a character and colour only adds to it, so the
- * row is found in a pipe and by someone who cannot tell the colours apart.
- * Whatever else the report found follows as it always has, and the last line
- * is the one thing to type next, taken from the report's `next`.
+ * counts in one aligned column that adds up to the reached figure, with a
+ * marker on the one that wants a person: a failing check before an unproven
+ * one, since a repair comes before an acquisition. The marker is a character
+ * and colour only adds to it, so the row is found in a pipe and by someone
+ * who cannot tell the colours apart. A row whose number another line repeats
+ * in part says which part, so "11 of the unproven" on the last line has its
+ * 11 above it. Whatever else the report found follows as it always has, and
+ * the last line is the one thing to type next, taken from the report's `next`.
  *
  * Pure: the palette comes in as a parameter and nothing here reads the
  * terminal, which is what lets a test ask for both renderings.
@@ -356,10 +357,20 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const worried = worries(report);
   const tail = worried.length ? worried.join(' · ') : 'nothing failing';
 
-  const rows: [label: string, value: string][] = [
+  const unprovenParts = [
+    ev.provable_now.length ? `${ev.provable_now.length} provable now` : null,
+    ev.recovering ? `${ev.recovering} recovering` : null,
+    ev.no_check ? `${ev.no_check} with no check` : null,
+  ].filter(Boolean);
+  const rows: [label: string, value: string, gloss?: string][] = [
     ['proven', String(ev.proven)],
-    ['unproven', String(ev.unproven)],
+    ['unproven', String(ev.unproven), unprovenParts.join(' · ') || undefined],
     ['failing', String(ev.failing)],
+    [
+      'entries',
+      String(ev.entries),
+      ev.entries ? 'from your config; checks run on what they provide' : undefined,
+    ],
     ['last check', ev.last_check],
   ];
   const labelWidth = Math.max(...rows.map(([label]) => label.length));
@@ -369,17 +380,19 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const head = [
     `${GUTTER}${c.bold}${lead}${c.reset} · ${tail}`,
     `${GUTTER}${c.grey}${'─'.repeat(Math.min(`${lead} · ${tail}`.length, 72))}${c.reset}`,
-    ...rows.map(([label, value]) => {
+    ...rows.map(([label, value, gloss]) => {
       const cells = `${label.padEnd(labelWidth)}  ${value.padStart(valueWidth)}`;
-      if (label === wants) return `  ${c.accent}${c.bold}› ${cells}${c.reset}`;
+      const said = gloss ? `  ${c.grey}${gloss}${c.reset}` : '';
+      if (label === wants) return `  ${c.accent}${c.bold}› ${cells}${c.reset}${said}`;
       return label === 'last check'
         ? `${GUTTER}${c.grey}${cells}${c.reset}`
-        : `${GUTTER}${c.grey}${label.padEnd(labelWidth)}${c.reset}  ${value.padStart(valueWidth)}`;
+        : `${GUTTER}${c.grey}${label.padEnd(labelWidth)}${c.reset}  ${value.padStart(valueWidth)}${said}`;
     }),
   ];
 
   // What the head does not say, as it was always drawn. The names `verify`
-  // would check stay here, since the head only has room for how many. The
+  // would check stay here, since the head only has room for how many, and the
+  // ones past the eighth are counted, so the list and its count agree. The
   // failing list keeps its old key for scripts and is labelled for a person,
   // since a degraded capability is one that is recovering.
   const rest = Object.fromEntries(
@@ -387,10 +400,11 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
       .filter(([key]) => !SAID_IN_HEAD.has(key))
       .map(([key, value]) => [key === 'degraded' ? 'not_working' : key, value])
   );
-  const details = formatGeneric(
-    { actions: rest.actions, provable_now: ev.provable_now, ...rest },
-    c
-  );
+  const provable =
+    ev.provable_now.length > 8
+      ? `${ev.provable_now.slice(0, 8).join(', ')} and ${ev.provable_now.length - 8} more`
+      : ev.provable_now;
+  const details = formatGeneric({ actions: rest.actions, provable_now: provable, ...rest }, c);
   while (details[0] === '') details.shift();
   while (details[details.length - 1] === '') details.pop();
 
@@ -426,7 +440,7 @@ function briefReport(db: any) {
   const failing = db
     .prepare(
       `SELECT id, name FROM capabilities
-       WHERE kind != 'action' AND ${FAILING_SQL} ORDER BY id`
+       WHERE ${COUNTED_SQL} AND ${REACHED_SQL} AND ${FAILING_SQL} ORDER BY id`
     )
     .all() as { id: string; name: string }[];
   // The ranking is the screen's purpose but never the reason it fails to print.
@@ -458,6 +472,7 @@ function briefReport(db: any) {
     total: counts.total,
     proven: ev.proven,
     unproven: ev.unproven,
+    no_check: ev.no_check,
     failing: failing.map(f => ({
       name: f.name,
       command: recheckCommand(f.id),
@@ -538,8 +553,16 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
       );
     }
     if (report.unproven) {
+      // `verify` runs the checks there are, so the line says how many of these
+      // have one when some do not.
+      const checked = report.unproven - report.no_check;
+      const how = !report.no_check
+        ? 'ambit verify runs their checks'
+        : checked
+          ? `ambit verify checks ${checked} of them`
+          : 'none of them declares a check';
       lines.push(
-        `${GUTTER}${report.unproven} configured and not yet proven ${c.grey}· ambit verify runs their checks${c.reset}`
+        `${GUTTER}${report.unproven} configured and not yet proven ${c.grey}· ${how}${c.reset}`
       );
     }
   }
