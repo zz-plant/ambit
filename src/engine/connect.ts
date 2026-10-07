@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { keepBackup } from '../shared/backup.ts';
 import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
+import { shellQuote } from '../shared/shell.ts';
 import { clientPaths } from './mcp-clients.ts';
-import { ambitCommand } from './paths.ts';
+import { ambitCommand, cursorLedgerScript } from './paths.ts';
 
 /**
  * Where a runtime keeps its servers, in the shape it reads them:
@@ -29,6 +30,10 @@ export interface ConnectResult {
     action: 'added' | 'updated' | 'already_configured';
     /** Where the file stood before this run, when it existed and was rewritten. */
     backup?: string;
+    /** For Cursor's ledger hooks, the command each entry runs, so a dry run shows the change. */
+    hook?: string;
+    /** And the events it is added under. */
+    events?: string[];
   }[];
   skipped: {
     runtime: string;
@@ -119,6 +124,104 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
     kind: 'codex',
   },
 ];
+
+/** One entry of a Cursor hooks.json list: the command, and seconds before Cursor gives up on it. */
+export interface CursorHook {
+  command: string;
+  timeout: number;
+}
+
+/**
+ * The Cursor events the ledger hook records, as hooks.json names them. The
+ * script keeps the same four (plugins/cursor/ambit-ledger.mjs), and a test runs
+ * it on each. None is a permission hook, so the entries cannot block or allow
+ * anything; the script says why the permission hooks are left alone.
+ */
+export const CURSOR_LEDGER_EVENTS = [
+  'afterShellExecution',
+  'afterMCPExecution',
+  'postToolUseFailure',
+  'sessionEnd',
+] as const;
+
+/** The entry `--ledger` adds under each event: this copy's hook, by its absolute path. */
+export function cursorLedgerHook(script = cursorLedgerScript()): CursorHook {
+  return { command: `node ${shellQuote(script)}`, timeout: 5 };
+}
+
+/** Whether a hooks.json entry is Ambit's ledger hook, from this copy or an earlier one. */
+const isLedgerHook = (entry: any) =>
+  typeof entry?.command === 'string' && entry.command.includes('ambit-ledger.mjs');
+
+/**
+ * Add the ledger hook to Cursor's hooks.json under each event it records,
+ * keeping every hook already there. An entry for the hook from another path,
+ * such as a copy installed elsewhere before, is replaced and not doubled, since
+ * Cursor runs every entry and two would write each line twice. The file is
+ * kept in `<file>.bak` first, as every config `connect` writes is, and one that
+ * does not parse, or whose shape is not the one Cursor documents, is left alone.
+ */
+function configureCursorHooks(
+  filePath: string,
+  dryRun: boolean
+): {
+  action: 'added' | 'updated' | 'already_configured';
+  backup?: string;
+} {
+  const hook = cursorLedgerHook();
+  let parsed: any = { version: 1, hooks: {} };
+  const existed = existsSync(filePath);
+  if (existed) {
+    const text = readFileSync(filePath, 'utf8');
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      let commented = false;
+      try {
+        parseJsonc(text);
+        commented = true;
+      } catch {}
+      throw new Error(
+        commented
+          ? `${filePath} has comments, and writing it would delete them; add the hooks by hand`
+          : `${filePath} is not valid JSON; left unchanged`
+      );
+    }
+  }
+  const isObject = (v: unknown) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
+  if (!isObject(parsed) || (parsed.hooks !== undefined && !isObject(parsed.hooks))) {
+    throw new Error(
+      `${filePath} is not a hooks file in the shape Cursor documents; left unchanged`
+    );
+  }
+  // Cursor requires the version; a file without one gets the only one there is.
+  if (parsed.version === undefined) parsed = { version: 1, ...parsed };
+  if (!parsed.hooks) parsed.hooks = {};
+  const hooks = parsed.hooks as Record<string, unknown>;
+
+  let changed = false;
+  let replaced = false;
+  for (const event of CURSOR_LEDGER_EVENTS) {
+    const list = Object.hasOwn(hooks, event) ? hooks[event] : [];
+    if (!Array.isArray(list)) {
+      throw new Error(`${filePath} has hooks.${event} that is not a list; left unchanged`);
+    }
+    const ours = list.filter(isLedgerHook);
+    if (ours.length === 1 && ours[0].command === hook.command) continue;
+    if (ours.length) replaced = true;
+    hooks[event] = [...list.filter(e => !isLedgerHook(e)), hook];
+    changed = true;
+  }
+  if (!changed) return { action: 'already_configured' };
+
+  let backup: string | undefined;
+  if (!dryRun) {
+    backup = keepBackup(filePath);
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, JSON.stringify(parsed, null, 2) + '\n');
+  }
+  return { action: existed && replaced ? 'updated' : 'added', backup };
+}
 
 /** The same command for every runtime: `ambit mcp`, or through npx from npx's cache. */
 function serverCommand(): { command: string; args: string[] } {
@@ -242,7 +345,7 @@ function configureFile(
 /** Connect Ambit as meta-MCP server to detected or specified agent runtimes. */
 export function runConnect(
   runtimeName?: string,
-  options: { home?: string; dryRun?: boolean; force?: boolean } = {}
+  options: { home?: string; dryRun?: boolean; force?: boolean; ledger?: boolean } = {}
 ): ConnectResult {
   const home = options.home || process.env.HOME || '/';
   const dryRun = options.dryRun ?? false;
@@ -308,13 +411,73 @@ export function runConnect(
     }
   }
 
+  if (options.ledger) connectCursorLedger(runtimeName, home, options, configured, skipped);
+
   return {
     ok: configured.length > 0 || skipped.length === 0,
     configured,
     skipped,
     dry_run: dryRun,
-    note: changeNote(configured, dryRun, home),
+    note:
+      [changeNote(configured, dryRun, home), npxNote(configured)].filter(Boolean).join(' ') ||
+      undefined,
   };
+}
+
+/**
+ * `--ledger`: Cursor's hooks, which record what each conversation ran into the
+ * work ledger. Only Cursor takes them here. Claude Code's ledger is the `ambit`
+ * plugin's hooks and OpenCode's is plugins/ambit-telemetry.js, so naming either
+ * with `--ledger` says where theirs is and writes nothing. Run bare, it adds the
+ * hooks where Cursor is installed, as the MCP entry is added where its file is.
+ */
+function connectCursorLedger(
+  runtimeName: string | undefined,
+  home: string,
+  options: { dryRun?: boolean; force?: boolean },
+  configured: ConnectResult['configured'],
+  skipped: ConnectResult['skipped']
+) {
+  const label = 'Cursor ledger hooks';
+  if (runtimeName && runtimeName.toLowerCase() !== 'cursor') {
+    skipped.push({
+      runtime: runtimeName,
+      label,
+      reason:
+        '--ledger adds the Cursor hooks. Claude Code records through the ambit plugin, OpenCode through plugins/ambit-telemetry.js',
+    });
+    return;
+  }
+  const path = join(home, '.cursor', 'hooks.json');
+  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
+    skipped.push({ runtime: 'cursor', label, reason: 'Cursor not found on host' });
+    return;
+  }
+  try {
+    const { action, backup } = configureCursorHooks(path, options.dryRun ?? false);
+    configured.push({
+      runtime: 'cursor',
+      label,
+      path,
+      action,
+      ...(backup ? { backup } : {}),
+      hook: cursorLedgerHook().command,
+      events: [...CURSOR_LEDGER_EVENTS],
+    });
+  } catch (err: any) {
+    skipped.push({ runtime: 'cursor', label, reason: err?.message || 'Failed to update hooks' });
+  }
+}
+
+/**
+ * A copy npx unpacked lives in npx's cache, which npm may clear, and the hooks
+ * name their script by its path there; said so the person can install a copy
+ * whose path lasts.
+ */
+function npxNote(configured: ConnectResult['configured']): string | undefined {
+  const hooked = configured.some(c => c.hook && c.action !== 'already_configured');
+  if (!hooked || ambitCommand()[0] !== 'npx') return undefined;
+  return "The Cursor hooks run a script in npx's cache, which npm may clear: install with `npm install -g ambit-cli` and run this again for a path that lasts.";
 }
 
 /**

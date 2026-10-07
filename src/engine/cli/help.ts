@@ -115,7 +115,9 @@ check — what is proven, what is permitted, what is currently broken
   check incidents         probe the manifest, open incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
   check doctor            audit setup health, broken tools, and token-thrash risk
-  check connect [runtime] register Ambit's MCP server in each agent runtime it reads
+  check connect [runtime] register Ambit's MCP server in each agent runtime it reads;
+                          cursor --ledger also adds the hooks that record each
+                          conversation's tool runs into the work ledger
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported

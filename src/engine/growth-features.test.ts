@@ -9,15 +9,15 @@ import {
   lstatSync,
   symlinkSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { addEvent, beginRun, cli, dir, getDb, recordUse, seed, LOCAL_ONLY } from './testing/cli.ts';
 import { makeGraph } from './testing/graph.ts';
 import { captureFailure } from './failures.ts';
 import { runDoctor } from './doctor.ts';
-import { runConnect } from './connect.ts';
+import { CURSOR_LEDGER_EVENTS, cursorLedgerHook, runConnect } from './connect.ts';
 import { discoverMcpClients } from './mcp-clients.ts';
-import { ambitCommand } from './paths.ts';
+import { ambitCommand, cursorLedgerScript } from './paths.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
@@ -166,6 +166,124 @@ describe('ambit connect', () => {
     const res = runConnect('cursor', { home: testDir, dryRun: true, force: true });
     expect(res.dry_run).toBe(true);
     expect(existsSync(cursorJson)).toBe(false);
+  });
+});
+
+describe('ambit connect cursor --ledger', () => {
+  const hooksJson = () => join(testDir, '.cursor', 'hooks.json');
+  const ours = cursorLedgerHook();
+  /** A hooks file someone already has: a formatter, and an audit hook on an event Ambit uses. */
+  const theirs = {
+    version: 1,
+    hooks: {
+      afterFileEdit: [{ command: './hooks/format.sh' }],
+      afterShellExecution: [{ command: './hooks/audit.sh', timeout: 30 }],
+    },
+  };
+  const existing = `${JSON.stringify(theirs, null, '\t')}\n`;
+
+  test('names the hook this copy ships, by its absolute path, under the four events it records', () => {
+    expect(ours.command).toBe(`node ${cursorLedgerScript()}`);
+    expect(existsSync(cursorLedgerScript())).toBe(true);
+    expect(isAbsolute(cursorLedgerScript())).toBe(true);
+    expect(CURSOR_LEDGER_EVENTS).toEqual([
+      'afterShellExecution',
+      'afterMCPExecution',
+      'postToolUseFailure',
+      'sessionEnd',
+    ]);
+  });
+
+  test('--dry-run shows the hooks it would add and writes nothing', () => {
+    mkdirSync(dirname(hooksJson()), { recursive: true });
+    writeFileSync(hooksJson(), existing);
+    // Through the CLI, as a person types it, with HOME pointed at the test's own.
+    process.env.HOME = testDir;
+    const res = cli('connect', 'cursor', '--ledger', '--dry-run');
+    const hooks = res.configured.find((c: any) => c.path === hooksJson());
+    expect(hooks).toMatchObject({ runtime: 'cursor', action: 'added' });
+    expect(hooks.hook).toBe(ours.command);
+    expect(hooks.events).toEqual([...CURSOR_LEDGER_EVENTS]);
+    expect(res.note).toBe(
+      'Would change ~/.cursor/mcp.json, ~/.cursor/hooks.json, keeping each file that exists in <file>.bak first. Nothing was written.'
+    );
+    expect(readFileSync(hooksJson(), 'utf8')).toBe(existing);
+    expect(existsSync(`${hooksJson()}.bak`)).toBe(false);
+    expect(existsSync(join(testDir, '.cursor', 'mcp.json'))).toBe(false);
+  });
+
+  test("adds its hooks beside the ones already there, and keeps the file's old bytes in a .bak", () => {
+    mkdirSync(dirname(hooksJson()), { recursive: true });
+    writeFileSync(hooksJson(), existing);
+    const res = runConnect('cursor', { home: testDir, ledger: true });
+    const hooks = res.configured.find(c => c.path === hooksJson());
+    expect(hooks).toMatchObject({ action: 'added', backup: `${hooksJson()}.bak` });
+    expect(readFileSync(`${hooksJson()}.bak`, 'utf8')).toBe(existing);
+
+    const written = JSON.parse(readFileSync(hooksJson(), 'utf8'));
+    expect(written.version).toBe(1);
+    expect(written.hooks.afterFileEdit).toEqual(theirs.hooks.afterFileEdit);
+    expect(written.hooks.afterShellExecution).toEqual([...theirs.hooks.afterShellExecution, ours]);
+    for (const e of ['afterMCPExecution', 'postToolUseFailure', 'sessionEnd']) {
+      expect(written.hooks[e]).toEqual([ours]);
+    }
+    expect(res.note).toContain('What each held is in ~/.cursor/hooks.json.bak');
+
+    // A second run finds them and writes nothing.
+    const again = runConnect('cursor', { home: testDir, ledger: true });
+    expect(again.configured.find(c => c.path === hooksJson())?.action).toBe('already_configured');
+    expect(readFileSync(`${hooksJson()}.bak`, 'utf8')).toBe(existing);
+  });
+
+  test('replaces a hook an earlier copy left at another path, never running two', () => {
+    mkdirSync(dirname(hooksJson()), { recursive: true });
+    const old = { command: 'node /old/place/plugins/cursor/ambit-ledger.mjs', timeout: 5 };
+    writeFileSync(
+      hooksJson(),
+      JSON.stringify({ hooks: { sessionEnd: [old, { command: './bye.sh' }] } })
+    );
+    const res = runConnect('cursor', { home: testDir, ledger: true });
+    expect(res.configured.find(c => c.path === hooksJson())?.action).toBe('updated');
+    const written = JSON.parse(readFileSync(hooksJson(), 'utf8'));
+    // Cursor requires the version, so a file without one is given it.
+    expect(written.version).toBe(1);
+    expect(written.hooks.sessionEnd).toEqual([{ command: './bye.sh' }, ours]);
+  });
+
+  test('a file it cannot read as Cursor documents it is left as it was', () => {
+    mkdirSync(dirname(hooksJson()), { recursive: true });
+    for (const text of [
+      '{ // mine\n "version": 1, "hooks": {} }',
+      '{"version":1,"hooks":[]}',
+      '{"version":1,"hooks":{"sessionEnd":"x"}}',
+      '[]',
+    ]) {
+      writeFileSync(hooksJson(), text);
+      const res = runConnect('cursor', { home: testDir, ledger: true });
+      expect(res.skipped.find(s => s.label === 'Cursor ledger hooks')?.reason).toContain(
+        hooksJson()
+      );
+      expect(readFileSync(hooksJson(), 'utf8')).toBe(text);
+    }
+  });
+
+  test('--ledger on another runtime says where its ledger is and writes no hooks', () => {
+    const res = runConnect('claude-code', { home: testDir, ledger: true });
+    expect(res.skipped).toEqual([
+      expect.objectContaining({ runtime: 'claude-code', label: 'Cursor ledger hooks' }),
+    ]);
+    expect(existsSync(hooksJson())).toBe(false);
+  });
+
+  test('run bare, it adds the hooks only where Cursor is installed', () => {
+    expect(runConnect(undefined, { home: testDir, ledger: true }).skipped).toContainEqual({
+      runtime: 'cursor',
+      label: 'Cursor ledger hooks',
+      reason: 'Cursor not found on host',
+    });
+    mkdirSync(join(testDir, '.cursor'));
+    runConnect(undefined, { home: testDir, ledger: true });
+    expect(JSON.parse(readFileSync(hooksJson(), 'utf8')).hooks.sessionEnd).toEqual([ours]);
   });
 });
 

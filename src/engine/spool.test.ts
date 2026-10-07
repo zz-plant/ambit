@@ -8,12 +8,19 @@
  * the session's end, each at the time the hook ran, and nothing read twice.
  * A call is timed from its start to its end only where nobody was asked in
  * between, and a call still running waits in the spool for its end.
+ *
+ * Cursor's hook writes to the same spool, and the last part of this file holds
+ * it to the same promises: a run per conversation, a use per call with the
+ * length Cursor stated, a failure the engine classifies, and nothing a call was
+ * given or gave back, nor a prompt or a file, ever written.
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
+import { spoolPath } from '../shared/db-path.ts';
 import { canExecute } from './assurance.ts';
 import { budgetReport } from './budgets.ts';
+import { CURSOR_LEDGER_EVENTS } from './connect.ts';
 import { ingestSpool, type SpoolLine } from './spool.ts';
 import { runTimeline, tokenUsage } from './telemetry.ts';
 import { loopView } from './views.ts';
@@ -582,5 +589,310 @@ test('a call someone stopped is recorded as stopped, never as a failure', () => 
     expect(failures.n).toBe(0);
   } finally {
     db.close();
+  }
+});
+
+// ── Cursor ───────────────────────────────────────────────────────────────────
+
+const CURSOR_HOOK = join(import.meta.dirname, '..', '..', 'plugins', 'cursor', 'ambit-ledger.mjs');
+
+/**
+ * What every Cursor agent hook is handed besides its own fields, per the hooks
+ * reference, each carrying something that must never reach the spool.
+ */
+const CURSOR_BASE = {
+  conversation_id: 'conv-1',
+  generation_id: 'gen-secret-in-generation',
+  model: 'claude-opus-5-5',
+  cursor_version: '2.1.0',
+  workspace_roots: ['/Users/someone/secret-in-workspace'],
+  user_email: 'secret-in-email@example.com',
+  transcript_path: '/Users/someone/secret-in-transcript.jsonl',
+};
+
+/** Run Cursor's hook on one event, the way Cursor pipes it, and say what it answered. */
+function cursorHook(
+  spool: string,
+  event: Record<string, unknown>,
+  env: Record<string, string> = {}
+) {
+  const run = spawnSync(process.execPath, [CURSOR_HOOK], {
+    input: JSON.stringify(event),
+    env: { ...process.env, AMBIT_SPOOL: spool, ...env },
+    encoding: 'utf8',
+  });
+  return { status: run.status, stdout: run.stdout };
+}
+
+test('a Cursor conversation is one run: shell commands and MCP calls timed, a failure, a stop, its end', () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  const answers = [
+    cursorHook(spool, {
+      ...CURSOR_BASE,
+      hook_event_name: 'afterShellExecution',
+      command: 'deploy --token=secret-in-command',
+      output: 'secret-in-output',
+      duration: 1500,
+      sandbox: false,
+    }),
+    cursorHook(spool, {
+      ...CURSOR_BASE,
+      hook_event_name: 'afterMCPExecution',
+      tool_name: 'create_issue',
+      tool_input: '{"title":"secret-in-input"}',
+      mcp_server_name: 'github',
+      command: 'github-mcp-server --token secret-in-command',
+      result_json: '{"body":"secret-in-result"}',
+      duration: 2500,
+    }),
+    cursorHook(spool, {
+      ...CURSOR_BASE,
+      hook_event_name: 'postToolUseFailure',
+      tool_name: 'Shell',
+      tool_input: { command: 'npm test secret-in-input' },
+      tool_use_id: 'tc-1',
+      cwd: '/Users/someone/secret-in-cwd',
+      error_message: 'Command timed out after 30s',
+      failure_type: 'timeout',
+      duration: 30000,
+      is_interrupt: false,
+    }),
+    cursorHook(spool, {
+      ...CURSOR_BASE,
+      hook_event_name: 'postToolUseFailure',
+      tool_name: 'Shell',
+      tool_input: { command: 'sleep 100' },
+      tool_use_id: 'tc-2',
+      error_message: 'Aborted',
+      failure_type: 'error',
+      is_interrupt: true,
+    }),
+    cursorHook(spool, {
+      ...CURSOR_BASE,
+      hook_event_name: 'sessionEnd',
+      session_id: 'conv-1',
+      reason: 'completed',
+      duration_ms: 45000,
+      final_status: 'secret-in-status',
+    }),
+  ];
+  // Each answer asks Cursor for nothing, so the call goes on as it would have.
+  for (const a of answers) expect(a).toEqual({ status: 0, stdout: '{}\n' });
+
+  const written = readFileSync(spool, 'utf8');
+  expect(written).toContain('"src":"cursor"');
+  expect(written).toContain('"id":"tc-1"');
+  expect(written).not.toMatch(/secret-in-/);
+
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 5, skipped: 0, waiting: 0 });
+    const run = db
+      .prepare(
+        "SELECT source, goal, outcome, ended_at FROM work_runs WHERE id = 'run-cursor-conv-1'"
+      )
+      .get() as any;
+    expect(run).toMatchObject({
+      source: 'cursor-hook',
+      goal: 'cursor conversation',
+      outcome: 'completed',
+    });
+    expect(run.ended_at).toBeTruthy();
+
+    const events = db
+      .prepare(
+        "SELECT action, detail FROM work_events WHERE run_id = 'run-cursor-conv-1' ORDER BY id"
+      )
+      .all() as any[];
+    expect(events.map(e => [e.action, e.detail])).toEqual([
+      ['bash', null],
+      ['mcp__github__create_issue', null],
+      ['bash', 'failed'],
+      ['bash', 'interrupted'],
+    ]);
+
+    // Named as the other bridges name the same calls, so the one rule maps
+    // them: the shell is the graph's shell entry, the MCP call its server.
+    const uses = db
+      .prepare(
+        "SELECT capability_id, duration_seconds, source FROM capability_use WHERE run_id = 'run-cursor-conv-1'"
+      )
+      .all() as any[];
+    expect(uses.every(u => u.source === 'cursor')).toBe(true);
+    expect(
+      uses.filter(u => u.capability_id === 'combo:shell-execution').map(u => u.duration_seconds)
+    ).toEqual([1.5]);
+    expect(uses.filter(u => u.duration_seconds === 2.5).length).toBeGreaterThan(0);
+
+    // The timeout is classified from the kind Cursor stated; the interrupt is no failure.
+    const failures = db
+      .prepare(
+        "SELECT source, tool, class, signal FROM failure_signals WHERE session_id = 'conv-1'"
+      )
+      .all() as any[];
+    expect(failures).toEqual([
+      { source: 'cursor', tool: 'bash', class: 'infrastructure', signal: 'timeout' },
+    ]);
+
+    // Nothing a call was given or returned, nor who the person is, reached the graph.
+    const everything = JSON.stringify(
+      ['work_events', 'failure_signals', 'human_intervention', 'work_runs', 'capability_use'].map(
+        t => db.prepare(`SELECT * FROM ${t}`).all()
+      )
+    );
+    expect(everything).not.toMatch(/secret-in-/);
+    // Cursor's hooks say nothing of tokens, so the run holds none.
+    expect(
+      db
+        .prepare(
+          "SELECT COUNT(*) AS n FROM resource_consumption WHERE run_id = 'run-cursor-conv-1'"
+        )
+        .get()
+    ).toEqual({ n: 0 });
+  } finally {
+    db.close();
+  }
+});
+
+test("a Cursor call's use begins where the call did, and a length Cursor did not state is left off", () => {
+  seed(WITH_GITHUB).close();
+  const spool = join(dir, 'claude-code.jsonl');
+  const t = '2026-09-01T10:00:05.000Z';
+  const line = (fields: SpoolLine): SpoolLine => ({ t, src: 'cursor', s: 'c', ...fields });
+  writeFileSync(
+    spool,
+    spooled([
+      line({ e: 'afterMCPExecution', srv: 'github', tool: 'create_issue', ms: 2500 }),
+      line({ e: 'afterShellExecution' }),
+      line({ e: 'afterShellExecution', ms: -4 }),
+      // An event the ledger has no reading for is skipped and counted.
+      line({ e: 'beforeSubmitPrompt' }),
+      // The same id from Claude Code is a session of its own, never this conversation.
+      { t, e: 'PostToolUse', s: 'c', tool: 'Read' },
+    ])
+  );
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    expect(ingestSpool(db, spool)).toEqual({ recorded: 4, skipped: 1, waiting: 0 });
+    const uses = db
+      .prepare(
+        "SELECT capability_id, used_at, duration_seconds FROM capability_use WHERE run_id = 'run-cursor-c'"
+      )
+      .all() as any[];
+    const mcp = uses.filter(u => u.duration_seconds === 2.5);
+    expect(mcp.length).toBeGreaterThan(0);
+    for (const u of mcp) expect(u.used_at).toBe('2026-09-01 10:00:02');
+    const untimed = { used_at: '2026-09-01 10:00:05', duration_seconds: null };
+    expect(uses.filter(u => u.capability_id === 'combo:shell-execution')).toEqual([
+      { capability_id: 'combo:shell-execution', ...untimed },
+      { capability_id: 'combo:shell-execution', ...untimed },
+    ]);
+    const runs = db
+      .prepare("SELECT id FROM work_runs WHERE id IN ('run-cursor-c', 'run-cc-c')")
+      .all();
+    expect(runs).toHaveLength(2);
+  } finally {
+    db.close();
+  }
+});
+
+test('the Cursor hook writes no prompt, file or event it does not record, and answers none of them', () => {
+  const spool = join(dir, 'cursor.jsonl');
+  const unrecorded = [
+    { hook_event_name: 'beforeSubmitPrompt', prompt: 'secret-in-prompt', attachments: [] },
+    { hook_event_name: 'beforeReadFile', file_path: '/x', content: 'secret-in-file' },
+    {
+      hook_event_name: 'afterFileEdit',
+      file_path: '/x',
+      edits: [{ new_string: 'secret-in-edit' }],
+    },
+    { hook_event_name: 'afterAgentResponse', text: 'secret-in-response' },
+    { hook_event_name: 'beforeShellExecution', command: 'secret-in-command', cwd: '/x' },
+    { hook_event_name: 'preToolUse', tool_name: 'Shell', tool_input: { command: 'secret-in' } },
+  ];
+  for (const event of unrecorded) {
+    // Exit 1 with nothing printed, which Cursor reads as a failed hook and goes
+    // on: never an allow, and never an answer it would read as invalid and block on.
+    expect(cursorHook(spool, { ...CURSOR_BASE, ...event })).toEqual({ status: 1, stdout: '' });
+  }
+  expect(cursorHook(spool, { not: 'an event' })).toEqual({ status: 1, stdout: '' });
+  expect(existsSync(spool)).toBe(false);
+
+  // The script reads the fields the README names from its input, and no other.
+  const script = readFileSync(CURSOR_HOOK, 'utf8');
+  const read = new Set([...script.matchAll(/input\??\.([a-z_]+)/g)].map(m => m[1]));
+  expect([...read].sort()).toEqual([
+    'conversation_id',
+    'duration',
+    'error_message',
+    'failure_type',
+    'hook_event_name',
+    'is_interrupt',
+    'mcp_server_name',
+    'reason',
+    'session_id',
+    'tool_name',
+    'tool_use_id',
+  ]);
+});
+
+test('every event connect registers for Cursor writes a line, and AMBIT_NO_LEDGER writes none', () => {
+  const spool = join(dir, 'cursor.jsonl');
+  for (const e of CURSOR_LEDGER_EVENTS) {
+    const answer = cursorHook(spool, { ...CURSOR_BASE, hook_event_name: e });
+    expect(answer).toEqual({ status: 0, stdout: '{}\n' });
+  }
+  const lines = readFileSync(spool, 'utf8')
+    .trim()
+    .split('\n')
+    .map(l => JSON.parse(l));
+  expect(lines.map(l => l.e)).toEqual([...CURSOR_LEDGER_EVENTS]);
+
+  const off = join(dir, 'off.jsonl');
+  for (const e of CURSOR_LEDGER_EVENTS) {
+    const answer = cursorHook(
+      off,
+      { ...CURSOR_BASE, hook_event_name: e },
+      { AMBIT_NO_LEDGER: '1' }
+    );
+    expect(answer).toEqual({ status: 0, stdout: '{}\n' });
+  }
+  expect(existsSync(off)).toBe(false);
+});
+
+test('both hooks write where the engine reads when nothing overrides it (AGENTS.md rule 15)', () => {
+  const state = join(dir, 'state');
+  const env: Record<string, string | undefined> = { ...process.env, XDG_STATE_HOME: state };
+  delete env.AMBIT_SPOOL;
+  const end = { conversation_id: 'c', session_id: 's' };
+  execFileSync(process.execPath, [CURSOR_HOOK], {
+    input: JSON.stringify({ ...end, hook_event_name: 'sessionEnd' }),
+    env,
+  });
+  execFileSync(process.execPath, [HOOK], {
+    input: JSON.stringify({ ...end, hook_event_name: 'SessionEnd' }),
+    env,
+  });
+  const saved = { spool: process.env.AMBIT_SPOOL, state: process.env.XDG_STATE_HOME };
+  delete process.env.AMBIT_SPOOL;
+  process.env.XDG_STATE_HOME = state;
+  try {
+    const lines = readFileSync(spoolPath(), 'utf8')
+      .trim()
+      .split('\n')
+      .map(l => JSON.parse(l));
+    expect(lines.map(l => [l.src ?? 'claude-code', l.e])).toEqual([
+      ['cursor', 'sessionEnd'],
+      ['claude-code', 'SessionEnd'],
+    ]);
+  } finally {
+    for (const [key, value] of [
+      ['AMBIT_SPOOL', saved.spool],
+      ['XDG_STATE_HOME', saved.state],
+    ] as const) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   }
 });

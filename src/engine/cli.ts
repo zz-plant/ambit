@@ -696,7 +696,7 @@ async function runCommand(
     case 'connect': {
       const dryRun = flags.has('--dry-run');
       const force = flags.has('--force');
-      emit(runConnect(arg, { dryRun, force }));
+      emit(runConnect(arg, { dryRun, force, ledger: flags.has('--ledger') }));
       break;
     }
     case 'init-rules':
@@ -929,8 +929,8 @@ async function main() {
       if (!json) console.log('');
     }
   }
-  // What Claude Code sessions did since the last command, read into the
-  // ledger first so every report sees it. Not on `gate`, which runs before
+  // What Claude Code sessions and Cursor conversations did since the last
+  // command, read into the ledger first so every report sees it. Not on `gate`, which runs before
   // every tool call and must stay quick; a failed read never stops a command.
   if (cmd !== 'gate') {
     try {

@@ -221,8 +221,8 @@ function getWarmDb() {
   if (!dbHandle) {
     dbHandle = getDb(DB_PATH);
     migrate(dbHandle);
-    // A Claude Code session's tool calls, spooled by its hooks: read in when the
-    // agent's server opens the graph, so the briefing and the ledger see them.
+    // Claude Code's and Cursor's tool calls, spooled by their hooks: read in when
+    // the agent's server opens the graph, so the briefing and the ledger see them.
     try {
       ingestSpool(dbHandle);
     } catch {
