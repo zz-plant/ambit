@@ -21,10 +21,10 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/mcp-config-locations.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","description":"The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.","url":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/","dateModified":"2026-10-06","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","item":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","description":"The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.","url":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/","dateModified":"2026-10-07","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","item":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
-:root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b}
+:root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 "Mona Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 header,main,footer{max-width:820px;margin:0 auto;padding:0 20px}
 header{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;padding-top:18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
@@ -36,14 +36,25 @@ pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow-x:auto}p
 table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
 img{max-width:100%;height:auto}blockquote{margin:1em 0;padding:.2em 1em;border-left:3px solid var(--line);color:var(--muted)}hr{border:0;border-top:1px solid var(--line)}
 footer{padding-bottom:32px;color:var(--muted);font-size:14px}
+header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text-decoration:none;border-radius:8px}header a.cta{padding:3px 11px}header a.cta:hover{color:var(--bg);filter:brightness(1.08)}
+.button{display:inline-block;padding:7px 14px}.button:hover{filter:brightness(1.08)}
+.actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}.alt,.trust{color:var(--muted);font-size:14px}
+.pitch{margin:1.5em 0;padding:14px 16px;border:1px solid var(--line);border-left:3px solid var(--link);border-radius:8px;background:var(--panel)}.pitch p{margin:0 0 .7em}.pitch p:last-child{margin:0}
+.try{margin-top:3.5em;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.try p:last-child{margin-bottom:0}
+.try .shot img{display:block;border:1px solid var(--line);border-radius:8px}
+.try-title{font-family:"Hubot Sans","Mona Sans",sans-serif;font-stretch:112.5%;font-weight:750;font-size:1.35em;line-height:1.3;margin:.9em 0 .3em}
 </style>
 </head>
 <body>
-<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/?demo=1">Live demo</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/jev/">Jev</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a></header>
+<header><a class="brand" href="/ambit/">Ambit</a><a href="/ambit/docs/guide/">Guide</a><a href="/ambit/docs/faq/">FAQ</a><a href="/ambit/docs/deep-dive/">Reference</a><a href="/ambit/docs/glossary/">Glossary</a><a href="/ambit/docs/">All docs</a><a href="https://github.com/zz-plant/ambit">GitHub</a><a class="cta" href="/ambit/?demo=1">Live demo</a></header>
 <main>
 <h1 id="where-each-ai-agent-keeps-its-mcp-config"><a class="anchor" href="#where-each-ai-agent-keeps-its-mcp-config" aria-hidden="true" tabindex="-1">#</a>Where each AI agent keeps its MCP config</h1>
 <p>Every agent runtime stores its MCP servers in its own file, under its own key, and a config copied from one into another usually fails without an error. Some runtimes also read a second file inside the repository, for servers that belong to one project. The user-level files and keys below come from Ambit&#39;s readers, <a href="https://github.com/zz-plant/ambit/blob/main/src/engine/mcp-clients.ts"><code>src/engine/mcp-clients.ts</code></a> and <a href="https://github.com/zz-plant/ambit/blob/main/src/engine/claude-code.ts"><code>src/engine/claude-code.ts</code></a>, so they are the paths Ambit actually opens.</p>
 <p>Paths are for macOS and Linux, with <code>~</code> as your home directory. Windows keeps these files elsewhere, and Ambit does not read Windows paths yet; the runtime&#39;s own documentation has them.</p>
+<aside class="pitch" aria-label="What Ambit does about this">
+<p><strong>Ambit</strong> reads the user-level files below into one local map of what your agents can do together: which servers each runtime has, what one more step would open, and which pieces fail their checks.</p>
+<p class="actions"><a class="button" href="/ambit/?demo=1&amp;tour=yours">Paste one into the demo</a><span class="alt">or run <code>npx ambit-cli</code> on your machine</span></p>
+</aside>
 <h2 id="user-files"><a class="anchor" href="#user-files" aria-hidden="true" tabindex="-1">#</a>User files</h2>
 <table>
 <thead>
@@ -189,13 +200,20 @@ args = [&quot;-y&quot;, &quot;@modelcontextprotocol/server-github&quot;]
 <p>VS Code&#39;s user-level <code>mcp.json</code>, under <code>servers</code>. Linux keeps it in <code>~/.config/Code/User/mcp.json</code>, macOS in <code>~/Library/Application Support/Code/User/mcp.json</code>. A workspace can carry its own in <code>.vscode/mcp.json</code>, in the same shape, which Ambit does not read. <code>VSCODE_MCP_CONFIG</code> overrides the user-level path for Ambit.</p>
 <h2 id="seeing-every-runtimes-servers-at-once"><a class="anchor" href="#seeing-every-runtimes-servers-at-once" aria-hidden="true" tabindex="-1">#</a>Seeing every runtime&#39;s servers at once</h2>
 <p>Each file answers for one runtime. To see all of them together, with which servers are on, which are failing a check, and what stops working if one goes down:</p>
-<pre><code class="language-bash">brew install zz-plant/tap/ambit
-ambit seed
-ambit status
+<pre><code class="language-bash">npx ambit-cli          # reads every user-level file above that exists, and says what it found
+npx ambit-cli status   # which servers are on, what is failing, what has one provider
 </code></pre>
-<p><code>ambit seed</code> reads every file under <a href="#user-files">user files</a> that exists, and <code>ambit status</code> reports on the result. Nothing leaves the machine. Or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and paste one config into the page, where it is read in the tab and never uploaded.</p>
+<p>The first run reads every file under <a href="#user-files">user files</a> that exists, and <code>status</code> reports on the result. Nothing leaves the machine, and <code>npm install -g ambit-cli</code> or <code>brew install zz-plant/tap/ambit</code> keeps the <code>ambit</code> command. Or <a href="https://zz-plant.github.io/ambit/?demo=1&amp;tour=yours">open the hosted demo</a> and paste one of the JSON files into the page, where it is read in the tab and never uploaded.</p>
 <p>Related: <a href="/ambit/docs/mcp-outage/">what breaks if an MCP server goes down</a> and <a href="/ambit/docs/audit-mcp-servers/">auditing which MCP servers a coding agent has</a>.</p>
 
+<section class="try" aria-labelledby="try-ambit">
+<a class="shot" href="/ambit/?demo=1" tabindex="-1" aria-hidden="true"><img src="/ambit/docs/assets/screenshot-tree.png" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>
+<p class="try-title" id="try-ambit">See what your own agents can reach</p>
+<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and nine more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p class="actions"><a class="button" href="/ambit/?demo=1">Open the live demo</a><span class="alt">a sample setup in your browser, nothing to install</span></p>
+<p>On your machine: <code>npx ambit-cli</code>, with Node 22.18 or newer on macOS or Linux.</p>
+<p class="trust">MIT licensed · one local SQLite file, no telemetry · on npm and in the official MCP registry</p>
+</section>
 </main>
 <footer>Ambit is MIT licensed. <a href="https://github.com/zz-plant/ambit/blob/main/docs/mcp-config-locations.md">Edit this page on GitHub</a>.</footer>
 </body>
