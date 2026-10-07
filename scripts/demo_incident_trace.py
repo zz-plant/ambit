@@ -95,10 +95,16 @@ def main():
         # Step 1: Environment Initialization
         log_step(1, "Initializing Mock Production Environment & Ambit Graph")
         cmd_init = ["node", "--experimental-sqlite", str(CLI_PATH), "setup-env", str(env_dir), str(db_path)]
-        res_init = subprocess.run(cmd_init, capture_output=True, text=True, env=env_vars, check=True)
+        res_init = subprocess.run(cmd_init, capture_output=True, text=True, env=env_vars)
         init_data = json.loads(res_init.stdout)
-        
+        if res_init.returncode != 0:
+            # AMBIT_ADAPTER=docker with no daemon or no image: the control
+            # plane refuses before anything runs, and so does the demo.
+            print(f"{RED}{BOLD}✗ {init_data['error']}{RESET}")
+            sys.exit(1)
+
         print(f"{GREEN}✔ Graph initialized with capability DAG, authority grants, and actors.{RESET}")
+        print(f"  Environment Adapter: {BOLD}{init_data['adapter']}{RESET}")
         print(f"  Target Environment: {BOLD}production{RESET} (Active Version: {BOLD}{init_data['env']['production_version']}{RESET})")
         print(f"  Initial State Checksum: {DIM}{init_data['env']['immutable_hash']}{RESET}")
         time.sleep(0.8)
@@ -124,6 +130,11 @@ def main():
             },
             "hmac_approval_token": None
         }
+        if init_data["adapter"] == "docker":
+            # The Docker adapter runs the step's command in a container, so
+            # the deploy carries one. The simulator ignores it, which is why
+            # the default walkthrough leaves it out.
+            agent_payload["payload"]["command"] = ["echo", "deployed v2.0.0 from an approved container"]
         print(f"{MAGENTA}{BOLD}[AGENT INVOCATION]{RESET}")
         slow_type(json.dumps(agent_payload, indent=2))
         time.sleep(0.8)
@@ -187,6 +198,10 @@ def main():
         print(f"  Production Version Transitioned: {YELLOW}v1.4.2{RESET} ➔ {GREEN}{BOLD}{auth_res['post_state']['production_version']}{RESET}")
         print(f"  Active Containers: {auth_res['post_state']['active_containers']}")
         print(f"  Audit Attribution: {auth_res['post_state']['last_deployed_by']}")
+        last_run = auth_res['post_state'].get('last_run')
+        if last_run:
+            print(f"  Ran In: {BOLD}{last_run['image']}{RESET} as {last_run['container']} (network {last_run['network']}, removed: {last_run['removed']})")
+            print(f"  Step Output: {BOLD}{last_run['stdout'].strip()}{RESET} (exit {last_run['exit_code']})")
         time.sleep(1.0)
 
         # Step 9: OpenTelemetry Trace & Audit Verification

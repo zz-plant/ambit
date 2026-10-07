@@ -12,26 +12,51 @@ import { analyzeImpact } from '../engine/inference.ts';
 /**
  * The seam between the control plane and a real system.
  *
- * Everything below the gate — reading state, applying a change, hashing what
- * came back — goes through this interface. The only implementation in the
- * repository is the simulated one further down, which keeps its state in a
- * JSON file: it is a fixture for the demo and the tests, not a deployment
- * integration, and calling it `Mock…` inside a file the README described as a
- * closed agent loop was the wrong way round. What is real is the *decision* —
- * the DAG check, the authority evaluation, the approval artifact and the audit
- * trail all run against the actual graph. What is simulated is the thing being
- * deployed to.
+ * Everything below the gate (reading state, applying a change, hashing what
+ * came back) goes through this interface. Two implementations exist. The
+ * simulated one further down keeps its state in a JSON file and is the
+ * default: a fixture for the demo and the tests, not a deployment integration.
+ * The Docker one in `docker.ts` runs an approved step's command in a
+ * throwaway container on this machine, and is chosen only when a person asks
+ * for it at the entry point. What is real either way is the *decision*: the
+ * DAG check, the authority evaluation, the approval artifact and the audit
+ * trail all run against the actual graph.
  *
- * A real adapter (Kubernetes, Terraform, a deploy API) implements these three
+ * Another adapter (Kubernetes, Terraform, a deploy API) implements these three
  * methods and nothing else changes: the gate never learns what it is gating.
  */
 export interface EnvironmentAdapter<S = unknown> {
+  /** What the spans call this adapter, such as `simulated` or `docker`. */
+  readonly name?: string;
   /** Current state, including a hash that changes if anything else does. */
   read(): S;
-  /** Apply an authorized change and return the state that resulted. */
-  apply(change: Record<string, any>): S;
+  /**
+   * Apply an authorized change and return the state that resulted. It throws
+   * when the change did not complete, and the executor then ends the run as
+   * failed and reports what `read` says, so a step that did not happen is
+   * never recorded as one that did.
+   */
+  apply(change: Record<string, any>, step?: ExecutionStep): S;
   /** The hash a caller compares before and after to prove nothing moved. */
   hashOf(state: S): string;
+}
+
+/**
+ * The step the gate let through, as the adapter receives it. Every string in
+ * it came from the request, so an adapter treats each one as untrusted: the
+ * command is an argument vector, never a line for a shell to parse.
+ */
+export interface ExecutionStep {
+  capability_id: string;
+  tool: string;
+  /** The `payload.command` the request carried, if it was an array. */
+  command?: unknown[];
+  /**
+   * True only when a grant for the `network` action on this capability
+   * answers ALLOW for this agent and target. An adapter that can cut a step
+   * off from the network does so whenever this is false.
+   */
+  network: boolean;
 }
 
 /** The state the simulated environment keeps, for the demo and the tests. */
@@ -96,13 +121,29 @@ export interface ControlPlaneResult {
   post_state: SimulatedEnvironment;
   blast_radius?: any;
   break_glass_used?: boolean;
+  /** Why an authorized step did not complete, as the adapter reported it. */
+  execution_error?: string;
 }
 
 /**
  * Compute sha256 checksum of environment state to prove state invariance.
+ *
+ * Keys are sorted at every depth. The flat simulated state hashes exactly as
+ * it did when only the top level was sorted, and a nested record, such as the
+ * Docker adapter's last run, is covered too: a list of top-level keys used as
+ * the replacer dropped every nested key not also at the top, so a change
+ * inside one never moved the hash.
  */
-export function computeStateHash(state: Omit<SimulatedEnvironment, 'immutable_hash'>): string {
-  const serialized = JSON.stringify(state, Object.keys(state).sort());
+export function computeStateHash(state: Record<string, unknown>): string {
+  const serialized = JSON.stringify(state, (_key, value) =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(
+          Object.keys(value)
+            .sort()
+            .map(k => [k, value[k]])
+        )
+      : value
+  );
   return createHmac('sha256', 'ambit-state-checksum').update(serialized).digest('hex');
 }
 
@@ -186,12 +227,12 @@ export function setupControlPlaneGraph(db: Db): void {
 }
 
 /**
- * The simulated environment as an EnvironmentAdapter. It is the only
- * implementation in the repository; a real one would replace this and nothing
- * above the seam would change.
+ * The simulated environment as an EnvironmentAdapter, and the default. It
+ * merges the change into a JSON file and runs nothing, so the step is ignored.
  */
 export function simulatedAdapter(envDir: string): EnvironmentAdapter<SimulatedEnvironment> {
   return {
+    name: 'simulated',
     read: () => readSimulatedEnvironment(envDir),
     apply(change) {
       const next = { ...readSimulatedEnvironment(envDir), ...change } as SimulatedEnvironment;
@@ -229,16 +270,19 @@ export function executeThroughControlPlane(
   request: AgentExecutionRequest,
   /**
    * What sits on the other side of the gate. It defaults to the simulated
-   * environment, which is the only implementation here; a real one is passed
-   * in and nothing above this line changes. The executor reached past this
-   * seam to the JSON file for a while, which left the interface true only on
-   * paper: implementing it changed nothing, because nothing called it.
+   * environment; another one is passed in and nothing above this line
+   * changes. The executor reached past this seam to the JSON file for a
+   * while, which left the interface true only on paper: implementing it
+   * changed nothing, because nothing called it.
    */
   adapter: EnvironmentAdapter<SimulatedEnvironment> = simulatedAdapter(envDir)
 ): ControlPlaneResult {
   const traceId = randomBytes(16).toString('hex');
   const spanId = randomBytes(8).toString('hex');
   const startTime = new Date().toISOString();
+  // Every span says what was on the other side of the gate, so a trace from
+  // the simulator can never be read as one from a container.
+  const adapterName = adapter.name || 'unnamed';
 
   const preState = adapter.read();
   const preHash = adapter.hashOf(preState);
@@ -263,6 +307,7 @@ export function executeThroughControlPlane(
       capability_id: request.capability_id,
       intent: request.intent,
       target: request.target || 'env:production',
+      adapter: adapterName,
     },
   });
 
@@ -339,6 +384,7 @@ export function executeThroughControlPlane(
           'agent.id': request.agent_id,
           'target.capability': capabilityId,
           simulated: true,
+          'ambit.adapter': adapterName,
         },
         events: spanEvents,
         status: { code: 'OK' },
@@ -512,6 +558,7 @@ export function executeThroughControlPlane(
         'ambit.capability_path': JSON.stringify(capabilityPath),
         'ambit.hmac_challenge': challengeHash,
         'ambit.state_unchanged': stateUnchanged,
+        'ambit.adapter': adapterName,
       },
       events: spanEvents,
       status: {
@@ -554,16 +601,89 @@ export function executeThroughControlPlane(
     detail: 'Execution permitted via valid human HMAC approval artifact',
   });
 
+  // Whether the step may reach the network is a grant of its own, asked here
+  // and never assumed: neither the approval for `execute` nor break-glass
+  // widens it. Only an ALLOW counts, since nobody is asked at this point.
+  const step: ExecutionStep = {
+    capability_id: capabilityId,
+    tool: request.tool,
+    command: Array.isArray(request.payload?.command) ? request.payload.command : undefined,
+    network:
+      canExecute(db, {
+        actor: request.agent_id,
+        capability: capabilityId,
+        action: 'network',
+        target,
+      }).decision === 'ALLOW',
+  };
+  spanEvents.push({
+    name: 'adapter_apply',
+    timestamp: new Date().toISOString(),
+    attributes: { adapter: adapterName, network_granted: step.network },
+  });
+
   // The one state change the gate exists to guard, handed to whatever is on
   // the other side of it.
-  const postState = adapter.apply({
-    production_version: request.payload?.target_version || 'v2.0.0',
-    last_deployed_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    last_deployed_by: breakGlassUsed
-      ? `agent:${request.agent_id} [break-glass: ${request.break_glass_reason?.trim()}]`
-      : `agent:${request.agent_id} [authorized-by:human:security-lead]`,
-    active_containers: ['web-prod-v2-1', 'web-prod-v2-2'],
-  });
+  let postState: SimulatedEnvironment;
+  try {
+    postState = adapter.apply(
+      {
+        production_version: request.payload?.target_version || 'v2.0.0',
+        last_deployed_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        last_deployed_by: breakGlassUsed
+          ? `agent:${request.agent_id} [break-glass: ${request.break_glass_reason?.trim()}]`
+          : `agent:${request.agent_id} [authorized-by:human:security-lead]`,
+        active_containers: ['web-prod-v2-1', 'web-prod-v2-2'],
+      },
+      step
+    );
+  } catch (e) {
+    // The gate let the step through and the adapter did not complete it. The
+    // run ends failed, so the use recorded above counts toward no promotion,
+    // and the result says what the adapter reported instead of a deploy.
+    const message = e instanceof Error ? e.message : String(e);
+    endRun(db, runId, 'failed');
+    addEvent(db, runId, {
+      kind: 'execution_failed',
+      actor: 'ambit:control_plane',
+      capabilityId,
+      action,
+      detail: `The ${adapterName} adapter did not complete the step: ${message}`,
+    });
+    spanEvents.push({
+      name: 'execution_failed',
+      timestamp: new Date().toISOString(),
+      attributes: { adapter: adapterName, error: message },
+    });
+    const after = adapter.read();
+    return {
+      ok: false,
+      status_code: 'AMBIT_EXECUTION_FAILED',
+      exit_code: 1,
+      trace: {
+        trace_id: traceId,
+        span_id: spanId,
+        name: `AmbitControlPlane.execute:${request.tool}`,
+        start_time: startTime,
+        end_time: new Date().toISOString(),
+        attributes: {
+          'ambit.decision': 'ALLOW',
+          'ambit.status_code': 'AMBIT_EXECUTION_FAILED',
+          'ambit.capability_id': capabilityId,
+          'ambit.break_glass': breakGlassUsed,
+          'ambit.adapter': adapterName,
+        },
+        events: spanEvents,
+        status: { code: 'ERROR', description: `AMBIT_EXECUTION_FAILED: ${message}` },
+      },
+      execution_error: message,
+      audit_summary: auditFor(db, runId),
+      state_unchanged: adapter.hashOf(after) === preHash,
+      pre_state: preState,
+      post_state: after,
+      break_glass_used: breakGlassUsed,
+    };
+  }
 
   endRun(db, runId, 'completed', 50000);
 
@@ -591,6 +711,7 @@ export function executeThroughControlPlane(
       'ambit.capability_id': capabilityId,
       'ambit.applied_version': postState.production_version,
       'ambit.break_glass': breakGlassUsed,
+      'ambit.adapter': adapterName,
     },
     events: spanEvents,
     status: {
