@@ -747,6 +747,22 @@ export interface MachineModes {
   actions: MachineAction[];
 }
 
+/**
+ * What the graph holds about a device or service the scan found, beside the
+ * reading itself. Only for a node the graph has something to say about.
+ */
+export interface InfraRecord {
+  /** The scan node this is about. */
+  id: string;
+  /**
+   * When `ambit incidents` last got an answer from it, as SQLite wrote it
+   * (UTC, no zone). Absent until one has.
+   */
+  lastSeenAt?: string;
+  /** The manifest's labels for it. Absent when it states none. */
+  tags?: string[];
+}
+
 export interface InfrastructureScanResponse {
   generatedAt: string;
   source: string;
@@ -756,6 +772,8 @@ export interface InfrastructureScanResponse {
   summary: { online: number; degraded: number; offline: number; unknown: number };
   /** What an agent may do on each machine the scan found. Absent from a server that predates it. */
   machines?: MachineModes[];
+  /** Last seen and tags, read from the graph. Absent from a server that predates it. */
+  recorded?: InfraRecord[];
 }
 
 // ── GET /api/repos/scan ──────────────────────────────────────────────────────

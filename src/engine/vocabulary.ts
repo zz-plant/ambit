@@ -13,6 +13,7 @@
  * SQL takes the fragment from here rather than spelling the list again.
  */
 
+import { shellQuote } from '../shared/shell.ts';
 import { NON_FRONTIER_KINDS } from './ontology.ts';
 
 /** States that mean the system can reach a capability. */
@@ -47,6 +48,22 @@ const PROVEN_SQL = `lifecycle IN (${sqlList(PROVEN)})`;
  */
 const CHECK_RUN = { passed: 'verified', failed: 'failed' } as const;
 const CHECK_RUN_SQL = `action IN (${sqlList([CHECK_RUN.passed, CHECK_RUN.failed])})`;
+
+/**
+ * The command that runs a node's check again, as a surface prints it.
+ *
+ * A device or service the infrastructure manifest names has no command for
+ * `ambit verify` to run: its check is `ambit incidents` asking the URL the
+ * manifest gives it. The seed names those nodes `device:` and `svc:`, and
+ * nothing else writes either prefix, so the id is enough to tell. Everything
+ * else is `ambit verify`, with the id made safe to paste.
+ */
+const PROBE_COMMAND = 'ambit incidents';
+
+function recheckCommand(id: string): string {
+  if (id.startsWith('device:') || id.startsWith('svc:')) return PROBE_COMMAND;
+  return `ambit verify ${shellQuote(id.replace(/^combo:/, ''))}`;
+}
 
 /**
  * The capability a row of `session_learning` is about, as an SQL expression
@@ -189,6 +206,8 @@ export {
   PROVEN_SQL,
   CHECK_RUN,
   CHECK_RUN_SQL,
+  PROBE_COMMAND,
+  recheckCommand,
   DECIDED_CAPABILITY_SQL,
   sqlList,
   graphCounts,

@@ -50,7 +50,8 @@ const READS: Annotations = { readOnlyHint: true };
 const WRITES: Annotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
 // Runs a command that was declared in the graph: it can do anything a shell can.
 const RUNS: Annotations = { readOnlyHint: false, destructiveHint: true, openWorldHint: true };
-// Probes the hosts the infrastructure manifest names, and opens a run per outage.
+// Probes the hosts the infrastructure manifest names, records each answer as a
+// check run, and opens a run per outage.
 const PROBES: Annotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: true };
 
 const NONE = { type: 'object', properties: {} } as const;
@@ -374,7 +375,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'incidents',
     description:
-      'Probe the hosts the infrastructure manifest names and open an incident run per offline service, with the authority decision for recovery (restart ALLOW, CONFIRM or DENY).',
+      'Probe the hosts the infrastructure manifest names, record each answer as a check run on that device or service, and open an incident run per offline service, with the authority decision for recovery (restart ALLOW, CONFIRM or DENY).',
     inputSchema: NONE,
     annotations: PROBES,
   },

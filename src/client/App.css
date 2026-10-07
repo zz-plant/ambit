@@ -5162,6 +5162,25 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
+/* The manifest's own labels for a row, under its name. */
+.infra-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.infra-tags li {
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .infra-modes {
   display: flex;
   flex-wrap: wrap;

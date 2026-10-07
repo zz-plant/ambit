@@ -30,6 +30,10 @@ export type CapabilityRow = {
   updated_at: string;
   kind: string;
   lifecycle: string;
+  /** When a manifest device or service last answered `ambit incidents`. */
+  last_seen_at: string | null;
+  /** The manifest's labels for a device or service, as a JSON array. */
+  tags: string | null;
 };
 
 export type DependencyRow = {
