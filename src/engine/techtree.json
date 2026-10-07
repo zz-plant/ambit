@@ -898,7 +898,11 @@
           "recall",
           "mem0",
           "zep",
-          "obsidian"
+          "obsidian",
+          "claude-mem",
+          "cognee",
+          "\\bletta\\b",
+          "graphiti"
         ]
       },
       "setup_seconds": 900,
