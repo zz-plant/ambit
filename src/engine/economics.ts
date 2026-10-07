@@ -1,9 +1,12 @@
 import { nearest } from '../shared/nearest.ts';
 import { shellQuote } from '../shared/shell.ts';
+import { recordSpend } from './assure/decide.ts';
 import { parseAmount } from './budgets.ts';
 import { shippedTree } from './catalog.ts';
+import type { Db } from './db.ts';
 import type { Migratable } from './migrate.ts';
 import type { EconomicsRow, GoalRow } from './rows.ts';
+import { recordResource } from './telemetry.ts';
 
 /**
  * The economic model: what a unit of agency, capacity or service costs, and
@@ -90,8 +93,8 @@ function attentionValueCentsPerHour(db: Migratable, actorId: string): number {
 /**
  * The three parts of a session's tokens a model is priced by, and the metric
  * each price is stored under, in cents per million tokens. Cache writes are
- * counted with fresh input, as the transcript read counts them, so the input
- * price covers both.
+ * counted with fresh input, as every reader of a session's tokens counts them,
+ * so the input price covers both.
  */
 const TOKEN_PRICES = {
   input: 'input_per_mtok',
@@ -116,6 +119,124 @@ function modelPrice(db: Migratable, model: string): Record<TokenPart, number> | 
     price[part] = cents;
   }
   return price;
+}
+
+/**
+ * The parts a session's tokens are recorded in, and the unit each is stored
+ * under. Reasoning is apart because one runtime counts it apart: OpenCode
+ * subtracts it from the provider's output count and charges it at the output
+ * rate (getUsage in packages/opencode/src/session/session.ts,
+ * https://github.com/anomalyco/opencode), so it is priced at the declared
+ * output price. Claude Code and Codex already count it inside output.
+ */
+const TOKEN_UNITS = {
+  input: 'input tokens',
+  cached: 'cache read tokens',
+  output: 'output tokens',
+  reasoning: 'reasoning tokens',
+} as const;
+
+type TokenUnit = keyof typeof TOKEN_UNITS;
+
+/** Which declared price each part is charged at. */
+const PRICED_AS: Record<TokenUnit, TokenPart> = {
+  input: 'input',
+  cached: 'cached',
+  output: 'output',
+  reasoning: 'output',
+};
+
+/** A session's tokens on one model, by part; a part the runtime does not report is absent. */
+type TokenCounts = Partial<Record<TokenUnit, number>>;
+
+/**
+ * Whether tokens used at `usedAt` belong to the period a budget is counting.
+ * A session read from a log for the first time can be months old, and its
+ * cost spent against this month's ceiling would refuse callers for work done
+ * long before the ceiling's period began. With no start recorded, or no time
+ * for the tokens, the spend is the period's, as it always was.
+ */
+function inBudgetPeriod(db: Migratable, capability: string, usedAt?: string): boolean {
+  if (!usedAt) return true;
+  const row = db
+    .prepare(
+      `SELECT julianday(?) < julianday(period_start) AS before FROM budgets
+       WHERE capability_id = ? AND action = 'execute' AND scope = '' AND period_start IS NOT NULL`
+    )
+    .get<{ before: number | null }>(usedAt, capability);
+  return row?.before !== 1;
+}
+
+/**
+ * Add a session's tokens to its run, and what they cost where a price is
+ * declared, once. The one rule every reader of a session's tokens records by:
+ * the Claude Code transcript at a session's end (spool.ts) and the session
+ * logs Codex, OpenCode and Amp keep (session-logs.ts).
+ *
+ * `totals` are the session's whole counts so far, per model. A log is read
+ * again as it grows and a spool can carry the same end twice, so only what
+ * the run has not recorded yet is written: the totals less what its earlier
+ * rows already hold, which is nothing when the session has not grown. Each row
+ * is priced when it is written, at the price declared then (`modelPrice`), and
+ * never again, so a price declared later does not reach back to sessions that
+ * ran before it and a second read cannot count a session twice. A model with
+ * no price leaves `cost_cents` empty, which says undeclared, never zero, and is
+ * named in what this returns.
+ *
+ * The cost is a spend on the capability the model's tokens are a use of
+ * (`spentOn`, Hosted Inference for a hosted model), recorded by `recordSpend`
+ * against the unscoped budget on it, since a session names no target, and only
+ * when the tokens were used inside the period that budget is counting
+ * (`usedAt`, the latest time the session's new tokens carry). With no such
+ * budget it writes nothing, and no row is made for it (AGENTS.md rule 13).
+ */
+function recordTokens(
+  db: Db,
+  run: string,
+  totals: Map<string, TokenCounts>,
+  usedAt?: string
+): { tokens: number; cents: number; undeclared: string[] } {
+  const out = { tokens: 0, cents: 0, undeclared: [] as string[] };
+  if (!totals.size) return out;
+  const held = new Map<string, number>();
+  for (const r of db
+    .prepare(
+      `SELECT resource_id, unit, SUM(quantity) AS quantity FROM resource_consumption
+       WHERE run_id = ? AND kind = 'tokens' GROUP BY resource_id, unit`
+    )
+    .all<{ resource_id: string; unit: string; quantity: number }>(run)) {
+    held.set(`${r.resource_id}|${r.unit}`, r.quantity);
+  }
+  const spend = new Map<string, number>();
+  for (const [model, counts] of totals) {
+    const resource = `model:${model}`;
+    const price = modelPrice(db, model);
+    let cents = 0;
+    let fresh = 0;
+    for (const unit of Object.keys(TOKEN_UNITS) as TokenUnit[]) {
+      const added = (counts[unit] ?? 0) - (held.get(`${resource}|${TOKEN_UNITS[unit]}`) ?? 0);
+      if (!(added > 0)) continue;
+      const cost = price ? (added * price[PRICED_AS[unit]]) / 1_000_000 : undefined;
+      recordResource(db, run, resource, 'tokens', {
+        quantity: added,
+        unit: TOKEN_UNITS[unit],
+        costCents: cost,
+      });
+      fresh += added;
+      cents += cost ?? 0;
+    }
+    out.tokens += fresh;
+    out.cents += cents;
+    if (fresh > 0 && !price) out.undeclared.push(model);
+    const capability = cents > 0 ? spentOn(db, model) : null;
+    if (capability) spend.set(capability, (spend.get(capability) ?? 0) + cents);
+  }
+  for (const [capability, cents] of spend) {
+    if (inBudgetPeriod(db, capability, usedAt)) {
+      recordSpend(db, capability, 'execute', '', cents);
+    }
+  }
+  return out;
 }
 
 /**
@@ -153,7 +274,7 @@ function spentOn(db: Migratable, model: string): string | null {
  *
  * Dollars per million tokens as typed, cents as stored, kept to fractions of a
  * cent, since a cache read can cost less than one. The name is the one a
- * session's transcript records and is matched exactly: a price is never applied
+ * session's log records and is matched exactly: a price is never applied
  * to a model whose name only resembles it. A name no session has recorded is
  * accepted, since a price can come before the first use, and the answer names
  * the recorded ones it might have meant.
@@ -225,7 +346,7 @@ function declareModelPrice(
       cache_read: perMillion(parts.cached as number),
       output: perMillion(parts.output as number),
     },
-    note: `Each Claude Code session that ends from now on has its tokens on ${model} priced at these, and sessions already recorded are not priced again. ${
+    note: `Tokens on ${model} recorded from now on, from a Claude Code session's end or the Codex, OpenCode and Amp session logs, are priced at these, and tokens already recorded are not priced again. ${
       !capability
         ? 'No node of the tree covers this model, so the spend is kept on the session and counts against no budget.'
         : budgeted
@@ -234,7 +355,7 @@ function declareModelPrice(
     }`,
     ...(unseen
       ? {
-          warning: `No session has recorded tokens on ${model} yet, and a price applies only to the exact name a transcript records.${like.length ? ` Recorded names like it: ${like.join(', ')}.` : ''}`,
+          warning: `No session has recorded tokens on ${model} yet, and a price applies only to the exact name a session's log records.${like.length ? ` Recorded names like it: ${like.join(', ')}.` : ''}`,
         }
       : {}),
   };
@@ -309,8 +430,10 @@ export {
   modelPrice,
   spentOn,
   declareModelPrice,
+  recordTokens,
   TOKEN_PRICES,
   type TokenPart,
+  type TokenCounts,
   attentionOwner,
   attentionValueCentsPerHour,
   goalValue,

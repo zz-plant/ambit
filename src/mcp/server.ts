@@ -1,4 +1,5 @@
 #!/usr/bin/env node --experimental-sqlite
+import { readSessionLogs, SESSION_LOG_BUDGET_MS } from '../engine/session-logs.ts';
 import { ingestSpool } from '../engine/spool.ts';
 import { readFileSync } from 'node:fs';
 import { resolveDbPath } from '../shared/db-path.ts';
@@ -227,6 +228,13 @@ function getWarmDb() {
       ingestSpool(dbHandle);
     } catch {
       /* the spool waits for the next reader */
+    }
+    // The tokens Codex, OpenCode and Amp sessions used, from their own logs,
+    // within the time a command's read has; AMBIT_NO_LEDGER stops it.
+    try {
+      readSessionLogs(dbHandle, { budgetMs: SESSION_LOG_BUDGET_MS });
+    } catch {
+      /* the logs wait for the next reader */
     }
   }
   return dbHandle;

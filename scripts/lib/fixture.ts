@@ -95,6 +95,9 @@ export function seedFixtureGraph(label = 'ambit-fixture'): Sandbox {
     // whatever infrastructure the generating machine happens to have.
     INFRA_MANIFEST: join(cfgDir, 'no-infrastructure.json'),
     AMBIT_APPROVAL_KEY: 'fixture-key',
+    // The same for session logs: a CODEX_HOME or AMP_DATA_DIR in the generating
+    // shell outlives the HOME above, so the fixture reads none.
+    AMBIT_NO_LEDGER: '1',
   };
 
   const engine = (args: string[]) =>

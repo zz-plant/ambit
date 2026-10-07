@@ -239,6 +239,9 @@ function exportSync(db: Db, path?: string) {
       'approval artifacts',
       'budgets',
       'sandboxes',
+      // How far this machine's session logs were read. The runs and tokens
+      // they fed travel; the cursor names files only this machine has.
+      'session log cursors',
     ],
   };
 

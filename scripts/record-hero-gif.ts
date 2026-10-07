@@ -165,6 +165,9 @@ const SANDBOX = {
   OPENCODE_CONFIG: configPath,
   INFRA_MANIFEST: join(cfgDir, 'infrastructure.json'),
   AMBIT_APPROVAL_KEY: 'hero-recording-key',
+  // A CODEX_HOME or AMP_DATA_DIR in the recorder's own shell outlives the
+  // HOME above, and a recording must never carry someone's session logs.
+  AMBIT_NO_LEDGER: '1',
 };
 
 // `node` on PATH may be a version-manager shim that needs an environment this

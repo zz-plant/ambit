@@ -26,18 +26,10 @@
  */
 import { appendFileSync, existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { spoolPath } from '../shared/db-path.ts';
-import { recordSpend } from './assurance.ts';
 import type { Db } from './db.ts';
-import { modelPrice, spentOn, type TokenPart } from './economics.ts';
+import { recordTokens, type TokenCounts } from './economics.ts';
 import { captureFailure } from './failures.ts';
-import {
-  addEvent,
-  beginRun,
-  endRun,
-  recordIntervention,
-  recordResource,
-  recordToolUse,
-} from './telemetry.ts';
+import { addEvent, beginRun, endRun, recordIntervention, recordToolUse } from './telemetry.ts';
 
 /** One line of the spool, as the hook script writes it. */
 interface SpoolLine {
@@ -171,10 +163,9 @@ function runOf(db: Db, session: string, at?: string): string {
  * no price, and none is guessed here: a guessed one would be a number the
  * ledger could not stand behind (AGENTS.md rule 16).
  */
-function tokensOf(
-  transcript: string
-): Map<string, { input: number; cached: number; output: number }> {
-  const totals = new Map<string, { input: number; cached: number; output: number }>();
+function tokensOf(transcript?: string): Map<string, TokenCounts> {
+  const totals = new Map<string, Required<Pick<TokenCounts, 'input' | 'cached' | 'output'>>>();
+  if (!transcript || !existsSync(transcript)) return totals;
   const seen = new Set<string>();
   for (const raw of readFileSync(transcript, 'utf8').split('\n')) {
     if (!raw.includes('"usage"')) continue;
@@ -201,66 +192,6 @@ function tokensOf(
     totals.set(message.model, t);
   }
   return totals;
-}
-
-/** The unit each part of a session's tokens is recorded under. */
-const UNIT: Record<TokenPart, string> = {
-  input: 'input tokens',
-  cached: 'cache read tokens',
-  output: 'output tokens',
-};
-
-/**
- * Add a session's tokens to its run, and what they cost where a price is
- * declared, once.
- *
- * A resumed session ends again with a longer transcript, whose totals are of
- * the whole of it, and a spool can carry the same end twice. So only what the
- * run has not recorded yet is written: the totals less what its earlier rows
- * already hold, which is nothing when the transcript has not grown. Each row is
- * priced when it is written, at the price declared then (`modelPrice`), and
- * never again, so a price declared later does not reach back to sessions that
- * ran before it and a second read cannot count a session twice. A model with
- * no price leaves `cost_cents` empty, which says undeclared, never zero.
- *
- * The cost is a spend on the capability the model's tokens are a use of
- * (`spentOn`, Hosted Inference for a hosted model), recorded by `recordSpend`
- * against the unscoped budget on it, since a session names no target. With no
- * such budget it writes nothing, and no row is made for it (AGENTS.md rule 13).
- */
-function recordTokens(db: Db, run: string, transcript?: string) {
-  if (!transcript || !existsSync(transcript)) return;
-  const totals = tokensOf(transcript);
-  if (!totals.size) return;
-  const held = new Map<string, number>();
-  for (const r of db
-    .prepare(
-      `SELECT resource_id, unit, SUM(quantity) AS quantity FROM resource_consumption
-       WHERE run_id = ? AND kind = 'tokens' GROUP BY resource_id, unit`
-    )
-    .all<{ resource_id: string; unit: string; quantity: number }>(run)) {
-    held.set(`${r.resource_id}|${r.unit}`, r.quantity);
-  }
-  const spend = new Map<string, number>();
-  for (const [model, t] of totals) {
-    const resource = `model:${model}`;
-    const price = modelPrice(db, model);
-    let cents = 0;
-    for (const part of Object.keys(UNIT) as TokenPart[]) {
-      const fresh = t[part] - (held.get(`${resource}|${UNIT[part]}`) ?? 0);
-      if (!(fresh > 0)) continue;
-      const cost = price ? (fresh * price[part]) / 1_000_000 : undefined;
-      recordResource(db, run, resource, 'tokens', {
-        quantity: fresh,
-        unit: UNIT[part],
-        costCents: cost,
-      });
-      cents += cost ?? 0;
-    }
-    const capability = cents > 0 ? spentOn(db, model) : null;
-    if (capability) spend.set(capability, (spend.get(capability) ?? 0) + cents);
-  }
-  for (const [capability, cents] of spend) recordSpend(db, capability, 'execute', '', cents);
 }
 
 /**
@@ -362,7 +293,9 @@ function ingestSpool(
             break;
           case 'SessionEnd':
             endRun(db, run, line.why || 'ended', undefined, at);
-            recordTokens(db, run, typeof line.tp === 'string' ? line.tp : undefined);
+            // Priced and spent by the rule every token reader shares
+            // (`recordTokens` in economics.ts), dated at the session's end.
+            recordTokens(db, run, tokensOf(typeof line.tp === 'string' ? line.tp : undefined), at);
             break;
           default:
             skipped++;

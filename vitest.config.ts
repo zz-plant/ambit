@@ -20,7 +20,15 @@ export default defineConfig({
     // Every `ambit` command reads the Claude Code spool into its graph and
     // deletes it. A test that runs the CLI must never consume the developer's
     // own spool into a throwaway graph, so the whole suite points elsewhere.
-    env: { AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`) },
+    // The same holds for the session logs Codex, OpenCode and Amp keep, which
+    // every command reads token counts from: the suite looks for them in a
+    // directory that does not exist, and a test that reads logs builds its own.
+    env: {
+      AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`),
+      CODEX_HOME: join(tmpdir(), `ambit-test-no-logs-${process.pid}`, 'codex'),
+      OPENCODE_DATA_DIR: join(tmpdir(), `ambit-test-no-logs-${process.pid}`, 'opencode'),
+      AMP_DATA_DIR: join(tmpdir(), `ambit-test-no-logs-${process.pid}`, 'amp'),
+    },
     testTimeout: 30_000,
     hookTimeout: 30_000,
     coverage: {

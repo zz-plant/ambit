@@ -298,6 +298,8 @@ export function buildDemoData(): {
           AMBIT_DB: dbPath,
           CONFIG_MAPPING: MAPPING,
           NODE_NO_WARNINGS: '1',
+          // The fixture's graph never reads this machine's session logs.
+          AMBIT_NO_LEDGER: '1',
         },
         stdio: ['ignore', 'ignore', 'inherit'],
       }

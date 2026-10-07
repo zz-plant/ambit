@@ -245,6 +245,16 @@ export type CatalogRow = {
   source: string;
 };
 
+export type SessionLogCursorRow = {
+  path: string;
+  runtime: string;
+  size: number;
+  mtime_ms: number;
+  byte_offset: number;
+  state: string | null;
+  read_at: string;
+};
+
 /**
  * The loose row: what a query gets when it declares nothing. It is the type
  * the engine had everywhere before rows were named, kept as the default so a

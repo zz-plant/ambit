@@ -606,9 +606,10 @@ export interface LoopSnapshot {
   /** Asked for and never there, worst first. Heads the queue of what to reach. */
   demand: LoopDemand[];
   /**
-   * Tokens sessions used in the window, per model, from session transcripts.
-   * Absent when none were recorded. Priced only where a person declared a
-   * price for the model, since the transcripts state none.
+   * Tokens sessions used in the window, per model, from Claude Code's
+   * transcripts and the session logs Codex, OpenCode and Amp keep. Absent when
+   * none were recorded. Priced only where a person declared a price for the
+   * model, since no log states one.
    */
   tokens?: LoopTokens;
 }
@@ -618,12 +619,18 @@ export interface LoopTokens {
   days: number;
   /** Sessions with a token count in the window. */
   sessions: number;
+  /** Whose logs the counts came from, most sessions first: "Claude Code", "Codex". */
+  runtimes: { runtime: string; sessions: number }[];
   /** Most used first. Cache reads apart from fresh input, which they dwarf. */
   models: {
     model: string;
     input: number;
     cached: number;
     output: number;
+    /** Reasoning counted apart from output, only where a runtime counts it so (OpenCode). */
+    reasoning?: number;
+    /** The runtimes whose sessions used the model. */
+    runtimes: string[];
     /**
      * What the priced part cost, at the price declared when each session was
      * recorded. Absent when none of it was priced: undeclared, never $0.

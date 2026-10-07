@@ -21,7 +21,7 @@ import type {
   WorkEventRow,
   WorkRunRow,
 } from './rows.ts';
-import { GATE_KINDS } from './vocabulary.ts';
+import { GATE_KINDS, TOKEN_SOURCES } from './vocabulary.ts';
 
 /**
  * The work ledger: one row per run of actual effort, the events inside it, the
@@ -778,12 +778,15 @@ function unmappedUse(db: Db, days = 30): UnmappedResponse {
  * The tokens sessions used in a window, per model: fresh input, cache reads
  * and output kept apart, since in a long session cache reads are most of the
  * count and a fraction of the price. Read from what the Claude Code hooks
- * recorded from each transcript (src/engine/spool.ts). Undefined when nothing
- * was recorded in the window, so a surface says nothing instead of drawing
- * zeroes (AGENTS.md rule 16).
+ * recorded from each transcript (src/engine/spool.ts) and from the session
+ * logs Codex, OpenCode and Amp keep (src/engine/session-logs.ts), and labelled
+ * with the runtime each run's source names (`TOKEN_SOURCES`). Undefined when
+ * nothing was recorded in the window, so a surface says nothing instead of
+ * drawing zeroes (AGENTS.md rule 16); `reasoning` is there only for a model
+ * some runtime counted reasoning apart for.
  *
- * What the tokens cost is there only where it was priced: the transcripts state
- * no price, and a row is priced at what a person declared for its model when it
+ * What the tokens cost is there only where it was priced: no log states a
+ * price, and a row is priced at what a person declared for its model when it
  * was recorded. `spend_dollars` sums those and is absent when none were, and
  * `unpriced` says some of the model's tokens carry no price, so a surface can
  * say undeclared and never print $0 for it.
@@ -791,21 +794,23 @@ function unmappedUse(db: Db, days = 30): UnmappedResponse {
 function tokenUsage(db: Migratable, days = 30) {
   const rows = db
     .prepare(
-      `SELECT r.resource_id AS resource, r.unit AS unit, SUM(r.quantity) AS quantity,
-              SUM(r.cost_cents) AS cost,
+      `SELECT r.resource_id AS resource, r.unit AS unit, w.source AS source,
+              SUM(r.quantity) AS quantity, SUM(r.cost_cents) AS cost,
               SUM(CASE WHEN r.cost_cents IS NULL AND r.quantity > 0 THEN 1 ELSE 0 END) AS unpriced
        FROM resource_consumption r JOIN work_runs w ON w.id = r.run_id
        WHERE r.kind = 'tokens' AND w.started_at >= datetime('now', ?)
-       GROUP BY r.resource_id, r.unit`
+       GROUP BY r.resource_id, r.unit, w.source`
     )
     .all<{
       resource: string;
       unit: string;
+      source: string;
       quantity: number;
       cost: number | null;
       unpriced: number;
     }>(`-${days} days`);
   if (!rows.length) return undefined;
+  const runtimeOf = (source: string) => TOKEN_SOURCES[source] ?? source;
   const models = new Map<
     string,
     {
@@ -813,6 +818,8 @@ function tokenUsage(db: Migratable, days = 30) {
       input: number;
       cached: number;
       output: number;
+      reasoning?: number;
+      runtimes: string[];
       spend_dollars?: number;
       unpriced?: true;
     }
@@ -820,32 +827,45 @@ function tokenUsage(db: Migratable, days = 30) {
   const cents = new Map<string, number>();
   for (const r of rows) {
     const model = String(r.resource).replace(/^model:/, '');
-    const m = models.get(model) ?? { model, input: 0, cached: 0, output: 0 };
+    const m = models.get(model) ?? { model, input: 0, cached: 0, output: 0, runtimes: [] };
     if (r.unit === 'input tokens') m.input += r.quantity;
     else if (r.unit === 'cache read tokens') m.cached += r.quantity;
     else if (r.unit === 'output tokens') m.output += r.quantity;
+    else if (r.unit === 'reasoning tokens') m.reasoning = (m.reasoning ?? 0) + r.quantity;
     if (r.cost != null) cents.set(model, (cents.get(model) ?? 0) + r.cost);
     if (r.unpriced > 0) m.unpriced = true;
+    const runtime = runtimeOf(r.source);
+    if (!m.runtimes.includes(runtime)) m.runtimes.push(runtime);
     models.set(model, m);
   }
   for (const [model, c] of cents) {
     const m = models.get(model);
     if (m) m.spend_dollars = Math.round(c) / 100;
   }
-  const sessions =
-    db
-      .prepare(
-        `SELECT COUNT(DISTINCT r.run_id) AS n FROM resource_consumption r
-         JOIN work_runs w ON w.id = r.run_id
-         WHERE r.kind = 'tokens' AND w.started_at >= datetime('now', ?)`
-      )
-      .get<{ n: number }>(`-${days} days`)?.n ?? 0;
-  const total = (m: { input: number; cached: number; output: number }) =>
-    m.input + m.cached + m.output;
+  const bySource = db
+    .prepare(
+      `SELECT w.source AS source, COUNT(DISTINCT r.run_id) AS n FROM resource_consumption r
+       JOIN work_runs w ON w.id = r.run_id
+       WHERE r.kind = 'tokens' AND w.started_at >= datetime('now', ?)
+       GROUP BY w.source`
+    )
+    .all<{ source: string; n: number }>(`-${days} days`);
+  const runtimes = new Map<string, number>();
+  for (const s of bySource) {
+    const runtime = runtimeOf(s.source);
+    runtimes.set(runtime, (runtimes.get(runtime) ?? 0) + s.n);
+  }
+  const total = (m: { input: number; cached: number; output: number; reasoning?: number }) =>
+    m.input + m.cached + m.output + (m.reasoning ?? 0);
   return {
     days,
-    sessions,
-    models: [...models.values()].sort((a, b) => total(b) - total(a)),
+    sessions: bySource.reduce((n, s) => n + s.n, 0),
+    runtimes: [...runtimes]
+      .map(([runtime, sessions]) => ({ runtime, sessions }))
+      .sort((a, b) => b.sessions - a.sessions || a.runtime.localeCompare(b.runtime)),
+    models: [...models.values()]
+      .map(m => ({ ...m, runtimes: m.runtimes.sort() }))
+      .sort((a, b) => total(b) - total(a)),
   };
 }
 
