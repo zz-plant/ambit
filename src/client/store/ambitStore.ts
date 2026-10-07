@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { tickAt } from '../components/civ/history';
+import { hasHistory, nextStop, PLAY_STEP_MS, playStart, tickAt } from '../components/civ/history';
 import { gapOf, outageSplit, unlockCascade } from '../components/civ/layout';
 import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
 import type { FocusDepth, FocusDirection } from '../linkState';
@@ -94,6 +94,20 @@ const initialLink = readLinkState(currentSearch());
 /** The playhead, if a tick of this series has its second; otherwise now. */
 const knownAt = (history: FrontierHistoryResponse, at: string | null) =>
   tickAt(history, at) ? at : null;
+
+/** The one timer Play runs on, between one stop and the next. */
+let playTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Pause Play: the timer cleared and the flag dropped, as one patch, so a
+ * pause and a stopped timer cannot come apart and a stale step never lands
+ * after the hand that moved the playhead. Every action that pauses spreads it.
+ */
+function paused() {
+  clearTimeout(playTimer);
+  playTimer = undefined;
+  return { historyPlaying: false } as const;
+}
 
 /**
  * A typed GET against the API. The store used to call `await res.json()` and
@@ -247,6 +261,14 @@ interface StoreState {
    */
   historyOpen: boolean;
   setHistoryOpen: (open: boolean) => void;
+  /**
+   * Whether Play is stepping the playhead on its own, one observation every
+   * PLAY_STEP_MS, until it reaches now. Anything that moves the playhead by
+   * hand, closes the strip, starts a simulation or selects something pauses it.
+   */
+  historyPlaying: boolean;
+  /** Play from the playhead, or from the first observation when it is on now; or pause. */
+  setHistoryPlaying: (on: boolean) => void;
 
   seedDemo: () => void;
   loadFromJSON: (json: string) => boolean;
@@ -352,9 +374,12 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   history: null,
   historyAt: initialLink.at ?? null,
   historyOpen: Boolean(initialLink.at),
+  historyPlaying: false,
 
   setItems: (items, connections) => set({ items, connections }),
 
+  // Picking a node or an era to read pauses Play, so the map holds still under
+  // the panel being read. Clearing a selection leaves it playing.
   selectItem: id => {
     const s = get();
     const next = s.selectedItem === id ? null : id;
@@ -364,7 +389,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       selectedItem: next,
       selectedEra: null,
       showDetailPanel: next !== null,
-      ...(next === null ? { collapsed: false } : {}),
+      ...(next === null ? { collapsed: false } : paused()),
     });
   },
   selectEra: era => {
@@ -374,6 +399,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       selectedItem: null,
       showDetailPanel: next !== null,
       collapsed: false,
+      ...(next === null ? {} : paused()),
     });
   },
   hoverItem: id => set({ hoveredItem: id }),
@@ -387,7 +413,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     set(
       lens === 'default'
         ? { activeLens: lens, keyToggled: null }
-        : { activeLens: lens, historyAt: null, keyToggled: null }
+        : { ...paused(), activeLens: lens, historyAt: null, keyToggled: null }
     ),
   setSpotlight: group => set({ spotlight: group }),
   keyToggled: null,
@@ -395,14 +421,47 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   // A simulation walks the live graph, and an outage needs providers, which no
   // snapshot stores, so scrubbing into the past ends one. Each simulation below
   // returns the map to now for the same reason, whichever surface started it.
+  // This is the hand on the playhead (a drag, a step, Back to now), so it
+  // pauses Play; Play's own steps are written below and do not come here.
   setHistoryAt: at => {
     if (at) get().clearSimulation();
-    set(at ? { historyAt: at, historyOpen: true } : { historyAt: at });
+    set({ ...paused(), historyAt: at, ...(at ? { historyOpen: true } : {}) });
   },
   // Closing the strip returns the map to now: a past map with no playhead on
   // screen would be a date nothing says.
   setHistoryOpen: open =>
-    set(open ? { historyOpen: true } : { historyOpen: false, historyAt: null }),
+    set(open ? { historyOpen: true } : { ...paused(), historyOpen: false, historyAt: null }),
+  // Each step writes the playhead where a scrub writes it, so useUrlSync puts
+  // it in the address bar the same way: by replacing the entry, never pushing
+  // one (writeAddress). Back still leaves the page in one press, however many
+  // steps played, and a link copied mid-play opens on the observation then on
+  // screen.
+  setHistoryPlaying: on => {
+    const { history, historyAt } = get();
+    const from = on && history ? playStart(history, historyAt) : null;
+    if (!from || !hasHistory(history)) {
+      set(paused());
+      return;
+    }
+    paused();
+    // A past map ends a simulation, as a scrub into one does.
+    get().clearSimulation();
+    set({ historyPlaying: true, historyAt: from, historyOpen: true });
+    const step = () => {
+      playTimer = setTimeout(() => {
+        const s = get();
+        if (!s.historyPlaying) return;
+        const next = s.history ? nextStop(s.history, s.historyAt) : null;
+        if (next === null) {
+          set({ ...paused(), historyAt: null });
+          return;
+        }
+        set({ historyAt: next });
+        step();
+      }, PLAY_STEP_MS);
+    };
+    step();
+  },
   setCollapsed: on => set({ collapsed: on }),
   setCollapseDepth: depth => set({ collapseDepth: depth }),
   setCollapseDirection: direction => set({ collapseDirection: direction }),
@@ -412,6 +471,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   startOutageSimulation: (nodeId: string) => {
     const { stops, weakened } = outageSplit(get().items, get().connections, nodeId);
     set({
+      ...paused(),
       historyAt: null,
       simulationMode: 'outage',
       simulatedNodeId: nodeId,
@@ -422,6 +482,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startAcquisitionSimulation: (nodeId: string) =>
     set({
+      ...paused(),
       historyAt: null,
       simulationMode: 'acquisition',
       simulatedNodeId: nodeId,
@@ -431,6 +492,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
 
   startGapSimulation: (nodeId: string) =>
     set({
+      ...paused(),
       historyAt: null,
       simulationMode: 'gap',
       simulatedNodeId: nodeId,

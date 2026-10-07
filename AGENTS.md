@@ -271,8 +271,10 @@ src/client/                React frontend
                            pinch (Ctrl+wheel in Chrome and Firefox, gesture events in Safari), two
                            fingers on a touch screen, and the keys and buttons about the middle
     civ/Minimap.tsx        The thumbnail of the whole map when it does not fit, and its outline
-    civ/history.ts         The map as of one observation, with today's names and edges: pure
-    civ/Timeline.tsx       The scrub bar under the map: the frontier's observations and a playhead
+    civ/history.ts         The map as of one observation, with today's names and edges, and the
+                           stops Play walks and how long it holds each: pure
+    civ/Timeline.tsx       The scrub bar under the map: the frontier's observations, a playhead,
+                           and Play, which steps it on a timer the store keeps
     civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree, and the map's tools
                            beside zoom: the key, the timeline, the saved image
     civ/MapKey.tsx         The key, opened from those tools; it opens itself under a lens
@@ -300,6 +302,8 @@ src/client/                React frontend
   store/ambitStore.ts      All state and actions; each loader has a live path and a demo path
   store/demo.ts            The demo path's data — graphs, proposals, the placeholder receipt
   vocabulary.test.ts       One name per concept: fails if a surface uses a retired synonym
+  testing/elements.ts      `findAll`, how a component test with no DOM finds the element in a
+                           hook-free view's drawing and calls the handler it carries
   utils/
     configImporter.ts      inferDomain, and mapping an imported config onto the graph
     demoSnapshot.ts        The hosted demo's LoopSnapshot — the shape /api/loop returns
@@ -316,8 +320,8 @@ src/client/                React frontend
     runTimeline.ts         One run's lanes, and what its totals say, and how long the record says it
                            lasted (null when nothing does, so no length is stated and no axis drawn)
     keys.ts                What one press of Escape closes, where the page's keys stand aside, where
-                           Tab goes in a dialog, and the shell's and the map's own keys, held apart
-                           from a modified press. Pure, free of DOM types
+                           Tab goes in a dialog, and the shell's, the map's and the timeline's own
+                           keys, held apart from a modified press. Pure, free of DOM types
 ```
 
 ### Shared, scripts and plugins

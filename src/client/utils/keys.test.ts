@@ -16,6 +16,7 @@ import {
   escapeLayer,
   mapKey,
   pageKey,
+  timelineKey,
   trapTab,
   typingIn,
   wrapTab,
@@ -206,4 +207,36 @@ test('the page and the map take their keys plain, and leave a modified one to th
       expect(mapKey(press(key, held))).toBeUndefined();
     for (const key of ['g', 'G', '/', '?']) expect(pageKey(press(key, held))).toBeUndefined();
   }
+});
+
+// ── The timeline's Space ─────────────────────────────────────────────────────
+// Space plays or pauses the timeline from its scrub bar, a range input, which
+// has no use of its own for it. Everywhere else Space keeps its meaning.
+
+const range = { tagName: 'INPUT', type: 'range' };
+
+test('Space on the scrub bar plays or pauses, and nothing else there does', () => {
+  expect(timelineKey(press(' '), range)).toBe('play');
+  // The bar's own keys step the playhead, and stay the bar's.
+  for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'p', 'Spacebar'])
+    expect(timelineKey(press(key), range)).toBeUndefined();
+  for (const held of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }])
+    expect(timelineKey(press(' ', held), range)).toBeUndefined();
+});
+
+test('a button pressed with Space is pressed, and a field types it', () => {
+  // The play button's own press is the same toggle; Back to now and the
+  // glossary word are buttons that Space presses, as everywhere.
+  expect(timelineKey(press(' '), target('BUTTON'))).toBeUndefined();
+  expect(timelineKey(press(' '), { tagName: 'INPUT', type: 'text' })).toBeUndefined();
+  expect(timelineKey(press(' '), target('TEXTAREA'))).toBeUndefined();
+  expect(timelineKey(press(' '), target('DIV', true))).toBeUndefined();
+  expect(timelineKey(press(' '), null)).toBeUndefined();
+});
+
+test('the page and the map leave the scrub bar alone, so Space there is the timeline’s', () => {
+  // The bar is a field to them: `g` and the map's arrows do not reach it.
+  expect(typingIn(range)).toBe(true);
+  expect(pageKey(press(' '))).toBeUndefined();
+  expect(mapKey(press(' '))).toBeUndefined();
 });
