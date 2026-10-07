@@ -284,7 +284,7 @@ The map reads the same ledger as a timeline under it, opened from its History bu
 
 The work ledger that `attention` reads is written by observation, not by hand. Two bridges write it once installed:
 
-- **Claude Code.** The `ambit` plugin's hooks record which tools a session ran, which failed and with what error, and when a person was asked, never a tool's input or output. The next `ambit` command reads that into the ledger, with each ended session's token counts per model, and `AMBIT_NO_LEDGER=1` turns it off.
+- **Claude Code.** The `ambit` plugin's hooks record which tools a session ran, which failed and with what error, and when a person was asked, never a tool's input or output. The next `ambit` command reads that into the ledger, with each ended session's token counts per model, and `AMBIT_NO_LEDGER=1` turns it off. The transcript states no price, so the counts carry none until a person declares one for the model; from then on each session's new tokens on it are priced when they are recorded, never twice, and the cost is a spend on Hosted Inference's budget when one is set.
 - **OpenCode.** Copy `plugins/ambit-telemetry.js`, which ships with the package, to `~/.config/opencode/plugins/`, and every tool execution in an OpenCode session lands in the ledger as a work event, and every permission prompt as an `authority` intervention.
 
 Anything else can post to the visualizer API's loopback `POST /api/telemetry`, which speaks the ledger's own verbs (`run`, `end`, `event`, `use`, `intervention`, `resource`, `outcome`, `failure`), so a runtime adapter records actual work without knowing the schema. From a checkout, `scripts/adapters/telemetry.ts` is the ingestion client: stdin, one JSON object per line, each posted there.
@@ -317,7 +317,7 @@ flowchart TD
 ```
 
 - `ambit attention` prices the human half of the ledger and **classifies agency**: clerical, exception, physical and authority-as-repeated-gate are reducible (*the human is the duct*), while judgment and knowledge are keepers, never proposed for removal however often they recur.
-- `ambit economics` is the declared model: attention value per hour, purchase and recurring costs, goal values. Dollars declare, cents store. An undeclared actor's attention defaults to $250/hr and is reported as such.
+- `ambit economics` is the declared model: attention value per hour, purchase and recurring costs, goal values, and what a model's tokens cost. Dollars declare, cents store. An undeclared actor's attention defaults to $250/hr and is reported as such; a model's price has no default. `ambit economics price <model> --input=5 --cache-read=0.5 --output=25` declares one in dollars per million tokens, all three parts, under the exact name a Claude Code transcript records, and a config's `economics.models` block takes the same three as `input_per_mtok`, `cache_read_per_mtok` and `output_per_mtok`. Cache writes are counted with fresh input, so the input price covers both.
 - `ambit opportunities` ranks the durable fixes: observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence (high = observed five-plus times, low = deficits only). Rank by `--by=attention|cash|roi|reliability|frontier`, or allocate a budget: `--budget=N` returns the best combination of investments within $N. Each opportunity carries its acquisition options from the catalog, so it is a purchase decision, not a report.
 - `ambit roi` closes the loop. With a proposal id it measures before/after on the affected capability (interventions, human hours, attention dollars, verification failures) and returns a verdict (performing near forecast, above, below, too early). With no argument it is the cumulative headline: hours and dollars saved per year and forecast accuracy, written back so the next prediction has evidence to learn from.
 - `ambit incidents` probes the infrastructure manifest, opens an incident run for every offline service, records detection, resolves the recovery against authority, and closes it with MTTR from the ledger's own timestamps.
@@ -430,7 +430,7 @@ govern     people [add <id> ["Name"]]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest <file>
            delegation object|answer|objections · delegation source add|sources|pull
-report     work [limit] · usage [days] · economics · attention [days]
+report     work [limit] · usage [days] · economics [price <model>] · attention [days]
            digest [days] · notify <topic> · notify-approvals <topic>
            record <cap> [class] [note] · record skill:<name> --provides= --verify=
            signals [days] · preferences [--observed] · federation export|import
@@ -464,7 +464,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit authority promote <cap> <action> --after=N --by=<person>` | The threshold that widens a grant once its evidence supports it. A person sets it once; a single failing check afterwards puts the grant back, with nobody asked |
 | `ambit authority grant <cap> <mode> --ttl=30m` | Autonomy for a window and no longer. Once expired the grant decides nothing and whatever stood before it decides again; the row is never rewritten, so it stays as the record of what was granted |
 | `ambit authority sandbox <target> --by=<person>` | Somewhere acting does not matter. Confirmation is relaxed inside it; a refusal never is, because rehearsing a forbidden action would be a way round it |
-| `ambit budget set <cap> --amount=20 --by=<person>` | A ceiling on what can be spent in a period. A spend past it is refused until the period turns over. It bounds a grant and does not widen one: within the ceiling the grant's own mode still decides. The limit: nothing yet records spend in dollars on its own, since there is no meter, so a ceiling holds only against a caller that states its spend, and `apply` and the control plane state none |
+| `ambit budget set <cap> --amount=20 --by=<person>` | A ceiling on what can be spent in a period. A spend past it is refused until the period turns over. It bounds a grant and does not widen one: within the ceiling the grant's own mode still decides. One meter feeds it: when a Claude Code session ends, its tokens on a model with a price declared by `ambit economics price` are recorded as a spend against the unscoped budget on Hosted Inference. The limits: only a declared price, only Claude Code sessions, only a budget that exists, and only once the session has ended, so a spent ceiling stops no session under way and refuses only a caller that states its spend. `apply` and the control plane state none |
 | `ambit incidents` | Probe the infrastructure manifest; open an incident run for every offline service with the authority decision for its recovery. `incident resolve <svc> <outcome>` closes it with MTTR |
 | `ambit doctor` | A graded summary of the setup: what is reached, proven and failing, the single points of failure, which runtimes it read, and what to run next. `ambit check` with no argument is the same report |
 | `ambit connect [runtime]` | Register Ambit's MCP server in each runtime it reads, or the one named, in the shape that runtime's file uses, keeping a `.bak` of each file it changes. `--dry-run` says what it would write |
@@ -480,6 +480,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit dispatch <id> [--to=<url>]` | Push a proposal to Slack, Discord, Telegram, ntfy or a JSON endpoint: the decision for a draft, the signed artifact once approved. One-way; the reply is `ambit approve` on a machine that holds the key |
 | **report** — *what the system cost to operate* | |
 | `ambit attention [days]` | How much of the work still runs through the human, and which interventions are likely reducible |
+| `ambit economics price <model> --input= --cache-read= --output=` | What a model's tokens cost, in dollars per million, so a Claude Code session's tokens on it become a spend against Hosted Inference's budget when the session ends. Sessions recorded before the price are not priced again, and a model with none is reported undeclared, never $0 |
 | `ambit notify <topic>` | Push the attention digest to ntfy — nothing is sent without a topic |
 | `ambit record skill:<name> --provides=<cap> --verify="<cmd>"` | Put a skill the agent wrote in the graph, as a provider of a capability, with the read-only check that proves it. The check is required and runs immediately |
 | `ambit signals [days]` | Failures observed without anyone recording them, by class and by tool — including the ones no capability could be attributed to |
