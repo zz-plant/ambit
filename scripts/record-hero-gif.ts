@@ -164,6 +164,9 @@ const SANDBOX = {
   AMBIT_DB: dbPath,
   OPENCODE_CONFIG: configPath,
   INFRA_MANIFEST: join(cfgDir, 'infrastructure.json'),
+  // Set in the shell, either would override HOME and record its models.
+  OLLAMA_MODELS: join(home, '.ollama', 'models'),
+  AMBIT_LMSTUDIO_MODELS: join(home, '.lmstudio', 'models'),
   AMBIT_APPROVAL_KEY: 'hero-recording-key',
 };
 

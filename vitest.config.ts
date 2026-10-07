@@ -20,7 +20,14 @@ export default defineConfig({
     // Every `ambit` command reads the Claude Code spool into its graph and
     // deletes it. A test that runs the CLI must never consume the developer's
     // own spool into a throwaway graph, so the whole suite points elsewhere.
-    env: { AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`) },
+    // Every seed also lists the models Ollama and LM Studio keep on disk, so
+    // both point at folders that do not exist: the developer's own models
+    // must never decide an assertion. A test that wants models makes them.
+    env: {
+      AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`),
+      OLLAMA_MODELS: join(tmpdir(), `ambit-test-no-ollama-${process.pid}`),
+      AMBIT_LMSTUDIO_MODELS: join(tmpdir(), `ambit-test-no-lmstudio-${process.pid}`),
+    },
     testTimeout: 30_000,
     hookTimeout: 30_000,
     coverage: {

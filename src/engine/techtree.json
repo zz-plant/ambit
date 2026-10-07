@@ -71,7 +71,8 @@
       "description": "The agent can read and modify files directly",
       "detect": {
         "any": [
-          "^tool:edit$"
+          "^tool:edit$",
+          "^mcp:(.*[/_-])?filesystem$"
         ]
       },
       "setup_seconds": 0,

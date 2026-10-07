@@ -100,6 +100,16 @@ const MAPPING = JSON.stringify({
 });
 
 /**
+ * The model folders a seed lists, inside the throwaway HOME. Redirecting HOME
+ * does not reach them when the shell running this sets either variable, and
+ * that machine's models would ship in the public demo.
+ */
+const NO_LOCAL_MODELS = (home: string) => ({
+  OLLAMA_MODELS: join(home, '.ollama', 'models'),
+  AMBIT_LMSTUDIO_MODELS: join(home, '.lmstudio', 'models'),
+});
+
+/**
  * What the demo's checks said, by capability: `true` passed, `false` failed.
  *
  * A seed verifies nothing, so the tree used to arrive with every reached node
@@ -205,6 +215,7 @@ function seedUnrecorded(config: object, home: string, dbPath: string): void {
     env: {
       ...process.env,
       HOME: home,
+      ...NO_LOCAL_MODELS(home),
       OPENCODE_CONFIG: configPath,
       TOOLCHAIN_DB: dbPath,
       AMBIT_DB: dbPath,
@@ -293,6 +304,7 @@ export function buildDemoData(): {
         env: {
           ...process.env,
           HOME: home,
+          ...NO_LOCAL_MODELS(home),
           OPENCODE_CONFIG: configPath,
           TOOLCHAIN_DB: dbPath,
           AMBIT_DB: dbPath,

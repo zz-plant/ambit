@@ -74,7 +74,7 @@ The demo walks a sample setup in five steps: the next step worth taking and what
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
 
-npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, and the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
+npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
@@ -164,7 +164,7 @@ Everything above answers on a graph Ambit builds by itself. A second group (`att
 ```console
 $ ambit status
 
-    39 of 70 reached · 0 proven · 9 with a single provider
+    39 of 70 reached · 0 proven · 8 with a single provider
     ──────────────────────────────────────────────────────
     proven          0
   › unproven       15
@@ -328,7 +328,7 @@ When an agent proposes a change over MCP, the **Proposals** panel reads it as a 
 
 Discovery reads your host configs into an embedded SQLite graph, and three surfaces read it back out: the CLI, the MCP server and the map. Discovery, verification and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map's switch for an entry that already exists, which cannot create one.
 
-Each client is read from its own standard config path, and every server stays attributed to the client that listed it. Two clients naming the same server is one capability with two providers, which is what stops Ambit counting one binary twice and calling the result redundancy.
+Each client is read from its own standard config path, and every server stays attributed to the client that listed it. Two clients naming the same server is one capability with two providers, which is what stops Ambit counting one binary twice and calling the result redundancy. Local models are read by name from the folders Ollama and LM Studio keep them in: no model server is asked, so one that is not running is found all the same. Each is filed under a `local` provider, which keeps it out of Hosted Inference and off the spend meter.
 
 Discovered capabilities are placed in a curated tree of nine eras: seven for the agent setup, from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy** and **Assurance** to **Sovereignty**, and two for the product it builds, **Product** (hosting, a production database, accounts, payments, email) and **Operations** (error tracking, analytics, uptime, backups, and **Launch Ready**, reached when the launch checklist is done). Because each capability records what it needs, Ambit works out what you can reach without taking a config file's word for it, which combos emerge from tools configured apart, and which near misses are one or two prerequisites from unlocking several others.
 

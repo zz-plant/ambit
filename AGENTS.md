@@ -72,6 +72,8 @@ src/engine/mcp-clients.ts  Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex C
                            Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro config readers:
                            every runtime besides OpenCode and Claude Code
 src/engine/claude-code.ts  Reads a Claude Code install into the shape seedFromConfig accepts
+src/engine/local-models.ts The models Ollama and LM Studio keep on disk, by folder and file name
+                           only: never a model file, a manifest's contents, or a socket
 ```
 
 ### Engine (inference and assurance)
