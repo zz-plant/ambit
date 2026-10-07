@@ -7,7 +7,7 @@ import { resolveDbPath } from '../shared/db-path.ts';
 import { nearest } from '../shared/nearest.ts';
 import { err, respond, toolResult } from './protocol.ts';
 import { BASE_TOOLS, PROFILES, type Profile } from './tools.ts';
-import { checkArguments } from './validate.ts';
+import { checkArguments, signature } from './validate.ts';
 import { capabilityToAsk, resolveCapability, type Resolution } from '../engine/resolve.ts';
 import type { Db } from '../engine/db.ts';
 import {
@@ -79,6 +79,7 @@ import {
   pendingProposals,
 } from '../engine/engine.ts';
 import { judgeGoal } from '../engine/judge.ts';
+import { judgeUnrouted, specGoal } from '../engine/spec.ts';
 import { REACHED_SQL, graphCounts, notSeeded } from '../engine/vocabulary.ts';
 
 const DB_PATH = resolveDbPath();
@@ -453,7 +454,21 @@ async function handleLine(line: string) {
               res = tt(db => planFor(db, capId));
               break;
             case 'tt_goal':
-              if (args?.judge) {
+              // A spec is read as data, the way the CLI reads it, and only
+              // `judge` sends anything, to this machine, about the tasks the
+              // words could not route.
+              if (args?.spec !== undefined) {
+                const read = tt(db => specGoal(db, args.spec));
+                res = args.judge ? await judgeUnrouted(read, args.judgeUrl) : read;
+              } else if (args?.goal === undefined) {
+                return respond(
+                  id,
+                  toolResult({
+                    error: 'ambit_goal: goal is required, unless spec names a spec to read.',
+                    takes: signature(tool),
+                  })
+                );
+              } else if (args?.judge) {
                 const base = tt(db => goalFor(db, args.goal));
                 const judged = await judgeGoal(args.goal, { url: args.judgeUrl });
                 res = { ...base, judged };

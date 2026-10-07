@@ -20,6 +20,7 @@ import {
   renderBrief,
   renderImpact,
   renderPlan,
+  renderSpec,
   renderStatus,
   statusReport,
 } from './cli/reports.ts';
@@ -82,6 +83,7 @@ import {
 import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { judgeGoal } from './judge.ts';
+import { judgeUnrouted, specGoal } from './spec.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport, unmappedUse } from './telemetry.ts';
@@ -206,7 +208,20 @@ async function runCommand(
     case 'goal': {
       // One entry for the gap-to-capability question, with the folds as flags:
       // paths, simulation and preferences are views of the same decision.
-      if (flags.has('--prefs')) emit(preferencesReport(db, arg));
+      if (flags.has('--spec') || value('spec') !== undefined) {
+        // A spec's tasks, each routed as a sentence would be. Read as data:
+        // nothing in the file runs, and only --judge opens a socket, to this
+        // machine, for the tasks the words could not route.
+        const report = specGoal(db, value('spec') || arg);
+        const judged =
+          flags.has('--judge') || value('judge') !== undefined
+            ? await judgeUnrouted(report, value('judge'))
+            : report;
+        // A path that is not a spec is an error and reads as one.
+        emit(judged, r =>
+          r.error ? formatGeneric(r, terminalPalette()) : renderSpec(r, terminalPalette())
+        );
+      } else if (flags.has('--prefs')) emit(preferencesReport(db, arg));
       else if (flags.has('--paths'))
         emit(arg ? pathsFor(db, arg) : { error: 'Usage: ambit goal <capability> --paths' });
       else if (flags.has('--simulate')) {

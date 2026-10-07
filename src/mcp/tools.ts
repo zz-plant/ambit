@@ -182,8 +182,11 @@ const BASE_TOOLS: ToolDef[] = [
           description: 'Route an unmatched goal with a local judgment model',
         },
         judgeUrl: { type: 'string', description: 'Loopback URL of that model' },
+        spec: {
+          type: 'string',
+          description: 'Or a Spec Kit/OpenSpec dir or tasks.md: what its tasks need',
+        },
       },
-      required: ['goal'],
     },
     annotations: READS,
   },
