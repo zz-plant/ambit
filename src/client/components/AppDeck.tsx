@@ -80,8 +80,8 @@ interface AppDeckProps {
  * row, which wrapped at 1440px and gave the largest number to what is blocked.
  * It says what a person acts on now: verified, anything failing, and the next
  * steps. Unproven and blocked are the rest of the map, written out in the
- * pill's tooltip and lit from the map's Key. Each segment is the same control
- * as its legend key.
+ * pill's tooltip; the strip under the map lights blocked. Each segment is the
+ * same control as its key in that strip.
  */
 const SEGMENTS: [keyof MapCounts, string][] = [
   ['verified', 'Verified'],

@@ -295,12 +295,12 @@ The server sends this line itself, as the `instructions` a client receives when 
 
 `./bootstrap.sh web` serves four views over the graph the CLI reads.
 
-- **Map**: the curated tree with your position on it. One line over it says what it found before you read a node: a capability failing its check, or else the next step that reaches the most.
+- **Map**: the curated tree with your position on it, its states keyed in a strip underneath. One line over it says what it found before you read a node: on your machine, a capability failing its check, or else the next step that reaches the most; on the hosted demo the next step leads and the failing check follows.
 - **My Setup**: one row per entry your configs declare, with its recent check runs and the capabilities it provides. Its Briefing tab is the text an agent is given at connect, so what the agent believes about the machine can be read.
 - **Time & cost**: the work ledger, what may act without asking, what to reach next, and how the frontier moved this week.
 - **Audit**: proposals, approvals, check runs and work runs, newest first, with a query bar.
 
-Select a node and the panel says what would stop if it went down, or what stands between it and being reached and how long that would take. **Simulate an outage** draws that cascade, red for what stops and amber for what only loses a provider; **simulate unlocking** lights what one missing piece would make reachable. Neither writes anything. Three lenses repaint the map: **Standard** (reached, next step, blocked), **Attention** (which tools keep interrupting a person) and **Authority** (what may act alone, what must ask, what is forbidden).
+Select a node and the panel says what would stop if it went down, or what stands between it and being reached and how long that would take. **Simulate an outage** draws that cascade, filled red for what stops, a red outline for what was never set up, and amber for what only loses a provider; **simulate unlocking** lights what one missing piece would make reachable. Neither writes anything. Three lenses repaint the map: **Standard** (reached, next step, blocked), **Attention** (which tools keep interrupting a person) and **Authority** (what may act alone, what must ask, what is forbidden).
 
 When an agent proposes a change over MCP, the **Proposals** panel reads it as a plan before you sign: its steps, which of them nothing can undo, what it unlocks and costs, and how you decided on drafts like it before. Approving mints a signed artifact, and applying it is a separate `ambit apply`.
 
