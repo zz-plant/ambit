@@ -4,6 +4,7 @@ import type { Connection, Item } from '../utils/configImporter';
 import { canSwitchMcp, flipMcp } from '../utils/configSwitch';
 import { typeLabel, statusLabel, metaKeyLabel, isRuntimeNode } from '../utils/labels';
 import {
+  blocksOf,
   blockedBy,
   collapseTo,
   costOf,
@@ -20,12 +21,23 @@ import {
   unlockCascade,
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
+import type { AuthorityLadder } from '../../shared/api';
 import { EraLadderPanel } from './EraLadder';
 import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
 import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
+
+/** The rungs a grant climbs, bottom first, as the panel draws them. */
+const RUNGS = ['ungranted', 'confirm', 'threshold', 'autonomous', 'budgeted'] as const;
+const RUNG_LABEL: Record<(typeof RUNGS)[number], string> = {
+  ungranted: 'No grant',
+  confirm: 'Asks',
+  threshold: 'Threshold',
+  autonomous: 'Unattended',
+  budgeted: 'Ceiling',
+};
 
 /** How many steps of a route the panel lists before it counts the rest. */
 const ROUTE_SHOWN = 8;
@@ -154,8 +166,10 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
   // The runs behind that count, in order. None recorded means no strip.
   const history = runsOf(item);
   const authority = item.meta?.authority as
-    | { execute: string; observe?: string; ungranted?: boolean }
+    | { execute: string; observe?: string; ungranted?: boolean; ladder?: AuthorityLadder }
     | undefined;
+  const ladder = authority?.ladder;
+  const blocks = blocksOf(item);
   const failures =
     (item.meta?.failures as
       | { class: string; signal: string; times: number; last: string }[]
@@ -278,6 +292,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
     'failures',
     'actions',
     'daysSinceChange',
+    'blocks',
   ]);
   const details = Object.entries(item.meta).filter(
     ([k, v]) => !saidElsewhere.has(k) && isStated(v)
@@ -501,6 +516,52 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                     : 'may not look'
               }`
             : ''}
+        </p>
+      )}
+      {/* The second tree: where its grant stands and what moves it one rung.
+          Up takes a person's command or a threshold one set; down takes one
+          failing check and nobody. A refusal is on no rung. */}
+      {ladder && (
+        <div className="sp-ladder" aria-label="How far its grant has climbed">
+          {ladder.rung === 'forbidden' ? (
+            <p className="sp-ladder-note">{ladder.note}</p>
+          ) : (
+            <ol className="sp-rungs">
+              {RUNGS.map((r, i) => {
+                const at = RUNGS.indexOf(ladder.rung as (typeof RUNGS)[number]);
+                return (
+                  <li
+                    key={r}
+                    className={`sp-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
+                    aria-current={i === at ? 'step' : undefined}
+                  >
+                    {RUNG_LABEL[r]}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+          {ladder.rung !== 'forbidden' && ladder.note && (
+            <p className="sp-ladder-note">{ladder.note}</p>
+          )}
+          {ladder.next && (
+            <button
+              type="button"
+              className={`sp-cli-copy-btn sp-ladder-next ${copiedCmd === 'ladder' ? 'sp-cli-copy-btn--copied' : ''}`}
+              title={ladder.next.command}
+              onClick={() => copy('ladder', ladder.next!.command)}
+            >
+              {copiedCmd === 'ladder' ? 'Copied ✓' : `${ladder.next.label}: copy the command`}
+            </button>
+          )}
+        </div>
+      )}
+      {/* What has been asked for while this was missing: the pressure the map
+          draws as the part fill inside a next step. */}
+      {blocks > 0 && item.status !== 'built' && (
+        <p className="sp-blocks">
+          <Term name="asked-for">Asked for</Term> {blocks}×: work was recorded blocked on it while
+          it was missing.
         </p>
       )}
       {/* What it takes besides the agent, from the domains the engine derives

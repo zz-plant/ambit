@@ -7011,6 +7011,210 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
+
+/* ─── The council ─── */
+/* Five seats on one step. The seat's name is a label, its sentence is text,
+   and its stance is a chip that says the word: colour marks for and against
+   and never carries them alone. */
+.council {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.council-seat {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  gap: 12px 16px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.council-seat:last-child {
+  border-bottom: none;
+}
+
+.council-seat-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+.council-seat-reads {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
+.council-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.council-says {
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.council-seat.is-silent .council-says {
+  color: var(--text-muted);
+}
+
+.council-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.council-stance {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.council-seat.is-for .council-stance {
+  color: var(--ok);
+  border-color: var(--ok-line);
+  background: var(--ok-soft);
+}
+
+.council-seat.is-against .council-stance {
+  color: var(--error);
+  border-color: var(--error-line);
+  background: var(--error-soft);
+}
+
+.council-verdict {
+  margin: 0 0 6px;
+  font-size: var(--fs-base);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.council-verdict strong {
+  color: var(--text-primary);
+}
+
+.council-verdict.is-split strong {
+  color: var(--warn);
+}
+
+@media (max-width: 640px) {
+  .council-seat {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .council-seat-name {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+}
+
+
+/* ─── The ladder, the asks, the emergent tick ─── */
+/* The second tree in the panel: five rungs a grant climbs, the one it is on
+   lit, those below it filled. Up takes a person; down takes one failing check. */
+.sp-ladder {
+  margin: 10px 0 0;
+}
+
+.sp-rungs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.sp-rung {
+  position: relative;
+  padding: 8px 0 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-rung::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.sp-rung.is-past::before {
+  background: var(--accent-line);
+}
+
+.sp-rung.is-on {
+  color: var(--text-primary);
+}
+
+.sp-rung.is-on::before {
+  background: var(--accent);
+}
+
+.sp-ladder-note {
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.sp-ladder-next {
+  margin-top: 8px;
+}
+
+.sp-blocks {
+  margin: 10px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* An observation that reached something with nothing new providing it: a
+   diamond over the tick, in the data colour the Since strip uses for it. */
+.civ-timeline-tick--emergent::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  background: var(--fig-data, var(--accent));
+  transform: rotate(45deg);
+}
+
 /* ─── TYPE ROLES ─── */
 /* Which selectors the readout face sets, in one place, and by role, not by
    size: a selector joins the role it serves. Placed last so a role wins over
@@ -7072,6 +7276,7 @@ button.app-sample-tag:hover {
 .sp-section-label,
 .setup-group-title,
 .sp-joint-hd,
+.council-seat-name,
 .gov-decision dt,
 .gov-purpose span,
 .fig-table thead th,

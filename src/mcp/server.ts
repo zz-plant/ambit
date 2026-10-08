@@ -78,6 +78,7 @@ import {
   pendingProposals,
 } from '../engine/engine.ts';
 import { judgeGoal } from '../engine/judge.ts';
+import { council } from '../engine/council.ts';
 import { REACHED_SQL, graphCounts, notSeeded } from '../engine/vocabulary.ts';
 
 const DB_PATH = resolveDbPath();
@@ -504,6 +505,9 @@ async function handleLine(line: string) {
               break;
             case 'tt_next':
               res = tt(db => nextSteps(db, args?.limit));
+              break;
+            case 'tt_council':
+              res = tt(db => council(db));
               break;
             case 'tt_record_failure':
               res = tt(db => captureFailure(db, { ...args, source: args?.source || 'agent' }));

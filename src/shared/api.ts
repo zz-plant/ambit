@@ -85,6 +85,23 @@ export interface NodeAuthority {
   execute: AuthorityMode;
   observe?: AuthorityMode;
   ungranted?: true;
+  /** Where its execute grant stands on the rungs a grant climbs, and what moves it. */
+  ladder?: AuthorityLadder;
+}
+
+/**
+ * The second tree. A grant climbs from no grant, to asking first, to a
+ * threshold a person set, to unattended, to unattended under a ceiling; it
+ * climbs only by a person's command or against a threshold one set, and it
+ * drops on a single failing check with nobody asked. A refusal is on no rung,
+ * since a refusal takes no threshold.
+ */
+export interface AuthorityLadder {
+  rung: 'ungranted' | 'confirm' | 'threshold' | 'autonomous' | 'budgeted' | 'forbidden';
+  /** The rung's own reading: how far a threshold has got, since when, the ceiling. */
+  note?: string;
+  /** What moves it one rung up, for a person to paste. Absent at the top and on a refusal. */
+  next?: { label: string; command: string };
 }
 
 /** One action a capability confers, and the mode it resolves to. */
@@ -146,6 +163,12 @@ export interface TreeItemMeta {
   actions?: ConferredAction[];
   /** Days since this capability's configuration last changed: what has stopped being tended. */
   daysSinceChange?: number;
+  /**
+   * Times work was recorded blocked on it while it was missing: the pressure
+   * behind a next step, which the map draws as a part-filled node. Absent when
+   * none was recorded.
+   */
+  blocks?: number;
   /**
    * The affordance domains the engine derives from structure: institutional
    * (a person must approve it), economic (an acquisition costs every month),
@@ -237,6 +260,11 @@ export interface FrontierTick {
   lifecycles: Record<string, string> | null;
   /** What moved since the tick before, in the words `ambit history since` prints. */
   moved: string;
+  /**
+   * Reached since the tick before with nothing new providing them: composition,
+   * by name. Absent on a fixture written before it was recorded.
+   */
+  emergent?: string[];
 }
 
 /**
@@ -560,6 +588,35 @@ export interface LoopSince {
   diminished: string[];
 }
 
+/**
+ * One seat on the council: one question the engine answers, read against the
+ * step on the table. `says` is one sentence; `command` is what a person would
+ * paste to see the whole answer, and nothing on the page runs it.
+ */
+export interface LoopAdvisor {
+  seat: 'science' | 'defence' | 'treasury' | 'justice' | 'interior';
+  /** What the seat reads: the frontier, fragility, the ledger, authority, the checks. */
+  reads: string;
+  says: string;
+  command?: string;
+  /** The node the sentence is about, where it names one on the map. */
+  subject?: { id: string; name: string };
+  /**
+   * Where the seat stands on the step. Silent means nothing is recorded for it
+   * to read, which the page says instead of drawing an opinion from nothing.
+   */
+  stance: 'for' | 'against' | 'neutral' | 'silent';
+}
+
+/** Five readings of the step `ambit next` puts first, and whether they agree. */
+export interface LoopCouncil {
+  /** The step on the table, or null when nothing is one step away. */
+  motion: { id: string; name: string; cost: string; basis: 'observed' | 'structural' } | null;
+  advisors: LoopAdvisor[];
+  /** At least one seat for and one against. */
+  split: boolean;
+}
+
 export interface LoopSnapshot {
   status: {
     reached: number;
@@ -605,6 +662,8 @@ export interface LoopSnapshot {
   since: LoopSince | null;
   /** Asked for and never there, worst first. Heads the queue of what to reach. */
   demand: LoopDemand[];
+  /** The council on the first of `next`: five seats, one sentence each. */
+  council: LoopCouncil;
   /**
    * Tokens sessions used in the window, per model, from session transcripts.
    * Absent when none were recorded. Priced only where a person declared a

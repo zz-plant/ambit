@@ -448,7 +448,7 @@ function ledgerSince(db: Db, when?: string, until?: string) {
  * graph, which can differ: `verify` changes lifecycles and records nothing.
  */
 function frontierSeries(db: Db): {
-  ticks: (Observation & { taken_at: string; moved: string })[];
+  ticks: (Observation & { taken_at: string; moved: string; emergent: string[] })[];
   movedSinceLast: string | null;
 } {
   const observations = db
@@ -462,18 +462,24 @@ function frontierSeries(db: Db): {
   if (!observations.length) return { ticks: [], movedSinceLast: null };
 
   const context = ledgerContext(db);
-  const ticks = observations.map((o, i) => ({
-    ...o,
-    moved:
-      i === 0
-        ? movedSentence({
-            before: null,
-            after: Object.entries(o.states).filter(
-              ([id, v]) => isReached(v) && inFrontier(o.kinds?.[id])
-            ).length,
-          })
-        : compareFrontiers(db, observations[i - 1], o, context).moved,
-  }));
+  const ticks = observations.map((o, i) => {
+    if (i === 0) {
+      return {
+        ...o,
+        moved: movedSentence({
+          before: null,
+          after: Object.entries(o.states).filter(
+            ([id, v]) => isReached(v) && inFrontier(o.kinds?.[id])
+          ).length,
+        }),
+        emergent: [] as string[],
+      };
+    }
+    const step = compareFrontiers(db, observations[i - 1], o, context);
+    // Named, so the timeline can mark the observation and say which: the
+    // sentence counts them, and a count is not something a reader can look up.
+    return { ...o, moved: step.moved, emergent: step.emergent.map((e: any) => String(e.name)) };
+  });
 
   // Unchanged by the test `recordFrontier` applies: the same states and the
   // same lifecycles. Anything else is a step the ledger has not recorded yet.

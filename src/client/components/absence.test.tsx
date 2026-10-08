@@ -91,6 +91,7 @@ const unstatedNode: Item = {
     history: undefined,
     authority: undefined,
     failures: undefined,
+    blocks: undefined,
   },
 };
 
@@ -164,6 +165,8 @@ const unstatedLoop: LoopSnapshot = {
   },
   next: [],
   since: null,
+  // Five seats with nothing on the table: the panel draws no opinion from it.
+  council: { motion: null, advisors: [], split: false },
 };
 
 beforeAll(() => {

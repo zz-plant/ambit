@@ -63,6 +63,28 @@ export function Brackets({ r, color }: { r: number; color: string }) {
  * second selection. Outlined at rest, filled when the key or the selection
  * asks for it.
  */
+/**
+ * How much of a next step is already asked for: a wedge from twelve o'clock,
+ * filling as work is recorded blocked on it, full at the count the engine
+ * calls structural. Drawn inside the ring so the ring still says next step.
+ */
+export function EurekaMark({ r, fraction }: { r: number; fraction: number }) {
+  const f = Math.max(0, Math.min(1, fraction));
+  if (!f) return null;
+  const inner = r - 3;
+  if (f >= 1) return <circle r={inner} fill="var(--fig-data-soft, var(--accent-soft))" />;
+  const a = f * Math.PI * 2;
+  const x = inner * Math.sin(a);
+  const y = -inner * Math.cos(a);
+  const large = f > 0.5 ? 1 : 0;
+  return (
+    <path
+      d={`M 0 0 L 0 ${-inner} A ${inner} ${inner} 0 ${large} 1 ${x.toFixed(2)} ${y.toFixed(2)} Z`}
+      fill="var(--fig-data-soft, var(--accent-soft))"
+    />
+  );
+}
+
 export function KeystoneMark({ lit = true }: { lit?: boolean }) {
   return (
     <path
@@ -101,7 +123,7 @@ export function HazardPattern({ id }: { id: string }) {
 export type LegendKey =
   | { kind: 'label'; label: string }
   | { kind: 'node'; label: string; color: string; sym?: string; hatch?: boolean }
-  | { kind: 'ring' | 'faded' | 'keystone'; label: string }
+  | { kind: 'ring' | 'faded' | 'keystone' | 'eureka'; label: string }
   | { kind: 'line'; label: string; color?: string; dashed?: boolean }
   | { kind: 'joint'; label: string; mark: JointMark };
 
@@ -149,6 +171,13 @@ export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string 
     }
     case 'joint':
       return <JointIcon mark={entry.mark} />;
+    case 'eureka':
+      return (
+        <>
+          <circle r={7} fill="var(--bg-canvas)" stroke="var(--accent)" strokeWidth={1.25} />
+          <EurekaMark r={7} fraction={2 / 3} />
+        </>
+      );
     case 'ring':
       return <circle r={7} fill="var(--bg-canvas)" stroke="var(--accent)" strokeWidth={2} />;
     case 'faded':

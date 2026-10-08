@@ -12,7 +12,14 @@ import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import { CHECK_RUN, CHECK_RUN_SQL, FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
-import { authorityReport, narrower, suggestPromotions } from './assurance.ts';
+import {
+  authorityReport,
+  evidenceCount,
+  narrower,
+  suggestPromotions,
+  usable,
+} from './assurance.ts';
+import { shellQuote } from '../shared/shell.ts';
 import { humanDigest } from './attention.ts';
 import { budgetStanding } from './budgets.ts';
 import { installText } from './catalog.ts';
@@ -20,6 +27,7 @@ import { frontierSeries, ledgerSince } from './ledger.ts';
 import { machineModes } from './machines.ts';
 import { runTimeline, tokenUsage, unmappedUse } from './telemetry.ts';
 import { nextSteps } from './next.ts';
+import { council } from './council.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
@@ -30,6 +38,7 @@ import { proposalHash } from './approval.ts';
 import type { CapabilityRow } from './rows.ts';
 import { storedTags } from './seed/structure.ts';
 import {
+  type AuthorityLadder,
   AUTHORITY_MODES,
   CHECK_HISTORY_RUNS,
   NODE_TYPES,
@@ -166,11 +175,27 @@ export function techTreeView(db: Db): TechTreeResponse {
   // gate ("No grant covers ..."), so the map says so. That is the engine's
   // answer, not a missing one; a locked node has nothing to act with, and
   // says nothing.
-  const authorityOf = (id: string, state: string, kind: string) =>
-    authority.get(id) ??
-    (state !== 'locked' && (kind === 'capability' || kind === 'action') && !granted.has(id)
-      ? { execute: 'forbidden' as const, ungranted: true as const }
-      : undefined);
+  const ladders = ladderOf(db, authority);
+  const authorityOf = (id: string, state: string, kind: string) => {
+    const base =
+      authority.get(id) ??
+      (state !== 'locked' && (kind === 'capability' || kind === 'action') && !granted.has(id)
+        ? { execute: 'forbidden' as const, ungranted: true as const }
+        : undefined);
+    if (!base || state === 'locked' || kind !== 'capability') return base;
+    return { ...base, ladder: ladders.get(id) ?? ladderFor(id, base, undefined, false, db) };
+  };
+
+  // What has been asked for and is still missing, by how often. The ranking
+  // behind `ambit next` counts the same rows; the map draws them on the node.
+  const blocks = new Map<string, number>();
+  try {
+    for (const d of deficits(db) as any[]) {
+      if (d.still_missing && Number(d.times_blocked) > 0) blocks.set(d.id, Number(d.times_blocked));
+    }
+  } catch {
+    /* a graph with no ledger */
+  }
 
   // What each capability needs beyond the agent: a person who approves or
   // supplies it, a device it runs on, a recurring cost. Derived by the engine
@@ -236,6 +261,7 @@ export function techTreeView(db: Db): TechTreeResponse {
       failures: failures.get(c.id),
       actions: actions.get(c.id),
       daysSinceChange: c.state === 'locked' ? undefined : daysSince(c.updated_at),
+      blocks: c.state === 'locked' || !usable(c.lifecycle) ? blocks.get(c.id) : undefined,
       structure: joint.get(c.id)?.structure,
       people: joint.get(c.id)?.people,
       devices: joint.get(c.id)?.devices,
@@ -308,6 +334,124 @@ function conferredActions(
 }
 
 /** Every node some execute grant names, at any scope. */
+/** The rows a ladder is read from: the unscoped execute grant, its threshold, and any ceiling. */
+interface LadderRow {
+  promote_after: number | null;
+  promote_window_days: number | null;
+  promote_set_by: string | null;
+  promoted_at: string | null;
+  source: string;
+}
+
+/**
+ * Where each reached capability's execute grant stands, and what moves it. The
+ * rung is read from the effective mode `canExecute` resolves, never from a
+ * row's own mode, so a person's grant and a runtime's narrowing both count.
+ */
+function ladderOf(
+  db: Db,
+  authority: Map<string, { execute: AuthorityMode }>
+): Map<string, AuthorityLadder> {
+  const out = new Map<string, AuthorityLadder>();
+  let rows: (LadderRow & { capability_id: string })[] = [];
+  let budgeted = new Set<string>();
+  try {
+    rows = db
+      .prepare(
+        `SELECT capability_id, promote_after, promote_window_days, promote_set_by, promoted_at, source
+         FROM authority
+         WHERE action = 'execute' AND scope = ''
+           AND (expires_at IS NULL OR expires_at > datetime('now'))
+         ORDER BY promote_after IS NULL, id`
+      )
+      .all<LadderRow & { capability_id: string }>();
+    budgeted = new Set(
+      db
+        .prepare(`SELECT DISTINCT capability_id FROM budgets WHERE budget_cents > 0`)
+        .all<{ capability_id: string }>()
+        .map(b => b.capability_id)
+    );
+  } catch {
+    return out;
+  }
+  const byId = new Map<string, LadderRow>();
+  for (const r of rows) if (!byId.has(r.capability_id)) byId.set(r.capability_id, r);
+  for (const [id, mode] of authority) {
+    out.set(id, ladderFor(id, mode, byId.get(id), budgeted.has(id), db));
+  }
+  return out;
+}
+
+function ladderFor(
+  id: string,
+  mode: { execute: AuthorityMode; ungranted?: true },
+  row: LadderRow | undefined,
+  budgeted: boolean,
+  db: Db
+): AuthorityLadder {
+  const short = shellQuote(id.replace(/^combo:/, ''));
+  if (mode.execute === 'forbidden' && !mode.ungranted) {
+    return { rung: 'forbidden', note: 'A refusal takes no threshold.' };
+  }
+  if (mode.ungranted || !row) {
+    return {
+      rung: 'ungranted',
+      next: {
+        label: 'Grant it, asking first',
+        command: `ambit authority grant ${short} confirm --by=<person>`,
+      },
+    };
+  }
+  if (mode.execute === 'confirm' && row.promote_after == null) {
+    return {
+      rung: 'confirm',
+      next: {
+        label: 'Set a threshold to stop asking',
+        command: `ambit authority promote ${short} execute --after=10 --by=<person>`,
+      },
+    };
+  }
+  if (mode.execute === 'confirm') {
+    const days = row.promote_window_days || 30;
+    let have = 0;
+    let failing = 0;
+    try {
+      const e = evidenceCount(db, id, days) as { evidence: number; failures: number };
+      have = e.evidence;
+      failing = e.failures;
+    } catch {
+      /* a ledger that predates evidence */
+    }
+    const left = Math.max(0, (row.promote_after ?? 0) - have);
+    return {
+      rung: 'threshold',
+      note: failing
+        ? `Held: a check is failing inside the ${days}-day window.`
+        : `${have} of ${row.promote_after} in ${days}d${row.promote_set_by ? `, set by ${row.promote_set_by}` : ''}; ${left} more passing ${left === 1 ? 'check or successful use' : 'checks or successful uses'} and it runs unattended.`,
+    };
+  }
+  if (budgeted) {
+    return {
+      rung: 'budgeted',
+      note: row.promoted_at
+        ? `Unattended since ${row.promoted_at.slice(0, 10)}, under a ceiling.`
+        : 'Unattended, under a ceiling.',
+    };
+  }
+  return {
+    rung: 'autonomous',
+    note: row.promoted_at
+      ? `Unattended since ${row.promoted_at.slice(0, 10)}, on evidence.`
+      : row.source === 'techtree'
+        ? 'Unattended by the tree\u2019s default.'
+        : `Unattended, granted by ${row.source}.`,
+    next: {
+      label: 'Put a ceiling on its spend',
+      command: `ambit budget set ${short} --amount=20 --by=<person>`,
+    },
+  };
+}
+
 function grantedIds(db: Db): Set<string> {
   try {
     return new Set(
@@ -480,6 +624,7 @@ export function frontierHistoryView(db: Db): FrontierHistoryResponse {
         kinds: t.kinds,
         lifecycles: t.lifecycles,
         moved: t.moved,
+        emergent: t.emergent,
       })),
       movedSinceLast,
     };
@@ -671,6 +816,7 @@ export function loopView(db: Db): LoopResponse {
     next: loopNext(db),
     since: loopSince(db),
     demand: loopDemand(db),
+    council: council(db),
     tokens,
     // The ledger is what fills this page. With nothing in it the figures would
     // all be zero, which reads as "you waste no time" rather than "nothing has

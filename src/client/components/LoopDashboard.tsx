@@ -14,6 +14,7 @@ import { type CapabilityNeeds, needsOf } from '../utils/needs';
 import { formatCount, readerLocale } from '../../shared/format';
 import { HoursSparkline, NUM, StackedBar, money } from './figures';
 import RunSection from './RunTimeline';
+import { CouncilFigure } from './Council';
 import { Term } from './Term';
 
 /**
@@ -1146,6 +1147,12 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             <SinceStrip since={since} />
           </div>
         </div>
+
+        {/* The five readings of the first step, before the figures each one
+            is drawn from: the decision, then the evidence behind it. */}
+        {loop.council && (
+          <CouncilFigure council={loop.council} onShow={onShow} onShowOnMap={onShowOnMap} />
+        )}
 
         {status.degraded?.length > 0 && <Fragility status={status} />}
 

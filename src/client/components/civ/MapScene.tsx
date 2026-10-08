@@ -29,6 +29,8 @@ import {
   columnProgress,
   costOf,
   edgePath,
+  eurekaOf,
+  blocksOf,
   isFailing,
   isNext,
   isProven,
@@ -47,7 +49,15 @@ import {
   visibleItems,
   wrapLabel,
 } from './layout.ts';
-import { Brackets, CAPS, Callout, HazardPattern, JointIcon, KeystoneMark } from './marks.tsx';
+import {
+  Brackets,
+  CAPS,
+  Callout,
+  EurekaMark,
+  HazardPattern,
+  JointIcon,
+  KeystoneMark,
+} from './marks.tsx';
 
 /**
  * The attention lens is a magnitude, so it gets one hue in four steps rather
@@ -738,6 +748,22 @@ export function MapScene({
                         : undefined
                     }
                   />
+                  {/* The asks behind a next step, as a part fill inside the
+                      ring: what has blocked work while this was missing. Only
+                      at rest, since a simulation or a lens paints the node. */}
+                  {!reached &&
+                    !dimmed &&
+                    simulationMode === 'none' &&
+                    !mark &&
+                    !isAttentionHot &&
+                    blocksOf(item) > 0 && (
+                      <g>
+                        {!still && (
+                          <title>{`Asked for: work was blocked on it ${blocksOf(item)} ${blocksOf(item) === 1 ? 'time' : 'times'} while it was missing`}</title>
+                        )}
+                        <EurekaMark r={NODE_R} fraction={eurekaOf(item)} />
+                      </g>
+                    )}
                   {routeStep.has(item.id) && (
                     <text
                       className={still ? undefined : 'civ-route-step'}

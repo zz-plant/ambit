@@ -12,6 +12,7 @@ const GROUPS: Record<string, string[]> = {
   plan: [
     'goal',
     'next',
+    'council',
     'opportunities',
     'opportunity',
     'roi',

@@ -541,7 +541,7 @@ export default function App() {
         )}
         {view === 'loop' ? (
           <Suspense fallback={<Loading />}>
-            <LoopDashboard onShowOnMap={showOnMap} />
+            <LoopDashboard onShowOnMap={showOnMap} onShow={show} />
           </Suspense>
         ) : view === 'audit' ? (
           <Suspense fallback={<Loading />}>

@@ -11,7 +11,7 @@ import { afterEach, expect, test } from 'vitest';
 import { mergeGraphs, useAmbitStore } from '../../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../../store/demo';
 import NodeDetailPanel from '../NodeDetailPanel';
-import { gapOf, routeTo, unlockedSince } from './layout.ts';
+import { gapOf, reachedQuote, routeTo, unlockedSince } from './layout.ts';
 
 const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
 
@@ -66,8 +66,14 @@ test('a rebuild that reached something says what, and what it makes a next step'
         ? { ...i, meta: { ...i.meta, next: true } }
         : i
   );
+  // One node reached carries the tree's own line for it, quoted after the news.
   expect(unlockedSince(items, hostingReached)).toBe(
-    'Hosting reached, which makes Error Tracking a next step.'
+    `Hosting reached, which makes Error Tracking a next step. \u201C${reachedQuote(
+      hostingReached.find(i => i.id === 'combo:hosting')!
+    )}\u201D`
+  );
+  expect(reachedQuote(hostingReached.find(i => i.id === 'combo:hosting')!)).toBe(
+    'The agent can deploy the app it builds and read the logs where it runs'
   );
   // Nothing reached: no news, and the page says only that it reloaded.
   expect(unlockedSince(items, items)).toBeNull();

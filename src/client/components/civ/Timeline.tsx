@@ -82,9 +82,15 @@ export function Timeline({
               {ticks.map((t, i) => (
                 <li
                   key={t.at}
-                  className={`civ-timeline-tick ${i === index ? 'is-on' : ''}`}
+                  className={`civ-timeline-tick ${i === index ? 'is-on' : ''} ${
+                    t.emergent?.length ? 'civ-timeline-tick--emergent' : ''
+                  }`}
                   style={{ left: place(i) }}
-                  title={momentOf(t.at)}
+                  title={
+                    t.emergent?.length
+                      ? `${momentOf(t.at)} · emergent: ${t.emergent.join(', ')}`
+                      : momentOf(t.at)
+                  }
                 />
               ))}
               <li

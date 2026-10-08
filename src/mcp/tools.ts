@@ -265,7 +265,7 @@ const BASE_TOOLS: ToolDef[] = [
       type: 'object',
       properties: {
         runId: str,
-        kind: { type: 'string', description: 'event | use | intervention | resource | outcome' },
+        kind: str,
         eventKind: str,
         actor: str,
         capabilityId: str,
@@ -499,6 +499,13 @@ const BASE_TOOLS: ToolDef[] = [
     description:
       'The capabilities worth reaching next: why, cost, and the command that proposes each. Ranked by what has blocked work once the ledger has data, by leverage per setup hour before.',
     inputSchema: { type: 'object', properties: { limit: num } },
+    annotations: READS,
+  },
+  {
+    name: 'council',
+    description:
+      'The first next step read five ways: what it opens, what it would rest on, what it has cost, what it may do once reached, whether its foundation works. One sentence, one command and a stance per seat, and whether they are split.',
+    inputSchema: NONE,
     annotations: READS,
   },
   {
