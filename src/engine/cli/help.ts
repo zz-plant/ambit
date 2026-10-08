@@ -14,6 +14,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   briefing          what an agent should know before its first tool call
   status            health · failing · sole providers · deficits · waiting approvals
   next              the three capabilities worth reaching next, and why
+  council           five readings of the first of those, and whether they agree
   graph [surface|combos|affordances|unmapped|capacity]   the graph, or a view of it
   goal <cap-or-sentence> [--paths|--simulate|--prefs]   route a goal, plan the
                     delta, compare acquisition paths, or check preferences
@@ -64,6 +65,9 @@ graph — the structure, and what it would cost to lose a piece
 plan — what to acquire next, and whether it paid
   plan next [n]           the capabilities worth reaching next, each with why,
                           what it costs, and the command that proposes it
+  plan council            the first of those read five ways: what it opens, what
+                          it would rest on, what it costs, what it may do, and
+                          whether its foundation works; each with its command
   plan goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]]   route a
                           goal, plan the delta, compare acquisition paths, check
                           preferences; --judge asks a judgment model on this

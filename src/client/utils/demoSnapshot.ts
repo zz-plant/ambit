@@ -7,7 +7,7 @@
  * demo can show the whole loop a visitor would otherwise never see. It is
  * illustrative, not fabricated-as-live: the page labels it sample data.
  */
-import type { LoopSnapshot } from '../../shared/api';
+import type { LoopAdvisor, LoopCouncil, LoopSnapshot } from '../../shared/api';
 import { isFailing, isProven } from '../components/civ/layout';
 import { demoTreeGraph } from '../store/demo';
 
@@ -69,6 +69,64 @@ const stampDay = (n: number) => stampAt(n).slice(0, 10);
  * reading anything, so the numbers are chosen to tell the story the loop is
  * for, and are illustration rather than output.
  */
+/** The sample's five seats, each from the figure it would be read from. */
+function demoCouncil(): LoopCouncil {
+  const failing = treeStatus().degraded;
+  const interior: LoopAdvisor = failing.length
+    ? {
+        seat: 'interior',
+        reads: 'the checks',
+        says: `${failing.length} reached ${failing.length === 1 ? 'capability is' : 'capabilities are'} failing ${failing.length === 1 ? 'its' : 'their'} check: ${failing.join(', ')}.`,
+        command: 'ambit verify --failing',
+        stance: 'neutral',
+      }
+    : {
+        seat: 'interior',
+        reads: 'the checks',
+        says: 'Nothing is failing and nothing has gone untended.',
+        stance: 'neutral',
+      };
+  return {
+    motion: { id: 'combo:embeddings', name: 'Embeddings', cost: '10m', basis: 'observed' },
+    split: true,
+    advisors: [
+      {
+        seat: 'science',
+        reads: 'the frontier',
+        says: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which is supplied and waiting on this alone.',
+        command: 'ambit propose embeddings',
+        subject: { id: 'combo:embeddings', name: 'Embeddings' },
+        stance: 'for',
+      },
+      {
+        seat: 'defence',
+        reads: 'fragility',
+        says: 'Embeddings would rest on Hosted Inference, which has one provider, the hosted model\u2019s key.',
+        command: 'ambit impact combo:hosted-inference',
+        subject: { id: 'combo:hosted-inference', name: 'Hosted Inference' },
+        stance: 'against',
+      },
+      {
+        seat: 'treasury',
+        reads: 'the ledger',
+        says: 'The ledger prices Vector Store first: it pays back in 9 days and recovers $248 a month, and Embeddings is the step to it.',
+        command: 'ambit opportunity opp-1',
+        subject: { id: 'combo:vector-store', name: 'Vector Store' },
+        stance: 'for',
+      },
+      {
+        seat: 'justice',
+        reads: 'authority',
+        says: 'Reached, Embeddings would ask first by default, the grant the tree gives it; a person decides each run until a threshold is set.',
+        command: 'ambit can embeddings',
+        subject: { id: 'combo:embeddings', name: 'Embeddings' },
+        stance: 'neutral',
+      },
+      interior,
+    ],
+  };
+}
+
 export function demoSnapshot(): LoopSnapshot {
   return {
     status: {
@@ -309,6 +367,13 @@ export function demoSnapshot(): LoopSnapshot {
       lost: [],
       diminished: treeStatus().degraded,
     },
+    // The council on Embeddings, the first of `next`. The one worth the panel
+    // is Defence: the demo tree has Embeddings resting on Hosted Inference,
+    // which the status above lists among the single points of failure, so the
+    // frontier's recommendation and the fragility report disagree, and the
+    // page shows both. The Interior seat reads the demo tree's failing node,
+    // never a name typed here.
+    council: demoCouncil(),
     // A month of sessions: the hosted model does most of it, and cache reads
     // are most of its count, as they are in any long session. The hosted model
     // has a price declared, at $3, $0.30 and $15 per million, which is where

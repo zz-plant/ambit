@@ -768,7 +768,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant automated-tests confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0
         }
@@ -857,7 +864,14 @@
           ],
           "authority": {
             "execute": "confirm",
-            "observe": "autonomous"
+            "observe": "autonomous",
+            "ladder": {
+              "rung": "confirm",
+              "next": {
+                "label": "Set a threshold to stop asking",
+                "command": "ambit authority promote browser-automation execute --after=10 --by=<person>"
+              }
+            }
           },
           "actions": [
             {
@@ -903,7 +917,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant code-intelligence confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0
         }
@@ -964,7 +985,14 @@
           ],
           "authority": {
             "execute": "confirm",
-            "observe": "autonomous"
+            "observe": "autonomous",
+            "ladder": {
+              "rung": "confirm",
+              "next": {
+                "label": "Set a threshold to stop asking",
+                "command": "ambit authority promote continuous-delivery execute --after=10 --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0,
           "structure": [
@@ -1011,7 +1039,14 @@
           ],
           "authority": {
             "execute": "confirm",
-            "observe": "autonomous"
+            "observe": "autonomous",
+            "ladder": {
+              "rung": "confirm",
+              "next": {
+                "label": "Set a threshold to stop asking",
+                "command": "ambit authority promote data-access execute --after=10 --by=<person>"
+              }
+            }
           },
           "actions": [
             {
@@ -1180,7 +1215,15 @@
           ],
           "authority": {
             "execute": "autonomous",
-            "observe": "autonomous"
+            "observe": "autonomous",
+            "ladder": {
+              "rung": "autonomous",
+              "note": "Unattended by the tree’s default.",
+              "next": {
+                "label": "Put a ceiling on its spend",
+                "command": "ambit budget set file-editing --amount=20 --by=<person>"
+              }
+            }
           },
           "actions": [
             {
@@ -1237,7 +1280,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant hosted-inference confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0
         }
@@ -1428,7 +1478,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant local-runtime confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0
         }
@@ -1568,7 +1625,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant observability confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0,
           "structure": [
@@ -1711,7 +1775,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant persistent-memory confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0
         }
@@ -1986,7 +2057,11 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "observe": "confirm"
+            "observe": "confirm",
+            "ladder": {
+              "rung": "forbidden",
+              "note": "A refusal takes no threshold."
+            }
           },
           "actions": [
             {
@@ -2067,7 +2142,14 @@
           ],
           "authority": {
             "execute": "confirm",
-            "observe": "autonomous"
+            "observe": "autonomous",
+            "ladder": {
+              "rung": "confirm",
+              "next": {
+                "label": "Set a threshold to stop asking",
+                "command": "ambit authority promote shell-execution execute --after=10 --by=<person>"
+              }
+            }
           },
           "actions": [
             {
@@ -2184,7 +2266,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant tool-protocol confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0
         }
@@ -2258,7 +2347,14 @@
           ],
           "authority": {
             "execute": "forbidden",
-            "ungranted": true
+            "ungranted": true,
+            "ladder": {
+              "rung": "ungranted",
+              "next": {
+                "label": "Grant it, asking first",
+                "command": "ambit authority grant typed-judgment confirm --by=<person>"
+              }
+            }
           },
           "daysSinceChange": 0
         }
@@ -2412,7 +2508,14 @@
           ],
           "authority": {
             "execute": "confirm",
-            "observe": "autonomous"
+            "observe": "autonomous",
+            "ladder": {
+              "rung": "confirm",
+              "next": {
+                "label": "Set a threshold to stop asking",
+                "command": "ambit authority promote version-control execute --after=10 --by=<person>"
+              }
+            }
           },
           "actions": [
             {
@@ -2474,7 +2577,14 @@
           ],
           "authority": {
             "execute": "confirm",
-            "observe": "autonomous"
+            "observe": "autonomous",
+            "ladder": {
+              "rung": "confirm",
+              "next": {
+                "label": "Set a threshold to stop asking",
+                "command": "ambit authority promote web-research execute --after=10 --by=<person>"
+              }
+            }
           },
           "actions": [
             {
@@ -4006,7 +4116,8 @@
           "tool:edit": "unknown",
           "tool:lsp": "unknown"
         },
-        "moved": "first observation, reached 30"
+        "moved": "first observation, reached 30",
+        "emergent": []
       },
       {
         "at": "2026-08-17 09:00:00",
@@ -4205,7 +4316,15 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 30 to 46, 6 emergent"
+        "moved": "reached 30 to 46, 6 emergent",
+        "emergent": [
+          "navigate",
+          "read_page",
+          "submit_form",
+          "drop_table",
+          "query",
+          "write_row"
+        ]
       },
       {
         "at": "2026-08-31 09:00:00",
@@ -4440,7 +4559,12 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 46 to 65, 3 emergent"
+        "moved": "reached 46 to 65, 3 emergent",
+        "emergent": [
+          "list_secret_names",
+          "read_secret",
+          "write_secret"
+        ]
       },
       {
         "at": "2026-09-14 09:00:00",
@@ -4675,7 +4799,8 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 65, verified 0 to 13"
+        "moved": "reached 65, verified 0 to 13",
+        "emergent": []
       },
       {
         "at": "2026-09-26 09:00:00",
@@ -4910,7 +5035,8 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 65, 1 went failing"
+        "moved": "reached 65, 1 went failing",
+        "emergent": []
       }
     ],
     "movedSinceLast": null

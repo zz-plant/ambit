@@ -76,6 +76,12 @@ export function isRuntimeNode(item: { id: string; type: string }): boolean {
 /** Prerequisites met, nothing detected — the frontier you can take next. */
 export const isNext = (item: Item): boolean => item.meta?.next === true;
 
+/** Times work was recorded blocked on a node while it was missing. Zero when none. */
+export const blocksOf = (item: Item): number => Number(item.meta?.blocks) || 0;
+
+/** How much of a next step the asks behind it fill: three is where the engine calls a deficit structural. */
+export const eurekaOf = (item: Item): number => Math.min(blocksOf(item), 3) / 3;
+
 export const costOf = (item: Item): string => {
   const s = item.meta?.setupSeconds as number | undefined;
   if (!s) return '';
@@ -443,8 +449,25 @@ export function unlockedSince(before: Item[], after: Item[]): string | null {
     return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
   };
   const head = `${list(reached)} reached`;
-  if (!opened.length) return `${head}.`;
-  return `${head}, which makes ${list(opened)} ${opened.length === 1 ? 'a next step' : 'next steps'}.`;
+  const body = !opened.length
+    ? `${head}.`
+    : `${head}, which makes ${list(opened)} ${opened.length === 1 ? 'a next step' : 'next steps'}.`;
+  // One node reached gets its own line, the tree's description of what it is:
+  // the claim before the dash, since what follows it is the install hint.
+  const quote = reached.length === 1 ? reachedQuote(reached[0]) : '';
+  return quote ? `${body} \u201C${quote}\u201D` : body;
+}
+
+/** The tree's one-line claim for a node, or nothing: a description it lacks is not quoted. */
+export function reachedQuote(item: Item): string {
+  // The claim ends at the dash that opens the install hint, or at the first
+  // full stop: the tree writes both shapes.
+  const claim = String(item.description || '')
+    .split(' \u2014 ')[0]
+    .split('. ')[0]
+    .trim()
+    .replace(/\.$/, '');
+  return claim.length > 3 && claim.length <= 110 ? claim : '';
 }
 
 /** Seconds as the map writes them: minutes under an hour, hours above. */

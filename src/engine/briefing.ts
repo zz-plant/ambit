@@ -20,6 +20,7 @@ import { recovering } from './assure/lifecycle.ts';
 import { listProposals } from './governance.ts';
 import { ledgerSince } from './ledger.ts';
 import { nextSteps } from './next.ts';
+import { council, councilLines } from './council.ts';
 import { signalReport } from './failures.ts';
 import { FAILING_SQL, REACHED_SQL, graphCounts, notSeeded } from './vocabulary.ts';
 
@@ -111,6 +112,10 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
     .all<any>();
 
   const curriculum = nextSteps(db, 3) as any;
+  // The seats that are against the first step, if any. The frontier's
+  // recommendation and the fragility report were two reports read at different
+  // times; an agent about to draft a proposal should hear both at once.
+  const seats = councilLines(council(db));
 
   if (options.mark) markBriefed(db);
 
@@ -132,6 +137,7 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
       ? signals.unattributed.slice(0, 3).map((u: any) => `${u.tool || 'unknown'} ×${u.times}`)
       : undefined,
     next: curriculum.next?.slice(0, 3),
+    council: seats.length ? seats[0] : undefined,
     since_last_briefing:
       moved?.gained?.length || moved?.emergent?.length
         ? {
@@ -225,6 +231,7 @@ function briefingText(db: Db, options: { mark?: boolean } = {}): string {
     b.next?.length
       ? `Next: ${b.next.map((n: any) => `${n.capability} (${n.cost}): ${n.why}`).join(' · ')}`
       : null,
+    b.council || null,
     b.before_acting,
   ];
 

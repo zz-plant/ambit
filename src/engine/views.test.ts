@@ -390,7 +390,15 @@ test('a reached node no grant names reads the way the gate answers it', () => {
   expect(report.forbidden).toEqual(['act:shell/read']);
   const shell = items.find(i => i.id === 'combo:shell')!;
   expect(gate.verdict).toBe('no');
-  expect(shell.meta.authority).toEqual({ execute: 'forbidden', ungranted: true });
+  expect(shell.meta.authority).toMatchObject({ execute: 'forbidden', ungranted: true });
+  // The second tree: no grant is the bottom rung, and the way up names a person.
+  expect((shell.meta.authority as any).ladder).toEqual({
+    rung: 'ungranted',
+    next: {
+      label: 'Grant it, asking first',
+      command: 'ambit authority grant shell confirm --by=<person>',
+    },
+  });
   expect(actionGate.verdict).toBe('no');
   expect(shell.meta.actions).toEqual([
     { id: 'act:shell/read', name: 'read', mode: 'forbidden', ungranted: true },
@@ -444,6 +452,7 @@ test('the frontier through time holds what a snapshot holds, and the step betwee
   // no authority, no providers, no evidence times.
   expect(Object.keys(view.ticks[0]).sort()).toEqual([
     'at',
+    'emergent',
     'kinds',
     'lifecycles',
     'moved',

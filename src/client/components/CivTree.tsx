@@ -5,6 +5,7 @@ import { mapKey, typingIn } from '../utils/keys';
 import { isRuntimeNode } from '../utils/labels';
 import { typeColor } from '../utils/typeColors';
 import {
+  blocksOf,
   AUTHORITY_LABEL,
   type AuthorityMark,
   authorityMark,
@@ -303,6 +304,7 @@ export default function CivTree({
     Reached: 'state',
     'Next step': 'state',
     Blocked: 'state',
+    'Asked for': 'asked-for',
     Keystone: 'keystone',
     Combo: 'combo',
     'Tool server': 'tool-server',
@@ -326,6 +328,7 @@ export default function CivTree({
     // The header's segments light the same nodes they count.
     Verified: isProven,
     'Next step': i => i.status !== 'built' && isNext(i),
+    'Asked for': i => i.status !== 'built' && blocksOf(i) > 0,
     Blocked: i => i.status !== 'built' && !isNext(i),
     Server: i => i.type === 'mcp-server',
     Agent: i => i.type === 'agent',
@@ -389,6 +392,7 @@ export default function CivTree({
           ? [
               { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
               { kind: 'ring', label: 'Next step' },
+              { kind: 'eureka', label: 'Asked for' },
               { kind: 'faded', label: 'Blocked' },
               { kind: 'keystone', label: 'Keystone' },
               { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },

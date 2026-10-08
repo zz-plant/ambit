@@ -95,6 +95,9 @@ src/engine/reversibility.ts  What could be acquired without a person, and what c
 src/engine/briefing.ts     What an agent knows before its first tool call — also the MCP
                            resource ambit://briefing
 src/engine/next.ts         What to reach next and why — observed blocks, then leverage
+src/engine/council.ts      The first of those read five ways, one seat per engine question:
+                           frontier, fragility, ledger, authority, checks. Each is a sentence,
+                           a command and a stance; it writes nothing and runs nothing
 ```
 
 ### Engine (governance, economics, ledger)
@@ -159,12 +162,15 @@ src/engine/judge.ts        Asking a judgment model on this machine which node an
                            means: a Choice over the tree, loopback only, suggestion only
 src/engine/views.ts        The projections the visualizer reads — the server writes no SQL.
                            `loopView` composes status, attention, opportunities, ROI, authority,
-                           what to reach next and the week's movement into the one payload
+                           what to reach next, the council on it and the week's movement into the one payload
                            /api/loop serves, so the page and the CLI report one ledger; the tree
                            carries each node's providers, authority, reliability, failures and
                            last fourteen check runs. The trail, the frontier's history, one run
-                           and each machine's modes are `auditView`, `frontierHistoryView`,
-                           `runView` and `machineView`; `infraRecordView` reads when each device
+                           and each machine's modes are `auditView`, `frontierHistoryView`
+                           (each tick naming what emerged), `runView` and `machineView`;
+                           `ladderOf` reads where each reached capability's execute grant
+                           stands on the five rungs and what moves it, and `blocks` is how
+                           often work was recorded blocked on a missing node; `infraRecordView` reads when each device
                            and service the scan found was last seen, and its tags
 src/engine/share.ts        The allow-listed, self-contained HTML snapshot of the map
 src/engine/cli.ts          Command dispatch; the five groups resolve to flat verbs
@@ -274,8 +280,9 @@ src/client/                React frontend
     civ/layout.ts          Column and row placement, the cascade walks (an outage, an unlock, a
                            focus's neighbourhood), `routeTo` (the gap numbered in the order it
                            closes), `unlockedSince` (what a rebuild reached, as the toast says
-                           it), the era ladder, label wrapping — pure, and tested apart from
-                           the renderer
+                           it, with `reachedQuote`, the tree's own line for one node), `eurekaOf`
+                           (how full the asks draw a next step), the era ladder, label
+                           wrapping — pure, and tested apart from the renderer
     civ/viewport.ts        The minimap's arithmetic, which way a failing node lies off screen, and
                            a zoom about a point: the range, and what one wheel event scales by
     civ/usePinchZoom.ts    Every way a zoom arrives, anchored where it was asked for: a trackpad
@@ -284,20 +291,23 @@ src/client/                React frontend
     civ/Minimap.tsx        The thumbnail of the whole map when it does not fit, and its outline
     civ/history.ts         The map as of one observation, with today's names and edges, and the
                            stops Play walks and how long it holds each: pure
-    civ/Timeline.tsx       The scrub bar under the map: the frontier's observations, a playhead,
-                           and Play, which steps it on a timer the store keeps
+    civ/Timeline.tsx       The scrub bar under the map: the frontier's observations (a diamond
+                           over one that reached something emergent), a playhead, and Play,
+                           which steps it on a timer the store keeps
     civ/ZoomHud.tsx        Zoom and lens controls, lifted out of the tree, and the map's tools
                            beside zoom: the key, the timeline, the saved image
     civ/MapKey.tsx         The key, opened from those tools; it opens itself under a lens
     civ/ImageMenu.tsx      What Image offers, opened where the key opens: the finding as a card to
                            post, or the whole map as an SVG or a PNG at twice its size
     civ/marks.tsx          The drawings the map and its key share: corner brackets for what the
-                           map points at, the keystone wedge, stripes for what refuses, the joint
-                           mark, each swatch, and the spec-sheet callout
+                           map points at, the keystone wedge, the part fill inside a next step
+                           that was asked for, stripes for what refuses, the joint mark, each
+                           swatch, and the spec-sheet callout
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
     civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step. On
                            the demo the next step leads and the failing check is the line under it
-    NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, needs and enables
+    NodeDetailPanel.tsx    Node detail panel: evidence, the impact stated, the ladder its grant
+                           stands on and the one command that moves it, needs and enables
     EraLadder.tsx          An era opened from its header: reached, next and blocked, in order
     FocusControls.tsx      Focus, from the panel of a selected node: which way, how far, and the
                            pill that says what it hides and ends it; clearing the selection ends it too
@@ -305,6 +315,8 @@ src/client/                React frontend
     ApprovalModal.tsx      The proposal as a plan (what it does, what undoes it, what it forecasts),
                            the one-click approval receipt, and the queue of drafts to decide together
     DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
+    Council.tsx            The council: the first step to reach, read by five seats, each a
+                           sentence with its command and a stance; it says when they are split
     LoopDashboard.tsx      The Time & cost view — the work ledger on shared scales, what may act
                            without asking, what to reach next, and the week's movement, from
                            /api/loop on a real machine and from the fixture on the hosted demo;

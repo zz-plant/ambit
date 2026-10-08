@@ -52,6 +52,7 @@ import { observedReport } from './observed.ts';
 import { objectReport } from './objects.ts';
 import { briefing, briefingText } from './briefing.ts';
 import { nextSteps } from './next.ts';
+import { council } from './council.ts';
 import { recordRefusal, signalReport } from './failures.ts';
 import { registerSkill, registeredSkills } from './skills.ts';
 import { exportSync, importSync } from './sync.ts';
@@ -144,6 +145,9 @@ async function runCommand(
     }
     case 'next':
       emit(nextSteps(db, Number(arg) || undefined));
+      break;
+    case 'council':
+      emit(council(db));
       break;
     case 'signals':
       emit(signalReport(db, Number(arg) || undefined));
