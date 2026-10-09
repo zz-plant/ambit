@@ -6,6 +6,14 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### The briefing says what the next step would let you reach
+
+A next step told the agent what it cost and, when work had been blocked on it, only that: "It has blocked work 4 times." What reaching it would bring was dropped whenever blocked work led, so the step that mattered most said least about what it would open. Each next step now carries `reaches`, everything something here already supplies that reaching it lets the frontier reach, through every hop, by the simulation `ambit goal --simulate` and `ambit_simulate` run, and `opens`, what it would make a next step. `why` keeps both beside the blocked count, and the briefing says them to the agent in its own terms: "Embeddings (10m): With it, Vector Store and Local Embeddings would become next steps."
+
+### A capability failing its own check is no longer counted as unblocked
+
+The simulation behind `goal --simulate`, proposals' previews and now the briefing admitted any supplied capability whose prerequisites were met, failing or not, so a configured capability failing its own check was reported as unblocked by every simulation, one that assumed nothing included. On the demo's setup, every next step claimed it would bring back Browser Automation. No acquisition brings back a check that fails; a pass does, and the simulation and the next-step ranking now leave it out until then.
+
 ### `ambit weigh` measures what each tool server costs in context
 
 A runtime puts every tool server's whole tool list into the model's context at the start of each session, called or not, and nothing said how much that was. `ambit weigh` starts each local server the user-level configs declare, asks for its tools over MCP, records the list's size in tokens and stops the server. The report is per runtime, since each carries its own servers, lists each server heaviest first with its heaviest tools, and, once the ledger has recorded calls, names the servers carried into every session and never called in thirty days. My Setup prints each server's figure and each runtime's total under the new glossary term Carry weight, and a server's panel says the same. Because a server is a command, this is the only time Ambit starts something a config declares, and it does so only when typed: never from the server, never from a project's committed config, and never for a remote server. SECURITY.md and AGENTS.md state the exception and its limits.

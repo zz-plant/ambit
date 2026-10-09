@@ -25,7 +25,7 @@ On the demo's setup, 16 of the 46 capabilities on the map are reached and 13 of 
 
 ## After, session by session
 
-**At the start.** You read the briefing before your first tool call. In about 1,200 tokens it says what works, what is failing, what waits on the person, what blocked work lately, and what is worth reaching next. It also says what changed since the last briefing, including a capability that emerged from a combination with nothing new installed.
+**At the start.** You read the briefing before your first tool call. In about 1,200 tokens it says what works, what is failing, what waits on the person, what blocked work lately, and what is worth reaching next. For each next step it says what you would also reach with it, and what it would make a next step, by the same simulation `ambit_simulate` runs. It also says what changed since the last briefing, including a capability that emerged from a combination with nothing new installed.
 
 **Before a tool you have not used.** You ask `ambit_can`. A yes means act, an ask means put it to the person, and a no means do not retry it under another name. A no is recorded as a deficit, so it counts toward what is worth fixing.
 

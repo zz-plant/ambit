@@ -248,7 +248,7 @@ claude mcp add ambit -- ambit mcp --profile=agent
 
 `--profile=agent` lists the ten tools an agent that asks before it acts uses, in 4.4KB of its context. Leave the flag off for all sixty, about 19.5KB; the other fifty answer by name either way. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names every tool and [says how a call is answered](./docs/deep-dive.md#how-a-call-is-answered).
 
-Ambit also publishes `ambit://briefing`, a resource a client reads on connect: what is reached and proven, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to `~/.claude/settings.json`:
+Ambit also publishes `ambit://briefing`, a resource a client reads on connect: what is reached and proven, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next with what each step would reach, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to `~/.claude/settings.json`:
 
 ```json
 {

@@ -62,7 +62,7 @@ A *capability* is one thing the setup can do. Its *era* is how far up the curate
 ## Connecting it, and what to do once it is there
 
 - Register in Claude Code: `claude mcp add ambit -- ambit mcp --profile=agent`, which lists the ten tools an agent that asks before it acts uses. Or install the Claude Code plugin (`claude plugin marketplace add zz-plant/ambit`, then `claude plugin install ambit@ambit`), which also reads the briefing at session start
-- On connect, read the resource `ambit://briefing`: what is reached and proven, what is failing, what is waiting on a person, what blocked work recently, and what is worth reaching next, in about 1,200 tokens
+- On connect, read the resource `ambit://briefing`: what is reached and proven, what is failing, what is waiting on a person, what blocked work recently, and what is worth reaching next with what each step would let you reach, in about 1,200 tokens
 - Before running a tool you have not used this session, call `ambit_can` with the capability. `yes` act, `ask` put it to the person, `no` do not retry it under another name — the refusal has already been recorded as a deficit
 - To close a gap, call `ambit_next` or `ambit_goal`, then `ambit_propose`; a person approves and applies from the terminal or the map
 - A skill you wrote yourself goes on the map with `ambit_register_skill`, which requires a read-only command that proves it works and runs it immediately
