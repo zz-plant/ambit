@@ -1,6 +1,6 @@
 # Your loadout, from A to B
 
-Your agents, your tools, your credentials and your machines are your loadout. What you and your loadout can do together is your [ambit](./ideas.md). Every number below is the hosted demo's, so each can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
+Your agents, your tools, your credentials and your machines are your loadout, and you are its pilot. What the two of you can do together is your [ambit](./ideas.md). Every number below is the hosted demo's, so each can be checked by [opening it](https://zz-plant.github.io/ambit/?demo=1).
 
 ## Point A
 
@@ -59,9 +59,15 @@ Every capability reached moves the frontier, and that changes what is a next ste
 
 [The roadmap](./roadmap.md#status-at-a-glance) lists every gap of this kind, and [the ideas behind Ambit](./ideas.md) is the claim the journey rests on.
 
-## Stepping in
+## Pilot and machine
 
-An aside, for anyone who has seen *Neon Genesis Evangelion*: the show already has the picture. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. Your loadout is the Eva, you are the pilot, and what the two of you can do together is your ambit. That is why a list of the tools you own says so little: the reach is in how they combine and how well they answer.
+**Two stations.** Between runs you work in the hangar, which is the map, My Setup and Proposals. There you see the whole loadout, choose the next step and sign the change. During a run the agent works in the cockpit, where it reads a heads-up display. The briefing is in its context before its first tool call, `ambit_can` answers before a tool it has not used, and in Claude Code with the `ambit gate` hook installed, the gate answers every tool call. Both stations read the same graph and differ in what they can afford to show. The hangar shows all of it. The cockpit gets about 1,200 tokens, trimmed from the bottom, so a line is there only if the agent can act on it. My Setup's Briefing tab shows you that display as the agent receives it.
+
+**The edge is an envelope.** An aircraft's flight envelope is the range of speed, altitude and load it is known to fly safely in. The frontier is that kind of edge for your loadout. It marks what the loadout reaches, less anything that has failed its check, so you can lean on it. Failed instruments are handled as a cockpit handles them: the gauge is flagged, never left showing a zero the pilot might fly on. A capability whose check fails stays on the map, marked as failing, and is out of every plan until it passes again.
+
+**A loadout has a weight.** Every tool server a runtime starts puts its whole tool list into the agent's context before the first message, called or not, so each server added is carried into every session. `ambit weigh` measures each local server's list in tokens and adds up each runtime's total. Once the ledger has a few weeks of calls, it also names the servers carried and never called. My Setup prints the same figures beside each tool server.
+
+For anyone who has seen *Neon Genesis Evangelion*, the show has this picture with more parts in it. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. That is why a list of the tools you own says so little: the reach is in how they combine and how well they answer.
 
 Some of the picture carries over:
 
@@ -75,6 +81,8 @@ Some of the picture carries over:
 
 Where the picture stops matters as much:
 
+- **The display can be out of date.** A cockpit's instruments read the aircraft directly. Ambit's are rebuilt from config files and the last check on each piece, and a passing check proves only what that check tests.
+- **Widening is not pushing the envelope.** A test pilot finds an edge by flying past it. Ambit's way to move the edge is one piece at a time: proposed, signed, applied and checked.
 - **Sync here is per piece, not one number.** Ambit says which capabilities are proven and which are not; it does not score how well you pilot.
 - **There is no clock.** An outage simulation says what would stop, not how long you would have.
 - **The restraints come off by a rule the show does not have.** In Ambit a person sets a bar once, a grant widens when the evidence meets it, and one failing check narrows it again with nobody asked.

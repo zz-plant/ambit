@@ -85,7 +85,7 @@ npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh`
 
 ## From A to B
 
-Your agents, tools, credentials and machines are your loadout. Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed. The way from A to B runs through seven legs:
+Your agents, tools, credentials and machines are your loadout, and you are its pilot. Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed. The way from A to B runs through seven legs:
 
 1. **See where it stands**: every runtime's config in one map, and which pieces pass their checks.
 2. **Pick the next step**: ranked by what has blocked work and how much it opens.
@@ -151,6 +151,7 @@ Semantic search finds tools that sound relevant and cannot tell a working one fr
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
 | `ambit authority` | Per-action permissions: what runs unattended, what needs confirmation |
 | `ambit verify [id]` | Run a capability's declared check and record whether it passes |
+| `ambit weigh` | What each tool server's tool list costs in context every session, per runtime, and which ones the ledger never saw called |
 | `ambit history [since <when> [<until>]]` | How the frontier moved, separating what you acquired from what emerged |
 | `ambit share` | A self-contained HTML snapshot of the map, written locally and safe to post |
 
@@ -387,7 +388,7 @@ Ambit reads developer toolchains and writes to agent configs, so four properties
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
 2. **Origin allowlist.** A request whose `Origin` is not Ambit's own page, a page on another localhost port included, is rejected with 403 *before* routing, because a simple request skips preflight and response headers alone would not stop it.
 3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.
-4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit's own code (`notify`, `notify-approvals`, `dispatch`, `incidents`, and `goal --judge`). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from `verify` and `apply` or an agent's `ambit_verify`, and never from the server. A step the control plane's Docker adapter runs has no network unless you gave it one. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
+4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit's own code (`notify`, `notify-approvals`, `dispatch`, `incidents`, and `goal --judge`). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from `verify` and `apply` or an agent's `ambit_verify`, and never from the server. `ambit weigh` starts the local tool servers your configs declare, as your runtime does, to measure their tool lists, so it too runs only when typed and never from the server. A step the control plane's Docker adapter runs has no network unless you gave it one. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
 
 ---
 

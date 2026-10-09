@@ -50,6 +50,9 @@ const SCHEMA_VERSION = 1;
  * older time over a newer one. `tags` come from the manifest, which each
  * machine seeds from its own copy of. The probes' check runs still travel in
  * `session_learning`, as every check run does, with the time each ran.
+ * `tool_listings` stays behind whole: what a server's tool list weighed is a
+ * reading of the package this machine started, and `ambit weigh` takes it
+ * again anywhere.
  */
 const TABLES: Array<{
   table: string;
@@ -270,6 +273,7 @@ function exportSync(db: Db, path?: string) {
       'budgets',
       'sandboxes',
       'when each device and service was last seen',
+      'what each tool server weighed',
       // How far this machine's session logs were read. The runs and tokens
       // they fed travel; the cursor names files only this machine has.
       'session log cursors',

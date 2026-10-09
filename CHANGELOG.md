@@ -6,6 +6,14 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### `ambit weigh` measures what each tool server costs in context
+
+A runtime puts every tool server's whole tool list into the model's context at the start of each session, called or not, and nothing said how much that was. `ambit weigh` starts each local server the user-level configs declare, asks for its tools over MCP, records the list's size in tokens and stops the server. The report is per runtime, since each carries its own servers, lists each server heaviest first with its heaviest tools, and, once the ledger has recorded calls, names the servers carried into every session and never called in thirty days. My Setup prints each server's figure and each runtime's total under the new glossary term Carry weight, and a server's panel says the same. Because a server is a command, this is the only time Ambit starts something a config declares, and it does so only when typed: never from the server, never from a project's committed config, and never for a remote server. SECURITY.md and AGENTS.md state the exception and its limits.
+
+### The loadout as pilot and machine
+
+The docs drew on four families of metaphor at once. `docs/loadout.md` now holds one. The loadout is the machine and you are its pilot. The map, My Setup and Proposals are the hangar; the briefing, `ambit_can` and the gate are the cockpit; and the frontier reads as a flight envelope. The section was called "Stepping in", which the attention ledger also uses for a person intervening, so it is "Pilot and machine" now.
+
 ### Three merged pull requests that never reached main
 
 Pull requests #97, #98 and #99 were each merged into a branch that had itself already been merged into main, so their work was reviewed, merged and never released: the status line, the Docker executor, `goal --spec`, session-log tokens, the four new runtimes, local models from disk, five-hour usage windows. The entries below are theirs, as written then, and land now. `scripts/check-reach.ts` is what would have caught it, and runs in CI from here on: it fails a pull request whose base is not on its way to main, and on each push to main and once a day it fails if a merged one never got there. The push is the moment that matters, since it is when the bottom of a stack merges and the next pull request up is left pointing at a branch nothing will merge again.

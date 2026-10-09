@@ -42,7 +42,7 @@ Delete the database file `ambit where` names and run `ambit seed` (or `./bootstr
 
 ### Does anything leave my machine?
 
-Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. Five commands open a socket from Ambit's own code, and the declared checks can reach the network through the commands they run, as can a control-plane step you gave a network; those are the ones to check if you are auditing egress.
+Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints its path), there is no telemetry, and the API server binds loopback only. Five commands open a socket from Ambit's own code, and the declared checks and `ambit weigh` can reach the network through the commands they run, as can a control-plane step you gave a network; those are the ones to check if you are auditing egress.
 
 | Command | What it sends | Where it goes |
 | :--- | :--- | :--- |
@@ -52,6 +52,7 @@ Not unless you ask it to. The graph is a local SQLite file (`ambit where` prints
 | `ambit incidents` | Nothing. It sends an empty GET to each device status URL and service URL named in your infrastructure manifest (`$INFRA_MANIFEST`, or `~/.config/opencode/infrastructure.json`), to see which are answering, and records what it found in the local graph. | Those hosts, and nowhere else. |
 | `ambit goal "<sentence>" --judge` (and `goal --spec <path> --judge`) | The sentence you typed, and the name and one-line description of every node in the curated tree, as one Choice question. Only when no goal phrase in the tree matches it. With `--spec`, one question for each task no goal phrase matches. | One POST to a judgment model on this machine: `--judge=<url>`, `AMBIT_JUDGE_URL`, or Kev's default `http://127.0.0.1:8009`. Any other host is refused before anything is sent. |
 | `ambit verify [cap]` (and `ambit apply`, which runs the check of what it applied) | Whatever the check's command sends. A declared check is a command, and the curated one for Web Research fetches `https://example.com`. An agent's `ambit_verify` call runs the same checks; the server never does. | Wherever that command reaches. |
+| `ambit weigh [server]` | Whatever your tool servers send when they start. It starts each local server your user-level configs declare, as your runtime does, asks for its tools over stdio and stops it; `npx` fetching a package is the usual network traffic. It never contacts a remote server, and the server never runs it. | Wherever those servers reach. |
 | The control plane's `exec`, with `AMBIT_ADAPTER=docker` | Nothing by default: the step's container has no network, and the adapter never pulls an image. With `AMBIT_DOCKER_NETWORK=bridge` and a grant for the `network` action on the step's capability, whatever the step's command sends. | Wherever that command reaches, and only then. |
 | `ambit share [--redact]` | Nothing. It writes an HTML file you send yourself. | Your disk. |
 

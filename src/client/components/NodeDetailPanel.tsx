@@ -26,6 +26,7 @@ import { EraLadderPanel } from './EraLadder';
 import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
 import { Term } from './Term';
+import { carryDetail, carryOf, carryTokens } from '../utils/carry';
 import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
 
@@ -170,6 +171,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
     | undefined;
   const ladder = authority?.ladder;
   const blocks = blocksOf(item);
+  const carry = carryOf(item);
   const failures =
     (item.meta?.failures as
       | { class: string; signal: string; times: number; last: string }[]
@@ -293,6 +295,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
     'actions',
     'daysSinceChange',
     'blocks',
+    'carry',
   ]);
   const details = Object.entries(item.meta).filter(
     ([k, v]) => !saidElsewhere.has(k) && isStated(v)
@@ -562,6 +565,14 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         <p className="sp-blocks">
           <Term name="asked-for">Asked for</Term> {blocks}×: work was recorded blocked on it while
           it was missing.
+        </p>
+      )}
+      {/* What its tool list costs in context every session, as `ambit weigh`
+          last measured it. A server never weighed says nothing: that is not a
+          weight of zero. Today's figure, so a past moment does not show it. */}
+      {carry && !asOf && (
+        <p className="sp-carry">
+          <Term name="carry-weight">Carry weight</Term>: {carryTokens(carry)}. {carryDetail(carry)}.
         </p>
       )}
       {/* What it takes besides the agent, from the domains the engine derives

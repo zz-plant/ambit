@@ -26,6 +26,7 @@ const GROUPS: Record<string, string[]> = {
     'can',
     'gate',
     'credentials',
+    'weigh',
     'incidents',
     'incident',
     'budget',

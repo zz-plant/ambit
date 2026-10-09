@@ -18,6 +18,7 @@ import {
   briefReport,
   explain,
   renderBrief,
+  renderCarry,
   renderImpact,
   renderWindows,
   renderPlan,
@@ -90,6 +91,7 @@ import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport, unmappedUse, usageWindows } from './telemetry.ts';
 import { capacityReport } from './capacity.ts';
+import { carryReport, weigh } from './weight.ts';
 import { declareModelPrice, economicsReport } from './economics.ts';
 import { opportunitiesFor, opportunityFor } from './opportunities.ts';
 import { roiFor, roiSummary } from './roi.ts';
@@ -650,6 +652,21 @@ async function runCommand(
     case 'apply':
       emit(applyProposal(db, arg));
       break;
+    // What each tool server's listing costs in context. Weighing starts the
+    // servers the configs declare, so it runs only when typed; --recorded
+    // reads the last weighing and starts nothing.
+    case 'weigh': {
+      const palette = terminalPalette();
+      const seconds = Number(value('timeout'));
+      const report = flags.has('--recorded')
+        ? carryReport(db)
+        : await weigh(db, {
+            only: arg,
+            timeoutSeconds: seconds > 0 ? seconds : undefined,
+          });
+      emit(report, r => (r.error ? formatGeneric(r, palette) : renderCarry(r, palette)));
+      break;
+    }
     case 'credentials':
       emit(credentialReport(db));
       break;
@@ -834,7 +851,8 @@ function result(argv: string[], state: { value: unknown; calls: number }): any {
  * without awaiting anything — which is all but three of them.
  *
  * Synchronous on purpose. `runCommand` is declared async because `notify`,
- * `notify-approvals`, `dispatch` and `incidents` reach the network (and
+ * `notify-approvals`, `dispatch` and `incidents` reach the network, `weigh`
+ * waits on the tool servers it starts (and
  * `propose`/`approve` do when asked to `--dispatch`, and `goal` asks a local
  * judgment model when given `--judge`), but every other case
  * runs to completion before the call returns, so the result is already in hand.
