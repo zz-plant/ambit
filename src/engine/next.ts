@@ -17,7 +17,7 @@ import { shellQuote } from '../shared/shell.ts';
 import type { Db } from './db.ts';
 import { telemetryBridgeInstall } from './paths.ts';
 import { usable } from './assurance.ts';
-import { deficits } from './planning.ts';
+import { deficits, simulateFrontier } from './planning.ts';
 import { catalogReport } from './catalog.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { PROVISION_EDGES } from './ontology.ts';
@@ -129,6 +129,8 @@ function candidates(db: Db): Candidate[] {
     const waiting = (dependents.get(c.id) || []).filter(dep => {
       const depCap = byId.get(dep);
       if (!depCap || reached(depCap)) return false;
+      // Configured and failing its own check: no step brings it, a pass does.
+      if (depCap.state !== 'locked') return false;
       return (prereqs.get(dep) || []).every(p => p === c.id || reached(byId.get(p)));
     });
     const unlocks = waiting.filter(dep => supplied.has(dep));
@@ -150,18 +152,27 @@ function candidates(db: Db): Candidate[] {
 }
 
 /**
- * What reaching a capability does to the ones waiting on it alone, in one
- * sentence: those already supplied are reached with it, and the rest become
- * next steps of their own.
+ * What reaching a capability does, in one sentence: what something here
+ * already supplies is reached with it, through every hop the simulation
+ * follows, and its own dependents that nothing supplies become next steps.
  */
+/**
+ * "A, B and C": three joined by "and" alone read as a stammer. Past `max`
+ * names, the rest are counted: "A, B, C and 2 more".
+ */
+function andList(names: readonly string[], max = Number.POSITIVE_INFINITY): string {
+  const shown = names.slice(0, max);
+  const rest = names.length - shown.length;
+  const all = rest > 0 ? [...shown, `${rest} more`] : shown;
+  return all.length > 1
+    ? `${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}`
+    : (all[0] ?? '');
+}
+
 function whyLeverage(c: Pick<Candidate, 'unlocks' | 'opens'>): string {
-  // "A, B and C": three joined by "and" alone read as a stammer.
-  const and = (names: string[]) =>
-    names.length > 2
-      ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-      : names.join(' and ');
+  const and = (names: string[]) => andList(names);
   const reaches = c.unlocks.length
-    ? `Reaching it also reaches ${and(c.unlocks)}, which ${c.unlocks.length === 1 ? 'is' : 'are'} already supplied and waiting on this alone`
+    ? `Reaching it also reaches ${and(c.unlocks)}, which something here already supplies`
     : '';
   const opens = c.opens.length
     ? `${reaches ? ', and makes' : 'Reaching it makes'} ${and(c.opens)} ${c.opens.length === 1 ? 'a next step' : 'next steps'}`
@@ -231,19 +242,44 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
       : 'structural — nothing has been recorded as blocking work yet, so this ranks by what each would unblock per hour of setup',
     next: scored.map(c => {
       const short = c.id.replace('combo:', '');
+      // What comes with it, by the simulation `ambit goal --simulate` and
+      // `ambit_simulate` run, so the three never disagree: everything something
+      // here already supplies that reaching it lets the frontier reach, through
+      // every hop, not only what waits on it alone. A step whose own
+      // prerequisite is failing carries nothing with it until that passes.
+      const sim = simulateFrontier(db, [c.id]) as any;
+      const reaches = sim.blocked_by_degraded
+        ? []
+        : [...new Set([...c.unlocks, ...(sim.unblocked ?? []).map((u: any) => String(u.name))])];
+      const leverage =
+        reaches.length || c.opens.length ? whyLeverage({ unlocks: reaches, opens: c.opens }) : '';
       const cost = catalogReport(db, c.id) as any;
       const cheapest = Array.isArray(cost?.options) ? cost.options[0] : undefined;
       return {
         capability: c.name,
         id: c.id,
+        // Blocked work leads, and what the step would reach follows it: the
+        // second used to be dropped whenever the first was there, so the step
+        // that mattered most said least about what it would open.
         why: c.observed_blocks
-          ? `It has blocked work ${c.observed_blocks} ${c.observed_blocks === 1 ? 'time' : 'times'}.`
-          : c.unlocks.length || c.opens.length
-            ? whyLeverage(c)
-            : // A seeded description carries its own hint after an em dash.
-              // The briefing wants the claim, not the instruction that follows
-              // it — `ambit goal <cap>` is where the instruction belongs.
-              (c.description || '').split(' — ')[0] || 'It is one step away.',
+          ? [
+              `It has blocked work ${c.observed_blocks} ${c.observed_blocks === 1 ? 'time' : 'times'}.`,
+              leverage,
+            ]
+              .filter(Boolean)
+              .join(' ')
+          : leverage ||
+            // A seeded description carries its own hint after an em dash.
+            // The briefing wants the claim, not the instruction that follows
+            // it — `ambit goal <cap>` is where the instruction belongs.
+            (c.description || '').split(' — ')[0] ||
+            'It is one step away.',
+        // The same, as data: what reaching it reaches, what it makes a next
+        // step, and how often work was blocked on it. The briefing says these
+        // to the agent in its own words.
+        reaches: reaches.length ? reaches : undefined,
+        opens: c.opens.length ? c.opens : undefined,
+        blocked_times: c.observed_blocks || undefined,
         cost: readableCost(c.setup_seconds),
         recurring: cheapest?.recurring_cost || 'none declared',
         privacy: cheapest?.privacy,
@@ -275,4 +311,4 @@ function nextLines(db: Db): string[] {
   return r.next.map((n: any) => `${n.capability} · ${n.cost} · ${n.why}`);
 }
 
-export { nextSteps, nextLines, candidates, readableCost };
+export { nextSteps, nextLines, candidates, readableCost, andList };

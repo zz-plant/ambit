@@ -201,7 +201,7 @@ describe('what to reach next', () => {
     });
     const step = (nextSteps(db) as any).next.find((n: any) => n.id === 'combo:embeddings');
     expect(step.why).toBe(
-      'Reaching it also reaches Local Embeddings, which is already supplied and waiting on this alone, and makes Vector Store a next step.'
+      'Reaching it also reaches Local Embeddings, which something here already supplies, and makes Vector Store a next step.'
     );
     db.close();
   });
@@ -225,11 +225,182 @@ describe('what to reach next', () => {
     expect((nextSteps(db) as any).next[0].id).toBe('combo:slow');
     db.close();
   });
+
+  /**
+   * Embeddings, with what a provider already supplies behind it: Local
+   * Embeddings waits on Embeddings alone, and Semantic Retrieval waits on
+   * Local Embeddings, so reaching Embeddings reaches both. Vector Store waits
+   * on Embeddings and nothing supplies it, so it becomes a next step.
+   */
+  const embeddingsGraph = () =>
+    makeGraph({
+      capabilities: [
+        {
+          id: 'combo:embeddings',
+          name: 'Embeddings',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+        },
+        {
+          id: 'combo:vector-store',
+          name: 'Vector Store',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+        },
+        {
+          id: 'combo:local-embed',
+          name: 'Local Embeddings',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+        },
+        {
+          id: 'combo:retrieval',
+          name: 'Semantic Retrieval',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+        },
+        { id: 'provider:nomic', name: 'nomic', kind: 'provider' },
+        { id: 'mcp:qdrant', name: 'qdrant', kind: 'provider' },
+      ],
+      dependencies: [
+        { from: 'combo:embeddings', to: 'combo:vector-store' },
+        { from: 'combo:embeddings', to: 'combo:local-embed' },
+        { from: 'combo:local-embed', to: 'combo:retrieval' },
+        { from: 'provider:nomic', to: 'combo:local-embed', kind: 'provides' },
+        { from: 'mcp:qdrant', to: 'combo:retrieval', kind: 'provides' },
+      ],
+    });
+
+  it('says what a step reaches through every hop, as the simulation does', () => {
+    const db = embeddingsGraph();
+    const step = (nextSteps(db) as any).next.find((n: any) => n.id === 'combo:embeddings');
+    expect(step.reaches).toEqual(['Local Embeddings', 'Semantic Retrieval']);
+    expect(step.opens).toEqual(['Vector Store']);
+    expect(step.why).toBe(
+      'Reaching it also reaches Local Embeddings and Semantic Retrieval, which something here already supplies, and makes Vector Store a next step.'
+    );
+    db.close();
+  });
+
+  it('keeps what a step would reach when it leads on blocked work', () => {
+    // The step that had blocked work said only that, and dropped what it would
+    // open: the one that mattered most said least.
+    const db = embeddingsGraph();
+    captureFailure(db, { tool: 'x', message: 'ECONNREFUSED', capabilityId: 'combo:embeddings' });
+    const step = (nextSteps(db) as any).next[0];
+    expect(step.id).toBe('combo:embeddings');
+    expect(step.blocked_times).toBe(1);
+    expect(step.why).toMatch(
+      /^It has blocked work 1 time\. Reaching it also reaches Local Embeddings/
+    );
+    db.close();
+  });
+
+  it('carries nothing with a step whose own prerequisite is failing', () => {
+    const db = makeGraph({
+      capabilities: [
+        {
+          id: 'combo:base',
+          name: 'Base',
+          category: 'combo',
+          kind: 'capability',
+          state: 'unlocked',
+          lifecycle: 'broken',
+        },
+        { id: 'combo:step', name: 'Step', category: 'combo', kind: 'capability', state: 'locked' },
+        {
+          id: 'combo:after',
+          name: 'After',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+        },
+        { id: 'provider:p', name: 'p', kind: 'provider' },
+      ],
+      dependencies: [
+        { from: 'combo:base', to: 'combo:step' },
+        { from: 'combo:step', to: 'combo:after' },
+        { from: 'provider:p', to: 'combo:after', kind: 'provides' },
+      ],
+    });
+    const step = (nextSteps(db) as any).next.find((n: any) => n.id === 'combo:step');
+    expect(step.reaches).toBeUndefined();
+    db.close();
+  });
 });
 
 // ── §12.1 the briefing ───────────────────────────────────────────────────────
 
 describe('the session briefing', () => {
+  it('tells the agent what it would reach with the next step', () => {
+    const db = makeGraph({
+      capabilities: [
+        {
+          id: 'combo:embeddings',
+          name: 'Embeddings',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+          setupSeconds: 900,
+        },
+        {
+          id: 'combo:vector-store',
+          name: 'Vector Store',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+        },
+        {
+          id: 'combo:local-embed',
+          name: 'Local Embeddings',
+          category: 'combo',
+          kind: 'capability',
+          state: 'locked',
+        },
+        { id: 'provider:nomic', name: 'nomic', kind: 'provider' },
+      ],
+      dependencies: [
+        { from: 'combo:embeddings', to: 'combo:vector-store' },
+        { from: 'combo:embeddings', to: 'combo:local-embed' },
+        { from: 'provider:nomic', to: 'combo:local-embed', kind: 'provides' },
+      ],
+    });
+    captureFailure(db, { tool: 'x', message: 'ECONNREFUSED', capabilityId: 'combo:embeddings' });
+    const next = briefingText(db)
+      .split('\n')
+      .find(l => l.startsWith('Next: '));
+    expect(next).toContain(
+      'Embeddings (15m): It has blocked work 1 time. With it you would also reach Local Embeddings, and Vector Store would become a next step.'
+    );
+    db.close();
+  });
+
+  it('counts past three names, since the line shares a budget', () => {
+    const waiting = ['a', 'b', 'c', 'd', 'e'];
+    const db = makeGraph({
+      capabilities: [
+        { id: 'combo:hub', name: 'Hub', category: 'combo', kind: 'capability', state: 'locked' },
+        ...waiting.map(w => ({
+          id: `combo:${w}`,
+          name: w.toUpperCase(),
+          category: 'combo',
+          kind: 'capability' as const,
+          state: 'locked' as const,
+        })),
+      ],
+      dependencies: waiting.map(w => ({ from: 'combo:hub', to: `combo:${w}` })),
+    });
+    const next = briefingText(db)
+      .split('\n')
+      .find(l => l.startsWith('Next: '));
+    expect(next).toContain('With it, A, B, C and 2 more would become next steps.');
+    db.close();
+  });
+
   it('leads with what is broken and stays inside the budget', () => {
     const db = environment();
     db.prepare(

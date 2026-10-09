@@ -19,7 +19,7 @@ import { evaluatePromotions } from './assure/promote.ts';
 import { recovering } from './assure/lifecycle.ts';
 import { listProposals } from './governance.ts';
 import { ledgerSince } from './ledger.ts';
-import { nextSteps } from './next.ts';
+import { andList, nextSteps } from './next.ts';
 import { council, councilLines } from './council.ts';
 import { signalReport } from './failures.ts';
 import { CHARS_PER_TOKEN, FAILING_SQL, REACHED_SQL, graphCounts, notSeeded } from './vocabulary.ts';
@@ -151,6 +151,31 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
   };
 }
 
+/**
+ * One next step as the agent hears it: what it costs, how often it has
+ * blocked work, and what reaching it would let the agent reach. `why` says the
+ * same about "it" for a person reading `ambit next`; this says it to the
+ * reader who would do the reaching, so the step reads as an after it can
+ * picture and put to the person. Three names at most, the rest counted, since
+ * the line shares a budget with what is broken.
+ */
+function nextSentence(n: any): string {
+  const reaches: string[] = n.reaches ?? [];
+  const opens: string[] = n.opens ?? [];
+  const becomes = (names: string[]) =>
+    `${andList(names, 3)} would become ${names.length === 1 ? 'a next step' : 'next steps'}`;
+  const after = reaches.length
+    ? `With it you would also reach ${andList(reaches, 3)}${opens.length ? `, and ${becomes(opens)}` : ''}.`
+    : opens.length
+      ? `With it, ${becomes(opens)}.`
+      : '';
+  if (!after) return `${n.capability} (${n.cost}): ${n.why}`;
+  const blocked = n.blocked_times
+    ? `It has blocked work ${n.blocked_times} ${n.blocked_times === 1 ? 'time' : 'times'}. `
+    : '';
+  return `${n.capability} (${n.cost}): ${blocked}${after}`;
+}
+
 /** One line, or nothing. Keeps the composition below free of empty bullets. */
 function line(label: string, value?: string | null): string | null {
   return value ? `${label}: ${value}` : null;
@@ -226,9 +251,7 @@ function briefingText(db: Db, options: { mark?: boolean } = {}): string {
           ].join('; ')
         : null
     ),
-    b.next?.length
-      ? `Next: ${b.next.map((n: any) => `${n.capability} (${n.cost}): ${n.why}`).join(' · ')}`
-      : null,
+    b.next?.length ? `Next: ${b.next.map(nextSentence).join(' · ')}` : null,
     b.council || null,
     b.before_acting,
   ];

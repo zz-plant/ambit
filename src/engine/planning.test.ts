@@ -179,3 +179,39 @@ test('the economics report names where each number came from', () => {
   expect(JSON.stringify(economicsReport(db))).toContain('declared');
   db.close();
 });
+
+test('a capability failing its own check is not unblocked by anything assumed', () => {
+  // Browser Automation was configured and failing, with its prerequisites
+  // met, and every simulation reported it as unblocked, including one that
+  // assumed nothing: no acquisition brings back a check that fails.
+  const db = makeGraph({
+    capabilities: [
+      {
+        id: 'combo:shell',
+        name: 'Shell',
+        category: 'combo',
+        state: 'unlocked',
+        lifecycle: 'verified',
+      },
+      {
+        id: 'combo:browser',
+        name: 'Browser',
+        category: 'combo',
+        state: 'unlocked',
+        lifecycle: 'broken',
+      },
+      { id: 'combo:embed', name: 'Embed', category: 'combo', state: 'locked' },
+      { id: 'mcp:playwright', name: 'playwright', category: 'mcp', state: 'unlocked' },
+    ],
+    dependencies: [
+      { from: 'combo:shell', to: 'combo:browser', hard: true },
+      { from: 'mcp:playwright', to: 'combo:browser', kind: 'provides' as const },
+    ],
+  });
+  const none = simulateFrontier(db, []) as any;
+  expect(none.unblocked).toEqual([]);
+  expect(none.frontier_after).toBe(none.frontier_before);
+  const embed = simulateFrontier(db, ['combo:embed']) as any;
+  expect(embed.unblocked.map((u: any) => u.name)).not.toContain('Browser');
+  db.close();
+});

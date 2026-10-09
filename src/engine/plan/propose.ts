@@ -85,6 +85,11 @@ function simulateFrontier(db: Db, assume: string[]) {
     changed = false;
     for (const c of combos as any[]) {
       if (after.has(c.id)) continue;
+      // Configured and failing its own check is not held back by a
+      // prerequisite, and no acquisition brings it: only a passing check
+      // does. Admitting it here reported it as unblocked by every
+      // simulation, one that assumed nothing included.
+      if (failing.has(c.id)) continue;
       // Only something already provided can be unblocked. A capability nothing
       // supplies does not appear merely because its prerequisites are met.
       if (!(providers.get(c.id) || []).length) continue;
