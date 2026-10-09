@@ -85,7 +85,7 @@ npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh`
 
 ## From A to B
 
-Your agents, tools, credentials and machines are your loadout. Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed. The way from A to B runs through seven legs:
+Your agents, tools, credentials and machines are your loadout, and you are its pilot. Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed. The way from A to B runs through seven legs:
 
 1. **See where it stands**: every runtime's config in one map, and which pieces pass their checks.
 2. **Pick the next step**: ranked by what has blocked work and how much it opens.

@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### One picture for the loadout: pilot and machine
+
+The docs drew on four families of metaphor at once. `docs/loadout.md` now holds one: the loadout is the machine and you are its pilot, with a hangar (the map, My Setup, Proposals) and a cockpit (the briefing, `ambit_can`, the gate), and the frontier read as a flight envelope. The section was called "Stepping in", which the attention ledger also uses for a person intervening, so it is "Pilot and machine" now.
+
 ### Your own config, placed on the map in the demo
 
 The demo's tour ends on "Now map yours", and a pasted config used to end on a list of its entries and a note that placing them on the map took the engine, so the question the tour had just raised, what one more step would open, went unanswered for the setup the visitor cared about. The page now places a pasted config on the curated tree in the tab, by the same rule the engine seeds with (`placeOnTree` in `src/shared/placement.ts`, which `seedTechTree` now calls too), and a test holds the two placements equal. A card says how much of the tree the setup reaches and offers the three next steps that open the most, lighting on the map what each one would open, with what the tab cannot know and the command that does. A visitor with no file at hand can tick the servers they run instead. `~/.claude.json` is recognised as Claude Code's, servers under a project included, and the sample's proposals, history and ledger leave when a config of the visitor's arrives. The tour's first card names what the next step opens in place of counting it.
