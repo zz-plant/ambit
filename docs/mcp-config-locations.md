@@ -111,7 +111,7 @@ GitHub Copilot CLI keeps `~/.copilot/mcp-config.json`, with `mcpServers` at the 
 
 ## Amp
 
-Amp's user settings, `~/.config/amp/settings.json` or `settings.jsonc`. The servers are under `"amp.mcpServers"`, one key with a dot in its name, beside Amp's other settings, which are named the same way. Each is a `command` and `args`, or a `url` and `headers`. A workspace can declare more in `.amp/settings.json`, which Ambit does not read. `AMP_MCP_CONFIG` overrides the user-level path for Ambit.
+Amp's user settings, `~/.config/amp/settings.json` or `settings.jsonc`. The servers are under `"amp.mcpServers"`, which is one key with a dot in its name, like the settings beside it. Each is a `command` and `args`, or a `url` and `headers`. A workspace can declare more in `.amp/settings.json`, which Ambit does not read. `AMP_MCP_CONFIG` overrides the user-level path for Ambit.
 
 ## Goose
 

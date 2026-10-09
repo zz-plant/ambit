@@ -20,11 +20,11 @@ export default function GettingStartedGuide({ style, onDismiss, onReadMore }: Gu
       <ol className="app-guide-steps">
         <li>
           <strong>Click a node</strong> for what depends on it, whether its check passes, and a
-          simulation: what stops working without it.
+          simulation of what stops working without it.
         </li>
         <li>
           <strong>Click one that is not reached yet</strong>, outlined or dashed, and the simulation
-          runs the other way: everything it would unlock.
+          runs the other way to show everything it would unlock.
         </li>
         <li>
           <strong>Open the Key</strong> beside zoom and press one to highlight just that kind.{' '}

@@ -1,6 +1,6 @@
 # Ambit and Jev
 
-TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) is a model that answers typed questions with calibrated probabilities instead of text: pick one of these options, place this on a scale, yes or no. It is fast and cheap enough to ask on every tool call, and agent harnesses now use it to decide what to try and whether a call looks safe. Ambit answers a different question, what this setup can do and what an agent may do with it, so the two fit together.
+TypeSafe's [Jev](https://en.wikipedia.org/wiki/Jev_(AI_model)) is a model that answers typed questions with calibrated probabilities instead of text: pick one of these options, place this on a scale, yes or no. It is fast and cheap enough to ask on every tool call, and agent harnesses now use it to decide what to try and whether a call looks safe. Ambit answers a different question, about what this setup can do and what an agent may do with it, so the two fit together.
 
 ## Jev on the map
 
@@ -10,7 +10,7 @@ Ambit models Jev as **Typed Judgment**, in the Model Access era of the curated t
 - TypeSafe listed as a provider;
 - an open clone that serves the same `/v1/systemone` API, such as Kev, LitJev or OpenJev.
 
-A clone running on your own hardware also reaches **Local Typed Judgment**, in the Sovereignty era, which holds what runs without a hosted service, beside Local Embeddings. The difference matters. The hosted API may keep requests for a while unless your account has a zero-retention agreement, and a local clone keeps the state it judges on your machine.
+A clone running on your own hardware also reaches **Local Typed Judgment**, which sits beside Local Embeddings in the Sovereignty era. That era holds what runs without a hosted service. The difference matters. The hosted API may keep requests for a while unless your account has a zero-retention agreement, and a local clone keeps the state it judges on your machine.
 
 Every node of the curated tree is a combo, a capability composed from others, so its id starts with `combo:`. `ambit impact combo:typed-judgment` shows what depends on it, and `ambit goal typed-judgment` shows what it would take to reach it.
 

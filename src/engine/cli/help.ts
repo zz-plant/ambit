@@ -147,13 +147,14 @@ govern — the reviewable path from proposal to applied change
   govern reject <id> <person> ["why"]    a no, recorded — it teaches the next draft
   govern apply <id> / govern rollback <id>
   govern dispatch <id> [--to=<url>]   push a proposal to Slack, Discord,
-                          Telegram, ntfy or any JSON endpoint — the decision
-                          for a draft, the signed artifact once approved.
-                          AMBIT_APPROVAL_WEBHOOK is the standing target;
-                          propose and approve take --dispatch to push as they go
+                          Telegram, ntfy or any JSON endpoint. A draft goes
+                          out for a decision, an approved one as its signed
+                          artifact. AMBIT_APPROVAL_WEBHOOK is the standing
+                          target; propose and approve take --dispatch to
+                          push as they go
   govern history [since <when> [<until>]]   how the frontier moved, up to now
                           or up to a later observation
-  govern audit [run-…|prop-…|human:name|days]   the trail — who approved
+  govern audit [run-…|prop-…|human:name|days]   the trail of who approved
                           what, what ran, and whether it held
   govern delegation [verify] [--record] [--export] [--limit=N]   grants that
                           narrowed themselves because what they rest on stopped

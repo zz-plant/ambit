@@ -10,7 +10,7 @@ It does not choose your stack, review your code, or hold your secrets. Those lim
 npx ambit-cli goal "launch my saas"
 ```
 
-The sentence is routed to **Launch Ready**, the launch infrastructure checklist, reached when six things are in place, and the answer is a checklist in order: each step's setup time, what to do, and the usual ways to do it. A step you have half done says so. Sentry configured before any host is listed as configured and waiting on Hosting, instead of as something to set up again. An item is as strong as what detected or verified it: detection shows a tool is present, not that a restore has been tried.
+The sentence is routed to **Launch Ready**, the launch infrastructure checklist, which is reached when six things are in place. The answer is a checklist in order: each step's setup time, what to do, and the usual ways to do it. A step you have half done says so. Sentry configured before any host is listed as configured and waiting on Hosting, instead of as something to set up again. An item is as strong as what detected or verified it: detection shows a tool is present, not that a restore has been tried.
 
 | Step | What it gives the agent |
 | :--- | :--- |

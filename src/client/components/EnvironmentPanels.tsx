@@ -356,9 +356,9 @@ export function UnmappedPanel({ report }: { report: UnmappedResponse | null }) {
   return (
     <div className="tp-list">
       <p className="tp-note">
-        Used in the last {report.days} days, and on no node of the map: the part of the range the
-        curated tree does not name. A server that supplies only Tool Protocol is listed, since that
-        node says nothing about what it does.
+        Used in the last {report.days} days, and on no node of the map. This is the part of the
+        range the curated tree does not name. A server that supplies only Tool Protocol is listed,
+        since that node says nothing about what it does.
       </p>
       {report.unmapped.map(u => {
         const ago = usedAgo(u.lastUsed);

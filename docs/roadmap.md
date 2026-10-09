@@ -23,7 +23,7 @@ That claim gives four layers, ordered by ambition. Each is defensible on its own
 | **3 · Planning** | given a desired outcome, compute the capability delta and compare paths that close it |
 | **4 · Reflexive infrastructure** | agents use the model to improve the environment they themselves operate in |
 
-"Reflexive infrastructure" rather than "self-improving": the system can inspect the conditions of its own action and propose modifications to them, and a human approves every one.
+Layer 4 is called "reflexive infrastructure", not "self-improving", because the system can inspect the conditions of its own action and propose modifications to them, and a human approves every one.
 
 All four serve a different objective function. A conventional assistant optimizes roughly:
 
@@ -117,7 +117,7 @@ Netdata MCP    SSH / shell
      homelab node
 ```
 
-Once providers are separate, the comparison stops being between capabilities and becomes one between **ways of obtaining the same capability** — the comparison that actually matters when deciding what to build, and what `ambit goal --paths` and `ambit catalog` do today.
+Once providers are separate, the comparison stops being between capabilities and becomes one between **ways of obtaining the same capability**. That is the comparison that actually matters when deciding what to build, and it is what `ambit goal --paths` and `ambit catalog` do today.
 
 Built. Every node declares what kind of thing it is (`capability`, `action`, `provider`, `resource`, `actor`, `runtime`) and every edge declares what the relation means. Of the six object types above, three are node kinds; authority and evidence are tables of their own, and `goal` became one when §14 needed to price a goal and not only route to it.
 
@@ -129,7 +129,7 @@ The id rework was deliberately avoided. Every id appears in the ledger's stored 
 
 Scope is checked now, not merely recorded. `ambit authority scope <target>` (`repo:owner/name`, `device:nuc`, `svc:ollama`) lists every authority grant, whether its scope covers the target, and the effective mode the covering grants resolve to. Scope is a prefix claim: `repo:owner/name` covers the repo and its branches, and a grant scoped elsewhere is named as excluded, never silently treated as covering. Scope decides as well as reporting: §9 gives the resolution rule, and §13.3 gives the grant that exercises it.
 
-Also built: `credential`. Counted by provider, three things supplying one capability read as threefold redundancy, and if all three present the same token, one revocation takes them down together. A `uses` edge records what a provider authenticates with; `ambit status` lists such a capability among its spofs, `ambit impact` says it survives on one key, and `ambit credentials` answers what a revocation would end. The intersection, not the union: providers holding `{A}`, `{A,B}` and `{B}` survive losing either, and reporting that as fragile would be the same error inverted.
+Also built: `credential`. Counted by provider, three things supplying one capability read as threefold redundancy, and if all three present the same token, one revocation takes them down together. A `uses` edge records what a provider authenticates with; `ambit status` lists such a capability among its spofs, `ambit impact` says it survives on one key, and `ambit credentials` answers what a revocation would end. What counts is the intersection, not the union: providers holding `{A}`, `{A,B}` and `{B}` survive losing either, and reporting that as fragile would be the same error inverted.
 
 Credentials are declared, never inferred. A `credentials` block in the config names which providers share one, and `ambit credentials` and every shared-credential finding know only what such a block names. A credential node holds an identity and never a secret, since there is no field one could arrive in. It is excluded from the frontier by kind, because nothing provides a credential and a new node with no providers would otherwise count as a capability gained.
 
@@ -159,7 +159,7 @@ Machines are now capability-bearing in the engine, not only in the visualizer. `
 
 Auto-probing is what keeps this honest. A static `INFRA_MANIFEST` is a reasonable seed, but machines change underneath it: containers crash, mesh networks drop routes, and memory fills. The server now reads the local Docker socket (`DOCKER_HOST`, `/var/run/docker.sock`, or the per-user socket a desktop runtime leaves) with one `GET /containers/json`, and every container lands in the infrastructure scan as a service on a `device:docker` node, running, paused or exited. No socket is a quiet absence; a socket file with a stopped engine behind it is a warning, not an error. `ambit incidents` probes each service the manifest gives a status URL, when typed, and opens an incident run for one that does not answer, with the gate already asked whether restarting it is permitted. `ambit graph capacity` reads the Tailscale daemon (`tailscale status --json`) and this machine's memory (unified memory on Apple silicon, `nvidia-smi` elsewhere), and names the online machines no manifest declares. It runs only when typed and writes nothing: a peer on the tailnet is not seeded as a device, since a machine being reachable says nothing about what it runs, and a peer's own memory cannot be read from here.
 
-Every human act is recorded and counted. `ambit digest` measures how much of the work still runs through the person (approvals, applications, permission blocks, failed checks) and names the reducible ones: the same approval demanded repeatedly is a candidate for granting the authority once, reviewed before it widens. `ambit notify <topic>` pushes that digest to ntfy, and only when a topic is given — the attention loop is opt-in and local-first, a single POST of the digest text. This is the first turn of "repeated demands on human effort become evidence about what the system should learn to do without the human."
+Every human act is recorded and counted. `ambit digest` measures how much of the work still runs through the person (approvals, applications, permission blocks, failed checks) and names the reducible ones: the same approval demanded repeatedly is a candidate for granting the authority once, reviewed before it widens. `ambit notify <topic>` pushes that digest to ntfy, and only when a topic is given — the attention loop is opt-in and local-first. The push is a single POST of the digest text. This is the first turn of "repeated demands on human effort become evidence about what the system should learn to do without the human."
 
 ## 3. Acquisition recipes — partly built
 
@@ -196,7 +196,7 @@ Built: executable verification per contract action. A contract entry may be a na
 
 ## 4. Detection becomes verification — built, and gates
 
-Today detection is regex against discovered configuration. That is a reasonable bootstrap, and it is honest about what it proves — *something named Ollama exists* — but it does not prove an agent can use Ollama to finish a task.
+Today detection is regex against discovered configuration. That is a reasonable bootstrap, and it is honest about what it proves, which is that *something named Ollama exists*. It does not prove an agent can use Ollama to finish a task.
 
 Each capability gets a lifecycle:
 
@@ -224,7 +224,7 @@ The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `de
 
 `state` is untouched beside it, deliberately: `state` is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore `broken` and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.
 
-Promotion on evidence is built, at the grain where it changes what happens: §12.6. A person sets a threshold on a grant once — *stop asking me about this after three passing checks in thirty days* — and the evidence decides when it takes effect. A single failing check afterwards puts the grant back, and that half needs nobody. The lifecycle itself still only moves on the evidence of its own check, which is what it should do.
+Promotion on evidence is built, at the grain where it changes what happens, and §12.6 describes it. A person sets a threshold on a grant once, such as *stop asking me about this after three passing checks in thirty days*, and the evidence decides when it takes effect. A single failing check afterwards puts the grant back, and that half needs nobody. The lifecycle itself still only moves on the evidence of its own check, which is what it should do.
 
 ## 5. Goal → capability delta — partly built
 
@@ -254,7 +254,7 @@ ambit goal offline-capable
   2. Local Embeddings  15m
 ```
 
-The route in is built. The curated tree carries a `goal` vocabulary — the intent-side mirror of `detect`, which matches config ids: `detect` says "a git MCP named X is Version Control", `goal` says "a person wanting to *deploy without me* means Continuous Delivery and Scheduled Work". `ambit goal <sentence>` ranks every capability whose words appear in the sentence, each with its plan delta, so a free-form goal becomes a shortlist of concrete plans instead of an error:
+The route in is built. The curated tree carries a `goal` vocabulary, which is the intent-side mirror of `detect`. Where `detect` matches config ids and says "a git MCP named X is Version Control", `goal` says "a person wanting to *deploy without me* means Continuous Delivery and Scheduled Work". `ambit goal <sentence>` ranks every capability whose words appear in the sentence, each with its plan delta, so a free-form goal becomes a shortlist of concrete plans instead of an error:
 
 ```
 ambit goal "maintain the homelab unattended"
@@ -283,7 +283,7 @@ Built. `ambit record <capability>` records that work was blocked by something mi
 
 Classification is built. `ambit record <capability> <class> ["what you were trying to do"]` records why work was blocked (reasoning, knowledge, tool, permission, infrastructure, or reliability) and `ambit status` reports the causes beside the count, so a capability blocked four times as a missing tool and once as a missing permission reads as one structural deficit and one incident instead of five of a kind. `ambit_blocked` accepts the same classification over MCP.
 
-Inference is built, from the signals and not from the prose: §12.2. A runtime already states that a command was not found, that permission was denied, that a host was unreachable, that an MCP call returned an error kind, and the runtime's bridge (the OpenCode plugin or the Claude Code plugin's hooks) hands those over for classification, so the ledger fills from work instead of from someone remembering to record it. A failure whose shape says nothing is left unclassified, never guessed at, and one that cannot be attributed to a capability is kept anyway, since "this keeps failing and the model cannot name it" is a finding about the model.
+Inference is built, from the signals and not from the prose, and §12.2 describes it. A runtime already states that a command was not found, that permission was denied, that a host was unreachable, that an MCP call returned an error kind, and the runtime's bridge (the OpenCode plugin or the Claude Code plugin's hooks) hands those over for classification, so the ledger fills from work instead of from someone remembering to record it. A failure whose shape says nothing is left unclassified, never guessed at, and one that cannot be attributed to a capability is kept anyway, since "this keeps failing and the model cannot name it" is a finding about the model.
 
 The tree already tells you to write a SKILL.md for anything you explain more than twice. Generalized, that rule is the governing principle of the whole project:
 
@@ -307,7 +307,7 @@ ambit history since
 
 Classification compares against the ids recorded in the snapshot and never against timestamps, which resolve only to the second.
 
-`ambit history` also distinguishes a fourth thing: **vocabulary**. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system, not the system having changed: the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so `frontier_now` stays on the same basis as `frontier_then` and upgrading Ambit never reads as capabilities gained.
+`ambit history` also distinguishes a fourth thing, which is **vocabulary**. A node the past observation never saw, everything supplying which the past observation did see, is Ambit having started to model a part of the system, not the system having changed: the release that introduced action nodes, or a capability added to the curated tree that your existing tools already provide. Those are described and not counted, so `frontier_now` stays on the same basis as `frontier_then` and upgrading Ambit never reads as capabilities gained.
 
 Use is written to the work ledger. The OpenCode telemetry plugin and the stdin bridge (`scripts/adapters/telemetry.ts`) post to `/api/telemetry`, the Claude Code plugin's hooks spool tool runs, failures and asks, the control plane opens a run for each call routed through it, an agent records its own work over MCP, and `ambit incidents` opens a run for each declared service that does not answer. Other runtimes have no bridge yet. Each capability a run exercised is recorded, and a successful use counts as evidence (§13.2), but a use carries no object, so *which repository* was committed to is not a question the ledger can answer yet (§13.9). It also records demonstrated reliability beside reach: each snapshot carries a `verified` count and an id→lifecycle map, so `ambit history` reports a capability that stopped working as `diminished` (with `reason: verification failing`) while `frontier_now` stays flat — the check started failing, nothing was removed.
 
@@ -319,7 +319,7 @@ Use is written to the work ledger. The OpenCode telemetry plugin and the stdin b
 | :--- | :--- | :--- |
 | institutional | an actor authorizes it | an authority holder must exist for it to be acquirable |
 | economic | its acquisition carries a recurring cost | a budget and a counterparty are implied |
-| cognitive | a person supplies it | human cognition is necessary to produce the action, which is the human-composed case; approval, the human-gated one, is §9 |
+| cognitive | a person supplies it | human cognition is necessary to produce the action, which is the human-composed case; approval is the human-gated case, and §9 covers it |
 | physical | a provider runs on a device | a robot arm and a neural decoder seed and render alongside MCP servers, where before anything acting on the world collapsed into `meta` |
 | machine-composed-human | a person and a machine both supply it | the affordance is in the loop and in neither half, which is the theory's BCI case given a structural home |
 
@@ -373,7 +373,7 @@ Also built: authority derived from the runtime that would execute the step. Herm
 
 And the granularity the section asked for. The `docker-container-management` sketch above (inspect autonomous, recreate confirm, change_mount forbidden) is expressible now that a capability's contract actions are nodes with their own authority.
 
-Scope decides, and is not only reported (§13.3). Two rules, in order: a forbidden grant wins outright at any specificity, and among the rest the most specific covering scope governs, ties going to the narrower mode. That is what makes *yes, on staging* expressible — under narrowest-wins alone, a grant saying "autonomous on staging" could never beat the standing "confirm everywhere", so the trade of a smaller blast radius for unattended operation bought nothing and nobody offered it.
+Scope decides, and is not only reported (§13.3). It decides by two rules, in order: a forbidden grant wins outright at any specificity, and among the rest the most specific covering scope governs, ties going to the narrower mode. That is what makes *yes, on staging* expressible — under narrowest-wins alone, a grant saying "autonomous on staging" could never beat the standing "confirm everywhere", so the trade of a smaller blast radius for unattended operation bought nothing and nobody offered it.
 
 Mediating, now, in one place that matters. A grant holds only while what it rests on still works: `canExecute` reads the hard prerequisites of the capability being acted on, and an unattended grant standing over a failing one returns CONFIRM instead of ALLOW, so a grant never stays autonomous while its foundation is gone.
 
@@ -385,11 +385,11 @@ What that costs the caller is stated back to them: the decision carries `narrowe
 
 ## 9b. The record it writes: STD-07 — shipped
 
-§9 makes the gate mediate. `ambit delegation` writes the account of it, in a shape something other than Ambit can read: [STD-07, the Revisable Delegation Record](https://ethotechnics.org/standards/std-07-revisable-delegation-record). That is separate work from the enforcement and deliberately downstream of it.
+§9 makes the gate mediate. `ambit delegation` writes the account of it as [STD-07, the Revisable Delegation Record](https://ethotechnics.org/standards/std-07-revisable-delegation-record), which is a shape something other than Ambit can read. That is separate work from the enforcement and deliberately downstream of it.
 
 `ambit delegation --record` writes four kinds for every grant currently narrowed by a failing foundation: a `capability` record for the thing that broke, an `authorization` record for the grant, carrying in `depends_on` what it rests on and in `invalidated_by` what would end it, a `discrepancy` for the divergence, and a `revision` superseding the authorization. Verification calls it too, since that is the moment evidence changes.
 
-Append-only and hash-chained: sha256 over the record without its integrity block, keys sorted, each row carrying the hash of the one before, so an edited or deleted record is detectable. `ambit delegation verify` recomputes the chain. `ambit delegation --export` emits newline-delimited JSON.
+The records are append-only and hash-chained. The hash is sha256 over the record without its integrity block, with keys sorted, and each row carries the hash of the one before, so an edited or deleted record is detectable. `ambit delegation verify` recomputes the chain. `ambit delegation --export` emits newline-delimited JSON.
 
 Conformance is declared as level 2, for those kinds and the `objection` a person writes with `ambit delegation object`; a stream holding an objection and its answer measures at level 3. `action` and `outcome` are deliberately not emitted: the environment adapter is simulated, so an action record from here would attest to a fixture. The manifest in `server.json` says so, because the standard's own adoption note is that declaring a level honestly is conformance and claiming one the log does not earn is not.
 
@@ -413,15 +413,15 @@ The first MCP tools were analytical: they answered questions about the graph. Th
 
 Simulation matters as much as planning: showing the graph as it *would* be, before anything changes, is what makes approval meaningful and not ceremonial.
 
-Built, the two safe stages. `ambit goal <capability> --simulate` computes the frontier as it would be, against a copy of the state; its useful output is not the acquisition but what comes with it — a capability already provided and held back only by the prerequisite the change satisfies. On this machine, acquiring a vector store moves the frontier by two, because Retrieval is already supplied by an agent and waiting.
+Built, the two safe stages. `ambit goal <capability> --simulate` computes the frontier as it would be, against a copy of the state; its useful output is not the acquisition but what comes with it. That is a capability already provided and held back only by the prerequisite the change satisfies. On this machine, acquiring a vector store moves the frontier by two, because Retrieval is already supplied by an agent and waiting.
 
-`ambit propose <capability> [n]` drafts a reviewable acquisition: ordered steps, the alternative chosen and its cost and privacy consequences, the simulated result, stored in a `proposals` table. Choosing the hosted alternatives for Retrieval takes it from 25 minutes to 13, at a per-token bill and a data boundary — the trade-off stated, not implied.
+`ambit propose <capability> [n]` drafts a reviewable acquisition: ordered steps, the alternative chosen and its cost and privacy consequences, the simulated result, stored in a `proposals` table. Choosing the hosted alternatives for Retrieval takes it from 25 minutes to 13, at a per-token bill and a data boundary. The trade-off is stated, not implied.
 
 Every step carries an `inverse`, or it carries null. That is the gate, not an omission: no step may execute without one.
 
 Also built, both sides of the threshold except the act itself. Alternatives whose acquisition genuinely *is* a config change carry a declarative `config_patch`, and `inverseOf` derives the undo from it — removing what it adds, or restoring what it overwrites when the key already exists. Anything needing an installer or a running service gets no inverse, and null is a refusal, not a gap: a proposal is `applicable` only when every step has one.
 
-`ambit approve <proposal> <person>` records approval as evidence against a `human:` node, so the ledger can later answer who authorized an expansion of the frontier. It refuses a name that is not a person in the graph, because an approval has to come from someone accountable, and refuses to approve twice. Deliberately CLI-only and not exposed over MCP: an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
+`ambit approve <proposal> <person>` records approval as evidence against a `human:` node, so the ledger can later answer who authorized an expansion of the frontier. It refuses a name that is not a person in the graph, because an approval has to come from someone accountable, and refuses to approve twice. It is deliberately CLI-only and not exposed over MCP: an agent may draft and preview, but approval is the human's act and should not be reachable by the thing being approved.
 
 Built, with the two decisions made explicitly.
 
@@ -437,7 +437,7 @@ An apply re-seeds, so the graph reflects the change immediately instead of on th
 
 Built: the MCP column above, with `ambit_evidence`, `ambit_authority`, `ambit_since`, `ambit_ledger` and `ambit_deficits` beside it, so an agent can ask whether a capability is real, whether it may act and what is missing, and record being blocked, as a person can from the terminal. `ambit_actions` is the one an agent should reach for before acting: `ambit_authority` answers at the capability grain, and permission is per action.
 
-Built, the contract around those tools. A client is told what Ambit is at connect (`instructions`, which carry the ask-before-acting habit), the protocol version is negotiated, and each tool says whether it changes anything, a claim a test holds against the database. A call is checked against the tool's schema, and a failed one comes back as `isError` with what to send instead, by the rule the CLI's exit code follows. `resolveCapability` is the one place that decides which node an id means, and it never guesses. `ambit mcp --profile=agent` lists only the tools a working agent uses, and a test holds each listing to a byte budget. [How a call is answered](./deep-dive.md#how-a-call-is-answered) has the detail. Still open: an `outputSchema` for each answer, which `structuredContent` carries as data and nothing yet describes, and JSON-RPC batching, which no stdio client sends and which is why 2025-03-26 is not claimed.
+Built, the contract around those tools. A client is told what Ambit is at connect (`instructions`, which carry the ask-before-acting habit), the protocol version is negotiated, and each tool says whether it changes anything, and a test holds that claim against the database. A call is checked against the tool's schema, and a failed one comes back as `isError` with what to send instead, by the rule the CLI's exit code follows. `resolveCapability` is the one place that decides which node an id means, and it never guesses. `ambit mcp --profile=agent` lists only the tools a working agent uses, and a test holds each listing to a byte budget. [How a call is answered](./deep-dive.md#how-a-call-is-answered) has the detail. Still open: an `outputSchema` for each answer, which `structuredContent` carries as data and nothing yet describes, and JSON-RPC batching, which no stdio client sends and which is why 2025-03-26 is not claimed.
 
 What remains is transport variety, execution sandboxing, and an authenticated CLI installer. Stdio processes launched on the local host are only one deployment model; MCP servers now run over HTTP/SSE and WebSockets across private containers and cloud backends. The reader and proxy must attach to remote endpoints without assuming a local PID. Untrusted community servers also need isolation: executing stdio tools inside container or WebAssembly sandboxes bounds their filesystem reach. And while entry creation over HTTP is permanently rejected, an authenticated CLI installer (`ambit install <server>`) bridges discovery and configuration without compromising the loopback boundary.
 
@@ -460,7 +460,7 @@ Not implemented: tool calls and reasoning events. Ambit does not execute agent s
 
 **A2UI was evaluated and rejected.** It is a generative UI specification: agents describe components and the front end renders them. Ambit's interface is a designed visual grammar — era columns, three states, dependency edges, a legend — and its legibility is the product. Letting an agent improvise components would replace a representation that was reasoned about with one that is generated per response. A2UI suits surfaces where the agent's output shape is unknown in advance; here it is known and deliberate.
 
-The map has the ergonomics a large setup needs. When it is bigger than the window, a minimap shows all of it and the part on screen. A focus mode, opted into from a node's panel, keeps only that node's neighborhood, a chosen number of hops in a chosen direction. An era opens as a ladder of what is reached, next and blocked. And a timeline under the map redraws it as any recorded observation of the frontier left it, so an operator can watch the frontier expand over time. The [interface specs](./interface-specs.md#map) record what each does and where it departs from the first draft. The timeline scrubs and does not play: nothing advances it without a person. `ambit share` writes the map as a standalone HTML snapshot, and the saved image is a card of the map's finding, not the map.
+The map has the ergonomics a large setup needs. When it is bigger than the window, a minimap shows all of it and the part on screen. A focus mode, opted into from a node's panel, keeps only that node's neighborhood, out to a chosen number of hops in a chosen direction. An era opens as a ladder of what is reached, next and blocked. And a timeline under the map redraws it as any recorded observation of the frontier left it, so an operator can watch the frontier expand over time. The [interface specs](./interface-specs.md#map) record what each does and where it departs from the first draft. The timeline scrubs and does not play: nothing advances it without a person. `ambit share` writes the map as a standalone HTML snapshot, and the saved image is a card of the map's finding, not the map.
 
 ## 12. The long-running agent — built
 
@@ -500,7 +500,7 @@ session starts → briefing (12.1) → agent asks before acting (12.3)
 Built, with acceptance tests in `src/engine/expansion.test.ts`, `src/engine/ttl-authority.test.ts` and `src/engine/techtree-overlay.test.ts`:
 
 1. **The graph asks for the threshold.** `ambit authority promote` with no arguments names grants confirmed by hand three or more times with clean evidence and no threshold, each with the command that would end the asking. It suggests and never sets; an agent that could set its own threshold would be granting itself authority through a side door.
-2. **Real work counts as evidence** — the capability exercised inside a run that achieved its outcome, beside a passing check. Only checks count against: attributing a failed run's outcome to everything it touched would demote whatever a bad afternoon went near. Scoped thresholds count checks only, because use carries no object.
+2. **Real work counts as evidence** — the capability exercised inside a run that achieved its outcome is counted beside a passing check. Only checks count against: attributing a failed run's outcome to everything it touched would demote whatever a bad afternoon went near. Scoped thresholds count checks only, because use carries no object.
 3. **Scope traded for mode.** `--scope` writes a new grant for one target and leaves the standing one untouched. §9's resolution rule is what makes it mean something.
 4. **Somewhere to practice.** A declared sandbox relaxes confirmation inside itself and never a refusal, since rehearsing a forbidden action would be a way round it. It is where a scoped threshold gets met cheaply: practice in staging, earn staging.
 5. **A ceiling instead of a gate.** A standing budget is a ceiling on spend, and a spend past it is refused until the period turns over, with nobody having to notice. The refusal reaches a caller that states its spend (`ambit can --spend`, or the MCP tool's `spendCents`); `apply` and the control plane state none, so a spent budget changes nothing on those paths. It bounds a grant and does not widen one: within the ceiling the grant's own mode still decides, so a `confirm` action still asks, and the delegation this section describes is an autonomous grant with a budget beside it. An elapsed period reads as spent-nothing without writing, because a decision API that wrote to the database to answer a question would be a strange thing to put in front of every action.
@@ -513,7 +513,7 @@ Built, with acceptance tests in `src/engine/expansion.test.ts`, `src/engine/ttl-
 
 ## 14. The economic half — partly built
 
-The loop in [the argument](#the-argument) is the graph half, and it is built. The loop that pays for it is built too, first turn:
+The loop in [the argument](#the-argument) is the graph half, and it is built. The first turn of the loop that pays for it is built too:
 
 ```
 real work happens → the work ledger observes (runs, events, interventions,
@@ -567,7 +567,7 @@ Anything that told you something interesting about the graph without changing wh
 
 1. **From reporting to enforcement.** Ambit can say what may be done, by whom, with what, on what evidence, and whether a grant covers a given target, and it narrows a grant when what it rests on fails. It stops something only in the three places §9 names, so a runtime that goes through none of them is unaffected by any of it. Closing this loop turns the graph from an external advisor into an active supervisor.
 
-2. **From abstract verbs to bound affordances.** Every entry on the list the graph will eventually need (read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only) is a verb bound to a noun, and the era tree still has only the verbs (§13.9). Once it carries objects, it stops being the ontology and becomes what it should be: a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist. An agent earns autonomy over repo A without acquiring blanket access to repo B.
+2. **From abstract verbs to bound affordances.** Every entry on the list the graph will eventually need (read repo A, write repo A, open PR, merge PR, deploy service B, restart container C, query database D read-only) is a verb bound to a noun, and the era tree still has only the verbs (§13.9). Once it carries objects, it stops being the ontology and becomes what it should be. That is a rollup over affordances, with *Version Control* derived from `{read, commit, push, merge}` over the repositories that actually exist. An agent earns autonomy over repo A without acquiring blanket access to repo B.
 
 3. **From static snapshots to ambient perimeter sensing.** A capability graph that updates only when someone types a CLI command or boots an agent is an offline snapshot. In a production environment, the perimeter contracts and expands continuously: a local Docker daemon restarts, an upstream API token expires, a laptop switches networks, or GPU VRAM fills. Ambient sensing continuously validates health, reachability, and credential validity in the background. The moment a dependency fails, the perimeter contracts, preventing agents from falling into blind retry loops. The moment health clears, the capability returns.
 

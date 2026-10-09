@@ -25,9 +25,9 @@ They are one object at different levels of formality. The [glossary](https://zz-
 
 Ambit is for **widening** your ambit: naming the step that opens the most, and the combinations a single missing piece would give you.
 
-The same composition that widens a reach widens it whether or not anyone is watching. Give one model shell access, credentials, a scheduler and a second machine, and the system can do far more without a single weight changing. So Ambit **governs** each widening: it is verified before it is trusted, it is distinct from authority, and a change to the setup waits for a person. The design norm from [Why Ambit](./why-ambit.md#effective-agency-as-a-governed-object) is the hinge: *no increase in effective capability without a corresponding increase in legibility, verification, and governability.* Governing is not the opposite of widening; it is what makes a wider reach safe to lean on.
+The same composition that widens a reach widens it whether or not anyone is watching. Give one model shell access, credentials, a scheduler and a second machine, and the system can do far more without a single weight changing. So Ambit **governs** each widening: it is verified before it is trusted, it is distinct from authority, and a change to the setup waits for a person. The design norm from [Why Ambit](./why-ambit.md#effective-agency-as-a-governed-object) is the hinge. It reads: *no increase in effective capability without a corresponding increase in legibility, verification, and governability.* Governing is not the opposite of widening; it is what makes a wider reach safe to lean on.
 
-And Ambit **accounts** for it: where your own time goes, which is the second half of the tagline. Each time a person steps in so an agent can continue is recorded against the capability it was waiting on, which is how a next step is priced and how you find out afterwards whether it paid.
+And Ambit **accounts** for it by tracking where your own time goes, which is the second half of the tagline. Each time a person steps in so an agent can continue is recorded against the capability it was waiting on, which is how a next step is priced and how you find out afterwards whether it paid.
 
 ## What is new
 

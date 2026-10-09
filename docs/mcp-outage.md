@@ -2,7 +2,7 @@
 
 An agent setup is a stack of dependencies nobody wrote down. A GitHub MCP server provides version control; version control is half of a review loop; the review loop is what lets an agent open a pull request on its own. When that server's token expires, the agent does not report a missing server. It reports that it cannot open a pull request, or it quietly does something else.
 
-The question to answer before that happens: if this one server, model or credential went away, what would stop?
+The question to answer before that happens is what would stop if this one server, model or credential went away.
 
 ## Three answers, not one
 
@@ -24,7 +24,7 @@ For a small setup, a table on paper is enough:
 4. Anything whose names all read the same token variable, or all reach the same host, is one too, however many names it has. Revoke the token or lose the host and they go together.
 5. For the third answer, try each one. A server you have not seen work recently may already be broken.
 
-This stops scaling at a few runtimes and a dozen servers, and it misses what only exists in combination: a capability one piece unlocks for another.
+This stops scaling at a few runtimes and a dozen servers, and it misses a capability one piece unlocks for another, which only exists in combination.
 
 ## Asking from the terminal
 
@@ -38,12 +38,12 @@ ambit impact mcp:github    # what stops, and what only weakens, if this one goes
 ambit credentials          # what revoking each declared credential would end
 ```
 
-`ambit status` lists the sole providers in the setup, which are the single points of failure, and lists what is already failing apart from them. `ambit impact <id>` takes any node, a server, a model, a credential or a capability, and splits what depends on it into what would stop and what would keep another provider.
+`ambit status` lists the sole providers in the setup, which are the single points of failure, and lists what is already failing apart from them. `ambit impact <id>` takes any node, whether a server, a model, a credential or a capability, and splits what depends on it into what would stop and what would keep another provider.
 
 Two of the answers need something from you first:
 
 - **Shared credentials are declared, never inferred.** Ambit cannot see that three servers present one token until a `credentials` block in the config names them ([the shape](./deep-dive.md#what-a-node-is)). Until then `ambit credentials` says none are declared, and three providers behind one token read as three providers.
-- **"Already broken" needs a declared check.** A capability counts as failing only when it declares a check and that check last failed (`ambit verify` runs them). Most MCP servers a person adds have none, so they read as reached and unproven: counted as working, never shown as broken.
+- **"Already broken" needs a declared check.** A capability counts as failing only when it declares a check and that check last failed (`ambit verify` runs them). Most MCP servers a person adds have none, so they read as reached and unproven, which means they are counted as working and never shown as broken.
 
 ## Seeing it on the map
 

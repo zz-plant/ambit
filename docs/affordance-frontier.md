@@ -6,7 +6,7 @@
 
 The object is the **affordance frontier** of extended human-machine systems: the set of digital, cognitive, physical, social, institutional, and economic actions made reachable by the composition of humans, models, software, authority, bodies, and machines.
 
-The shortest form: *Ambit makes the capability frontier of an agentic system legible.*
+In its shortest form, *Ambit makes the capability frontier of an agentic system legible.*
 
 This is the formal name for what the README calls your *ambit*, and its edge is what the map calls the frontier. The software models one narrow part of it: a person's agents, tools and machines. [The ideas behind Ambit](./ideas.md) sets the names side by side.
 
@@ -155,4 +155,4 @@ What has landed in the software:
 
 The distinction the affordance reading forces — that an affordance exists only when reasoning, tool, target, and authorization line up — is what the split buys. A capability is reached when something supplies it; an action is exercisable when it is reached *and* permitted *and* has evidence behind it, and those are three columns rather than one boolean.
 
-The domains are derived from structure, not matched from keywords: `ambit graph affordances` calls a capability institutional when an authority holder must approve it and physical when a provider runs on a device. The map marks the joint ones, a person who approves or supplies a capability and a device it runs on, and the detail panel names who; it has no column for them. What has not landed is the line the whole project sits behind: Ambit describes authority, and enforcement stops at its own gate. `apply`, the control-plane proxy and, once its hook is installed, Claude Code's tool calls refuse, or put to a person, what `canExecute` does not allow; nothing forces any other runtime to consult that gate, so a system that acts without asking is not stopped by the graph. [Roadmap §7b and §9](./roadmap.md#status-at-a-glance) carry the current state of each, and the theory above still runs ahead of them.
+The domains are derived from structure, not matched from keywords: `ambit graph affordances` calls a capability institutional when an authority holder must approve it and physical when a provider runs on a device. The map marks the joint ones, and the detail panel names the person who approves or supplies each one, or the device it runs on. The map has no column for them. What has not landed is the line the whole project sits behind: Ambit describes authority, and enforcement stops at its own gate. `apply`, the control-plane proxy and, once its hook is installed, Claude Code's tool calls refuse, or put to a person, what `canExecute` does not allow; nothing forces any other runtime to consult that gate, so a system that acts without asking is not stopped by the graph. [Roadmap §7b and §9](./roadmap.md#status-at-a-glance) carry the current state of each, and the theory above still runs ahead of them.

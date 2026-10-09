@@ -29,7 +29,7 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 
 An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file. What they add up to is written down nowhere, and so is where the boundary sits and how to move it.
 
-The claim under everything else: **what an agent setup can do is not written in any config file.** It is composed from pieces configured separately, a configured piece may not work, and none of it says what the setup is allowed to do. Ambit computes that reach and helps you widen it, with evidence for each step and an approval for each change. Widening is the point. The checks, the authority model and the outage analysis are what make a wider reach safe to lean on, and the attention ledger, the "where your own time is going" of the tagline, is how you tell whether a step was worth taking.
+The claim under everything else is that **what an agent setup can do is not written in any config file.** It is composed from pieces configured separately, a configured piece may not work, and none of it says what the setup is allowed to do. Ambit computes that reach and helps you widen it, with evidence for each step and an approval for each change. Widening is the point. The checks, the authority model and the outage analysis are what make a wider reach safe to lean on, and the attention ledger is how you tell whether a step was worth taking. It is the "where your own time is going" in the tagline.
 
 Ambit reads those configs into one model, the capability graph. Every server, model, skill and declared credential is a node, as is every capability of the curated tree, and an edge records what one needs from another or provides to it. My Setup lists what your configs declare, and the map draws the curated tree with your position on it. The edge of what you reach is the *frontier*, with the next steps just past it. The graph answers four questions no single file can:
 
@@ -38,7 +38,7 @@ Ambit reads those configs into one model, the capability graph. Every server, mo
 3. **What actually works?** A configured tool is not a working one. Ambit runs each capability's declared check (`ambit verify`) and keeps what is configured, what is proven and what is permitted apart: `installed ≠ working ≠ authorized`. A check proves as much as it tests, so a passing check means that check passed. A capability no check has run on still counts. One whose check fails is taken out of every plan without asking, so the boundary it draws is one you can lean on.
 4. **What would stop if one piece went?** It follows dependencies all the way down, so three "redundant" providers behind one shared token show up as the single point of failure they are.
 
-You ask from the terminal. Your agents ask over MCP: what they can do before they try, and when they hit a limit, what would lift it, drafted as a change you approve. Ambit is itself an MCP server, so the thing describing your MCP servers speaks their protocol. (A *meta-MCP server*, if you want the term to search for.)
+You ask from the terminal. Your agents ask over MCP: what they can do before they try, and when they hit a limit, what would lift it, drafted as a change you approve. Ambit is itself an MCP server, so the thing describing your MCP servers speaks their protocol. The term for that is a *meta-MCP server*.
 
 ### The words Ambit uses
 
@@ -60,7 +60,7 @@ These carry most of the meaning, in the terminal and on the map alike.
 
 ## Who it is for
 
-Anyone running AI agents who wants them to do more. A small setup, one runtime and a few MCP servers, has the most ground ahead of it, and Ambit names the step that unlocks the most and the combos a single missing piece would give you. A large one, with several runtimes, dozens of servers and a second machine, gets the other half as well: what is configured but failing, and what would stop together if one shared piece went.
+Anyone running AI agents who wants them to do more. A small setup, with one runtime and a few MCP servers, has the most ground ahead of it, and Ambit names the step that unlocks the most and the combos a single missing piece would give you. A large one, with several runtimes, dozens of servers and a second machine, gets the other half as well: what is configured but failing, and what would stop together if one shared piece went.
 
 The demo walks a sample setup in five steps: the next step worth taking and what it would open, the outage that shows what that reach rests on, a check that was already failing, the approval every change waits for, and then your own config, pasted into the tab or picked from a list of common servers, placed on the same map with nothing uploaded, and the three next steps that would open the most for it.
 
@@ -105,7 +105,7 @@ Building a product alone? `ambit goal "launch my saas"` lists what stands betwee
 
 **The combo you already almost have.** You run local Postgres and Ollama, but your agent cannot search your code semantically. `ambit graph combos` reports the gap as one step, `CREATE EXTENSION vector;`, and `ambit goal retrieval --simulate` shows what that five-minute change reaches, with no cloud API in the path.
 
-**An agent that asks for what it lacks.** Mid-task, an agent needs local embeddings and has none. It records the deficit, asks Ambit what the goal is missing, and drafts a proposal: one config patch. You approve and apply it, and the frontier moves by four capabilities, Local Embeddings among them, through combination. [The recording below](#the-one-habit-worth-teaching) is that loop, run for real.
+**An agent that asks for what it lacks.** Mid-task, an agent needs local embeddings and has none. It records the deficit, asks Ambit what the goal is missing, and drafts a proposal of one config patch. You approve and apply it, and the frontier moves by four capabilities, Local Embeddings among them, through combination. [The recording below](#the-one-habit-worth-teaching) is that loop, run for real.
 
 **Rotating a shared token.** Before you revoke a personal access token, `ambit impact credential:github/user-token` names everything standing on it: the two background MCP tools and the scheduled sync agent that would otherwise fail some hours later without a word. The sharing is declared in a `credentials` block, whose shape is in [the deep dive](./docs/deep-dive.md#what-a-node-is); until you write one, `ambit credentials` says none are declared.
 
@@ -199,7 +199,7 @@ $ ambit impact mcp:playwright
 ```
 <!-- /example -->
 
-What ends comes first, marked with the `›`, as far down as it goes: Continuous Delivery needs Automated Tests, so it ends too. What survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, `impact` answers what revoking it ends, the same answer as `ambit credentials`.
+What ends comes first, marked with the `›`, as far down as it goes: Continuous Delivery needs Automated Tests, so it ends too. What survives says on how many other providers, and a capability whose remaining providers all present one credential is said to survive on one key, since revoking it would end that too. Given a credential, `impact` answers what revoking it ends, which is the same answer `ambit credentials` gives.
 
 ### ambit share — what may leave the graph, and what may not
 
@@ -239,7 +239,7 @@ claude plugin marketplace add zz-plant/ambit
 claude plugin install ambit@ambit
 ```
 
-`ambit-gate@ambit` is a second, separate plugin: the gate below, on every tool call. Install it once you have grants you want binding. The first plugin runs Ambit through `npx` and needs nothing else installed; the gate runs on every call, so it calls an installed `ambit` (`npm install -g ambit-cli`) to stay fast, and without one it says at the start of each session that it is inactive. By hand, without the plugin:
+`ambit-gate@ambit` is a second, separate plugin, which puts the gate below on every tool call. Install it once you have grants you want binding. The first plugin runs Ambit through `npx` and needs nothing else installed; the gate runs on every call, so it calls an installed `ambit` (`npm install -g ambit-cli`) to stay fast, and without one it says at the start of each session that it is inactive. By hand, without the plugin:
 
 ```bash
 claude mcp add ambit -- ambit mcp --profile=agent
@@ -354,7 +354,7 @@ Discovered capabilities are placed in a curated tree of nine eras: seven for the
 Ambit keeps two properties apart, and the distinction is load-bearing:
 
 - `state` is **structural**: is this thing configured, and what does it depend on. This is what the frontier ledger records.
-- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `broken`, or `degraded`: recovering, its last check passed after one that failed.
+- `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `broken`, or `degraded`, which means it is recovering: its last check passed after one that failed.
 
 Every availability decision gates on lifecycle, not state. Checks only ever take something away: a capability no check has run on stays in every plan, and a broken one is excluded from plans, simulations, goals, authority checks and opportunity ranking, because a plan routed through a tool that does not run is worse than no plan. The latest check decides, so one pass after a fix brings it back; it counts as unproven, and is named as recovering, until its last five runs pass. `ambit status` reports proven, unproven and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified, or recovering.
 
