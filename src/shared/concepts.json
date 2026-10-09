@@ -65,6 +65,13 @@
       "seen": "The ◈ glyph and the Tool servers rows in My Setup, and mcp entries in your config"
     },
     {
+      "key": "carry-weight",
+      "term": "Carry weight",
+      "short": "What a tool list costs in context, every session",
+      "long": "A runtime loads every tool's name, description and input schema into the model's context at the start of each session, whether or not any of them is called. `ambit weigh` starts each local tool server your configs declare, asks for its tools and records the size, estimated at four characters a token. Each runtime carries its own servers, so the total is per runtime. A runtime that defers tool definitions until they are searched for carries less. Remote servers are not contacted, and a server never weighed shows no figure, which is not a weight of zero.",
+      "seen": "The token figure on a Tool servers row in My Setup and in a server's panel, and ambit weigh"
+    },
+    {
       "key": "evidence",
       "term": "Verified",
       "short": "Its declared check passed, not just configured",

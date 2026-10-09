@@ -434,6 +434,22 @@ CREATE TABLE IF NOT EXISTS declared_checks (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- What a tool server's listing weighed, the last time `ambit weigh` asked it.
+-- A runtime loads every tool's name, description and input schema into the
+-- model's context at the start of each session, called or not, and no config
+-- says how much that is. Only a successful listing is written, so a server
+-- that would not answer keeps the weight it last had. `per_tool` is
+-- `[[name, chars], ...]`, heaviest first; `runtimes` is which configs carry
+-- it. A reading of this machine, so `ambit sync` leaves it behind.
+CREATE TABLE IF NOT EXISTS tool_listings (
+    capability_id TEXT PRIMARY KEY REFERENCES capabilities(id),
+    tools INTEGER NOT NULL,
+    chars INTEGER NOT NULL,
+    per_tool TEXT,
+    runtimes TEXT,
+    measured_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- A place where acting does not matter. Roadmap §12 follow-up: between "ask a
 -- person" and "act on the world" sits acting somewhere the consequences are
 -- contained, which is the cheapest way for an agent to accumulate the evidence

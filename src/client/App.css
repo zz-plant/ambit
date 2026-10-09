@@ -619,8 +619,9 @@ button.app-sample-tag:hover {
 
 .setup-group-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  gap: 2px 8px;
   margin-bottom: 6px;
   font-size: var(--fs-sm);
   font-weight: 600;
@@ -630,6 +631,18 @@ button.app-sample-tag:hover {
 .setup-group-n {
   font-size: var(--fs-sm);
   font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What each runtime carries into every session, beside the Tool servers count.
+   A sentence, so it drops the heading's capitals and tracking. */
+.setup-group-carry {
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -715,6 +728,23 @@ button.app-sample-tag:hover {
   grid-column: 1 / -1;
   justify-self: start;
   font-size: var(--fs-sm);
+}
+
+/* What the server's tool list costs in context, under its evidence. Muted: a
+   reading, not a verdict. One the ledger never saw called says so in words. */
+.setup-row-weight {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.setup-row-weight.is-idle {
+  color: var(--warn);
 }
 
 /* What the list found, above the list: a failing check, and enabled servers
@@ -7367,7 +7397,8 @@ button.app-sample-tag:hover {
   margin-top: 8px;
 }
 
-.sp-blocks {
+.sp-blocks,
+.sp-carry {
   margin: 10px 0 0;
   font-size: var(--fs-sm);
   line-height: 1.45;

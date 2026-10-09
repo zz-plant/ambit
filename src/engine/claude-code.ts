@@ -78,6 +78,30 @@ function skillDirs(claudeHome: string): string[] {
   return dirs;
 }
 
+/** ~/.claude.json, or the file CLAUDE_CONFIG names. */
+export function claudeConfigPath(): string {
+  return process.env.CLAUDE_CONFIG || join(home(), '.claude.json');
+}
+
+/**
+ * Every MCP server a parsed ~/.claude.json declares, as written: the user's
+ * own first, then each project's local-scope ones with the project they
+ * belong to, which is where Claude Code starts them. A project's committed
+ * `.mcp.json` is not in this file and is not read.
+ */
+export function mcpServersIn(cfg: any): { name: string; server: any; project?: string }[] {
+  const found: { name: string; server: any; project?: string }[] = [];
+  for (const [name, server] of Object.entries<any>(cfg?.mcpServers || {})) {
+    found.push({ name, server });
+  }
+  for (const [project, entry] of Object.entries<any>(cfg?.projects || {})) {
+    for (const [name, server] of Object.entries<any>(entry?.mcpServers || {})) {
+      found.push({ name, server, project });
+    }
+  }
+  return found;
+}
+
 /**
  * `claudeHome`/`claudeJson` default to CLAUDE_HOME/CLAUDE_CONFIG env vars (or
  * the standard ~/.claude, ~/.claude.json) so a caller that wants the default
@@ -85,7 +109,7 @@ function skillDirs(claudeHome: string): string[] {
  */
 export function readClaudeCode(
   claudeHome = process.env.CLAUDE_HOME || join(home(), '.claude'),
-  claudeJson = process.env.CLAUDE_CONFIG || join(home(), '.claude.json')
+  claudeJson = claudeConfigPath()
 ): ClaudeCodeFragment | null {
   if (!existsSync(claudeJson) && !existsSync(claudeHome)) return null;
 
@@ -101,19 +125,15 @@ export function readClaudeCode(
     observed: {},
   };
 
-  const collectMcp = (servers: Record<string, any> | undefined) => {
-    for (const [name, server] of Object.entries<any>(servers || {})) {
-      if (fragment.mcp[name]) continue;
-      fragment.mcp[name] = {
-        type: server?.url || server?.type === 'http' || server?.type === 'sse' ? 'remote' : 'local',
-        command: server?.command ? [server.command, ...(server.args || [])].flat() : undefined,
-        enabled: server?.enabled !== false,
-      };
-    }
-  };
-  collectMcp(cfg.mcpServers);
+  for (const { name, server } of mcpServersIn(cfg)) {
+    if (fragment.mcp[name]) continue;
+    fragment.mcp[name] = {
+      type: server?.url || server?.type === 'http' || server?.type === 'sse' ? 'remote' : 'local',
+      command: server?.command ? [server.command, ...(server.args || [])].flat() : undefined,
+      enabled: server?.enabled !== false,
+    };
+  }
   const projects = Object.values<any>(cfg.projects || {});
-  for (const project of projects) collectMcp(project?.mcpServers);
 
   const agentsDir = join(claudeHome, 'agents');
   if (existsSync(agentsDir)) {

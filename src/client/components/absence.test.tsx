@@ -92,6 +92,7 @@ const unstatedNode: Item = {
     authority: undefined,
     failures: undefined,
     blocks: undefined,
+    carry: undefined,
   },
 };
 

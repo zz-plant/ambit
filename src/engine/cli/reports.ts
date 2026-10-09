@@ -14,6 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { shellQuote } from '../../shared/shell.ts';
+import { formatCount } from '../../shared/format.ts';
 import { ENGINE_DIR, loadTechTree } from '../paths.ts';
 import { findBottlenecks, singlePointsOfFailure } from '../inference.ts';
 import { ledgerHistory, ledgerSince } from '../ledger.ts';
@@ -767,6 +768,79 @@ function renderImpact(report: ImpactReport, c: Palette = C): string[] {
   return lines;
 }
 
+/**
+ * `ambit weigh` as a person reads it: what each runtime carries into every
+ * session, then each server heaviest first, then what the ledger never saw
+ * called, which is the line that wants a decision and carries the `›`.
+ * `--json` gets the report unchanged.
+ */
+function renderCarry(report: any, c: Palette = C): string[] {
+  const head = 'What your loadout carries';
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}${head}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(head.length)}${c.reset}`,
+  ];
+  const tokens = (n: number) => formatCount(n);
+  const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+
+  if (report.empty) lines.push(`${GUTTER}Nothing weighed yet.`);
+  const runtimes: any[] = report.runtimes ?? [];
+  const width = Math.max(0, ...runtimes.map(r => String(r.runtime).length));
+  runtimes.forEach((r, i) => {
+    const what = i === 0 ? ' of tool lists, every session' : '';
+    lines.push(
+      `${GUTTER}${String(r.runtime).padEnd(width)}  about ${c.bold}${tokens(r.tokens)}${c.reset} tokens${what} ${c.grey}· ${plural(r.servers, 'server')}${c.reset}`
+    );
+  });
+
+  const servers: any[] = report.servers ?? [];
+  if (servers.length) {
+    lines.push('');
+    const nameWidth = Math.max(...servers.map(s => String(s.name).length));
+    const sizeWidth = Math.max(...servers.map(s => tokens(s.tokens).length));
+    for (const s of servers) {
+      const top = s.heaviest?.[0];
+      const heaviest =
+        top && s.tools > 1
+          ? ` ${c.grey}· heaviest: ${top.name} (${tokens(top.tokens)})${c.reset}`
+          : '';
+      // Just weighed needs no date; one this run could not reach shows how old its figure is.
+      const when = report.weighed_now?.includes(s.name) ? undefined : ago(s.measuredAt);
+      lines.push(
+        `${GUTTER}${String(s.name).padEnd(nameWidth)}  ${tokens(s.tokens).padStart(sizeWidth)}  ${c.grey}${plural(s.tools, 'tool')}${when ? `, weighed ${when}` : ''}${c.reset}${heaviest}`
+      );
+    }
+  }
+
+  const notCalled: string[] = report.not_called?.servers ?? [];
+  if (notCalled.length) {
+    const weight = new Map(servers.map(s => [s.name, s.tokens]));
+    const named = notCalled.map(n => `${n} ${c.grey}(${tokens(weight.get(n) ?? 0)})${c.reset}`);
+    lines.push(
+      '',
+      `  ${c.accent}${c.bold}›${c.reset} ${c.bold}Carried, not called in ${report.not_called.days} days${c.reset}  ${named.join(', ')}`
+    );
+  }
+  const notWeighed: any[] = report.not_weighed ?? [];
+  if (notWeighed.length) {
+    lines.push('', `${GUTTER}${c.yellow}Not weighed${c.reset}`);
+    for (const n of notWeighed) lines.push(`${GUTTER}  ${n.name}  ${c.grey}${n.reason}${c.reset}`);
+  }
+  const never: string[] = report.never_weighed ?? [];
+  if (never.length && !report.weighed_now) {
+    lines.push(
+      '',
+      `${GUTTER}${c.grey}Never weighed  ${never.join(', ')} · ambit weigh tries each local one${c.reset}`
+    );
+  }
+  if (report.empty && !notWeighed.length)
+    lines.push(`${GUTTER}${c.grey}${report.meaning}${c.reset}`);
+  if (report.note) lines.push('', `${GUTTER}${c.grey}${report.note}${c.reset}`);
+  lines.push('');
+  return lines;
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -818,6 +892,7 @@ export {
   briefReport,
   renderBrief,
   renderImpact,
+  renderCarry,
   renderPlan,
   evidenceReport,
   statusReport,

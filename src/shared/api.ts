@@ -180,6 +180,29 @@ export interface TreeItemMeta {
   people?: string[];
   /** The devices its providers run on, by name. */
   devices?: string[];
+  /**
+   * What its tool list costs in context every session, as `ambit weigh` last
+   * measured it. Absent when it has never been weighed, which is not a weight
+   * of zero.
+   */
+  carry?: ToolCarry;
+}
+
+/** One tool server's weighed listing. */
+export interface ToolCarry {
+  /** An estimate at four characters a token. */
+  tokens: number;
+  tools: number;
+  measuredAt: string;
+  /** The runtimes whose configs carry it, by label. */
+  runtimes: string[];
+  /** Its heaviest tools, at most three. */
+  heaviest: { name: string; tokens: number }[];
+  /**
+   * Calls the ledger recorded in the last thirty days. Absent when it recorded
+   * no call to anything in that window, since a zero would then say nothing.
+   */
+  calls?: number;
 }
 
 /**

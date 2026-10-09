@@ -37,6 +37,7 @@ import { auditStream } from './audit.ts';
 import { proposalHash } from './approval.ts';
 import type { CapabilityRow } from './rows.ts';
 import { storedTags } from './seed/structure.ts';
+import { carryById } from './weight.ts';
 import {
   type AuthorityLadder,
   AUTHORITY_MODES,
@@ -216,6 +217,10 @@ export function techTreeView(db: Db): TechTreeResponse {
     /* no curated tree: nothing is derived, and nothing is marked */
   }
 
+  // What each tool server's list weighed when `ambit weigh` last asked it.
+  // Read only: the server never starts a tool server to find out.
+  const carry = carryById(db);
+
   const stateById = new Map<string, string>(caps.map(c => [c.id, c.state]));
   const hardPrereqs = new Map<string, string[]>();
   for (const d of deps) {
@@ -265,6 +270,7 @@ export function techTreeView(db: Db): TechTreeResponse {
       structure: joint.get(c.id)?.structure,
       people: joint.get(c.id)?.people,
       devices: joint.get(c.id)?.devices,
+      carry: carry.get(c.id),
     },
   }));
 

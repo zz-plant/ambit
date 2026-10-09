@@ -65,6 +65,8 @@ Every capability reached moves the frontier, and that changes what is a next ste
 
 **The edge is an envelope.** An aircraft's flight envelope is the range of speed, altitude and load it is known to fly safely in. The frontier is that kind of edge for your loadout: what it reaches, with anything that has failed its check taken out, so the edge is one you can lean on. Failed instruments are handled as a cockpit handles them: the gauge is flagged, never left showing a zero the pilot might fly on. A capability whose check fails stays on the map, marked as failing, and is out of every plan until it passes again.
 
+**A loadout has a weight.** Every tool server a runtime starts puts its whole tool list into the agent's context before the first message, called or not, so each server added is carried into every session. `ambit weigh` measures it: each local server's list in tokens, each runtime's total, and, once the ledger has a few weeks of calls, the servers carried and never called. My Setup prints the same figures beside each tool server.
+
 For anyone who has seen *Neon Genesis Evangelion*, the show has this picture with more parts in it. A pilot does not drive an Eva; they sync with it, and what the two can do together is more than either alone. That is why a list of the tools you own says so little: the reach is in how they combine and how well they answer.
 
 Some of the picture carries over:

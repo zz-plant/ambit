@@ -22,10 +22,8 @@ import { ledgerSince } from './ledger.ts';
 import { nextSteps } from './next.ts';
 import { council, councilLines } from './council.ts';
 import { signalReport } from './failures.ts';
-import { FAILING_SQL, REACHED_SQL, graphCounts, notSeeded } from './vocabulary.ts';
+import { CHARS_PER_TOKEN, FAILING_SQL, REACHED_SQL, graphCounts, notSeeded } from './vocabulary.ts';
 
-/** Roughly four characters to a token, which is close enough to hold a budget. */
-const CHARS_PER_TOKEN = 4;
 const TOKEN_BUDGET = 1200;
 
 /** When this environment was last briefed, so "since" means something. */

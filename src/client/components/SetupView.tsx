@@ -3,6 +3,7 @@ import { Journey } from './Journey';
 import { useEffect, useMemo, useState } from 'react';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
+import { carryDetail, carryFigure, carryOf, runtimeCarry, runtimeCarryLine } from '../utils/carry';
 import { trailOf, verifyCommand } from '../utils/checkHistory';
 import type { Item } from '../utils/configImporter';
 import { canSwitchMcp, flipMcp } from '../utils/configSwitch';
@@ -173,6 +174,9 @@ export function SetupView({ onShow }: SetupViewProps) {
   // Whether any row can be switched, so the note about what a switch does is
   // written only where there is a switch to explain.
   const anySwitch = entries.some(i => canSwitchMcp(i, backend, configMcp));
+  // What each runtime carries into every session, over every tool server the
+  // configs declare and not only the ones a filter leaves showing.
+  const carried = runtimeCarry(entries.filter(i => i.type === 'mcp-server'));
 
   // What the list has to say, before anyone reads a row: what is failing, and
   // what is enabled but puts nothing on the map, which is either dead weight or
@@ -472,6 +476,19 @@ export function SetupView({ onShow }: SetupViewProps) {
                 <h3 className="setup-group-title">
                   {'term' in g && g.term ? <Term name={g.term}>{g.label}</Term> : g.label}
                   <span className="setup-group-n">{g.rows.length}</span>
+                  {g.type === 'mcp-server' && carried.length > 0 && (
+                    <span className="setup-group-carry">
+                      <Term name="carry-weight">Carry weight</Term> {runtimeCarryLine(carried)}
+                    </span>
+                  )}
+                  {/* Nothing weighed yet, on a machine where it can be: the
+                      page cannot start a server, so it names the command. */}
+                  {g.type === 'mcp-server' && !carried.length && backend === 'live' && !demo && (
+                    <span className="setup-group-carry">
+                      <Term name="carry-weight">Carry weight</Term>: <code>ambit weigh</code>{' '}
+                      measures it
+                    </span>
+                  )}
                 </h3>
                 <div className="setup-rows">
                   {g.rows.map(item => {
@@ -482,6 +499,7 @@ export function SetupView({ onShow }: SetupViewProps) {
                     const trail = trailOf(item, evidence?.failing ?? proves);
                     const failing = evidence?.tone === 'error';
                     const verifyCmd = verifyCommand(trail?.node ?? evidence?.failing?.[0] ?? item);
+                    const carry = carryOf(item);
                     const provesNothing =
                       placed &&
                       item.type === 'mcp-server' &&
@@ -555,6 +573,14 @@ export function SetupView({ onShow }: SetupViewProps) {
                             {evidence?.text ?? ''}
                           </span>
                           {trail && <HistoryStrip runs={trail.runs} of={trail.node.name} />}
+                          {carry && (
+                            <span
+                              className={`setup-row-weight ${carry.calls === 0 ? 'is-idle' : ''}`}
+                              title={carryDetail(carry)}
+                            >
+                              {carryFigure(carry)}
+                            </span>
+                          )}
                           {/* Where a link to the reason will go. Until the page
                               can show why, the way to find out is the command,
                               and the page cannot run a check. */}

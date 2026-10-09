@@ -177,6 +177,19 @@ function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }
 }
 
 /**
+ * Characters to a token, for every token count the engine states.
+ *
+ * Roughly four, which is close enough to hold a budget and to compare one
+ * tool server's listing with another's. The briefing caps itself with it and
+ * `ambit weigh` estimates with it, so the two figures are on one scale; a
+ * tokenizer would be more exact and a different one per model.
+ */
+const CHARS_PER_TOKEN = 4;
+
+/** A token estimate from a length in characters, rounded up. */
+const tokensOf = (chars: number): number => Math.ceil(chars / CHARS_PER_TOKEN);
+
+/**
  * What a person is told when the graph has never been built here.
  *
  * There were four of these, offering three different fixes — the CLI seeded
@@ -283,4 +296,6 @@ export {
   ACT_OUTCOMES,
   RUN_SUCCEEDED,
   RUN_FAILED,
+  CHARS_PER_TOKEN,
+  tokensOf,
 };

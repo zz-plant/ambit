@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### What each tool server costs in context: `ambit weigh`
+
+A runtime puts every tool server's whole tool list into the model's context at the start of each session, called or not, and nothing said how much that was. `ambit weigh` starts each local server the user-level configs declare, asks for its tools over MCP, records the list's size in tokens and stops the server. The report is per runtime, since each carries its own servers, lists each server heaviest first with its heaviest tools, and, once the ledger has recorded calls, names the servers carried into every session and never called in thirty days. My Setup prints each server's figure and each runtime's total under the new glossary term Carry weight, and a server's panel says the same. Because a server is a command, this is the one place Ambit starts what a config declares: only when typed, never from the server, never from a project's committed config, and never a remote server. SECURITY.md and AGENTS.md state the exception and its limits.
+
 ### One picture for the loadout: pilot and machine
 
 The docs drew on four families of metaphor at once. `docs/loadout.md` now holds one: the loadout is the machine and you are its pilot, with a hangar (the map, My Setup, Proposals) and a cockpit (the briefing, `ambit_can`, the gate), and the frontier read as a flight envelope. The section was called "Stepping in", which the attention ledger also uses for a person intervening, so it is "Pilot and machine" now.

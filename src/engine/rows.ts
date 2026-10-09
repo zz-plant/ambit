@@ -249,6 +249,17 @@ export type CatalogRow = {
   source: string;
 };
 
+export type ToolListingRow = {
+  capability_id: string;
+  tools: number;
+  chars: number;
+  /** `[[name, chars], ...]` as JSON, heaviest first. */
+  per_tool: string | null;
+  /** The runtimes whose configs carry the server, as a JSON array. */
+  runtimes: string | null;
+  measured_at: string;
+};
+
 /**
  * The loose row: what a query gets when it declares nothing. It is the type
  * the engine had everywhere before rows were named, kept as the default so a
