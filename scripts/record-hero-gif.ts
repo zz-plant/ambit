@@ -164,7 +164,13 @@ const SANDBOX = {
   AMBIT_DB: dbPath,
   OPENCODE_CONFIG: configPath,
   INFRA_MANIFEST: join(cfgDir, 'infrastructure.json'),
+  // Set in the shell, either would override HOME and record its models.
+  OLLAMA_MODELS: join(home, '.ollama', 'models'),
+  AMBIT_LMSTUDIO_MODELS: join(home, '.lmstudio', 'models'),
   AMBIT_APPROVAL_KEY: 'hero-recording-key',
+  // A CLAUDE_CONFIG_DIR, CODEX_HOME or AMP_DATA_DIR in the recorder's own shell outlives the
+  // HOME above, and a recording must never carry someone's session logs.
+  AMBIT_NO_LEDGER: '1',
 };
 
 // `node` on PATH may be a version-manager shim that needs an environment this

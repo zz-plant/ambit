@@ -39,8 +39,9 @@ const SCHEMA_VERSION = 1;
  * `key` names the columns that make a row the same row on both machines, and
  * a row missing any of them is skipped, except the ones `nullable` names: those
  * may be empty, and an empty one matches an empty one.
- * `mutable` tables update in place when the incoming row is newer; the rest are
- * append-only observations, and a matching key means it is already here.
+ * `mutable` tables update in place when the incoming row is newer by that
+ * column (later as text, or larger as a number); the rest are append-only
+ * observations, and a matching key means it is already here.
  *
  * Two capability columns stay behind on purpose. `last_seen_at` is when this
  * machine last got an answer from a device or service the manifest names: a
@@ -174,14 +175,35 @@ const TABLES: Array<{
   },
   {
     table: 'resource_consumption',
-    columns: ['run_id', 'resource_id', 'kind', 'quantity', 'unit', 'cost_cents', 'recorded_at'],
+    columns: [
+      'run_id',
+      'resource_id',
+      'kind',
+      'quantity',
+      'unit',
+      'cost_cents',
+      'recorded_at',
+      'written_at',
+    ],
     // A session's tokens are several rows written in the same second, one per
     // model and part, so run, time and kind alone made them one row, and an
     // import kept the first of them. A resource with no unit is still a row.
-    key: ['run_id', 'recorded_at', 'kind', 'resource_id', 'unit'],
-    nullable: ['resource_id', 'unit'],
+    // A token row is one hour of use, and a priced and an unpriced row can
+    // share that hour, so when each was first written tells them apart; a row
+    // written before that column existed has none, and matches one with none.
+    // An hour still in use grows its row, so a row that arrives larger than
+    // the one held is the same row read later, and takes its place.
+    key: ['run_id', 'recorded_at', 'kind', 'resource_id', 'unit', 'written_at'],
+    nullable: ['resource_id', 'unit', 'written_at'],
+    mutable: 'quantity',
   },
 ];
+
+/** Whether an incoming marker is past the one held: by value for numbers, as text otherwise. */
+function newer(incoming: unknown, held: unknown): boolean {
+  if (typeof incoming === 'number' && typeof held === 'number') return incoming > held;
+  return String(incoming) > String(held);
+}
 
 /** Columns a table actually has, so an older database exports what it can. */
 function presentColumns(db: Db, table: string, wanted: string[]): string[] {
@@ -252,6 +274,9 @@ function exportSync(db: Db, path?: string) {
       'sandboxes',
       'when each device and service was last seen',
       'what each tool server weighed',
+      // How far this machine's session logs were read. The runs and tokens
+      // they fed travel; the cursor names files only this machine has.
+      'session log cursors',
     ],
   };
 
@@ -322,13 +347,10 @@ function importSync(db: Db, path?: string) {
       }
       const existing = find.get(...(keyValues as any[]));
       if (existing) {
-        // Only capabilities are mutable, and only forward in time: an older
-        // machine must not undo what a newer one recorded.
-        if (
-          spec.mutable &&
-          row[spec.mutable] &&
-          String(row[spec.mutable]) > String(existing.marker)
-        ) {
+        // Capabilities and token rows are mutable, and only forward: an older
+        // machine must not undo what a newer one recorded, and an hour read
+        // earlier must not shrink one read since.
+        if (spec.mutable && row[spec.mutable] && newer(row[spec.mutable], existing.marker)) {
           const setCols = cols.filter(c => !spec.key.includes(c));
           db.prepare(
             `UPDATE ${spec.table} SET ${setCols.map(c => `${c} = ?`).join(', ')} WHERE ${where}`

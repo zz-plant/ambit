@@ -25,7 +25,7 @@ import { budgetStanding } from './budgets.ts';
 import { installText } from './catalog.ts';
 import { frontierSeries, ledgerSince } from './ledger.ts';
 import { machineModes } from './machines.ts';
-import { runTimeline, tokenUsage, unmappedUse } from './telemetry.ts';
+import { runTimeline, tokenUsage, unmappedUse, usageWindows } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { council } from './council.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
@@ -815,6 +815,9 @@ export function loopView(db: Db): LoopResponse {
 
   const interventions = digest.interventions ?? 0;
   const tokens = tokenUsage(db, LOOP_WINDOW_DAYS);
+  // Each runtime's five-hour window under way, beside the month's figure; a
+  // window is under way only when something was used in the last five hours.
+  const current = (usageWindows(db).windows ?? []).filter(w => w.current);
 
   return {
     source: 'ledger',
@@ -824,6 +827,7 @@ export function loopView(db: Db): LoopResponse {
     demand: loopDemand(db),
     council: council(db),
     tokens,
+    ...(current.length ? { windows: current } : {}),
     // The ledger is what fills this page. With nothing in it the figures would
     // all be zero, which reads as "you waste no time" rather than "nothing has
     // been recorded" — so the page says which it is instead of drawing it.

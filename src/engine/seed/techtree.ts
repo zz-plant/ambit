@@ -5,7 +5,7 @@
  * compound capabilities and the prerequisites between them. It is what makes a
  * fresh graph a map with somewhere to go rather than an inventory.
  */
-import { placeOnTree } from '../../shared/placement.ts';
+import { detects, placeOnTree } from '../../shared/placement.ts';
 import { loadTechTree } from '../paths.ts';
 import type { Db } from '../db.ts';
 import { edgeWriter } from './writers.ts';
@@ -133,4 +133,4 @@ function seedTechTree(db: Db, insert: any): number {
   return count;
 }
 
-export { seedTechTree };
+export { detects, seedTechTree };

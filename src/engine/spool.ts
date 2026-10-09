@@ -19,10 +19,11 @@
  * call is a work event and a failure signal, which
  * src/engine/failures.ts classifies: this only reports what Claude Code said
  * (AGENTS.md rule 8). A permission request is a person asked, recorded as
- * asked, since no hook says how they answered. When a session ends, its
- * token counts are read from its transcript, per model. A price is applied
- * only where a person declared one for the model, and then the session's cost
- * is a spend against the budget on what the model is a use of, if one is set.
+ * asked, since no hook says how they answered. A session's token counts are
+ * read from its transcript as it grows (session-logs.ts), and the whole of it
+ * again when the session ends, per model and hour, each token once. A price is
+ * applied only where a person declared one for the model, and then the cost is
+ * a spend against the budget on what the model is a use of, if one is set.
  *
  * Cursor's hook (plugins/cursor/ambit-ledger.mjs) appends to the same file,
  * each line marked `src: "cursor"`, and a Cursor conversation is a run of its
@@ -31,18 +32,11 @@
  */
 import { appendFileSync, existsSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { spoolPath } from '../shared/db-path.ts';
-import { recordSpend } from './assurance.ts';
 import type { Db } from './db.ts';
-import { modelPrice, spentOn, type TokenPart } from './economics.ts';
+import { recordTokens } from './economics.ts';
 import { captureFailure } from './failures.ts';
-import {
-  addEvent,
-  beginRun,
-  endRun,
-  recordIntervention,
-  recordResource,
-  recordToolUse,
-} from './telemetry.ts';
+import { transcriptTokens } from './session-logs.ts';
+import { addEvent, beginRun, endRun, recordIntervention, recordToolUse } from './telemetry.ts';
 
 /** One line of the spool, as the hook scripts write it. */
 interface SpoolLine {
@@ -73,7 +67,7 @@ interface SpoolLine {
   int?: boolean;
   /** SessionEnd's reason, or Cursor's sessionEnd reason. */
   why?: string;
-  /** SessionEnd's transcript_path, read here for the session's token counts. */
+  /** SessionEnd's transcript_path, read at the session's end for its token counts. */
   tp?: string;
   /**
    * Written by the engine, never by the hook: on a PreToolUse line put back for
@@ -295,106 +289,6 @@ function cursorLine(db: Db, line: SpoolLine, run: string, at?: string): boolean 
 }
 
 /**
- * A session's tokens, per model, from its transcript. Claude Code's hooks carry
- * no usage or cost, and the transcript does: each assistant message records its
- * `usage`, once on every line its content spans, so a message is counted once
- * by its id. Only the counts and the model name are read. The transcript states
- * no price, and none is guessed here: a guessed one would be a number the
- * ledger could not stand behind (AGENTS.md rule 16).
- */
-function tokensOf(
-  transcript: string
-): Map<string, { input: number; cached: number; output: number }> {
-  const totals = new Map<string, { input: number; cached: number; output: number }>();
-  const seen = new Set<string>();
-  for (const raw of readFileSync(transcript, 'utf8').split('\n')) {
-    if (!raw.includes('"usage"')) continue;
-    let line: any;
-    try {
-      line = JSON.parse(raw);
-    } catch {
-      continue;
-    }
-    const message = line?.message;
-    const usage = message?.usage;
-    if (!usage || typeof message?.model !== 'string') continue;
-    const id = message.id ?? line.requestId ?? line.uuid;
-    if (id) {
-      if (seen.has(id)) continue;
-      seen.add(id);
-    }
-    // Cache reads apart from fresh input: in a long session they are most of
-    // the tokens and a fraction of the price, and one sum would hide that.
-    const t = totals.get(message.model) ?? { input: 0, cached: 0, output: 0 };
-    t.input += (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
-    t.cached += usage.cache_read_input_tokens || 0;
-    t.output += usage.output_tokens || 0;
-    totals.set(message.model, t);
-  }
-  return totals;
-}
-
-/** The unit each part of a session's tokens is recorded under. */
-const UNIT: Record<TokenPart, string> = {
-  input: 'input tokens',
-  cached: 'cache read tokens',
-  output: 'output tokens',
-};
-
-/**
- * Add a session's tokens to its run, and what they cost where a price is
- * declared, once.
- *
- * A resumed session ends again with a longer transcript, whose totals are of
- * the whole of it, and a spool can carry the same end twice. So only what the
- * run has not recorded yet is written: the totals less what its earlier rows
- * already hold, which is nothing when the transcript has not grown. Each row is
- * priced when it is written, at the price declared then (`modelPrice`), and
- * never again, so a price declared later does not reach back to sessions that
- * ran before it and a second read cannot count a session twice. A model with
- * no price leaves `cost_cents` empty, which says undeclared, never zero.
- *
- * The cost is a spend on the capability the model's tokens are a use of
- * (`spentOn`, Hosted Inference for a hosted model), recorded by `recordSpend`
- * against the unscoped budget on it, since a session names no target. With no
- * such budget it writes nothing, and no row is made for it (AGENTS.md rule 13).
- */
-function recordTokens(db: Db, run: string, transcript?: string) {
-  if (!transcript || !existsSync(transcript)) return;
-  const totals = tokensOf(transcript);
-  if (!totals.size) return;
-  const held = new Map<string, number>();
-  for (const r of db
-    .prepare(
-      `SELECT resource_id, unit, SUM(quantity) AS quantity FROM resource_consumption
-       WHERE run_id = ? AND kind = 'tokens' GROUP BY resource_id, unit`
-    )
-    .all<{ resource_id: string; unit: string; quantity: number }>(run)) {
-    held.set(`${r.resource_id}|${r.unit}`, r.quantity);
-  }
-  const spend = new Map<string, number>();
-  for (const [model, t] of totals) {
-    const resource = `model:${model}`;
-    const price = modelPrice(db, model);
-    let cents = 0;
-    for (const part of Object.keys(UNIT) as TokenPart[]) {
-      const fresh = t[part] - (held.get(`${resource}|${UNIT[part]}`) ?? 0);
-      if (!(fresh > 0)) continue;
-      const cost = price ? (fresh * price[part]) / 1_000_000 : undefined;
-      recordResource(db, run, resource, 'tokens', {
-        quantity: fresh,
-        unit: UNIT[part],
-        costCents: cost,
-      });
-      cents += cost ?? 0;
-    }
-    const capability = cents > 0 ? spentOn(db, model) : null;
-    if (capability) spend.set(capability, (spend.get(capability) ?? 0) + cents);
-  }
-  for (const [capability, cents] of spend) recordSpend(db, capability, 'execute', '', cents);
-}
-
-/**
  * Read the spool into the ledger and remove it. Returns how many lines were
  * recorded, skipped, and put back to wait for the end of a call still running.
  * The file is renamed before it is read, so a hook that appends meanwhile
@@ -485,7 +379,15 @@ function ingestSpool(
             break;
           case 'SessionEnd':
             endRun(db, run, line.why || 'ended', undefined, at);
-            recordTokens(db, run, typeof line.tp === 'string' ? line.tp : undefined);
+            // The whole transcript, per hour, by the rule the reading of it
+            // as it grows follows (session-logs.ts), and priced and spent by
+            // the rule every token reader shares (`recordTokens`): what that
+            // reading already recorded is not recorded again.
+            recordTokens(
+              db,
+              run,
+              transcriptTokens(typeof line.tp === 'string' ? line.tp : undefined)
+            );
             break;
           default:
             skipped++;

@@ -14,6 +14,47 @@ A runtime puts every tool server's whole tool list into the model's context at t
 
 The docs drew on four families of metaphor at once. `docs/loadout.md` now holds one: the loadout is the machine and you are its pilot, with a hangar (the map, My Setup, Proposals) and a cockpit (the briefing, `ambit_can`, the gate), and the frontier read as a flight envelope. The section was called "Stepping in", which the attention ledger also uses for a person intervening, so it is "Pilot and machine" now.
 
+### Three merged pull requests that never reached main
+
+Pull requests #97, #98 and #99 were each merged into a branch that had itself already been merged into main, so their work was reviewed, merged and never released: the status line, the Docker executor, `goal --spec`, session-log tokens, the four new runtimes, local models from disk, five-hour usage windows. The entries below are theirs, as written then, and land now. `scripts/check-reach.ts` is what would have caught it, and runs in CI from here on: it fails a pull request whose base is not on its way to main, and on each push to main and once a day it fails if a merged one never got there. The push is the moment that matters, since it is when the bottom of a stack merges and the next pull request up is left pointing at a branch nothing will merge again.
+
+### Usage in five-hour windows, as it happens
+
+Claude Code's token counts arrived only when a session ended, from its transcript, so a long session counted for nothing until it closed, and every agent's tokens were kept as one total per session, so no one could say how much the last few hours had used. Claude Code transcripts are now read as they grow, with or without the plugin, and every agent's tokens are kept per hour. `ambit usage --windows` (and `ambit_usage` with `windows`) reports the five-hour windows Claude Code and Codex plans reset in, counted as ccusage's blocks count them: tokens per model, the cost where a price is declared, and the time left in the current one. Time & cost shows the current window beside the month. Ambit knows no plan's limit, so it shows none, and no share of one. Only counts, model names, message ids and times are read from a transcript, and `AMBIT_NO_LEDGER=1` stops the reading.
+
+### An approval names the command, and the control plane can run one
+
+The control plane gains a real environment adapter, chosen only by `AMBIT_ADAPTER=docker` or `--adapter=docker`: an approved step's command runs in a throwaway container with no network, no image pull, a read-only root, no Linux capabilities, an unprivileged user, resource limits, and no host mount but a named working directory, read-only. A step reaches the network only through a grant for the `network` action on its capability. When Docker cannot run the step the control plane refuses, and never falls back to the simulator; every span names its adapter.
+
+Running something real exposed two gaps the simulator had hidden. An approval named a proposal and its capability, not the command, so whoever held one chose what ran: a blocked call's command is now written into the step the person signs, and a retry carrying any other command is refused. And break-glass, the agent's own say-so, could stand in for a person and outrank a forbidden grant: it never outranks a refusal now, and with the Docker adapter it runs nothing at all.
+
+### A status line, and a faster gate
+
+`ambit statusline` is a line for Claude Code's status bar: what is failing, what is waiting on you, and how much is verified, in at most 60 characters, nothing when there is nothing to say. It opens the graph read-only and writes nothing, and answers in about 45 ms on an installed copy. `ambit connect claude-code --statusline` sets it where no status line is set and never replaces one; the README shows how to print it beside a status line you already have.
+
+`ambit gate` runs before every Claude Code tool call, and the wrapper started the whole engine to answer it. It now answers in its own process, as the status line does: about 120 ms a call on an installed copy, down from about 180, with the same answer byte for byte.
+
+### What a spec needs
+
+`ambit goal --spec <dir|tasks.md>` reads a Spec Kit feature (its `tasks.md`, and the plan's dependencies, storage and testing) or an OpenSpec change, routes each task the way `ambit goal` routes a sentence, and reports the capabilities the spec needs, which are reached, what stands in the way and how long closing it takes, and the tasks that route nowhere. The spec is read as data: only markdown is opened, code blocks and links are dropped, and nothing in it runs. `ambit_goal` takes the same as an optional `spec`.
+
+`ambit goal` also stopped matching a goal phrase inside a word: "rag" matched "coverage", "ship" matched "relationship" and "ci" matched "specific". A phrase now has to start a word, and "deploy" still matches "deployment".
+
+### Tokens from Codex, OpenCode and Amp, with nothing installed
+
+Only Claude Code sessions reached the spend meter. Ambit now reads the session logs Codex, OpenCode and Amp already keep, the same records ccusage reports from: each session's id, model names, times and token counts, never what a session said or ran. Each session is one run, counted once however often its log is read, and a read that finds nothing new costs a stat per file. Time & cost names which agent each count came from, and a declared price makes those tokens a spend on Hosted Inference. Tokens from before a budget's current period are priced and not spent against it, so a first read of months of history cannot use up this month. `ambit usage --refresh` rereads every log, and `AMBIT_NO_LEDGER=1` stops the reading.
+
+### Copilot CLI, Amp, Goose and Kiro
+
+Discovery reads four more runtimes, each from the location its own documentation gives: Copilot CLI's `~/.copilot/mcp-config.json`, Amp's `~/.config/amp/settings.json` (under the one dotted key `amp.mcpServers`), Goose's `~/.config/goose/config.yaml` (its extensions, read by a small reader for the documented shape; the secrets under `envs` are left behind), and Kiro's `~/.kiro/settings/mcp.json`. `ambit connect` can register Ambit in Kiro, whose file has Cursor's shape; the other three would each need a writer of their own. `ambit doctor` kept its own list of runtimes and knew seven of them; it now takes them from discovery, so it sees all sixteen and reads whether Ambit is connected in each file's own shape.
+
+### Local models, from disk
+
+Discovery lists the models Ollama and LM Studio keep on disk, by folder and file name only: no model file is opened and no model server is asked, so seeding still opens no socket. They reach Local Runtime, Local Tool Calling, Extended Context and Local Embeddings, never Hosted Inference, and are never priced as hosted. Two patterns that read the new names wrongly were fixed: an embedding model such as qwen3-embedding no longer counts as a model that calls tools, and bge-m3, all-minilm and bge-small reach Local Embeddings.
+
+### The servers most people install, recognised
+
+A filesystem MCP server now provides File Editing, and the agent memory tools (claude-mem, cognee, Letta, Graphiti) Persistent Memory; mem0 and anything named memory already did. A test holds the curated tree to the servers most developers install, keyed as their own READMEs key them. Context7, Notion, Figma and Sequential Thinking reach only Tool Protocol, since the tree models nothing they provide.
 ### Your own config, placed on the map in the demo
 
 The demo's tour ends on "Now map yours", and a pasted config used to end on a list of its entries and a note that placing them on the map took the engine, so the question the tour had just raised, what one more step would open, went unanswered for the setup the visitor cared about. The page now places a pasted config on the curated tree in the tab, by the same rule the engine seeds with (`placeOnTree` in `src/shared/placement.ts`, which `seedTechTree` now calls too), and a test holds the two placements equal. A card says how much of the tree the setup reaches and offers the three next steps that open the most, lighting on the map what each one would open, with what the tab cannot know and the command that does. A visitor with no file at hand can tick the servers they run instead. `~/.claude.json` is recognised as Claude Code's, servers under a project included, and the sample's proposals, history and ledger leave when a config of the visitor's arrives. The tour's first card names what the next step opens in place of counting it.

@@ -182,7 +182,10 @@ export type ResourceConsumptionRow = {
   quantity: number;
   unit: string | null;
   cost_cents: number | null;
+  /** A token row's: the start of the hour the tokens were used in. */
   recorded_at: string;
+  /** When the row was first written; null on a row from before token rows were kept per hour. */
+  written_at: string | null;
 };
 
 export type OutcomeRow = {
@@ -258,6 +261,16 @@ export type ToolListingRow = {
   /** The runtimes whose configs carry the server, as a JSON array. */
   runtimes: string | null;
   measured_at: string;
+};
+
+export type SessionLogCursorRow = {
+  path: string;
+  runtime: string;
+  size: number;
+  mtime_ms: number;
+  byte_offset: number;
+  state: string | null;
+  read_at: string;
 };
 
 /**

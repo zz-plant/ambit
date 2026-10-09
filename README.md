@@ -4,7 +4,7 @@
 
 **What you, your agents, and your machines can jointly do — and where your own time is going.**
 
-That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode and nine more agent runtimes into one local map of it, and shows how to widen it: what you can do now, what one more step would unlock, and which of what you have is configured but not actually working.
+That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode and [the other agent runtimes it knows](#get-started) into one local map of it, and shows how to widen it: what you can do now, what one more step would unlock, and which of what you have is configured but not actually working.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
@@ -68,13 +68,13 @@ The demo walks a sample setup in five steps: the next step worth taking and what
 
 | Way in | What it gives you |
 | :--- | :--- |
-| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code or OpenCode, and it is placed on the map in the tab, uploading nothing, with what one more step would open for it. No file at hand? Tick the servers you run. |
+| **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code, Copilot CLI, Kiro or OpenCode, and it is placed on the map in the tab, uploading nothing, with what one more step would open for it. No file at hand? Tick the servers you run. |
 | **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs, names what it found, and shows what one more step would open. That is the CLI, the MCP server and the map: `ambit web` serves the map on localhost from any install. `npm install -g ambit-cli` puts `ambit` on your path. |
 | **With the map** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the map the pictures on this page show. |
 | **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
 
-npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed and VS Code, and the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
+npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
@@ -97,7 +97,7 @@ Your agents, tools, credentials and machines are your loadout, and you are its p
 
 My Setup opens on a readout of these seven legs for your own loadout. [Your loadout, from A to B](./docs/loadout.md) walks them with the demo's numbers.
 
-Building a product alone? `ambit goal "launch my saas"` lists what stands between you and real users, in order, and [Building alone](./docs/solo.md) covers what an agent may do to production without asking you.
+Building a product alone? `ambit goal "launch my saas"` lists what stands between you and real users, in order, and [Building alone](./docs/solo.md) covers what an agent may do to production without asking you. Planning it with Spec Kit or OpenSpec? `ambit goal --spec specs/001-feature` asks the same of every task in the feature before an agent starts on it.
 
 ---
 
@@ -165,7 +165,7 @@ Everything above answers on a graph Ambit builds by itself. A second group (`att
 ```console
 $ ambit status
 
-    39 of 70 reached · 0 proven · 9 with a single provider
+    39 of 70 reached · 0 proven · 8 with a single provider
     ──────────────────────────────────────────────────────
     proven          0
   › unproven       15  11 provable now · 4 with no check
@@ -223,13 +223,17 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 
 Registered as an MCP server, Ambit lets an agent check what it can do before it tries, and plan around what is missing.
 
-An agent can try it before anyone registers anything: `ambit status` reads the agent configs on the machine and writes only Ambit's own file (`~/.local/share/ambit/graph.db`), changes no config, and sends nothing anywhere. Deleting that file undoes it. One command and what it found ("three of your servers are failing their checks") is usually the whole case for keeping it. [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) lists when an agent should suggest Ambit, what to run for each case, and when not to.
+An agent can try it before anyone registers anything: `ambit status` reads the agent configs on the machine, and the token counts in the session logs Claude Code, Codex, OpenCode and Amp keep, and writes only Ambit's own file (`~/.local/share/ambit/graph.db`), changes no config, and sends nothing anywhere. Deleting that file undoes it. One command and what it found ("three of your servers are failing their checks") is usually the whole case for keeping it. [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) lists when an agent should suggest Ambit, what to run for each case, and when not to.
 
 ### Claude Code
 
 The plugin is the one-step route: it registers the MCP server, reads the briefing at session start, and adds a skill Claude loads when you ask which MCP servers you have, why one is failing, what breaks if one goes, or what to set up next.
 
-It also records which tools each session ran and for how long, which failed and with what error, and when you were asked to approve one, so Time & cost, promotion and `ambit next` have something to read. A hook appends one line per event to `~/.local/state/ambit/claude-code.jsonl`: when it ran, the session, the tool's name and Claude Code's id for the call, never a tool's input or output. The next `ambit` command reads it into the graph and removes it, keeping only the line of a call still running. A call is timed from the hook before it to the hook after it, and one you were asked to approve is left untimed, since that span holds your wait. When a session ends, its token counts per model are read from its transcript; only the counts, since the transcript states no price. Declare one with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and each later session's tokens on that model are recorded as a spend against the budget on Hosted Inference, if one is set; a model with no price declared records none. Nothing leaves the machine; `AMBIT_NO_LEDGER=1` turns it off.
+It also records which tools each session ran and for how long, which failed and with what error, and when you were asked to approve one, so Time & cost, promotion and `ambit next` have something to read. A hook appends one line per event to `~/.local/state/ambit/claude-code.jsonl`: when it ran, the session, the tool's name and Claude Code's id for the call, never a tool's input or output. The next `ambit` command reads it into the graph and removes it, keeping only the line of a call still running. A call is timed from the hook before it to the hook after it, and one you were asked to approve is left untimed, since that span holds your wait. A session's token counts come from its transcript, plugin or not (below), and the transcript is read whole once more when the session ends. Nothing leaves the machine; `AMBIT_NO_LEDGER=1` turns it off.
+
+No agent needs a plugin for its token counts, since each keeps a log of its sessions: every `ambit` command, and the MCP server when it opens the graph, reads what changed in Claude Code's transcripts in `~/.claude/projects` (or `CLAUDE_CONFIG_DIR`), Codex's `~/.codex/sessions` and `archived_sessions` (or `CODEX_HOME`), OpenCode's `opencode.db` in `~/.local/share/opencode` (or `OPENCODE_DATA_DIR`), opened read-only, and Amp's `~/.local/share/amp/threads` (or `AMP_DATA_DIR`). From each session it keeps the session's id, the model, the hour each use was in, and the tokens by part; never a prompt, a reply, a file path, a command, or a tool's input or output. A session is one run with its tokens kept per hour, and reading its log again adds only what is new, so a session still running shows its tokens as it goes. Declare a price with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and tokens on that model recorded from then on, from any of the four, are a spend against the budget on Hosted Inference, if one is set; a model with no price declared records none. `ambit usage --refresh` reads every log again from the top, and `AMBIT_NO_LEDGER=1` stops this reading too.
+
+Claude Code and Codex plans reset in five-hour windows, and `ambit usage --windows` counts them as ccusage's `blocks` report does: a window starts at the hour of the first use after the last one ended and lasts five hours, each runtime's apart. Each window lists its tokens by model and part, its cost where a price is declared, and for the current one the time left; Time & cost shows the current window beside the month's tokens. Ambit knows no plan's limit, so it never shows a share of one or the tokens remaining.
 
 ```bash
 claude plugin marketplace add zz-plant/ambit
@@ -255,7 +259,20 @@ Ambit also publishes `ambit://briefing`, a resource a client reads on connect: w
 }
 ```
 
-The `PreToolUse` entry makes the gate binding in Claude Code. Before each tool call, `ambit gate` finds the capability the call exercises and answers: forbidden is a deny, asking first or having no grant yet is put to you, and anything allowed or unknown gets no answer, so Claude Code's own permissions decide. It can only narrow what Claude Code would do, never widen it, and it adds about a fifth of a second to each call. Run `ambit gate` in a terminal for the entry on its own.
+The `PreToolUse` entry makes the gate binding in Claude Code. Before each tool call, `ambit gate` finds the capability the call exercises and answers: forbidden is a deny, asking first or having no grant yet is put to you, and anything allowed or unknown gets no answer, so Claude Code's own permissions decide. It can only narrow what Claude Code would do, never widen it, and it adds about an eighth of a second to each call. Run `ambit gate` in a terminal for the entry on its own.
+
+`ambit statusline` is a line for Claude Code's status line, which Claude Code refreshes after every message: what is failing its check, how many proposals wait on your decision, and how many capabilities are verified, as in `! 1 failing: Browser Automation · › 2 proposals to decide`. A part with nothing to say is left out, so a quiet graph reads `12 verified`. It opens the graph read-only, writes nothing, and answers in about a twentieth of a second from an installed copy. A plugin cannot set a status line, so `ambit connect claude-code --statusline` adds it to `~/.claude/settings.json` when none is set there, keeping the file in `settings.json.bak`; one you already have is never replaced. By hand:
+
+```json
+{ "statusLine": { "type": "command", "command": "ambit statusline" } }
+```
+
+Claude Code runs one status line command. To keep yours and add Ambit's, save these two lines as a script, with your command in place of `npx ccstatusline`, and point `command` at the script:
+
+```bash
+input=$(cat)
+printf '%s  %s\n' "$(printf '%s' "$input" | npx ccstatusline)" "$(printf '%s' "$input" | ambit statusline)"
+```
 
 ### OpenCode
 
@@ -329,7 +346,7 @@ When an agent proposes a change over MCP, the **Proposals** panel reads it as a 
 
 Discovery reads your host configs into an embedded SQLite graph, and three surfaces read it back out: the CLI, the MCP server and the map. Discovery, verification and the work ledger write to the graph. Your agent configuration changes only through a proposal you approve, or through the map's switch for an entry that already exists, which cannot create one.
 
-Each client is read from its own standard config path, and every server stays attributed to the client that listed it. Two clients naming the same server is one capability with two providers, which is what stops Ambit counting one binary twice and calling the result redundancy.
+Each client is read from its own standard config path, and every server stays attributed to the client that listed it. Two clients naming the same server is one capability with two providers, which is what stops Ambit counting one binary twice and calling the result redundancy. Local models are read by name from the folders Ollama and LM Studio keep them in: no model server is asked, so one that is not running is found all the same. Each is filed under a `local` provider, which keeps it out of Hosted Inference and off the spend meter.
 
 Discovered capabilities are placed in a curated tree of nine eras: seven for the agent setup, from **Foundation** and **Model Access** through **Tool Use**, **Memory**, **Autonomy** and **Assurance** to **Sovereignty**, and two for the product it builds, **Product** (hosting, a production database, accounts, payments, email) and **Operations** (error tracking, analytics, uptime, backups, and **Launch Ready**, reached when the launch checklist is done). Because each capability records what it needs, Ambit works out what you can reach without taking a config file's word for it, which combos emerge from tools configured apart, and which near misses are one or two prerequisites from unlocking several others.
 
@@ -356,7 +373,11 @@ Ambit answers whether a step may run wherever it is asked, and the answer binds 
 
 Host-level agent tooling is a real attack surface, so the interceptor can stand between an agent and the shell. Before a tool call routed through it reaches your machine, the proxy in `src/control_plane/proxy.ts` checks three things: are this capability's prerequisites in place, is it actually working, and is the caller allowed to do this. A call that fails any of them is refused (`AMBIT_BLOCKED_UNAUTHORIZED`, exit code `2`) and nothing on the machine changes. A blocked call drafts a proposal and an HMAC challenge; `ambit approve <proposal-id> <person>` mints a signed artifact the executor verifies, and it stops being valid if the proposal changed after approval or has expired. Spans record each evaluation, challenge and receipt.
 
-The decision is real and runs against your actual graph. What sits on the other side of the gate is a fixture: `simulatedAdapter` keeps its state in a JSON file, and Ambit ships no deployment integration. A real one implements the three-method `EnvironmentAdapter` in the same file, and nothing above the gate changes. [`INCIDENT_TRACE_001`](./docs/incidents/INCIDENT_TRACE_001.md) walks a deploy agent blocked mid-flight and then remediated, and `npm run demo:incident` replays it in 90 seconds.
+The decision is real and runs against your actual graph. What sits on the other side of the gate is chosen when the control plane starts, and every span names it. The default, `simulatedAdapter`, is a fixture: it merges the change into a JSON file and runs nothing.
+
+`AMBIT_ADAPTER=docker`, or `--adapter=docker` on `src/control_plane/cli.ts`, puts a Docker adapter there instead, and an approved step's `payload.command` runs in a throwaway container. The approval names the command: the step a person signs shows it, and a retry carrying a different one is refused. Break-glass runs nothing there, since an agent cannot authorise its own command. Each step gets its own container from an image you pulled yourself (`alpine:3.20` unless `AMBIT_DOCKER_IMAGE` names another), with no network, a read-only root, every Linux capability dropped, an unprivileged user, and limits on memory, CPU and processes. The container is removed afterwards and its output, capped, comes back in the result; a step that exits non-zero ends the run as failed. A step reaches the network only when you started the control plane with `AMBIT_DOCKER_NETWORK=bridge` and a grant for the `network` action on its capability answers ALLOW. Nothing from the host is mounted unless `AMBIT_DOCKER_WORKDIR` names a directory, which is mounted read-only, and never your home directory, its dot-directories or the Docker socket. If Docker cannot run the step, the control plane refuses before anything runs and does not fall back to the simulator.
+
+Neither adapter deploys anything anywhere. Another one (Kubernetes, a deploy API) implements the same three-method `EnvironmentAdapter`, and nothing above the gate changes. [`INCIDENT_TRACE_001`](./docs/incidents/INCIDENT_TRACE_001.md) walks a deploy agent blocked mid-flight and then remediated, and `npm run demo:incident` replays it in 90 seconds; with `AMBIT_ADAPTER=docker` the authorized deploy runs `echo` in a container.
 
 ---
 
@@ -367,7 +388,7 @@ Ambit reads developer toolchains and writes to agent configs, so four properties
 1. **Loopback only.** The API server binds `127.0.0.1`. No LAN, no tunnel.
 2. **Origin allowlist.** A request whose `Origin` is not Ambit's own page, a page on another localhost port included, is rejected with 403 *before* routing, because a simple request skips preflight and response headers alone would not stop it.
 3. **No entry creation over HTTP.** The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.
-4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit's own code (`notify`, `notify-approvals`, `dispatch`, `incidents`, and `goal --judge`). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from `verify` and `apply` or an agent's `ambit_verify`, and never from the server. `ambit weigh` starts the local tool servers your configs declare, as your runtime does, to measure their tool lists, so it too runs only when typed and never from the server. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
+4. **No egress you did not type.** The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit's own code (`notify`, `notify-approvals`, `dispatch`, `incidents`, and `goal --judge`). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from `verify` and `apply` or an agent's `ambit_verify`, and never from the server. `ambit weigh` starts the local tool servers your configs declare, as your runtime does, to measure their tool lists, so it too runs only when typed and never from the server. A step the control plane's Docker adapter runs has no network unless you gave it one. [The FAQ](./docs/faq.md#does-anything-leave-my-machine) lists exactly what each one sends.
 
 ---
 

@@ -5,11 +5,11 @@ description: Use when the user asks which MCP servers or agent tools they have, 
 
 # Ambit
 
-Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code) into one local graph: what the setup can do, what is proven to work, what may run without asking, and what to set up next.
+Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, Kiro) into one local graph: what the setup can do, what is proven to work, what may run without asking, and what to set up next.
 
 ## Before you run anything, tell the user what it touches
 
-It reads the agent configs on this machine and writes only its own SQLite file (`~/.local/share/ambit/graph.db`). It changes no agent config without a proposal the user approves, and it sends nothing on its own: there is no telemetry. Deleting that file undoes it. This plugin also keeps a local record of which tools each session ran, for how long, and which failed, never their inputs or outputs, in `~/.local/state/ambit/claude-code.jsonl` until the next `ambit` command reads it in; `AMBIT_NO_LEDGER=1` turns that off.
+It reads the agent configs on this machine, and the token counts in the session logs Claude Code, Codex, OpenCode and Amp keep, and writes only its own SQLite file (`~/.local/share/ambit/graph.db`). It changes no agent config without a proposal the user approves, and it sends nothing on its own: there is no telemetry. Deleting that file undoes it. This plugin also keeps a local record of which tools each session ran, for how long, and which failed, never their inputs or outputs, in `~/.local/state/ambit/claude-code.jsonl` until the next `ambit` command reads it in; `AMBIT_NO_LEDGER=1` turns that off.
 
 Run it as `npx ambit-cli <command>` when `ambit` is not installed (Node 22.18 or newer); `npm install -g ambit-cli` or `brew install zz-plant/tap/ambit` installs it for good. Do not install it without the user's go-ahead.
 
@@ -40,4 +40,4 @@ A user with one runtime who wants to install a single server and nothing more; a
 
 ## The gate, if they want it
 
-The separate `ambit-gate` plugin puts Ambit's decision in front of every tool call. It can deny what is forbidden and ask about what asks first; it never allows anything Claude Code would otherwise ask about, and it adds about a fifth of a second per call. Suggest it only to a user who has set grants and wants them binding.
+The separate `ambit-gate` plugin puts Ambit's decision in front of every tool call. It can deny what is forbidden and ask about what asks first; it never allows anything Claude Code would otherwise ask about, and it adds about an eighth of a second per call. Suggest it only to a user who has set grants and wants them binding.

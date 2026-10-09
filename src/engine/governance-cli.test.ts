@@ -416,6 +416,20 @@ test('a free-form goal routes to the capabilities whose words cover it', () => {
   expect(selfHosted.steps).toBeDefined();
 });
 
+test('a goal phrase matches at the start of a word, never inside one', () => {
+  seed(LOCAL_ONLY).close();
+  // "rag" is inside "coverage", and the sentence routed to Retrieval.
+  const coverage = cli('goal', 'track test coverage');
+  expect(coverage.candidates.map((c: any) => c.id)).not.toContain('combo:retrieval');
+  // "ship" inside "relationship" was Continuous Delivery.
+  const friends = cli('goal', 'model a friend relationship');
+  expect(friends.candidates.map((c: any) => c.id)).not.toContain('combo:continuous-delivery');
+  // A word the phrase begins still counts: "deploy" finds "deployment".
+  expect(cli('goal', 'automate the deployment').candidates.map((c: any) => c.id)).toContain(
+    'combo:continuous-delivery'
+  );
+});
+
 test('a goal that is already a capability plans directly', () => {
   seed(LOCAL_ONLY).close();
   const g = cli('goal', 'shell-execution');

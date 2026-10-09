@@ -374,23 +374,35 @@ export function demoSnapshot(): LoopSnapshot {
     // page shows both. The Interior seat reads the demo tree's failing node,
     // never a name typed here.
     council: demoCouncil(),
-    // A month of sessions: the hosted model does most of it, and cache reads
-    // are most of its count, as they are in any long session. The hosted model
-    // has a price declared, at $3, $0.30 and $15 per million, which is where
-    // the spend on Hosted Inference's budget comes from; the local one has
-    // none, so it shows undeclared.
+    // A month of sessions: the hosted model does most of it, in Claude Code,
+    // and cache reads are most of its count, as they are in any long session.
+    // The hosted model has a price declared, at $3, $0.30 and $15 per million,
+    // which is where the spend on Hosted Inference's budget comes from; the
+    // local one, run from OpenCode, has none, so it shows undeclared.
     tokens: {
       days: 30,
       sessions: 46,
+      runtimes: [
+        { runtime: 'Claude Code', sessions: 38 },
+        { runtime: 'OpenCode', sessions: 8 },
+      ],
       models: [
         {
           model: 'claude-sonnet-5-5',
           input: 2_480_000,
           cached: 41_300_000,
           output: 655_000,
+          runtimes: ['Claude Code'],
           spend_dollars: 29.66,
         },
-        { model: 'qwen3-coder', input: 910_000, cached: 0, output: 212_000, unpriced: true },
+        {
+          model: 'qwen3-coder',
+          input: 910_000,
+          cached: 0,
+          output: 212_000,
+          runtimes: ['OpenCode'],
+          unpriced: true,
+        },
       ],
     },
   };

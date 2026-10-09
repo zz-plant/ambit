@@ -33,6 +33,13 @@ const OVERRIDES = [
   'ROO_CODE_MCP_CONFIG',
   'CONTINUE_MCP_CONFIG',
   'ZED_MCP_CONFIG',
+  'VSCODE_MCP_CONFIG',
+  'COPILOT_MCP_CONFIG',
+  'AMP_MCP_CONFIG',
+  'GOOSE_MCP_CONFIG',
+  'KIRO_MCP_CONFIG',
+  'OLLAMA_MODELS',
+  'AMBIT_LMSTUDIO_MODELS',
   'TOOLCHAIN_DB',
 ];
 
@@ -118,6 +125,26 @@ test('with no config, it says where it looked and claims nothing as yours', () =
   expect(out).toContain('Nothing of yours is in the graph yet.');
   expect(out).not.toContain('capabilities reached');
   expect(out).not.toContain('AGENTS.md');
+});
+
+test('models on disk are read and named, and are not mistaken for an agent config', () => {
+  const manifests = join(home, '.ollama', 'models', 'manifests', 'registry.ollama.ai', 'library');
+  mkdirSync(join(manifests, 'qwen3-coder'), { recursive: true });
+  writeFileSync(join(manifests, 'qwen3-coder', '30b'), '{}');
+  mkdirSync(join(manifests, 'nomic-embed-text'), { recursive: true });
+  writeFileSync(join(manifests, 'nomic-embed-text', 'latest'), '{}');
+  const lmstudio = join(home, '.lmstudio', 'models', 'lmstudio-community', 'gpt-oss-20b-GGUF');
+  mkdirSync(lmstudio, { recursive: true });
+  writeFileSync(join(lmstudio, 'gpt-oss-20b-MXFP4.gguf'), '');
+
+  const out = bare();
+  expect(out).toMatch(/✓ Ollama\s+nomic-embed-text:latest, qwen3-coder:30b/);
+  expect(out).toMatch(/✓ LM Studio\s+lmstudio-community\/gpt-oss-20b-GGUF/);
+  // Still no agent config, and said so, but the graph does hold something of theirs.
+  expect(out).toContain('No agent config found. Looked for:');
+  expect(out).not.toContain('all from the curated model');
+  expect(out).not.toContain('Nothing of yours is in the graph yet.');
+  expect(out).toContain('Read from Ollama (2 models) and LM Studio (1 model)');
 });
 
 test('asking the version answers it, and seeds nothing', () => {

@@ -273,7 +273,13 @@ CREATE TABLE IF NOT EXISTS resource_consumption (
     quantity REAL NOT NULL DEFAULT 0,
     unit TEXT,
     cost_cents REAL,
-    recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+    -- When it was consumed. A token row's is the start of the hour the tokens
+    -- were used in, so a five-hour window can be told from its rows.
+    recorded_at TEXT NOT NULL DEFAULT (datetime('now')),
+    -- When the row was first written. Empty on a row written before token
+    -- rows were kept per hour, whose recorded_at is when it was written and
+    -- whose tokens belong to their session as a whole.
+    written_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS outcomes (
@@ -284,6 +290,25 @@ CREATE TABLE IF NOT EXISTS outcomes (
     objective_name TEXT,
     value_cents REAL,
     recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- How far each agent session log on this machine has been read into the
+-- ledger (src/engine/session-logs.ts): a Codex rollout, an OpenCode database,
+-- an Amp thread. `size` and `mtime_ms` are what a read compares first, so a
+-- command that finds nothing new costs a stat per file and no parsing.
+-- `byte_offset` is where an appended log resumes, and `state` is what parsing
+-- needs to resume there: counts, model names, ids and times, never anything a
+-- session said. It describes this machine's files, so `ambit sync` leaves it
+-- behind, and losing it costs one re-read: what a run already holds is never
+-- recorded twice.
+CREATE TABLE IF NOT EXISTS session_log_cursors (
+    path TEXT PRIMARY KEY,
+    runtime TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    mtime_ms REAL NOT NULL,
+    byte_offset INTEGER NOT NULL DEFAULT 0,
+    state TEXT,
+    read_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_work_runs_started ON work_runs(started_at);

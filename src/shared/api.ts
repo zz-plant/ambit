@@ -688,11 +688,60 @@ export interface LoopSnapshot {
   /** The council on the first of `next`: five seats, one sentence each. */
   council: LoopCouncil;
   /**
-   * Tokens sessions used in the window, per model, from session transcripts.
-   * Absent when none were recorded. Priced only where a person declared a
-   * price for the model, since the transcripts state none.
+   * Tokens sessions used in the window, per model, from Claude Code's
+   * transcripts and the session logs Codex, OpenCode and Amp keep. Absent when
+   * none were recorded. Priced only where a person declared a price for the
+   * model, since no log states one.
    */
   tokens?: LoopTokens;
+  /**
+   * Each runtime's five-hour window under way, with the tokens used in it.
+   * Absent when no window is under way, which is also when nothing was used
+   * in the last five hours.
+   */
+  windows?: UsageWindow[];
+}
+
+/** One model's tokens in a five-hour window, by part, and what the priced part cost. */
+export interface UsageWindowModel {
+  model: string;
+  input: number;
+  cached: number;
+  output: number;
+  /** Reasoning counted apart from output, only where a runtime counts it so (OpenCode). */
+  reasoning?: number;
+  /** What the priced part cost at the price declared when it was recorded. Absent when none was. */
+  spend_dollars?: number;
+  /** Some of these tokens carry no price, because none was declared for them. */
+  unpriced?: true;
+}
+
+/**
+ * A five-hour usage window, counted the way ccusage's blocks report counts
+ * one: it starts at the hour of the first use after the last window ended and
+ * lasts five hours. Each runtime's windows are counted apart. Nothing here is
+ * a limit: Ambit knows no plan's, so no window says what share of one it used
+ * or what remains of it.
+ */
+export interface UsageWindow {
+  /** Whose sessions: "Claude Code", "Codex". */
+  runtime: string;
+  /** ISO 8601, UTC. */
+  start: string;
+  /** Five hours after `start`. */
+  end: string;
+  /** The window holds the present moment. */
+  current: boolean;
+  /** Until `end`, for the current window only. */
+  seconds_left?: number;
+  /** Every part of every model together. */
+  tokens: number;
+  /** Most used first. */
+  models: UsageWindowModel[];
+  /** The priced part's cost. Absent when nothing in the window was priced. */
+  spend_dollars?: number;
+  /** Some of the window's tokens carry no price. */
+  unpriced?: true;
 }
 
 export interface LoopTokens {
@@ -700,12 +749,18 @@ export interface LoopTokens {
   days: number;
   /** Sessions with a token count in the window. */
   sessions: number;
+  /** Whose logs the counts came from, most sessions first: "Claude Code", "Codex". */
+  runtimes: { runtime: string; sessions: number }[];
   /** Most used first. Cache reads apart from fresh input, which they dwarf. */
   models: {
     model: string;
     input: number;
     cached: number;
     output: number;
+    /** Reasoning counted apart from output, only where a runtime counts it so (OpenCode). */
+    reasoning?: number;
+    /** The runtimes whose sessions used the model. */
+    runtimes: string[];
     /**
      * What the priced part cost, at the price declared when each session was
      * recorded. Absent when none of it was priced: undeclared, never $0.

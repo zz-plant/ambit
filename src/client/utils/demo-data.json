@@ -1201,6 +1201,7 @@
           "next": false,
           "lifecycle": "verified",
           "providers": [
+            "mcp:filesystem",
             "tool:edit"
           ],
           "reliability": {
@@ -3612,6 +3613,12 @@
       {
         "from": "mcp:fetch",
         "to": "combo:web-research",
+        "type": "hard-dep",
+        "kind": "provides"
+      },
+      {
+        "from": "mcp:filesystem",
+        "to": "combo:file-editing",
         "type": "hard-dep",
         "kind": "provides"
       },
