@@ -95,8 +95,8 @@ jobs:
           VERSION="${TAG#v}"
           TARBALL="https://registry.npmjs.org/ambit-cli/-/ambit-cli-${VERSION}.tgz"
           if ! curl -fsSL "$TARBALL" -o ambit.tgz; then
-            echo "ambit-cli ${VERSION} is not on npm yet, so the formula has nothing to point at. Publish it, then re-run this job."
-            exit 0
+            echo "::error::ambit-cli ${VERSION} is not on npm, so the formula has nothing to point at. Publish it, then re-run this job."
+            exit 1
           fi
           SHA="$(sha256sum ambit.tgz | cut -d' ' -f1)"
           cat > ambit.rb <<RUBY
@@ -122,9 +122,9 @@ jobs:
           end
           RUBY
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "No TAP_TOKEN secret set. Paste this into zz-plant/homebrew-tap Formula/ambit.rb:"
+            echo "::error::No TAP_TOKEN secret, so the tap was not updated. Add one (Contents: write on zz-plant/homebrew-tap) and re-run, or paste this into Formula/ambit.rb:"
             cat ambit.rb
-            exit 0
+            exit 1
           fi
           git clone "https://x-access-token:${GH_TOKEN}@github.com/zz-plant/homebrew-tap" tap
           cp ambit.rb tap/Formula/ambit.rb
@@ -137,17 +137,18 @@ jobs:
   npm:
     needs: release
     runs-on: ubuntu-latest
-    # Publishing is opt-in until the repository has an npm automation token.
-    # The GitHub release and Homebrew update remain useful without it.
+    # Publishes with npm trusted publishing: npm checks this workflow's
+    # identity, so no token is stored. One-time setup on npmjs.com: ambit-cli >
+    # Settings > Trusted publisher > GitHub Actions, then zz-plant / ambit /
+    # release.yml. A release that cannot publish fails here instead of passing.
     if: ${{ github.repository_owner == 'zz-plant' }}
     permissions:
       contents: read
-      # --provenance signs the package with the workflow's identity.
       id-token: write
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release.outputs.tag }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -155,12 +156,16 @@ jobs:
       # Packing compiles the engine and builds the map, which needs the dev
       # dependencies (tsc, vite).
       - run: npm ci
-        if: ${{ env.NPM_TOKEN != '' }}
       - name: Publish ambit-cli
-        if: ${{ env.NPM_TOKEN != '' }}
         env:
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
-        run: npm publish --provenance --access public
-      - name: Explain skipped npm publication
-        if: ${{ env.NPM_TOKEN == '' }}
-        run: echo "NPM_TOKEN is not configured; GitHub and Homebrew release steps completed."
+          # A fallback only: trusted publishing needs no token.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Trusted publishing needs npm 11.5.1 or later; Node 22 ships npm 10.
+          npm install -g npm@^11.5.1
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "ambit-cli@$VERSION" version >/dev/null 2>&1; then
+            echo "ambit-cli@$VERSION is already on npm; nothing to publish."
+            exit 0
+          fi
+          npm publish --provenance --access public
