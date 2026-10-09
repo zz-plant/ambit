@@ -73,7 +73,7 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
   const entries = `${reading.entries} ${reading.entries === 1 ? 'entry' : 'entries'}`;
   const source = reading.picked
     ? `Placed from the ${reading.entries} you picked`
-    : `${reading.named ? `${reading.runtime}'s config` : 'Your config'}, ${entries}, read in this tab and sent nowhere`;
+    : `${entries} from ${reading.named ? `${reading.runtime}'s config` : 'your config'}, read in this tab and sent nowhere`;
   // What the placement counted that the file never lists: the runtime's own
   // tools, and its model when the file names none.
   const given =

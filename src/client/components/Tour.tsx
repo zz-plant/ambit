@@ -92,8 +92,8 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         title: `One step would open ${best.reaches} more`,
         body:
           `This is a sample developer's agent setup, drawn from their config files. ` +
-          `What it can do is their ambit. Adding ${best.item.name}` +
-          `${cost ? `, about ${cost} of setup,` : ''} would open ${best.reaches} more things their agents could do` +
+          `What it can do is their ambit. Adding ${best.item.name} would ` +
+          `${cost ? `take about ${cost} of setup and ` : ''}open ${best.reaches} more things their agents could do` +
           `${opened.length ? `: ${named(opened)}` : ''}. ` +
           `Every next step is ranked by what it opens up, and agents can ask for the same ranking over MCP.`,
         enter: () => {
@@ -143,7 +143,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
       title: 'Nothing changes without you',
       body:
         'Ambit writes a change as a proposal, with what it costs and whether it can be undone. ' +
-        'It is applied only after an approval, a separate local operation outside the MCP surface, and the approval is a signed receipt.',
+        'It is applied only after an approval. Approving is a separate local operation outside the MCP surface, and the approval is a signed receipt.',
       proposal: true,
       enter: () => {
         clearSimulation();

@@ -10,7 +10,7 @@ Most loadouts start the same way. One runtime, Claude Code or Cursor, a handful 
 
 B is not "the agent does everything." It is a loadout that reliably does a class of work, say triage a failing service, fix it, open a pull request, deploy to staging, check the service recovered and report, with its reach known, its pieces proven, its autonomy granted per action and per target, and the person present only where judgment is needed.
 
-The person's role changes on the way. At A they operate and approve each call. At B they set thresholds and judge proposals. In the ledger's words, the *clerical* interruptions are gone and the *keeper* ones remain: the decisions that should always reach a person.
+The person's role changes on the way. At A they operate and approve each call. At B they set thresholds and judge proposals. In the ledger's words, the *clerical* interruptions are gone and the *keeper* ones remain, and those are the decisions that should always reach a person.
 
 ## The seven legs
 
@@ -38,7 +38,7 @@ Two things change, and the ledger shows both.
 
 **How you hold that reach becomes something you govern.** At A, you approve every call or none. At B, you set a bar once, a grant widens when a capability's checks meet it, and one failure narrows it again without anyone asking. Your interruptions shift from *clerical* (routine steps an agent could take) to *keeper* (decisions that should always reach a person), and the ledger records which is which.
 
-Together that is a setup with written-down authority, signed approvals and a trail of what happened: the governance of a small organization, at the scale of one person and their agents.
+Together that is a setup with written-down authority, signed approvals and a trail of what happened. It is the governance of a small organization, at the scale of one person and their agents.
 
 **What it will not do.** It will not choose your B, the class of work you want done without you. It routes a goal you state, and each proposal can carry the work it is for, which your approval binds. It measures reach, not judgment: a wide reach with poor judgment is a bigger blast radius. And it sees only what is on the map.
 

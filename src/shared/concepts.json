@@ -40,7 +40,7 @@
       "key": "asked-for",
       "term": "Asked for",
       "short": "Work was blocked on it while it was missing",
-      "long": "Each time an agent records that a task stopped for want of a capability, the deficit is counted against that capability. On the map a next step fills from the inside as the count grows, full at three, where the engine calls the deficit structural: the same cause every time, so it needs something new. `ambit next` ranks by these counts before it ranks by leverage, and the Time & cost page lists them under What to reach next.",
+      "long": "Each time an agent records that a task stopped for want of a capability, the deficit is counted against that capability. On the map a next step fills from the inside as the count grows and is full at three. At that count the engine calls the deficit structural, meaning it has the same cause every time and so needs something new. `ambit next` ranks by these counts before it ranks by leverage, and the Time & cost page lists them under What to reach next.",
       "seen": "The part-filled next step on the map and its key, the panel of such a node, and ambit next"
     },
     {
@@ -124,7 +124,7 @@
       "key": "frontier",
       "term": "Frontier",
       "short": "The edge of your ambit, as of a moment",
-      "long": "The frontier is where your ambit ends: everything reached, with the next steps just past it. Every seed records it, so the graph can answer what was reachable at a past date and not only now. `ambit history since` compares two of those observations. Its useful column is the emergent one: capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
+      "long": "The frontier is where your ambit ends. It covers everything reached, with the next steps just past it. Every seed records it, so the graph can answer what was reachable at a past date and not only now. `ambit history since` compares two of those observations. Its useful column is the emergent one. It lists the capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
       "seen": "The line over the map (verified, and how it moved this week), the timeline under the map, which redraws it as each observation left it, the Since strip on Time & cost, ambit history, ambit history since"
     },
     {

@@ -93,6 +93,6 @@ The design norm:
 
 Ambit does not measure how intelligent the AI is. It tries to measure what intelligence has acquired the means to do.
 
-That norm is also why the product leads with widening and not with warning. The point is for you and your agents to reach further: the next step that opens the most, the combination one missing piece would give you. Governing that growth is what lets you lean on it, so the same map that names the next step also says whether it works, who may use it and what it rests on. Widening, governing and accounting for the time it costs a person are one project, and the word for what they share is the one the product is named after: your *ambit*.
+That norm is also why the product leads with widening and not with warning. The point is for you and your agents to reach further: the next step that opens the most, the combination one missing piece would give you. Governing that growth is what lets you lean on it, so the same map that names the next step also says whether it works, who may use it and what it rests on. Widening, governing and accounting for the time it costs a person are one project. The word for what they share is your *ambit*, and the product is named after it.
 
 The abstraction is tested where it stops being software: robots add physical actuation, and brain-computer interfaces erode the boundary between human and machine capability. [The affordance frontier](./affordance-frontier.md) works those cases through, and takes the argument to its end.

@@ -27,7 +27,7 @@ ambit doctor            # setup health: what works, what fails, what rests on on
 
 A capability with a passing check is **proven**; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
 
-A check exists only where one is declared: the curated tree declares some, and a skill registered with `ambit record skill:` carries its own. Most MCP servers a person adds have none. Those read as reached and unproven, still counted as working, and `ambit verify` cannot tell you whether they work; calling one of the server's tools yourself is the check.
+A check exists only where one is declared: the curated tree declares some, and a skill registered with `ambit record skill:` carries its own. Most MCP servers a person adds have none. Those read as reached and unproven. They still count as working, and `ambit verify` cannot tell you whether they work; calling one of the server's tools yourself is the check.
 
 ## 3. See what each one may do without asking
 
@@ -58,7 +58,7 @@ Both read the work ledger. Five things fill it: the OpenCode telemetry plugin, t
 
 ## Keeping it current
 
-An audit is a snapshot. `ambit briefing` is the standing version: what an agent is told when it connects over MCP, before its first tool call, including what is broken and what waits on a person. Registering Ambit as an MCP server puts that briefing in front of every session, so the agent works from the audit and not from its own assumptions.
+An audit is a snapshot. `ambit briefing` is the standing version. It is what an agent is told when it connects over MCP, before its first tool call, including what is broken and what waits on a person. Registering Ambit as an MCP server puts that briefing in front of every session, so the agent works from the audit and not from its own assumptions.
 
 Nothing in any of this leaves the machine. The graph is a local SQLite file, and there is no telemetry.
 

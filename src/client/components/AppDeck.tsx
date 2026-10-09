@@ -228,7 +228,7 @@ export default function AppDeck(p: AppDeckProps) {
         {p.connected && (
           <span
             className="app-live"
-            title="Live: this map redraws itself when the graph is rebuilt — a seed, an adapter, another session"
+            title="Live: this map redraws itself when a seed, an adapter or another session rebuilds the graph"
           >
             <span className="app-live-dot" aria-hidden="true" />
             Live
@@ -383,7 +383,7 @@ export default function AppDeck(p: AppDeckProps) {
           type="button"
           className="app-deck-btn app-deck-btn--share"
           onClick={p.onShare}
-          title="Copy a link that opens exactly this view — graph, node and lens"
+          title="Copy a link that opens exactly this view, with its graph, node and lens"
           aria-label="Share view link"
         >
           <svg
