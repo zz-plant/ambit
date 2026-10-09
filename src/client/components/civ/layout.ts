@@ -1054,6 +1054,23 @@ export interface MapFindings {
  * outlined node was worth reaching. Both are answers the page can compute, so
  * it states them, and the circles become the evidence for a sentence.
  */
+/**
+ * Every next step with what reaching it would open, the most first and the
+ * quicker of a tie first. The map's finding names the first; a config read in
+ * the tab lists the first few, since one step is a recommendation and three
+ * are a choice.
+ */
+export function nextSteps(
+  items: Item[],
+  connections: Connection[]
+): { item: Item; opens: Set<string> }[] {
+  const cost = (i: Item) => Number(i.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
+  return visibleItems(items)
+    .filter(i => !isEntry(i) && i.status !== 'built' && isNext(i))
+    .map(item => ({ item, opens: unlockCascade(items, connections, item.id) }))
+    .sort((a, b) => b.opens.size - a.opens.size || cost(a.item) - cost(b.item));
+}
+
 export function mapFindings(
   items: Item[],
   connections: Connection[],
@@ -1069,14 +1086,9 @@ export function mapFindings(
   const byId = new Map(tree.map(i => [i.id, i]));
   const pick = ranked.map(id => byId.get(id)).find(i => i && i.status !== 'built' && isNext(i));
   if (pick) best = { item: pick, reaches: unlockCascade(items, connections, pick.id).size };
-  for (const item of best ? [] : tree) {
-    if (item.status === 'built' || !isNext(item)) continue;
-    const reaches = unlockCascade(items, connections, item.id).size;
-    const cost = Number(item.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
-    const bestCost = Number(best?.item.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
-    if (!best || reaches > best.reaches || (reaches === best.reaches && cost < bestCost)) {
-      best = { item, reaches };
-    }
+  else {
+    const first = nextSteps(items, connections)[0];
+    if (first) best = { item: first.item, reaches: first.opens.size };
   }
   let weakest: MapFindings['weakest'];
   // A node on the map, since that is what the line names and Simulate lights:

@@ -12,6 +12,7 @@ import NodeDetailPanel from './components/NodeDetailPanel';
 import SetupView from './components/SetupView';
 import Toast from './components/Toast';
 import Tour from './components/Tour';
+import YourAmbit from './components/YourAmbit';
 import WelcomeScreen from './components/WelcomeScreen';
 import { useGraphStream } from './hooks/useGraphStream';
 import { useGuide } from './hooks/useGuide';
@@ -70,6 +71,7 @@ export default function App() {
   const loading = useAmbitStore(s => s.loading);
   const error = useAmbitStore(s => s.error);
   const demo = useAmbitStore(s => s.demo);
+  const reading = useAmbitStore(s => s.reading);
   const lens = useAmbitStore(s => s.activeLens);
   const spotlight = useAmbitStore(s => s.spotlight);
   const collapse = useAmbitStore(s => s.collapsed);
@@ -151,6 +153,9 @@ export default function App() {
   // at the beginning, so the link's step is spent when the tour ends.
   const [tourStart, setTourStart] = useState(link.tour ?? null);
   const [mapYoursOpen, setMapYoursOpen] = useState(false);
+  // The card that says what a config read in the tab adds up to. It opens
+  // with each reading, and closing it leaves the map and its finding.
+  const [readoutOpen, setReadoutOpen] = useState(true);
   const [toast, setToast] = useToast();
 
   const { connected } = useGraphStream({
@@ -445,7 +450,9 @@ export default function App() {
   // one fraction, so the demo read "42 of 60" over a tree of 33. An
   // observation recorded before lifecycles were cannot split reached by
   // evidence, so the header counts it whole.
-  const counts = mapCounts(visibleItems(shown), !(tick && !tick.lifecycles));
+  // No check runs in the tab, so a config read there is counted as reached
+  // and next, unsplit, like an observation recorded before lifecycles were.
+  const counts = mapCounts(visibleItems(shown), !(tick && !tick.lifecycles) && !reading);
   const entries = items.filter(isEntry);
   const hasTree = items.some(i => !isEntry(i));
   const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
@@ -464,12 +471,19 @@ export default function App() {
     setTourStart(null);
     dismissGuide();
   };
-  /** A config of the visitor's own was read: the sample is over, and the list shows it. */
+  /**
+   * A config of the visitor's own was read: the sample is over, and the map
+   * shows where theirs stands. It used to open the list of entries, under a
+   * note that placing them took the engine, so the demo's question went
+   * unanswered for the one setup the visitor cared about.
+   */
   const mapped = () => {
     setMapYoursOpen(false);
     endTour();
-    showView('config');
+    setReadoutOpen(true);
+    showView('tree');
   };
+  const readout = Boolean(reading) && readoutOpen && view === 'tree' && hasTree;
 
   // No graph yet: the welcome page, on its own. The chrome around the map (a
   // status pill reading "0 of 0") would otherwise be the first thing a
@@ -487,6 +501,7 @@ export default function App() {
             seedDemo();
             setView('loop');
           }}
+          onMapped={mapped}
         />
         <DocsModal isOpen={showDocs} initialTab={docsTab} onClose={closeDocs} />
       </div>
@@ -527,6 +542,16 @@ export default function App() {
               }
             : undefined
         }
+        yours={
+          reading
+            ? {
+                onOpen: () => {
+                  setReadoutOpen(true);
+                  showView('tree');
+                },
+              }
+            : undefined
+        }
       />
 
       <div className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}>
@@ -560,7 +585,7 @@ export default function App() {
               onHover={hoverItem}
               leftInset={8}
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
-              narrated={touring}
+              narrated={touring || readout}
               asOf={tick ? momentOf(tick.at) : undefined}
               onHeadline={setHeadlineBottom}
               onSaveImage={saveImage}
@@ -592,7 +617,18 @@ export default function App() {
             rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
           />
         )}
-        {touring ? (
+        {readout ? (
+          <YourAmbit
+            style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
+            onClose={() => setReadoutOpen(false)}
+            onMapAnother={() => setMapYoursOpen(true)}
+            onSample={() => {
+              seedDemo();
+              setReadoutOpen(false);
+              showView('tree');
+            }}
+          />
+        ) : touring ? (
           <Tour
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
             onDone={endTour}

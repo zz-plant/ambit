@@ -259,7 +259,10 @@ src/client/                React frontend
     WelcomeScreen.tsx      What an empty graph shows: what you and your agents can do and what one
                            step would open, the word *ambit* defined, one number from the demo's
                            best next step with a button that plays it, and the paste box
-    ConfigIntake.tsx       Paste a config or pick the file, and where each runtime keeps it
+    ConfigIntake.tsx       Paste a config or pick the file, and where each runtime keeps it; or
+                           tick the servers you run (`PICKS` in hooks/useConfigImport.ts)
+    YourAmbit.tsx          What a config read in the tab adds up to: how much of the tree it
+                           reaches and the next steps that open the most, each lit on the map
     Tour.tsx               The demo narrated, on the hosted site's first visit: the next step and
                            what it opens, then an outage as the guardrail, a failing check, the
                            approval gate, your config
@@ -331,6 +334,8 @@ src/client/                React frontend
                            hook-free view's drawing and calls the handler it carries
   utils/
     configImporter.ts      inferDomain, and mapping an imported config onto the graph
+    placeInTab.ts          A config read in the tab placed on the curated tree, by the engine's
+                           rule: whose file it is, what every runtime brings, and its model
     demoSnapshot.ts        The hosted demo's LoopSnapshot — the shape /api/loop returns
     demoRun.ts             The hosted demo's sample runs
     checkHistory.ts        Which node's runs a My Setup row shows, and the one `ambit verify` command
@@ -369,6 +374,10 @@ src/shared/api.ts          The wire contract between the API server and the clie
                            is what makes a rename a compile error instead of an empty panel
 src/shared/format.ts       Timestamps, currency and relative time, formatted one way
 src/shared/shell.ts        `shellQuote`: an id made safe to put in a command someone will paste
+src/shared/placement.ts    `placeOnTree`: where a setup stands on the curated tree, from the ids
+                           its config turned up. The seed and the page's paste box both place by it
+src/shared/runtimes.ts     What every runtime brings (`BUILT_INS`) and the hosted model a runtime
+                           runs on when its config names none (`RUNTIME_MODEL`)
 src/shared/nearest.ts      The few names a mistyped one was probably meant to be: it suggests, never decides
 src/shared/jsonEdit.ts     `setIn` and `removeIn`: a member spliced into or out of a JSON or JSONC file's
                            text, so `ambit apply` keeps comments and layout and a rollback gives the bytes back

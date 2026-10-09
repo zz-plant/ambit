@@ -12,6 +12,8 @@ import ConfigIntake from './ConfigIntake';
 interface WelcomeProps {
   onExploreDemo: () => void;
   onViewLoop: () => void;
+  /** A config was read; the map it was placed on is the caller's to show. */
+  onMapped: () => void;
 }
 
 /**
@@ -71,8 +73,8 @@ function demoNextStep(): { name: string; reaches: number } | null {
  * who is already convinced needs: the install line and the docs. Rendered
  * without the app chrome, so the first screen is not an empty search result.
  */
-export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProps) {
-  const { readFile, error: dropError } = useConfigImport();
+export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: WelcomeProps) {
+  const { readFile, error: dropError } = useConfigImport(onMapped);
   const [dropping, setDropping] = useState(false);
   const [copied, copy] = useCopied();
   const next = demoNextStep();
@@ -122,7 +124,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop }: WelcomeProp
 
         <div className="app-welcome-yours">
           <h2>Or map your own config</h2>
-          <ConfigIntake />
+          <ConfigIntake onMapped={onMapped} />
           {dropError && (
             <p className="intake-error" role="alert">
               {dropError}
