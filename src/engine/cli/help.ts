@@ -127,9 +127,10 @@ check — what is proven, what is permitted, what is currently broken
   check credentials       what revoking each credential would end
   check weigh [server] [--timeout=30] [--recorded]   start each local tool server
                           your configs declare, ask for its tools, and record
-                          what the list costs in context every session; per
-                          runtime, heaviest first, and what the ledger never
-                          saw called. Remote servers are not contacted.
+                          what the list costs in context every session. It
+                          reports per runtime, heaviest first, and names what
+                          the ledger never saw called. Remote servers are not
+                          contacted.
                           --recorded reads the last weighing and starts nothing
   check incidents         probe the manifest, record each answer as a check, open
                           incident runs for offline services

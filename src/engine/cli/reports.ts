@@ -922,7 +922,7 @@ function renderCarry(report: any, c: Palette = C): string[] {
   const runtimes: any[] = report.runtimes ?? [];
   const width = Math.max(0, ...runtimes.map(r => String(r.runtime).length));
   runtimes.forEach((r, i) => {
-    const what = i === 0 ? ' of tool lists, every session' : '';
+    const what = i === 0 ? ' of tool lists in every session' : '';
     lines.push(
       `${GUTTER}${String(r.runtime).padEnd(width)}  about ${c.bold}${tokens(r.tokens)}${c.reset} tokens${what} ${c.grey}· ${plural(r.servers, 'server')}${c.reset}`
     );

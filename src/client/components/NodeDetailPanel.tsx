@@ -572,7 +572,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           weight of zero. Today's figure, so a past moment does not show it. */}
       {carry && !asOf && (
         <p className="sp-carry">
-          <Term name="carry-weight">Carry weight</Term> {carryTokens(carry)}: {carryDetail(carry)}.
+          <Term name="carry-weight">Carry weight</Term>: {carryTokens(carry)}. {carryDetail(carry)}.
         </p>
       )}
       {/* What it takes besides the agent, from the domains the engine derives

@@ -437,7 +437,7 @@ function carryById(db: Db): Map<string, ToolCarry> {
 }
 
 const ESTIMATE_NOTE =
-  'An estimate at four characters a token, of each tool list as the server sends it. A runtime that defers tool definitions until they are searched for carries less.';
+  'Each figure estimates a tool list as its server sends it, at four characters a token. A runtime that defers tool definitions until they are searched for carries less.';
 
 /**
  * What the configs carry, as last weighed: per runtime, per server, what was

@@ -478,7 +478,7 @@ export function SetupView({ onShow }: SetupViewProps) {
                   <span className="setup-group-n">{g.rows.length}</span>
                   {g.type === 'mcp-server' && carried.length > 0 && (
                     <span className="setup-group-carry">
-                      <Term name="carry-weight">Carry weight</Term> {runtimeCarryLine(carried)}
+                      <Term name="carry-weight">Carry weight</Term>: {runtimeCarryLine(carried)}
                     </span>
                   )}
                   {/* Nothing weighed yet, on a machine where it can be: the
