@@ -97,6 +97,14 @@ export const PAGES: Page[] = [
     card: 'Step into your loadout',
   },
   {
+    src: 'docs/agents.md',
+    slug: 'agents',
+    title: 'For agents: your sessions before and after Ambit, and widening the ambit together',
+    description:
+      'For an agent deciding whether to suggest Ambit: its sessions before and after, what it and the person each do as the ambit widens, and how to put it to them.',
+    card: "Before and after, from the agent's side",
+  },
+  {
     src: 'docs/solo.md',
     slug: 'solo',
     title: 'Building alone: a launch checklist and production guardrails for your agents',

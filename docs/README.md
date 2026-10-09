@@ -20,6 +20,7 @@ The claim underneath is that what an agent setup can do is not written in any co
 ## Argument: why the thing exists
 
 - [Your loadout, from A to B](./loadout.md) — one person's setup from a pile of configs to work done without them, in seven legs, with the command for each.
+- [For agents](./agents.md) — the same journey from the agent's side: its sessions before and after Ambit, what it and the person each do as the ambit widens, and how to suggest it honestly.
 - [The ideas behind Ambit](./ideas.md) — the claim, what is new in it, its nearest prior work, and what it does not claim. The short version of the two below.
 - [Why Ambit](./why-ambit.md) — the argument for building it: what one agent stack looked like, why what it can do is composed, and why growing that reach needs governing.
 - [The affordance frontier](./affordance-frontier.md) — the theory under that argument, and the two cases (robots, brain-computer interfaces) where it is tested.

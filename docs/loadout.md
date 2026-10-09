@@ -46,6 +46,8 @@ The questions transfer even where the software does not: what is one step away, 
 
 The aim is not more reach for its own sake. It is reach that is legible, earned and revocable, which you can grow on purpose because you can see what holds it up.
 
+The agent's side of the same journey, session by session, is in [For agents](./agents.md).
+
 ## Why it compounds
 
 Every capability reached moves the frontier, and that changes what is a next step. A step taken can make the next one cheaper, safer or newly visible, and can also add maintenance, coupling or expense. Each addition's benefits and costs need their own assessment, which is why B is a direction more than a destination. The map's eras order capabilities by what they depend on, so the next steps on any route sit at the edge of the eras you have reached, and an era's ladder says how far up it you are. They are not the route itself: a B is a class of work you choose, and Sovereignty is a kind of capability, not the end of the road.
