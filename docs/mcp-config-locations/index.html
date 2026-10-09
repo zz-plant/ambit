@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/mcp-config-locations.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","description":"The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.","url":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/","dateModified":"2026-10-07","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","item":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","description":"The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.","url":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/","dateModified":"2026-10-09","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","item":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -124,6 +124,26 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"><code>~/Library/Application Support/Code/User/mcp.json</code> (macOS), <code>~/.config/Code/User/mcp.json</code> (Linux)</td>
 <td align="left"><code>servers</code></td>
 </tr>
+<tr>
+<td align="left"><a href="#copilot-cli">Copilot CLI</a></td>
+<td align="left"><code>~/.copilot/mcp-config.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#amp">Amp</a></td>
+<td align="left"><code>~/.config/amp/settings.json</code>, or <code>settings.jsonc</code></td>
+<td align="left"><code>amp.mcpServers</code>, one key with a dot in its name</td>
+</tr>
+<tr>
+<td align="left"><a href="#goose">Goose</a></td>
+<td align="left"><code>~/.config/goose/config.yaml</code></td>
+<td align="left"><code>extensions</code>, those of type <code>stdio</code> or <code>streamable_http</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#kiro">Kiro</a></td>
+<td align="left"><code>~/.kiro/settings/mcp.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
 </tbody></table>
 <p>VS Code&#39;s <code>globalStorage</code> directory is <code>~/Library/Application Support/Code/User/globalStorage</code> on macOS and <code>~/.config/Code/User/globalStorage</code> on Linux.</p>
 <h2 id="project-files"><a class="anchor" href="#project-files" aria-hidden="true" tabindex="-1">#</a>Project files</h2>
@@ -161,12 +181,22 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"><code>.vscode/mcp.json</code></td>
 <td align="left"><code>servers</code></td>
 </tr>
+<tr>
+<td align="left"><a href="#amp">Amp</a></td>
+<td align="left"><code>.amp/settings.json</code></td>
+<td align="left"><code>amp.mcpServers</code></td>
+</tr>
+<tr>
+<td align="left"><a href="#kiro">Kiro</a></td>
+<td align="left"><code>.kiro/settings/mcp.json</code></td>
+<td align="left"><code>mcpServers</code></td>
+</tr>
 </tbody></table>
 <h2 id="why-the-same-server-breaks-when-you-copy-it"><a class="anchor" href="#why-the-same-server-breaks-when-you-copy-it" aria-hidden="true" tabindex="-1">#</a>Why the same server breaks when you copy it</h2>
 <p>Three differences account for most failed copies:</p>
 <ul>
-<li><strong>The key.</strong> Most runtimes use <code>mcpServers</code>. OpenCode uses <code>mcp</code>, Zed uses <code>context_servers</code>, VS Code uses <code>servers</code>, and Codex CLI uses TOML tables named <code>mcp_servers</code>. A block pasted under the wrong key is valid JSON that the runtime ignores.</li>
-<li><strong>The file format.</strong> Codex CLI reads TOML, OpenCode accepts JSON with comments, and the rest read plain JSON. A trailing comma or a comment breaks a plain JSON file.</li>
+<li><strong>The key.</strong> Most runtimes use <code>mcpServers</code>. OpenCode uses <code>mcp</code>, Zed uses <code>context_servers</code>, VS Code uses <code>servers</code>, Amp uses <code>amp.mcpServers</code>, Goose uses <code>extensions</code>, and Codex CLI uses TOML tables named <code>mcp_servers</code>. A block pasted under the wrong key is valid JSON that the runtime ignores.</li>
+<li><strong>The file format.</strong> Codex CLI reads TOML and Goose reads YAML, OpenCode accepts JSON with comments, and the rest read plain JSON. A trailing comma or a comment breaks a plain JSON file.</li>
 <li><strong>Where a project&#39;s servers live.</strong> A server in a project file exists only in that repository, and Claude Code also keeps private per-project servers inside <code>~/.claude.json</code>, keyed by the project&#39;s path. The same server can be on in one repository and absent in another.</li>
 </ul>
 <h2 id="claude-code"><a class="anchor" href="#claude-code" aria-hidden="true" tabindex="-1">#</a>Claude Code</h2>
@@ -198,6 +228,22 @@ args = [&quot;-y&quot;, &quot;@modelcontextprotocol/server-github&quot;]
 <p>Zed&#39;s <code>settings.json</code>, under <code>context_servers</code>. Linux keeps it in <code>~/.config/zed/</code>, macOS in <code>~/Library/Application Support/Zed/</code>. <code>ZED_MCP_CONFIG</code> overrides it for Ambit.</p>
 <h2 id="vs-code"><a class="anchor" href="#vs-code" aria-hidden="true" tabindex="-1">#</a>VS Code</h2>
 <p>VS Code&#39;s user-level <code>mcp.json</code>, under <code>servers</code>. Linux keeps it in <code>~/.config/Code/User/mcp.json</code>, macOS in <code>~/Library/Application Support/Code/User/mcp.json</code>. A workspace can carry its own in <code>.vscode/mcp.json</code>, in the same shape, which Ambit does not read. <code>VSCODE_MCP_CONFIG</code> overrides the user-level path for Ambit.</p>
+<h2 id="copilot-cli"><a class="anchor" href="#copilot-cli" aria-hidden="true" tabindex="-1">#</a>Copilot CLI</h2>
+<p>GitHub Copilot CLI keeps <code>~/.copilot/mcp-config.json</code>, with <code>mcpServers</code> at the top. Each entry names its transport in <code>type</code>: <code>local</code> or <code>stdio</code> with a <code>command</code>, or <code>http</code> or <code>sse</code> with a <code>url</code>. <code>copilot mcp disable</code> switches a server off and keeps it configured; Copilot&#39;s documentation does not say where that is recorded, so Ambit cannot see it. <code>COPILOT_MCP_CONFIG</code> overrides the path for Ambit.</p>
+<h2 id="amp"><a class="anchor" href="#amp" aria-hidden="true" tabindex="-1">#</a>Amp</h2>
+<p>Amp&#39;s user settings, <code>~/.config/amp/settings.json</code> or <code>settings.jsonc</code>. The servers are under <code>&quot;amp.mcpServers&quot;</code>, one key with a dot in its name, beside Amp&#39;s other settings, which are named the same way. Each is a <code>command</code> and <code>args</code>, or a <code>url</code> and <code>headers</code>. A workspace can declare more in <code>.amp/settings.json</code>, which Ambit does not read. <code>AMP_MCP_CONFIG</code> overrides the user-level path for Ambit.</p>
+<h2 id="goose"><a class="anchor" href="#goose" aria-hidden="true" tabindex="-1">#</a>Goose</h2>
+<p><code>~/.config/goose/config.yaml</code>, where each extension is an entry under <code>extensions</code>:</p>
+<pre><code class="language-yaml">extensions:
+  filesystem:
+    type: stdio
+    enabled: true
+    cmd: npx
+    args: [&quot;-y&quot;, &quot;@modelcontextprotocol/server-filesystem&quot;, &quot;/tmp&quot;]
+</code></pre>
+<p>The command is <code>cmd</code>, and a remote server is <code>type: streamable_http</code> with its address in <code>uri</code>, so an entry copied from an <code>mcpServers</code> file has to be renamed field by field. <code>enabled: false</code> keeps an extension configured and off. Ambit reads the <code>stdio</code> and <code>streamable_http</code> extensions, and the older <code>sse</code> ones; a <code>builtin</code> or <code>platform</code> extension ships inside Goose and is no server anyone added. <code>GOOSE_MCP_CONFIG</code> overrides the path for Ambit.</p>
+<h2 id="kiro"><a class="anchor" href="#kiro" aria-hidden="true" tabindex="-1">#</a>Kiro</h2>
+<p><code>~/.kiro/settings/mcp.json</code>, with <code>mcpServers</code> at the top: a <code>command</code>, <code>args</code> and <code>env</code>, or a <code>url</code> and <code>headers</code>. <code>disabled: true</code> keeps a server configured and off. A workspace&#39;s <code>.kiro/settings/mcp.json</code> can add more, in the same shape, which Ambit does not read. <code>KIRO_MCP_CONFIG</code> overrides the user-level path for Ambit.</p>
 <h2 id="seeing-every-runtimes-servers-at-once"><a class="anchor" href="#seeing-every-runtimes-servers-at-once" aria-hidden="true" tabindex="-1">#</a>Seeing every runtime&#39;s servers at once</h2>
 <p>Each file answers for one runtime. To see all of them together, with which servers are on, which are failing a check, and what stops working if one goes down:</p>
 <pre><code class="language-bash">npx ambit-cli          # reads every user-level file above that exists, and says what it found
