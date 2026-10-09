@@ -252,6 +252,22 @@ const ACT_OUTCOMES: Readonly<Record<string, keyof typeof AUDIT_OUTCOMES>> = {
 const RUN_SUCCEEDED = ['success', 'succeeded', 'completed', 'resolved', 'recovered', 'achieved'];
 const RUN_FAILED = ['failure', 'failed', 'error', 'abandoned', 'blocked_unauthorized'];
 
+/**
+ * The runtime a run's `source` says recorded its tokens, as a surface names it.
+ * A Claude Code session's run is begun by whichever reaches it first, the
+ * plugin's hooks or the reading of its transcript, and each agent whose
+ * session logs are read (src/engine/session-logs.ts) writes its own, so the
+ * token figure can say whose counts it draws. A source on no list is shown as
+ * written.
+ */
+const TOKEN_SOURCES: Readonly<Record<string, string>> = {
+  'claude-code-hook': 'Claude Code',
+  'claude-code-log': 'Claude Code',
+  'codex-log': 'Codex',
+  'opencode-log': 'OpenCode',
+  'amp-log': 'Amp',
+};
+
 export {
   REACHED_STATES,
   FAILING,
@@ -283,4 +299,5 @@ export {
   ACT_OUTCOMES,
   RUN_SUCCEEDED,
   RUN_FAILED,
+  TOKEN_SOURCES,
 };

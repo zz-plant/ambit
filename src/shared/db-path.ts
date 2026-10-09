@@ -68,13 +68,15 @@ export function trackerSpoolPath(): string {
   return join(base, 'ambit', 'opencode-config.jsonl');
 }
 
-export function resolveDbPath(): string {
+export function resolveDbPath(opts: { create?: boolean } = {}): string {
   const explicit = process.env.AMBIT_DB || process.env.TOOLCHAIN_DB;
   if (explicit) return explicit;
   if (existsSync(REPO_DB_PATH)) return REPO_DB_PATH;
   if (existsSync(join(__dirname, '..', '..', '.git'))) return REPO_DB_PATH;
 
   const userPath = userDbPath();
-  mkdirSync(dirname(userPath), { recursive: true });
+  // A reader that must write nothing, `ambit statusline`, asks with
+  // `create: false` and gets the same answer without the directory made for it.
+  if (opts.create !== false) mkdirSync(dirname(userPath), { recursive: true });
   return userPath;
 }

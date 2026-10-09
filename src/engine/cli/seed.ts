@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claudeCodeSeedInput, readClaudeCode } from '../claude-code.ts';
 import { seedFromConfig } from '../discovery.ts';
+import { localModelStores } from '../local-models.ts';
 import { clientLocations, discoverMcpClients } from '../mcp-clients.ts';
 import { configDefault } from '../paths.ts';
 import { compareFrontiers, frontierNow } from '../ledger.ts';
@@ -17,10 +18,14 @@ import { resolveDbPath } from '../../shared/db-path.ts';
 import { mcpEntries, parseJsonc } from '../../shared/opencode.ts';
 import { terminalPalette, type Palette } from './output.ts';
 
-/** What one seed read: the runtime as a person knows it, and the servers it listed. */
+/**
+ * What one seed read: the runtime as a person knows it, and the servers it
+ * listed, or for a local model server the models found in its folder.
+ */
 export interface SeedSource {
   label: string;
   servers: string[];
+  models?: string[];
 }
 
 /** The `schema_meta` key the sources of the last seed are kept under. */
@@ -135,7 +140,8 @@ export function movedLines(
  * then, unless OPENCODE_CONFIG is set or a mapping is passed, a Claude Code
  * install and every client `discoverMcpClients` finds. With none of them it
  * seeds the curated capability model alone, and says so instead of passing that
- * off as a discovered environment.
+ * off as a discovered environment. The models a local server keeps on disk are
+ * read by every pass (`seedLocalModels`) and listed beside the configs.
  */
 function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   const say = quiet ? (_: string) => {} : console.log;
@@ -213,7 +219,13 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   if (previousRuntime === undefined) delete process.env.AMBIT_RUNTIME;
   else process.env.AMBIT_RUNTIME = previousRuntime;
 
-  const read: SeedSource[] = sources.map(({ label, servers }) => ({ label, servers }));
+  // The model servers' folders are read by every seed pass above; listed
+  // here so the read-out names what was found on disk beside what was
+  // configured.
+  const read: SeedSource[] = [
+    ...sources.map(({ label, servers }) => ({ label, servers })),
+    ...localModelStores().map(({ label, models }) => ({ label, servers: [], models })),
+  ];
   db.prepare(
     `INSERT INTO schema_meta (key, value) VALUES (?, ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, applied_at = datetime('now')`
@@ -227,16 +239,15 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
   // Printed by `ambit seed`, bootstrap.sh and the first run alike, any of which
   // may be writing to a pipe or a log.
   const paint = terminalPalette();
-  if (sources.length) {
-    // What was read, by name: the first thing a cautious person checks is
-    // whether it found the servers they know they have.
-    const width = Math.max(...read.map(r => r.label.length));
-    for (const r of read) {
-      say(
-        `  ${paint.green}✓${paint.reset} ${r.label.padEnd(width)}  ${paint.grey}${names(r.servers)}${paint.reset}`
-      );
-    }
-  } else {
+  // What was read, by name: the first thing a cautious person checks is
+  // whether it found the servers they know they have.
+  const labelWidth = Math.max(0, ...read.map(r => r.label.length));
+  for (const r of read) {
+    say(
+      `  ${paint.green}✓${paint.reset} ${r.label.padEnd(labelWidth)}  ${paint.grey}${names(r.models ?? r.servers)}${paint.reset}`
+    );
+  }
+  if (!sources.length) {
     // Say so, and say where it looked: naming one runtime's path told a Cursor
     // or Claude Code user that Ambit reads OpenCode alone.
     say(`  ${paint.yellow}!${paint.reset} No agent config found. Looked for:`);
@@ -264,7 +275,7 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
     for (const line of movedLines(compareFrontiers(db, before, frontierNow(db)), paint)) say(line);
   }
   markSeen(db);
-  const whose = sources.length ? '' : ', all from the curated model,';
+  const whose = read.length ? '' : ', all from the curated model,';
   say(
     `    ${paint.grey}${c?.cnt ?? 0} capabilities${whose} written to ${tilde(resolveDbPath())}. Nothing was sent anywhere.${paint.reset}`
   );

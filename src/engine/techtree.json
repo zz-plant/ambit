@@ -71,7 +71,8 @@
       "description": "The agent can read and modify files directly",
       "detect": {
         "any": [
-          "^tool:edit$"
+          "^tool:edit$",
+          "^mcp:(.*[/_-])?filesystem$"
         ]
       },
       "setup_seconds": 0,
@@ -267,7 +268,7 @@
       ],
       "detect": {
         "any": [
-          "qwen",
+          "qwen(?![^/]*embed)",
           "hermes",
           "firefunction",
           "command-r",
@@ -897,7 +898,11 @@
           "recall",
           "mem0",
           "zep",
-          "obsidian"
+          "obsidian",
+          "claude-mem",
+          "cognee",
+          "\\bletta\\b",
+          "graphiti"
         ]
       },
       "setup_seconds": 900,
@@ -1387,7 +1392,8 @@
           "nomic-embed",
           "bge-.*local",
           "local.*embed",
-          "embed.*local"
+          "embed.*local",
+          "^model:local-[^/]+/.*(bge-|minilm|gte-)"
         ]
       },
       "setup_seconds": 900,

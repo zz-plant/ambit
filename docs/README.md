@@ -8,7 +8,7 @@ The claim underneath is that what an agent setup can do is not written in any co
 
 - [Building alone](./solo.md) — for a one-person company: the checklist between you and launch, what an agent may do to production without asking, and how you hear when it breaks.
 - [FAQ](./faq.md) — the short answers, each pointing at the longer one.
-- [Where each AI agent keeps its MCP config](./mcp-config-locations.md) — the files and keys, user and project, for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed and VS Code, and which of them Ambit reads.
+- [Where each AI agent keeps its MCP config](./mcp-config-locations.md) — the files and keys, user and project, for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, and which of them Ambit reads.
 - [What breaks if an MCP server goes down](./mcp-outage.md) — single points of failure in an agent setup, and how to find them before an agent does.
 - [Auditing which MCP servers a coding agent has](./audit-mcp-servers.md) — what is declared, what works, what may run without asking, and what was used but never declared.
 - [Ambit and MCP gateways](./compare.md) — which questions a gateway on the call path answers, which ones Ambit answers, and how the two compose.

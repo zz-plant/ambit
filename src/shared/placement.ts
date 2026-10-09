@@ -36,6 +36,22 @@ export interface Placement<N extends PlaceableNode = PlaceableNode> {
 }
 
 /**
+ * Whether one of a node's `detect` patterns names a tool in `text`: a config
+ * id when a setup is placed, and the tools a spec's plan says it is built on
+ * for `ambit goal --spec`. A pattern that is not a valid expression names
+ * nothing.
+ */
+export function detects(node: Pick<PlaceableNode, 'detect'>, text: string): boolean {
+  return (node.detect?.any || []).some(p => {
+    try {
+      return new RegExp(p, 'i').test(text);
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
  * Each node in era order, so a node's prerequisites are settled before it is.
  *
  *   detected, prerequisites met     → reached, with what proved it
@@ -57,16 +73,7 @@ export function placeOnTree<N extends PlaceableNode>(nodes: N[], owned: string[]
   const unlocked = new Set<string>();
 
   return ordered.map(node => {
-    const patterns = node.detect?.any || [];
-    const hits = owned.filter(id =>
-      patterns.some(p => {
-        try {
-          return new RegExp(p, 'i').test(id);
-        } catch {
-          return false;
-        }
-      })
-    );
+    const hits = owned.filter(id => detects(node, id));
     const meetsMin = !node.detect?.min_models || modelCount >= node.detect.min_models;
     const proof = hits.length && meetsMin ? hits : [];
     const missing = (node.requires || []).filter(r => !unlocked.has(r));

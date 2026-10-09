@@ -2,7 +2,7 @@
   "name": "ambit-gate",
   "displayName": "Ambit gate",
   "version": "0.6.0",
-  "description": "Ambit's decision in front of every tool call. It denies what is forbidden or over a budget, asks about what asks first or has no grant, and never allows anything Claude Code would otherwise ask about. About a fifth of a second per call.",
+  "description": "Ambit's decision in front of every tool call. It denies what is forbidden or over a budget, asks about what asks first or has no grant, and never allows anything Claude Code would otherwise ask about. About an eighth of a second per call.",
   "author": { "name": "Kanav Jain", "url": "https://github.com/zz-plant" },
   "homepage": "https://zz-plant.github.io/ambit/docs/deep-dive/#capability-and-authority-are-different-things",
   "repository": "https://github.com/zz-plant/ambit",

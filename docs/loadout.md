@@ -16,7 +16,7 @@ The person's role changes on the way. At A they operate and approve each call. A
 
 My Setup in the app opens on a readout of these seven legs for the loadout on screen, each with where it stands and the one command that moves it.
 
-**1. See where it stands.** Twelve runtimes keep their servers in twelve files ([where each one keeps it](./mcp-config-locations.md)), and none of them says whether a server works. `ambit seed` reads them all into one map, and `ambit verify` runs each declared check. The demo's loadout reaches 16 of the 46 capabilities on its map, and 13 of those are proven. *Easier: this was always possible by hand.*
+**1. See where it stands.** Each runtime keeps its servers in a file of its own ([where each one keeps it](./mcp-config-locations.md)), and none of them says whether a server works. `ambit seed` reads them all into one map, and `ambit verify` runs each declared check. The demo's loadout reaches 16 of the 46 capabilities on its map, and 13 of those are proven. *Easier: this was always possible by hand.*
 
 **2. Pick the next step.** Adding servers from a list is a guess about what they combine into. `ambit next` ranks what to reach by what has actually blocked work, and `ambit graph combos` names the combinations one missing piece away. In the demo, Embeddings is next: it has blocked work four times, and it also reaches Vector Store. The map, the welcome screen and `ambit next` name the same step, because they read the same ranking. *Tractable: the choice is combinatorial, and without a model people stop at the size they can hold in their heads.*
 

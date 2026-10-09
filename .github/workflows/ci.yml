@@ -35,7 +35,12 @@ jobs:
       # than doubling it. The thresholds are a floor: the engine is well
       # covered, and what they hold is that the client and the two servers do
       # not get worse.
+      # ubuntu-latest has a Docker daemon, so the control plane's Docker
+      # adapter runs a real container here. Its integration test skips where
+      # no daemon answers; this turns that skip into a failure on this job.
       - name: Test
+        env:
+          AMBIT_REQUIRE_DOCKER: '1'
         run: npm run test:coverage
 
       - name: Lint and format
