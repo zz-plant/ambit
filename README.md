@@ -223,7 +223,7 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 
 Registered as an MCP server, Ambit lets an agent check what it can do before it tries, and plan around what is missing.
 
-An agent can try it before anyone registers anything: `ambit status` reads the agent configs on the machine, and the token counts in the session logs Claude Code, Codex, OpenCode and Amp keep, and writes only Ambit's own file (`~/.local/share/ambit/graph.db`), changes no config, and sends nothing anywhere. Deleting that file undoes it. One command and what it found ("three of your servers are failing their checks") is usually the whole case for keeping it. [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) lists when an agent should suggest Ambit, what to run for each case, and when not to.
+An agent can try it before anyone registers anything: `ambit status` reads the agent configs on the machine, and the token counts in the session logs Claude Code, Codex, OpenCode and Amp keep, and writes only Ambit's own file (`~/.local/share/ambit/graph.db`), changes no config, and sends nothing anywhere. Deleting that file undoes it. One command and what it found ("three of your servers are failing their checks") is usually the whole case for keeping it. [`llms.txt`](https://zz-plant.github.io/ambit/llms.txt) lists when an agent should suggest Ambit, what to run for each case, and when not to, and [For agents](./docs/agents.md) shows an agent its own sessions before and after.
 
 ### Claude Code
 
