@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { FAILING_SQL, REACHED_SQL, graphCounts } from './vocabulary.ts';
 import { singlePointsOfFailure } from './inference.ts';
+import { clientConfigs } from './mcp-clients.ts';
 import { parseJsonc } from '../shared/opencode.ts';
 
 export interface DoctorRuntime {
@@ -44,26 +45,19 @@ function hasAmbitServer(raw: string): boolean {
   return false;
 }
 
-/** Detect installed agent runtimes and check if Ambit is connected. */
+/**
+ * Detect installed agent runtimes and check if Ambit is connected.
+ *
+ * OpenCode and Claude Code have readers of their own; every other runtime is
+ * the one discovery reads, through `clientConfigs`, so a runtime added there
+ * is detected here too. This kept a list of its own and knew seven.
+ */
 export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] {
-  const candidates: { runtime: string; label: string; paths: string[] }[] = [
+  const own: { runtime: string; label: string; paths: string[] }[] = [
     {
       runtime: 'claude-code',
       label: 'Claude Code',
       paths: [join(home, '.claude.json')],
-    },
-    {
-      runtime: 'cursor',
-      label: 'Cursor',
-      paths: [join(home, '.cursor', 'mcp.json')],
-    },
-    {
-      runtime: 'claude-desktop',
-      label: 'Claude Desktop',
-      paths: [
-        join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json'),
-        join(home, '.config', 'Claude', 'claude_desktop_config.json'),
-      ],
     },
     {
       runtime: 'opencode',
@@ -73,39 +67,26 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
         join(home, '.config', 'opencode', 'opencode.jsonc'),
       ],
     },
-    {
-      runtime: 'windsurf',
-      label: 'Windsurf',
-      paths: [join(home, '.codeium', 'windsurf', 'mcp_config.json')],
-    },
-    {
-      runtime: 'continue',
-      label: 'Continue',
-      paths: [join(home, '.continue', 'config.json')],
-    },
-    {
-      runtime: 'codex',
-      label: 'Codex CLI',
-      paths: [join(home, '.codex', 'config.toml')],
-    },
   ];
 
   const detected: DoctorRuntime[] = [];
-  for (const c of candidates) {
+  for (const c of own) {
     const p = c.paths.find(candidatePath => existsSync(candidatePath));
     if (!p) continue;
     let hasAmbit = false;
     try {
-      const raw = readFileSync(p, 'utf8');
-      hasAmbit = hasAmbitServer(raw);
+      hasAmbit = hasAmbitServer(readFileSync(p, 'utf8'));
     } catch {
       // unreadable file
     }
+    detected.push({ runtime: c.runtime, label: c.label, path: p, has_ambit: hasAmbit });
+  }
+  for (const c of clientConfigs(home)) {
     detected.push({
       runtime: c.runtime,
       label: c.label,
-      path: p,
-      has_ambit: hasAmbit,
+      path: c.path,
+      has_ambit: Boolean(c.servers && Object.hasOwn(c.servers, 'ambit')),
     });
   }
   return detected;

@@ -61,6 +61,7 @@ const GROUPS: Record<string, string[]> = {
     'record',
     'signals',
     'preferences',
+    'statusline',
   ],
 };
 

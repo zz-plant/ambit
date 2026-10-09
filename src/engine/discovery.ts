@@ -20,6 +20,7 @@ import {
   seedCombos,
   seedDependencies,
   seedInfrastructure,
+  seedLocalModels,
   seedModels,
 } from './seed/structure.ts';
 
@@ -117,6 +118,7 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record
   }
 
   count += seedModels(db, config, insert);
+  count += seedLocalModels(db, insert);
   count += attributeToRuntime(db, insert, contributed);
   seedDependencies(db, config);
   count += seedTechTree(db, insert);
@@ -147,6 +149,7 @@ export {
   parseMapping,
   seedFromConfig,
   seedModels,
+  seedLocalModels,
   seedDependencies,
   attributeToRuntime,
   seedTechTree,

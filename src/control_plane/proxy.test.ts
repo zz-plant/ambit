@@ -356,3 +356,22 @@ test('emergency break-glass with justification permits execution and writes audi
   const events = result.audit_summary.events;
   expect(events.some((e: any) => e.kind === 'break_glass')).toBe(true);
 });
+
+test('break-glass never outranks a refusal someone wrote', () => {
+  // AGENTS.md rule 9: a forbidden grant wins at any specificity. Break-glass
+  // is the agent's own say-so, so it can stand in for a missing approval and
+  // never for a written no.
+  db.prepare(
+    "UPDATE authority SET mode = 'forbidden' WHERE capability_id = 'combo:deploy-to-production' AND action = 'execute'"
+  ).run();
+  const before = readSimulatedEnvironment(envDir);
+  const result = executeThroughControlPlane(db, envDir, {
+    ...DEPLOY,
+    break_glass: true,
+    break_glass_reason: 'Sev-1 hotfix',
+  });
+  expect(result.ok).toBe(false);
+  expect(result.status_code).toBe('AMBIT_BLOCKED_UNAUTHORIZED');
+  expect(result.trace.events.some(e => e.name === 'break_glass_refused')).toBe(true);
+  expect(readSimulatedEnvironment(envDir)).toEqual(before);
+});

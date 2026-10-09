@@ -182,8 +182,11 @@ const BASE_TOOLS: ToolDef[] = [
           description: 'Route an unmatched goal with a local judgment model',
         },
         judgeUrl: { type: 'string', description: 'Loopback URL of that model' },
+        spec: {
+          type: 'string',
+          description: 'Or a Spec Kit/OpenSpec dir or tasks.md: what its tasks need',
+        },
       },
-      required: ['goal'],
     },
     annotations: READS,
   },
@@ -218,7 +221,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'digest',
     description:
-      'How much work still runs through the human, and which interventions are reducible: recurring approvals and permission blocks are candidates for a bounded grant or automation. days: window (default 7).',
+      'How much work still runs through the human, and which interventions are reducible: recurring approvals and permission blocks could become a bounded grant or automation. days: window (default 7).',
     inputSchema: { type: 'object', properties: { days: num } },
     annotations: READS,
   },
@@ -232,8 +235,8 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'usage',
     description:
-      'Where effort went over a window in days (default 30): times exercised, duration and interventions per capability. unmapped: tools used that no node covers.',
-    inputSchema: { type: 'object', properties: { days: num, unmapped: bool } },
+      'Where effort went over a window in days (default 30): times exercised, duration and interventions per capability. unmapped: tools used that no node covers. windows: tokens per five-hour window, and time left in this one.',
+    inputSchema: { type: 'object', properties: { days: num, unmapped: bool, windows: bool } },
     annotations: READS,
   },
   {
@@ -306,7 +309,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'opportunities',
     description:
-      'Ranked changes worth making, from recurring human burden in the ledger priced by attention. by: attention (default), cash, roi, reliability, frontier. budget (dollars): the best combination within it.',
+      'Ranked changes worth making, from recurring human burden priced by attention. by: attention (default), cash, roi, reliability, frontier. budget (dollars): the best combination within it.',
     inputSchema: { type: 'object', properties: { by: str, budget: num } },
     annotations: READS,
   },
@@ -375,7 +378,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'incidents',
     description:
-      'Probe the hosts the infrastructure manifest names, record each answer as a check run on that device or service, and open an incident run per offline service, with the authority decision for recovery (restart ALLOW, CONFIRM or DENY).',
+      'Probe the hosts the infrastructure manifest names, record each answer as a check run, and open an incident run per offline service, with the authority decision for recovery (restart ALLOW, CONFIRM or DENY).',
     inputSchema: NONE,
     annotations: PROBES,
   },
@@ -393,7 +396,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'portfolio',
     description:
-      'Across imported federation receipts: burden that recurs in several environments, person-specific single points of failure, and (with budget) where spend gains most. Never merges.',
+      'Across imported federation receipts: burden recurring across environments, person-specific single points of failure, and (with budget) where spend gains most. Never merges.',
     inputSchema: { type: 'object', properties: { budget: num } },
     annotations: READS,
   },
@@ -432,7 +435,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'propose',
     description:
-      'Draft a reviewable acquisition: ordered steps, the alternative chosen and its trade-offs, the simulated result. Nothing executes until a person approves it, and only reversible config patches can then be applied.',
+      'Draft a reviewable acquisition: ordered steps, the alternative chosen and its trade-offs, the simulated result. Nothing runs until a person approves it, and then only reversible config patches apply.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -504,14 +507,14 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'council',
     description:
-      'The first next step read five ways: what it opens, what it would rest on, what it has cost, what it may do once reached, whether its foundation works. One sentence, one command and a stance per seat, and whether they are split.',
+      'The first next step read five ways: what it opens, rests on, has cost and may do once reached, and whether its foundation works. Per seat a sentence, a command and a stance, and whether they split.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'record_failure',
     description:
-      'Report a tool failure you just hit as the runtime reported it: exit code, error text or kind. Ambit classifies it, attributes it to a capability where it can, and keeps it either way.',
+      'Report a tool failure you just hit as the runtime reported it: exit code, error text or kind. Ambit classifies it and attributes it to a capability where it can.',
     inputSchema: {
       type: 'object',
       properties: { tool: str, message: str, exitCode: num, errorKind: str, capabilityId: str },
@@ -528,7 +531,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'register_skill',
     description:
-      'Put a skill you wrote on the map: an id, the capability it supplies, and a read-only command that proves it works. The check runs at once, so the skill arrives proven or honest about failing.',
+      'Put a skill you wrote on the map: an id, the capability it supplies, and a read-only command that proves it works. The check runs at once, so it arrives proven or failing.',
     inputSchema: {
       type: 'object',
       properties: { id: str, name: str, provides: str, verify: str, description: str },

@@ -49,7 +49,9 @@ writeFileSync(
   )
 );
 
-const ENV = { ...process.env, AMBIT_DB: dbPath, OPENCODE_CONFIG: configPath };
+// AMBIT_NO_LEDGER: the demo's graph must not read the session logs of the
+// machine it is recorded on.
+const ENV = { ...process.env, AMBIT_DB: dbPath, OPENCODE_CONFIG: configPath, AMBIT_NO_LEDGER: '1' };
 
 const strip = (s: string) =>
   // biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the point — this strips ANSI colour from captured output.

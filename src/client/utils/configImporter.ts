@@ -99,7 +99,8 @@ export const RUNTIME_ID = 'runtime:opencode';
 
 /**
  * The `mcpServers` block that Claude Desktop, Claude Code, Cursor, Windsurf,
- * Gemini CLI, Cline and Roo Code all write, in the shape `importConfig` reads.
+ * Gemini CLI, Cline, Roo Code, Copilot CLI and Kiro all write, in the shape
+ * `importConfig` reads.
  *
  * The browser's drop zone accepted only the OpenCode format, so five of the
  * seven runtimes the landing names were refused with "nothing in it to map".

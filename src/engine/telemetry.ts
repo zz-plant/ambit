@@ -6,6 +6,8 @@ import type {
   RunUse,
   UnmappedEntry,
   UnmappedResponse,
+  UsageWindow,
+  UsageWindowModel,
 } from '../shared/api.ts';
 import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
@@ -21,7 +23,7 @@ import type {
   WorkEventRow,
   WorkRunRow,
 } from './rows.ts';
-import { GATE_KINDS } from './vocabulary.ts';
+import { GATE_KINDS, TOKEN_SOURCES } from './vocabulary.ts';
 
 /**
  * The work ledger: one row per run of actual effort, the events inside it, the
@@ -243,16 +245,32 @@ function recordIntervention(
   return { actor: actorId, kind: input.kind, active_seconds: active };
 }
 
+/**
+ * A resource a run consumed. `at` is when it was consumed, for a row recorded
+ * after the fact (a token row's is the start of the hour the tokens were used
+ * in); now when absent. `written_at` is always now: it is what tells a row
+ * from one written before it existed, and what `ambit sync` tells two rows of
+ * one hour apart by.
+ */
 function recordResource(
   db: Migratable,
   runId: string | null,
   resourceId: string,
   kind: string,
-  input: { quantity?: number; unit?: string; costCents?: number } = {}
+  input: { quantity?: number; unit?: string; costCents?: number; at?: string } = {}
 ) {
   db.prepare(
-    'INSERT INTO resource_consumption (run_id, resource_id, kind, quantity, unit, cost_cents) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(runId, resourceId, kind, input.quantity ?? 0, input.unit || null, input.costCents ?? null);
+    `INSERT INTO resource_consumption (run_id, resource_id, kind, quantity, unit, cost_cents, recorded_at, written_at)
+     VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), datetime('now'))`
+  ).run(
+    runId,
+    resourceId,
+    kind,
+    input.quantity ?? 0,
+    input.unit || null,
+    input.costCents ?? null,
+    input.at ?? null
+  );
   return { resource: resourceId, kind };
 }
 
@@ -775,37 +793,52 @@ function unmappedUse(db: Db, days = 30): UnmappedResponse {
 }
 
 /**
+ * When a token row's tokens were used, as SQL over `resource_consumption r`
+ * joined to its run `w`: the hour a row written per hour names, and for a row
+ * written before rows were kept per hour, its session's start, the only time
+ * such a row has.
+ */
+const TOKEN_TIME = 'CASE WHEN r.written_at IS NULL THEN w.started_at ELSE r.recorded_at END';
+
+/**
  * The tokens sessions used in a window, per model: fresh input, cache reads
  * and output kept apart, since in a long session cache reads are most of the
  * count and a fraction of the price. Read from what the Claude Code hooks
- * recorded from each transcript (src/engine/spool.ts). Undefined when nothing
- * was recorded in the window, so a surface says nothing instead of drawing
- * zeroes (AGENTS.md rule 16).
+ * recorded from each transcript (src/engine/spool.ts) and from the session
+ * logs Codex, OpenCode and Amp keep (src/engine/session-logs.ts), and labelled
+ * with the runtime each run's source names (`TOKEN_SOURCES`). Undefined when
+ * nothing was recorded in the window, so a surface says nothing instead of
+ * drawing zeroes (AGENTS.md rule 16); `reasoning` is there only for a model
+ * some runtime counted reasoning apart for.
  *
- * What the tokens cost is there only where it was priced: the transcripts state
- * no price, and a row is priced at what a person declared for its model when it
+ * What the tokens cost is there only where it was priced: no log states a
+ * price, and a row is priced at what a person declared for its model when it
  * was recorded. `spend_dollars` sums those and is absent when none were, and
  * `unpriced` says some of the model's tokens carry no price, so a surface can
  * say undeclared and never print $0 for it.
+ *
+ * A token is in the window when the hour it was used in is (`TOKEN_TIME`).
  */
 function tokenUsage(db: Migratable, days = 30) {
   const rows = db
     .prepare(
-      `SELECT r.resource_id AS resource, r.unit AS unit, SUM(r.quantity) AS quantity,
-              SUM(r.cost_cents) AS cost,
+      `SELECT r.resource_id AS resource, r.unit AS unit, w.source AS source,
+              SUM(r.quantity) AS quantity, SUM(r.cost_cents) AS cost,
               SUM(CASE WHEN r.cost_cents IS NULL AND r.quantity > 0 THEN 1 ELSE 0 END) AS unpriced
        FROM resource_consumption r JOIN work_runs w ON w.id = r.run_id
-       WHERE r.kind = 'tokens' AND w.started_at >= datetime('now', ?)
-       GROUP BY r.resource_id, r.unit`
+       WHERE r.kind = 'tokens' AND ${TOKEN_TIME} >= datetime('now', ?)
+       GROUP BY r.resource_id, r.unit, w.source`
     )
     .all<{
       resource: string;
       unit: string;
+      source: string;
       quantity: number;
       cost: number | null;
       unpriced: number;
     }>(`-${days} days`);
   if (!rows.length) return undefined;
+  const runtimeOf = (source: string) => TOKEN_SOURCES[source] ?? source;
   const models = new Map<
     string,
     {
@@ -813,6 +846,8 @@ function tokenUsage(db: Migratable, days = 30) {
       input: number;
       cached: number;
       output: number;
+      reasoning?: number;
+      runtimes: string[];
       spend_dollars?: number;
       unpriced?: true;
     }
@@ -820,32 +855,213 @@ function tokenUsage(db: Migratable, days = 30) {
   const cents = new Map<string, number>();
   for (const r of rows) {
     const model = String(r.resource).replace(/^model:/, '');
-    const m = models.get(model) ?? { model, input: 0, cached: 0, output: 0 };
+    const m = models.get(model) ?? { model, input: 0, cached: 0, output: 0, runtimes: [] };
     if (r.unit === 'input tokens') m.input += r.quantity;
     else if (r.unit === 'cache read tokens') m.cached += r.quantity;
     else if (r.unit === 'output tokens') m.output += r.quantity;
+    else if (r.unit === 'reasoning tokens') m.reasoning = (m.reasoning ?? 0) + r.quantity;
     if (r.cost != null) cents.set(model, (cents.get(model) ?? 0) + r.cost);
     if (r.unpriced > 0) m.unpriced = true;
+    const runtime = runtimeOf(r.source);
+    if (!m.runtimes.includes(runtime)) m.runtimes.push(runtime);
     models.set(model, m);
   }
   for (const [model, c] of cents) {
     const m = models.get(model);
     if (m) m.spend_dollars = Math.round(c) / 100;
   }
-  const sessions =
-    db
-      .prepare(
-        `SELECT COUNT(DISTINCT r.run_id) AS n FROM resource_consumption r
-         JOIN work_runs w ON w.id = r.run_id
-         WHERE r.kind = 'tokens' AND w.started_at >= datetime('now', ?)`
-      )
-      .get<{ n: number }>(`-${days} days`)?.n ?? 0;
-  const total = (m: { input: number; cached: number; output: number }) =>
-    m.input + m.cached + m.output;
+  const bySource = db
+    .prepare(
+      `SELECT w.source AS source, COUNT(DISTINCT r.run_id) AS n FROM resource_consumption r
+       JOIN work_runs w ON w.id = r.run_id
+       WHERE r.kind = 'tokens' AND ${TOKEN_TIME} >= datetime('now', ?)
+       GROUP BY w.source`
+    )
+    .all<{ source: string; n: number }>(`-${days} days`);
+  const runtimes = new Map<string, number>();
+  for (const s of bySource) {
+    const runtime = runtimeOf(s.source);
+    runtimes.set(runtime, (runtimes.get(runtime) ?? 0) + s.n);
+  }
+  const total = (m: { input: number; cached: number; output: number; reasoning?: number }) =>
+    m.input + m.cached + m.output + (m.reasoning ?? 0);
   return {
     days,
-    sessions,
-    models: [...models.values()].sort((a, b) => total(b) - total(a)),
+    sessions: bySource.reduce((n, s) => n + s.n, 0),
+    runtimes: [...runtimes]
+      .map(([runtime, sessions]) => ({ runtime, sessions }))
+      .sort((a, b) => b.sessions - a.sessions || a.runtime.localeCompare(b.runtime)),
+    models: [...models.values()]
+      .map(m => ({ ...m, runtimes: m.runtimes.sort() }))
+      .sort((a, b) => total(b) - total(a)),
+  };
+}
+
+/** How long a usage window lasts, in hours: the reset period ccusage's blocks report counts by. */
+const WINDOW_HOURS = 5;
+const HOUR_MS = 3_600_000;
+const DAY_MS = 86_400_000;
+
+/**
+ * Five-hour usage windows, counted the way ccusage's blocks report counts
+ * them (`identify_session_blocks` in rust/crates/ccusage/src/blocks.rs,
+ * https://github.com/ryoppippi/ccusage): a window starts at the first use
+ * after the last window ended, floored to the hour, and lasts five hours; a
+ * use more than five hours after a window's start begins the next. The plans
+ * Claude Code and Codex run on reset in windows like these, so this says how
+ * much the current one has used, and when it ends.
+ *
+ * The ledger keeps tokens per hour, which is the grain the rule floors a
+ * start to, so a use is placed by its hour. One instant differs: a use at
+ * exactly five hours past a window's start stays in that window in ccusage
+ * and opens the next one here. Each runtime's windows are counted apart,
+ * since each plan resets on its own clock. Rows written before tokens were
+ * kept per hour have no hour and are in no window; how many of their tokens
+ * fall in the last seven days is said, and never spread over hours they may
+ * not have been used in.
+ *
+ * Where a window starts depends on the one before it, back to the last five
+ * idle hours, so windows are worked out from two days before the range shown.
+ * The current window is the one holding `now`, with the seconds until it
+ * ends. No limit is stated: Ambit knows no plan's, so a window never says
+ * what share of one it used or what remains of one (AGENTS.md rule 16).
+ */
+function usageWindows(db: Migratable, opts: { days?: number; now?: number } = {}) {
+  const days = opts.days && opts.days > 0 ? opts.days : 1;
+  const now = opts.now ?? Date.now();
+  const since = now - days * DAY_MS;
+  const weekFrom = now - 7 * DAY_MS;
+  const sql = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace('T', ' ');
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const rows = db
+    .prepare(
+      `SELECT w.source AS source, strftime('%Y-%m-%d %H:00:00', r.recorded_at) AS hour,
+              r.resource_id AS resource, r.unit AS unit,
+              SUM(r.quantity) AS quantity, SUM(r.cost_cents) AS cost,
+              SUM(CASE WHEN r.cost_cents IS NULL AND r.quantity > 0 THEN 1 ELSE 0 END) AS unpriced
+       FROM resource_consumption r JOIN work_runs w ON w.id = r.run_id
+       WHERE r.kind = 'tokens' AND r.written_at IS NOT NULL
+         AND r.recorded_at >= ? AND r.recorded_at <= ?
+       GROUP BY 1, 2, 3, 4 ORDER BY 2`
+    )
+    .all<{
+      source: string;
+      hour: string;
+      resource: string;
+      unit: string;
+      quantity: number;
+      cost: number | null;
+      unpriced: number;
+    }>(sql(Math.min(since - 2 * DAY_MS, weekFrom)), sql(now));
+
+  type Tally = UsageWindowModel & { cents: number };
+  const tally = (into: Map<string, Tally>, r: (typeof rows)[number]) => {
+    const model = String(r.resource).replace(/^model:/, '');
+    const m = into.get(model) ?? { model, input: 0, cached: 0, output: 0, cents: 0 };
+    if (r.unit === 'input tokens') m.input += r.quantity;
+    else if (r.unit === 'cache read tokens') m.cached += r.quantity;
+    else if (r.unit === 'output tokens') m.output += r.quantity;
+    else if (r.unit === 'reasoning tokens') m.reasoning = (m.reasoning ?? 0) + r.quantity;
+    if (r.cost != null) {
+      m.cents += r.cost;
+      m.spend_dollars = 0;
+    }
+    if (r.unpriced > 0) m.unpriced = true;
+    into.set(model, m);
+  };
+  const sum = (m: UsageWindowModel) => m.input + m.cached + m.output + (m.reasoning ?? 0);
+  /** The models of a window or a week, most used first, and what they come to. */
+  const settle = (models: Map<string, Tally>) => {
+    const list = [...models.values()]
+      .map(({ cents, ...m }) =>
+        m.spend_dollars === undefined ? m : { ...m, spend_dollars: Math.round(cents) / 100 }
+      )
+      .sort((a, b) => sum(b) - sum(a) || a.model.localeCompare(b.model));
+    const priced = [...models.values()].filter(m => m.spend_dollars !== undefined);
+    return {
+      tokens: list.reduce((n, m) => n + sum(m), 0),
+      models: list,
+      ...(priced.length
+        ? { spend_dollars: Math.round(priced.reduce((n, m) => n + m.cents, 0)) / 100 }
+        : {}),
+      ...(list.some(m => m.unpriced) ? { unpriced: true as const } : {}),
+    };
+  };
+
+  const chains = new Map<string, { start: number; models: Map<string, Tally> }[]>();
+  const weeks = new Map<string, Map<string, Tally>>();
+  for (const r of rows) {
+    const at = toEpoch(r.hour);
+    if (at === undefined || !(r.quantity > 0)) continue;
+    const runtime = TOKEN_SOURCES[r.source] ?? r.source;
+    if (at >= weekFrom) {
+      if (!weeks.has(runtime)) weeks.set(runtime, new Map());
+      tally(weeks.get(runtime) as Map<string, Tally>, r);
+    }
+    const chain = chains.get(runtime) ?? [];
+    chains.set(runtime, chain);
+    let window = chain[chain.length - 1];
+    if (!window || at >= window.start + WINDOW_HOURS * HOUR_MS) {
+      window = { start: at, models: new Map() };
+      chain.push(window);
+    }
+    tally(window.models, r);
+  }
+
+  const windows: UsageWindow[] = [];
+  for (const [runtime, chain] of chains) {
+    for (const w of chain) {
+      const end = w.start + WINDOW_HOURS * HOUR_MS;
+      if (end <= since) continue;
+      const current = w.start <= now && now < end;
+      windows.push({
+        runtime,
+        start: iso(w.start),
+        end: iso(end),
+        current,
+        ...(current ? { seconds_left: Math.round((end - now) / 1000) } : {}),
+        ...settle(w.models),
+      });
+    }
+  }
+  windows.sort((a, b) => b.start.localeCompare(a.start) || a.runtime.localeCompare(b.runtime));
+  const week = [...weeks]
+    .map(([runtime, models]) => {
+      const { tokens, spend_dollars, unpriced } = settle(models);
+      return {
+        runtime,
+        tokens,
+        ...(spend_dollars === undefined ? {} : { spend_dollars }),
+        ...(unpriced ? { unpriced } : {}),
+      };
+    })
+    .sort((a, b) => b.tokens - a.tokens || a.runtime.localeCompare(b.runtime));
+
+  const unhoured =
+    db
+      .prepare(
+        `SELECT SUM(r.quantity) AS n FROM resource_consumption r JOIN work_runs w ON w.id = r.run_id
+         WHERE r.kind = 'tokens' AND r.written_at IS NULL AND w.started_at >= ?`
+      )
+      .get<{ n: number | null }>(sql(weekFrom))?.n ?? 0;
+  const before =
+    unhoured > 0
+      ? ` ${unhoured} tokens from sessions of the last 7 days were recorded before tokens were kept per hour, and are in no window and no 7-day total.`
+      : '';
+  const rule = `A window starts at the hour of the first use after the last one ended and lasts ${WINDOW_HOURS} hours, counted for each runtime apart, as ccusage's blocks report counts them. Ambit knows no plan's limit, so it shows what a window used and when it ends, never a share of a limit or what is left of one.`;
+  if (!windows.length && !week.length) {
+    return {
+      days,
+      note: `No tokens recorded in the last ${days === 1 ? 'day' : `${days} days`}. ${rule}${before}`,
+    };
+  }
+  return {
+    days,
+    hours: WINDOW_HOURS,
+    now: iso(now),
+    windows,
+    last_7_days: week,
+    note: `${rule} A cost is what the model's declared price made it when its tokens were recorded; a model with none is unpriced.${before}`,
   };
 }
 
@@ -863,4 +1079,5 @@ export {
   usageReport,
   unmappedUse,
   tokenUsage,
+  usageWindows,
 };

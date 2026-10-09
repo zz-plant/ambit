@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { keepBackup } from '../shared/backup.ts';
+import { setIn } from '../shared/jsonEdit.ts';
 import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
 import { shellQuote } from '../shared/shell.ts';
 import { clientPaths } from './mcp-clients.ts';
@@ -30,7 +31,10 @@ export interface ConnectResult {
     action: 'added' | 'updated' | 'already_configured';
     /** Where the file stood before this run, when it existed and was rewritten. */
     backup?: string;
-    /** For Cursor's ledger hooks, the command each entry runs, so a dry run shows the change. */
+    /**
+     * For Cursor's ledger hooks and Claude Code's status line, the command the
+     * entry runs, so a dry run shows the change.
+     */
     hook?: string;
     /** And the events it is added under. */
     events?: string[];
@@ -85,8 +89,11 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
     paths: ['.continue/config.json'],
     kind: 'mcpServers',
   },
-  // The six below take their paths from the readers in mcp-clients.ts, so
+  // The ones below take their paths from the readers in mcp-clients.ts, so
   // connect writes where discovery reads and the two lists cannot drift.
+  // Copilot CLI, Amp and Goose are read and not written: every entry Copilot
+  // documents names its transport, which the shared writer leaves out; Amp's
+  // sit under a dotted key; and Goose keeps YAML, which nothing here writes.
   {
     runtime: 'gemini-cli',
     label: 'Gemini CLI',
@@ -122,6 +129,12 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
     label: 'Codex CLI',
     paths: home => clientPaths('codex', home),
     kind: 'codex',
+  },
+  {
+    runtime: 'kiro',
+    label: 'Kiro',
+    paths: home => clientPaths('kiro', home),
+    kind: 'mcpServers',
   },
 ];
 
@@ -345,7 +358,13 @@ function configureFile(
 /** Connect Ambit as meta-MCP server to detected or specified agent runtimes. */
 export function runConnect(
   runtimeName?: string,
-  options: { home?: string; dryRun?: boolean; force?: boolean; ledger?: boolean } = {}
+  options: {
+    home?: string;
+    dryRun?: boolean;
+    force?: boolean;
+    ledger?: boolean;
+    statusline?: boolean;
+  } = {}
 ): ConnectResult {
   const home = options.home || process.env.HOME || '/';
   const dryRun = options.dryRun ?? false;
@@ -412,6 +431,7 @@ export function runConnect(
   }
 
   if (options.ledger) connectCursorLedger(runtimeName, home, options, configured, skipped);
+  if (options.statusline) connectStatusLine(runtimeName, home, options, configured, skipped);
 
   return {
     ok: configured.length > 0 || skipped.length === 0,
@@ -466,6 +486,108 @@ function connectCursorLedger(
     });
   } catch (err: any) {
     skipped.push({ runtime: 'cursor', label, reason: err?.message || 'Failed to update hooks' });
+  }
+}
+
+/** The status line `--statusline` sets: this copy's command, as Claude Code runs it. */
+export function statusLineEntry(): { type: 'command'; command: string } {
+  return { type: 'command', command: [...ambitCommand(), 'statusline'].join(' ') };
+}
+
+/**
+ * Set `statusLine` in Claude Code's settings.json, only where none is set.
+ * Claude Code runs one status line command, and a person who has one chose
+ * it: Ambit never replaces it, and says how to add its line to theirs. One
+ * that already runs `ambit statusline`, on its own or inside a longer
+ * command, is left as it is. The member is spliced into the file's own text,
+ * so its layout and any comments stay, and the file is kept in `<file>.bak`
+ * first.
+ */
+function configureStatusLine(
+  filePath: string,
+  dryRun: boolean
+): { action: 'added' | 'already_configured'; backup?: string } {
+  const entry = statusLineEntry();
+  const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '{}\n';
+  let parsed: unknown;
+  try {
+    parsed = parseJsonc(text);
+  } catch {
+    throw new Error(`${filePath} is not valid JSON; left unchanged`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${filePath} is not a settings object; left unchanged`);
+  }
+  if (Object.hasOwn(parsed, 'statusLine')) {
+    const theirs = (parsed as { statusLine?: { command?: unknown } }).statusLine?.command;
+    if (typeof theirs === 'string' && theirs.includes(entry.command)) {
+      return { action: 'already_configured' };
+    }
+    throw new Error(
+      `${filePath} already sets a statusLine, and Ambit never replaces one. To show both, run \`${entry.command}\` from that command and print its line beside yours`
+    );
+  }
+  let backup: string | undefined;
+  if (!dryRun) {
+    backup = keepBackup(filePath);
+    mkdirSync(dirname(filePath), { recursive: true });
+    writeFileSync(filePath, setIn(text, ['statusLine'], entry));
+  }
+  return { action: 'added', backup };
+}
+
+/**
+ * `--statusline`: `ambit statusline` as Claude Code's status line. Only Claude
+ * Code runs one. A copy run through npx is not written in: the command runs
+ * after every message, and npx would resolve the package again on each run,
+ * where an installed `ambit` answers in about a twentieth of a second.
+ */
+function connectStatusLine(
+  runtimeName: string | undefined,
+  home: string,
+  options: { dryRun?: boolean; force?: boolean },
+  configured: ConnectResult['configured'],
+  skipped: ConnectResult['skipped']
+) {
+  const label = 'Claude Code status line';
+  if (runtimeName && runtimeName.toLowerCase() !== 'claude-code') {
+    skipped.push({
+      runtime: runtimeName,
+      label,
+      reason: '--statusline sets the status line of Claude Code, the one runtime that runs one',
+    });
+    return;
+  }
+  const path = join(home, '.claude', 'settings.json');
+  if (!runtimeName && !options.force && !existsSync(dirname(path))) {
+    skipped.push({ runtime: 'claude-code', label, reason: 'Claude Code not found on host' });
+    return;
+  }
+  if (ambitCommand()[0] === 'npx') {
+    skipped.push({
+      runtime: 'claude-code',
+      label,
+      reason:
+        'A status line runs after every message, and npx would resolve the package again on each run: install with `npm install -g ambit-cli` and run this again',
+    });
+    return;
+  }
+  try {
+    const { action, backup } = configureStatusLine(path, options.dryRun ?? false);
+    configured.push({
+      runtime: 'claude-code',
+      label,
+      path,
+      action,
+      ...(backup ? { backup } : {}),
+      hook: statusLineEntry().command,
+    });
+  } catch (err: any) {
+    skipped.push({
+      runtime: 'claude-code',
+      label,
+      reason: err?.message || 'Failed to update settings',
+    });
   }
 }
 

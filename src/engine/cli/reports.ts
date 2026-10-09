@@ -23,6 +23,7 @@ import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
 import { recovering } from '../assurance.ts';
+import type { usageWindows } from '../telemetry.ts';
 import {
   CHECK_RUN_SQL,
   CONFIGURED,
@@ -483,11 +484,12 @@ function briefReport(db: any) {
 
 type BriefReport = ReturnType<typeof briefReport>;
 
-/** "Claude Code (3 servers) and Cursor (2 servers)". */
-function readFrom(read: { label: string; servers: string[] }[]): string {
-  const parts = read.map(
-    r => `${r.label} (${r.servers.length} ${r.servers.length === 1 ? 'server' : 'servers'})`
-  );
+/** "Claude Code (3 servers), Cursor (2 servers) and Ollama (4 models)". */
+function readFrom(read: { label: string; servers: string[]; models?: string[] }[]): string {
+  const parts = read.map(r => {
+    const n = (r.models ?? r.servers).length;
+    return `${r.label} (${n} ${r.models ? 'model' : 'server'}${n === 1 ? '' : 's'})`;
+  });
   return parts.length > 1
     ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
     : parts[0];
@@ -682,6 +684,138 @@ function renderPlan(
   return lines;
 }
 
+/** What `specGoal` returns for a spec it could read. */
+interface SpecReport {
+  spec: string;
+  format: 'spec-kit' | 'openspec' | 'markdown';
+  tasks: number;
+  routed: number;
+  needs: {
+    id: string;
+    name: string;
+    status?: 'reached' | 'failing' | 'next' | 'blocked';
+    tasks: string[];
+    plan?: string[];
+  }[];
+  steps: (PlanStep & { for?: string[] })[];
+  setup_seconds?: number;
+  failing: { id: string; name: string; check: string }[];
+  unrouted: { id?: string; text: string; suggested?: { name: string; probability: number } }[];
+  judged?: { error?: string; asked?: string };
+}
+
+const FORMAT_NAME = { 'spec-kit': 'Spec Kit', openspec: 'OpenSpec', markdown: 'a task list' };
+
+/** How many unrouted tasks a terminal shows before counting the rest. */
+const UNROUTED_ROWS = 6;
+
+/**
+ * `ambit goal --spec` as a person reads it: what the spec's tasks need and the
+ * gap, laid out as one goal's plan is (reached, failing, then the steps in the
+ * order they close), and then the tasks nothing routed. Each need says which
+ * tasks, or which line of the plan, put it there, so a route that looks wrong
+ * can be traced to the words that made it.
+ */
+function renderSpec(report: SpecReport, c: Palette = C): string[] {
+  const ids = (tasks: string[]) => {
+    const named = tasks.every(t => /^(T\d+|N?FR-\d+|\d+(\.\d+)*)$/.test(t));
+    if (!named) return `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`;
+    return tasks.length > 4
+      ? `${tasks.slice(0, 4).join(', ')} +${tasks.length - 4}`
+      : tasks.join(', ');
+  };
+  const why = (n: { tasks: string[]; plan?: string[] }) =>
+    [n.tasks.length ? ids(n.tasks) : '', n.plan?.length ? `plan: ${n.plan.join(', ')}` : '']
+      .filter(Boolean)
+      .join(' · ');
+  const byId = new Map(report.needs.map(n => [n.id, n]));
+  const count = (status: string) => report.needs.filter(n => n.status === status).length;
+
+  const lines = [''];
+  lines.push(
+    `${GUTTER}${c.bold}${report.spec}${c.reset} ${c.grey}· ${FORMAT_NAME[report.format]} · ${report.tasks} ${report.tasks === 1 ? 'task' : 'tasks'}, ${report.routed} routed${c.reset}`
+  );
+  const time = report.setup_seconds ? `, about ${readableCost(report.setup_seconds)}` : '';
+  const tally = [
+    `${report.needs.length} ${report.needs.length === 1 ? 'capability' : 'capabilities'} needed`,
+    `${count('reached')} reached`,
+    ...(report.failing.length ? [`${report.failing.length} failing`] : []),
+    ...(report.steps.length
+      ? [`${report.steps.length} ${report.steps.length === 1 ? 'step' : 'steps'} left${time}`]
+      : []),
+  ];
+  lines.push(`${GUTTER}${tally.join(' · ')}`);
+
+  const reached = report.needs.filter(n => n.status === 'reached');
+  if (reached.length) lines.push('');
+  for (const n of reached)
+    lines.push(`  ${c.green}✓${c.reset} ${n.name}  ${c.grey}${why(n)}${c.reset}`);
+  for (const f of report.failing) {
+    lines.push(
+      `  ${c.yellow}!${c.reset} ${f.name} is configured and failing its check ${c.grey}· ${f.check}${c.reset}`
+    );
+  }
+
+  report.steps.forEach((step, i) => {
+    const cost = step.setup_seconds
+      ? ` ${c.grey}· about ${readableCost(step.setup_seconds)}${c.reset}`
+      : '';
+    const asked = byId.get(step.id);
+    const said = asked ? `  ${c.grey}${why(asked)}${c.reset}` : '';
+    lines.push('', `  ${c.bold}${i + 1}. ${step.name}${c.reset}${cost}${said}`);
+    if (step.for?.length) lines.push(`     ${c.grey}needed by ${step.for.join(', ')}${c.reset}`);
+    if (step.configured?.length) {
+      lines.push(`     ${c.green}✓${c.reset} ${step.configured.join(', ')} is already configured`);
+    }
+    if (step.requires_person?.length) {
+      lines.push(`     ${c.accent}› needs ${step.requires_person.join(', ')}${c.reset}`);
+    }
+  });
+  // Routed to a node this graph has not seeded: the tree is newer than the graph.
+  const unseeded = report.needs.filter(n => !n.status);
+  if (unseeded.length) {
+    lines.push(
+      '',
+      `${GUTTER}${c.grey}Not in this graph yet: ${unseeded.map(n => n.name).join(', ')} · ambit seed reads the tree again${c.reset}`
+    );
+  }
+
+  if (report.unrouted.length) {
+    lines.push('', `${GUTTER}${c.grey}Routed nowhere:${c.reset}`);
+    for (const t of report.unrouted.slice(0, UNROUTED_ROWS)) {
+      const text = t.text.length > 72 ? `${t.text.slice(0, 71)}…` : t.text;
+      lines.push(`  ${c.grey}·${c.reset} ${t.id ? `${t.id} ` : ''}${text}`);
+      if (t.suggested) {
+        lines.push(
+          `     ${c.grey}› the judge suggests ${t.suggested.name} (${t.suggested.probability.toFixed(2)})${c.reset}`
+        );
+      }
+    }
+    if (report.unrouted.length > UNROUTED_ROWS) {
+      lines.push(
+        `    ${c.grey}… ${report.unrouted.length - UNROUTED_ROWS} more · --json for all${c.reset}`
+      );
+    }
+  }
+  if (report.judged?.error) lines.push(`${GUTTER}${c.grey}${report.judged.error}${c.reset}`);
+
+  lines.push('');
+  const first = report.steps[0];
+  if (first) {
+    lines.push(
+      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${first.name}${c.reset}${c.grey}, then ambit seed: the list moves as each step lands${c.reset}`
+    );
+  } else if (report.failing.length) {
+    lines.push(
+      `${GUTTER}${c.accent}${c.bold}Next${c.reset}  ${c.bold}${report.failing[0].check}${c.reset}`
+    );
+  } else if (report.needs.length) {
+    lines.push(`${GUTTER}Everything these tasks need is reached.`);
+  }
+  lines.push('');
+  return lines;
+}
+
 /** What `analyzeImpact` returns for a node the graph holds. */
 interface ImpactReport {
   capability: string;
@@ -767,6 +901,94 @@ function renderImpact(report: ImpactReport, c: Palette = C): string[] {
   return lines;
 }
 
+/** "2h 05m" from a count of seconds. */
+function span(seconds: number): string {
+  const minutes = Math.max(0, Math.round(seconds / 60));
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours}h ${String(minutes % 60).padStart(2, '0')}m` : `${minutes}m`;
+}
+
+/** A paragraph cut into lines of about `width`, each after `indent`. */
+function wrapped(text: string, indent: string, width = 76): string[] {
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    if (line && line.length + word.length + 1 > width) {
+      out.push(indent + line);
+      line = '';
+    }
+    line = line ? `${line} ${word}` : word;
+  }
+  if (line) out.push(indent + line);
+  return out;
+}
+
+/**
+ * `ambit usage --windows` as a person reads it: each runtime's five-hour
+ * windows, newest first and in local time, the current one with the time left
+ * in it, each model's tokens by part, then each runtime's last seven days. A
+ * cost is shown only where a price was declared, and "unpriced" otherwise. The
+ * note closes it, since it says what no window states: a limit. `--json` gets
+ * the report, its times in UTC.
+ */
+function renderWindows(report: ReturnType<typeof usageWindows>, c: Palette = C): string[] {
+  const { windows, last_7_days: week } = report;
+  if (!windows || !week) return formatGeneric(report, c);
+  const when = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const clock = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+  const count = (n: number) => Math.round(n).toLocaleString('en-US');
+  const cost = (w: { spend_dollars?: number; unpriced?: true }) =>
+    w.spend_dollars === undefined
+      ? 'unpriced'
+      : `$${w.spend_dollars.toFixed(2)} at declared prices${w.unpriced ? ', some unpriced' : ''}`;
+  const head = `Five-hour windows, last ${report.days === 1 ? '24 hours' : `${report.days} days`}`;
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}${head}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(head.length)}${c.reset}`,
+  ];
+  if (!windows.length) lines.push(`${GUTTER}No tokens were used in one.`);
+  for (const runtime of [...new Set(windows.map(w => w.runtime))]) {
+    lines.push(`${GUTTER}${c.bold}${runtime}${c.reset}`);
+    for (const w of windows.filter(x => x.runtime === runtime)) {
+      const range = `${when.format(new Date(w.start))} to ${clock.format(new Date(w.end))}`;
+      const now = w.current ? `  ${c.bold}now, ${span(w.seconds_left ?? 0)} left${c.reset}` : '';
+      lines.push(
+        `${GUTTER}  ${range}${now}  ${count(w.tokens)} tokens ${c.grey}· ${cost(w)}${c.reset}`
+      );
+      for (const m of w.models) {
+        const parts = [
+          `input ${count(m.input)}`,
+          `cache reads ${count(m.cached)}`,
+          `output ${count(m.output)}`,
+          ...(m.reasoning ? [`reasoning ${count(m.reasoning)}`] : []),
+        ];
+        lines.push(`${GUTTER}    ${c.grey}${m.model}  ${parts.join(' · ')}${c.reset}`);
+      }
+    }
+  }
+  if (week.length) {
+    lines.push('', `${GUTTER}${c.bold}Last 7 days${c.reset}`);
+    for (const r of week) {
+      lines.push(
+        `${GUTTER}  ${r.runtime}  ${count(r.tokens)} tokens ${c.grey}· ${cost(r)}${c.reset}`
+      );
+    }
+  }
+  lines.push('', ...wrapped(report.note, `${GUTTER}${c.grey}`).map(l => `${l}${c.reset}`), '');
+  return lines;
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -818,7 +1040,9 @@ export {
   briefReport,
   renderBrief,
   renderImpact,
+  renderWindows,
   renderPlan,
+  renderSpec,
   evidenceReport,
   statusReport,
   renderStatus,
@@ -827,5 +1051,6 @@ export {
   type BriefReport,
   type ImpactReport,
   type NextMove,
+  type SpecReport,
   type StatusReport,
 };

@@ -92,6 +92,10 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   // when it was last there.
   ['capabilities', 'last_seen_at', 'TEXT'],
   ['capabilities', 'tags', 'TEXT'],
+  // A token row is kept per hour of use, its recorded_at the hour's start, so
+  // a five-hour window can be read from the ledger. Empty on every row written
+  // before: those rows stay as they were, a session's tokens at once.
+  ['resource_consumption', 'written_at', 'TEXT'],
 ];
 
 function addMissingColumns(db: Migratable) {

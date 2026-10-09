@@ -1,0 +1,48 @@
+name: Reach
+
+# Merged work has to reach main. Pull requests #97, #98 and #99 were merged
+# into branches that had already been merged into main, green at every step,
+# and their work sat on branches nothing would merge again.
+# scripts/check-reach.ts says how it decides.
+on:
+  # A pull request whose base is not on its way to main fails here, before it
+  # merges. `edited` is how a change of base arrives.
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+  # The bottom of a stack merging is a push to main, and that is the moment
+  # the next pull request up starts pointing at a branch nothing will merge.
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  reach:
+    runs-on: ubuntu-latest
+    steps:
+      # Whole history: a merged pull request reached main when main contains
+      # its merge commit, which a shallow clone cannot answer.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: This pull request's base is on its way to main
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node --experimental-strip-types scripts/check-reach.ts --pr=${{ github.event.pull_request.number }}
+
+      - name: Every merged pull request reached main, and every open one is on its way
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node --experimental-strip-types scripts/check-reach.ts

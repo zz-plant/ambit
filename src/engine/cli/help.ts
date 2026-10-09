@@ -20,6 +20,8 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                     delta, compare acquisition paths, or check preferences
                     --judge[=url] asks a judgment model on this machine when
                     no words match; it suggests and writes nothing
+  goal --spec <dir|tasks.md>   what a Spec Kit or OpenSpec spec's tasks need,
+                    and the gap; the file is read as data, nothing in it runs
   opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
                     ranked investments — observed burden, priced, compared
   verify [cap] [--history]   run the declared check, or show past verification;
@@ -27,7 +29,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                              or recovering
   impact <id>       what actually breaks if a capability goes away
   doctor            setup health: what works, what fails, what rests on one piece
-  connect [runtime] register Ambit's MCP server in each agent runtime it reads
+  connect [runtime] register Ambit's MCP server in each runtime config it can write
 
   Grouped: graph · plan · check · govern · report — try \`ambit plan\`
   help --all        every command
@@ -73,6 +75,11 @@ plan — what to acquire next, and whether it paid
                           preferences; --judge asks a judgment model on this
                           machine (AMBIT_JUDGE_URL, or Kev on 127.0.0.1:8009)
                           when no words match, and suggests without writing
+  plan goal --spec <dir|tasks.md> [--judge[=url]]   a spec's tasks, each routed
+                          as a sentence is: what they need, which is reached,
+                          a next step, blocked or failing, the steps in order,
+                          and the tasks nothing routed. Spec Kit and OpenSpec;
+                          read as data, so no command, link or URL in it runs
   plan opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
                           ranked investments — observed burden, priced, compared;
                           --budget allocates the best combination within $N
@@ -122,9 +129,11 @@ check — what is proven, what is permitted, what is currently broken
                           incident runs for offline services
   check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
   check doctor            setup health: what works, what fails, what rests on one piece
-  check connect [runtime] register Ambit's MCP server in each agent runtime it reads;
-                          cursor --ledger also adds the hooks that record each
-                          conversation's tool runs into the work ledger
+  check connect [runtime] register Ambit's MCP server in each runtime config it can
+                          write; cursor --ledger also adds the hooks that record
+                          each conversation's tool runs into the work ledger;
+                          claude-code --statusline sets ambit statusline as the
+                          status line where none is set, and never replaces one
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported
@@ -170,11 +179,19 @@ govern — the reviewable path from proposal to applied change
 report — what the system cost to operate
   report work [limit]     recent runs, each with what it cost
   report usage [days]     where capability effort actually went
+  report usage --windows [days]
+                          tokens per five-hour window, each runtime's apart,
+                          the current one's time left, and the last 7 days;
+                          the last 24 hours unless days are given. No plan's
+                          limit is known, so none is shown
+  report usage --refresh  read every Claude Code, Codex, OpenCode and Amp
+                          session log again from the top, for token counts an
+                          earlier read missed
   report economics        declared costs and goal values
   report economics price <model> --input=5 --cache-read=0.5 --output=25
                           declare a model's price, in dollars per million
-                          tokens, so a Claude Code session's tokens on it are a
-                          spend against Hosted Inference's budget
+                          tokens, so a session's tokens on it are a spend
+                          against Hosted Inference's budget
   report attention [days] how much work still runs through the human
   report notify <topic>   push the attention digest to ntfy — nothing is sent
                           without a topic
@@ -186,6 +203,9 @@ report — what the system cost to operate
   report preferences [--observed] [who]   what someone declared, or what they
                           have actually approved and refused
   report federation export|import   the signed summary a portfolio layer reads
+  report statusline [--json]   one line for Claude Code's status line: what fails
+                          its check, the proposals to decide, the verified count.
+                          Reads the graph and writes nothing
 
   help [term]       this list, or one concept explained`;
 

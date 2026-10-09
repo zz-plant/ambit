@@ -34,7 +34,7 @@ The parts I use most:
 - Blast-radius and single-point-of-failure analysis for tools and credentials, the guardrail that makes widening safe to lean on.
 - An attention ledger for permission prompts and other human interventions.
 - Reviewable config proposals with signed approval receipts. Agents may propose changes over MCP, but approval and apply stay outside the MCP surface.
-- Automatic discovery for OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, and VS Code. A server two clients both list stays one capability with two providers.
+- Automatic discovery for OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, and Kiro. A server two clients both list stays one capability with two providers.
 
 Zero-install demo: https://zz-plant.github.io/ambit/?demo=1
 

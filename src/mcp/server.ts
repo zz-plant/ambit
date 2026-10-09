@@ -1,4 +1,5 @@
 #!/usr/bin/env node --experimental-sqlite
+import { readSessionLogs, SESSION_LOG_BUDGET_MS } from '../engine/session-logs.ts';
 import { ingestSpool } from '../engine/spool.ts';
 import { ingestTrackerSpool } from '../engine/tracker-spool.ts';
 import { readFileSync } from 'node:fs';
@@ -6,7 +7,7 @@ import { resolveDbPath } from '../shared/db-path.ts';
 import { nearest } from '../shared/nearest.ts';
 import { err, respond, toolResult } from './protocol.ts';
 import { BASE_TOOLS, PROFILES, type Profile } from './tools.ts';
-import { checkArguments } from './validate.ts';
+import { checkArguments, signature } from './validate.ts';
 import { capabilityToAsk, resolveCapability, type Resolution } from '../engine/resolve.ts';
 import type { Db } from '../engine/db.ts';
 import {
@@ -50,6 +51,7 @@ import {
   workReport,
   usageReport,
   unmappedUse,
+  usageWindows,
   economicsReport,
   goalValue,
   opportunitiesFor,
@@ -79,6 +81,7 @@ import {
 } from '../engine/engine.ts';
 import { judgeGoal } from '../engine/judge.ts';
 import { council } from '../engine/council.ts';
+import { judgeUnrouted, specGoal } from '../engine/spec.ts';
 import { REACHED_SQL, graphCounts, notSeeded } from '../engine/vocabulary.ts';
 
 const DB_PATH = resolveDbPath();
@@ -234,6 +237,13 @@ function getWarmDb() {
       ingestTrackerSpool(dbHandle);
     } catch {
       /* likewise: OpenCode's config changes, from its tracker */
+    }
+    // The tokens Codex, OpenCode and Amp sessions used, from their own logs,
+    // within the time a command's read has; AMBIT_NO_LEDGER stops it.
+    try {
+      readSessionLogs(dbHandle, { budgetMs: SESSION_LOG_BUDGET_MS });
+    } catch {
+      /* the logs wait for the next reader */
     }
   }
   return dbHandle;
@@ -446,7 +456,21 @@ async function handleLine(line: string) {
               res = tt(db => planFor(db, capId));
               break;
             case 'tt_goal':
-              if (args?.judge) {
+              // A spec is read as data, the way the CLI reads it, and only
+              // `judge` sends anything, to this machine, about the tasks the
+              // words could not route.
+              if (args?.spec !== undefined) {
+                const read = tt(db => specGoal(db, args.spec));
+                res = args.judge ? await judgeUnrouted(read, args.judgeUrl) : read;
+              } else if (args?.goal === undefined) {
+                return respond(
+                  id,
+                  toolResult({
+                    error: 'ambit_goal: goal is required, unless spec names a spec to read.',
+                    takes: signature(tool),
+                  })
+                );
+              } else if (args?.judge) {
                 const base = tt(db => goalFor(db, args.goal));
                 const judged = await judgeGoal(args.goal, { url: args.judgeUrl });
                 res = { ...base, judged };
@@ -575,7 +599,11 @@ async function handleLine(line: string) {
               break;
             case 'tt_usage':
               res = tt(db =>
-                args?.unmapped ? unmappedUse(db, args?.days) : usageReport(db, args?.days)
+                args?.windows
+                  ? usageWindows(db, { days: args?.days })
+                  : args?.unmapped
+                    ? unmappedUse(db, args?.days)
+                    : usageReport(db, args?.days)
               );
               break;
             case 'tt_run_begin':

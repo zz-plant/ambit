@@ -103,17 +103,27 @@ function goalVocabulary(): GoalCandidate[] {
     }));
 }
 
+/** A phrase as a pattern that matches it at the start of a word, whatever follows. */
+function startsAWord(p: string): RegExp {
+  return new RegExp(`(?<![a-z0-9])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+}
+
 /**
- * Scores a goal sentence against the curated vocabulary.
+ * Whether one authored phrase is in a sentence.
  *
  * A phrase matches when the sentence contains it verbatim, or when every
  * content word of the phrase appears in the sentence — "unattended" in
  * "maintain the homelab unattended" is the single-word case of the same rule.
- * Each matching phrase counts toward the capability that owns it, so a goal
- * the sentence names several ways outranks one it touches once.
+ *
+ * Verbatim means at the start of a word, so "deploy" still finds "deployment"
+ * and "host" finds "hosting". It used to mean anywhere at all, which a
+ * sentence of four words seldom tripped and a spec's task list tripped on
+ * every page: "rag" is inside "coverage" and "storage", "ship" inside
+ * "relationship", "ci" inside "specific", and "track test coverage" routed to
+ * Retrieval.
  */
 function phraseMatches(p: string, sentence: string, tokens: Set<string>): boolean {
-  if (sentence.toLowerCase().includes(p)) return true;
+  if (startsAWord(p).test(sentence.toLowerCase())) return true;
   const words = tokensOf(p);
   if (words.length === 0) return false;
   // A phrase of several words that survives stopword removal as a single
@@ -146,6 +156,28 @@ function matchGoal(sentence: string): GoalCandidate[] {
 }
 
 /**
+ * What the vocabulary makes of one sentence: every capability whose words it
+ * holds, ranked, with the phrases that matched, and the one it recommends when
+ * the match is strong enough to. `ambit goal "<sentence>"` asks this, and so
+ * does `ambit goal --spec` of each task line, so a sentence routes the same way
+ * typed or read out of a spec.
+ */
+function routeSentence(sentence: string) {
+  const tokens = new Set(tokensOf(sentence));
+  const ranked = matchGoal(sentence).map(m => ({
+    ...m,
+    matched_phrases: m.phrases.filter(p => phraseMatches(p, sentence, tokens)),
+  }));
+  // One incidental word out of a whole sentence is a signal worth listing and
+  // not one worth acting on. Naming a `recommended` regardless is what turned a
+  // single stopword collision into a confident wrong answer, so the field is
+  // now earned: either a phrase appeared verbatim, or two of them matched.
+  const top = ranked[0];
+  const strong = top !== undefined && (top.hits >= 2 || top.matched_phrases.length > 0);
+  return { ranked, recommended: strong ? top.id : undefined };
+}
+
+/**
  * Routes a goal to the capabilities that plausibly cover it, with the delta
  * for each.
  *
@@ -174,8 +206,8 @@ function goalFor(db: Db, sentence?: string) {
     if (!plan.error) return { goal: sentence, exact: true, ...plan };
   }
 
-  const matches = matchGoal(sentence);
-  if (matches.length === 0) {
+  const { ranked, recommended } = routeSentence(sentence);
+  if (ranked.length === 0) {
     return {
       goal: sentence,
       note: 'No capability in the model has words that cover this. Try ambit graph combos, or ambit authority, and use one of those names.',
@@ -183,15 +215,14 @@ function goalFor(db: Db, sentence?: string) {
     };
   }
 
-  const tokens = new Set(tokensOf(sentence));
-  const candidates = matches.map(m => {
+  const candidates = ranked.map(m => {
     const plan = planFor(db, m.id) as any;
     return {
       id: m.id,
       name: m.name,
       domain: m.domain,
       score: m.hits,
-      matched_phrases: m.phrases.filter(p => phraseMatches(p, sentence, tokens)),
+      matched_phrases: m.matched_phrases,
       // The delta, folded in so a candidate list is also a plan shortlist.
       reachable: plan.error ? undefined : plan.reachable,
       steps: plan.error ? undefined : plan.steps,
@@ -202,16 +233,11 @@ function goalFor(db: Db, sentence?: string) {
     };
   });
 
-  // One incidental word out of a whole sentence is a signal worth listing and
-  // not one worth acting on. Naming a `recommended` regardless is what turned a
-  // single stopword collision into a confident wrong answer, so the field is
-  // now earned: either a phrase appeared verbatim, or two of them matched.
-  const strong = matches[0].hits >= 2 || candidates[0].matched_phrases.length > 0;
   return {
     goal: sentence,
-    ...(strong ? { recommended: candidates[0].id } : {}),
+    ...(recommended ? { recommended } : {}),
     candidates,
-    note: strong
+    note: recommended
       ? "ranked by how much of the goal the model's own vocabulary covers — a shortlist, not an interpretation"
       : 'weak match: the sentence shares only an incidental word with these. Listed, not recommended — try ambit graph combos and name a capability directly.',
   };
@@ -349,4 +375,4 @@ function pathsFor(db: Db, goal?: string) {
   };
 }
 
-export { goalFor, pathsFor, goalVocabulary, matchGoal, tokensOf };
+export { goalFor, pathsFor, goalVocabulary, matchGoal, routeSentence, tokensOf };
