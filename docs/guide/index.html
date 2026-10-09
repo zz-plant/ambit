@@ -122,7 +122,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <br><sub>My Setup lists every server, agent, and model found on the machine: whether it is on, what its check said, and which capabilities on the map it provides</sub>
 </div><hr>
 <h2 id="from-a-to-b"><a class="anchor" href="#from-a-to-b" aria-hidden="true" tabindex="-1">#</a>From A to B</h2>
-<p>Your agents, tools, credentials and machines are your loadout. Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed. The way from A to B runs through seven legs:</p>
+<p>Your agents, tools, credentials and machines are your loadout, and you are its pilot. Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed. The way from A to B runs through seven legs:</p>
 <ol>
 <li><strong>See where it stands</strong>: every runtime&#39;s config in one map, and which pieces pass their checks.</li>
 <li><strong>Pick the next step</strong>: ranked by what has blocked work and how much it opens.</li>
@@ -238,6 +238,10 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <tr>
 <td align="left"><code>ambit verify [id]</code></td>
 <td align="left">Run a capability&#39;s declared check and record whether it passes</td>
+</tr>
+<tr>
+<td align="left"><code>ambit weigh</code></td>
+<td align="left">What each tool server&#39;s tool list costs in context every session, per runtime, and which ones the ledger never saw called</td>
 </tr>
 <tr>
 <td align="left"><code>ambit history [since &lt;when&gt; [&lt;until&gt;]]</code></td>
@@ -403,7 +407,7 @@ already recorded the deficit, so do not retry it under another name.</p>
 <li><strong>Loopback only.</strong> The API server binds <code>127.0.0.1</code>. No LAN, no tunnel.</li>
 <li><strong>Origin allowlist.</strong> A request whose <code>Origin</code> is not Ambit&#39;s own page, a page on another localhost port included, is rejected with 403 <em>before</em> routing, because a simple request skips preflight and response headers alone would not stop it.</li>
 <li><strong>No entry creation over HTTP.</strong> The HTTP layer edits entries that already exist and nothing else. An MCP entry carries a command the runtime later executes, so creating one over HTTP would be remote code execution; adding a server returns a snippet for you to paste.</li>
-<li><strong>No egress you did not type.</strong> The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit&#39;s own code (<code>notify</code>, <code>notify-approvals</code>, <code>dispatch</code>, <code>incidents</code>, and <code>goal --judge</code>). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from <code>verify</code> and <code>apply</code> or an agent&#39;s <code>ambit_verify</code>, and never from the server. A step the control plane&#39;s Docker adapter runs has no network unless you gave it one. <a href="/ambit/docs/faq/#does-anything-leave-my-machine">The FAQ</a> lists exactly what each one sends.</li>
+<li><strong>No egress you did not type.</strong> The graph is an embedded SQLite database on your machine, and there is no telemetry. Five commands open a socket from Ambit&#39;s own code (<code>notify</code>, <code>notify-approvals</code>, <code>dispatch</code>, <code>incidents</code>, and <code>goal --judge</code>). The first four each need a target you name, and the last refuses any host but this machine. A declared check is a command and may reach the network as well, so checks run only from <code>verify</code> and <code>apply</code> or an agent&#39;s <code>ambit_verify</code>, and never from the server. <code>ambit weigh</code> starts the local tool servers your configs declare, as your runtime does, to measure their tool lists, so it too runs only when typed and never from the server. A step the control plane&#39;s Docker adapter runs has no network unless you gave it one. <a href="/ambit/docs/faq/#does-anything-leave-my-machine">The FAQ</a> lists exactly what each one sends.</li>
 </ol>
 <hr>
 <h2 id="documentation"><a class="anchor" href="#documentation" aria-hidden="true" tabindex="-1">#</a>Documentation</h2>
