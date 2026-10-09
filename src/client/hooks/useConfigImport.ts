@@ -34,6 +34,32 @@ export const CONFIG_PATHS: { runtime: string; path: string }[] = [
 ];
 
 /**
+ * What a visitor can pick when no config file is at hand: the servers people
+ * most often run, each named so the tree's `detect` patterns match it the way
+ * they match the same server in a real config. Finding a file in a hidden
+ * directory is where a visitor gives up, and ticking four of these is not.
+ * `picks.test.ts` holds that each one places something on the map.
+ */
+export const PICKS: { label: string; server: string }[] = [
+  { label: 'GitHub', server: 'github' },
+  { label: 'Playwright', server: 'playwright' },
+  { label: 'Postgres', server: 'postgres' },
+  { label: 'Supabase', server: 'supabase' },
+  { label: 'Linear', server: 'linear' },
+  { label: 'Jira', server: 'jira' },
+  { label: 'Slack', server: 'slack' },
+  { label: 'Sentry', server: 'sentry' },
+  { label: 'Web search', server: 'brave-search' },
+  { label: 'Memory', server: 'memory' },
+  { label: '1Password', server: '1password' },
+  { label: 'Stripe', server: 'stripe' },
+  { label: 'Vercel', server: 'vercel' },
+  { label: 'Cloudflare', server: 'cloudflare' },
+  { label: 'Docker', server: 'docker' },
+  { label: 'Ollama', server: 'ollama' },
+];
+
+/**
  * Map a config the visitor hands over, in their own browser: a file dropped or
  * picked, or text pasted. Reading it needs no engine and no upload; it is
  * parsed in the tab and never sent anywhere. The welcome screen and the tour's
@@ -67,5 +93,13 @@ export function useConfigImport(onMapped?: () => void) {
     readText(await file.text());
   };
 
-  return { readText, readFile, error };
+  /** The servers ticked, placed as a config holding just those. */
+  const readPicked = (servers: string[]) => {
+    setError(null);
+    if (!servers.length) return;
+    const config = { mcpServers: Object.fromEntries(servers.map(name => [name, {}])) };
+    if (loadFromJSON(JSON.stringify(config), true)) onMapped?.();
+  };
+
+  return { readText, readFile, readPicked, error };
 }

@@ -95,7 +95,7 @@ function inferDomain(name: string, type: string, hint = ''): string {
  * has to agree with it or the two halves of the product disagree about what
  * they are describing.
  */
-const RUNTIME_ID = 'runtime:opencode';
+export const RUNTIME_ID = 'runtime:opencode';
 
 /**
  * The `mcpServers` block that Claude Desktop, Claude Code, Cursor, Windsurf,

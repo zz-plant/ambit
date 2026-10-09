@@ -3,7 +3,7 @@ import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
 import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
-import { costOf, mapFindings } from './civ/layout';
+import { costOf, isEntry, mapFindings, unlockCascade } from './civ/layout';
 import { YourSetup } from './MapYours';
 
 interface TourProps {
@@ -76,6 +76,14 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     );
     const broken = failing[0];
     const cost = best ? costOf(best.item) : '';
+    // What lights, by name: "4 more" over four green circles left the reader
+    // to find and read them before the sentence meant anything.
+    const byId = new Map(items.map(i => [i.id, i]));
+    const opened = best
+      ? [...unlockCascade(items, connections, best.item.id)]
+          .flatMap(id => byId.get(id) ?? [])
+          .filter(i => !isEntry(i))
+      : [];
 
     const list: Step[] = [];
     if (best) {
@@ -85,7 +93,8 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         body:
           `This is a sample developer's agent setup, drawn from their config files. ` +
           `What it can do is their ambit. Adding ${best.item.name}` +
-          `${cost ? `, about ${cost} of setup,` : ''} would open ${best.reaches} more things their agents could do. ` +
+          `${cost ? `, about ${cost} of setup,` : ''} would open ${best.reaches} more things their agents could do` +
+          `${opened.length ? `: ${named(opened)}` : ''}. ` +
           `Every next step is ranked by what it opens up, and agents can ask for the same ranking over MCP.`,
         enter: () => {
           select(null);
@@ -144,7 +153,9 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     list.push({
       key: 'yours',
       title: 'Now map yours',
-      body: 'Paste the config of the agent you use and see what it adds up to.',
+      body:
+        "Paste your agent's config, or pick what you use, and the map places your setup the same way: " +
+        'what it reaches now, and what one more step would open.',
       enter: () => {
         clearSimulation();
         select(null);

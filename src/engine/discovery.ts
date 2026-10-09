@@ -2,6 +2,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { configDefault } from './paths.ts';
 import { normalizeOpencode, opencodeAuthority, parseJsonc } from '../shared/opencode.ts';
+import { BUILT_INS } from '../shared/runtimes.ts';
 import type { Db } from './db.ts';
 import { deriveLifecycles } from './assurance.ts';
 import { recordFrontier } from './ledger.ts';
@@ -109,23 +110,11 @@ function seedFromConfig(db: Db, configPath?: string, mappingStr?: string, record
     }
   }
 
-  insert.run(
-    'core:reasoning',
-    'Core Reasoning',
-    'meta',
-    'Base LLM reasoning',
-    'meta',
-    'active',
-    1.0
-  );
-  insert.run('tool:bash', 'Shell Execution', 'infra', 'Run commands', 'tool', 'active', 1.0);
-  insert.run('tool:edit', 'File Editor', 'meta', 'Edit files', 'tool', 'active', 1.0);
-  insert.run('tool:lsp', 'LSP Diagnostics', 'quality', 'Language server', 'tool', 'active', 0.95);
-  count += 4;
-
-  db.prepare(
-    "UPDATE capabilities SET state = 'active' WHERE id IN ('core:reasoning','tool:bash','tool:edit','tool:lsp')"
-  ).run();
+  for (const b of BUILT_INS) {
+    insert.run(b.id, b.name, b.domain, b.description, b.kind, 'active', b.maturity);
+    db.prepare("UPDATE capabilities SET state = 'active' WHERE id = ?").run(b.id);
+    count++;
+  }
 
   count += seedModels(db, config, insert);
   count += attributeToRuntime(db, insert, contributed);

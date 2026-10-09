@@ -5,6 +5,7 @@ import { currentSearch, readLinkState, type ActiveLens } from '../linkState';
 import type { FocusDepth, FocusDirection } from '../linkState';
 import type { Item, Connection, OpenCodeConfig } from '../utils/configImporter';
 import { importConfig, importMcpServers } from '../utils/configImporter';
+import { claudeCodeServers, placeOnMap, type TabRuntime } from '../utils/placeInTab';
 import { normalizeOpencode, parseJsonc } from '../../shared/opencode';
 import { demoRun } from '../utils/demoRun';
 import { demoSnapshot } from '../utils/demoSnapshot';
@@ -54,6 +55,18 @@ export type { ActiveLens } from '../linkState';
 export interface Graph {
   items: Item[];
   connections: Connection[];
+}
+
+/** A config read in the tab: whose, how many entries, and the model counted for it. */
+export interface TabReading {
+  runtime: string;
+  /** Whether the file said whose it is; a bare `mcpServers` block, or a pick, does not. */
+  named: boolean;
+  entries: number;
+  /** The hosted model taken as given because the file named none; null when it named one. */
+  model: string | null;
+  /** Built from servers the visitor ticked, with no file behind it. */
+  picked: boolean;
 }
 
 /**
@@ -215,6 +228,12 @@ interface StoreState {
   error: string | null;
   /** Whether the graph on screen is the bundled demo rather than this machine. */
   demo: boolean;
+  /**
+   * A config the visitor handed the page, read and placed in the tab: whose it
+   * is, how many entries it held, and the model counted for it when it named
+   * none. Null for the sample and for a graph an engine serves.
+   */
+  reading: TabReading | null;
   /** Where the time went and what would buy it back — from the ledger, or the demo's sample. */
   loop: LoopSnapshot | null;
   loopSource: 'ledger' | 'sample' | null;
@@ -271,7 +290,8 @@ interface StoreState {
   setHistoryPlaying: (on: boolean) => void;
 
   seedDemo: () => void;
-  loadFromJSON: (json: string) => boolean;
+  /** A config handed to the page; `picked` when it was built from servers ticked, not read from a file. */
+  loadFromJSON: (json: string, picked?: boolean) => boolean;
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
   setSpotlight: (group: string | null) => void;
@@ -359,6 +379,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   loading: false,
   error: null,
   demo: false,
+  reading: null,
   loop: null,
   loopSource: null,
   rangeSince: null,
@@ -512,6 +533,11 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
   // the page: with one, the panel used to fetch this machine's proposals into
   // a page the reader had asked to be a demo, and decide on them for real.
   loadProposals: async () => {
+    // A config read in the tab has had nothing proposed for it.
+    if (get().reading) {
+      set({ proposals: [] });
+      return;
+    }
     if (get().demo || !(await backendAvailable())) {
       set({ proposals: demoProposals() });
       return;
@@ -750,6 +776,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * the page already shows.
    */
   loadRun: async (id?: string) => {
+    if (get().reading) {
+      set({ run: { recent: [], run: null } });
+      return;
+    }
     if (get().demo || !(await backendAvailable())) {
       set({ run: demoRun(id) });
       return;
@@ -815,7 +845,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * it stands. Everything happens in the tab: nothing is uploaded, and the
    * file is not kept.
    */
-  loadFromJSON: jsonStr => {
+  loadFromJSON: (jsonStr, picked = false) => {
     let parsed: unknown;
     try {
       // A config may be `opencode.jsonc`, comments and all.
@@ -838,7 +868,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       const connections: Connection[] = ((data.connections as Connection[] | undefined) || []).map(
         c => ({ ...c, type: c.type || 'connects' })
       );
-      set({ items, connections, loading: false, error: null, demo: false });
+      set({ items, connections, loading: false, error: null, demo: false, reading: null });
       return true;
     }
 
@@ -852,10 +882,51 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     const looksLikeConfig = ['mcp', 'agent', 'provider', 'command', 'skills'].some(
       k => config[k] && typeof config[k] === 'object'
     );
-    const graph = looksLikeConfig ? importConfig(config as OpenCodeConfig) : importMcpServers(data);
-    if (!graph) return false;
-    if (!graph.items.length) return false;
-    set({ ...graph, loading: false, error: null, demo: false });
+    // `~/.claude.json` says whose it is; a bare `mcpServers` block does not.
+    const claude = looksLikeConfig ? null : claudeCodeServers(data);
+    const runtime: TabRuntime = looksLikeConfig
+      ? { id: 'opencode', name: 'OpenCode' }
+      : claude
+        ? { id: 'claude-code', name: 'Claude Code' }
+        : { id: null, name: picked ? 'Your agent' : 'Your MCP client' };
+    const graph = looksLikeConfig
+      ? importConfig(config as OpenCodeConfig)
+      : claude
+        ? // A Claude Code install with no server yet still has an ambit to place.
+          (importMcpServers({ mcpServers: claude }) ?? importConfig({}))
+        : importMcpServers(data);
+    if (!graph?.items.length) return false;
+    const { model, ...placed } = placeOnMap(graph, runtime);
+    // The sample's proposals, history and ledger are the sample's: left in
+    // place, the visitor's own map showed a proposal for a config they had
+    // never seen and a timeline of a machine that was not theirs.
+    set({
+      ...placed,
+      loading: false,
+      error: null,
+      demo: false,
+      reading: {
+        runtime: runtime.name,
+        named: runtime.id !== null,
+        entries: graph.items.filter(i => i.type !== 'runtime').length,
+        model,
+        picked,
+      },
+      proposals: [],
+      loop: null,
+      loopSource: null,
+      loopEmpty: false,
+      rangeSince: null,
+      attentionInterventions: {},
+      history: null,
+      historyAt: null,
+      selectedItem: null,
+      showDetailPanel: false,
+      simulationMode: 'none',
+      simulatedNodeId: null,
+      simulatedCascadeIds: new Set<string>(),
+      simulatedWeakenedIds: new Set<string>(),
+    });
     return true;
   },
 
@@ -868,6 +939,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       loading: false,
       error: null,
       demo: true,
+      reading: null,
       loop: demoSnapshot(),
       loopSource: 'sample',
       loopEmpty: false,
@@ -913,8 +985,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
     // welcome screen, not an error. "Open the demo" is the entry there.
     if (!(await backendAvailable())) {
       // The health probe is async: if "Open the demo" was clicked (or ?demo=1
-      // ran) while this was in flight, don't clobber the seeded graph.
-      if (get().demo) return;
+      // ran) while this was in flight, don't clobber the seeded graph, nor a
+      // config the visitor pasted meanwhile.
+      if (get().demo || get().reading) return;
       set({ items: [], connections: [], loading: false, error: null, demo: false });
       return;
     }
@@ -930,12 +1003,14 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return;
       }
       const merged = mergeGraphs(treeGraph, configGraph);
+      // The engine's graph is this machine's, not a config read in the tab.
       set({
         items: merged.items,
         connections: merged.connections,
         rangeSince: tree?.since ?? null,
         loading: false,
         error: null,
+        reading: null,
       });
     } catch (e) {
       set({ error: 'Could not load: ' + (e as Error).message, loading: false });

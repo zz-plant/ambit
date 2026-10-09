@@ -84,3 +84,70 @@ test('an mcpServers config is mapped too, the block most runtimes write', () => 
 test('an empty mcpServers block is refused, not drawn as a lone runtime', () => {
   expect(useAmbitStore.getState().loadFromJSON('{"mcpServers":{}}')).toBe(false);
 });
+
+test('a pasted config is placed on the tree, and the sample it replaced leaves with it', () => {
+  // The paste used to end on a list and a note that the map needed the
+  // engine, so the demo's question, what would one more step open, went
+  // unanswered for the setup the visitor cared about.
+  useAmbitStore.setState({
+    proposals: [{ id: 'sample' } as never],
+    history: { ticks: [], movedSinceLast: null },
+  });
+  const ok = useAmbitStore
+    .getState()
+    .loadFromJSON(JSON.stringify({ mcpServers: { github: { command: 'gh-mcp' } } }));
+
+  expect(ok).toBe(true);
+  const { items, reading, proposals, history } = useAmbitStore.getState();
+  const byId = new Map(items.map(i => [i.id, i]));
+  expect(byId.get('combo:tool-protocol')?.status).toBe('built');
+  expect(byId.get('combo:version-control')?.meta.providers).toEqual(['mcp:github']);
+  // The client's own model is counted, and the card says it was.
+  expect(byId.get('combo:hosted-inference')?.status).toBe('built');
+  expect(reading).toEqual({
+    runtime: 'Your MCP client',
+    named: false,
+    entries: 1,
+    model: "Your client's model",
+    picked: false,
+  });
+  expect(byId.get('combo:embeddings')?.meta.next).toBe(true);
+  expect(proposals).toEqual([]);
+  expect(history).toBeNull();
+});
+
+test("~/.claude.json is read as Claude Code's, servers under a project included", () => {
+  const ok = useAmbitStore.getState().loadFromJSON(
+    JSON.stringify({
+      numStartups: 4,
+      mcpServers: { github: { command: 'gh-mcp' } },
+      projects: { '/work/app': { mcpServers: { linear: { url: 'https://mcp.linear.app/sse' } } } },
+    })
+  );
+
+  expect(ok).toBe(true);
+  const { items, reading } = useAmbitStore.getState();
+  const ids = items.map(i => i.id);
+  expect(ids).toContain('runtime:claude-code');
+  expect(ids).toContain('mcp:linear');
+  expect(ids).toContain('provider:anthropic');
+  expect(reading?.runtime).toBe('Claude Code');
+  expect(items.find(i => i.id === 'combo:issue-tracking')?.status).toBe('built');
+});
+
+test('a Claude Code install with no server yet still has an ambit to place', () => {
+  expect(useAmbitStore.getState().loadFromJSON('{"numStartups":1}')).toBe(true);
+  const { items } = useAmbitStore.getState();
+  expect(items.find(i => i.id === 'combo:tool-protocol')?.meta.next).toBe(true);
+});
+
+test('a config that names its own model is not given a second one', () => {
+  useAmbitStore
+    .getState()
+    .loadFromJSON(
+      JSON.stringify({ mcp: { github: { type: 'local' } }, provider: { ollama: { models: {} } } })
+    );
+  const { items, reading } = useAmbitStore.getState();
+  expect(items.filter(i => i.type === 'provider').map(i => i.id)).toEqual(['provider:ollama']);
+  expect(reading?.model).toBeNull();
+});

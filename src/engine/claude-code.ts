@@ -13,6 +13,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { authorityBlock } from '../shared/authority.ts';
+import { RUNTIME_MODEL } from '../shared/runtimes.ts';
 import { defaultMapping } from './seed/writers.ts';
 
 /**
@@ -30,7 +31,7 @@ export interface ClaudeCodeFragment {
   runtime: string;
   mcp: Record<string, { type?: string; command?: string[]; enabled?: boolean }>;
   agent: Record<string, { description?: string; model?: string }>;
-  provider: Record<string, { models?: Record<string, unknown> }>;
+  provider: Record<string, { name?: string; models?: Record<string, unknown> }>;
   skills: { paths: string[] };
   observed: Record<string, unknown>;
 }
@@ -127,10 +128,15 @@ export function readClaudeCode(
     }
   }
 
+  // Claude Code runs on Anthropic's models whether or not one is pinned, and
+  // most installs pin none: read as written, the first step Ambit offered a
+  // Claude Code user was Hosted Inference, which their agent was already using.
+  const hosted = RUNTIME_MODEL['claude-code'];
   const model = settings.model || cfg.model;
-  if (typeof model === 'string' && model) {
-    fragment.provider.anthropic = { models: { [model]: {} } };
-  }
+  fragment.provider[hosted.id] = {
+    name: hosted.name,
+    ...(typeof model === 'string' && model ? { models: { [model]: {} } } : {}),
+  };
 
   const permissions = settings.permissions || {};
   const skillCount = fragment.skills.paths.reduce(

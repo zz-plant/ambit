@@ -5323,6 +5323,75 @@ button.app-sample-tag:hover {
   cursor: pointer;
 }
 
+.intake-modes {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  align-self: flex-start;
+}
+
+.intake-mode {
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.intake-mode:hover {
+  color: var(--text-primary);
+}
+
+.intake-mode[aria-pressed='true'] {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.intake-picks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.intake-pick {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.intake-pick:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+
+/* Picked is said by the check as well as the colour. */
+.intake-pick[aria-pressed='true'] {
+  border-color: var(--accent-line);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.intake-pick[aria-pressed='true']::before {
+  content: '✓ ';
+  color: var(--accent);
+}
+
 .intake-error {
   margin: 0;
   font-size: var(--fs-md);
@@ -5549,6 +5618,110 @@ button.app-sample-tag:hover {
 .app-tour-back:hover {
   color: var(--text-primary);
   border-color: var(--border-bright);
+}
+
+/* ─── YOUR AMBIT: A CONFIG READ IN THE TAB ─── */
+.app-ambit .app-tour-count {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.ambit-steps {
+  margin-top: 14px;
+}
+
+.ambit-steps-head {
+  margin: 0 0 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ambit-steps ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ambit-step {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ambit-step:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+
+.ambit-step.is-on {
+  border-color: var(--accent-line);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.ambit-step-name {
+  font-weight: 600;
+}
+
+.ambit-step-meta {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.ambit-step.is-on .ambit-step-meta {
+  color: var(--accent);
+}
+
+.ambit-step-says {
+  margin: 10px 0 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.ambit-step-says strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ambit-limits {
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+/* On a phone the card is a sheet over the map, and what it names has to stay
+   in sight above it: the step's how-to and the install line go, since the
+   CLI is not run from a phone, and the steps and what they open stay. */
+@media (max-width: 768px) {
+  .ambit-step-how,
+  .app-ambit .ambit-limits,
+  .app-ambit .app-tour-install {
+    display: none;
+  }
+
+  .app-ambit .app-tour-body {
+    font-size: var(--fs-md);
+  }
 }
 
 /* ─── LOOP PAGE: THE STATES THAT ARE NOT A FIGURE ─── */

@@ -69,6 +69,8 @@ interface AppDeckProps {
    * visitor's own setup. Absent on a real machine, which is nobody's sample.
    */
   sample?: { onReplay?: () => void; onMapYours: () => void };
+  /** A config read in the tab: say the map is the visitor's, and reopen what it adds up to. */
+  yours?: { onOpen: () => void };
 }
 
 /**
@@ -142,6 +144,16 @@ export default function AppDeck(p: AppDeckProps) {
             ) : (
               <span className="app-sample-tag">Sample</span>
             ))}
+          {p.yours && (
+            <button
+              type="button"
+              className="app-sample-tag"
+              onClick={p.yours.onOpen}
+              title="Your setup, placed in this tab and sent nowhere. Show what one more step would open"
+            >
+              Yours
+            </button>
+          )}
         </div>
         <button
           type="button"
