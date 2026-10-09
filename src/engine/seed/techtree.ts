@@ -5,6 +5,7 @@
  * compound capabilities and the prerequisites between them. It is what makes a
  * fresh graph a map with somewhere to go rather than an inventory.
  */
+import { placeOnTree } from '../../shared/placement.ts';
 import { loadTechTree } from '../paths.ts';
 import type { Db } from '../db.ts';
 import { edgeWriter } from './writers.ts';
@@ -17,16 +18,11 @@ import { edgeWriter } from './writers.ts';
  * unlock analyses work without the user hand-authoring the interesting half —
  * previously they returned empty until someone wrote their own combos.
  *
- * Each node is matched against the ids already seeded from the user's config:
- *   detected                        → unlocked, with an edge from what proved it
- *   prerequisites met, not detected → locked, and surfaced as researchable next
- *   prerequisites unmet             → locked, further out
- *
- * A capstone declares `detect: { "requires_met": true }` and no patterns:
- * nothing on a machine is the capstone itself, so it is reached exactly when
- * everything it requires is. Launch Ready is one, and its plan is the
- * checklist of what stands between a person and putting a product in front of
- * users.
+ * Each node is matched against the ids already seeded from the user's config by
+ * `placeOnTree`: a reached node is unlocked, with an edge from what proved it,
+ * and everything else is locked. Launch Ready is a capstone, reached by its
+ * steps, and its plan is the checklist of what stands between a person and
+ * putting a product in front of users.
  *
  * Nodes are stored with a `combo:` prefix and category, because that is what
  * the existing unlock analyses select on.
@@ -48,56 +44,13 @@ function seedTechTree(db: Db, insert: any): number {
     )
     .all()
     .map((r: any) => r.id);
-  const modelCount = owned.filter(id => id.startsWith('model:')).length;
-
   const link = edgeWriter(db);
 
-  // Which of the user's capabilities, if any, prove each node.
-  const evidence = new Map<string, string[]>();
-  for (const node of tree.nodes || []) {
-    const patterns: string[] = node.detect?.any || [];
-    const hits = owned.filter(id =>
-      patterns.some(p => {
-        try {
-          return new RegExp(p, 'i').test(id);
-        } catch {
-          return false;
-        }
-      })
-    );
-    const meetsMin = !node.detect?.min_models || modelCount >= node.detect.min_models;
-    evidence.set(node.id, hits.length && meetsMin ? hits : []);
-  }
-
-  // Resolve in era order so a node's prerequisites are settled before it is.
-  // Without this the tree contradicts itself — reporting Offline Capable as
-  // reached while Local Embeddings, which it requires, is still locked.
-  const ordered = [...(tree.nodes || [])].sort((a: any, b: any) => (a.era || 0) - (b.era || 0));
-  const unlocked = new Set<string>();
-
+  // Where each node stands, by the rule the hosted page also places a pasted
+  // config by (src/shared/placement.ts).
   let count = 0;
-  for (const node of ordered) {
+  for (const { node, reached, proof, description } of placeOnTree<any>(tree.nodes, owned)) {
     const id = `combo:${node.id}`;
-    const proof = evidence.get(node.id) || [];
-    const missing: string[] = (node.requires || []).filter((r: string) => !unlocked.has(r));
-    const capstone = node.detect?.requires_met === true;
-    const reached = (capstone || proof.length > 0) && missing.length === 0;
-    if (reached) unlocked.add(node.id);
-
-    // Having the tooling for a node whose prerequisites are unmet is the most
-    // useful thing the tree can tell you, so say it rather than hiding it.
-    const blocked = proof.length > 0 && missing.length > 0;
-    const names = (ids: string[]) =>
-      ids.map(r => tree.nodes.find((n: any) => n.id === r)?.name || r).join(', ');
-    const description = reached
-      ? node.description
-      : blocked
-        ? `${node.description} — configured, but ${names(missing)} is not in place yet`
-        : node.hint
-          ? // Two sentences, not one with a second dash: the hint is an
-            // instruction, and it read as a clause trailing off the description.
-            `${node.description}. ${node.hint}`
-          : node.description;
 
     insert.run(
       id,

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseJsonc } from '../shared/opencode.ts';
+import { RUNTIME_MODEL } from '../shared/runtimes.ts';
 import { defaultMapping } from './seed/writers.ts';
 
 export interface McpClientSeed {
@@ -17,7 +18,7 @@ export interface McpClientSeed {
     | 'vscode';
   label: string;
   path: string;
-  config: { mcp: Record<string, unknown> };
+  config: { mcp: Record<string, unknown>; provider?: Record<string, { name: string }> };
   mapping: Record<string, unknown>;
 }
 
@@ -288,12 +289,19 @@ export function discoverMcpClients(home = process.env.HOME || '/'): McpClientSee
     }
     if (Object.keys(mcp).length === 0) continue;
 
+    // A client whose model comes with it runs on a hosted model its config
+    // never names (src/shared/runtimes.ts).
+    const hosted = RUNTIME_MODEL[client.runtime];
     found.push({
       runtime: client.runtime,
       label: client.label,
       path,
-      config: { mcp },
-      mapping: defaultMapping({ runtime: client.runtime, only: ['mcp'], skillDirs: [] }),
+      config: hosted ? { mcp, provider: { [hosted.id]: { name: hosted.name } } } : { mcp },
+      mapping: defaultMapping({
+        runtime: client.runtime,
+        only: hosted ? ['mcp', 'provider'] : ['mcp'],
+        skillDirs: [],
+      }),
     });
   }
   return found;

@@ -155,7 +155,11 @@ function candidates(db: Db): Candidate[] {
  * next steps of their own.
  */
 function whyLeverage(c: Pick<Candidate, 'unlocks' | 'opens'>): string {
-  const and = (names: string[]) => names.join(' and ');
+  // "A, B and C": three joined by "and" alone read as a stammer.
+  const and = (names: string[]) =>
+    names.length > 2
+      ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+      : names.join(' and ');
   const reaches = c.unlocks.length
     ? `Reaching it also reaches ${and(c.unlocks)}, which ${c.unlocks.length === 1 ? 'is' : 'are'} already supplied and waiting on this alone`
     : '';
