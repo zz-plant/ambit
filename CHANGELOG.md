@@ -8,7 +8,7 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ### Three merged pull requests that never reached main
 
-Pull requests #97, #98 and #99 were each merged into a branch that had itself already been merged into main, so their work was reviewed, merged and never released: the status line, the Docker executor, `goal --spec`, session-log tokens, the four new runtimes, local models from disk, five-hour usage windows. The entries below are theirs, as written then, and land now. `scripts/check-reach.ts` is what would have caught it, and runs in CI from here on: it fails a pull request whose base is not on its way to main, and a scheduled run fails on any merged one that never got there.
+Pull requests #97, #98 and #99 were each merged into a branch that had itself already been merged into main, so their work was reviewed, merged and never released: the status line, the Docker executor, `goal --spec`, session-log tokens, the four new runtimes, local models from disk, five-hour usage windows. The entries below are theirs, as written then, and land now. `scripts/check-reach.ts` is what would have caught it, and runs in CI from here on: it fails a pull request whose base is not on its way to main, and on each push to main and once a day it fails if a merged one never got there. The push is the moment that matters, since it is when the bottom of a stack merges and the next pull request up is left pointing at a branch nothing will merge again.
 
 ### Usage in five-hour windows, as it happens
 

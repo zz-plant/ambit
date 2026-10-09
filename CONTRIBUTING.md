@@ -32,6 +32,8 @@ npm run demo:check           # the published demo still matches what the engine 
 
 CI also runs `./bootstrap.sh` against a machine with no agent config, because that is the first thing a new user does and it is the path that has broken twice.
 
+One more workflow, `reach.yml`, asks a different question: whether merged work gets to main. It fails a pull request whose base is neither main nor the head of an open pull request on its way there, and on every push to main and once a day it fails if any merged pull request never reached main. `npm run reach:check` asks the same with your `gh` login.
+
 The last three commands are the ones an ordinary change trips. `prose:check` measures the whole corpus, not your paragraph: it fails when a pass pushes either of the two constructions it counts past the ceiling in `scripts/check-prose.ts`. That ceiling sits above where the corpus stands, so the next drift up fails and every improvement can lower it. `docs:examples:check` re-runs the real commands behind the README's console blocks, so a block that stops matching is a fact that moved, not a typo. `demo:check` rebuilds the published demo from its fixture, which is how a model change fails at the commit that caused it instead of going stale in a screenshot nobody reopens.
 
 ## What is worth contributing
@@ -47,6 +49,8 @@ The nine eras and their dependencies are curated and encode opinions that deserv
 ## Sending it
 
 Branch off `main` and keep the pull request to one thing. The template's checklist is conditional, so most changes tick nothing: it asks only when the change touches the API server, where the graph is stored, the curated tree, or the set of runtime readers and declared checks, and each question is the one a review would ask anyway. A first pull request gets an automatic reply, then a person.
+
+**Stacked pull requests.** When one pull request is based on another's branch, merge the bottom one, then retarget the next one up to `main` before merging it. Merged into the old base instead, its work stops on a branch nothing will merge again: that is how #97, #98 and #99 were merged and never shipped. The reach check fails the next one up as soon as the bottom merges, which is the time to retarget it.
 
 ## Things to keep true
 

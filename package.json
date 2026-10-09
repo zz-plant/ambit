@@ -24,6 +24,7 @@
     "prepack": "npm run build:cli && vite build",
     "assets:check": "node --experimental-strip-types scripts/check-assets.ts",
     "prose:check": "node --experimental-strip-types scripts/check-prose.ts",
+    "reach:check": "node --experimental-strip-types scripts/check-reach.ts",
     "assets:generate": "node --experimental-strip-types scripts/generate-scenes.ts",
     "assets:hero": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/record-hero-gif.ts",
     "demo:generate": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/generate-demo-data.ts",

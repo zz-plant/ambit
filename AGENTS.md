@@ -414,6 +414,9 @@ scripts/capture-doc-examples.ts  The marked console blocks, captured from real e
 scripts/check-prose.ts     The em dash and "rather than" ceilings, over every comment and
                            document that ships
 scripts/check-assets.ts    That every shipped image is the size the page claims
+scripts/check-reach.ts     That merged work reaches main: a pull request's base has to be on
+                           its way there, and every merged one has to have arrived. reach.yml
+                           runs it on pull requests, on each push to main and daily
 scripts/check-demo-data.ts That demo-data.json still matches what the engine builds from the fixture
 scripts/build-docs.ts      The docs as static pages under /ambit/docs/, and the sitemap written
                            from the same list; `npm run build` runs it after Vite
