@@ -21,11 +21,19 @@ test('every imported item gets a domain', () => {
 
 test('domains come from names, not just types', () => {
   const { items } = importConfig({
-    mcp: { cloudflare: { type: 'remote' }, tailscale: {}, playwright: {} },
+    mcp: {
+      cloudflare: { type: 'remote' },
+      tailscale: {},
+      playwright: {},
+      'cloudflare-workflows': {},
+      basin: {},
+    },
   });
   const domain = (id: string) => items.find(i => i.id === id)?.meta.domain;
 
   expect(domain('mcp:cloudflare')).toBe('backend');
+  expect(domain('mcp:cloudflare-workflows')).toBe('backend');
+  expect(domain('mcp:basin')).toBe('backend');
   expect(domain('mcp:tailscale')).toBe('infra');
   expect(domain('mcp:playwright')).toBe('frontend');
 });

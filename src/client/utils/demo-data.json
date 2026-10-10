@@ -1952,6 +1952,9 @@
               "name": "search_documents",
               "mode": "autonomous"
             }
+          ],
+          "structure": [
+            "economic"
           ]
         }
       },

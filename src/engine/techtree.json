@@ -330,10 +330,11 @@
             "note": "an OpenRouter-style gateway on your own hardware; provider failover without a per-token bill or a data boundary"
           },
           {
-            "name": "hosted routing layer",
+            "name": "hosted AI gateway (Cloudflare AI Gateway, OpenRouter, Portkey)",
             "setup_seconds": 300,
-            "recurring_cost": "per-token",
-            "privacy": "hosted"
+            "recurring_cost": "free tier or per-token",
+            "privacy": "hosted",
+            "note": "managed failover, spend limits and analytics at the edge"
           }
         ]
       }
@@ -855,11 +856,30 @@
           "\\brag\\b",
           "retriev",
           "knowledge-?base",
-          "semantic-?search"
+          "semantic-?search",
+          "auto-?rag",
+          "ai-search"
         ]
       },
       "setup_seconds": 1800,
       "hint": "Wire retrieval into a skill or agent so context is fetched rather than pasted",
+      "acquisition": {
+        "alternatives": [
+          {
+            "name": "managed hybrid retrieval (Cloudflare AI Search, Pinecone Assistant)",
+            "setup_seconds": 600,
+            "recurring_cost": "free tier, then usage",
+            "privacy": "hosted",
+            "note": "turnkey hybrid vector and lexical search with document ingestion"
+          },
+          {
+            "name": "in-process retrieval over local embeddings and LanceDB",
+            "setup_seconds": 1200,
+            "recurring_cost": "none",
+            "privacy": "local"
+          }
+        ]
+      },
       "contract": {
         "can": [
           "index_document",
@@ -1073,7 +1093,8 @@
           "schedul",
           "trigger",
           "webhook",
-          "queue"
+          "queue",
+          "workflow"
         ]
       },
       "setup_seconds": 1800,
@@ -1109,6 +1130,13 @@
             "recurring_cost": "none",
             "privacy": "local",
             "note": "needs a host that stays up"
+          },
+          {
+            "name": "durable execution engine (Cloudflare Workflows, Temporal)",
+            "setup_seconds": 900,
+            "recurring_cost": "free tier, then usage",
+            "privacy": "hosted",
+            "note": "persists state across steps with automatic retries"
           },
           {
             "name": "hosted scheduler",

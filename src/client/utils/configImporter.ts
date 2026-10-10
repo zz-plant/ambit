@@ -64,7 +64,10 @@ export interface OpenCodeConfig {
 const DOMAIN_KEYWORDS: [RegExp, string][] = [
   [/tailscale|network|dns|vpn|ssh|docker|host|proxy|caddy|nginx|pi-?hole/i, 'infra'],
   [/github|gitlab|git\b|ci|deploy|build|wrangler|brew|npm|package|release|actions/i, 'devops'],
-  [/cloudflare|worker|d1|kv|r2|durable|database|sql|postgres|redis|api|server|queue/i, 'backend'],
+  [
+    /cloudflare|worker|d1|kv|r2|durable|workflows?|basin|database|sql|postgres|redis|api|server|queue/i,
+    'backend',
+  ],
   [/react|vue|svelte|css|ui|design|figma|browser|playwright|puppeteer|frontend/i, 'frontend'],
   [/llm|model|ollama|openai|anthropic|claude|gpt|gemini|embed|ai|ml|rag|vector/i, 'ai-ml'],
   [/test|vitest|jest|lint|eslint|typecheck|coverage|qa|audit|review/i, 'quality'],
