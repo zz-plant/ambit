@@ -50,7 +50,11 @@ beforeAll(() => {
   if (!daemonUp) return;
   // The adapter never pulls. The test fetches its image the way a person
   // would, by typing it, before anything asks the adapter to run.
-  const pulled = docker(['pull', '--quiet', DEFAULT_DOCKER_IMAGE], 180_000);
+  let pulled = docker(['pull', '--quiet', DEFAULT_DOCKER_IMAGE], 180_000);
+  if (pulled.status !== 0) {
+    // Retry once in case of a transient registry timeout
+    pulled = docker(['pull', '--quiet', DEFAULT_DOCKER_IMAGE], 180_000);
+  }
   if (pulled.status !== 0) throw new Error(`docker pull ${DEFAULT_DOCKER_IMAGE}: ${pulled.stderr}`);
   dir = mkdtempSync(join(tmpdir(), 'ambit-docker-live-'));
   envDir = join(dir, 'env');
@@ -61,8 +65,8 @@ beforeAll(() => {
 
 afterAll(() => {
   if (!daemonUp) return;
-  db.close();
-  rmSync(dir, { recursive: true, force: true });
+  (db as Db | undefined)?.close();
+  if (dir) rmSync(dir, { recursive: true, force: true });
 });
 
 /** Rule 7's example: a command once a shell reads it, text once one does not. */
