@@ -114,12 +114,13 @@ export function stalenessOf(behind: number, strict = false): Staleness {
 }
 
 /**
- * The commit that last changed `path`, or null outside a git checkout — and
- * likewise for a path git has never seen.
+ * The commit that last changed `path` (or any of `paths`), or null outside a
+ * git checkout — and likewise for a path git has never seen.
  */
-function lastCommit(path: string, cwd: string = ROOT): string | null {
+function lastCommit(path: string | string[], cwd: string = ROOT): string | null {
   try {
-    const out = execFileSync('git', ['log', '-1', '--format=%H', '--', path], {
+    const paths = Array.isArray(path) ? path : [path];
+    const out = execFileSync('git', ['log', '-1', '--format=%H', '--', ...paths], {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
@@ -127,6 +128,21 @@ function lastCommit(path: string, cwd: string = ROOT): string | null {
     return out || null;
   } catch {
     return null;
+  }
+}
+
+/** Whether the checkout is a shallow clone (where log history is truncated). */
+function isShallow(cwd: string = ROOT): boolean {
+  try {
+    return (
+      execFileSync('git', ['rev-parse', '--is-shallow-repository'], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim() === 'true'
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -147,8 +163,8 @@ function commitsSince(path: string, commit: string, cwd: string = ROOT): string[
 
 /**
  * Client commits an image is behind: commits to `clientPath` that landed after
- * the commit that last touched `assetPath`. Null when the asset is not
- * committed at all.
+ * the commit that last touched `assetPath` (or any of `assetPath` if an array).
+ * Null when the asset is not committed at all.
  *
  * The window is a commit range, and is exclusive of the asset's own commit by
  * construction. The `--since=@<date>` form this replaced was not: git's
@@ -163,7 +179,7 @@ function commitsSince(path: string, commit: string, cwd: string = ROOT): string[
  * rewriting the dates underneath it.
  */
 export function commitsBehind(
-  assetPath: string,
+  assetPath: string | string[],
   clientPath: string,
   cwd: string = ROOT
 ): string[] | null {
@@ -184,15 +200,41 @@ function checkStaleness(errors: string[], warnings: string[], strict: boolean): 
     console.log('\n  ⚠  not a git checkout — skipping the staleness check\n');
     return;
   }
+  if (isShallow()) {
+    console.log(
+      '\n  ⚠  shallow git clone — skipping the staleness check (fetch-depth: 0 required)\n'
+    );
+    return;
+  }
 
   const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
   console.log('\n🕒 Staleness — README images against commits to src/client\n');
+
+  // Assets that share a regeneration command are recorded together. When
+  // re-recording produces no byte difference for a screenshot (e.g. My Setup
+  // when only the map changed), git creates no new commit for that file.
+  // The newest commit among the assets that command produces is the commit at
+  // which the command ran and evaluated the whole set.
+  const commandAssets = new Map<string, string[]>();
+  for (const [name, command] of Object.entries(UI_ASSETS)) {
+    const rel = `docs/assets/${name}`;
+    if (!readme.includes(rel)) continue;
+    const list = commandAssets.get(command) ?? [];
+    list.push(rel);
+    commandAssets.set(command, list);
+  }
 
   for (const [name, command] of Object.entries(UI_ASSETS)) {
     const rel = `docs/assets/${name}`;
     if (!readme.includes(rel)) continue; // not on the page a reader sees
 
-    const behind = commitsBehind(rel, 'src/client');
+    if (lastCommit(rel) === null) {
+      errors.push(`${name}: referenced by README but not committed`);
+      continue;
+    }
+
+    const siblings = commandAssets.get(command) ?? [rel];
+    const behind = commitsBehind(siblings, 'src/client');
     if (behind === null) {
       errors.push(`${name}: referenced by README but not committed`);
       continue;

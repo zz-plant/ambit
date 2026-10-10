@@ -18,6 +18,8 @@ jobs:
         node: [22, 24]
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       # One runtime. The engine, the CLI, the API server and the test runner all
       # open the graph through node:sqlite; there is no second driver to keep in

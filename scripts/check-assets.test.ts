@@ -132,3 +132,24 @@ test('an asset git has never seen reports as uncommitted rather than current', (
 
   expect(commitsBehind('docs/assets/demo.gif', 'src/client', repo)).toBeNull();
 });
+
+test('assets sharing a producer inherit the newest commit of the group', () => {
+  commit('first recording of both', {
+    'docs/assets/still.png': 'PNG still\n',
+    'docs/assets/demo.gif': 'GIF demo\n',
+  });
+  commit('client change that only affects the GIF', {
+    'src/client/map.tsx': 'export const Map = () => null;\n',
+  });
+  commit('re-record the hero: still was identical so only GIF changed', {
+    'docs/assets/demo.gif': 'GIF demo v2\n',
+  });
+
+  // The still alone would look 1 client commit behind:
+  expect(commitsBehind('docs/assets/still.png', 'src/client', repo)).toHaveLength(1);
+
+  // But evaluated alongside its producer siblings, it is current:
+  expect(
+    commitsBehind(['docs/assets/still.png', 'docs/assets/demo.gif'], 'src/client', repo)
+  ).toEqual([]);
+});
