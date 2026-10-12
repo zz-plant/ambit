@@ -340,6 +340,36 @@ Neither adapter deploys anything anywhere. Another one (Kubernetes, a deploy API
 
 ---
 
+## Codebase Architecture
+
+```
+ambit/
+├── src/
+│   ├── engine/          # Capability graph, verification engine & attention ledger
+│   ├── mcp/             # Meta-MCP server implementation & protocol tools
+│   ├── control_plane/   # Policy engine, authorization challenge signing & execution proxy
+│   ├── server/          # Local loopback HTTP/SSE API daemon
+│   ├── client/          # Interactive capability graph web surface
+│   └── shared/          # Shared domain schemas and type definitions
+└── docs/                # Architecture notes, incident traces & runtime specs
+```
+
+---
+
+## Contributor Development
+
+```bash
+git clone https://github.com/zz-plant/ambit.git
+cd ambit
+npm install
+npm test                 # Run unit and integration tests
+npm run typecheck        # Verify TypeScript contracts across node and client
+npm run prose:check      # Enforce editorial guidelines and style metrics
+npm run build            # Build CLI distribution and browser assets
+```
+
+---
+
 ## Security invariants
 
 Ambit reads developer toolchains and writes to agent configs, so four properties are fixed and cannot be relaxed. [`SECURITY.md`](./SECURITY.md) states each in full, with what is in scope and what is not; [`AGENTS.md`](./AGENTS.md#security-posture) says where each is enforced.
