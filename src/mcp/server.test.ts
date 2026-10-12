@@ -166,6 +166,39 @@ test('the agent profile lists ten tools in under five kilobytes, and the rest st
   expect(unlisted.result.structuredContent.stats.total).toBeGreaterThan(0);
 });
 
+test('advertised tools satisfy TDQS schema coverage and avoid shadowing risks', () => {
+  const [list] = rpc([{ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }]);
+  const tools: any[] = list.result.tools;
+
+  // 100% parameter coverage: every property across every tool has a non-empty description.
+  for (const tool of tools) {
+    const props = Object.entries(tool.inputSchema?.properties ?? {});
+    for (const [, prop] of props as [string, any][]) {
+      expect(prop.description).toBeDefined();
+      expect(prop.description?.trim().length).toBeGreaterThan(0);
+    }
+    // Descriptions must not be tautological.
+    expect(tool.description.trim().toLowerCase()).not.toBe(tool.name.toLowerCase());
+  }
+
+  // The agent profile tools have zero TDQS shadowing candidates (expensive >= 2 * cheap && expensive - cheap >= 4).
+  const [agentList] = rpc(
+    [{ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }],
+    join(dir, 'graph.db'),
+    { args: ['--profile=agent'] }
+  );
+  const agentTools: any[] = agentList.result.tools;
+  const costs = agentTools.map(t => (t.inputSchema?.required ?? []).length);
+  for (const c1 of costs) {
+    for (const c2 of costs) {
+      const cheap = Math.min(c1, c2);
+      const expensive = Math.max(c1, c2);
+      const isShadowCandidate = expensive >= 2 * cheap && expensive - cheap >= 4;
+      expect(isShadowCandidate).toBe(false);
+    }
+  }
+});
+
 test('the ambit command passes its profile on to the server', () => {
   // `claude mcp add ambit -- ambit mcp --profile=agent` is how anyone reaches
   // the flag, and the wrapper used to start the server with no arguments at all.

@@ -1,0 +1,40 @@
+# Docker does not apply .gitignore, and the builder stage's `COPY . .` would
+# otherwise ship the local graph. The database holds this machine's capability
+# inventory and work ledger; it must never ride along in an image.
+.git
+node_modules
+dist
+dist-cli
+.DS_Store
+
+# SQLite runtime files — the graph database
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+.env
+
+# `ambit share` snapshots
+ambit-map.html
+
+# Build and test output
+output
+coverage
+*.log
+
+# Tooling scratch — transcripts of local runs, not build inputs
+.cmux
+.opencode
+.sisyphus
+.codex
+.agent
+.claude
+.wrangler
+.playwright-mcp
+.playwright-cli
+.pytest_cache
+__pycache__
+scratch
+.idea
+.vscode

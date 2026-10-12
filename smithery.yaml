@@ -1,0 +1,22 @@
+# Smithery MCP Server configuration
+# https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      profile:
+        type: string
+        default: "agent"
+        description: "Tool profile to advertise: 'agent' (curated 10 tools) or 'full' (all 61 tools)"
+        enum:
+          - "agent"
+          - "full"
+  commandFunction: |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', 'ambit-cli', 'mcp', ...(config?.profile === 'full' ? [] : ['--profile=agent'])],
+    })
+  exampleConfig:
+    profile: "agent"
