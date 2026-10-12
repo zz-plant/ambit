@@ -48,7 +48,7 @@ No existing field studies this frontier as its own object; its concepts are spre
 - **Attack-graph analysis** asks what a principal can reach, given a topology of hosts, permissions and vulnerabilities. Innocuous permissions compose into reachable paths. Ambit asks the same structural question of all productive action, not only unauthorized paths, and adds evidence that each step works.
 - **The capability approach** in economics (Sen, Nussbaum, Robeyns) separates possessing resources from the effective freedom to achieve something with them. Ambit makes that conversion computable for one system: from *tool installed* to *capability actually reachable*.
 
-The rest are closer to parts than to the whole: dependency and configuration databases know what depends on what; tool search and MCP catalogs find a tool by name or similarity; workflow graphs order steps within one task; agent evaluations measure what a model can do on a benchmark; [MCP gateways](./compare.md) decide calls as they happen. [The affordance frontier](./affordance-frontier.md#intellectual-genealogy) has the full genealogy, and the README places Ambit [in the stack](../README.md#where-this-sits-in-the-stack).
+The rest are closer to parts than to the whole: dependency and configuration databases know what depends on what; tool search and MCP catalogs find a tool by name or similarity; workflow graphs order steps within one task; agent evaluations measure what a model can do on a benchmark; [MCP gateways](./compare.md) decide calls as they happen. [The affordance frontier](./affordance-frontier.md#intellectual-genealogy) has the full genealogy, and the README places Ambit [in the stack](../README.md#where-ambit-sits-in-the-stack).
 
 ## What it does not claim
 
