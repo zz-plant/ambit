@@ -105,7 +105,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'decay',
     description:
-      'Capabilities unchanged for long enough to doubt, with days since last config update.',
+      'Capabilities unchanged for an extended period, with days since last config update.',
     inputSchema: NONE,
     annotations: READS,
   },
@@ -131,15 +131,16 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'bottlenecks',
-    description: 'Keystone capabilities others depend on most. For blast radius, use ambit_impact.',
+    description:
+      'High-dependency capabilities that other nodes require most. Impact: ambit_impact.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'impact',
-    title: 'Blast Radius Analysis',
+    title: 'Dependency Impact Analysis',
     description:
-      'Downstream dependents and blast radius of a node. To test health, use ambit_verify.',
+      'Downstream dependents and failure impact of a capability. To test health, use ambit_verify.',
     inputSchema: {
       type: 'object',
       properties: { capId: str('Capability ID') },
@@ -150,7 +151,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'near',
     description:
-      'Combos missing 1-2 prerequisites, ranked by maturity. Ready combos: ambit_combos.',
+      'Combos missing 1-2 prerequisites, ranked by completion. Ready combos: ambit_combos.',
     inputSchema: NONE,
     annotations: READS,
   },
@@ -490,7 +491,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'since',
-    description: 'Capabilities entering the frontier between two timestamps (new vs composed).',
+    description: 'Capabilities added or unlocked between two timestamps (new vs composed).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -518,7 +519,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'simulate',
     description:
-      'Simulate frontier if a capability were acquired, previewing unlocked nodes. ambit_propose.',
+      'Simulate reach if a capability were acquired, previewing unlocked nodes. Draft: ambit_propose.',
     inputSchema: {
       type: 'object',
       properties: { capId: str('Capability ID') },
@@ -563,14 +564,14 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'spof',
     description:
-      'Identify single points of failure: capabilities with only one provider. Keystone: ambit_bottlenecks.',
+      'Identify single points of failure: capabilities with only one provider. Dependencies: ambit_bottlenecks.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'credentials',
     description:
-      'Audit credentials to identify shared keys and revocation blast radius. Redundancy: ambit_spof.',
+      'Audit credentials to identify shared keys and revocation impact. Redundancy: ambit_spof.',
     inputSchema: NONE,
     annotations: READS,
   },
@@ -613,7 +614,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'council',
     description:
-      'Review top next capability across 5 seats: frontier, fragility, ledger, authority, checks.',
+      'Review top next capability across 5 perspectives: frontier, fragility, ledger, authority, checks.',
     inputSchema: NONE,
     annotations: READS,
   },
@@ -689,7 +690,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'reversible',
     description:
-      'Unreached capabilities acquirable autonomously via guaranteed inverses. Plan: ambit_plan.',
+      'Unreached capabilities that can be acquired autonomously via reversible steps. Plan: ambit_plan.',
     inputSchema: NONE,
     annotations: READS,
   },
