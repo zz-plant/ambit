@@ -10,6 +10,7 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
+[![Glama Score](https://glama.ai/mcp/servers/zz-plant/ambit/badges/score.svg)](https://glama.ai/mcp/servers/zz-plant/ambit)
 
 [**Try the live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Connect it to your agent](#connect-it-to-your-agent) · [FAQ](./docs/faq.md) · [Docs](https://zz-plant.github.io/ambit/docs/)
 

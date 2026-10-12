@@ -55,9 +55,18 @@ const RUNS: Annotations = { readOnlyHint: false, destructiveHint: true, openWorl
 const PROBES: Annotations = { readOnlyHint: false, destructiveHint: false, openWorldHint: true };
 
 const NONE = { type: 'object', properties: {} } as const;
-const str: Prop = { type: 'string' };
-const num: Prop = { type: 'number' };
-const bool: Prop = { type: 'boolean' };
+const str = (description?: string): Prop => ({
+  type: 'string',
+  ...(description ? { description } : {}),
+});
+const num = (description?: string): Prop => ({
+  type: 'number',
+  ...(description ? { description } : {}),
+});
+const bool = (description?: string): Prop => ({
+  type: 'boolean',
+  ...(description ? { description } : {}),
+});
 
 /**
  * The three names a capability has gone by. The advertised schema carries one
@@ -71,222 +80,271 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'stats',
     description:
-      'Counts of capabilities: total, reached, verified and failing, and reached per domain.',
+      'Capability counts: total, reached, verified, failing. For testing, use ambit_verify.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'context',
     description:
-      'The session briefing as one block of prose, the text ambit_briefing returns with text: true.',
+      'Session briefing as plain prose for prompts. For structured data, use ambit_briefing.',
     inputSchema: NONE,
     annotations: WRITES,
   },
   {
     name: 'cap',
-    description: 'Find capabilities by domain or name. Returns the ids the other tools take.',
-    inputSchema: { type: 'object', properties: { query: str }, required: ['query'] },
+    description: 'Find capabilities by query. Returns IDs. For acquisition route, use ambit_plan.',
+    inputSchema: {
+      type: 'object',
+      properties: { query: str('Search query') },
+      required: ['query'],
+    },
     annotations: READS,
   },
   {
     name: 'decay',
-    description:
-      'Capabilities not touched for long enough to doubt, with days since the last config change.',
+    description: 'Reached capabilities not verified recently. For active checks, use ambit_verify.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'combos',
-    description:
-      'Combos the graph can already support: every prerequisite in place, with a confidence.',
+    description: 'Multi-capability combos with prerequisites met. For near-misses, use ambit_near.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'diff',
     description:
-      'Per domain, what was recently practiced, improved or regretted, from the last 50 outcomes.',
+      'Recent practices and regressions per domain. For execution traces, use ambit_work.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'health',
-    description: 'Domain health scores.',
+    description:
+      'Health scores per domain from reach and pass rates. To test nodes, use ambit_verify.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'bottlenecks',
-    description:
-      'The capabilities the most others depend on: where an improvement pays most and a loss costs most.',
+    description: 'Keystone capabilities others depend on most. For blast radius, use ambit_impact.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'impact',
-    description: 'What would stop, and what would only lose a provider, if a capability went away.',
-    inputSchema: { type: 'object', properties: { capId: str }, required: ['capId'] },
+    description:
+      'Downstream dependents and blast radius of a node. To test health, use ambit_verify.',
+    inputSchema: {
+      type: 'object',
+      properties: { capId: str('Capability ID') },
+      required: ['capId'],
+    },
     annotations: READS,
   },
   {
     name: 'near',
-    description: 'Near-miss combos: one or two prerequisites away, with high existing maturity.',
+    description:
+      'Combos missing 1-2 prerequisites, ranked by maturity. Ready combos: ambit_combos.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'verify',
     description:
-      "Run a capability's declared check and record the outcome: proof that it works, not that it is configured. Omit capId to run every declared check.",
-    inputSchema: { type: 'object', properties: { capId: str } },
+      'Run declared verification checks to prove a capability works. Omit capId for all.',
+    inputSchema: {
+      type: 'object',
+      properties: { capId: str('Capability ID (omit for all)') },
+    },
     annotations: RUNS,
   },
   {
     name: 'evidence',
     description:
-      'Verification history of one capability: what was tried, when, and whether it passed.',
-    inputSchema: { type: 'object', properties: { capId: str }, required: ['capId'] },
+      'Verification run history for a capability: passes and fails. To run: ambit_verify.',
+    inputSchema: {
+      type: 'object',
+      properties: { capId: str('Capability ID') },
+      required: ['capId'],
+    },
     annotations: READS,
   },
   {
     name: 'authority',
     description:
-      'Which reached capabilities may run unattended and which need approval. Being able to act is not permission to. Pass detail: true for every grant.',
-    inputSchema: { type: 'object', properties: { detail: bool } },
+      'Inspect authority grants: unattended vs human approval needed. Call check: ambit_can.',
+    inputSchema: {
+      type: 'object',
+      properties: { detail: bool('Full details') },
+    },
     annotations: READS,
   },
   {
     name: 'actions',
     description:
-      'The actions a capability confers and whether each may be performed: read a repository yes, merge to its default branch no. Omit capId for all. To ask before acting, use ambit_can.',
-    inputSchema: { type: 'object', properties: { capId: str } },
+      'Actions allowed by a capability. Omit capId for all. Permission check: ambit_can.',
+    inputSchema: {
+      type: 'object',
+      properties: { capId: str('Capability ID (omit for all)') },
+    },
     annotations: READS,
   },
   {
     name: 'plan',
     description:
-      'What is missing for a capability, in the order it must be closed, and which steps need a person.',
-    inputSchema: { type: 'object', properties: { capId: str }, required: ['capId'] },
+      'Ordered plan to acquire a missing capability, with prerequisites. Goals: ambit_goal.',
+    inputSchema: {
+      type: 'object',
+      properties: { capId: str('Target capability ID') },
+      required: ['capId'],
+    },
     annotations: READS,
   },
   {
     name: 'goal',
     description:
-      'Route a goal, in words, to the capabilities that cover it: ranked, each with its plan delta.',
+      'Route a goal or spec tasks to capabilities, with plans. For known ID: ambit_plan.',
     inputSchema: {
       type: 'object',
       properties: {
-        goal: { type: 'string', description: 'What the user wants to do' },
-        judge: {
-          type: 'boolean',
-          description: 'Route an unmatched goal with a local judgment model',
-        },
-        judgeUrl: { type: 'string', description: 'Loopback URL of that model' },
-        spec: {
-          type: 'string',
-          description: 'Or a Spec Kit/OpenSpec dir or tasks.md: what its tasks need',
-        },
+        goal: str('Goal prompt'),
+        judge: bool('Local judge'),
+        judgeUrl: str('Judge URL'),
+        spec: str('Spec path'),
       },
     },
     annotations: READS,
   },
   {
     name: 'paths',
-    description:
-      'The ways to reach a capability compared by setup time, risk and lock-in: which steps are config changes that can be undone, and which are installers that cannot.',
-    inputSchema: { type: 'object', properties: { capId: str }, required: ['capId'] },
+    description: 'Compare acquisition methods by time, risk, and lock-in. To draft: ambit_propose.',
+    inputSchema: {
+      type: 'object',
+      properties: { capId: str('Capability ID') },
+      required: ['capId'],
+    },
     annotations: READS,
   },
   {
     name: 'preferences',
     description:
-      'What each person prefers, and which plans would fight it (local or hosted, one-off or recurring). Pass who for one person.',
-    inputSchema: { type: 'object', properties: { who: str } },
+      'Human preferences (local/hosted) and plan conflicts. Recorded: ambit_preferences_observed.',
+    inputSchema: {
+      type: 'object',
+      properties: { who: str('Person name') },
+    },
     annotations: READS,
   },
   {
     name: 'scope',
-    description:
-      'What a scope covers and what it does not. For a target (repo:owner/name, device:nuc, svc:ollama): every grant, whether it covers the target, and the effective mode.',
-    inputSchema: { type: 'object', properties: { target: str }, required: ['target'] },
+    description: 'Effective authority mode across grants covering a target. Call check: ambit_can.',
+    inputSchema: {
+      type: 'object',
+      properties: { target: str('Target identifier') },
+      required: ['target'],
+    },
     annotations: READS,
   },
   {
     name: 'affordances',
-    description:
-      'The domain of each capability, from the graph: institutional (needs an authority holder), economic (a budget), cognitive (a person), physical (a device).',
+    description: 'Affordance domains per capability: institutional, economic, cognitive, physical.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'digest',
     description:
-      'How much work still runs through the human, and which interventions are reducible: recurring approvals and permission blocks could become a bounded grant or automation. days: window (default 7).',
-    inputSchema: { type: 'object', properties: { days: num } },
+      'Analyze human interventions over a window to find friction. Raw runs: ambit_work.',
+    inputSchema: {
+      type: 'object',
+      properties: { days: num('Window in days') },
+    },
     annotations: READS,
   },
   {
     name: 'work',
     description:
-      'Recent work runs and what each cost: elapsed time, events, capabilities exercised, human interventions, resources.',
-    inputSchema: { type: 'object', properties: { limit: num } },
+      'Recent work runs and costs: time, events, tools, interventions. Friction: ambit_digest.',
+    inputSchema: {
+      type: 'object',
+      properties: { limit: num('Max runs') },
+    },
     annotations: READS,
   },
   {
     name: 'usage',
     description:
-      'Where effort went over a window in days (default 30): times exercised, duration and interventions per capability. unmapped: tools used that no node covers. windows: tokens per five-hour window, and time left in this one.',
-    inputSchema: { type: 'object', properties: { days: num, unmapped: bool, windows: bool } },
+      'Capability usage over days: calls, duration, and interventions. Errors: ambit_signals.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: num('Days window'),
+        unmapped: bool('Include unmapped'),
+        windows: bool('Token windows'),
+      },
+    },
     annotations: READS,
   },
   {
     name: 'run_begin',
     description:
-      'Start a work run. Returns the run id every later telemetry call attaches to. The run stays open until run_end.',
+      'Start a work run in the telemetry ledger to track events and costs. End: ambit_run_end.',
     inputSchema: {
       type: 'object',
-      properties: { goal: str, goalId: str, runType: str, source: str, id: str },
+      properties: {
+        goal: str('Goal prompt'),
+        goalId: str('Goal ID'),
+        runType: str('Run type'),
+        source: str('Source'),
+        id: str('Run ID'),
+      },
     },
     annotations: WRITES,
   },
   {
     name: 'run_end',
     description:
-      'Close a work run with its outcome, and the value of that outcome in cents when known.',
+      'Close an open work run with outcome and delivered value in cents. Started by ambit_run_begin.',
     inputSchema: {
       type: 'object',
-      properties: { runId: str, outcome: str, outcomeValueCents: num },
+      properties: {
+        runId: str('Run ID to close'),
+        outcome: str('Outcome status'),
+        outcomeValueCents: num('Value in cents'),
+      },
       required: ['runId', 'outcome'],
     },
     annotations: WRITES,
   },
   {
     name: 'work_event',
-    description:
-      'Record one observation into a run. kind: event, use, intervention, resource or outcome. interventionKind: judgment, authority, knowledge, physical, clerical or exception.',
+    description: 'Record an event, intervention, resource use, or outcome into an active work run.',
     inputSchema: {
       type: 'object',
       properties: {
-        runId: str,
-        kind: str,
-        eventKind: str,
-        actor: str,
-        capabilityId: str,
-        action: str,
-        detail: str,
-        durationSeconds: num,
-        interventionKind: str,
-        activeSeconds: num,
-        waitingSeconds: num,
-        resourceId: str,
-        resourceKind: str,
-        quantity: num,
-        unit: str,
-        costCents: num,
-        achieved: str,
-        objectiveName: str,
-        objectiveMetric: num,
-        valueCents: num,
+        runId: str('Run ID'),
+        kind: str('Event kind'),
+        eventKind: str('Sub-kind'),
+        actor: str('Actor ID'),
+        capabilityId: str('Capability ID'),
+        action: str('Action'),
+        detail: str('Event details'),
+        durationSeconds: num('Duration secs'),
+        interventionKind: str('Kind'),
+        activeSeconds: num('Active secs'),
+        waitingSeconds: num('Waiting secs'),
+        resourceId: str('Resource ID'),
+        resourceKind: str('Kind'),
+        quantity: num('Quantity'),
+        unit: str('Unit'),
+        costCents: num('Cost in cents'),
+        achieved: str('Achieved flag'),
+        objectiveName: str('Objective name'),
+        objectiveMetric: num('Metric value'),
+        valueCents: num('Value in cents'),
       },
       required: ['runId', 'kind'],
     },
@@ -295,48 +353,59 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'economics',
     description:
-      'Declared costs and goal values: attention value per hour, recurring and purchase costs, what each goal is worth.',
+      'Declared economics: hourly rate, tool costs, goal values. Single goal: ambit_goal_value.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'goal_value',
     description:
-      "One goal's economics (occurrence rate, success value, failure cost), matched by id or name.",
-    inputSchema: { type: 'object', properties: { goal: str }, required: ['goal'] },
+      'Valuation of a goal: frequency, success value, failure cost. All: ambit_economics.',
+    inputSchema: {
+      type: 'object',
+      properties: { goal: str('Goal ID') },
+      required: ['goal'],
+    },
     annotations: READS,
   },
   {
     name: 'opportunities',
     description:
-      'Ranked changes worth making, from recurring human burden priced by attention. by: attention (default), cash, roi, reliability, frontier. budget (dollars): the best combination within it.',
-    inputSchema: { type: 'object', properties: { by: str, budget: num } },
+      'Rank proposed acquisitions by attention, ROI, or reliability. Details: ambit_opportunity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        by: str('Rank criterion'),
+        budget: num('Budget cap dollars'),
+      },
+    },
     annotations: READS,
   },
   {
     name: 'opportunity',
     description:
-      'One ranked opportunity in full: burden, proposed capability, acquisition, expected effect, payback, confidence.',
-    inputSchema: { type: 'object', properties: { id: str }, required: ['id'] },
+      'Details for one ranked opportunity: burden, method, impact, payback. List: ambit_opportunities.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: str('Opportunity ID') },
+      required: ['id'],
+    },
     annotations: READS,
   },
   {
     name: 'can',
     description:
-      'Ask before running a tool you have not used this session. yes: act. ask: put it to the person. no: do not retry it under another name. Also returns the reason, what is missing and the budget left. Probes nothing. A no files the deficit.',
+      'Check if a tool call is authorized. Returns yes/ask/no; records deficits. Test: ambit_verify.',
     inputSchema: {
       type: 'object',
       properties: {
-        capability: str,
-        action: str,
-        actor: str,
-        target: str,
-        spendCents: num,
-        tool: {
-          type: 'string',
-          description: 'The command you were about to run, kept with the deficit on a no',
-        },
-        record: { type: 'boolean', description: 'File the deficit on a no (default true)' },
+        capability: str('Capability ID or name'),
+        action: str('Action to check'),
+        actor: str('Requesting actor ID'),
+        target: str('Target resource'),
+        spendCents: num('Estimated cost cents'),
+        tool: str('Command to run'),
+        record: bool('Record deficit on denial'),
       },
       required: ['capability'],
     },
@@ -345,50 +414,59 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'roi',
     description:
-      'Realized ROI of an applied proposal: interventions, hours, attention dollars and reliability before and after, against its prediction. Writes the observation back.',
-    inputSchema: { type: 'object', properties: { proposalId: str }, required: ['proposalId'] },
+      'Realized ROI of an applied proposal: interventions, hours, reliability. Totals: ambit_roi_summary.',
+    inputSchema: {
+      type: 'object',
+      properties: { proposalId: str('Proposal ID') },
+      required: ['proposalId'],
+    },
     annotations: WRITES,
   },
   {
     name: 'roi_summary',
     description:
-      "Every applied proposal's observed hours and dollars saved per year, and forecast accuracy: the cumulative headline.",
+      'Realized savings across applied proposals: hours, dollars, forecast accuracy. Single: ambit_roi.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'catalog',
     description:
-      'The ways to acquire a capability (build, buy, subscribe, delegate, hire) compared by setup, one-time and recurring cost, privacy, verification and rollback.',
-    inputSchema: { type: 'object', properties: { capability: str }, required: ['capability'] },
+      'Compare acquisition channels (build, buy, subscribe, delegate). To draft: ambit_propose.',
+    inputSchema: {
+      type: 'object',
+      properties: { capability: str('Capability ID') },
+      required: ['capability'],
+    },
     annotations: READS,
   },
   {
     name: 'audit',
     description:
-      "The audit trail: a run end to end, a proposal's steps, approval and result, or one person's approvals and interventions. target: run id, proposal id, human name, or days.",
+      'Query audit trail: work runs, proposals, approvals, actions. Check history: ambit_evidence.',
     inputSchema: {
       type: 'object',
-      properties: {
-        target: { type: 'string', description: 'run-... | prop-... | human:name | days' },
-      },
+      properties: { target: str('Filter target') },
     },
     annotations: READS,
   },
   {
     name: 'incidents',
     description:
-      'Probe the hosts the infrastructure manifest names, record each answer as a check run, and open an incident run per offline service, with the authority decision for recovery (restart ALLOW, CONFIRM or DENY).',
+      'Probe infrastructure and open incident runs for offline services. Fix: ambit_incident_resolve.',
     inputSchema: NONE,
     annotations: PROBES,
   },
   {
     name: 'incident_resolve',
     description:
-      "Close the open incident run for a service with its outcome. MTTR is the ledger's own elapsed time.",
+      'Close an infrastructure incident run with recovery outcome and MTTR. After ambit_incidents.',
     inputSchema: {
       type: 'object',
-      properties: { service: { type: 'string', description: 'svc:key' }, outcome: str },
+      properties: {
+        service: str('Service ID (svc:key)'),
+        outcome: str('Recovery outcome'),
+      },
       required: ['service', 'outcome'],
     },
     annotations: WRITES,
@@ -396,30 +474,35 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'portfolio',
     description:
-      'Across imported federation receipts: burden recurring across environments, person-specific single points of failure, and (with budget) where spend gains most. Never merges.',
-    inputSchema: { type: 'object', properties: { budget: num } },
+      'Federation receipts across environments: burdens, SPOFs, spend. Local stats: ambit_stats.',
+    inputSchema: {
+      type: 'object',
+      properties: { budget: num('Budget cap dollars') },
+    },
     annotations: READS,
   },
   {
     name: 'since',
-    description:
-      'What entered the reachable frontier between two ISO timestamps (default: earliest observation to now), split into acquired and emerged through composition.',
-    inputSchema: { type: 'object', properties: { when: str, until: str } },
+    description: 'Capabilities entering the frontier between two timestamps (new vs composed).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        when: str('Start timestamp'),
+        until: str('End timestamp'),
+      },
+    },
     annotations: READS,
   },
   {
     name: 'blocked',
     description:
-      'Record that a task was blocked by a missing capability. The same deficit hit repeatedly is a capability or workflow worth investigating.',
+      'Record that work was blocked by a missing capability or deficit, logging context.',
     inputSchema: {
       type: 'object',
       properties: {
-        capId: str,
-        classification: {
-          type: 'string',
-          description: 'reasoning | knowledge | tool | permission | infrastructure | reliability',
-        },
-        note: { type: 'string', description: 'What you were trying to do' },
+        capId: str('Blocking capability ID'),
+        classification: str('Deficit category'),
+        note: str('Task context'),
       },
       required: ['capId'],
     },
@@ -428,20 +511,24 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'simulate',
     description:
-      'The frontier as it would be if a capability were acquired, including what it unblocks. A preview: changes nothing.',
-    inputSchema: { type: 'object', properties: { capId: str }, required: ['capId'] },
+      'Simulate frontier if a capability were acquired, previewing unlocked nodes. ambit_propose.',
+    inputSchema: {
+      type: 'object',
+      properties: { capId: str('Capability ID') },
+      required: ['capId'],
+    },
     annotations: READS,
   },
   {
     name: 'propose',
     description:
-      'Draft a reviewable acquisition: ordered steps, the alternative chosen and its trade-offs, the simulated result. Nothing runs until a person approves it, and then only reversible config patches apply.',
+      'Draft a reversible proposal to acquire a capability, with diffs. Review queue: ambit_proposals.',
     inputSchema: {
       type: 'object',
       properties: {
-        capId: str,
-        option: { type: 'number', description: 'Which alternative, 0-based' },
-        purpose: { type: 'string', description: 'The work this is for, for the person deciding' },
+        capId: str('Target capability ID'),
+        option: num('Alternative index'),
+        purpose: str('Reviewer context'),
       },
       required: ['capId'],
     },
@@ -449,141 +536,169 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'proposals',
-    description: 'Every proposal drafted so far, newest first.',
+    description:
+      'List drafted configuration proposals with review status. For step diffs, use ambit_proposal.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'proposal',
-    description: 'One proposal in full, with its steps and simulated frontier.',
-    inputSchema: { type: 'object', properties: { id: str }, required: ['id'] },
+    description:
+      'Retrieve proposal with steps, diffs, and simulated frontier. List all: ambit_proposals.',
+    inputSchema: {
+      type: 'object',
+      properties: { id: str('Proposal ID') },
+      required: ['id'],
+    },
     annotations: READS,
   },
   {
     name: 'spof',
     description:
-      'Capabilities with exactly one provider, where redundancy is absent. Bottlenecks rank leverage; this ranks fragility.',
+      'Identify single points of failure: capabilities with only one provider. Keystone: ambit_bottlenecks.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'credentials',
     description:
-      'What revoking each credential would end. Providers that present the same credential fail together.',
+      'Audit credentials to identify shared keys and revocation blast radius. Redundancy: ambit_spof.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'deficits',
     description:
-      'Recurring capability deficits, worst first: which missing capabilities keep stopping different work.',
+      'Rank recurring deficits by frequency: missing tools blocking work. To draft: ambit_propose.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'ledger',
     description:
-      "Every recorded frontier observation: how the system's capacity for action has changed over time.",
+      'Historical frontier observations showing how capability reach evolved. Work runs: ambit_work.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'briefing',
     description:
-      'What this environment is, before you touch it: reached and proven, failing, waiting on a person, recently blocked, worth reaching next, and what changed since the last briefing. Read once at session start. Also ambit://briefing.',
+      'Environment capability briefing: reached nodes, failing checks, proposals. Call at session start.',
     inputSchema: {
       type: 'object',
-      properties: { text: { type: 'boolean', description: 'Return prose instead of fields' } },
+      properties: { text: bool('Return prose format') },
     },
     annotations: WRITES,
   },
   {
     name: 'next',
     description:
-      'The capabilities worth reaching next: why, cost, and the command that proposes each. Ranked by what has blocked work once the ledger has data, by leverage per setup hour before.',
-    inputSchema: { type: 'object', properties: { limit: num } },
+      'Rank capabilities to acquire next, prioritized by blockers and ROI. Prerequisites: ambit_plan.',
+    inputSchema: {
+      type: 'object',
+      properties: { limit: num('Max ranked steps') },
+    },
     annotations: READS,
   },
   {
     name: 'council',
     description:
-      'The first next step read five ways: what it opens, rests on, has cost and may do once reached, and whether its foundation works. Per seat a sentence, a command and a stance, and whether they split.',
+      'Review top next capability across 5 seats: frontier, fragility, ledger, authority, checks.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'record_failure',
     description:
-      'Report a tool failure you just hit as the runtime reported it: exit code, error text or kind. Ambit classifies it and attributes it to a capability where it can.',
+      'Log a runtime tool failure (tool, exit code, error) to the failure ledger. Permission: ambit_can.',
     inputSchema: {
       type: 'object',
-      properties: { tool: str, message: str, exitCode: num, errorKind: str, capabilityId: str },
+      properties: {
+        tool: str('Failed tool command'),
+        message: str('Error message or stderr'),
+        exitCode: num('Process exit code'),
+        errorKind: str('Failure classification'),
+        capabilityId: str('Associated capability ID'),
+      },
     },
     annotations: WRITES,
   },
   {
     name: 'signals',
     description:
-      'Failures seen in the window that no one recorded, by class and tool, including those no capability could be attributed to: a gap in the model.',
-    inputSchema: { type: 'object', properties: { days: num } },
+      'Scan unrecorded tool failures to find unmapped errors. To log an error: ambit_record_failure.',
+    inputSchema: {
+      type: 'object',
+      properties: { days: num('Window in days') },
+    },
     annotations: READS,
   },
   {
     name: 'register_skill',
     description:
-      'Put a skill you wrote on the map: an id, the capability it supplies, and a read-only command that proves it works. The check runs at once, so it arrives proven or failing.',
+      'Register an agent skill with ID, capability mapping, and read-only verify command. Runs check.',
     inputSchema: {
       type: 'object',
-      properties: { id: str, name: str, provides: str, verify: str, description: str },
+      properties: {
+        id: str('Skill identifier'),
+        name: str('Display name'),
+        provides: str('Supplied capability ID'),
+        verify: str('Verification command'),
+        description: str('Skill description'),
+      },
       required: ['id', 'verify'],
     },
     annotations: RUNS,
   },
   {
     name: 'skills',
-    description: 'Skills registered this way, and what each check last said.',
+    description:
+      'List registered custom skills, associated capabilities, and check status. Add: ambit_register_skill.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'objects',
     description:
-      'What may be done to a particular thing, and what is proved about doing it there. Evidence about one repository says nothing about another.',
-    inputSchema: { type: 'object', properties: { target: str } },
+      'Inspect actions and proof for a target resource (repo, host). Permission scope: ambit_scope.',
+    inputSchema: {
+      type: 'object',
+      properties: { target: str('Target identifier') },
+    },
     annotations: READS,
   },
   {
     name: 'budgets',
     description:
-      'Standing budgets: what may be spent, on what, and what is left this period. A spend past a ceiling is refused until the period turns over. A person sets one.',
+      'Inspect spend budgets: allocated limits, spent amounts, headroom. Check call spend: ambit_can.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'reversible',
     description:
-      'Which unreached capabilities could be acquired without a person and which need hands. apply refuses a step with no inverse, so this is also what an agent cannot do alone.',
+      'Unreached capabilities acquirable autonomously via guaranteed inverses. Plan: ambit_plan.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'preferences_observed',
     description:
-      'What this person has approved and refused, by trait: local or hosted, one-off or recurring. Three decisions make a trait; one that went both ways is contested.',
+      'Summarize human approvals and refusals by traits (local vs hosted). Preferences: ambit_preferences.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'pending',
     description:
-      'Drafts waiting on a person, each with its cost, what it bills and what it unlocks. Surface them together: a batch is one interruption.',
+      'List configuration proposals awaiting human decision, with costs and nodes. Draft: ambit_propose.',
     inputSchema: NONE,
     annotations: READS,
   },
   {
     name: 'promotions',
     description:
-      'Authority thresholds: which grants may widen on evidence, how much each still needs, what was promoted or put back. A person sets one; an agent only reads this.',
+      'Authority rules: grants widening on evidence and recent moves. Grant check: ambit_authority.',
     inputSchema: NONE,
     annotations: READS,
   },
