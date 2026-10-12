@@ -24,6 +24,7 @@ interface Annotations {
 
 interface ToolDef {
   name: string;
+  title?: string;
   description: string;
   inputSchema: { type: 'object'; properties: Record<string, Prop>; required?: string[] };
   annotations: Annotations;
@@ -135,6 +136,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'impact',
+    title: 'Blast Radius Analysis',
     description:
       'Downstream dependents and blast radius of a node. To test health, use ambit_verify.',
     inputSchema: {
@@ -153,6 +155,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'verify',
+    title: 'Verification Check',
     description:
       'Run declared verification checks to prove a capability works. Omit capId for all.',
     inputSchema: {
@@ -194,6 +197,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'plan',
+    title: 'Acquisition Plan',
     description:
       'Ordered plan to acquire a missing capability, with prerequisites. Goals: ambit_goal.',
     inputSchema: {
@@ -205,6 +209,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'goal',
+    title: 'Goal Capability Routing',
     description:
       'Route a goal or spec tasks to capabilities, with plans. For known ID: ambit_plan.',
     inputSchema: {
@@ -394,6 +399,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'can',
+    title: 'Authority Gate',
     description:
       'Check if a tool call is authorized. Returns yes/ask/no; records deficits. Test: ambit_verify.',
     inputSchema: {
@@ -521,6 +527,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'propose',
+    title: 'Configuration Proposal',
     description:
       'Draft a reversible proposal to acquire a capability, with diffs. Review queue: ambit_proposals.',
     inputSchema: {
@@ -582,6 +589,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'briefing',
+    title: 'Capability Briefing',
     description:
       'Environment capability briefing: reached nodes, failing checks, proposals. Call at session start.',
     inputSchema: {
@@ -592,6 +600,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'next',
+    title: 'Next Step Recommendation',
     description:
       'Rank capabilities to acquire next, prioritized by blockers and ROI. Prerequisites: ambit_plan.',
     inputSchema: {
@@ -609,6 +618,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'record_failure',
+    title: 'Tool Failure Logger',
     description:
       'Log a runtime tool failure (tool, exit code, error) to the failure ledger. Permission: ambit_can.',
     inputSchema: {
@@ -635,6 +645,7 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'register_skill',
+    title: 'Custom Skill Registration',
     description:
       'Register an agent skill with ID, capability mapping, and read-only verify command. Runs check.',
     inputSchema: {
