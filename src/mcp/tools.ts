@@ -104,7 +104,8 @@ const BASE_TOOLS: ToolDef[] = [
   },
   {
     name: 'decay',
-    description: 'Reached capabilities not verified recently. For active checks, use ambit_verify.',
+    description:
+      'Capabilities unchanged for long enough to doubt, with days since last config update.',
     inputSchema: NONE,
     annotations: READS,
   },
@@ -627,7 +628,7 @@ const BASE_TOOLS: ToolDef[] = [
         tool: str('Failed tool command'),
         message: str('Error message or stderr'),
         exitCode: num('Process exit code'),
-        errorKind: str('Failure classification'),
+        errorKind: str('Runtime-reported error kind; omit if not supplied by runtime'),
         capabilityId: str('Associated capability ID'),
       },
     },
