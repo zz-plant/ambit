@@ -4,12 +4,13 @@
 
 **What you, your agents, and your machines can jointly do — and where your own time is going.**
 
-That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode and [the other agent runtimes it knows](#get-started) into one local map of it, and shows how to widen it: what you can do now, what one more step would unlock, and which pieces are configured but not working.
+That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode and [the other agent runtimes it knows](#get-started) into one local map of it, and shows how to widen it: what you can do now, what one more step would unlock, and which of what you have is configured but not actually working.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/zz-plant/ambit/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/zz-plant/ambit/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zz-plant/ambit?style=flat-square&color=7aa2f7)](https://github.com/zz-plant/ambit/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.18-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-informational?style=flat-square)](./LICENSE)
+[![Glama Score](https://glama.ai/mcp/servers/zz-plant/ambit/badges/score.svg)](https://glama.ai/mcp/servers/zz-plant/ambit)
 
 [**Try the live demo**](https://zz-plant.github.io/ambit/?demo=1) · [Get started](#get-started) · [Connect it to your agent](#connect-it-to-your-agent) · [FAQ](./docs/faq.md) · [Docs](https://zz-plant.github.io/ambit/docs/)
 
@@ -29,7 +30,7 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 
 An *ambit* (from Latin *ambitus*: circuit, perimeter, sphere of action) is the boundary of what someone can reach. Working with agents, yours is set by a stack spread across LLM providers, MCP servers, local CLI tools, skill directories, credentials and machines, each with its own config file. What they add up to is written down nowhere, and so is where the boundary sits and how to move it.
 
-The claim under everything else is that **what an agent setup can do is not written in any config file.** It is composed from pieces configured separately, a configured piece may not work, and none of it says what the setup is allowed to do. Ambit computes that reach and helps you widen it, with evidence for each step and an approval for each change. Widening is the point. The checks, the authority model and the outage analysis are what make a wider reach safe to lean on, and the attention ledger is how you tell whether a step was worth taking.
+The claim under everything else is that **what an agent setup can do is not written in any config file.** It is composed from pieces configured separately, a configured piece may not work, and none of it says what the setup is allowed to do. Ambit computes that reach and helps you widen it, with evidence for each step and an approval for each change. Widening is the point. The checks, the authority model and the outage analysis are what make a wider reach safe to lean on, and the attention ledger is how you tell whether a step was worth taking. It is the "where your own time is going" in the tagline.
 
 Ambit reads those configs into one model, the capability graph. Every server, model, skill and declared credential is a node, as is every capability of the curated tree, and an edge records what one needs from another or provides to it. My Setup lists what your configs declare, and the map draws the curated tree with your position on it. The edge of what you reach is the *frontier*, with the next steps just past it. The graph answers four questions no single file can:
 
@@ -83,51 +84,9 @@ npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh`
 
 ---
 
-## From A to B
+## Where Ambit sits in the stack
 
-Your agents, tools, credentials and machines are your loadout, and you are its pilot. Point A is a pile of configs: one runtime, a few servers from a list, an agent that does chores while you approve every call, and no way to tell what works. Point B is a loadout that does a class of work without you, with its reach known, its pieces proven, its autonomy granted per action, and you present only where judgment is needed. The way from A to B runs through seven legs:
-
-1. **See where it stands**: every runtime's config in one map, and which pieces pass their checks.
-2. **Pick the next step**: ranked by what has blocked work and how much it opens.
-3. **Add it safely**: a proposal you sign, applied with an undo, proven by a check.
-4. **Hand over trust gradually**: autonomy per action and per target, widening when the evidence meets a bar you set and narrowing on one failing check. Runtimes offer their own allow, ask and deny rules; Ambit's addition is a per-action grant that widens past a threshold you set and narrows on one failing check.
-5. **Keep it standing**: what is failing, and what stops if a piece goes.
-6. **Know whether it paid**: the time you spent stepping in, before and after.
-7. **Let the agent ask for what it lacks**: it records what blocked it and drafts the step that closes it.
-
-My Setup opens on a readout of these seven legs for your own loadout. [Your loadout, from A to B](./docs/loadout.md) walks them with the demo's numbers.
-
-Building a product alone? `ambit goal "launch my saas"` lists what stands between you and real users, in order, and [Building alone](./docs/solo.md) covers what an agent may do to production without asking you. Planning it with Spec Kit or OpenSpec? `ambit goal --spec specs/001-feature` asks the same of every task in the feature before an agent starts on it.
-
----
-
-## In practice
-
-**The combo you already almost have.** You run local Postgres and Ollama, but your agent cannot search your code semantically. `ambit graph combos` reports the gap as one step, `CREATE EXTENSION vector;`, and `ambit goal retrieval --simulate` shows what that five-minute change reaches, with no cloud API in the path.
-
-**An agent that asks for what it lacks.** Mid-task, an agent needs local embeddings and has none. It records the deficit, asks Ambit what the goal is missing, and drafts a proposal of one config patch. You approve and apply it, and the frontier moves by four capabilities, Local Embeddings among them, through combination. [The recording below](#the-one-habit-worth-teaching) is that loop, run for real.
-
-**Rotating a shared token.** Before you revoke a personal access token, `ambit impact credential:github/user-token` names everything standing on it: the two background MCP tools and the scheduled sync agent that would otherwise fail some hours later without a word. The sharing is declared in a `credentials` block, whose shape is in [the deep dive](./docs/deep-dive.md#what-a-node-is); until you write one, `ambit credentials` says none are declared.
-
----
-
-## What is new here
-
-Most tools that touch an agent's setup list it, search it or route through it. Ambit treats what the setup can do as something to compute, prove and govern, and this is the combination we have not seen elsewhere for a local setup:
-
-1. **Capability is computed, not declared.** A capability can exist that no component declares: a vector store plus local embeddings supplies the prerequisites of semantic retrieval. The frontier ledger records when one appears *emergent*, reached with nothing new providing it, which no per-component changelog can show. ([The frontier ledger](./docs/deep-dive.md#the-frontier-ledger))
-2. **Evidence gates every decision.** `installed ≠ working ≠ authorized`. A capability counts once something provides it and its prerequisites are reached, and is proven once its declared check passes. One failing check takes it out of every plan, permission and ranking without anyone asking. ([Assurance](./docs/roadmap.md#4-detection-becomes-verification--built-and-gates))
-3. **Authority changes asymmetrically.** A grant widens only past a threshold a person set in advance, and narrows on one failing check with nobody asked; a refusal beats any narrower scope. Technical reach can grow without silently broadening permission. ([Capability and authority](./docs/deep-dive.md#capability-and-authority-are-different-things))
-4. **The agent asks for what it lacks.** Friction becomes a recorded deficit, then a proposal, a signed approval, a check, and a measured return against the hours it was forecast to save. ([The economic loop](./docs/deep-dive.md#the-economic-loop))
-5. **Reach has a history.** Each observation records what the setup could do then, so the question is not only what it can do now but how that set is changing. ([The map through time](./docs/deep-dive.md#the-frontier-ledger))
-
-The nearest prior work is attack-graph analysis, which asks what a principal can reach given a topology, and the capability approach in economics, which separates having resources from being able to achieve with them. Ambit applies the first to all productive action, not only attack paths, and makes the second's conversion computable for one kind of system. [The ideas behind Ambit](./docs/ideas.md) sets these out at length.
-
----
-
-## Where this sits in the stack
-
-Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.
+Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them; it computes what the setup can do, verifies what actually works, and gates authority.
 
 | System | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -137,7 +96,9 @@ Ambit sits above the protocol layer and below workflow orchestration. It neither
 | Flat MCP catalogs (Smithery, registries) | by name | – | – | – | – |
 | **Ambit** | by what it needs | across the whole host | ✓ declared checks | ✓ work ledger | ✓ authority contracts, signed approvals |
 
-None of the others tells a working tool from a broken one, says what it costs a person to keep it working, or gates what an agent may do with it beyond one task. Ambit models what the tools add up to on this host, and does all three.
+For the architectural foundation, economic loop, and comparison to prior work, see [The ideas behind Ambit](./docs/ideas.md), [Your loadout, from A to B](./docs/loadout.md), and [Building alone](./docs/solo.md).
+
+---
 
 ---
 
@@ -227,24 +188,22 @@ An agent can try it before anyone registers anything: `ambit status` reads the a
 
 ### Claude Code
 
-The plugin is the one-step route: it registers the MCP server, reads the briefing at session start, and adds a skill Claude loads when you ask which MCP servers you have, why one is failing, what breaks if one goes, or what to set up next.
-
-It also records which tools each session ran and for how long, which failed and with what error, and when you were asked to approve one, so Time & cost, promotion and `ambit next` have something to read. A hook appends one line per event to `~/.local/state/ambit/claude-code.jsonl`: when it ran, the session, the tool's name and Claude Code's id for the call, never a tool's input or output. The next `ambit` command reads it into the graph and removes it, keeping only the line of a call still running. A call is timed from the hook before it to the hook after it, and one you were asked to approve is left untimed, since that span holds your wait. A session's token counts come from its transcript, plugin or not (below), and the transcript is read whole once more when the session ends. Nothing leaves the machine; `AMBIT_NO_LEDGER=1` turns it off.
-
-No agent needs a plugin for its token counts, since each keeps a log of its sessions: every `ambit` command, and the MCP server when it opens the graph, reads what changed in Claude Code's transcripts in `~/.claude/projects` (or `CLAUDE_CONFIG_DIR`), Codex's `~/.codex/sessions` and `archived_sessions` (or `CODEX_HOME`), OpenCode's `opencode.db` in `~/.local/share/opencode` (or `OPENCODE_DATA_DIR`), opened read-only, and Amp's `~/.local/share/amp/threads` (or `AMP_DATA_DIR`). From each session it keeps the session's id, the model, the hour each use was in, and the tokens by part; never a prompt, a reply, a file path, a command, or a tool's input or output. A session is one run with its tokens kept per hour, and reading its log again adds only what is new, so a session still running shows its tokens as it goes. Declare a price with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and tokens on that model recorded from then on, from any of the four, are a spend against the budget on Hosted Inference, if one is set; a model with no price declared records none. `ambit usage --refresh` reads every log again from the top, and `AMBIT_NO_LEDGER=1` stops this reading too.
-
-Claude Code and Codex plans reset in five-hour windows, and `ambit usage --windows` counts them as ccusage's `blocks` report does: a window starts at the hour of the first use after the last one ended and lasts five hours, each runtime's apart. Each window lists its tokens by model and part, its cost where a price is declared, and for the current one the time left; Time & cost shows the current window beside the month's tokens. Ambit knows no plan's limit, so it never shows a share of one or the tokens remaining.
+Install the plugin from the marketplace:
 
 ```bash
 claude plugin marketplace add zz-plant/ambit
 claude plugin install ambit@ambit
 ```
 
-`ambit-gate@ambit` is a second, separate plugin, which puts the gate below on every tool call. Install it once you have grants you want binding. The first plugin runs Ambit through `npx` and needs nothing else installed; the gate runs on every call, so it calls an installed `ambit` (`npm install -g ambit-cli`) to stay fast, and without one it says at the start of each session that it is inactive. By hand, without the plugin:
+The plugin registers the MCP server, provides briefing at session start, and logs tool execution and approval spans to `~/.local/state/ambit/claude-code.jsonl`. Token usage is read read-only from local session logs. To disable recording, set `AMBIT_NO_LEDGER=1`.
+
+To register manually without the plugin:
 
 ```bash
 claude mcp add ambit -- ambit mcp --profile=agent
 ```
+
+`ambit-gate@ambit` is a companion plugin that places `ambit gate` on every tool call to enforce authority contracts. Or configure hooks directly in `~/.claude/settings.json`:
 
 `--profile=agent` lists the ten tools an agent that asks before it acts uses, in 4.4KB of its context. Leave the flag off for all sixty, about 19.5KB; the other fifty answer by name either way. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) names every tool and [says how a call is answered](./docs/deep-dive.md#how-a-call-is-answered).
 
