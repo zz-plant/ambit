@@ -5,9 +5,18 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    # One pull request a week for every version and minor bump, instead of
+    # one per package: five landed on one day for patch releases alone.
+    # A major version still comes on its own, since it is the one to read.
+    groups:
+      npm-minor-and-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      actions:
+        patterns: ["*"]
