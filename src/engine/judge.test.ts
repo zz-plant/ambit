@@ -96,9 +96,7 @@ test('the question is a Choice over every node in the curated tree', async () =>
   const q = j.hits[0].body.questions.capability;
   expect(q.type).toBe('choice');
   expect(Object.keys(q.criteria).sort()).toEqual(
-    loadTechTree()
-      .nodes.map((n: { id: string }) => n.id)
-      .sort()
+    [...loadTechTree().nodes.map((n: { id: string }) => n.id), 'none-of-these'].sort()
   );
   expect(j.hits[0].body.state).toBe(UNMATCHED);
 });
@@ -126,6 +124,45 @@ test('below even odds nothing is suggested, and the likeliest are still listed',
 
   expect(out.suggested).toBeUndefined();
   expect(out.considered).toHaveLength(3);
+});
+
+test('a judge that says none of these fits suggests nothing, and that is an answer', async () => {
+  // A Choice with no way out picks a node for anything: this is the way out.
+  const j = await judge({ 'none-of-these': 0.66, 'skill-library': 0.2, 'web-research': 0.14 });
+  const out = (await judgeGoal(UNMATCHED, { url: j.url })) as any;
+
+  expect(out.error).toBeUndefined();
+  expect(out.suggested).toBeUndefined();
+  expect(out.none).toBe(0.66);
+  expect(out.considered.map((c: any) => c.id)).toEqual([
+    'combo:skill-library',
+    'combo:web-research',
+  ]);
+  expect(out.note).toMatch(/no capability in the tree fits/);
+
+  // A node above it is still suggested, with "none" reported beside it.
+  const k = await judge({ 'web-research': 0.7, 'none-of-these': 0.2 });
+  const yes = (await judgeGoal(UNMATCHED, { url: k.url })) as any;
+  expect(yes.suggested.id).toBe('combo:web-research');
+  expect(yes.none).toBe(0.2);
+});
+
+test('a judge that names only "none of these" has answered', async () => {
+  const onlyNone = (async () =>
+    new Response(
+      JSON.stringify({
+        answers: { capability: { type: 'choice', choice: 'none-of-these', confidence: 0.8 } },
+      }),
+      { headers: { 'content-type': 'application/json' } }
+    )) as unknown as typeof fetch;
+  const out = (await judgeGoal(UNMATCHED, {
+    url: 'http://127.0.0.1:1',
+    fetchImpl: onlyNone,
+  })) as any;
+  expect(out.error).toBeUndefined();
+  expect(out.suggested).toBeUndefined();
+  expect(out.considered).toEqual([]);
+  expect(out.none).toBe(0.8);
 });
 
 test('an answer naming nothing in the tree is not an answer', async () => {
