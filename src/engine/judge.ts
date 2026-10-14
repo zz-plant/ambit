@@ -44,6 +44,17 @@ const SUGGEST_AT = 0.5;
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
+/**
+ * The option a Choice needs for a sentence the tree has no place for. Without
+ * it the model must pick a node, and does so confidently: asked whether
+ * "juggle flaming torches" was a capability, Clef-flash said Skill Library at
+ * 0.69. With it, 13 of 16 such sentences chose this option and the other three
+ * stayed under 0.34, while the 48 that meant something were placed exactly as
+ * before (44 first, all 48 in the top three). Not a node id, so never one the
+ * tree could hold.
+ */
+const NONE_OF_THESE = 'none-of-these';
+
 /** Ollama's default, where an embedding model on this machine usually is. */
 const DEFAULT_EMBED = 'http://127.0.0.1:11434';
 
@@ -122,6 +133,8 @@ interface Judged {
   model?: string;
   suggested?: { id: string; name: string; probability: number };
   considered: Array<{ id: string; name: string; probability: number }>;
+  /** The probability the judge gave "none of these", when it gave any. */
+  none?: number;
   confidence?: number;
   note: string;
 }
@@ -356,9 +369,13 @@ async function judgeGoal(
   if ('error' in where) return where;
 
   const nodes: TreeNode[] = loadTechTree()?.nodes || [];
-  const criteria = Object.fromEntries(
-    nodes.map(n => [n.id, n.description ? `${n.name}: ${n.description}` : n.name])
-  );
+  const criteria = {
+    ...Object.fromEntries(
+      nodes.map(n => [n.id, n.description ? `${n.name}: ${n.description}` : n.name])
+    ),
+    [NONE_OF_THESE]:
+      'None of these: the request is not something an AI agent or its tools would do',
+  };
   const body = {
     state: sentence,
     ...(process.env.AMBIT_JUDGE_MODEL ? { model: process.env.AMBIT_JUDGE_MODEL } : {}),
@@ -415,11 +432,14 @@ async function judgeGoal(
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([id, p]) => ({ id: `combo:${id}`, name: byName.get(id) as string, probability: p }));
-  if (!considered.length)
+  // "None of these" is an answer, and the likeliest one is what the judge said.
+  const none = typeof probabilities[NONE_OF_THESE] === 'number' ? probabilities[NONE_OF_THESE] : 0;
+  const saidNone = none > 0 && none >= (considered[0]?.probability ?? 0);
+  if (!considered.length && !saidNone)
     return { error: `the judge at ${where.url} named no capability in the tree` };
 
   const top = considered[0];
-  const suggested = top.probability >= SUGGEST_AT ? top : undefined;
+  const suggested = !saidNone && top && top.probability >= SUGGEST_AT ? top : undefined;
   return {
     asked: where.url,
     by: 'judgment',
@@ -427,9 +447,12 @@ async function judgeGoal(
     ...(suggested ? { suggested } : {}),
     considered,
     ...(typeof answer?.confidence === 'number' ? { confidence: answer.confidence } : {}),
+    ...(none > 0 ? { none } : {}),
     note: suggested
       ? `a suggestion from a judgment model on this machine, not a match in the vocabulary. Plan it with ambit goal ${suggested.id}`
-      : 'the judgment model gave no capability even odds, so nothing is suggested; the likeliest are listed',
+      : saidNone
+        ? 'the judgment model answered that no capability in the tree fits, so nothing is suggested'
+        : 'the judgment model gave no capability even odds, so nothing is suggested; the likeliest are listed',
   };
 }
 
