@@ -35,6 +35,41 @@ The judge must run on this machine. `--judge=<url>` or `AMBIT_JUDGE_URL` can poi
 
 When no judge answers at all, the sentence goes to an embedding model on this machine instead: Ollama's `/api/embed` on `http://127.0.0.1:11434`, or `AMBIT_EMBED_URL`, held to the same loopback rule. A server that answers Ollama's path with a 404 is asked in the OpenAI shape, `/v1/embeddings`, which is what llama-server and LM Studio serve; a new embedding model often reaches llama.cpp before Ollama can run it. It picks EmbeddingGemma 2 if the server lists one, then any model whose name says it embeds, or the one `AMBIT_EMBED_MODEL` names. What comes back is the three nodes nearest the sentence in meaning, each with a cosine similarity. A similarity is not a probability, so the answer says which kind it is. The nearest node is suggested only above a floor measured for that model on sentences written for the tree, and only EmbeddingGemma 2 has one so far: on 48 such sentences its nearest node was right for 34, and every sentence meaning nothing in the tree scored below the floor. Any other model lists the nearest and suggests nothing. A judge that answered with an error is reported as one and never passed over.
 
+## Serving Clef on your own machine
+
+Cloudflare publishes Clef-flash's weights (9B, Apache 2.0) with the code that reads them, `joint_schema_model.py`, and its `systemone()` function takes a `/v1/systemone` request body and returns the answer body. A local judge is that function behind a loopback HTTP server:
+
+```python
+import json, sys, torch
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from huggingface_hub import snapshot_download
+
+path = snapshot_download("Cloudflare/clef-flash")
+sys.path.insert(0, path)
+from joint_schema_model import load_release_model, systemone
+
+device = "mps" if torch.backends.mps.is_available() else "cuda"
+model, processor = load_release_model(path, device=device)
+
+class Judge(BaseHTTPRequestHandler):
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers["content-length"])))
+        body.setdefault("model", "clef-flash")  # Ambit names none unless AMBIT_JUDGE_MODEL is set
+        raw = json.dumps(systemone(model, processor, body)).encode()
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(raw)
+
+HTTPServer(("127.0.0.1", 8009), Judge).serve_forever()
+```
+
+It needs `torch`, `transformers` 5.10 or later, `safetensors`, `accelerate` and `pillow`, and about 19 GB of memory in bf16. On an M1 Max it loaded in under half a minute and answered Ambit's question in about six and a half seconds: the fast kernels for its linear-attention layers are CUDA-only, so Apple silicon runs the plain-torch path. `ambit verify combo:local-typed-judgment` then finds it on 8009.
+
+## Measuring a model
+
+The figures on this page come from `scripts/judge-eval.json`: 48 sentences written for the tree, none of them a goal phrase, each with the node a person would mean, and 16 that mean nothing in it. `npm run judge:eval` puts them through the same `judgeGoal` that `--judge` calls, so it measures the question, the "none of these" option and the floors as they ship. `--judge=<url>` names another judge and `--embed` measures the embedding fallback. A new model, a reworded node or a changed question is measured again the same way, and a new embedding model gets a floor only from that run: the highest score any off-tree sentence reached, with a margin above it.
+
 ## Where Jev stops
 
 Use Jev to decide what to try, and `ambit_can` to decide whether it may run.

@@ -1,0 +1,214 @@
+{
+  "placed": [
+    {
+      "text": "let the agent poke around in a bash prompt",
+      "want": "shell-execution"
+    },
+    {
+      "text": "have it patch the source tree for me",
+      "want": "file-editing"
+    },
+    {
+      "text": "see type errors the way my editor does",
+      "want": "code-intelligence"
+    },
+    {
+      "text": "keep every change the agent makes undoable",
+      "want": "version-control"
+    },
+    {
+      "text": "talk to Anthropic or OpenAI models",
+      "want": "hosted-inference"
+    },
+    {
+      "text": "serve a model off my own GPU",
+      "want": "local-runtime"
+    },
+    {
+      "text": "a model on my laptop that can call tools properly",
+      "want": "local-tool-calling"
+    },
+    {
+      "text": "handle a whole codebase in one prompt",
+      "want": "extended-context"
+    },
+    {
+      "text": "send cheap tasks to a small model and hard ones to a big one",
+      "want": "model-routing"
+    },
+    {
+      "text": "triage incoming bug reports into buckets",
+      "want": "typed-judgment"
+    },
+    {
+      "text": "decide if an email is spam with a confidence number",
+      "want": "typed-judgment"
+    },
+    {
+      "text": "plug external tools into the agent through a protocol",
+      "want": "tool-protocol"
+    },
+    {
+      "text": "check that my web page renders correctly by clicking it",
+      "want": "browser-automation"
+    },
+    {
+      "text": "find the latest docs for a library released last month",
+      "want": "web-research"
+    },
+    {
+      "text": "stop pasting tokens into config files",
+      "want": "secret-management"
+    },
+    {
+      "text": "let the agent read our postgres tables",
+      "want": "data-access"
+    },
+    {
+      "text": "have the agent pick up tasks from linear",
+      "want": "issue-tracking"
+    },
+    {
+      "text": "turn paragraphs into numeric vectors",
+      "want": "embeddings"
+    },
+    {
+      "text": "a place to keep millions of vectors and search them",
+      "want": "vector-store"
+    },
+    {
+      "text": "pull the relevant docs into the prompt when needed",
+      "want": "retrieval"
+    },
+    {
+      "text": "make the agent remember my preferences next week",
+      "want": "persistent-memory"
+    },
+    {
+      "text": "keep going when the conversation gets too long",
+      "want": "context-compaction"
+    },
+    {
+      "text": "spin off a specialist agent for the database work",
+      "want": "subagents"
+    },
+    {
+      "text": "save a procedure so the agent can reuse it later",
+      "want": "skill-library"
+    },
+    {
+      "text": "run four agents at once on separate tickets",
+      "want": "parallel-execution"
+    },
+    {
+      "text": "run a nightly job that cleans up stale branches",
+      "want": "scheduled-work"
+    },
+    {
+      "text": "buzz my phone when the long build finishes",
+      "want": "notifications"
+    },
+    {
+      "text": "let the agent check its own changes with a test run",
+      "want": "automated-tests"
+    },
+    {
+      "text": "have another model critique the patch before I see it",
+      "want": "review-loop"
+    },
+    {
+      "text": "measure agent answers against a golden set",
+      "want": "evaluation"
+    },
+    {
+      "text": "trace what the agent did when something went wrong",
+      "want": "observability"
+    },
+    {
+      "text": "merge agent changes through the same pipeline as mine",
+      "want": "continuous-delivery"
+    },
+    {
+      "text": "search my notes without uploading them anywhere",
+      "want": "local-embeddings"
+    },
+    {
+      "text": "work on a plane with wifi off",
+      "want": "offline-capable"
+    },
+    {
+      "text": "keep medical records away from cloud models",
+      "want": "private-data-handling"
+    },
+    {
+      "text": "run models and tools on a rack in my closet",
+      "want": "self-hosted-stack"
+    },
+    {
+      "text": "classify documents on my machine without sending them out",
+      "want": "local-typed-judgment"
+    },
+    {
+      "text": "put my side project on the internet",
+      "want": "hosting"
+    },
+    {
+      "text": "a managed postgres for my app's users",
+      "want": "production-database"
+    },
+    {
+      "text": "let people create an account with google",
+      "want": "user-accounts"
+    },
+    {
+      "text": "charge a monthly fee for my app",
+      "want": "payments"
+    },
+    {
+      "text": "send a confirmation message after signup",
+      "want": "transactional-email"
+    },
+    {
+      "text": "find out about crashes before users complain",
+      "want": "error-tracking"
+    },
+    {
+      "text": "see which features people actually click",
+      "want": "product-analytics"
+    },
+    {
+      "text": "get told when the site stops responding",
+      "want": "uptime-monitoring"
+    },
+    {
+      "text": "make sure I can get the data back if the disk dies",
+      "want": "backups"
+    },
+    {
+      "text": "everything needed before the first paying customer",
+      "want": "launch-ready"
+    },
+    {
+      "text": "decide whether a tool call is dangerous with a probability",
+      "want": "typed-judgment"
+    }
+  ],
+  "offTree": [
+    "juggle flaming torches",
+    "bake sourdough bread",
+    "learn to play the cello",
+    "plan a trip to lisbon",
+    "what is the capital of peru",
+    "fix my bicycle chain",
+    "write a birthday poem for my mom",
+    "how tall is mount everest",
+    "teach my dog to sit",
+    "repaint the kitchen",
+    "knit a scarf",
+    "choose a wine for dinner",
+    "meditate for ten minutes",
+    "water the tomatoes",
+    "buy a used car",
+    "train for a marathon"
+  ]
+}

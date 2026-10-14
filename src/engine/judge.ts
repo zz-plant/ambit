@@ -162,6 +162,8 @@ type TreeNode = { id: string; name: string; description?: string; goal?: string[
  * the floor tells a sentence the tree has no place for from one it has, and
  * above it about one suggestion in four is still the wrong node: a
  * suggestion, as the note says. nomic-embed-text placed 21 of the 48.
+ * `npm run judge:eval -- --embed` runs the same set (scripts/judge-eval.json)
+ * through this code, and is how a floor for another model is found.
  */
 const NEAR_FLOORS: Array<{ model: RegExp; floor: number }> = [
   { model: /embeddinggemma-?2/i, floor: 0.65 },
