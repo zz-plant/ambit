@@ -18,6 +18,13 @@
  *
  *   It asks only when the vocabulary could not recommend. A goal the curated
  *   words already cover is answered the way it always was, with no socket.
+ *
+ * Cloudflare's Clef models answer in the same wire format, so a Clef server on
+ * this machine is a judge like any clone. When no judge answers at all, the
+ * question goes once more to an embedding model on this machine (Ollama's
+ * `/api/embed`), and the answer is the nodes nearest in meaning with their
+ * similarity. A cosine is not a probability, so that answer is listed, and
+ * suggested only past a floor measured for that model on this tree.
  */
 import { loadTechTree } from './paths.ts';
 
@@ -36,13 +43,16 @@ const SUGGEST_AT = 0.5;
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]']);
 
+/** Ollama's default, where an embedding model on this machine usually is. */
+const DEFAULT_EMBED = 'http://127.0.0.1:11434';
+
 /**
- * Where to ask, or why not. The URL is parsed, never prefix-matched: a prefix
+ * A URL on this machine, or why not. Parsed, never prefix-matched: a prefix
  * test passes `http://127.0.0.1:1@host`, which every HTTP client reads as a
  * request to `host` with credentials, and `http://127.0.0.1.example.com`.
  */
-function judgeUrl(named?: string): { url: string } | { error: string } {
-  const raw = named || process.env.AMBIT_JUDGE_URL || sdkBaseUrl() || DEFAULT_JUDGE;
+function loopbackUrl(raw: string, what: string): { url: URL } | { error: string } {
+  const the = what.replace(/^an? /, 'the ');
   let u: URL;
   try {
     u = new URL(raw);
@@ -50,14 +60,30 @@ function judgeUrl(named?: string): { url: string } | { error: string } {
     return { error: `not a URL: ${raw}` };
   }
   if (u.username || u.password)
-    return { error: `refused ${raw}: a judge URL carries no credentials` };
+    return { error: `refused ${raw}: ${what} URL carries no credentials` };
   if (u.protocol !== 'http:' || !LOOPBACK.has(u.hostname))
     return {
-      error: `refused ${raw}: the judge must run on this machine (http://127.0.0.1, localhost or [::1])`,
+      error: `refused ${raw}: ${the} must run on this machine (http://127.0.0.1, localhost or [::1])`,
     };
+  return { url: u };
+}
+
+/** Where to ask the judge, or why not. */
+function judgeUrl(named?: string): { url: string } | { error: string } {
+  const raw = named || process.env.AMBIT_JUDGE_URL || sdkBaseUrl() || DEFAULT_JUDGE;
+  const parsed = loopbackUrl(raw, 'a judge');
+  if ('error' in parsed) return parsed;
+  const u = parsed.url;
   // TypeSafe's base URLs name the host and the SDK adds `/v1`, but a clone's
   // README may quote it with the version on; either way the path is added once.
   return { url: `${u.origin}${u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '')}` };
+}
+
+/** Where to ask the embedding model, or why not: `AMBIT_EMBED_URL`, else Ollama's default. */
+function embedUrl(): { url: string } | { error: string } {
+  const parsed = loopbackUrl(process.env.AMBIT_EMBED_URL || DEFAULT_EMBED, 'an embedding model');
+  if ('error' in parsed) return parsed;
+  return { url: `${parsed.url.origin}${parsed.url.pathname.replace(/\/+$/, '')}` };
 }
 
 /**
@@ -85,11 +111,203 @@ function sdkBaseUrl(): string | undefined {
 
 interface Judged {
   asked: string;
+  /** What answered: a decision model's Choice, or an embedding model's nearest nodes. */
+  by: 'judgment' | 'embedding';
   model?: string;
   suggested?: { id: string; name: string; probability: number };
   considered: Array<{ id: string; name: string; probability: number }>;
   confidence?: number;
   note: string;
+}
+
+interface Neared {
+  asked: string;
+  by: 'embedding';
+  model: string;
+  suggested?: { id: string; name: string; similarity: number };
+  nearest: Array<{ id: string; name: string; similarity: number }>;
+  note: string;
+}
+
+type TreeNode = { id: string; name: string; description?: string; goal?: string[] };
+
+/**
+ * Below its floor, the nearest node is listed and not suggested. Cosines from
+ * different models are on different scales, so a floor holds only for the
+ * model it was measured on, and a model with none suggests nothing.
+ *
+ * EmbeddingGemma 2's was measured on 48 sentences written for this tree and
+ * kept out of it, and 16 that mean nothing in it. The nearest node was right
+ * for 34 of the 48 and among the nearest three for 43. Every sentence that
+ * meant nothing scored below 0.61, and 45 of the 48 scored 0.65 or more. So
+ * the floor tells a sentence the tree has no place for from one it has, and
+ * above it about one suggestion in four is still the wrong node: a
+ * suggestion, as the note says. nomic-embed-text placed 21 of the 48.
+ */
+const NEAR_FLOORS: Array<{ model: RegExp; floor: number }> = [
+  { model: /embeddinggemma-?2/i, floor: 0.65 },
+];
+
+function nearFloor(model: string): number | undefined {
+  return NEAR_FLOORS.find(f => f.model.test(model))?.floor;
+}
+
+/**
+ * How long an embedding model gets. Longer than a judge: the first question
+ * embeds every node of the tree, and Ollama's EmbeddingGemma 2 build took
+ * about 20 seconds for that on an M1 Max, where nomic-embed took under two.
+ */
+const EMBED_TIMEOUT_MS = 60_000;
+
+/**
+ * How each model family wants a query and a document written. EmbeddingGemma
+ * and nomic-embed were trained with these prefixes and rank worse without
+ * them; any other model gets the plain text.
+ */
+function prompts(model: string) {
+  if (/embeddinggemma/i.test(model))
+    return {
+      query: (q: string) => `task: search result | query: ${q}`,
+      doc: (title: string, text: string) => `title: ${title} | text: ${text}`,
+    };
+  if (/nomic-embed/i.test(model))
+    return {
+      query: (q: string) => `search_query: ${q}`,
+      doc: (title: string, text: string) => `search_document: ${title}. ${text}`,
+    };
+  return { query: (q: string) => q, doc: (title: string, text: string) => `${title}. ${text}` };
+}
+
+/** A node as a document: its name, what it is, and the phrases authored to reach it. */
+function nodeText(n: TreeNode): string {
+  return [n.description, ...(n.goal || [])].filter(Boolean).join('; ') || n.name;
+}
+
+function cosine(a: number[], b: number[]): number {
+  let dot = 0;
+  let aa = 0;
+  let bb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    aa += a[i] * a[i];
+    bb += b[i] * b[i];
+  }
+  return aa && bb ? dot / Math.sqrt(aa * bb) : 0;
+}
+
+/**
+ * The tree's vectors, per server and model, for as long as the process runs:
+ * a spec with twenty unrouted tasks embeds the tree once, not twenty times.
+ */
+const treeVectors = new Map<string, number[][]>();
+
+/**
+ * The embedding model Ollama has pulled, when none is named: EmbeddingGemma
+ * first, then any model whose name says it embeds. A chat model is never
+ * picked, since its vectors are not trained to be compared.
+ */
+async function pickEmbedModel(url: string, f: typeof fetch): Promise<string | undefined> {
+  try {
+    const res = await f(`${url}/api/tags`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (!res.ok) return undefined;
+    const listed: any = await res.json();
+    const names: string[] = (Array.isArray(listed?.models) ? listed.models : [])
+      .map((m: { name?: unknown }) => m?.name)
+      .filter((n: unknown): n is string => typeof n === 'string');
+    return names.find(n => /^embeddinggemma/i.test(n)) ?? names.find(n => /embed/i.test(n));
+  } catch {
+    return undefined;
+  }
+}
+
+async function embed(
+  url: string,
+  model: string,
+  input: string[],
+  f: typeof fetch
+): Promise<number[][] | { error: string }> {
+  let res: Response;
+  try {
+    res = await f(`${url}/api/embed`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model, input }),
+      signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
+    });
+  } catch (e) {
+    return { error: `no embedding model answered at ${url} (${(e as Error).message})` };
+  }
+  if (!res.ok) return { error: `the embedding model at ${url} answered ${res.status}` };
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    return { error: `the embedding model at ${url} did not answer in JSON` };
+  }
+  const vectors = data?.embeddings;
+  if (
+    !Array.isArray(vectors) ||
+    vectors.length !== input.length ||
+    !vectors.every(
+      (v: unknown) => Array.isArray(v) && v.length && v.every(x => typeof x === 'number')
+    )
+  )
+    return { error: `the embedding model at ${url} returned no vectors for ${model}` };
+  return vectors;
+}
+
+/**
+ * The nodes nearest a goal in meaning, asked of an embedding model on this
+ * machine. Only reached when no judge answered, and it reports that too, so a
+ * person reading a similarity knows no decision model was asked.
+ */
+async function nearestByMeaning(
+  sentence: string,
+  nodes: TreeNode[],
+  judgeError: string,
+  f: typeof fetch
+): Promise<Neared | { error: string }> {
+  const where = embedUrl();
+  if ('error' in where) return { error: `${judgeError}; ${where.error}` };
+  const model = process.env.AMBIT_EMBED_MODEL || (await pickEmbedModel(where.url, f));
+  if (!model)
+    return {
+      error: `${judgeError}. No embedding model answered at ${where.url} either: ollama pull embeddinggemma-2:270m, or set AMBIT_EMBED_MODEL.`,
+    };
+  const p = prompts(model);
+  const key = `${where.url}|${model}`;
+  let docs = treeVectors.get(key);
+  const input = [p.query(sentence), ...(docs ? [] : nodes.map(n => p.doc(n.name, nodeText(n))))];
+  const vectors = await embed(where.url, model, input, f);
+  if ('error' in vectors) return { error: `${judgeError}; ${vectors.error}` };
+  if (!docs) {
+    docs = vectors.slice(1);
+    treeVectors.set(key, docs);
+  }
+  const query = vectors[0];
+  const nearest = nodes
+    .map((n, i) => ({
+      id: `combo:${n.id}`,
+      name: n.name,
+      similarity: Math.round(cosine(query, docs[i]) * 1000) / 1000,
+    }))
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, 3);
+  const top = nearest[0];
+  const floor = nearFloor(model);
+  const suggested = top && floor !== undefined && top.similarity >= floor ? top : undefined;
+  return {
+    asked: where.url,
+    by: 'embedding',
+    model,
+    ...(suggested ? { suggested } : {}),
+    nearest,
+    note: suggested
+      ? `no judgment model answered, so this is the nearest node in meaning by an embedding model on this machine, a similarity and not a probability. Plan it with ambit goal ${suggested.id}`
+      : floor === undefined
+        ? `no judgment model answered, and no floor has been measured for ${model}, so nothing is suggested; the nearest are listed`
+        : 'no judgment model answered, and nothing in the tree is near enough in meaning to suggest; the nearest are listed',
+  };
 }
 
 /**
@@ -101,12 +319,11 @@ interface Judged {
 async function judgeGoal(
   sentence: string,
   opts: { url?: string; fetchImpl?: typeof fetch } = {}
-): Promise<Judged | { error: string }> {
+): Promise<Judged | Neared | { error: string }> {
   const where = judgeUrl(opts.url);
   if ('error' in where) return where;
 
-  const nodes: Array<{ id: string; name: string; description?: string }> =
-    loadTechTree()?.nodes || [];
+  const nodes: TreeNode[] = loadTechTree()?.nodes || [];
   const criteria = Object.fromEntries(
     nodes.map(n => [n.id, n.description ? `${n.name}: ${n.description}` : n.name])
   );
@@ -132,9 +349,15 @@ async function judgeGoal(
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (e) {
-    return {
-      error: `no judgment model answered at ${where.url} (${(e as Error).message}). Serve a local clone such as Kev and point TYPESAFE_BASE_URL at it, or pass --judge=<url on this machine>.`,
-    };
+    // Nothing listening is not a refusal: the person asked a model on this
+    // machine, and an embedding model is one. A judge that answered with an
+    // error, or a URL refused above, never falls through to it.
+    return nearestByMeaning(
+      sentence,
+      nodes,
+      `no judgment model answered at ${where.url} (${(e as Error).message}). Serve Kev, Clef or another clone of the same API and point TYPESAFE_BASE_URL at it, or pass --judge=<url on this machine>`,
+      opts.fetchImpl ?? fetch
+    );
   }
   if (!res.ok) return { error: `the judge at ${where.url} answered ${res.status}` };
 
@@ -167,6 +390,7 @@ async function judgeGoal(
   const suggested = top.probability >= SUGGEST_AT ? top : undefined;
   return {
     asked: where.url,
+    by: 'judgment',
     ...(typeof data.model === 'string' ? { model: data.model } : {}),
     ...(suggested ? { suggested } : {}),
     considered,
@@ -177,4 +401,4 @@ async function judgeGoal(
   };
 }
 
-export { judgeGoal, judgeUrl, SUGGEST_AT };
+export { embedUrl, judgeGoal, judgeUrl, nearFloor, SUGGEST_AT };

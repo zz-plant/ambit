@@ -8,7 +8,8 @@ Ambit models Jev as **Typed Judgment**, in the Model Access era of the curated t
 
 - one of the community Jev MCP servers, seen as `mcp:jev` or similar;
 - TypeSafe listed as a provider;
-- an open clone that serves the same `/v1/systemone` API, such as Kev, LitJev or OpenJev.
+- an open clone that serves the same `/v1/systemone` API, such as Kev, LitJev or OpenJev;
+- Cloudflare's Clef models (Clef, Clef-flash and Clef-omni), which answer the same typed questions in the same request and answer shape, on Workers AI or from their open weights.
 
 A clone running on your own hardware also reaches **Local Typed Judgment**, which sits beside Local Embeddings in the Sovereignty era. That era holds what runs without a hosted service. The difference matters. The hosted API may keep requests for a while unless your account has a zero-retention agreement, and a local clone keeps the state it judges on your machine.
 
@@ -30,7 +31,9 @@ ambit goal "triage incoming bug reports" --judge
 
 When the vocabulary cannot recommend anything, the sentence goes to the local model as one Choice question over every node in the tree, and the likeliest node comes back with its probability. Below even odds, nothing is suggested and the three likeliest are listed. It writes nothing to the graph, and a goal the tree's words already cover opens no socket at all.
 
-The judge must run on this machine. `--judge=<url>` or `AMBIT_JUDGE_URL` can point it elsewhere on loopback, and it defaults to Kev on `http://127.0.0.1:8009`. Any other host is refused before anything is sent.
+The judge must run on this machine. `--judge=<url>` or `AMBIT_JUDGE_URL` can point it elsewhere on loopback, and it defaults to Kev on `http://127.0.0.1:8009`. Any other host is refused before anything is sent. A server for the open Clef weights is a judge like any clone once it answers on `/v1/systemone`; Clef on Workers AI is a hosted API, and is refused for the same reason the hosted Jev is.
+
+When no judge answers at all, the sentence goes to an embedding model on this machine instead: Ollama's `/api/embed` on `http://127.0.0.1:11434`, or `AMBIT_EMBED_URL`, held to the same loopback rule. It picks EmbeddingGemma 2 if one is pulled, then any model whose name says it embeds, or the one `AMBIT_EMBED_MODEL` names. What comes back is the three nodes nearest the sentence in meaning, each with a cosine similarity. A similarity is not a probability, so the answer says which kind it is. The nearest node is suggested only above a floor measured for that model on sentences written for the tree, and only EmbeddingGemma 2 has one so far: on 48 such sentences its nearest node was right for 34, and every sentence meaning nothing in the tree scored below the floor. Any other model lists the nearest and suggests nothing. A judge that answered with an error is reported as one and never passed over.
 
 ## Where Jev stops
 

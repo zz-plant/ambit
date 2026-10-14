@@ -387,10 +387,12 @@ async function judgeUnrouted(report: any, url?: string) {
   const unrouted = report.unrouted.map((l: SpecLine) => ({ ...l }));
   let asked: string | undefined;
   let model: string | undefined;
+  let by: string | undefined;
   for (const line of unrouted) {
     const judged = await judgeGoal(line.text, { url });
     if ('error' in judged) return { ...report, unrouted, judged: { error: judged.error } };
     asked = judged.asked;
+    by = judged.by;
     model = judged.model ?? model;
     if (judged.suggested) line.suggested = judged.suggested;
   }
@@ -399,6 +401,7 @@ async function judgeUnrouted(report: any, url?: string) {
     unrouted,
     judged: {
       asked,
+      by,
       ...(model ? { model } : {}),
       suggested: unrouted.filter((l: any) => l.suggested).length,
     },

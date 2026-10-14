@@ -264,7 +264,7 @@ ambit goal "maintain the homelab unattended"
   Self-Hosted Stack    homelab            → steps 2 · 2.5h
 ```
 
-A sentence the vocabulary cannot place has one more route: `ambit goal --judge` (or `ambit_goal` with `judge: true`) asks a judgment model on this machine which node it means, as a Choice over the tree, and returns the likeliest with its probability. It suggests and writes nothing.
+A sentence the vocabulary cannot place has one more route: `ambit goal --judge` (or `ambit_goal` with `judge: true`) asks a judgment model on this machine which node it means, as a Choice over the tree, and returns the likeliest with its probability. With no judge answering, an embedding model on this machine returns the nearest nodes in meaning, each with its similarity. It suggests and writes nothing.
 
 `ambit goal <capability> --paths` compares the alternative ways to close the gap, deriving risk from what the alternatives themselves carry (hosted moves data off the machine, recurring adds a bill, a step without a config patch cannot be undone by §10) and folding identical paths together so the list is of choices, not accidents:
 

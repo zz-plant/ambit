@@ -701,7 +701,11 @@ interface SpecReport {
   steps: (PlanStep & { for?: string[] })[];
   setup_seconds?: number;
   failing: { id: string; name: string; check: string }[];
-  unrouted: { id?: string; text: string; suggested?: { name: string; probability: number } }[];
+  unrouted: {
+    id?: string;
+    text: string;
+    suggested?: { name: string; probability?: number; similarity?: number };
+  }[];
   judged?: { error?: string; asked?: string };
 }
 
@@ -786,11 +790,15 @@ function renderSpec(report: SpecReport, c: Palette = C): string[] {
     for (const t of report.unrouted.slice(0, UNROUTED_ROWS)) {
       const text = t.text.length > 72 ? `${t.text.slice(0, 71)}…` : t.text;
       lines.push(`  ${c.grey}·${c.reset} ${t.id ? `${t.id} ` : ''}${text}`);
-      if (t.suggested) {
-        lines.push(
-          `     ${c.grey}› the judge suggests ${t.suggested.name} (${t.suggested.probability.toFixed(2)})${c.reset}`
-        );
-      }
+      // A probability and a similarity are different claims, and each is
+      // named for what it is.
+      const said =
+        typeof t.suggested?.probability === 'number'
+          ? `the judge suggests ${t.suggested.name} (${t.suggested.probability.toFixed(2)})`
+          : typeof t.suggested?.similarity === 'number'
+            ? `nearest in meaning: ${t.suggested.name} (similarity ${t.suggested.similarity.toFixed(2)})`
+            : '';
+      if (said) lines.push(`     ${c.grey}› ${said}${c.reset}`);
     }
     if (report.unrouted.length > UNROUTED_ROWS) {
       lines.push(

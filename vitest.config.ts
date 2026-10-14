@@ -26,8 +26,11 @@ export default defineConfig({
     // at folders that do not exist: the developer's own models and sessions
     // must never decide an assertion. A set CLAUDE_CONFIG_DIR is the only
     // place Claude Code's are looked for, so ~/.claude is never read. A test
-    // that wants models or logs makes them.
+    // that wants models or logs makes them. `goal --judge` falls back to an
+    // embedding model when no judge answers, so that points at the discard
+    // port, where nothing listens, and never at the developer's own Ollama.
     env: {
+      AMBIT_EMBED_URL: 'http://127.0.0.1:9',
       AMBIT_SPOOL: join(tmpdir(), `ambit-test-spool-${process.pid}.jsonl`),
       OLLAMA_MODELS: join(tmpdir(), `ambit-test-no-ollama-${process.pid}`),
       AMBIT_LMSTUDIO_MODELS: join(tmpdir(), `ambit-test-no-lmstudio-${process.pid}`),

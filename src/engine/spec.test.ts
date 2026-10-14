@@ -384,7 +384,7 @@ test('--judge asks a judge on this machine about unrouted tasks only, and writes
       'Create Team and Subscription models in src/models/',
     ]);
     expect(report.unrouted[0].suggested.id).toBe('combo:file-editing');
-    expect(report.judged).toEqual({ asked: url, suggested: 4 });
+    expect(report.judged).toEqual({ asked: url, by: 'judgment', suggested: 4 });
     // A suggestion is not a need.
     expect(byId(report).has('combo:file-editing')).toBe(false);
     expect(cli('status')).toEqual(before);
@@ -402,6 +402,55 @@ test('--judge asks a judge on this machine about unrouted tasks only, and writes
     expect(asked).toEqual([]);
   } finally {
     server.close();
+  }
+});
+
+test('with no judge, unrouted tasks are placed by meaning, and the tree is embedded once', async () => {
+  seed(BUILDER).close();
+  const sizes: number[] = [];
+  const server = createServer((req, res) => {
+    let raw = '';
+    req.on('data', c => {
+      raw += c;
+    });
+    req.on('end', () => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (req.url === '/api/tags')
+        return res.end(JSON.stringify({ models: [{ name: 'embeddinggemma-2:270m' }] }));
+      const input: string[] = JSON.parse(raw).input;
+      sizes.push(input.length);
+      // Every query lands on File Editing; every other node is orthogonal.
+      const vector = (t: string) =>
+        t.startsWith('task: ') || t.startsWith('title: File Editing ') ? [1, 0] : [0, 1];
+      res.end(JSON.stringify({ embeddings: input.map(vector) }));
+    });
+  });
+  await new Promise<void>(r => server.listen(0, '127.0.0.1', () => r()));
+  const embedAt = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const dead = createServer();
+  await new Promise<void>(r => dead.listen(0, '127.0.0.1', () => r()));
+  const judgeAt = `http://127.0.0.1:${(dead.address() as AddressInfo).port}`;
+  await new Promise(r => dead.close(r));
+  process.env.AMBIT_EMBED_URL = embedAt;
+  try {
+    const report = await cliAsync('goal', '--spec', specKitFeature(), `--judge=${judgeAt}`);
+    expect(report.judged).toEqual({
+      asked: embedAt,
+      by: 'embedding',
+      model: 'embeddinggemma-2:270m',
+      suggested: 4,
+    });
+    expect(report.unrouted[0].suggested).toMatchObject({ id: 'combo:file-editing', similarity: 1 });
+    // The first request carries the tree; the other three carry only their task.
+    expect(sizes.slice(1)).toEqual([1, 1, 1]);
+    expect(sizes[0]).toBeGreaterThan(1);
+
+    const lines = renderSpec(report, PLAIN).join('\n');
+    expect(lines).toContain('› nearest in meaning: File Editing (similarity 1.00)');
+    expect(lines).not.toContain('the judge suggests');
+  } finally {
+    server.close();
+    process.env.AMBIT_EMBED_URL = 'http://127.0.0.1:9';
   }
 });
 
