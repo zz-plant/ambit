@@ -333,7 +333,7 @@ function importSync(db: Db, path?: string) {
       .map(k => (spec.nullable?.includes(k) ? `${k} IS ?` : `${k} = ?`))
       .join(' AND ');
     const find = db.prepare(
-      `SELECT ${spec.mutable ? spec.mutable : spec.key[0]} AS marker FROM ${spec.table} WHERE ${where}`
+      `SELECT ${spec.mutable || spec.key[0]} AS marker FROM ${spec.table} WHERE ${where}`
     );
     const insert = db.prepare(
       `INSERT OR IGNORE INTO ${spec.table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`

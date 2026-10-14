@@ -258,12 +258,11 @@ async function notify(db: Migratable, topic?: string, days?: number | string): P
 
 /** Approved proposals still awaiting apply — the "jobs waiting on you" set. */
 function pendingApprovals(db: Migratable) {
-  const rows = db
+  return db
     .prepare(
       "SELECT id, goal, approved_at FROM proposals WHERE status = 'approved' ORDER BY approved_at ASC"
     )
     .all<Pick<ProposalRow, 'id' | 'goal' | 'approved_at'>>();
-  return rows;
 }
 
 /** What a draft would cost and buy, from what the proposal already stored. */
