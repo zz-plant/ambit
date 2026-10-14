@@ -377,3 +377,38 @@ test('ambit goal --judge with no judge suggests by meaning and writes nothing', 
   expect(out.judged.suggested.id).toBe('combo:local-embeddings');
   expect(cli('status')).toEqual(before);
 });
+
+test('a server that speaks only the OpenAI shape is asked in it, and its order is kept', async () => {
+  const hits: string[] = [];
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    let raw = '';
+    req.on('data', c => {
+      raw += c;
+    });
+    req.on('end', () => {
+      hits.push(req.url || '');
+      res.setHeader('content-type', 'application/json');
+      if (req.url === '/v1/models')
+        return res.end(JSON.stringify({ data: [{ id: 'embeddinggemma-2-Q8_0.gguf' }] }));
+      if (req.url !== '/v1/embeddings') {
+        res.statusCode = 404;
+        return res.end('{}');
+      }
+      const input: string[] = JSON.parse(raw).input;
+      const vector = (t: string) =>
+        t.startsWith('task: ') || t.startsWith('title: Web Research ') ? [1, 0] : [0, 1];
+      // Returned in reverse, each with its index, as the shape allows.
+      const data = input.map((t, index) => ({ index, embedding: vector(t) })).reverse();
+      res.end(JSON.stringify({ data }));
+    });
+  });
+  await new Promise<void>(r => server.listen(0, '127.0.0.1', () => r()));
+  open.push(() => server.close());
+  process.env.AMBIT_EMBED_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
+
+  const out = (await judgeGoal(UNMATCHED, { url: await deadPort() })) as any;
+  expect(out.model).toBe('embeddinggemma-2-Q8_0.gguf');
+  expect(out.suggested).toMatchObject({ id: 'combo:web-research', similarity: 1 });
+  // Ollama's list first, then the OpenAI one; no embed request on Ollama's path after that.
+  expect(hits).toEqual(['/api/tags', '/v1/models', '/v1/embeddings']);
+});

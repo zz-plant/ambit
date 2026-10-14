@@ -22,7 +22,8 @@
  * Cloudflare's Clef models answer in the same wire format, so a Clef server on
  * this machine is a judge like any clone. When no judge answers at all, the
  * question goes once more to an embedding model on this machine (Ollama's
- * `/api/embed`), and the answer is the nodes nearest in meaning with their
+ * `/api/embed`, or the OpenAI-style `/v1/embeddings` that llama-server and LM
+ * Studio serve), and the answer is the nodes nearest in meaning with their
  * similarity. A cosine is not a probability, so that answer is listed, and
  * suggested only past a floor measured for that model on this tree.
  */
@@ -79,11 +80,16 @@ function judgeUrl(named?: string): { url: string } | { error: string } {
   return { url: `${u.origin}${u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '')}` };
 }
 
-/** Where to ask the embedding model, or why not: `AMBIT_EMBED_URL`, else Ollama's default. */
+/**
+ * Where to ask the embedding model, or why not: `AMBIT_EMBED_URL`, else
+ * Ollama's default. An OpenAI-style base URL is often quoted with `/v1` on,
+ * and the path is added once either way.
+ */
 function embedUrl(): { url: string } | { error: string } {
   const parsed = loopbackUrl(process.env.AMBIT_EMBED_URL || DEFAULT_EMBED, 'an embedding model');
   if ('error' in parsed) return parsed;
-  return { url: `${parsed.url.origin}${parsed.url.pathname.replace(/\/+$/, '')}` };
+  const u = parsed.url;
+  return { url: `${u.origin}${u.pathname.replace(/\/+$/, '').replace(/\/v1$/, '')}` };
 }
 
 /**
@@ -202,22 +208,37 @@ function cosine(a: number[], b: number[]): number {
 const treeVectors = new Map<string, number[][]>();
 
 /**
- * The embedding model Ollama has pulled, when none is named: EmbeddingGemma
+ * Servers that answered Ollama's embed path with a 404, so the OpenAI-style
+ * `/v1/embeddings` is asked instead. llama-server, LM Studio and vLLM serve
+ * only that one, and a newer model often reaches llama.cpp before Ollama.
+ */
+const openAiStyle = new Set<string>();
+
+/** The names a server lists: Ollama's `/api/tags`, else the OpenAI-style `/v1/models`. */
+async function listModels(url: string, f: typeof fetch): Promise<string[]> {
+  for (const [path, read] of [
+    ['/api/tags', (d: any) => (Array.isArray(d?.models) ? d.models.map((m: any) => m?.name) : [])],
+    ['/v1/models', (d: any) => (Array.isArray(d?.data) ? d.data.map((m: any) => m?.id) : [])],
+  ] as const) {
+    try {
+      const res = await f(`${url}${path}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      if (!res.ok) continue;
+      const names = read(await res.json()).filter((n: unknown) => typeof n === 'string');
+      if (path === '/v1/models') openAiStyle.add(url);
+      return names;
+    } catch {}
+  }
+  return [];
+}
+
+/**
+ * The embedding model the server has, when none is named: EmbeddingGemma
  * first, then any model whose name says it embeds. A chat model is never
  * picked, since its vectors are not trained to be compared.
  */
 async function pickEmbedModel(url: string, f: typeof fetch): Promise<string | undefined> {
-  try {
-    const res = await f(`${url}/api/tags`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (!res.ok) return undefined;
-    const listed: any = await res.json();
-    const names: string[] = (Array.isArray(listed?.models) ? listed.models : [])
-      .map((m: { name?: unknown }) => m?.name)
-      .filter((n: unknown): n is string => typeof n === 'string');
-    return names.find(n => /^embeddinggemma/i.test(n)) ?? names.find(n => /embed/i.test(n));
-  } catch {
-    return undefined;
-  }
+  const names = await listModels(url, f);
+  return names.find(n => /^embeddinggemma/i.test(n)) ?? names.find(n => /embed/i.test(n));
 }
 
 async function embed(
@@ -226,14 +247,20 @@ async function embed(
   input: string[],
   f: typeof fetch
 ): Promise<number[][] | { error: string }> {
-  let res: Response;
-  try {
-    res = await f(`${url}/api/embed`, {
+  const post = (path: string) =>
+    f(`${url}${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ model, input }),
       signal: AbortSignal.timeout(EMBED_TIMEOUT_MS),
     });
+  let res: Response;
+  try {
+    res = await post(openAiStyle.has(url) ? '/v1/embeddings' : '/api/embed');
+    if (res.status === 404 && !openAiStyle.has(url)) {
+      openAiStyle.add(url);
+      res = await post('/v1/embeddings');
+    }
   } catch (e) {
     return { error: `no embedding model answered at ${url} (${(e as Error).message})` };
   }
@@ -244,7 +271,12 @@ async function embed(
   } catch {
     return { error: `the embedding model at ${url} did not answer in JSON` };
   }
-  const vectors = data?.embeddings;
+  // Ollama answers `embeddings`; the OpenAI shape is `data`, each with its index.
+  const vectors = Array.isArray(data?.data)
+    ? [...data.data]
+        .sort((a: any, b: any) => (a?.index ?? 0) - (b?.index ?? 0))
+        .map((d: any) => d?.embedding)
+    : data?.embeddings;
   if (
     !Array.isArray(vectors) ||
     vectors.length !== input.length ||
