@@ -9,7 +9,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, expect, test } from 'vitest';
-import { judgeGoal, judgeUrl } from './judge.ts';
+import { embedUrl, judgeGoal, judgeUrl, nearFloor } from './judge.ts';
 import { loadTechTree } from './paths.ts';
 import { cli, cliAsync, LOCAL_ONLY, seed } from './testing/cli.ts';
 
@@ -57,6 +57,9 @@ afterEach(() => {
   delete process.env.AMBIT_JUDGE_URL;
   delete process.env.TYPESAFE_BASE_URL;
   delete process.env.JEV_BASE_URL;
+  delete process.env.AMBIT_EMBED_MODEL;
+  // The suite's own value, from vitest.config.ts: the discard port.
+  process.env.AMBIT_EMBED_URL = 'http://127.0.0.1:9';
 });
 
 async function judge(probabilities: Record<string, number>, status = 200) {
@@ -227,4 +230,150 @@ test('an answer that names only its choice is read at its stated confidence', as
     name: 'Web Research',
     probability: 0.9,
   });
+});
+
+/**
+ * A stand-in for Ollama: the models it lists, and a vector for each text it is
+ * asked to embed. `near` is the one text fragment that lands next to the query,
+ * at the cosine `similarity`; everything else is orthogonal to it.
+ */
+function fakeOllama(opts: { models: string[]; near: string; similarity: number }) {
+  const hits: Hit[] = [];
+  const { near, similarity } = opts;
+  const vector = (text: string) =>
+    text.startsWith('task: search result | query: ') || text.startsWith('search_query: ')
+      ? [1, 0]
+      : text.includes(near)
+        ? [similarity, Math.sqrt(1 - similarity * similarity)]
+        : [0, 1];
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    let raw = '';
+    req.on('data', c => {
+      raw += c;
+    });
+    req.on('end', () => {
+      const body = raw ? JSON.parse(raw) : null;
+      hits.push({ path: req.url || '', body });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (req.url === '/api/tags')
+        res.end(JSON.stringify({ models: opts.models.map(name => ({ name })) }));
+      else res.end(JSON.stringify({ model: body.model, embeddings: body.input.map(vector) }));
+    });
+  });
+  return new Promise<{ url: string; hits: Hit[] }>(resolve =>
+    server.listen(0, '127.0.0.1', () => {
+      open.push(() => server.close());
+      resolve({ url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, hits });
+    })
+  );
+}
+
+/** A loopback port nothing listens on: a judge that is not there. */
+async function deadPort(): Promise<string> {
+  const server = createServer();
+  await new Promise<void>(r => server.listen(0, '127.0.0.1', () => r()));
+  const port = (server.address() as AddressInfo).port;
+  await new Promise(r => server.close(r));
+  return `http://127.0.0.1:${port}`;
+}
+
+test('with no judge, the nodes nearest in meaning are asked of an embedding model', async () => {
+  const ollama = await fakeOllama({
+    models: ['nomic-embed-text:latest', 'qwen3:8b', 'embeddinggemma-2:740m'],
+    near: 'Web Research',
+    similarity: 0.8,
+  });
+  process.env.AMBIT_EMBED_URL = ollama.url;
+  const out = (await judgeGoal(UNMATCHED, { url: await deadPort() })) as any;
+
+  // EmbeddingGemma is preferred to any other embedder, and a chat model is never picked.
+  expect(out.model).toBe('embeddinggemma-2:740m');
+  expect(out.by).toBe('embedding');
+  expect(out.suggested).toEqual({
+    id: 'combo:web-research',
+    name: 'Web Research',
+    similarity: 0.8,
+  });
+  expect(out.nearest).toHaveLength(3);
+  expect(out.note).toMatch(/not a probability/);
+
+  // One list, one batch: the query in EmbeddingGemma's prompt, then every node.
+  const posts = ollama.hits.filter(h => h.path === '/api/embed');
+  expect(posts).toHaveLength(1);
+  expect(posts[0].body.input[0]).toBe(`task: search result | query: ${UNMATCHED}`);
+  expect(posts[0].body.input).toHaveLength(1 + loadTechTree().nodes.length);
+  expect(posts[0].body.input[1]).toMatch(/^title: .+ \| text: /);
+});
+
+test('below the floor nothing is suggested, and the nearest are still listed', async () => {
+  const ollama = await fakeOllama({
+    models: ['embeddinggemma-2:270m'],
+    near: 'Web Research',
+    similarity: (nearFloor('embeddinggemma-2:270m') as number) - 0.05,
+  });
+  process.env.AMBIT_EMBED_URL = ollama.url;
+  const out = (await judgeGoal(UNMATCHED, { url: await deadPort() })) as any;
+
+  expect(out.suggested).toBeUndefined();
+  expect(out.nearest[0].id).toBe('combo:web-research');
+  expect(out.note).toMatch(/nothing in the tree is near enough/);
+});
+
+test('a judge that answered, even with an error, is never passed over for embeddings', async () => {
+  const ollama = await fakeOllama({ models: ['embeddinggemma-2:270m'], near: 'x', similarity: 1 });
+  process.env.AMBIT_EMBED_URL = ollama.url;
+  const down = await judge({ 'web-research': 0.9 }, 500);
+
+  expect(((await judgeGoal(UNMATCHED, { url: down.url })) as any).error).toMatch(/answered 500/);
+  expect(ollama.hits).toHaveLength(0);
+});
+
+test('an embedding model off this machine is refused before anything is sent', async () => {
+  const ollama = await fakeOllama({ models: ['embeddinggemma-2:270m'], near: 'x', similarity: 1 });
+  process.env.AMBIT_EMBED_URL = `http://0.0.0.0:${new URL(ollama.url).port}`;
+  expect(embedUrl()).toEqual({ error: expect.stringMatching(/must run on this machine/) });
+
+  const out = (await judgeGoal(UNMATCHED, { url: await deadPort() })) as any;
+  expect(out.error).toMatch(/no judgment model answered/);
+  expect(out.error).toMatch(/the embedding model must run on this machine/);
+  expect(ollama.hits).toHaveLength(0);
+
+  process.env.AMBIT_EMBED_URL = `http://127.0.0.1:1@example.com`;
+  expect(embedUrl()).toEqual({ error: expect.stringMatching(/carries no credentials/) });
+});
+
+test('with no embedding model pulled, the error says how to get one', async () => {
+  const ollama = await fakeOllama({ models: ['qwen3:8b'], near: 'x', similarity: 1 });
+  process.env.AMBIT_EMBED_URL = ollama.url;
+  const out = (await judgeGoal(UNMATCHED, { url: await deadPort() })) as any;
+  expect(out.error).toMatch(/ollama pull embeddinggemma-2:270m/);
+  expect(ollama.hits.filter(h => h.path === '/api/embed')).toHaveLength(0);
+});
+
+test("a named model is used as named, with its own family's prompts", async () => {
+  const ollama = await fakeOllama({ models: [], near: 'Web Research', similarity: 0.9 });
+  process.env.AMBIT_EMBED_URL = ollama.url;
+  process.env.AMBIT_EMBED_MODEL = 'nomic-embed-text';
+  const out = (await judgeGoal(UNMATCHED, { url: await deadPort() })) as any;
+
+  expect(out.model).toBe('nomic-embed-text');
+  expect(ollama.hits.map(h => h.path)).toEqual(['/api/embed']);
+  expect(ollama.hits[0].body.input[0]).toBe(`search_query: ${UNMATCHED}`);
+  expect(ollama.hits[0].body.input[1]).toMatch(/^search_document: /);
+});
+
+test('ambit goal --judge with no judge suggests by meaning and writes nothing', async () => {
+  seed(LOCAL_ONLY).close();
+  const ollama = await fakeOllama({
+    models: ['embeddinggemma-2:270m'],
+    near: 'Local Embeddings',
+    similarity: 0.9,
+  });
+  process.env.AMBIT_EMBED_URL = ollama.url;
+  const before = cli('status');
+
+  const out = await cliAsync('goal', UNMATCHED, `--judge=${await deadPort()}`);
+  expect(out.judged.by).toBe('embedding');
+  expect(out.judged.suggested.id).toBe('combo:local-embeddings');
+  expect(cli('status')).toEqual(before);
 });

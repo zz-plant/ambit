@@ -348,7 +348,8 @@
         "score",
         "calibrated decision",
         "jev",
-        "system one"
+        "system one",
+        "clef"
       ],
       "era": 2,
       "domain": "ai-ml",
@@ -363,11 +364,12 @@
           "systemone",
           "system-one",
           "semif",
-          "(^|[:/._-])kev([:/._-]|$)"
+          "(^|[:/._-])kev([:/._-]|$)",
+          "(^|[:/._@-])clef([:/._-]|$)"
         ]
       },
       "setup_seconds": 300,
-      "hint": "TypeSafe's Jev, through its API or one of its MCP servers, or a local clone that serves the same API"
+      "hint": "TypeSafe's Jev or Cloudflare's Clef, through its API or one of its MCP servers, or a local clone that serves Jev's API"
     },
     {
       "id": "tool-protocol",
@@ -744,9 +746,28 @@
         ]
       },
       "setup_seconds": 600,
-      "hint": "Configure an embedding model; a small local one is usually enough",
+      "hint": "Configure an embedding model; a small local one such as EmbeddingGemma 2 is usually enough",
       "acquisition": {
         "alternatives": [
+          {
+            "name": "EmbeddingGemma 2 via local runtime",
+            "setup_seconds": 600,
+            "recurring_cost": "none",
+            "privacy": "local",
+            "config_patch": {
+              "provider": {
+                "local-embed": {
+                  "npm": "@ai-sdk/openai-compatible",
+                  "options": {
+                    "baseURL": "http://127.0.0.1:11434/v1"
+                  },
+                  "models": {
+                    "embeddinggemma-2:270m": {}
+                  }
+                }
+              }
+            }
+          },
           {
             "name": "nomic-embed via local runtime",
             "setup_seconds": 600,
@@ -1425,7 +1446,7 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Run the embedding model locally — nomic-embed or bge-small are small enough"
+      "hint": "Run the embedding model locally: EmbeddingGemma 2 (270M for text and code), nomic-embed or bge-small are small enough"
     },
     {
       "id": "offline-capable",
@@ -1557,11 +1578,12 @@
           "jev-clone",
           "jevclone",
           "semif",
-          "(^|[:/._-])kev([:/._-]|$)"
+          "(^|[:/._-])kev([:/._-]|$)",
+          "^model:local-[^/]+/.*clef"
         ]
       },
       "setup_seconds": 1800,
-      "hint": "Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it",
+      "hint": "Serve an open clone such as Kev or LitJev, or the open Clef weights behind the same API, on a local GPU and point TYPESAFE_BASE_URL at it",
       "verify": {
         "command": [
           "sh",

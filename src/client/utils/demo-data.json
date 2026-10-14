@@ -1073,7 +1073,7 @@
         "name": "Embeddings",
         "type": "possibility",
         "status": "specified",
-        "description": "Text can be turned into vectors — the prerequisite for any retrieval. Configure an embedding model; a small local one is usually enough",
+        "description": "Text can be turned into vectors — the prerequisite for any retrieval. Configure an embedding model; a small local one such as EmbeddingGemma 2 is usually enough",
         "position": {
           "x": 0,
           "y": 0,
@@ -1429,7 +1429,7 @@
         "name": "Local Embeddings",
         "type": "possibility",
         "status": "specified",
-        "description": "Retrieval that never sends your text to a third party. Run the embedding model locally — nomic-embed or bge-small are small enough",
+        "description": "Retrieval that never sends your text to a third party. Run the embedding model locally: EmbeddingGemma 2 (270M for text and code), nomic-embed or bge-small are small enough",
         "position": {
           "x": 0,
           "y": 0,
@@ -1517,7 +1517,7 @@
         "name": "Local Typed Judgment",
         "type": "possibility",
         "status": "specified",
-        "description": "Typed decisions from a model on your own hardware, so the state it judges never leaves the machine. Serve an open clone such as Kev or LitJev on a local GPU and point TYPESAFE_BASE_URL at it",
+        "description": "Typed decisions from a model on your own hardware, so the state it judges never leaves the machine. Serve an open clone such as Kev or LitJev, or the open Clef weights behind the same API, on a local GPU and point TYPESAFE_BASE_URL at it",
         "position": {
           "x": 0,
           "y": 0,
