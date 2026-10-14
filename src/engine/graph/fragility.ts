@@ -215,7 +215,7 @@ function analyzeImpact(db: Db, capId: string) {
       return {
         name: t?.name || d.to_capability,
         becomes_unavailable: stops.has(d.to_capability),
-        also_provided_by: others.length ? others.length : undefined,
+        also_provided_by: others.length || undefined,
         but_all_share: nominal(others),
       };
     });
