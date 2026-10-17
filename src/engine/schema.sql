@@ -557,3 +557,17 @@ CREATE TABLE IF NOT EXISTS delegation_sources (
     last_pulled_at TEXT,
     last_outcome TEXT
 );
+
+-- Opt-in model suggestions and their local review. Inputs and media never live
+-- here; only typed answers, hashes and bounded metrics. Excluded from sync.
+CREATE TABLE IF NOT EXISTS decision_records (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    recorded_at TEXT NOT NULL,
+    result_json TEXT NOT NULL,
+    evidence_json TEXT NOT NULL,
+    summary_json TEXT NOT NULL,
+    disposition TEXT CHECK (disposition IN ('accepted', 'rejected')),
+    reviewed_at TEXT,
+    note_hash TEXT
+);

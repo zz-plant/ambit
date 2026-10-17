@@ -273,6 +273,18 @@ export type SessionLogCursorRow = {
   read_at: string;
 };
 
+export type DecisionRecordRow = {
+  id: string;
+  kind: string;
+  recorded_at: string;
+  result_json: string;
+  evidence_json: string;
+  summary_json: string;
+  disposition: 'accepted' | 'rejected' | null;
+  reviewed_at: string | null;
+  note_hash: string | null;
+};
+
 /**
  * The loose row: what a query gets when it declares nothing. It is the type
  * the engine had everywhere before rows were named, kept as the default so a
