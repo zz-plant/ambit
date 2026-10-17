@@ -119,6 +119,12 @@ import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
+import { judgeTasks, planDecision } from './decision/goals.ts';
+import { evaluateGoals, SMOKE_CASES } from './decision/evaluate.ts';
+import { decisionHistory, reviewDecision } from './decision/records.ts';
+import { judgeAttention, judgeTools, judgeFailures, judgeNext } from './decision/contexts.ts';
+import { askDecision } from './decision/client.ts';
+import type { WorkflowOptions } from './decision/workflow.ts';
 
 /**
  * Runs one resolved command against an open graph and reports through `emit`.
@@ -785,6 +791,150 @@ async function runCommand(
         }
       } else {
         emit(runDoctor(db));
+      }
+      break;
+    }
+    case 'judge': {
+      const sub = arg;
+      const options: WorkflowOptions & { live?: boolean } = {
+        provider: value('provider') as any,
+        url: value('url'),
+        model: value('model'),
+        accountId: value('account') ?? value('account-id'),
+        token: value('token'),
+        threshold: value('threshold') !== undefined ? Number(value('threshold')) : undefined,
+        record: flags.has('--record'),
+        multi: flags.has('--multi'),
+        live: flags.has('--live'),
+      };
+      switch (sub) {
+        case 'goal': {
+          const text = positional.slice(1).join(' ').trim();
+          if (!text) {
+            emit({ error: 'Supply a goal or task sentence.' });
+            break;
+          }
+          emit(await judgeTasks(db, [{ id: 'goal', text }], options));
+          break;
+        }
+        case 'evaluate': {
+          let cases = SMOKE_CASES;
+          const filePath = positional[1] || value('file');
+          if (filePath) {
+            try {
+              cases = JSON.parse(readFileSync(filePath, 'utf8'));
+            } catch {
+              emit({ error: `Cannot read evaluation cases file: ${filePath}` });
+              break;
+            }
+          }
+          emit(await evaluateGoals(db, cases, options));
+          break;
+        }
+        case 'history': {
+          const limit = value('limit') !== undefined ? Number(value('limit')) : undefined;
+          emit({ decisions: decisionHistory(db, limit) });
+          break;
+        }
+        case 'review': {
+          const id = positional[1];
+          const disposition = positional[2] as 'accepted' | 'rejected';
+          const note = value('note') || positional[3];
+          if (!id || !disposition) {
+            emit({ error: 'Usage: ambit judge review <decision-id> <accepted|rejected>' });
+            break;
+          }
+          emit(reviewDecision(db, id, disposition, note));
+          break;
+        }
+        case 'plan': {
+          const id = positional[1];
+          if (!id) {
+            emit({ error: 'Usage: ambit judge plan <decision-id>' });
+            break;
+          }
+          emit(planDecision(db, id));
+          break;
+        }
+        case 'attention': {
+          const filePath = positional[1] || value('file');
+          if (!filePath) {
+            emit({ error: 'Pass an attention entries JSON file: ambit judge attention <file>' });
+            break;
+          }
+          let entries: unknown;
+          try {
+            entries = JSON.parse(readFileSync(filePath, 'utf8'));
+          } catch {
+            emit({ error: `Cannot read attention file: ${filePath}` });
+            break;
+          }
+          emit(await judgeAttention(db, entries as any, options));
+          break;
+        }
+        case 'tools': {
+          const filePath = positional[1] || value('file');
+          if (!filePath) {
+            emit({ error: 'Pass a tools JSON file: ambit judge tools <file>' });
+            break;
+          }
+          let tools: unknown;
+          try {
+            tools = JSON.parse(readFileSync(filePath, 'utf8'));
+          } catch {
+            emit({ error: `Cannot read tools file: ${filePath}` });
+            break;
+          }
+          emit(await judgeTools(db, tools as any, options));
+          break;
+        }
+        case 'failures': {
+          const filePath = positional[1] || value('file');
+          if (!filePath) {
+            emit({ error: 'Pass a failures JSON file: ambit judge failures <file>' });
+            break;
+          }
+          let failures: unknown;
+          try {
+            failures = JSON.parse(readFileSync(filePath, 'utf8'));
+          } catch {
+            emit({ error: `Cannot read failures file: ${filePath}` });
+            break;
+          }
+          emit(await judgeFailures(db, failures as any, options));
+          break;
+        }
+        case 'next': {
+          const goal = positional.slice(1).join(' ').trim();
+          if (!goal) {
+            emit({ error: 'Usage: ambit judge next <goal>' });
+            break;
+          }
+          emit(await judgeNext(db, goal, options));
+          break;
+        }
+        case 'media': {
+          const filePath = positional[1] || value('file');
+          if (!filePath) {
+            emit({ error: 'Pass a media request JSON file: ambit judge media <file>' });
+            break;
+          }
+          let request: unknown;
+          try {
+            request = JSON.parse(readFileSync(filePath, 'utf8'));
+          } catch {
+            emit({ error: `Cannot read media request file: ${filePath}` });
+            break;
+          }
+          emit(await askDecision(request as any, options));
+          break;
+        }
+        default:
+          emit({
+            error:
+              'Usage: ambit judge goal|evaluate|history|review|plan|attention|tools|failures|next|media',
+          });
+          break;
       }
       break;
     }

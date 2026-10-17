@@ -19,6 +19,7 @@ const GROUPS: Record<string, string[]> = {
     'propose',
     'portfolio',
     'reversible',
+    'judge',
   ],
   check: [
     'verify',
