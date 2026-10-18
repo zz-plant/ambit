@@ -1446,7 +1446,15 @@
         ]
       },
       "setup_seconds": 900,
-      "hint": "Run the embedding model locally: EmbeddingGemma 2 (270M for text and code), nomic-embed or bge-small are small enough"
+      "hint": "Run the embedding model locally: EmbeddingGemma 2 (270M for text and code), nomic-embed or bge-small are small enough",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "u=\"${AMBIT_EMBED_URL:-http://127.0.0.1:11434}\"; curl -sf -m 2 \"$u/api/tags\" 2>/dev/null | grep -Ei \"embed|bge|nomic|minilm\" || curl -sf -m 2 \"$u/models\" 2>/dev/null | grep -Ei \"embed|bge|nomic|minilm\" || curl -sf -m 2 http://127.0.0.1:11434/api/tags 2>/dev/null | grep -Ei \"embed|bge|nomic|minilm\" || curl -sf -m 2 http://127.0.0.1:8080/v1/models 2>/dev/null | grep -Ei \"embed|bge|nomic|minilm\""
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "offline-capable",
@@ -1473,7 +1481,15 @@
         ]
       },
       "setup_seconds": 3600,
-      "hint": "Verify the agent still completes a real task with the network disabled"
+      "hint": "Verify the agent still completes a real task with the network disabled",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "curl -sf -m 3 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 || curl -sf -m 3 http://127.0.0.1:8080/health >/dev/null 2>&1 || curl -sf -m 3 http://127.0.0.1:8009/health >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      }
     },
     {
       "id": "private-data-handling",
@@ -1629,6 +1645,14 @@
       },
       "setup_seconds": 900,
       "hint": "Connect your host's MCP server, so a deploy and its logs are one step for the agent",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v vercel >/dev/null 2>&1 || command -v wrangler >/dev/null 2>&1 || command -v netlify >/dev/null 2>&1 || command -v flyctl >/dev/null 2>&1 || command -v fly >/dev/null 2>&1 || command -v railway >/dev/null 2>&1 || command -v coolify >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "confirm",
@@ -1699,6 +1723,14 @@
       },
       "setup_seconds": 1800,
       "hint": "Use a managed database with branching or point-in-time restore, and give the agent a read-only role first",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v supabase >/dev/null 2>&1 || command -v turso >/dev/null 2>&1 || command -v wrangler >/dev/null 2>&1 || command -v mongosh >/dev/null 2>&1 || command -v psql >/dev/null 2>&1 || command -v mysql >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "confirm",
@@ -1966,6 +1998,14 @@
       },
       "setup_seconds": 900,
       "hint": "Add an error tracker to the app and connect its MCP server, so the agent starts from the stack trace",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v sentry-cli >/dev/null 2>&1 || test -f sentry.properties || test -f .sentryclirc"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "autonomous",
@@ -2147,6 +2187,14 @@
       },
       "setup_seconds": 1800,
       "hint": "Turn on point-in-time restore, or schedule a copy off the database host, then restore it once to prove it",
+      "verify": {
+        "command": [
+          "sh",
+          "-c",
+          "command -v restic >/dev/null 2>&1 || command -v borg >/dev/null 2>&1 || command -v rclone >/dev/null 2>&1 || command -v litestream >/dev/null 2>&1 || command -v pg_dump >/dev/null 2>&1 || command -v tmutil >/dev/null 2>&1"
+        ],
+        "timeout_seconds": 10
+      },
       "authority": {
         "observe": "autonomous",
         "execute": "confirm",
