@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="506" viewBox="0 0 480 506" role="img" aria-labelledby="title desc">
+  <title id="title">Proposed outcome records</title>
+  <desc id="desc">An attempt references both a scenario revision defining the target and success criteria, and a setup snapshot recording conditions at execution. The attempt retains acceptance evidence with observed results, source and artifacts. These records are proposed, not shipped schemas.</desc>
+  <!-- Authored source; edit this SVG directly. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#aabbd1" stroke-width="1.5"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,sans-serif;fill:#f1f3f7;text-anchor:middle}
+      .heading{font-size:22px;font-weight:650;text-anchor:start}.label{font-size:20px;font-weight:600}.detail{font-size:16px;fill:#c0cbdb}
+      .card{fill:#1a202a;stroke:#596b84;stroke-width:1.5}.edge{fill:none;stroke:#aabbd1;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="480" height="506" rx="16" fill="#101318"/>
+  <text x="24" y="38" class="heading">Proposed outcome records</text>
+  <rect x="24" y="76" width="200" height="110" rx="10" class="card"/>
+  <text x="124" y="110" class="label">Scenario revision</text>
+  <text x="124" y="140" class="detail">Target and outcome</text>
+  <text x="124" y="166" class="detail">Success and limits</text>
+  <rect x="256" y="76" width="200" height="110" rx="10" class="card"/>
+  <text x="356" y="110" class="label">Setup snapshot</text>
+  <text x="356" y="140" class="detail">Dependencies + grants</text>
+  <text x="356" y="166" class="detail">Runner / checker versions</text>
+  <path d="M124 186V226H164V268" class="edge"/>
+  <path d="M356 186V226H316V268" class="edge"/>
+  <text x="87" y="214" class="detail" style="text-anchor:end">revision</text>
+  <text x="392" y="214" class="detail" style="text-anchor:start">context</text>
+  <rect x="84" y="268" width="312" height="70" rx="10" class="card"/>
+  <text x="240" y="299" class="label">Attempt</text>
+  <text x="240" y="325" class="detail">Existing work run</text>
+  <path d="M240 338V394" class="edge"/>
+  <text x="260" y="373" class="detail" style="text-anchor:start">retains</text>
+  <rect x="24" y="394" width="432" height="88" rx="10" class="card"/>
+  <text x="240" y="428" class="label">Acceptance evidence</text>
+  <text x="240" y="460" class="detail">Observed result, source and artifacts</text>
+</svg>

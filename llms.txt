@@ -55,7 +55,7 @@ A *capability* is one thing the setup can do. Its *era* is how far up the curate
 - [Building alone](https://zz-plant.github.io/ambit/docs/solo/): the launch checklist and production guardrails for a one-person company
 - [Glossary](https://zz-plant.github.io/ambit/docs/glossary/): every term Ambit uses, defined once
 - [Why Ambit](https://github.com/zz-plant/ambit/blob/main/docs/why-ambit.md): why this exists: what an agent stack can do is composed, worth widening on purpose, and worth governing as it grows
-- [The affordance frontier](https://github.com/zz-plant/ambit/blob/main/docs/affordance-frontier.md): the theory under that case, where robotics and brain-computer interfaces test it, and what it implies about AGI
+- [The affordance frontier](https://github.com/zz-plant/ambit/blob/main/docs/affordance-frontier.md): the theory under that case, its tests in robotics and brain-computer interfaces, and candidate applications in shared work, institutional access and economic agency; outcome scenarios remain proposed
 - [Security](https://github.com/zz-plant/ambit/blob/main/SECURITY.md): loopback only, origin allowlist, no entry creation over HTTP, no egress you did not type
 - [Contributing](https://github.com/zz-plant/ambit/blob/main/CONTRIBUTING.md): clone to a passing PR, and the checks CI runs
 
@@ -72,6 +72,6 @@ A *capability* is one thing the setup can do. Its *era* is how far up the curate
 
 ## Optional
 
-- [Roadmap](https://github.com/zz-plant/ambit/blob/main/docs/roadmap.md): where the data model is heading
+- [Roadmap](https://github.com/zz-plant/ambit/blob/main/docs/roadmap.md): where the data model is heading, including proposed outcome scenarios bound to targets, execution context and acceptance evidence
 - [Changelog](https://github.com/zz-plant/ambit/blob/main/CHANGELOG.md)
 - [Agent guide](https://github.com/zz-plant/ambit/blob/main/AGENTS.md): for changing Ambit itself. Repository layout and the invariants a change must not break

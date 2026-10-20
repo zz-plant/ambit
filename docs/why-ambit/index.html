@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/why-ambit.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Why Ambit: widening what an agent stack can do, and governing it","description":"Why Ambit exists: agent stacks get capable through composition, so their reach is worth widening on purpose, with each widening verified, legible and governed.","url":"https://zz-plant.github.io/ambit/docs/why-ambit/","dateModified":"2026-10-09","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Why Ambit: widening what an agent stack can do, and governing it","item":"https://zz-plant.github.io/ambit/docs/why-ambit/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Why Ambit: widening what an agent stack can do, and governing it","description":"Why Ambit exists: agent stacks get capable through composition, so their reach is worth widening on purpose, with each widening verified, legible and governed.","url":"https://zz-plant.github.io/ambit/docs/why-ambit/","dateModified":"2026-10-20","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Why Ambit: widening what an agent stack can do, and governing it","item":"https://zz-plant.github.io/ambit/docs/why-ambit/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -50,68 +50,33 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <main>
 <h1 id="why-ambit"><a class="anchor" href="#why-ambit" aria-hidden="true" tabindex="-1">#</a>Why Ambit</h1>
 <blockquote>
-<p>This is the argument, not the reference. It runs ahead of the software deliberately. The <a href="/ambit/docs/guide/">README</a> describes what runs today; <a href="/ambit/docs/roadmap/">the roadmap</a> says, section by section, what is built and what remains; <a href="/ambit/docs/ideas/">the ideas behind Ambit</a> is the short version of what follows, with what is new in it.</p>
+<p>This argument runs ahead of the software. The <a href="/ambit/docs/guide/">README</a> describes what runs today; <a href="/ambit/docs/roadmap/">the roadmap</a> identifies what remains unbuilt.</p>
 </blockquote>
-<p>I built Ambit because my agent stack crossed the point where neither I nor the agents could reliably keep the whole thing in our heads.</p>
-<p>Multiple models. MCP servers. Skills. Subagents. Local machines. Hosted services. Credentials. Scheduled jobs. A homelab.</p>
-<p>Every component had configuration. Nothing had a model of what the whole system could actually do.</p>
-<p>Ambit is a capability graph for agent stacks. What I wanted from it was the questions no config file answers:</p>
-<ul>
-<li>What could the whole stack do that I was not using, and which one addition would open the most?</li>
-<li>What does this provider actually support?</li>
-<li>Which parts of the stack are decaying?</li>
-<li>Are three different failures actually the same structural deficit?</li>
-</ul>
-<p>The graph is exposed over MCP, so this is not only a visualization for humans. An agent can use Ambit as an external model of the environment it operates inside, instead of reconstructing that environment from context every session.</p>
+<p>I built Ambit because neither I nor the agents could keep my whole stack in our heads: models, MCP servers, skills, machines, hosted services, credentials and scheduled jobs.</p>
+<p>Every component had configuration. Nothing described what the whole arrangement could do.</p>
+<p>I wanted to know which addition would open useful work, which providers actually worked, and whether repeated failures shared one cause. Exposing the graph over MCP lets agents ask those questions too, without reconstructing the setup every session.</p>
 <h2 id="composition-is-the-part-that-got-interesting"><a class="anchor" href="#composition-is-the-part-that-got-interesting" aria-hidden="true" tabindex="-1">#</a>Composition is the part that got interesting</h2>
-<p>The thing I became interested in while building it is bigger than tool inventory.</p>
-<p>Agent systems become capable through composition.</p>
-<p>Shell + Tailscale + Docker + monitoring + a scheduler + the right authority may compose into <em>&quot;safely recover this service while I&#39;m asleep.&quot;</em></p>
-<p>No individual config entry says that.</p>
-<p>And the inverse matters too. Having a tool installed does not mean an agent can reliably use it. Having the technical ability to perform an action does not mean it has the authority to do so.</p>
-<p>So the direction is to move from <em>what tools exist?</em> to <em>what actions are actually reachable?</em></p>
-<p>That means distinguishing:</p>
+<p>Shell access, a network route, Docker, monitoring, a scheduler and scoped authority might support recovering a service while I am asleep. No individual config entry establishes that outcome.</p>
+<p>Ambit keeps structural reach, check results and permission separate:</p>
 <pre><code>installed ≠ working ≠ authorized
 </code></pre>
-<p>Something configured is not thereby working, and something working is not thereby permitted. Ambit records the three apart: what is reached, what a passing check has proven, and what a grant allows.</p>
+<p>A configured tool can fail. A working tool can lack permission. Even passing component checks leave the complete recovery workflow untested.</p>
 <h2 id="what-an-agent-could-notice"><a class="anchor" href="#what-an-agent-could-notice" aria-hidden="true" tabindex="-1">#</a>What an agent could notice</h2>
-<p>Eventually an agent should be able to say:</p>
-<blockquote>
-<p>We have hit this same environmental limitation four times. This is not a reasoning failure. We are missing a reusable capability.</p>
-</blockquote>
-<p>Then close it: show the capability delta, build the chosen path, verify it, and leave the result on the map.</p>
-<p>The result is a different kind of compounding:</p>
-<pre><code class="language-mermaid">flowchart LR
-    W[&quot;Real Work&quot;] --&gt; F[&quot;Observed Friction&quot;]
-    F --&gt; D[&quot;Structural Deficit Identified&quot;]
-    D --&gt; A[&quot;Targeted Capability Acquisition&quot;]
-    A --&gt; V[&quot;Automated Verification&quot;]
-    V --&gt; S[&quot;Larger Future Action Space&quot;]
-    S -.-&gt;|&quot;Compounds Future Productivity&quot;| W
-</code></pre>
-<p>A workaround gets you through today. A capability that has been verified and left on the map is there for every session after this one, until it decays and the graph says so.</p>
+<p>After repeated blocks, an agent should help investigate the cause and propose a reusable change. A classified missing dependency can justify acquisition; an unexplained recurrence still needs investigation.</p>
+<p><img src="/ambit/docs/assets/capability-change-loop.svg" alt="A recurring block leads to investigation and a proposed change. A person may approve or decline it. An approved change is applied and checked; a failed check returns to investigation, while a passing result is retained as evidence."></p>
+<p>The useful result is a capability future sessions can reuse, with its dependencies, authority and evidence recorded. If a later check fails, the graph excludes it from current plans.</p>
 <h2 id="accounting-and-then-a-ledger"><a class="anchor" href="#accounting-and-then-a-ledger" aria-hidden="true" tabindex="-1">#</a>Accounting, and then a ledger</h2>
-<p>What Ambit is doing is closest to accounting. Partly a dependency graph, partly IAM, partly a CMDB, partly an audit ledger — but with <em>capacity for action</em> as the thing being accounted for.</p>
-<p>The ≠ chain above is what the graph records. The argument goes further, because ordinary tool registries collapse several different things into one. Something can be <strong>available</strong> without being <strong>authorized</strong>; <strong>authorized</strong> without being <strong>reachable</strong>; reachable without being <strong>verified</strong>; and a <strong>composed</strong> capability can exist that no component declares. Two more decide whether it holds: whether a person or another agent has to supply a missing step (the map marks the person&#39;s case as a joint capability), and whether it survives the current interaction. Together they are most of what determines whether a system can actually cause something to happen, and <a href="/ambit/docs/roadmap/">the roadmap</a> says which of them the software records today.</p>
-<p>The version of this I find most interesting is longitudinal. Instead of describing only today, record what the system could do at time T, and what changed. A system gains a machine, then network access, then credentials, then a scheduler, then memory, then deploy authority, then the ability to create further agents. Each is an infrastructure change <em>and</em> a change in the reachable frontier.</p>
-<p>That is a ledger of agency, not a snapshot of it. And it makes visible the entries no changelog can:</p>
-<blockquote>
-<p>The system acquired autonomous incident-recovery capability yesterday, although no component added yesterday was itself an incident-recovery system.</p>
-</blockquote>
+<p>Ambit accounts for capacity to act. It records what is configured, what checks have passed, who must participate and what may run without asking.</p>
+<p>History makes changes inspectable: adding credentials or a scheduler can complete a modeled capability without adding a dedicated provider for it. Removing one shared dependency can contract several capabilities at once.</p>
+<p>Today&#39;s snapshots preserve states, kinds and verification health. They use current names and edges when displayed. Reconstructing all routes and permissions at an incident&#39;s time requires additional historical records.</p>
 <h2 id="effective-agency-as-a-governed-object"><a class="anchor" href="#effective-agency-as-a-governed-object" aria-hidden="true" tabindex="-1">#</a>Effective agency as a governed object</h2>
-<p>I think this also points at a problem that gets less attention than model alignment.</p>
-<p><strong>Effective agency can grow much faster than model intelligence.</strong></p>
-<p>Give the same model shell access, persistent execution, credentials, browser control, local machines, memory, schedulers, and delegation, and you have created a radically more consequential system without changing a single model weight.</p>
-<p>Those capabilities currently accumulate across JSON files, OAuth scopes, shell scripts, prompts, containers, machines, and human memory. No single artifact represents the total.</p>
-<p>Widening that reach is what Ambit is for. Its longer-term thesis is about what the widening needs: <strong>make effective agency a governed object.</strong></p>
-<p>Capability should be distinct from authority. New abilities should be verified before being trusted. Human approval should remain an explicit dependency where it matters. Revocation and blast radius should be computable. An agent should be able to propose expanding its environment without thereby having unilateral authority to expand it.</p>
-<p>The design norm:</p>
+<p>An unchanged model can participate in more consequential work when it gains tools, persistence, credentials or other participants. Those changes deserve review alongside model changes.</p>
+<p>The design norm is:</p>
 <blockquote>
-<p><strong>No increase in effective capability without a corresponding increase in legibility, verification, and governability.</strong></p>
+<p>No increase in effective capability without a corresponding increase in legibility, verification, and governability.</p>
 </blockquote>
-<p>Ambit does not measure how intelligent the AI is. It tries to measure what intelligence has acquired the means to do.</p>
-<p>That norm is also why the product leads with widening and not with warning. The point is for you and your agents to reach further: the next step that opens the most, the combination one missing piece would give you. Governing that growth is what lets you lean on it, so the same map that names the next step also says whether it works, who may use it and what it rests on. Widening, governing and accounting for the time it costs a person are one project. The word for what they share is your <em>ambit</em>, and the product is named after it.</p>
-<p>The abstraction is tested where it stops being software: robots add physical actuation, and brain-computer interfaces erode the boundary between human and machine capability. <a href="/ambit/docs/affordance-frontier/">The affordance frontier</a> works those cases through, and takes the argument to its end.</p>
+<p>An agent can propose expanding its environment. A person decides whether to approve the change; the executor checks authority, and evidence records what worked. Enforcement currently covers <code>apply</code>, routed control-plane execution and Claude Code with the gate hook installed. Other runtimes choose whether to consult it.</p>
+<p>The next step is evidence about complete outcomes: what this setup delivered, on which target, within what limits and with how much human participation. <a href="/ambit/docs/affordance-frontier/">The affordance frontier</a> develops that direction across digital, physical and institutional settings.</p>
 
 <section class="try" aria-labelledby="try-ambit">
 <a class="shot" href="/ambit/?demo=1" tabindex="-1" aria-hidden="true"><img src="/ambit/docs/assets/screenshot-tree.png" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>

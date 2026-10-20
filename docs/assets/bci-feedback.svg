@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="528" viewBox="0 0 480 528" role="img" aria-labelledby="title desc">
+  <title id="title">A coupled action loop</title>
+  <desc id="desc">A person's intention produces a neural signal. An interface decodes and interprets it, a planner selects an action, and an actuator changes the environment. Sensory feedback returns to the person and informs the next action.</desc>
+  <!-- Authored source; edit this SVG directly. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#aabbd1" stroke-width="1.5"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,sans-serif;fill:#f1f3f7;text-anchor:middle}
+      .heading{font-size:22px;font-weight:650;text-anchor:start}.label{font-size:21px;font-weight:600}.detail{font-size:18px;fill:#c0cbdb}
+      .card{fill:#1a202a;stroke:#596b84;stroke-width:1.5}.edge{fill:none;stroke:#aabbd1;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="480" height="528" rx="16" fill="#101318"/>
+  <text x="24" y="38" class="heading">A coupled action loop</text>
+  <rect x="72" y="72" width="384" height="98" rx="10" class="card"/>
+  <text x="264" y="108" class="label">Person</text>
+  <text x="264" y="140" class="detail">Intention → neural signal</text>
+  <path d="M264 170V228" class="edge"/>
+  <text x="284" y="207" class="detail" style="text-anchor:start">signal</text>
+  <rect x="72" y="228" width="384" height="116" rx="10" class="card"/>
+  <text x="264" y="262" class="label">Interface + machine</text>
+  <text x="264" y="294" class="detail">Decode → interpret → plan</text>
+  <text x="264" y="322" class="detail">Actuator moves</text>
+  <path d="M264 344V406" class="edge"/>
+  <text x="284" y="383" class="detail" style="text-anchor:start">action</text>
+  <rect x="72" y="406" width="384" height="88" rx="10" class="card"/>
+  <text x="264" y="441" class="label">Environment</text>
+  <text x="264" y="472" class="detail">Object state + sensing</text>
+  <path d="M72 450H36V122H72" class="edge"/>
+  <text x="21" y="288" class="detail" transform="rotate(-90 21 288)">sensory feedback</text>
+</svg>
