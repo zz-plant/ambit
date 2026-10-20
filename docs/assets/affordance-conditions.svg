@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="570" viewBox="0 0 480 570" role="img" aria-labelledby="title desc">
+  <title id="title">Conditions for attempting an action</title>
+  <desc id="desc">Tools and target conditions establish technical reach. Technical reach and authority covering the target are both needed to attempt the action. The attempt's outcome still needs observation.</desc>
+  <!-- Authored source; edit this SVG directly. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#aabbd1" stroke-width="1.5"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,sans-serif;fill:#f1f3f7;text-anchor:middle}
+      .heading{font-size:22px;font-weight:650;text-anchor:start}.label{font-size:21px;font-weight:600}.detail{font-size:17px;fill:#c0cbdb}
+      .card{fill:#1a202a;stroke:#596b84;stroke-width:1.5}.edge{fill:none;stroke:#aabbd1;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="480" height="570" rx="16" fill="#101318"/>
+  <text x="24" y="38" class="heading">An action has separate conditions</text>
+  <rect x="24" y="72" width="432" height="80" rx="10" class="card"/>
+  <text x="240" y="104" class="label">Tools + target conditions</text>
+  <text x="240" y="132" class="detail">Resources, access and current state</text>
+  <path d="M240 152V180H124V208" class="edge"/>
+  <rect x="24" y="208" width="200" height="88" rx="10" class="card"/>
+  <text x="124" y="243" class="label">Technical reach</text>
+  <text x="124" y="272" class="detail">Prerequisites met</text>
+  <rect x="256" y="208" width="200" height="88" rx="10" class="card"/>
+  <text x="356" y="243" class="label">Authority</text>
+  <text x="356" y="272" class="detail">Grant covers target</text>
+  <path d="M124 296V330H240M356 296V330H240V386" class="edge"/>
+  <rect x="156" y="342" width="168" height="28" rx="4" fill="#101318"/>
+  <text x="240" y="362" class="detail">Both required</text>
+  <rect x="84" y="386" width="312" height="64" rx="10" class="card"/>
+  <text x="240" y="425" class="label">Attempt on this target</text>
+  <path d="M240 450V500" class="edge"/>
+  <text x="262" y="481" class="detail" style="text-anchor:start">observe</text>
+  <rect x="84" y="500" width="312" height="48" rx="10" class="card"/>
+  <text x="240" y="531" class="label">Outcome + evidence</text>
+</svg>

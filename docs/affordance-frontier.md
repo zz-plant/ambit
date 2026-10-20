@@ -1,158 +1,135 @@
 # The affordance frontier
 
-> This document is theory. It describes the object Ambit is trying to model, not what the software currently does. The argument it supports is [Why Ambit](./why-ambit.md); the software is the [README](../README.md), and the design rationale is [the roadmap](./roadmap.md).
+> Theory, ahead of the software. [Why Ambit](./why-ambit.md) gives the argument; the [README](../README.md) describes what runs today.
 
 ## The object
 
-The object is the **affordance frontier** of extended human-machine systems: the set of digital, cognitive, physical, social, institutional, and economic actions made reachable by the composition of humans, models, software, authority, bodies, and machines.
+The affordance frontier is the set of outcomes an assembled human-machine system can bring about. Its reach depends on people, tools, resources, authority and the environment in which they act.
 
-In its shortest form, *Ambit makes the capability frontier of an agentic system legible.*
+Ambit currently models a narrow slice: a person's agents, tools and machines. The broader theory includes physical, cognitive, social, institutional and economic action.
 
-This is the formal name for what the README calls your *ambit*, and its edge is what the map calls the frontier. The software models one narrow part of it: a person's agents, tools and machines. [The ideas behind Ambit](./ideas.md) sets the names side by side.
-
-```
-A(S) = A_digital ∪ A_cognitive ∪ A_physical ∪ A_social ∪ A_institutional ∪ A_economic
-```
-
-These compose *across* boundaries, which is where the interesting cases live:
-
-```mermaid
-flowchart LR
-    A["Notice Opportunity\n(Cognitive)"] --> B["Research Options\n(Digital)"]
-    B --> C["Obtain Approval\n(Institutional)"]
-    C --> D["Transfer Funds\n(Economic)"]
-    D --> E["Order Hardware\n(Economic)"]
-    E --> F["Robot Installs Unit\n(Physical)"]
-    F --> G["Compute Online\n(Digital)"]
-    G --> H["Capacity Expands\n(Cognitive)"]
-```
-
-That chain is not well described as "an AI using a tool." It is a self-extending sociotechnical system.
+![Tools and target conditions establish technical reach. Authority is a separate requirement for attempting an action; success needs an observed result.](./assets/affordance-conditions.svg)
 
 ## Why the theory says "affordance"
 
-A hammer does not contain hammering. Hammering emerges from a relation between an agent, the tool, the agent's motor ability, a suitable target, and an environment. Affordances are relational; capabilities sound like possessions.
+A hammer affords hammering to someone who can wield it, against a suitable target. The ability depends on that relationship.
 
-The same is true of the digital case, which is easy to miss because software feels like a list of features. *Shell access* is not really a capability. It is a resource that participates in producing one. The actual affordance might be *modify the running service*, and it exists only when reasoning, shell, credentials, network, target machine, installed software, and authorization all line up.
+Digital action works the same way. Shell access contributes to *modify this running service* only when the credentials, network, target software and authority line up. A robot's gripper contributes to *open this door* only when its geometry, force, reach and perception suit the door in its current state.
 
-Robotics makes the relational character obvious, because physical affordances have always worked this way. A robot possesses a gripper; whether it can open a particular door depends on gripper geometry, force, perception, handle type, reach, locomotion, planning, door state, authorization, and possibly a human holding something aside.
-
-Ambit generalizes that logic to digital and institutional action. The product keeps the plainer word: a capability on the map is an affordance in this sense, reached only when what it needs lines up, and the provider that supplies it is a separate node.
+The product uses the plainer word *capability*. Providers and the capabilities they supply are separate nodes.
 
 ## The hard cases
 
-The test of an abstraction is whether it survives cases it was not designed for. Two of them.
-
 ### Robotics
 
-Robotics adds physical actuation. The primitives change; the accounting problem does not.
+Consider delivering medication to a patient:
 
-```
-Capability: deliver medication to patient
-  cognition      planning model
-  perception     cameras + localization
-  actuation      mobile base + gripper
-  authority      authorized for this ward
-  human          pharmacist loads the medication
-  environment    elevator API reachable
-  verification   delivery confirmed by recipient
-```
+| Contribution | Example |
+| :--- | :--- |
+| Planning | Route and task selection |
+| Perception | Cameras and localization |
+| Actuation | Mobile base and gripper |
+| Authority | Permission to operate in this ward |
+| Human participation | Pharmacist loads the medication |
+| Environment | Elevator interface is reachable |
+| Acceptance evidence | Recipient confirms delivery |
 
-The capability belongs to the assembled system, not to "the robot." A single warehouse robot cannot fulfill an order; inventory software plus a planner plus conveyors plus pickers plus payment authorization plus human exception handling can. The meaningful unit is the fulfillment system.
+The delivery depends on the whole arrangement. Declaring a robot as infrastructure establishes none of its physical performance or safety.
 
-This also lets embodiment be discussed without mysticism. A body supplies sensors, actuators, position, energy constraints, physical access, vulnerability, and feedback — it is one class of affordance-producing infrastructure, not a precondition for agency. A corporation has consequential physical agency through employees, trucks, factories, and bank accounts without possessing one body. An AI system may acquire physical agency the same way: cameras in several buildings, drones elsewhere, warehouse robots, contracted humans, automated purchasing. Its body would be distributed.
-
-The operational question is therefore not *does this system have a body* but **which physical affordances can it reliably bring about, through which actuators?**
+Physical agency can also be distributed across machines and people. The relevant questions are which actions they can perform together, under what conditions, and through which actuators.
 
 ### Brain-computer interfaces
 
-BCIs are harder, because they erode the boundary the model depends on.
+A brain-computer interface couples intention, decoding, planning, actuation and sensory feedback. Picking up a cup depends on that circuit.
 
-```mermaid
-flowchart LR
-    INT["1. Intention"] --> SIG["2. Neural Signal"]
-    SIG --> DEC["3. Decoder"]
-    DEC --> INTERP["4. Interpretation"]
-    INTERP --> PLAN["5. Planner"]
-    PLAN --> ACT["6. Actuator"]
-    ACT --> ENV["7. Environment"]
-    ENV --> FEED["8. Sensory Feedback"]
-    FEED -.->|"Closed Loop"| INT
-```
+![A person's intention produces a neural signal. The interface decodes it and drives an actuator; the environment supplies sensory feedback to the person.](./assets/bci-feedback.svg)
 
-Where is *pick up the cup* in that loop? Not in the unaided nervous system, the decoder, the model, the planner, or the arm. It exists only in the closed circuit.
+Human participation takes different forms: approving an action, supplying knowledge or judgment, and using a machine to extend perception or movement. Approval is an authority dependency; knowledge is a contribution to performing the task. The map marks capabilities supplied jointly by a person and machine, but does not model a neural control loop.
 
-This forces a distinction, which the map now draws as kinds of joint capability:
+## From reachable actions to demonstrated outcomes
 
-- **Human-gated**: the machine acts only after approval. The graph calls this institutional.
-- **Human-composed**: human cognition is necessary to produce the action. The graph calls this cognitive.
-- **Machine-composed-human**: the machine extends what the human can perceive, remember, decide, communicate, or do. The graph marks a capability a person and a machine supply together.
+A dependency chain describes a modeled route. Testing the assembled workflow requires a defined result, an attempt and acceptance evidence. Separate deployment and monitoring checks do not establish that a system can release a service and recover from a bad release.
 
-"Human in the loop" implies two pre-existing entities passing control. A tight enough interface produces a coupled system whose relevant cognition spans both, and which has abilities neither participant has alone. Calling the human a supervisor misses what is happening.
+Each attempt needs its actual target, environment, time and available resources. Reach, permission and observed success remain separate facts. Evidence from staging supports a claim about staging and grants no production authority. Repeated attempts establish an observed success rate for the conditions tested.
 
-BCIs also introduce **cognitive affordances** — remember, communicate intention, retrieve external knowledge, control a device, maintain attention — where the frontier of a person with a memory prosthesis differs from the same person without one.
+Ambit already records outcomes. [Roadmap §17](./roadmap.md#17-defined-outcomes--proposed) proposes binding versioned success criteria to the setup and evidence from each attempt. That layer is unbuilt.
+
+## Applications worth testing
+
+These are proposed applications, grouped by their relation to the current model. Their feasibility and demand need testing.
+
+### Changes to an agent setup
+
+- **Unexpected composition.** Explain which modeled actions a setup change opens. A claim about publishing private files needs a path connecting the file scope, destination and actual execution.
+- **Capability CI.** Compare a proposed setup with its baseline against explicit invariants, such as authority and an applicable check for a production-write route. Trust-boundary analysis needs more than dependency closure.
+- **Outcome planning.** Find missing prerequisites, evidence and human contributions for a bounded objective. Today's goal routing selects curated capabilities; new strategy synthesis is unbuilt.
+- **Composite verification.** Rehearse a complete workflow and its recovery path on a known target, retaining acceptance results, costs and human participation.
+
+### Shared work
+
+- **Human participation.** Locate repeated waits on a person and investigate their contribution. An interruption count cannot establish that judgment is dispensable.
+- **Environment improvement.** Propose and test a reusable change for a recurring, classified limitation. Designing novel capabilities goes beyond authored acquisition recipes.
+- **Team composition.** Compare complementary capabilities, handoffs and shared failures, accounting for availability and resource contention.
+- **Portable evidence.** Share demonstrated results with their limits and provenance. Signatures establish origin; acceptance evidence supports the claim, and reproduction needs a comparable environment.
+
+### Other settings
+
+- **Institutional action.** Map records, deadlines and permissions needed to submit an appeal. Submission and a favorable institutional decision are separate outcomes.
+- **Accessibility.** Identify barriers in interfaces and environments using accommodations and preferences the person chooses, without inferring limitations from identity or diagnosis.
+- **Collective agency.** Model combined contributions to a cooperative or association, including consent, commitments and withdrawal.
+- **Physical action.** Bind a workflow to device state, surroundings and safety constraints, supported by task evidence.
+
+### Experiments and accountability
+
+- **A benchmark across environments.** Keep the model, tasks, acceptance criteria and resource limits fixed while varying selected affordances. Repeat trials and record added human work and actual consumption.
+- **Recursive capability acquisition.** Examine changes that enable further acquisition. Their feedback requires temporal planning, costs and enforced limits; static closure supplies no growth rate.
+- **Incident reconstruction.** Preserve dependencies, grants and evidence at execution time. Today's frontier history stores states and lifecycles but displays current edges; it cannot reconstruct the full past operating envelope.
+- **Shared infrastructure dependence.** Find common failure points across environments. Systemic analysis needs consistent identities, coverage information and privacy controls beyond today's signed aggregate imports.
+
+### Economic agency
+
+A paid service offers a concrete test: can its operator maintain delivery with less personal attention while retaining control and returns?
+
+Customer acceptance, receipts and expenses need records separate from the assigned value of time. Control includes the ability to contact customers, change terms, export records and replace providers. Possessing code establishes little about those rights.
+
+The same questions apply to collective ownership and options within employment. An operator's gains do not establish benefits for workers or customers; their changed options need separate evidence.
 
 ## Intellectual genealogy
 
-No existing field studies this frontier as its own object. Its concepts are distributed:
+| Field | Contribution |
+| :--- | :--- |
+| Cybernetics | Control through feedback |
+| Sociotechnical systems | Joint effects of people, technology and institutions |
+| Security and attack graphs | Permissions and topology composing into reachable paths |
+| Capability approach | Resources distinguished from effective opportunities |
+| Agent evaluation | Empirical task outcomes |
+| Systems engineering and CMDBs | Dependencies and failure propagation |
 
-| Field | Asks | Contributes |
-| :--- | :--- | :--- |
-| **Cybernetics** | what can this system control? | understanding a system through its effective possibilities rather than its parts' intelligence |
-| **Sociotechnical systems** | how do humans, technology and institutions interact? | the correct boundary: human + machine + institution |
-| **Security / attack graphs** | what can this principal reach? | that innocuous permissions compose into reachable paths |
-| **Capability approach** (Sen, Nussbaum, Robeyns) | what can a person actually achieve? | resources ≠ effective freedom to achieve an outcome |
-| **Agent evaluation** | can the agent do task X? | empirical autonomy measurement |
-| **Systems engineering / CMDB** | what depends on what? | dependency and failure-propagation machinery |
+Ambit combines dependency analysis with evidence and authority for one kind of assembled system. The capability approach motivates the distinction between possessing resources and having an effective opportunity to act.
 
-The security parallel is the closest structurally. Attack-graph analysis already asks *given this topology, what can this principal reach* — Ambit generalizes the question from unauthorized attack paths to all productive capacity for action.
-
-The capability-approach parallel is the closest conceptually. Where Sen distinguishes possessing resources from possessing the effective freedom to achieve an outcome, Ambit distinguishes *tool installed* from *capability actually reachable*, and tries to make the conversion function computationally explicit: resources, permissions, skills, connectivity, persistence and authority into effective capabilities.
-
-What appears underdeveloped is the intersection: given an evolving assemblage of models, software, credentials, infrastructure, persistent processes, organizations and humans, **what set of outcomes is reachable, and how is that set changing?**
+The theory's longitudinal question is which outcomes become possible or cease to be possible:
 
 ```
 C(S_t) = { outcomes S can reliably and legitimately cause at time t }
-ΔC     = C(S_t+1) − C(S_t)
+gained = C(S_t+1) \ C(S_t)
+lost   = C(S_t) \ C(S_t+1)
 ```
 
-For a set, the difference has two parts: the outcomes newly reachable, `C(S_t+1) \ C(S_t)`, and the ones no longer reachable, `C(S_t) \ C(S_t+1)`. One number hides a contraction, so the ledger records the two apart, as gained and lost.
-
-Ambit's [ledger](./deep-dive.md#the-frontier-ledger) is a first, narrow implementation of ΔC over one kind of system.
+The ledger implements a narrow structural comparison. It records gains and losses separately; a net count would hide contractions.
 
 ## The AGI thesis
 
-This section is speculation, further from the software than anything else on this page.
+This is speculation. General agency might arise through composition: models, persistence, tools, infrastructure and people supporting consequential action across domains.
 
-AGI need not arrive as one monolithic model crossing a threshold. It may arrive compositionally: models plus tools plus persistence plus credentials plus infrastructure plus humans, forming systems whose aggregate ability to act becomes the historically relevant thing.
+Model performance and system reach can change independently. Better reasoning may add little practical reach without authority or infrastructure. An unchanged model may participate in more workflows after those conditions change. Both claims can be tested through controlled comparisons across environments.
 
-The conventional framing plots *model capability over time* and asks how many intellectual tasks a model can perform. The systems framing plots **system capability frontier over time** and asks across how many domains an assembled system can perceive opportunities, form goals, marshal resources, act, observe consequences, adapt, and continue.
-
-Those curves need not move together. A model release can move the first considerably and the second barely, for want of authority and infrastructure. Connect an unchanged model to a persistent runtime, a bank account, a fleet of machines and broad organizational authority, and the benchmarks barely move while the second curve climbs: *this model did not change, but the system around it acquired twelve new reachable capabilities this month.* At some point descriptions like that stop looking like a chatbot's tool configuration and start looking like the operational anatomy of a persistent actor.
-
-That discrepancy is the thing almost nobody has needed to measure, and it may become one of the more important quantities in an agentic world.
-
-The key variable is **cross-domain composability**. A system that writes excellent essays and proves theorems but cannot connect those abilities to persistent action has broad cognition and narrow agency. A system with weaker models that combines reasoning, software, money, institutions, robots, humans, memory, communication and manufacturing may have far greater general agency.
-
-Which suggests a criterion:
-
-> General agency exists when an extended system possesses a sufficiently broad and composable affordance frontier that it can pursue consequential goals across domains without requiring a separately constructed human workflow for each one.
-
-And a sharper historical line than "which model was first":
-
-> AGI may turn out not to describe what a machine became, but what human-machine systems became capable of doing.
-
-At that point, asking whether the intelligence resides in the person, the model, the robot, or the interface is probably the wrong level of analysis.
+Cross-domain composition is the hypothesis to examine: can the system pursue varied goals without a separately authored workflow for each? Neither a larger capability count nor a successful scenario establishes that breadth.
 
 ## What the software does with this
 
-What has landed in the software:
+- Nodes distinguish capabilities, actions, providers, resources, actors, runtimes and credentials; edges distinguish their relationships.
+- The infrastructure manifest can declare physical devices and services, with `runs_on` edges. The `physical` domain classifies them without validating physical task performance.
+- Actions have their own grants and evidence. Authority and recorded checks can refer to a target, although a target label alone does not establish what a check exercised.
+- Structural reach (`state`) and verification health (`lifecycle`) are separate. A passing check supports only the behavior it exercises.
 
-- The infrastructure manifest accepts devices of any kind. A robot arm declared as a device and a neural decoder declared as a service on it seed into the graph as first-class nodes with a `runs_on` edge between them, exactly as a Pi and a container do.
-- The domain vocabulary was entirely software, so anything acting on the world collapsed into the `meta` column. `physical` is now a domain, and such resources render in their own column.
-- The relational reading is now the data model rather than a gloss on it. A node declares what kind of thing it is — capability, action, provider, resource, actor, runtime — and an edge declares what the relation means. *Shell access* is a provider; the affordance is the action it confers, and the two are different rows. That is the paragraph above about hammers, made executable.
-- Actions carry their own authority and their own evidence. `read a repository` and `merge to its default branch` are one capability and two permissions, and the graph says so.
-
-The distinction the affordance reading forces — that an affordance exists only when reasoning, tool, target, and authorization line up — is what the split buys. A capability is reached when something supplies it; an action is exercisable when it is reached *and* permitted *and* has evidence behind it, and those are three columns rather than one boolean.
-
-The domains are derived from structure, not matched from keywords: `ambit graph affordances` calls a capability institutional when an authority holder must approve it and physical when a provider runs on a device. The map marks the joint ones, and the detail panel names the person who approves or supplies each one, or the device it runs on. The map has no column for them. What has not landed is the line the whole project sits behind: Ambit describes authority, and enforcement stops at its own gate. `apply`, the control-plane proxy and, once its hook is installed, Claude Code's tool calls refuse, or put to a person, what `canExecute` does not allow; nothing forces any other runtime to consult that gate, so a system that acts without asking is not stopped by the graph. [Roadmap §7b and §9](./roadmap.md#status-at-a-glance) carry the current state of each, and the theory above still runs ahead of them.
+Enforcement applies to `apply`, execution routed through the control-plane proxy, and Claude Code calls using the installed gate hook. Other runtimes choose whether to consult it. [The roadmap](./roadmap.md#status-at-a-glance) records the remaining gaps.

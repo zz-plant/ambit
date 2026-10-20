@@ -23,11 +23,11 @@ The claim underneath is that what an agent setup can do is not written in any co
 - [For agents](./agents.md) — the same journey from the agent's side: its sessions before and after Ambit, what it and the person each do as the ambit widens, and how to suggest it honestly.
 - [The ideas behind Ambit](./ideas.md) — the claim, what is new in it, its nearest prior work, and what it does not claim. The short version of the two below.
 - [Why Ambit](./why-ambit.md) — the argument for building it: what one agent stack looked like, why what it can do is composed, and why growing that reach needs governing.
-- [The affordance frontier](./affordance-frontier.md) — the theory under that argument, and the two cases (robots, brain-computer interfaces) where it is tested.
+- [The affordance frontier](./affordance-frontier.md) — the theory under that argument, tested against robotics and brain-computer interfaces, with candidate applications in shared work, institutional access and economic agency.
 
 ## Intent: ahead of the code, on purpose
 
-- [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided and what it still lacks. Nothing in it has a date or an owner.
+- [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided and what it still lacks, including the proposed layer for defined outcomes and their evidence. Nothing in it has a date or an owner.
 - [Interface specs](./interface-specs.md) — changes to the surfaces, each with what it reads, the rules it touches and what done means. Most have shipped a slice, and the **Built** paragraph under each says what shipped and where it departs from the text.
 
 ## Record: what was said at the time, not edited

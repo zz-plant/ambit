@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="740" viewBox="0 0 480 740" role="img" aria-labelledby="title desc">
+  <title id="title">From a recurring block to a reusable capability</title>
+  <desc id="desc">Investigate a recurring block and propose a change. A person can decline, leaving the setup unchanged, or approve application. Run a check and record its result. A failure returns to investigation; a pass supports retaining the capability and its evidence.</desc>
+  <!-- Authored source; edit this SVG directly. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#aabbd1" stroke-width="1.5"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,sans-serif;fill:#f1f3f7;text-anchor:middle}
+      .heading{font-size:22px;font-weight:650;text-anchor:start}.label{font-size:20px;font-weight:600}.detail{font-size:17px;fill:#c0cbdb}
+      .card{fill:#1a202a;stroke:#596b84;stroke-width:1.5}.edge{fill:none;stroke:#aabbd1;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="480" height="740" rx="16" fill="#101318"/>
+  <text x="24" y="38" class="heading">From a block to a reusable capability</text>
+  <rect x="84" y="72" width="312" height="64" rx="10" class="card"/>
+  <text x="240" y="111" class="label">Recurring block</text>
+  <path d="M240 136V188" class="edge"/>
+  <rect x="84" y="188" width="312" height="64" rx="10" class="card"/>
+  <text x="240" y="227" class="label">Investigate + propose</text>
+  <path d="M240 252V304" class="edge"/>
+  <rect x="84" y="304" width="312" height="64" rx="10" fill="#1c2739" stroke="#96b9ff" stroke-width="1.5"/>
+  <text x="240" y="343" class="label">Person approves?</text>
+  <path d="M84 336H28V104H84" class="edge"/>
+  <text x="17" y="220" class="detail" transform="rotate(-90 17 220)">decline: no change</text>
+  <path d="M240 368V420" class="edge"/>
+  <text x="260" y="401" class="detail" style="text-anchor:start">approve</text>
+  <rect x="84" y="420" width="312" height="64" rx="10" class="card"/>
+  <text x="240" y="459" class="label">Apply approved change</text>
+  <path d="M240 484V536" class="edge"/>
+  <rect x="84" y="536" width="312" height="64" rx="10" class="card"/>
+  <text x="240" y="562" class="label">Run declared check</text>
+  <text x="240" y="587" class="detail">Record pass or failure</text>
+  <path d="M396 568H452V220H396" class="edge"/>
+  <text x="471" y="394" class="detail" transform="rotate(-90 471 394)">fail: investigate</text>
+  <path d="M240 600V652" class="edge"/>
+  <text x="260" y="633" class="detail" style="text-anchor:start">pass</text>
+  <rect x="84" y="652" width="312" height="64" rx="10" class="card"/>
+  <text x="240" y="691" class="label">Retain capability + evidence</text>
+</svg>
