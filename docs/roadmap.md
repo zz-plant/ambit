@@ -86,6 +86,7 @@ do real work → discover friction → identify the capability deficit
 | [14](#14-the-economic-half--partly-built) | The economic half | partly built | The marketplace, deliberately, until observed demand fills the catalog; and the reports need weeks of recorded work before they are worth trusting. Token and dollar attribution per capability, and local against hosted provider arbitrage, are unbuilt. Spend is recorded from Claude Code transcripts and Codex, OpenCode and Amp session logs as they are read, per hour, only on a model whose price a person declared (`ambit economics price`), and against the unscoped Hosted Inference budget; tokens from before a budget's current period are priced and not spent against it, and anything else that does not state its spend records none, so the ceiling-and-pace bar ([L2](./interface-specs.md#l2-a-ceiling-with-a-forecast-tick)) moves only once a price and a budget are set. Usage is reported in the five-hour windows subscription plans reset in, and never as a share of a plan's limit, which Ambit does not know. |
 | [15](#15-the-control-plane--built-against-a-simulated-environment) | The control plane | built, against a simulated environment | A runtime that routes through the proxy by default: it has its own entry point and no `ambit` verb, so nothing reaches it unless a caller chooses to. The Docker adapter, chosen explicitly, runs an approved step in an isolated container and deploys nothing anywhere; an adapter for a real deploy target (Kubernetes, a deploy API) is unbuilt. |
 | [16](#16-federation-fleet-governance-and-team-agency--partly-built) | Federation, fleet governance, and team agency | partly built | Multi-tenant graph synchronization, GitOps PR-driven governance, enterprise role-based access control, and compliance audit exports (SOC2) are unbuilt. Only delegation records are hash-chained, and a machine's last-seen time moves only when `ambit incidents` runs. |
+| [17](#17-defined-outcomes--proposed) | Defined outcomes | proposed, unbuilt | Versioned scenario definitions, attempts bound to their actual targets and setup, acceptance evidence, and comparisons across environments. Work runs, recorded outcomes, scoped authority and node checks supply parts of the foundation. |
 
 ## 1. Separate capability from implementation — built
 
@@ -556,6 +557,53 @@ What the team layer needs:
 4. **Compliance and SIEM audit exports.** Only the delegation records are hash-chained (§9b), so an export starts by deciding how far the chain reaches, and by recording the refusals and the actor the ledger does not hold today ([G4](./interface-specs.md#g4-the-trail-one-line-per-event)). Formatting exports for SOC2 and ISO27001 compliance, and streaming audit events to corporate SIEM systems (Splunk, Elastic), turns agent oversight into verifiable enterprise infrastructure.
 
 Two first slices are built: the Audit view ([G4](./interface-specs.md#g4-the-trail-one-line-per-event)) and, on the Infra tab, what an agent may do on each machine ([L3](./interface-specs.md#l3-one-row-per-machine)).
+
+## 17. Defined outcomes — proposed
+
+Proposed and unbuilt. Extend §5's planning with evidence about complete workflows.
+
+> Can this setup achieve this outcome, on this target, within these limits?
+
+Start with an authored staging-release rehearsal: publish a sample service, check its response, restore the previous version and check again. Record elapsed time and human attention. Production needs its own authority and evidence.
+
+### Existing foundation and its limits
+
+| Foundation | Gap |
+| :--- | :--- |
+| `goals.ts` and `plan/route.ts` | Route to curated capabilities; do not synthesize arbitrary workflows |
+| `telemetry.ts` | Records outcomes and optional metrics without independently checking the claim |
+| `assure/verify.ts` and `objects.ts` | `--target` labels evidence without changing the check command; the checker must establish the actual target |
+| `ledger.ts` | Stores states, kinds and lifecycles, not past edges or grants; historical displays use current edges |
+| `economics.ts`, `attention.ts` and `roi.ts` | Price declared costs and compare attention; do not establish revenue, profit or wealth |
+
+### The proposed records
+
+![A scenario revision and setup snapshot are referenced by an attempt. The attempt retains acceptance evidence and its source. These are proposed records, not shipped schemas.](./assets/outcome-evidence.svg)
+
+- **Scenario revision:** outcome, target, environment, prerequisites, human contributions, acceptance criteria, limits and recovery requirements.
+- **Attempt:** reference to an existing work run, the scenario revision, relevant setup and grants at execution, and runner and checker versions. Preserve context without credentials; record unknowns.
+- **Acceptance evidence:** expected and observed results, actual target, source, observation time and artifacts. Distinguish self-reports, external checks and rehearsals.
+
+Reports keep modeled reach, authority, acceptance results, resource use and human participation separate. Changed conditions call for new evidence; historical results retain their original context.
+
+### Demonstrations to build toward
+
+1. **A setup change opens a route.** Compare the same scenario before and after a change. Explain structural gains, missing authority and untested steps. Trust-boundary claims require a modeled path with applicable scopes.
+2. **A workflow needs less personal attention.** Test one bounded change and compare attention, workload, quality and recovery. Repetition alone does not justify removing judgment.
+3. **An unchanged model achieves more in a changed environment.** Hold the model, task suite, initial state, acceptance criteria and resource limits fixed. Vary selected affordances, repeat attempts and report actual consumption and added human work. Disclose uncontrolled differences.
+
+The first slice should record attempts from an explicitly invoked external workflow or CI job. That executor supplies the actual authority checks and recovery handling. Ambit's read-only verification probes do not provide a contract for rehearsals that change a service.
+
+Keep scenario records above the curated tree. Put reporting in the engine and projections in `views.ts`; customers and acceptance criteria do not add to capability counts.
+
+### Evidence required before claiming completion
+
+- Component checks can pass while scenario acceptance fails. Missing evidence is unknown, never success.
+- Results identify the actual target and scenario revision, with relevant setup and grants preserved for comparison. Older snapshots cannot supply missing context retroactively.
+- Definitions, imported results and successful rehearsals create no authority and cannot bypass refusals.
+- Repeated runs report acceptance, costs and human participation for observed conditions. General success probabilities need separate calibration.
+
+[Other applications](./affordance-frontier.md#applications-worth-testing) remain hypotheses. A paid service adds evidence about customer acceptance, cash movements and control over assets and returns. Less owner time alone establishes no increase in independence.
 
 ## Sunset
 

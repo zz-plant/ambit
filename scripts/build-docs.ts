@@ -205,7 +205,7 @@ export const PAGES: Page[] = [
     slug: 'affordance-frontier',
     title: 'The affordance frontier · Ambit',
     description:
-      'The theory under Ambit: the affordance frontier of human-machine systems, and how robots and brain-computer interfaces test it.',
+      'The theory under Ambit: what human-machine systems can achieve, how outcomes could be tested, and applications from shared work to economic agency.',
     card: 'What a human-machine system can reach, and what limits it',
   },
   {
