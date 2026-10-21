@@ -22,12 +22,12 @@ import { deficits } from '../planning.ts';
 import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
+import type { DoctorReport } from '../doctor.ts';
 import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
-import { recovering } from '../assurance.ts';
+import { checkableNames, recovering } from '../assurance.ts';
 import type { usageWindows } from '../telemetry.ts';
 import {
   CHECK_RUN_SQL,
-  CONFIGURED,
   COUNTED_SQL,
   FAILING_SQL,
   PROBE_COMMAND,
@@ -45,43 +45,6 @@ function ago(ts: string | null | undefined): string | undefined {
   if (mins < 60) return `${mins}m ago`;
   if (mins < 60 * 24) return `${Math.round(mins / 60)}h ago`;
   return `${Math.round(mins / (60 * 24))}d ago`;
-}
-
-/**
- * The unproven capabilities that carry a declared check and have never run
- * it: the set one `ambit verify` turns into evidence. Counted over the nodes
- * `graphCounts` counts, so it is a part of the unproven figure and never more.
- */
-function checkableNames(db: any): string[] {
-  try {
-    const tree = loadTechTree();
-    const withCheck = (tree.nodes || [])
-      .filter((n: any) => n.verify?.command)
-      .map((n: any) => `combo:${n.id}`);
-    // Checks an agent registered for something it wrote count as well. This
-    // read the curated model only, so a registered skill could never appear as
-    // provable however many checks it carried.
-    try {
-      for (const r of db.prepare('SELECT capability_id FROM declared_checks').all()) {
-        withCheck.push(r.capability_id);
-      }
-    } catch {
-      /* database predates declared_checks */
-    }
-    if (withCheck.length) {
-      const placeholders = withCheck.map(() => '?').join(',');
-      return db
-        .prepare(
-          `SELECT name FROM capabilities WHERE id IN (${placeholders})
-         AND ${COUNTED_SQL} AND ${REACHED_SQL} AND lifecycle = '${CONFIGURED}' ORDER BY name`
-        )
-        .all(...withCheck)
-        .map((r: any) => r.name);
-    }
-  } catch {
-    /* no curated model, nothing checkable */
-  }
-  return [];
 }
 
 /**
@@ -1071,6 +1034,102 @@ function renderWindows(report: ReturnType<typeof usageWindows>, c: Palette = C):
   return lines;
 }
 
+/** What `nextSteps` returns, as much of it as a person reads. */
+interface NextReport {
+  basis?: string;
+  note?: string;
+  next: {
+    capability: string;
+    why: string;
+    cost: string;
+    privacy?: string;
+    missing?: string[];
+    note?: string;
+    plan: string;
+    propose: string;
+    priced_case?: string;
+  }[];
+}
+
+/**
+ * `ambit next` as a person reads it: each step with its time and why, then the
+ * two commands that act on it. It printed through the generic formatter, as
+ * nested records keyed by `combo:` ids, so the command a first screen sends
+ * people to read like debug output. `--json` gets the report unchanged.
+ */
+function renderNext(report: NextReport, c: Palette = C): string[] {
+  const lines = [''];
+  if (!report.next.length) {
+    lines.push(`${GUTTER}${report.note ?? 'Nothing is one step away.'}`, '');
+    return lines;
+  }
+  // How the list was ranked, from the label the JSON keeps before its dash.
+  const basis = report.basis?.startsWith('observed')
+    ? 'Ranked by what has blocked work, then by what each opens per hour of setup.'
+    : report.basis
+      ? 'Ranked by what each opens per hour of setup: nothing has been recorded blocking work yet.'
+      : undefined;
+  if (basis) lines.push(`${GUTTER}${c.grey}${basis}${c.reset}`, '');
+  report.next.forEach((n, i) => {
+    const cost = n.cost && n.cost !== 'unknown' ? ` ${c.grey}· about ${n.cost}${c.reset}` : '';
+    const where = n.privacy ? ` ${c.grey}· ${n.privacy}${c.reset}` : '';
+    lines.push(
+      `  ${c.accent}${c.bold}${i + 1}.${c.reset} ${c.bold}${n.capability}${c.reset}${cost}${where}`
+    );
+    lines.push(`     ${n.why}`);
+    if (n.missing?.length)
+      lines.push(`     ${c.grey}Needs first: ${n.missing.join(', ')}${c.reset}`);
+    if (n.note) lines.push(`     ${c.yellow}${n.note}${c.reset}`);
+    lines.push(
+      `     ${c.grey}${n.plan}  ·  ${n.propose}${n.priced_case ? `  ·  ${n.priced_case}` : ''}${c.reset}`
+    );
+  });
+  if (report.note) lines.push('', `${GUTTER}${c.grey}${report.note}${c.reset}`);
+  lines.push(
+    '',
+    `${GUTTER}${c.grey}ambit goal <step> lists what it takes; ambit propose <step> drafts it for your approval.${c.reset}`,
+    ''
+  );
+  return lines;
+}
+
+/**
+ * `ambit doctor` as a person reads it: the grade or why there is none, the
+ * counts, which runtimes have Ambit connected, and what to do, one per line.
+ * Its recommendations printed as one comma-joined string.
+ */
+function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
+  const cap = report.capabilities;
+  const head = report.grade ? `${report.grade} (${report.score}/100)` : 'Not graded yet';
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}${head}${c.reset}`,
+    `${GUTTER}${cap.reached} of ${cap.total} reached · ${cap.proven} proven · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
+  ];
+  if (!report.grade) {
+    lines.push(
+      `${GUTTER}${c.grey}No check has run, so nothing is proven or failing yet.${c.reset}`
+    );
+  }
+  for (const d of cap.degraded.slice(0, 5)) {
+    lines.push(`  ${c.yellow}!${c.reset} ${d.name} is failing its check`);
+  }
+  if (report.runtimes_detected.length) {
+    const runtimes = report.runtimes_detected
+      .map(r => `${r.label}${r.has_ambit ? '' : ` ${c.grey}(Ambit not connected)${c.reset}`}`)
+      .join(', ');
+    lines.push(`${GUTTER}Runtimes: ${runtimes}`);
+  }
+  if (report.recommendations.length) {
+    lines.push('', `${GUTTER}${c.bold}What to do${c.reset}`);
+    report.recommendations.forEach((r, i) => {
+      lines.push(`  ${c.accent}${i + 1}.${c.reset} ${r}`);
+    });
+  }
+  lines.push('');
+  return lines;
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -1122,6 +1181,8 @@ export {
   briefReport,
   renderBrief,
   renderImpact,
+  renderNext,
+  renderDoctor,
   renderCarry,
   renderWindows,
   renderPlan,
@@ -1133,6 +1194,7 @@ export {
   explain,
   type BriefReport,
   type ImpactReport,
+  type NextReport,
   type NextMove,
   type SpecReport,
   type StatusReport,

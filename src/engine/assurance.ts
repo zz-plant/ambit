@@ -30,6 +30,7 @@ export {
   declaredCheck,
   evidenceFor,
   runVerification,
+  checkableNames,
 } from './assure/verify.ts';
 export {
   MODE_RANK,

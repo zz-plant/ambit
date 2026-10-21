@@ -5,6 +5,7 @@ import { FAILING_SQL, REACHED_SQL, graphCounts } from './vocabulary.ts';
 import { singlePointsOfFailure } from './inference.ts';
 import { clientConfigs } from './mcp-clients.ts';
 import { parseJsonc } from '../shared/opencode.ts';
+import { checkableNames } from './assurance.ts';
 
 export interface DoctorRuntime {
   runtime: string;
@@ -14,8 +15,9 @@ export interface DoctorRuntime {
 }
 
 export interface DoctorReport {
-  score: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  /** Null until any check has proved or failed something: there is nothing to grade. */
+  score: number | null;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
   summary: string;
   capabilities: {
     total: number;
@@ -92,34 +94,33 @@ export function detectRuntimes(home = process.env.HOME || '/'): DoctorRuntime[] 
   return detected;
 }
 
-/** Compute health score from capabilities, evidence, and single points of failure. */
+/**
+ * The grade, from what a person can act on.
+ *
+ * It was 35 points for the share of the whole curated tree reached, 45 for
+ * proven out of everything reached, and up to 20 off for single providers.
+ * The first fell whenever the tree grew, the second counted nodes that declare
+ * no check and can never be proven, and the third charged every setup for the
+ * built-in tools (Shell Execution has one provider by nature), so a machine
+ * whose every check passed scored under 30, an F.
+ *
+ * Now: 60 for proven out of what can be proven (proven, failing, and what has
+ * a check and has not run it), 30 for redundancy, five off for each capability
+ * one server or model holds up alone, 10 for Ambit being connected to a
+ * runtime, and 15 off for each failing check.
+ */
 function computeScore(
-  total: number,
-  reached: number,
   proven: number,
   failing: number,
+  provable: number,
   spofCount: number,
   hasConnectedRuntime: boolean
 ): { score: number; grade: 'A' | 'B' | 'C' | 'D' | 'F' } {
-  if (total === 0 || reached === 0) {
-    return { score: 0, grade: 'F' };
-  }
-
-  // Coverage component: up to 35 points
-  const coverage = Math.min(35, Math.round((reached / total) * 35));
-
-  // Assurance component: up to 45 points based on proven ratio
-  const assurance = Math.min(45, Math.round((proven / reached) * 45));
-
-  // Base integration bonus: 10 points if at least one runtime has Ambit meta-MCP
-  const integrationBonus = hasConnectedRuntime ? 10 : 0;
-
-  // Penalties
-  const failingPenalty = failing * 15;
-  const spofPenalty = Math.min(20, spofCount * 4);
-
-  const rawScore = coverage + assurance + integrationBonus + 10 - failingPenalty - spofPenalty;
-  const score = Math.max(0, Math.min(100, rawScore));
+  const base = proven + failing + provable;
+  const evidence = base ? Math.round((proven / base) * 60) : 0;
+  const redundancy = Math.max(0, 30 - spofCount * 5);
+  const connection = hasConnectedRuntime ? 10 : 0;
+  const score = Math.max(0, Math.min(100, evidence + redundancy + connection - failing * 15));
 
   let grade: 'A' | 'B' | 'C' | 'D' | 'F' = 'F';
   if (score >= 90) grade = 'A';
@@ -150,14 +151,24 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   }
 
   const hasConnected = runtimes.some(r => r.has_ambit);
-  const { score, grade } = computeScore(
-    counts.total,
-    counts.reached,
+  // Nearly half the score is how much is proven, so a setup no check had run
+  // on yet scored 5 and was graded F on its first look: a fresh, working
+  // machine told it was failing. With no evidence either way there is no
+  // grade, and the summary says what would give it one.
+  const evidence = counts.proven + counts.failing > 0;
+  // A capability a built-in tool holds up alone is no one's to fix: every
+  // runtime ships one shell and one editor.
+  const fixable = spofs.filter(s => !String(s.provider_id ?? '').startsWith('tool:'));
+  const provable = checkableNames(db).length;
+  const graded = computeScore(
     counts.proven,
     counts.failing,
-    spofs.length,
+    provable,
+    fixable.length,
     hasConnected
   );
+  const score = evidence ? graded.score : null;
+  const grade = evidence ? graded.grade : null;
 
   // It also reported a token-thrash risk in dollars: 32,000 tokens per failing
   // check, 12,000 "prevented" per proven one, at $3 a million. Nothing measured
@@ -170,10 +181,12 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       `Fix ${counts.failing} failing capabilities: run "ambit verify --failing" to re-run their declared checks`
     );
   }
-  if (counts.reached > counts.proven) {
-    const unproven = counts.reached - counts.proven;
+  // Only what a check can still prove: most reached nodes declare none, and
+  // telling someone who just ran every check to run them again sends them
+  // round in a circle.
+  if (provable > 0) {
     recommendations.push(
-      `Verify ${unproven} unproven tools: run "ambit verify" to turn configured tools into evidence`
+      `Verify ${provable} unproven ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into proven`
     );
   }
   if (runtimes.length > 0 && !hasConnected) {
@@ -181,14 +194,16 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       'Connect Ambit meta-MCP: run "ambit connect" to register pre-flight briefing with agent runtimes'
     );
   }
-  if (spofs.length > 0) {
+  if (fixable.length > 0) {
     recommendations.push(
-      `Mitigate ${spofs.length} single points of failure: run "ambit credentials" to inspect shared tokens`
+      `${fixable.length} ${fixable.length === 1 ? 'capability rests' : 'capabilities rest'} on one server or model alone: "ambit status" lists them, and a second provider for any of them raises the grade`
     );
   }
   recommendations.push('Inspect interactive tech tree: run "ambit web" to explore your setup map');
 
-  const summary = `${grade} (${score}/100) : ${counts.reached}/${counts.total} reached, ${counts.proven} verified, ${counts.failing} failing`;
+  const summary = evidence
+    ? `${grade} (${score}/100) : ${counts.reached}/${counts.total} reached, ${counts.proven} verified, ${counts.failing} failing`
+    : `Not graded yet: ${counts.reached}/${counts.total} reached, and no check has run, so nothing is proven or failing. ambit verify runs them.`;
 
   return {
     score,

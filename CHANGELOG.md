@@ -6,6 +6,16 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### The first ten minutes, read the way they were meant
+
+A walk through the commands a new user types, from a fresh home, turned up five places the CLI made them do the work:
+
+- **A typo names what it was meant to be.** `ambit stauts` answers "Did you mean ambit status?", and a word near nothing still points to `ambit help`.
+- **One reading of a capability's name.** `impact`, `verify`, `verify --history`, `authority grant` and `promote`, and `budget set` and `clear` now read a bare name the way `ambit can`, every MCP tool and the gate already did: `github` was refused by one, prefixed into `combo:github` by another, and answered "Nothing to report" by a third. A near miss is a suggestion, never a guess. `ambit verify github` names the checks on what the server provides, since a server runs none of its own.
+- **`ambit next` reads as steps.** Each with its time and why, then the two commands that act on it, in place of nested records keyed by `combo:` ids.
+- **The note on recording what blocks work names your runtime.** It sent everyone to copy the OpenCode plugin; it now names the Claude Code plugin, `ambit connect cursor --ledger` or the OpenCode plugin, for the runtimes the seed read.
+- **`ambit doctor` grades what a person can act on.** A fresh setup was graded F (5/100) before any check had run, and one whose every check passed still scored under 30, because the score counted the share of the whole tree reached, nodes no check can prove, and the built-in tools every runtime holds alone. It now waits for evidence before grading, gives 60 points for proven out of what can be proven, 30 for redundancy among servers and models, 10 for Ambit being connected, and takes 15 off per failing check; its advice prints one step per line and no longer asks someone who just ran every check to run them again.
+
 ### The briefing says what the next step would let you reach
 
 A next step told the agent what it cost and, when work had been blocked on it, only that: "It has blocked work 4 times." What reaching it would bring was dropped whenever blocked work led, so the step that mattered most said least about what it would open. Each next step now carries `reaches`, everything something here already supplies that reaching it lets the frontier reach, through every hop, by the simulation `ambit goal --simulate` and `ambit_simulate` run, and `opens`, what it would make a next step. `why` keeps both beside the blocked count, and the briefing says them to the agent in its own terms: "Embeddings (10m): With it, Vector Store and Local Embeddings would become next steps."

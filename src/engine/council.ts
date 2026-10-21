@@ -27,7 +27,7 @@ import { humanDigest } from './attention.ts';
 import { budgetStanding } from './budgets.ts';
 import { nextSteps } from './next.ts';
 import { opportunitiesFor } from './opportunities.ts';
-import { telemetryBridgeInstall } from './paths.ts';
+import { recordingBridges } from './paths.ts';
 
 type Motion = NonNullable<LoopCouncil['motion']>;
 type Node = { id: string; name: string };
@@ -218,7 +218,7 @@ function treasury(db: Db, motion: Motion | null): LoopAdvisor {
   return {
     ...seat,
     says: `No interventions recorded in the last ${WINDOW_DAYS} days, so nothing is priced.`,
-    command: telemetryBridgeInstall(),
+    command: recordingBridges(db)[0].command,
     stance: 'silent',
   };
 }

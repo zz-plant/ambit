@@ -10,7 +10,7 @@
  * rendered as a value (AGENTS.md rule 16).
  */
 import type { Db } from './db.ts';
-import { telemetryBridgeInstall } from './paths.ts';
+import { recordingHint } from './paths.ts';
 import { FAILING_SQL, REACHED_SQL, graphCounts } from './vocabulary.ts';
 
 export interface SessionReceipt {
@@ -106,7 +106,7 @@ export function runReceipt(db: Db, hours = 1): SessionReceipt {
     failing_now: failingNow,
     ...(nothing
       ? {
-          note: `Use and failures reach the ledger through a telemetry bridge, and a refusal through ambit can or the control plane. In OpenCode: ${telemetryBridgeInstall()}`,
+          note: `Use and failures reach the ledger through a telemetry bridge, and a refusal through ambit can or the control plane. Here: ${recordingHint(db)}.`,
         }
       : {}),
   };

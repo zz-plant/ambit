@@ -81,4 +81,16 @@ function resolveCommand(cmd: string | undefined, argv: string[]): { cmd?: string
   return { cmd: sub, argv: [...argv.slice(0, i), ...argv.slice(i + 1)] };
 }
 
-export { GROUPS, resolveCommand };
+/**
+ * The verbs that belong to no group: the first command, the session's opening
+ * read, the help, and the two `cli.js` runs itself. With the groups and their
+ * verbs, the whole of what a person can type first.
+ */
+const STANDALONE = ['seed', 'status', 'briefing', 'help', 'web', 'mcp'];
+
+/** Every word that can start a command, for suggesting one a typo was meant to be. */
+function commandWords(): string[] {
+  return [...STANDALONE, ...Object.keys(GROUPS), ...Object.values(GROUPS).flat()];
+}
+
+export { GROUPS, STANDALONE, commandWords, resolveCommand };

@@ -8,7 +8,7 @@
  */
 import { shellQuote } from '../../shared/shell.ts';
 import type { Db } from '../db.ts';
-import { telemetryBridgeInstall } from '../paths.ts';
+import { recordingHint } from '../paths.ts';
 import { usable } from '../assurance.ts';
 
 /**
@@ -123,7 +123,7 @@ function deficits(db: Db) {
     .all();
   if (rows.length === 0) {
     return {
-      note: `Nothing recorded yet. Failures a runtime reports are captured on their own once the telemetry bridge is installed (${telemetryBridgeInstall()}); ambit record <capability> is the manual path.`,
+      note: `Nothing recorded yet. Failures a runtime reports are captured on their own once a bridge is installed (${recordingHint(db)}); ambit record <capability> is the manual path.`,
     };
   }
 

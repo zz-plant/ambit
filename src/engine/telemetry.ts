@@ -14,7 +14,7 @@ import { attribute } from './failures.ts';
 import { capabilitiesFor } from './gate.ts';
 import type { Migratable } from './migrate.ts';
 import { PROVISION_EDGES } from './ontology.ts';
-import { loadTechTree, telemetryBridgeInstall } from './paths.ts';
+import { loadTechTree, recordingHint } from './paths.ts';
 import type {
   CapabilityRow,
   CapabilityUseRow,
@@ -702,7 +702,7 @@ function unmappedUse(db: Db, days = 30): UnmappedResponse {
       days,
       seen: 0,
       unmapped: [],
-      note: `No tool use recorded in the last ${days} days. In OpenCode the telemetry bridge records it: ${telemetryBridgeInstall()}`,
+      note: `No tool use recorded in the last ${days} days. A bridge records it: ${recordingHint(db)}.`,
     };
   }
 

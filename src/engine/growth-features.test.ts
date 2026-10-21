@@ -65,6 +65,12 @@ describe('ambit doctor', () => {
 
   test('evaluates graph health, grade and SPOFs, and prices nothing it did not measure', () => {
     const db = seed(LOCAL_ONLY);
+    // Before any check has run there is nothing to grade: a fresh setup is
+    // not told it is failing.
+    const fresh = cli('doctor');
+    expect([fresh.score, fresh.grade]).toEqual([null, null]);
+    expect(fresh.summary).toMatch(/^Not graded yet/);
+    cli('verify');
     const doc = cli('doctor');
     expect(doc.score).toBeGreaterThan(0);
     expect(['A', 'B', 'C', 'D', 'F']).toContain(doc.grade);
@@ -73,6 +79,32 @@ describe('ambit doctor', () => {
     expect(doc).not.toHaveProperty('context_thrash');
     expect(doc.recommendations.length).toBeGreaterThan(0);
     db.close();
+  });
+
+  test('a setup whose checks all pass is not graded down for what no one can fix', () => {
+    // Every check passes, and one capability rests on one server. Under the
+    // old score the share of the whole tree reached and the built-in tools
+    // each holding something alone kept a setup like this at an F.
+    const db = makeGraph({
+      capabilities: [
+        { id: 'tool:bash', name: 'Shell Execution', kind: 'provider' },
+        { id: 'combo:shell-execution', name: 'Shell Execution', lifecycle: 'verified' },
+        { id: 'mcp:github', name: 'github', kind: 'provider' },
+        { id: 'combo:version-control', name: 'Version Control', lifecycle: 'verified' },
+        { id: 'combo:payments', name: 'Payments', state: 'locked' },
+      ],
+      dependencies: [
+        { from: 'tool:bash', to: 'combo:shell-execution', kind: 'provides' },
+        { from: 'mcp:github', to: 'combo:version-control', kind: 'provides' },
+      ],
+    });
+    const doc = runDoctor(db, testDir);
+    db.close();
+    expect(doc.capabilities.failing).toBe(0);
+    // 60 for evidence, 25 for redundancy (one server-held capability), none for connection.
+    expect(doc.score).toBe(85);
+    expect(doc.grade).toBe('B');
+    expect(doc.recommendations.some(r => r.startsWith('Verify'))).toBe(false);
   });
 
   test('penalizes failing checks and says which to fix', () => {

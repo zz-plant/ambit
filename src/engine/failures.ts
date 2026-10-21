@@ -16,7 +16,7 @@
  * worse than an honest count.
  */
 import type { Db } from './db.ts';
-import { loadTechTree, telemetryBridgeInstall } from './paths.ts';
+import { loadTechTree, recordingHint } from './paths.ts';
 import { type BLOCK_CLASSES, blockedAction } from './plan/deficits.ts';
 
 type BlockClass = (typeof BLOCK_CLASSES)[number];
@@ -258,7 +258,7 @@ function signalReport(db: Db, days = 30) {
     .get(window);
   if (!total?.n) {
     return {
-      note: `No failure signals observed. Install the telemetry bridge and the ledger fills itself: ${telemetryBridgeInstall()}`,
+      note: `No failure signals observed. A bridge fills the ledger by itself: ${recordingHint(db)}.`,
       observed: 0,
     };
   }

@@ -16,7 +16,10 @@ import { attachObject } from '../objects.ts';
 import type { CapabilityRow } from '../rows.ts';
 import {
   CHECK_RUN_SQL,
+  CONFIGURED,
+  COUNTED_SQL,
   FAILING_SQL,
+  REACHED_SQL,
   PROBE_COMMAND,
   RECOVERING,
   RECOVERING_SQL,
@@ -387,4 +390,51 @@ function settle(db: Db, results: any[], target?: string) {
   };
 }
 
-export { verifyCheck, verifyCapability, verifyAction, declaredCheck, evidenceFor, runVerification };
+/**
+ * The unproven capabilities that carry a declared check and have never run
+ * it: the set one `ambit verify` turns into evidence. Counted over the nodes
+ * `graphCounts` counts, so it is a part of the unproven figure and never more.
+ */
+function checkableNames(db: Db): string[] {
+  try {
+    const tree = loadTechTree();
+    const withCheck = (tree.nodes || [])
+      .filter((n: any) => n.verify?.command)
+      .map((n: any) => `combo:${n.id}`);
+    // Checks an agent registered for something it wrote count as well. This
+    // read the curated model only, so a registered skill could never appear as
+    // provable however many checks it carried.
+    try {
+      for (const r of db
+        .prepare('SELECT capability_id FROM declared_checks')
+        .all<{ capability_id: string }>()) {
+        withCheck.push(r.capability_id);
+      }
+    } catch {
+      /* database predates declared_checks */
+    }
+    if (withCheck.length) {
+      const placeholders = withCheck.map(() => '?').join(',');
+      return db
+        .prepare(
+          `SELECT name FROM capabilities WHERE id IN (${placeholders})
+         AND ${COUNTED_SQL} AND ${REACHED_SQL} AND lifecycle = '${CONFIGURED}' ORDER BY name`
+        )
+        .all(...withCheck)
+        .map((r: any) => r.name as string);
+    }
+  } catch {
+    /* no curated model, nothing checkable */
+  }
+  return [];
+}
+
+export {
+  verifyCheck,
+  verifyCapability,
+  verifyAction,
+  declaredCheck,
+  evidenceFor,
+  runVerification,
+  checkableNames,
+};

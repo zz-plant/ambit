@@ -198,7 +198,10 @@ src/engine/cli.ts          Command dispatch; the five groups resolve to flat ver
 src/engine/cli/            groups.ts (the five nouns) · help.ts · seed.ts
                            output.ts (the colour gate, and the generic formatter, which returns
                            lines) · reports.ts (`renderStatus`, and the move `ambit status`
-                           ends on; `renderBrief`, the short screen bare `ambit` shows)
+                           ends on; `renderBrief`, the short screen bare `ambit` shows; and
+                           the layouts of `next`, `goal`, `impact` and `doctor`). A command that
+                           takes a capability reads it through `named` in cli.ts, the one
+                           resolver `ambit can`, the MCP tools and the gate use
 src/engine/testing/        The shared test harness: a throwaway graph, driven in-process;
                            terminal.ts runs a function as if on a terminal, or piped
 ```

@@ -20,6 +20,8 @@ import {
   renderBrief,
   renderCarry,
   renderImpact,
+  renderNext,
+  renderDoctor,
   renderWindows,
   renderPlan,
   renderSpec,
@@ -27,7 +29,9 @@ import {
   statusReport,
 } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
-import { GROUPS, resolveCommand } from './cli/groups.ts';
+import { GROUPS, commandWords, resolveCommand } from './cli/groups.ts';
+import { nearest } from '../shared/nearest.ts';
+import { shellQuote } from '../shared/shell.ts';
 import { shareSnapshot } from './share.ts';
 import {
   discoverCombos,
@@ -146,6 +150,18 @@ async function runCommand(
   /** `--key=value` off the flag set, since flags are parsed as a bare set. */
   const value = (name: string) =>
     [...flags].find(f => f.startsWith(`--${name}=`))?.slice(name.length + 3);
+  // A capability a person named, read the one way `ambit can`, every MCP tool
+  // and the gate read it: an exact id, a bare tree node, or a name that fits
+  // exactly one node, and never a guess between two. Five commands each used
+  // to read the word their own way, so `github` worked in one, was prefixed
+  // into `combo:github` in another and printed "Nothing to report" in a third.
+  const named = (given?: string): { id: string } | { error: string; did_you_mean?: string[] } => {
+    const r = resolveCapability(db, given);
+    if (r.ok) return { id: r.id };
+    return r.did_you_mean.length
+      ? { error: r.error, did_you_mean: r.did_you_mean }
+      : { error: r.error };
+  };
   switch (cmd) {
     // What an agent should know before its first tool call. Prose by default
     // because that is what gets pasted into a system prompt; --json for the
@@ -156,9 +172,13 @@ async function runCommand(
       else emitText(briefingText(db, { mark: !flags.has('--peek') }));
       break;
     }
-    case 'next':
-      emit(nextSteps(db, Number(arg) || undefined));
+    case 'next': {
+      const palette = terminalPalette();
+      emit(nextSteps(db, Number(arg) || undefined), r =>
+        r.error ? formatGeneric(r, palette) : renderNext(r, palette)
+      );
       break;
+    }
     case 'council':
       emit(council(db));
       break;
@@ -174,10 +194,12 @@ async function runCommand(
       emit(registeredSkills(db));
       break;
     case 'budget': {
-      if (arg === 'set')
+      const budgeted = positional[1] ? named(positional[1]) : undefined;
+      if ((arg === 'set' || arg === 'clear') && budgeted && !('id' in budgeted)) emit(budgeted);
+      else if (arg === 'set')
         emit(
           setBudget(db, {
-            capability: positional[1],
+            capability: budgeted && 'id' in budgeted ? budgeted.id : positional[1],
             action: positional[2],
             amount: value('amount'),
             period: value('period'),
@@ -185,7 +207,15 @@ async function runCommand(
             person: value('by'),
           })
         );
-      else if (arg === 'clear') emit(clearBudget(db, positional[1], positional[2], value('scope')));
+      else if (arg === 'clear')
+        emit(
+          clearBudget(
+            db,
+            budgeted && 'id' in budgeted ? budgeted.id : positional[1],
+            positional[2],
+            value('scope')
+          )
+        );
       else emit(budgetReport(db));
       break;
     }
@@ -371,21 +401,42 @@ async function runCommand(
       // With no id it crashed on the query's missing parameter, a stack trace
       // where every other verb says how it is used.
       {
-        const answer = arg ? analyzeImpact(db, arg) : { error: 'Usage: ambit impact <id>' };
+        const node = arg ? named(arg) : { error: 'Usage: ambit impact <id>' };
+        const answer = 'id' in node ? analyzeImpact(db, node.id) : node;
         const palette = terminalPalette();
         emit(answer, r => (r.error ? formatGeneric(r, palette) : renderImpact(r, palette)));
       }
       break;
     case 'verify':
       if (flags.has('--history')) {
-        emit(
-          arg
-            ? evidenceFor(db, arg.includes(':') ? arg : `combo:${arg}`)
-            : { error: 'Usage: ambit verify <id> --history' }
-        );
+        const node = arg ? named(arg) : { error: 'Usage: ambit verify <id> --history' };
+        if (!('id' in node)) emit(node);
+        else {
+          const runs = evidenceFor(db, node.id);
+          // A server's history is its capabilities': it runs no check itself.
+          // Anything else with no runs, a person or a skill, has an empty one.
+          const redirect = Array.isArray(runs) && !runs.length ? checksOf(db, node.id) : undefined;
+          emit(redirect && 'checks' in redirect ? redirect : runs);
+        }
       } else {
         const failing = flags.has('--failing');
-        const ran: any = runVerification(db, arg, value('target'), { failing });
+        const node = arg && !failing ? named(arg) : undefined;
+        let ran: any =
+          node && !('id' in node)
+            ? node
+            : runVerification(db, node?.id ?? arg, value('target'), { failing });
+        // A server the model holds no check for: name the checks on what it
+        // provides, instead of "no capability in the model" about a word the
+        // graph plainly knows. A probed service or a skill keeps its own answer.
+        if (
+          node &&
+          'id' in node &&
+          typeof ran?.error === 'string' &&
+          /in the model\.$/.test(ran.error)
+        ) {
+          const redirect = checksOf(db, node.id);
+          if ('checks' in redirect) ran = redirect;
+        }
         emit(ran);
         // --exit-code lets a script gate on the checks as `git diff --exit-code`
         // lets one gate on a diff: 0 only when every check that ran passed. A
@@ -411,18 +462,21 @@ async function runCommand(
               'Usage: ambit authority grant <capability> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>] [--action=<action>]',
           });
         } else {
-          emit(
-            grantAuthority(db, {
-              capability: positional[1],
-              mode: positional[2],
-              action: value('action'),
-              scope: value('scope'),
-              ttl: value('ttl'),
-              expires: value('expires'),
-              by: value('by'),
-              note: value('note'),
-            })
-          );
+          const node = named(positional[1]);
+          if (!('id' in node)) emit(node);
+          else
+            emit(
+              grantAuthority(db, {
+                capability: node.id,
+                mode: positional[2],
+                action: value('action'),
+                scope: value('scope'),
+                ttl: value('ttl'),
+                expires: value('expires'),
+                by: value('by'),
+                note: value('note'),
+              })
+            );
         }
       } else if (arg === 'sandbox') {
         // Somewhere acting does not matter, so evidence can be gathered where
@@ -431,10 +485,11 @@ async function runCommand(
         else emit(declareSandbox(db, positional[1], value('by'), positional[2]));
       } else if (arg === 'promote') {
         if (!positional[1]) emit(promotionReport(db));
+        else if (!('id' in named(positional[1]))) emit(named(positional[1]));
         else
           emit(
             setPromotion(db, {
-              capability: positional[1],
+              capability: (named(positional[1]) as { id: string }).id,
               action: positional[2],
               after: value('after'),
               window: value('window'),
@@ -442,8 +497,10 @@ async function runCommand(
               person: value('by'),
             })
           );
-      } else if (arg) emit(actionsReport(db, arg));
-      else emit(authorityReport(db));
+      } else if (arg) {
+        const node = named(arg);
+        emit('id' in node ? actionsReport(db, node.id) : node);
+      } else emit(authorityReport(db));
       break;
     }
     case 'can': {
@@ -746,7 +803,8 @@ async function runCommand(
       break;
     }
     case 'doctor': {
-      emit(runDoctor(db));
+      const palette = terminalPalette();
+      emit(runDoctor(db), r => renderDoctor(r, palette));
       break;
     }
     case 'connect': {
@@ -949,8 +1007,14 @@ async function runCommand(
       // On stderr, so a caller reading stdout for an answer is not handed this
       // as one, and exiting 2, the code a usage error conventionally gets, so a
       // script can tell a mistyped verb from a command that ran and failed.
+      // A typo names what it was probably meant to be, instead of sending the
+      // reader to a list of forty commands to find it themselves.
       const paint = terminalPalette(process.stderr);
-      console.error(`${paint.red}Unknown command: ${cmd}. Try: ambit help${paint.reset}`);
+      const meant = nearest(cmd, commandWords(), 2);
+      const hint = meant.length
+        ? `Did you mean ${meant.map(m => `ambit ${m}`).join(' or ')}?`
+        : 'Try: ambit help';
+      console.error(`${paint.red}Unknown command: ${cmd}. ${hint}${paint.reset}`);
       raiseExitCode(2);
     }
   }
@@ -1186,6 +1250,33 @@ async function main() {
   }
   await runCommand(db, cmd, positional, flags, mappingOverride);
   db.close();
+}
+
+/**
+ * What `ambit verify <server>` means: a server declares no check of its own,
+ * and the checks that prove it are the ones on what it provides. Said, with
+ * the command for each, instead of "no capability in the model".
+ */
+function checksOf(db: Db, id: string) {
+  const provides = db
+    .prepare(
+      `SELECT c.id, c.name FROM dependencies d JOIN capabilities c ON c.id = d.to_capability
+       WHERE d.from_capability = ? AND d.kind IN ('provides', 'contributes') AND c.id LIKE 'combo:%'
+       ORDER BY c.name`
+    )
+    .all<{ id: string; name: string }>(id);
+  const name =
+    db.prepare('SELECT name FROM capabilities WHERE id = ?').get<{ name: string }>(id)?.name ?? id;
+  if (!provides.length) {
+    return { error: `${name} declares no check, and provides nothing on the map that does.` };
+  }
+  return {
+    error: `${name} declares no check of its own. What it provides does:`,
+    checks: provides.map(p => ({
+      capability: p.name,
+      command: `ambit verify ${shellQuote(p.id.replace(/^combo:/, ''))}`,
+    })),
+  };
 }
 
 export { emit, main, capture, captureAsync, runCommand };

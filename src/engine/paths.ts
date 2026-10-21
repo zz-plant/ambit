@@ -35,6 +35,48 @@ export function telemetryBridgeInstall(): string {
 }
 
 /**
+ * How what blocks work reaches the ledger on this machine: the bridge for each
+ * runtime the last seed read, as the command that installs it. Every note that
+ * says the ledger is empty used to name the OpenCode plugin alone, which sent a
+ * Claude Code or Cursor user to copy a file into a runtime they do not run.
+ * With no seed recorded, or none of these runtimes, OpenCode's is the answer.
+ */
+export function recordingBridges(db?: {
+  prepare(sql: string): { get(...args: unknown[]): unknown };
+}): { runtime: string; command: string }[] {
+  let labels: string[] = [];
+  try {
+    const row = db?.prepare("SELECT value FROM schema_meta WHERE key = 'seed-sources'").get() as
+      | { value?: string }
+      | undefined;
+    labels = JSON.parse(row?.value ?? '[]').map((r: { label?: string }) => r.label);
+  } catch {
+    /* an older graph records no sources */
+  }
+  const bridges: { runtime: string; command: string }[] = [];
+  if (labels.includes('Claude Code')) {
+    bridges.push({
+      runtime: 'Claude Code',
+      command: 'claude plugin marketplace add zz-plant/ambit && claude plugin install ambit@ambit',
+    });
+  }
+  if (labels.includes('Cursor')) {
+    bridges.push({ runtime: 'Cursor', command: 'ambit connect cursor --ledger' });
+  }
+  if (labels.includes('OpenCode') || !bridges.length) {
+    bridges.push({ runtime: 'OpenCode', command: telemetryBridgeInstall() });
+  }
+  return bridges;
+}
+
+/** The same, as one clause a note can end on: "in Claude Code, …; in Cursor, …". */
+export function recordingHint(db?: Parameters<typeof recordingBridges>[0]): string {
+  return recordingBridges(db)
+    .map(b => `in ${b.runtime}, ${b.command}`)
+    .join('; ');
+}
+
+/**
  * Where this copy's Cursor ledger hook is. It ships beside the OpenCode bridge,
  * two levels above the engine in a checkout and an install alike, so
  * `ambit connect cursor --ledger` can name it in hooks.json by its absolute path.
