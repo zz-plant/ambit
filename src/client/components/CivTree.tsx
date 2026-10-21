@@ -1088,12 +1088,15 @@ export default function CivTree({
               // The simulations are the thing people do not find, and a faded
               // circle reads as scenery until something says otherwise. A click
               // opens the panel that offers the one this node can run: an outage
-              // on a node you have, an unlock on one you do not.
+              // on a node you have, an unlock on one you do not. While one
+              // runs, the card does not offer the next over it.
               const hint = asOf
                 ? 'Click: details, as of this observation'
-                : unreached
-                  ? 'Click: details, and simulate unlocking it'
-                  : 'Click: details, and simulate an outage';
+                : simulationMode !== 'none'
+                  ? 'Click: details'
+                  : unreached
+                    ? 'Click: details, and simulate unlocking it'
+                    : 'Click: details, and simulate an outage';
               const hintH = 17;
               const boxH = headH + saidH + keyH + descH + enablesH + hintH + 12;
 
