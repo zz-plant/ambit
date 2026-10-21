@@ -11,7 +11,7 @@ import type React from 'react';
 import { useMemo } from 'react';
 import type { ActiveLens } from '../../linkState';
 import type { Connection, Item } from '../../utils/configImporter';
-import { isRuntimeNode } from '../../utils/labels';
+import { isRuntimeNode, nodeLabel } from '../../utils/labels';
 import type { Showing } from '../../utils/shareCard';
 import { typeColor, typeSymbol } from '../../utils/typeColors';
 import { termTitle } from '../Term.tsx';
@@ -34,13 +34,16 @@ import {
   isFailing,
   isNext,
   isProven,
+  isRecovering,
   jointMark,
   layoutNodes,
   NODE_R,
   outageImpact,
+  outageRole,
   type Placed,
   type Progress,
   readableSeconds,
+  recentFailures,
   ROW_H,
   routeTo,
   START_X,
@@ -53,10 +56,15 @@ import {
   Brackets,
   CAPS,
   Callout,
+  corrosionOf,
   EurekaMark,
   HazardPattern,
   JointIcon,
   KeystoneMark,
+  MapFilters,
+  seedOf,
+  type Texture,
+  waverOf,
 } from './marks.tsx';
 
 /**
@@ -312,6 +320,8 @@ export interface MapSceneProps {
   simulation: Showing;
   /** `url(#…)` of the stripes the enclosing svg defines. */
   hazard: string;
+  /** The prefix the enclosing svg's `MapFilters` were defined under. */
+  filters: string;
   /** The page's view of the map. Absent, the scene is a still. */
   view?: SceneView;
 }
@@ -337,6 +347,7 @@ export function MapScene({
   downstream,
   simulation,
   hazard,
+  filters,
   view,
 }: MapSceneProps) {
   const still = !view;
@@ -591,6 +602,12 @@ export function MapScene({
                       ? 1.5
                       : 1.25;
 
+              // A texture over the colour, each meaning one thing: see MapFilters.
+              let texture: Texture | undefined;
+              if (isRecovering(item) && simulationMode === 'none' && !mark && !isAttentionHot) {
+                texture = waverOf(filters, recentFailures(item), seedOf(item.id));
+              }
+
               if (simulationMode === 'outage') {
                 if (isSimRoot) {
                   nodeFill = 'var(--error)';
@@ -610,6 +627,12 @@ export function MapScene({
                   nodeFill = isSimWeak ? 'var(--warn)' : 'var(--error-deep)';
                   sc = 'var(--on-accent)';
                   sw = 2;
+                  // Stopped, and not only thinned: eaten through, inside
+                  // a ring that holds and is lit to say so.
+                  if (!isSimWeak) {
+                    texture = corrosionOf(filters, seedOf(item.id));
+                    sc = 'var(--error)';
+                  }
                 }
               } else if (simulationMode === 'gap') {
                 if (isSimRoot) {
@@ -726,6 +749,8 @@ export function MapScene({
                       </text>
                     )}
 
+                  {/* One circle, or with a texture the fill and the ring
+                      as two, so the filter takes the half it means. */}
                   <circle
                     r={NODE_R}
                     fill={nodeFill}
@@ -740,14 +765,24 @@ export function MapScene({
                         ? 0.6
                         : 1
                     }
-                    stroke={sc}
+                    stroke={texture ? 'none' : sc}
                     strokeWidth={sw}
                     strokeDasharray={
                       !reached && !next && simulationMode === 'none' && !isAttentionHot
                         ? '5,4'
                         : undefined
                     }
+                    filter={texture?.on === 'fill' ? texture.url : undefined}
                   />
+                  {texture && (
+                    <circle
+                      r={NODE_R}
+                      fill="none"
+                      stroke={sc}
+                      strokeWidth={sw}
+                      filter={texture.on === 'ring' ? texture.url : undefined}
+                    />
+                  )}
                   {/* The asks behind a next step, as a part fill inside the
                       ring: what has blocked work while this was missing. Only
                       at rest, since a simulation or a lens paints the node. */}
@@ -894,7 +929,7 @@ export function MapScene({
                   tabIndex={0}
                   role="button"
                   aria-pressed={selected}
-                  aria-label={`${item.name}, ${item.type}`}
+                  aria-label={nodeLabel(item, outageRole(item, simulation))}
                   data-node={item.id}
                   onClick={() => view.onSelect(selected ? null : item.id)}
                   onKeyDown={e => {
@@ -980,6 +1015,7 @@ export function MapStill({
       <title>Capability tree: what this setup can do, by era</title>
       <defs>
         <HazardPattern id="hazard" />
+        <MapFilters prefix="map" />
       </defs>
       <rect width={width} height={height} fill="var(--bg-canvas)" />
       <MapScene
@@ -992,6 +1028,7 @@ export function MapStill({
         downstream={layout.downstream}
         simulation={simulation}
         hazard="url(#hazard)"
+        filters="map"
       />
     </svg>
   );

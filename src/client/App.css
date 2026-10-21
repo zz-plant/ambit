@@ -1634,6 +1634,15 @@ button.app-sample-tag:hover {
   color: var(--accent);
 }
 
+/* During an outage the strip says what the simulation drew: words, not
+   switches, so nothing about it looks pressable. */
+.civ-strip-key--still,
+.civ-strip-key--still:hover {
+  cursor: default;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
 /* ─── ERA LADDER ─── */
 /* An era's header opens this in the detail panel: a bar for how far up it you
    are, then one rung per node. The rung's mark is the map's own circle for

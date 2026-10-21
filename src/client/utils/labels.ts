@@ -6,7 +6,13 @@
 // `possibility` read as "Possibility" in the detail panel, "Combo" in the
 // legend and "Tech tree node" in the docs, which is three names for one circle.
 // src/client/vocabulary.test.ts holds these against src/shared/concepts.json.
-import { isFailing, isNext, isRuntimeNode } from '../components/civ/layout';
+import {
+  evidenceOf,
+  isFailing,
+  isNext,
+  isRuntimeNode,
+  type OutageRole,
+} from '../components/civ/layout';
 
 export { isRuntimeNode };
 import type { Item } from './configImporter';
@@ -88,4 +94,33 @@ export function statusLabel(status: string, item?: Item): string {
 export function metaKeyLabel(key: string): string {
   const spaced = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+/** How an outage role is said after a node's name. */
+const ROLE_CLAUSE: Record<OutageRole, string> = {
+  down: 'down in this simulation',
+  stops: 'stops working in this simulation',
+  'loses a provider': 'loses a provider in this simulation',
+  'cut off': 'cut off in this simulation',
+};
+
+/**
+ * A node as a screen reader announces it: its name, its kind, where it
+ * stands, what its checks say, and what a running outage does to it. Every
+ * clause the map draws as a shape or a texture is here as words, since
+ * neither reaches a reader who cannot see it.
+ */
+export function nodeLabel(item: Item, role: OutageRole | null = null): string {
+  const status = statusLabel(item.status, item).toLowerCase();
+  const evidence = evidenceOf(item);
+  return [
+    item.name,
+    typeLabel(item.type),
+    // "Failing" is the status already; the evidence would say it twice.
+    status,
+    evidence && !isFailing(item) ? evidence : null,
+    role ? ROLE_CLAUSE[role] : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
 }

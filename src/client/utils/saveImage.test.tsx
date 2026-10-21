@@ -156,4 +156,5 @@ test('the file is named for what it is and the day it was saved', () => {
   const day = new Date(2026, 9, 6, 23, 30);
   expect(mapFileName('svg', day)).toBe('ambit-map-2026-10-06.svg');
   expect(mapFileName('png', day)).toBe('ambit-map-2026-10-06.png');
+  expect(mapFileName('png', day, 'relief')).toBe('ambit-relief-2026-10-06.png');
 });

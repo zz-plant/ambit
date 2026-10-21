@@ -711,12 +711,61 @@ const RECENT_RUNS = 5;
  * Empty when no run was sent. `meta.history` is oldest first.
  */
 export function recentRuns(item: Pick<Item, 'meta'>): string {
-  const history = Array.isArray(item.meta?.history) ? (item.meta.history as unknown[]) : [];
-  const recent = history
-    .filter((r): r is { passed: boolean } => typeof (r as any)?.passed === 'boolean')
-    .slice(-RECENT_RUNS);
+  const recent = recentOf(item);
   if (!recent.length) return '';
   return `${recent.filter(r => r.passed).length} of the last ${recent.length} passed`;
+}
+
+/**
+ * How many of those runs failed, which is how far the map draws a recovering
+ * ring off true. Zero when no run was sent, and the map then draws the least.
+ */
+export function recentFailures(item: Pick<Item, 'meta'>): number {
+  return recentOf(item).filter(r => !r.passed).length;
+}
+
+function recentOf(item: Pick<Item, 'meta'>): { passed: boolean }[] {
+  const history = Array.isArray(item.meta?.history) ? (item.meta.history as unknown[]) : [];
+  return history
+    .filter((r): r is { passed: boolean } => typeof (r as any)?.passed === 'boolean')
+    .slice(-RECENT_RUNS);
+}
+
+/**
+ * What an outage simulation does to one node, in the banner's words: the
+ * node that went `down`, what `stops` working, what `loses a provider` and
+ * keeps another, and what is `cut off` before it was ever set up. A node
+ * already failing stopped before, and the outage changes nothing about it.
+ * Null when no outage is running or it does not reach the node.
+ */
+export type OutageRole = 'down' | 'stops' | 'loses a provider' | 'cut off';
+
+export function outageRole(
+  item: Item,
+  showing: { mode: string; rootId: string | null; cascade: Set<string>; weakened?: Set<string> }
+): OutageRole | null {
+  if (showing.mode !== 'outage') return null;
+  if (item.id === showing.rootId) return 'down';
+  const weak = showing.weakened?.has(item.id) ?? false;
+  if (!showing.cascade.has(item.id) && !weak) return null;
+  if (item.status !== 'built') return 'cut off';
+  if (isFailing(item)) return null;
+  return weak ? 'loses a provider' : 'stops';
+}
+
+/**
+ * What a node's evidence says, as a hover and a screen reader say it. A node
+ * no check has run on says nothing: unproven is the default, and a clause
+ * for it on every node would be the clause nobody reads.
+ */
+export function evidenceOf(item: Item): string | null {
+  if (isFailing(item)) return 'failing its check';
+  if (isRecovering(item)) {
+    const runs = recentRuns(item);
+    return runs ? `recovering: ${runs}` : 'recovering';
+  }
+  if (isProven(item)) return 'passing its check';
+  return null;
 }
 
 /**

@@ -459,7 +459,9 @@ test('the pill and the era headers count one map: a failing node is apart from r
         onHover={() => {}}
       />
     );
-    return html.match(/opacity="([\d.]+)"[^>]*aria-label="Browser Automation, possibility"/)?.[1];
+    return html.match(
+      /opacity="([\d.]+)"[^>]*aria-label="Browser Automation, Combo, failing"/
+    )?.[1];
   };
   expect(opacityOf('Verified')).toBe('0.15');
   expect(opacityOf('Failing')).toBe('1');

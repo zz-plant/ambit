@@ -204,7 +204,7 @@ const places = (html: string) =>
   new Map(
     [
       ...html.matchAll(
-        /<g transform="translate\(([\d.]+), ([\d.]+)\)"[^>]*aria-label="([^"]+), possibility"/g
+        /<g transform="translate\(([\d.]+), ([\d.]+)\)"[^>]*aria-label="([^",]+), Combo[^"]*"/g
       ),
     ].map(m => [m[3], `${m[1]},${m[2]}`])
   );

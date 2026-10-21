@@ -54,7 +54,7 @@ export function MapKey({
               <KeySwatch entry={entry} hazard={hazard} />
             </svg>
           );
-          const title = termTitle(concepts[entry.label] ?? '');
+          const title = entry.hint ?? termTitle(concepts[entry.label] ?? '');
           return (
             <li key={entry.label}>
               {lights(entry.label) ? (
