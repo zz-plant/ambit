@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/deep-dive.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit reference: nodes, authority, ledgers and every MCP tool","description":"The Ambit reference: what a node is, how a setup reaches further, capability versus authority, the ledgers, delegation records, and the CLI and MCP surfaces.","url":"https://zz-plant.github.io/ambit/docs/deep-dive/","dateModified":"2026-10-14","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit reference: nodes, authority, ledgers and every MCP tool","item":"https://zz-plant.github.io/ambit/docs/deep-dive/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit reference: nodes, authority, ledgers and every MCP tool","description":"The Ambit reference: what a node is, how a setup reaches further, capability versus authority, the ledgers, delegation records, and the CLI and MCP surfaces.","url":"https://zz-plant.github.io/ambit/docs/deep-dive/","dateModified":"2026-10-21","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit reference: nodes, authority, ledgers and every MCP tool","item":"https://zz-plant.github.io/ambit/docs/deep-dive/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -328,7 +328,7 @@ no grant     refused until someone grants one
 </code></pre>
 <p>Choosing the hosted alternatives (<code>ambit propose retrieval 1</code>) takes it to 13 minutes, at a per-token bill and a data boundary.</p>
 <p>Where an acquisition genuinely <em>is</em> a config change, the step carries a declarative patch and Ambit derives its undo, removing what it adds or restoring what it overwrites. Anything needing an installer gets no inverse, and a proposal is <code>applicable</code> only when every step has one.</p>
-<pre><code>ambit approve prop-msrrv9c2 kanav
+<pre><code>ambit approve prop-msrrv9c2 --by=kanav
   proposal: prop-msrrv9c2 · goal: Web Research
   approved by: Kanav · applicable: true
   note: Approved. Every step has an inverse. The approval artifact is signed and expires in 24 hours.
@@ -363,7 +363,7 @@ graph      impact &lt;id&gt; · catalog &lt;cap&gt; · where · skills · object
 plan       goal &lt;cap-or-sentence&gt; [--paths|--simulate|--prefs|--judge[=url]] · next [n]
            goal --spec &lt;dir|tasks.md&gt; [--judge[=url]]
            reversible
-           opportunities [--by=…] [--budget=N] · opportunity &lt;id&gt;
+           opportunities [id] [--rank=…] [--budget=N]
            propose &lt;cap&gt; [option] [--for=&quot;…&quot;] [--by=&lt;who&gt;] · roi [proposal-id]
            portfolio [--budget=N]
 check      verify [cap] [--history] [--target=&lt;object&gt;] · verify --failing
@@ -372,20 +372,20 @@ check      verify [cap] [--history] [--target=&lt;object&gt;] · verify --failin
            authority grant &lt;cap&gt; &lt;mode&gt; [--ttl=30m] [--scope=X] [--by=&lt;person&gt;]
            authority sandbox [&lt;target&gt; --by=&lt;person&gt;] · budget [set|clear]
            can &lt;cap&gt; [--target=X] [--spend=N] · gate (the Claude Code hook) · credentials
-           incidents · incident resolve &lt;svc&gt; &lt;outcome&gt;
+           incidents [resolve &lt;svc&gt; &lt;outcome&gt;]
            doctor · connect [runtime] [--ledger] [--statusline] [--dry-run]
            init-rules [target] [--dry-run]
            receipt [hours] · ci [--strict] [--markdown]
 govern     people [add &lt;id&gt; [&quot;Name&quot;]]
-           proposals [--pending] · proposal &lt;id&gt; · approve &lt;id&gt; [&lt;id&gt;…] &lt;person&gt;
-           reject &lt;id&gt; &lt;person&gt; [&quot;why&quot;]
+           proposals [id] [--pending] · approve &lt;id&gt; [&lt;id&gt;…] [--by=&lt;person&gt;]
+           reject &lt;id&gt; [--by=&lt;person&gt;] [&quot;why&quot;]
            apply &lt;id&gt; · rollback &lt;id&gt; · dispatch &lt;id&gt; [--to=&lt;url&gt;]
            history [since &lt;when&gt; [&lt;until&gt;]]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest &lt;file&gt;
            delegation object|answer|objections · delegation source add|sources|pull
 report     work [limit] · usage [days] [--windows] · economics [price &lt;model&gt;] · attention [days]
-           digest [days] · notify &lt;topic&gt; · notify-approvals &lt;topic&gt;
+           notify &lt;topic&gt; [--approvals]
            record &lt;cap&gt; [class] [note] · record skill:&lt;name&gt; --provides= --verify=
            signals [days] · preferences [--observed] · federation export|import
            statusline [--json] (the Claude Code status line)
@@ -547,7 +547,7 @@ report     work [limit] · usage [days] [--windows] · economics [price &lt;mode
 <td align="left">The drafts waiting on a decision, each with cost, bill and what it unlocks, so approving is one sitting and not one interruption per proposal</td>
 </tr>
 <tr>
-<td align="left"><code>ambit reject &lt;id&gt; &lt;person&gt; [&quot;why&quot;]</code></td>
+<td align="left"><code>ambit reject &lt;id&gt; --by=&lt;person&gt; [&quot;why&quot;]</code></td>
 <td align="left">A refusal, recorded with its reason, so the next draft and <code>ambit preferences --observed</code> can learn the shape of a no. An approval the draft held can no longer be applied</td>
 </tr>
 <tr>
@@ -711,7 +711,7 @@ Self-Hosted Stack  configured, but Observability is not in place yet
 <li><strong>Show the gap</strong> draws what a blocked node is waiting on, every hop up, priced in setup time.</li>
 </ul>
 <p><strong>The map through time.</strong> Once the ledger holds two observations, the <strong>History</strong> button beside zoom opens a timeline under the map, one tick for each second a snapshot was taken. It stays closed until asked for, or until a link names a moment. Drag the playhead, or step it with the arrow keys, and the map redraws as that snapshot left it: states and checks from then, names, eras and edges from now, because a snapshot stores none of those. One sentence says what moved at each tick, such as &quot;Sep 26: reached 43 to 45, 1 emergent, 1 went failing&quot;, in the words <code>ambit history since &lt;then&gt; &lt;now&gt;</code> prints for the same two observations. <strong>Play</strong>, at the timeline&#39;s left, steps through the observations on its own, slowly enough to read each sentence, from the playhead or from the first observation when the playhead is on now, and stops at now; with the playhead focused, Space plays and pauses. Dragging or stepping the playhead, closing the timeline, starting a simulation or selecting a node pauses it. The header&#39;s counts and the detail panel follow the playhead and say &quot;as of&quot;. A snapshot keeps no grants, providers or attention either, so while the playhead is in the past the Attention and Authority lenses and the simulations wait for now. The playhead is a timestamp in the link, so a link to last week&#39;s map opens on it wherever the same ledger is. With fewer than two observations there is no History button, since there is nothing to scrub.</p>
-<p><strong>Approving proposals.</strong> When an agent proposes an environment change over MCP, the <strong>Proposals</strong> panel reads it as a plan before you sign: how many steps, which of them nothing can undo, whether <code>ambit apply</code> can run it at all, the hours a month it is forecast to take before and after, what it costs, what it unlocks, and how you have decided on things like it before. Each proposal is drawn as a request beside the mark of whoever drafted it, which is the agent&#39;s runtime over MCP or whoever <code>ambit propose --by=</code> names. Your decision is drawn as the answer under it: a signed approval is a receipt with a seal and your mark, and a no is recorded with the reason, which is what the next draft learns from. When several drafts are waiting, tick the ones to decide and approve or turn them down together: each is still signed on its own, against the version you were shown, so one that changed since is refused while the rest go ahead, and nothing is applied. A draft your record leans against starts unticked. The same things happen from the terminal with <code>ambit approve &lt;id&gt; &lt;who&gt;</code> and <code>ambit reject &lt;id&gt; &lt;who&gt; &quot;why&quot;</code>. When you are away from the machine, <code>ambit dispatch &lt;id&gt;</code> pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.</p>
+<p><strong>Approving proposals.</strong> When an agent proposes an environment change over MCP, the <strong>Proposals</strong> panel reads it as a plan before you sign: how many steps, which of them nothing can undo, whether <code>ambit apply</code> can run it at all, the hours a month it is forecast to take before and after, what it costs, what it unlocks, and how you have decided on things like it before. Each proposal is drawn as a request beside the mark of whoever drafted it, which is the agent&#39;s runtime over MCP or whoever <code>ambit propose --by=</code> names. Your decision is drawn as the answer under it: a signed approval is a receipt with a seal and your mark, and a no is recorded with the reason, which is what the next draft learns from. When several drafts are waiting, tick the ones to decide and approve or turn them down together: each is still signed on its own, against the version you were shown, so one that changed since is refused while the rest go ahead, and nothing is applied. A draft your record leans against starts unticked. The same things happen from the terminal with <code>ambit approve &lt;id&gt; --by=&lt;who&gt;</code> and <code>ambit reject &lt;id&gt; --by=&lt;who&gt; &quot;why&quot;</code>. When you are away from the machine, <code>ambit dispatch &lt;id&gt;</code> pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.</p>
 <p><strong>Simulation is arithmetic on the graph, not on the host.</strong> An outage walks the transitive downstream closure of the chosen node and counts what stops working; an unlock takes a locked node whose other hard prerequisites are already met and lights what becomes reachable. Neither reads a config file or writes one.</p>
 <p><strong>Governance has its own loopback endpoints.</strong> <code>GET /api/proposals</code> lists drafts and their history, each with the hash an approval artifact binds. <code>POST /api/proposals/:id/approve</code> mints the same HMAC-signed approval artifact the terminal does and never applies, and <code>POST /api/proposals/:id/reject</code> records a no with its reason. <code>POST /api/proposals/approve</code> and <code>POST /api/proposals/reject</code> are the queue: an explicit list of drafts, each sent with the hash the page showed and decided on its own as the person at the browser, so one that changed since is refused while the rest go ahead. They decide drafts only, answer per id, and ask anything with no browser behind it for the local API token, since one request there decides up to fifty. <code>GET /api/attention</code> aggregates interventions per capability from the ledger. <code>GET /api/audit</code> is the trail the Audit view draws: acts, proposals, runs and delegation records merged newest first and cut once at a limit, with what a check printed left out. All of them bind loopback and reject a non-local origin before routing, like every route.</p>
 <p><strong>One run is drawn in time from what the ledger recorded, and no more.</strong> <code>GET /api/run</code> lays a run out: the capabilities it used for as long as each was measured to last, its events as points, and every time a person was asked, with permission asks in amber. An ask with both its times is a span, one with seconds and no end is a filled point that carries its figure, and one with neither is a marked point that says it was not timed. The OpenCode plugin logs a permission prompt and cannot see the reply, so most asks have no end, and an unmeasured wait is never drawn as zero. The total of a person&#39;s time in the run counts only the asks something timed, and says so. It is read only, and it is the same projection the Time &amp; cost page draws.</p>
