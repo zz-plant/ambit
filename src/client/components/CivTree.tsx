@@ -82,7 +82,7 @@ interface CivTreeProps {
    */
   asOf?: string;
   /** Told where the headline's bottom edge is, so a card laid over the map can sit below it. */
-  onHeadline?: (bottom: number) => void;
+  onHeadline?: (bottom: number | null) => void;
   /** Save the map's finding as a card made to be posted, or the whole map as a file. */
   onSaveImage?: (kind: ImageKind) => void;
 }
@@ -94,6 +94,9 @@ const OUTAGE_ROLE: Record<string, OutageRole> = {
   'Loses a provider': 'loses a provider',
   'Cut off': 'cut off',
 };
+
+/** Where App.css moves the headline to the bottom edge (`.civ-finding-wrap`). */
+const HEADLINE_AT_FOOT = '(max-width: 720px)';
 
 export default function CivTree({
   items,
@@ -260,11 +263,18 @@ export default function CivTree({
   // rows wrap to. A fixed 40px reserved one line of each, and at 900px the
   // range line wraps and the finding sat on the era names, which are controls.
   // The last measure is kept while a panel hides the headline, so the map does
-  // not move when a node is opened.
+  // not move when a node is opened. At phone width the headline sits on the
+  // bottom edge and takes nothing from the top, so it is measured as absent:
+  // kept through a simulation that hid it, its bottom-edge position became
+  // the canvas's top padding once the window widened, some 500px of it.
   const [headlineBox, setHeadlineBox] = useState<{ height: number; bottom: number } | null>(null);
   const measureHeadline = React.useCallback((el: HTMLDivElement | null) => {
     if (!el || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
+      if (window.matchMedia(HEADLINE_AT_FOOT).matches) {
+        setHeadlineBox(null);
+        return;
+      }
       const next = { height: el.offsetHeight, bottom: el.offsetTop + el.offsetHeight };
       setHeadlineBox(prev =>
         prev && prev.height === next.height && prev.bottom === next.bottom ? prev : next
@@ -277,7 +287,7 @@ export default function CivTree({
   // the controls on a narrow screen pushes the canvas by that much more.
   const headlinePad = headlineReserve(headlineBox ? headlineBox.bottom - 12 : null);
   useEffect(() => {
-    if (headlineBox) onHeadline?.(headlineBox.bottom);
+    onHeadline?.(headlineBox?.bottom ?? null);
   }, [headlineBox, onHeadline]);
   const rangeSince = useAmbitStore(s => s.rangeSince);
   // The ledger reports the week by name; the tree's names are unique.
