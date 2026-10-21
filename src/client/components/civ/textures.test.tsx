@@ -149,6 +149,16 @@ test('an outage corrodes the fill of what it stops, inside a ring that holds', (
   expect(html).toMatch(/aria-label="[^"]*stops working in this simulation"/);
   // During a simulation the recovering ring is drawn true: the simulation paints the node.
   expect(drawn.get(RECOVERING)).not.toContain('-waver-');
+  // Nor does a node it paints keep its check badge: "passing" on a node that stops.
+  const badge = /fill="var\(--(ok|error)\)" stroke="var\(--bg-canvas\)"/;
+  for (const id of [root, ...stops, ...weakened].filter(id => drawn.has(id))) {
+    expect([id, badge.test(drawn.get(id)!)]).toEqual([id, false]);
+  }
+});
+
+test('at rest a passing check keeps its badge', () => {
+  seed({ items, connections });
+  expect(map()).toMatch(/fill="var\(--ok\)" stroke="var\(--bg-canvas\)"/);
 });
 
 test('a saved still defines every filter its nodes name', () => {
