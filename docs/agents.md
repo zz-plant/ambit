@@ -21,7 +21,7 @@ None of this is anyone's fault. The setup is spread across a config file per run
 
 With the person's go-ahead, `npx ambit-cli status` reads the agent configs on the machine and the token counts in the session logs agents keep. It writes one local file, `~/.local/share/ambit/graph.db`, changes no config and sends nothing. Deleting that file undoes it. It prints what is reached, how much of it is proven, what is failing, and the one command to type next.
 
-On the demo's setup, 16 of the 46 capabilities on the map are reached and 13 of those are proven. `ambit next` names Embeddings: it has blocked work four times, and reaching it also opens Vector Store. That is the before and the after for one setup, in two lines.
+On the demo's setup, 16 of the 46 capabilities on the map are reached and 12 of those are proven. `ambit next` names Embeddings: it has blocked work four times, and reaching it also opens Vector Store. That is the before and the after for one setup, in two lines.
 
 ## After, session by session
 

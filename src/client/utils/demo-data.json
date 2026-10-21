@@ -753,6 +753,7 @@
           "eraName": "Assurance",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:playwright"
           ],
@@ -849,6 +850,7 @@
           "eraName": "Tool Use",
           "next": false,
           "lifecycle": "broken",
+          "lastChecked": "2026-09-26 09:00:00",
           "providers": [
             "mcp:playwright"
           ],
@@ -858,7 +860,7 @@
           },
           "history": [
             {
-              "id": 2,
+              "id": 17,
               "passed": false
             }
           ],
@@ -969,6 +971,7 @@
           "eraName": "Assurance",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:docker",
             "tool:deploy"
@@ -979,7 +982,7 @@
           },
           "history": [
             {
-              "id": 3,
+              "id": 2,
               "passed": true
             }
           ],
@@ -1023,6 +1026,7 @@
           "eraName": "Tool Use",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:sqlite",
             "mcp:postgres"
@@ -1033,7 +1037,7 @@
           },
           "history": [
             {
-              "id": 4,
+              "id": 3,
               "passed": true
             }
           ],
@@ -1200,6 +1204,7 @@
           "eraName": "Foundation",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:filesystem",
             "tool:edit"
@@ -1210,7 +1215,7 @@
           },
           "history": [
             {
-              "id": 5,
+              "id": 4,
               "passed": true
             }
           ],
@@ -1265,6 +1270,7 @@
           "eraName": "Model Access",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "provider:anthropic",
             "provider:ollama"
@@ -1275,7 +1281,7 @@
           },
           "history": [
             {
-              "id": 6,
+              "id": 5,
               "passed": true
             }
           ],
@@ -1464,6 +1470,7 @@
           "eraName": "Model Access",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "provider:ollama"
           ],
@@ -1473,7 +1480,7 @@
           },
           "history": [
             {
-              "id": 7,
+              "id": 6,
               "passed": true
             }
           ],
@@ -1610,17 +1617,30 @@
           "era": 6,
           "eraName": "Assurance",
           "next": false,
-          "lifecycle": "verified",
+          "lifecycle": "degraded",
+          "lastChecked": "2026-09-24 09:00:00",
           "providers": [
             "mcp:sentry"
           ],
           "reliability": {
-            "passed": 1,
-            "total": 1
+            "passed": 2,
+            "total": 4
           },
           "history": [
             {
-              "id": 8,
+              "id": 7,
+              "passed": true
+            },
+            {
+              "id": 14,
+              "passed": false
+            },
+            {
+              "id": 15,
+              "passed": false
+            },
+            {
+              "id": 16,
               "passed": true
             }
           ],
@@ -1761,6 +1781,7 @@
           "eraName": "Memory",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:memory"
           ],
@@ -1770,7 +1791,7 @@
           },
           "history": [
             {
-              "id": 9,
+              "id": 8,
               "passed": true
             }
           ],
@@ -2046,6 +2067,7 @@
           "eraName": "Tool Use",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:1password"
           ],
@@ -2055,7 +2077,7 @@
           },
           "history": [
             {
-              "id": 10,
+              "id": 9,
               "passed": true
             }
           ],
@@ -2131,6 +2153,7 @@
           "eraName": "Foundation",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "tool:bash"
           ],
@@ -2140,7 +2163,7 @@
           },
           "history": [
             {
-              "id": 11,
+              "id": 10,
               "passed": true
             }
           ],
@@ -2241,6 +2264,7 @@
           "eraName": "Tool Use",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:git",
             "mcp:github",
@@ -2264,7 +2288,7 @@
           },
           "history": [
             {
-              "id": 12,
+              "id": 11,
               "passed": true
             }
           ],
@@ -2496,6 +2520,7 @@
           "eraName": "Foundation",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:git",
             "mcp:github"
@@ -2506,7 +2531,7 @@
           },
           "history": [
             {
-              "id": 13,
+              "id": 12,
               "passed": true
             }
           ],
@@ -2565,6 +2590,7 @@
           "eraName": "Tool Use",
           "next": false,
           "lifecycle": "verified",
+          "lastChecked": "2026-09-14 09:00:00",
           "providers": [
             "mcp:fetch",
             "agent:researcher"
@@ -2575,7 +2601,7 @@
           },
           "history": [
             {
-              "id": 14,
+              "id": 13,
               "passed": true
             }
           ],
@@ -4994,7 +5020,7 @@
           "combo:local-typed-judgment": "unknown",
           "combo:model-routing": "unknown",
           "combo:notifications": "detected",
-          "combo:observability": "verified",
+          "combo:observability": "degraded",
           "combo:offline-capable": "unknown",
           "combo:parallel-execution": "unknown",
           "combo:payments": "unknown",
@@ -5045,7 +5071,7 @@
           "tool:lsp": "unknown",
           "tool:migrate": "unknown"
         },
-        "moved": "reached 65, 1 went failing",
+        "moved": "reached 65, verified 13 to 12, 1 went failing",
         "emergent": []
       }
     ],

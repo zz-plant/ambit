@@ -56,10 +56,9 @@ const merged = {
 
 test('the demo pages agree about what is broken', () => {
   // Time & cost reported "E2E on Edge" failing, a name no node on the map had,
-  // and 38 checks passing over a map on which nothing had been checked.
-  const failingOnMap = tree.items
-    .filter(i => ['degraded', 'broken'].includes(String(i.meta?.lifecycle)))
-    .map(i => i.name);
+  // and 38 checks passing over a map on which nothing had been checked. A
+  // recovering node is not failing: its last check passed.
+  const failingOnMap = tree.items.filter(i => i.meta?.lifecycle === 'broken').map(i => i.name);
   const { status } = demoSnapshot();
   expect(failingOnMap.length).toBeGreaterThan(0);
   expect(status.degraded).toEqual(failingOnMap);

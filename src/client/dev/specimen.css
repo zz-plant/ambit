@@ -1,0 +1,14 @@
+/* The specimen page, after App.css so its document scrolls where the app's shell does not. */
+html, body, #root { height: auto; overflow: visible; }
+body { background: var(--bg-deep); color: var(--text-primary); font-family: var(--font-sans); margin: 0; }
+.specimen { padding: 24px; }
+.specimen h1 { font-family: var(--font-display); margin: 0 0 4px; }
+.specimen header p { color: var(--text-secondary); margin: 0 0 24px; }
+.specimen a { color: var(--accent); }
+.specimen h2 { font-size: 14px; font-weight: 600; margin: 0 0 8px; color: var(--text-secondary); }
+.specimen-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; }
+.specimen-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.specimen-pair { display: flex; gap: 16px; align-items: flex-start; }
+.specimen-key { display: flex; flex-direction: column; gap: 6px; margin: 0; max-width: 220px; font-size: 13px; }
+.specimen-key span { display: block; color: var(--text-muted); margin-top: 2px; }
+.specimen-keys { display: flex; flex-wrap: wrap; gap: 24px; }

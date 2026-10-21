@@ -48,6 +48,17 @@
         "src/server/api.ts"
       ],
       "port": 3011
+    },
+    {
+      "name": "ambit-specimen",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "4191",
+        "--strictPort"
+      ],
+      "port": 4191
     }
   ]
 }
