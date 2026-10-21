@@ -25,26 +25,17 @@ import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
 import { escapeLayer } from './utils/keys';
 import type { PaletteHandlers } from './utils/palette';
-import {
-  mapFileName,
-  pageToken,
-  pngScale,
-  renderStill,
-  standalone,
-  svgToPng,
-} from './utils/saveImage';
+import { DRAWN_FACES, mapFile } from './utils/mapFile';
+import { svgToPng } from './utils/saveImage';
 import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg, type Showing } from './utils/shareCard';
 import type { ImageKind } from './components/civ/ImageMenu';
-import { embeddedFontCss, FACES } from './fonts';
+import { embeddedFontCss } from './fonts';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 // Fetched when first opened: a visit lands on the map, and the two views it
 // does not show were 41KB of the script every first load waited for.
 const LoopDashboard = React.lazy(() => import('./components/LoopDashboard'));
 const AuditView = React.lazy(() => import('./components/AuditView'));
-
-/** The text and readout faces a saved image is set in, inlined: neither sets code. */
-const DRAWN_FACES = FACES.filter(f => f.family !== 'Monaspace Neon');
 
 /** The width of the detail panel. */
 const PANEL_W = 340;
@@ -323,46 +314,6 @@ export default function App() {
     }
   };
 
-  /**
-   * The whole map as a file: every era, node and edge, drawn from the graph
-   * and not from the screen, at rest in the standard lens (see MapStill). The
-   * page's colours are written into it and its faces embedded, and a PNG is
-   * drawn at twice the map's size, or as large as a canvas allows.
-   */
-  const mapFile = async (
-    format: 'svg' | 'png',
-    showing: Showing,
-    fonts: string,
-    what: 'map' | 'relief' = 'map'
-  ) => {
-    // Fetched with the map's own chunk, which the page has loaded by now.
-    const [{ MapStill, stillLayout }, { MapRelief, RELIEF_EXTRA }] = await Promise.all([
-      import('./components/civ/MapScene'),
-      import('./components/civ/Relief'),
-    ]);
-    const layout = stillLayout(items, connections);
-    const height = layout.height + (what === 'relief' ? RELIEF_EXTRA : 0);
-    const scale = format === 'png' ? pngScale(layout.width, height) : 1;
-    const still =
-      what === 'relief' ? (
-        <MapRelief connections={connections} layout={layout} scale={scale} />
-      ) : (
-        <MapStill
-          items={items}
-          connections={connections}
-          layout={layout}
-          simulation={showing}
-          scale={scale}
-        />
-      );
-    const svg = standalone(renderStill(still), pageToken, fonts);
-    const blob =
-      format === 'png'
-        ? await svgToPng(svg, Math.round(layout.width * scale), Math.round(height * scale))
-        : new Blob([svg], { type: 'image/svg+xml' });
-    return new File([blob], mapFileName(format, new Date(), what), { type: blob.type });
-  };
-
   // The map's finding as a portrait image, or the whole map: the share sheet
   // on a phone, where it goes straight to a post or a message, and a download
   // elsewhere.
@@ -395,6 +346,8 @@ export default function App() {
             type: 'image/png',
           })
         : await mapFile(
+            items,
+            connections,
             kind === 'svg' ? 'svg' : 'png',
             showing,
             fonts,

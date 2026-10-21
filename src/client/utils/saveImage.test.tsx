@@ -9,7 +9,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';
-import { columnLabel, outageSplit, visibleItems, wrapLabel } from '../components/civ/layout';
+import {
+  columnLabel,
+  isRecovering,
+  outageSplit,
+  visibleItems,
+  wrapLabel,
+} from '../components/civ/layout';
 import { MapStill, stillLayout } from '../components/civ/MapScene';
 import { embeddedFontCss, FACES } from '../fonts';
 import { mergeGraphs } from '../store/ambitStore';
@@ -74,8 +80,11 @@ test('every node of the tree and every edge between two of them is in the file',
     [...m[1].matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map(t => t[1]).join('')
   );
   expect(names.sort()).toEqual(drawn.map(i => wrapLabel(i.name).map(esc).join(' ')).sort());
-  // One circle of the node's own radius a node: badges and marks are smaller.
-  expect(svg.match(/<circle r="22"/g)?.length).toBe(drawn.length);
+  // One circle of the node's own radius a node, two for one whose ring a
+  // texture takes apart from its fill: badges and marks are smaller.
+  const recovering = drawn.filter(isRecovering).length;
+  expect(recovering).toBeGreaterThan(0);
+  expect(svg.match(/<circle r="22"/g)?.length).toBe(drawn.length + recovering);
   const ids = new Set(drawn.map(i => i.id));
   const edges = connections.filter(c => ids.has(c.from) && ids.has(c.to));
   expect(edges.length).toBeGreaterThan(20);

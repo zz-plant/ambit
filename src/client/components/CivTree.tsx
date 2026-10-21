@@ -41,14 +41,7 @@ import { hasHistory } from './civ/history.ts';
 import { ImageMenu, type ImageKind } from './civ/ImageMenu.tsx';
 import { MapKey } from './civ/MapKey.tsx';
 import { AUTHORITY_FILL, AUTHORITY_SYM, heatBins, MapScene } from './civ/MapScene.tsx';
-import {
-  HazardPattern,
-  KeySwatch,
-  type LegendKey,
-  MapFilters,
-  corrosionOf,
-  waverOf,
-} from './civ/marks.tsx';
+import { HazardPattern, KeySwatch, type LegendKey, MapFilters, mapKeys } from './civ/marks.tsx';
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { usePinchZoom } from './civ/usePinchZoom.ts';
@@ -372,62 +365,25 @@ export default function CivTree({
    * the row below it reports how many keys there are and whether any of them
    * can be clicked.
    */
+  const KEY = mapKeys(filterPrefix);
   // While a node is selected the legend also keys the two directions its
   // edges are drawn in.
   // Keyed only when the map has one: most machines declare no person and no
   // device, and a key for a mark nothing carries is a question with no answer.
   const jointKeys: LegendKey[] = (['person', 'device'] as JointMark[])
     .filter(m => filtered.some(i => jointMark(i) === m))
-    .map(m => ({
-      kind: 'joint',
-      mark: m,
-      label: m === 'person' ? 'Needs a person' : 'Runs on a device',
-    }));
-  // Keyed only when a node is recovering, as the joint marks are. At the
-  // widest step, since the swatch is a third of a node's size.
-  const recoveringKeys: LegendKey[] = filtered.some(isRecovering)
-    ? [
-        {
-          kind: 'waver',
-          label: 'Recovering',
-          filter: waverOf(filterPrefix, 4, 0).url,
-          hint: 'Recovering: its last check passed after recent ones failed. The further the ring slips, the more of the last five failed.',
-        },
-      ]
-    : [];
+    .map(m => KEY[m]);
+  // Keyed only when a node is recovering, as the joint marks are.
+  const recoveringKeys: LegendKey[] = filtered.some(isRecovering) ? [KEY.recovering] : [];
   // While an outage runs, its own marks, in the banner's words, and only
   // the ones it drew: a key for a mark nothing carries is a question with
   // no answer. None of them lights nodes, since the simulation already has.
   const roles = new Set(
     simulationMode === 'outage' ? filtered.map(i => outageRole(i, simulation)) : []
   );
-  const outageKeys: LegendKey[] = (
-    [
-      {
-        kind: 'node',
-        color: 'var(--error)',
-        label: 'Down',
-        hint: 'What this simulation takes away.',
-      },
-      {
-        kind: 'corroded',
-        label: 'Stops working',
-        filter: corrosionOf(filterPrefix, 0).url,
-        hint: 'Rests on what went down and nothing else, so it stops with it. Still configured, so its ring holds.',
-      },
-      {
-        kind: 'node',
-        color: 'var(--warn)',
-        label: 'Loses a provider',
-        hint: 'Loses one way to work and keeps another.',
-      },
-      {
-        kind: 'cutoff',
-        label: 'Cut off',
-        hint: 'Not set up yet, and could not be while this is down.',
-      },
-    ] satisfies LegendKey[]
-  ).filter(k => roles.has(OUTAGE_ROLE[k.label]));
+  const outageKeys: LegendKey[] = [KEY.down, KEY.stops, KEY.losesProvider, KEY.cutOff].filter(k =>
+    roles.has(OUTAGE_ROLE[k.label])
+  );
   const directionKeys: LegendKey[] =
     selectedId && focusId === selectedId
       ? [
@@ -435,14 +391,7 @@ export default function CivTree({
           { kind: 'line', color: 'var(--accent)', label: 'Enables' },
         ]
       : [];
-  const failingKey: LegendKey = {
-    kind: 'node',
-    color: 'var(--error)',
-    sym: '!',
-    label: 'Failing',
-    hatch: true,
-    hint: 'Failing: its last check failed. Configured, and not working.',
-  };
+  const failingKey: LegendKey = KEY.failing;
   const legend: LegendKey[] =
     outageKeys.length && activeLens === 'default'
       ? [...outageKeys, ...(filtered.some(isFailing) ? [failingKey] : [])]
@@ -471,16 +420,16 @@ export default function CivTree({
             ]
           : isTreeView
             ? [
-                { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
-                { kind: 'ring', label: 'Next step' },
-                { kind: 'eureka', label: 'Asked for' },
-                { kind: 'faded', label: 'Blocked' },
-                { kind: 'keystone', label: 'Keystone' },
-                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                KEY.reached,
+                KEY.next,
+                KEY.askedFor,
+                KEY.blocked,
+                KEY.keystone,
+                KEY.passing,
                 ...recoveringKeys,
                 failingKey,
-                { kind: 'line', label: 'Required' },
-                { kind: 'line', dashed: true, label: 'Optional' },
+                KEY.required,
+                KEY.optional,
                 ...jointKeys,
                 ...directionKeys,
               ]
@@ -489,12 +438,12 @@ export default function CivTree({
                 { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
                 { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
                 { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
-                { kind: 'keystone', label: 'Keystone' },
-                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                KEY.keystone,
+                KEY.passing,
                 ...recoveringKeys,
                 failingKey,
-                { kind: 'line', label: 'Required' },
-                { kind: 'line', dashed: true, label: 'Optional' },
+                KEY.required,
+                KEY.optional,
                 ...directionKeys,
               ];
   // A lens paints with a scale the standard map does not use, so switching to
@@ -509,12 +458,7 @@ export default function CivTree({
   const strip: LegendKey[] =
     isTreeView && activeLens === 'default' && !keyOpen && !narrated && !narrow
       ? simulationMode === 'none'
-        ? [
-            { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
-            { kind: 'ring', label: 'Next step' },
-            { kind: 'faded', label: 'Blocked' },
-            ...(findings.failing.length ? [failingKey] : []),
-          ]
+        ? [KEY.reached, KEY.next, KEY.blocked, ...(findings.failing.length ? [failingKey] : [])]
         : outageKeys
       : [];
   const closeKey = React.useCallback(() => setKeyToggled(false), [setKeyToggled]);

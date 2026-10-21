@@ -109,8 +109,20 @@ const NO_LOCAL_MODELS = (home: string) => ({
   AMBIT_LMSTUDIO_MODELS: join(home, '.lmstudio', 'models'),
 });
 
+/** When the demo's checks ran: the first pass over everything, and the last day of its history. */
+const FIRST_CHECKS = '2026-09-14 09:00:00';
+const LAST_CHECKS = '2026-09-26 09:00:00';
+
+/** One run of a capability's check: when, and whether it passed. */
+export interface DemoRun {
+  at: string;
+  passed: boolean;
+}
+
+const once = (passed: boolean, at = FIRST_CHECKS): DemoRun[] => [{ at, passed }];
+
 /**
- * What the demo's checks said, by capability: `true` passed, `false` failed.
+ * What the demo's checks said, by capability: each run, oldest first, dated.
  *
  * A seed verifies nothing, so the tree used to arrive with every reached node
  * "configured, never checked", while the Time & cost page beside it reported
@@ -120,46 +132,76 @@ const NO_LOCAL_MODELS = (home: string) => ({
  * commands exactly as the fixture stands in for a real config, so the tree's
  * lifecycles are the ones the engine would derive from this evidence.
  *
+ * Every run carries a fixed date, so a check's age and strip of runs read the
+ * same on every build. Observability is recovering: its last run passed after
+ * two that failed, the payment anomaly the Time & cost page prices, so the
+ * demo draws the map's waver and says "2 of the last 4 passed".
+ *
  * Two reached nodes are left unchecked on purpose: "configured is not working"
  * is the distinction the map exists to draw, and a demo with nothing in that
  * state could not show it.
  */
-export const DEMO_EVIDENCE: Record<string, boolean> = {
-  'combo:automated-tests': true,
-  'combo:browser-automation': false,
-  'combo:continuous-delivery': true,
-  'combo:data-access': true,
-  'combo:file-editing': true,
-  'combo:hosted-inference': true,
-  'combo:local-runtime': true,
-  'combo:observability': true,
-  'combo:persistent-memory': true,
-  'combo:secret-management': true,
-  'combo:shell-execution': true,
-  'combo:tool-protocol': true,
-  'combo:version-control': true,
-  'combo:web-research': true,
+export const DEMO_EVIDENCE: Record<string, DemoRun[]> = {
+  'combo:automated-tests': once(true),
+  'combo:browser-automation': once(false, LAST_CHECKS),
+  'combo:continuous-delivery': once(true),
+  'combo:data-access': once(true),
+  'combo:file-editing': once(true),
+  'combo:hosted-inference': once(true),
+  'combo:local-runtime': once(true),
+  'combo:observability': [
+    ...once(true),
+    { at: '2026-09-18 09:00:00', passed: false },
+    { at: '2026-09-21 09:00:00', passed: false },
+    { at: '2026-09-24 09:00:00', passed: true },
+  ],
+  'combo:persistent-memory': once(true),
+  'combo:secret-management': once(true),
+  'combo:shell-execution': once(true),
+  'combo:tool-protocol': once(true),
+  'combo:version-control': once(true),
+  'combo:web-research': once(true),
 };
+
+/**
+ * The demo's runs, through the engine's check runner, each restamped with its
+ * date: the runner records the wall clock, and a demo dated by whoever built
+ * it would age a day every day and differ on every run. Only the runs dated
+ * after `after` and up to `until`, so the history can record them stage by
+ * stage. A capability the graph does not hold records nothing, as the runner
+ * itself decides.
+ */
+export function recordDemoRuns(db: ReturnType<typeof getDb>, after = '', until = '9999'): void {
+  const restamp = db.prepare(
+    `UPDATE session_learning SET timestamp = ? WHERE id =
+       (SELECT MAX(id) FROM session_learning WHERE capability_id = ?)`
+  );
+  const runs = Object.entries(DEMO_EVIDENCE)
+    .flatMap(([id, list]) => list.map(run => ({ id, ...run })))
+    .filter(run => run.at > after && run.at <= until)
+    .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+  for (const { id, at, passed } of runs) {
+    verifyCheck(db, id, id, { command: [passed ? 'true' : 'false'] });
+    restamp.run(at, id);
+  }
+}
 
 /** Some of the fixture's entries of one kind, by name. */
 const only = <T extends Record<string, unknown>>(entries: T, names: (keyof T & string)[]) =>
   Object.fromEntries(names.map(name => [name, entries[name]]));
-
-/** The demo's checks that pass, and the one that fails, as two stages of its history. */
-const checksThat = (passes: boolean) =>
-  Object.fromEntries(Object.entries(DEMO_EVIDENCE).filter(([, passed]) => passed === passes));
 
 /**
  * The demo machine's history: one observation per stage, each on a fixed
  * date, so the timeline under the map shows the same series on every build.
  *
  * The stages are the fixture's own parts in the order a person might have
- * added them. The last two change no config, only evidence: the checks that
- * pass, then the one that fails. So the series ends where the demo's map is,
- * with a check gone failing on the way, and nothing in it describes a machine
- * the engine would not build from this fixture.
+ * added them. The last two change no config, only evidence: the first pass of
+ * every check, then the runs since, among them the one that fails. So the
+ * series ends where the demo's map is, with a check gone failing on the way,
+ * and nothing in it describes a machine the engine would not build from this
+ * fixture.
  */
-const HISTORY: { at: string; config?: object; checks?: Record<string, boolean> }[] = [
+const HISTORY: { at: string; config?: object; checks?: boolean }[] = [
   {
     at: '2026-08-03 09:00:00',
     config: {
@@ -187,8 +229,8 @@ const HISTORY: { at: string; config?: object; checks?: Record<string, boolean> }
     },
   },
   { at: '2026-08-31 09:00:00', config: FIXTURE },
-  { at: '2026-09-14 09:00:00', checks: checksThat(true) },
-  { at: '2026-09-26 09:00:00', checks: checksThat(false) },
+  { at: FIRST_CHECKS, checks: true },
+  { at: LAST_CHECKS, checks: true },
 ];
 
 /**
@@ -239,11 +281,13 @@ function buildDemoHistory(
   tree: ReturnType<typeof techTreeView>
 ): FrontierHistoryResponse {
   const dbPath = join(work, 'history.db');
+  let checked = '';
   for (const stage of HISTORY) {
     if (stage.config) seedUnrecorded(stage.config, home, dbPath);
     const db = getDb(dbPath);
-    for (const [id, passes] of Object.entries(stage.checks ?? {})) {
-      verifyCheck(db, id, id, { command: [passes ? 'true' : 'false'] });
+    if (stage.checks) {
+      recordDemoRuns(db, checked, stage.at);
+      checked = stage.at;
     }
     deriveLifecycles(db);
     recordFrontier(db, stage.at);
@@ -318,9 +362,7 @@ export function buildDemoData(): {
     );
 
     const db = getDb(dbPath);
-    for (const [id, passes] of Object.entries(DEMO_EVIDENCE)) {
-      verifyCheck(db, id, id, { command: [passes ? 'true' : 'false'] });
-    }
+    recordDemoRuns(db);
     deriveLifecycles(db);
     const tree = techTreeView(db);
     db.close();
@@ -349,14 +391,7 @@ export function serialise(data: ReturnType<typeof buildDemoData>): string {
       fixture: data.fixture,
       config: { items: byId(data.config.items), connections: byEdge(data.config.connections) },
       tree: {
-        // When a check ran is the clock of whoever regenerated the file, so it
-        // is left out: the committed demo would otherwise age a day every day
-        // and differ on every run. An absent timestamp is a state the panel
-        // already renders.
-        items: byId(data.tree.items).map(({ meta, ...item }) => {
-          const { lastChecked: _, ...rest } = (meta ?? {}) as Record<string, unknown>;
-          return { ...item, meta: rest };
-        }),
+        items: byId(data.tree.items),
         connections: byEdge(data.tree.connections),
       },
       history: data.history,

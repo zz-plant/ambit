@@ -11,24 +11,15 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, test } from 'vitest';
 import { useAmbitStore } from '../../store/ambitStore';
 import { demoTreeGraph } from '../../store/demo';
-import type { Item } from '../../utils/configImporter';
 import CivTree from '../CivTree';
 import { outageSplit, recentFailures } from './layout';
 import { MapStill, stillLayout } from './MapScene';
 import { MapFilters, seedOf, waverOf } from './marks';
 import { MapRelief } from './Relief';
 
-const demo = demoTreeGraph();
-const RECOVERING = 'combo:file-editing';
-const runs = (pattern: string) => [...pattern].map((c, id) => ({ id, passed: c === '1' }));
-
-/** The demo with one capability recovering: three of its last five runs failed. */
-const items: Item[] = demo.items.map(i =>
-  i.id === RECOVERING
-    ? { ...i, meta: { ...i.meta, lifecycle: 'degraded', history: runs('11100101') } }
-    : i
-);
-const { connections } = demo;
+/** The demo, whose Observability is recovering: two of its last four runs failed. */
+const { items, connections } = demoTreeGraph();
+const RECOVERING = 'combo:observability';
 
 function seed(state: Partial<ReturnType<typeof useAmbitStore.getState>>) {
   Object.assign(useAmbitStore.getInitialState(), state);
@@ -73,11 +64,11 @@ const map = () =>
   );
 
 test('a recovering ring wavers by how many recent runs failed, and its fill stays true', () => {
-  expect(recentFailures(items.find(i => i.id === RECOVERING)!)).toBe(3);
+  expect(recentFailures(items.find(i => i.id === RECOVERING)!)).toBe(2);
   seed({ items, connections });
   const drawn = nodes(map());
   const node = drawn.get(RECOVERING)!;
-  const waver = `-waver-3-${seedOf(RECOVERING)})`;
+  const waver = `-waver-2-${seedOf(RECOVERING)})`;
   // The fill circle carries no filter, and the ring after it carries the waver.
   expect(node).toMatch(
     new RegExp(`fill="none"[^>]*filter="url\\(#[^"]*${waver.replace(/[()]/g, '\\$&')}"`)
@@ -85,7 +76,7 @@ test('a recovering ring wavers by how many recent runs failed, and its fill stay
   expect(node.match(/filter="/g)).toHaveLength(1);
   // And says so in words, where the slip cannot be seen.
   expect(map()).toContain(
-    'aria-label="File Editing, Combo, reached, recovering: 2 of the last 5 passed"'
+    'aria-label="Observability, Combo, reached, recovering: 2 of the last 4 passed"'
   );
   // Nothing else on the map wavers, and nothing corrodes at rest.
   for (const [id, body] of drawn) {

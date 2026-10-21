@@ -232,6 +232,64 @@ export type LegendKey = (
   | { kind: 'joint'; label: string; mark: JointMark }
 ) & { hint?: string };
 
+/**
+ * The tree's keys, each defined once: the key, the strip under the map and the
+ * specimen page (src/client/dev) read them from here. `prefix` is the one the
+ * enclosing svg's `MapFilters` were defined under, which the two textures name.
+ */
+export function mapKeys(prefix: string) {
+  return {
+    reached: { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
+    next: { kind: 'ring', label: 'Next step' },
+    askedFor: { kind: 'eureka', label: 'Asked for' },
+    blocked: { kind: 'faded', label: 'Blocked' },
+    keystone: { kind: 'keystone', label: 'Keystone' },
+    passing: { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+    // At the widest step, since the swatch is a third of a node's size.
+    recovering: {
+      kind: 'waver',
+      label: 'Recovering',
+      filter: waverOf(prefix, 4, 0).url,
+      hint: 'Recovering: its last check passed after recent ones failed. The further the ring slips, the more of the last five failed.',
+    },
+    failing: {
+      kind: 'node',
+      color: 'var(--error)',
+      sym: '!',
+      label: 'Failing',
+      hatch: true,
+      hint: 'Failing: its last check failed. Configured, and not working.',
+    },
+    required: { kind: 'line', label: 'Required' },
+    optional: { kind: 'line', dashed: true, label: 'Optional' },
+    person: { kind: 'joint', mark: 'person', label: 'Needs a person' },
+    device: { kind: 'joint', mark: 'device', label: 'Runs on a device' },
+    down: {
+      kind: 'node',
+      color: 'var(--error)',
+      label: 'Down',
+      hint: 'What this simulation takes away.',
+    },
+    stops: {
+      kind: 'corroded',
+      label: 'Stops working',
+      filter: corrosionOf(prefix, 0).url,
+      hint: 'Rests on what went down and nothing else, so it stops with it. Still configured, so its ring holds.',
+    },
+    losesProvider: {
+      kind: 'node',
+      color: 'var(--warn)',
+      label: 'Loses a provider',
+      hint: 'Loses one way to work and keeps another.',
+    },
+    cutOff: {
+      kind: 'cutoff',
+      label: 'Cut off',
+      hint: 'Not set up yet, and could not be while this is down.',
+    },
+  } satisfies Record<string, LegendKey>;
+}
+
 /** A key's picture, centred on the origin, as the map draws that state. */
 export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string }) {
   switch (entry.kind) {

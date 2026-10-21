@@ -13,7 +13,10 @@ npm run dev                             # API on :3001 and Vite on :3000, togeth
 ./cli.js status                         # the CLI from a checkout, nothing installed
 npx vitest run src/engine/cli.test.ts   # one test file
 ./cli.js where                          # which graph is open, and whether it is seeded
+npm run render:images -- --demo         # the saved map, relief and specimens, to output/images
 ```
+
+Work on how the map draws starts at the specimen page: `npx vite`, or the `ambit-specimen` launch configuration, then `/ambit/dev/specimen.html`. It draws every node state at three times its size through the map's own code, beside the key entry for it, and `?still` draws them as a saved file does. `npm run render:images` writes the files the Image menu saves, and the specimen page whole, from a headless Chrome: this checkout's graph, or the demo with `--demo`. The demo carries a failing check and a recovering one, so the stripes and the waver show without a graph of your own.
 
 `ambit web` runs Vite in a checkout. An installed copy has no Vite: it serves the page it shipped with (`dist/index.html` and `dist/assets`, built by `prepack`) from the compiled API server, on the first free loopback port from 3001.
 
@@ -344,7 +347,8 @@ src/client/                React frontend
                            that was asked for, stripes for what refuses, the joint mark, each
                            swatch, and the spec-sheet callout. `MapFilters` holds the two
                            textures, each over one half of a node: a ring that slips off its fill
-                           for what is recovering, and a fill eaten through for what an outage stops
+                           for what is recovering, and a fill eaten through for what an outage stops.
+                           `mapKeys` is each key entry, which the key, the strip and the specimens read
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
     civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step. On
                            the demo the next step leads and the failing check is the line under it
@@ -371,6 +375,9 @@ src/client/                React frontend
   vocabulary.test.ts       One name per concept: fails if a surface uses a retired synonym
   testing/elements.ts      `findAll`, how a component test with no DOM finds the element in a
                            hook-free view's drawing and calls the handler it carries
+  dev/                     Pages Vite serves in a checkout and the build never reads.
+                           specimen.html: every node state, drawn by MapScene (`specimens.ts` is
+                           the list). render.html: what `npm run render:images` drives
   utils/
     configImporter.ts      inferDomain, and mapping an imported config onto the graph
     placeInTab.ts          A config read in the tab placed on the curated tree, by the engine's
@@ -396,6 +403,7 @@ src/client/                React frontend
     saveImage.ts           A drawing made into a file: `standalone` writes the page's custom
                            properties out and embeds the faces, `svgToPng` draws it on a canvas,
                            `pngScale` keeps a PNG inside every browser's canvas limit
+    mapFile.tsx            The whole map, or the relief, as the file the Image menu saves
 ```
 
 ### Shared, scripts and plugins
@@ -437,6 +445,10 @@ scripts/check-reach.ts     That merged work reaches main: a pull request's base 
                            its way there, and every merged one has to have arrived. reach.yml
                            runs it on pull requests, on each push to main and daily
 scripts/check-demo-data.ts That demo-data.json still matches what the engine builds from the fixture
+scripts/render-images.ts   The saved images, from the page's own code in a headless Chrome: the API
+                           server and Vite on loopback for the run, Chrome's own traffic off, and
+                           the files never under dist/ or src/. scripts/lib/chrome.ts is the
+                           DevTools client it shares with record-hero-gif.ts
 scripts/build-docs.ts      The docs as static pages under /ambit/docs/, and the sitemap written
                            from the same list; `npm run build` runs it after Vite
 scripts/adapters/          Deeper runtime readers than mcp-clients.ts: claude-code.ts · hermes.ts ·
