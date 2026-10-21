@@ -509,7 +509,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app${touring ? ' app--touring' : ''}`}>
+    <div className={`app${touring ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}`}>
       <AppDeck
         view={view}
         counts={view === 'tree' ? counts : null}

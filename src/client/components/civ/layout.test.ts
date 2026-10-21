@@ -477,6 +477,38 @@ test('framing never zooms below the floor, and then starts at the leftmost point
   expect(originOnScreen).toBeLessThan(375);
 });
 
+test('framing counts the canvas margin, and keeps the open node above a sheet', () => {
+  // A phone's strip above a bottom sheet: about 160px of map.
+  const view = { top: 8, width: 375, height: 160 };
+  const opts = { min: 0.7, max: 1.1 };
+  const one = [{ x: 500, y: 400 }];
+  const bare = frameScene(one, view, opts)!;
+  // The scene starts the margin's height into the scroller, so the frame
+  // scrolls that much further to put the same point in the same place.
+  expect(frameScene(one, view, { ...opts, insetTop: 80 })!.top - bare.top).toBe(80);
+
+  // What the open node needs sits rows above it and what it enables rows
+  // below, more than the strip holds even at the floor.
+  const lit = [
+    { x: 400, y: 70 },
+    { x: 570, y: 490 },
+    { x: 740, y: 700 },
+  ];
+  const node = { x: 570, y: 490 };
+  const shown = (f: { zoom: number; left: number; top: number }) => ({
+    x: node.x * f.zoom - f.left,
+    y: node.y * f.zoom + 12 - f.top,
+  });
+  // Framed from the top of the lit set, the node is under the sheet.
+  const top = shown(frameScene(lit, view, { ...opts, insetTop: 12 })!);
+  expect(top.y).toBeGreaterThan(view.top + view.height);
+  const kept = shown(frameScene(lit, view, { ...opts, insetTop: 12, keep: node })!);
+  expect(kept.y).toBeGreaterThan(view.top);
+  expect(kept.y).toBeLessThan(view.top + view.height);
+  expect(kept.x).toBeGreaterThan(0);
+  expect(kept.x).toBeLessThan(view.width);
+});
+
 test('framing nothing, or into no space, is no framing', () => {
   expect(frameScene([], { top: 0, width: 375, height: 400 }, { min: 0.7, max: 1 })).toBeNull();
   expect(
