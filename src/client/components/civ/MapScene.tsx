@@ -533,6 +533,9 @@ export function MapScene({
               const isSimAffected =
                 simulationMode !== 'none' && (simulatedCascadeIds.has(item.id) || isSimWeak);
               const isSimDimmed = simulationMode !== 'none' && !isSimRoot && !isSimAffected;
+              // A node the simulation repaints says what the simulation says:
+              // a passing check badge on a node that stops read as both.
+              const badged = !isSimRoot && !isSimAffected;
 
               const interventionCount = attentionInterventions[item.id] || 0;
               const isAttentionHot = activeLens === 'attention' && interventionCount > 0;
@@ -832,7 +835,7 @@ export function MapScene({
                     </text>
                   )}
 
-                  {!dimmed && isProven(item) && (
+                  {!dimmed && badged && isProven(item) && (
                     <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
                       <circle r={6.5} fill="var(--ok)" stroke="var(--bg-canvas)" strokeWidth={2} />
                       <text
@@ -846,7 +849,7 @@ export function MapScene({
                       </text>
                     </g>
                   )}
-                  {!dimmed && failingNode && (
+                  {!dimmed && badged && failingNode && (
                     <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
                       <circle
                         r={6.5}

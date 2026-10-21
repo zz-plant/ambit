@@ -1981,9 +1981,25 @@ button.app-sample-tag:hover {
 }
 
 .civ-key-hint {
+  display: grid;
   margin: 6px 6px 2px;
   font-size: var(--fs-xs);
   color: var(--text-muted);
+}
+
+.civ-key-hint > span {
+  grid-area: 1 / 1;
+}
+
+/* What an entry means takes the line at rest's place and wraps at its width. */
+.civ-key-said {
+  width: 0;
+  min-width: 100%;
+  color: var(--text-secondary);
+}
+
+.civ-key-hint.is-saying .civ-key-at-rest {
+  visibility: hidden;
 }
 
 /* The file a row of the Image choices saves, set apart at the row's end. */
@@ -2114,6 +2130,8 @@ button.app-sample-tag:hover {
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: 600;
+  white-space: nowrap;
+  flex: none;
   cursor: pointer;
 }
 

@@ -114,7 +114,7 @@ export function SimulationBanner({
           {hiddenByFocus > 0 ? ` The focus hides ${hiddenByFocus} of them.` : ''}
         </span>
         <button type="button" className="civ-sim-banner-close" onClick={clearSimulation}>
-          Done
+          End simulation
         </button>
       </div>
     </div>
