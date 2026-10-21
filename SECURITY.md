@@ -19,7 +19,7 @@ Ambit reads your agent configuration and, through the visualizer, writes back to
   - A request to any of these routes with no browser behind it must present the API token. So must a post to `/api/telemetry`, because work recorded there counts toward a promotion threshold a person set.
   - The page never runs a check. It copies `ambit verify <id>` for you to type, because a declared check is a command, and the id in it is quoted, since an id can be anything an agent or a sync file's author typed.
 - **No egress you did not type.** The graph is a local SQLite file and there is no telemetry. Any other path that moves the graph off the machine is in scope, and an exfiltration path is high severity. What reaches the network from Ambit's own code, and when:
-  - `ambit notify` and `ambit notify-approvals`, each only with a topic argument.
+  - `ambit notify` and `ambit notify --approvals`, each only with a topic argument.
   - `ambit dispatch` (and `propose`/`approve` with `--dispatch`), only with a webhook URL from `--to` or `AMBIT_APPROVAL_WEBHOOK`. It sends one proposal's summary or signed artifact, never a command.
   - `ambit incidents`, an empty GET to each device status URL and service URL your own manifest names. It sends nothing else; what each answer says is recorded in the local graph, as a check run on that device or service and, for an answer, the time it was last seen.
   - `ambit goal --judge`, the goal you typed, or with `--spec` each task of the spec no goal phrase matched, to a judgment model on this machine, and when none answers, to an embedding model on this machine (`AMBIT_EMBED_URL`, or Ollama's `127.0.0.1:11434`). A URL whose host is not `127.0.0.1`, `localhost` or `[::1]`, or that carries credentials, is refused, for either.

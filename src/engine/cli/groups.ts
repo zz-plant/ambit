@@ -14,7 +14,6 @@ const GROUPS: Record<string, string[]> = {
     'next',
     'council',
     'opportunities',
-    'opportunity',
     'roi',
     'propose',
     'portfolio',
@@ -29,19 +28,16 @@ const GROUPS: Record<string, string[]> = {
     'credentials',
     'weigh',
     'incidents',
-    'incident',
     'budget',
     'doctor',
     'connect',
     'init-rules',
-    'rules',
     'receipt',
     'ci',
   ],
   govern: [
     'people',
     'proposals',
-    'proposal',
     'approve',
     'reject',
     'apply',
@@ -56,9 +52,7 @@ const GROUPS: Record<string, string[]> = {
     'usage',
     'economics',
     'attention',
-    'digest',
     'notify',
-    'notify-approvals',
     'federation',
     'record',
     'signals',
@@ -74,11 +68,42 @@ const GROUPS: Record<string, string[]> = {
  * so it only rewrites when the word after it is one this group actually owns.
  */
 function resolveCommand(cmd: string | undefined, argv: string[]): { cmd?: string; argv: string[] } {
+  if (cmd && cmd in ALIASES) return canonical(cmd, argv);
   if (!cmd || !(cmd in GROUPS)) return { cmd, argv };
   const sub = argv.find(a => !a.startsWith('--'));
-  if (!sub || !GROUPS[cmd].includes(sub)) return { cmd, argv };
+  if (!sub) return { cmd, argv };
   const i = argv.indexOf(sub);
-  return { cmd: sub, argv: [...argv.slice(0, i), ...argv.slice(i + 1)] };
+  const rest = [...argv.slice(0, i), ...argv.slice(i + 1)];
+  if (GROUPS[cmd].includes(sub)) return { cmd: sub, argv: rest };
+  // `ambit plan opportunity <id>`, an old name under its group.
+  if (sub in ALIASES && GROUPS[cmd].includes(ALIASES[sub].to)) return canonical(sub, rest);
+  return { cmd, argv };
+}
+
+/**
+ * The names a command was also known by, and the one it is now.
+ *
+ * Seven commands had two names: a short form (`brief`, `digest`, `rules`), a
+ * singular for one item beside the plural for the list (`proposal <id>` and
+ * `proposals`, `opportunity <id>`, `incident resolve`), and `notify-approvals`
+ * beside `notify`. Each pair was listed as two commands, and a reader had to
+ * learn which to use where. Every old name still runs, here and only here: the
+ * switch knows the canonical name alone, help lists only it, and a typo is
+ * offered it.
+ */
+const ALIASES: Record<string, { to: string; flag?: string }> = {
+  brief: { to: 'briefing' },
+  digest: { to: 'attention' },
+  rules: { to: 'init-rules' },
+  proposal: { to: 'proposals' },
+  opportunity: { to: 'opportunities' },
+  incident: { to: 'incidents' },
+  'notify-approvals': { to: 'notify', flag: '--approvals' },
+};
+
+function canonical(alias: string, argv: string[]): { cmd: string; argv: string[] } {
+  const { to, flag } = ALIASES[alias];
+  return { cmd: to, argv: flag ? [...argv, flag] : argv };
 }
 
 /**
@@ -93,4 +118,4 @@ function commandWords(): string[] {
   return [...STANDALONE, ...Object.keys(GROUPS), ...Object.values(GROUPS).flat()];
 }
 
-export { GROUPS, STANDALONE, commandWords, resolveCommand };
+export { ALIASES, GROUPS, STANDALONE, commandWords, resolveCommand };

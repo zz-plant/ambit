@@ -3,6 +3,7 @@ import { planFor, simulateFrontier, deficits } from './planning.ts';
 import { attentionOwner, attentionValueCentsPerHour } from './economics.ts';
 import { catalogReport } from './catalog.ts';
 import {
+  DEFAULT_WINDOW_DAYS,
   DECIDED_CAPABILITY_SQL,
   KEEPER_KINDS as KEEPERS,
   MIDDLEWARE_KINDS as MIDDLEWARE,
@@ -24,7 +25,7 @@ import type { CapabilityRow, HumanInterventionRow, SessionLearningRow } from './
  * honest confidence level, so a person decides against evidence.
  */
 
-const WINDOW_DAYS = 30;
+const WINDOW_DAYS = DEFAULT_WINDOW_DAYS;
 /** An automation's assumed removal of middleware intervention time. An
  *  estimate, stated as such; the ROI loop replaces it with observation. */
 const REDUCTION = 0.9;
@@ -349,10 +350,10 @@ function allocate(items: OpportunityCase[], budgetCents: number, rate: number) {
  * The ranked shortlist.
  *
  *   ambit opportunities              → ranked by attention saved
- *   ambit opportunities --by=cash    → attention + resource dollars
- *   ambit opportunities --by=roi     → annualized return on setup cost
- *   ambit opportunities --by=reliability  → burden on failing capabilities
- *   ambit opportunities --by=frontier    → what acquiring would unlock
+ *   ambit opportunities --rank=cash    → attention + resource dollars
+ *   ambit opportunities --rank=roi     → annualized return on setup cost
+ *   ambit opportunities --rank=reliability  → burden on failing capabilities
+ *   ambit opportunities --rank=frontier    → what acquiring would unlock
  *   ambit opportunities --budget=10000   → the best combination within $10k
  */
 function opportunitiesFor(
@@ -411,9 +412,9 @@ function opportunitiesFor(
   };
 }
 
-/** One opportunity in full, for `ambit opportunity <id>`. */
+/** One opportunity in full, for `ambit opportunities <id>`. */
 function opportunityFor(db: Migratable, id?: string) {
-  if (!id) return { error: 'Usage: ambit opportunity <id> — an id from ambit opportunities' };
+  if (!id) return { error: 'Usage: ambit opportunities <id> — an id from ambit opportunities' };
   const match = /^opp-(\d+)$/.exec(id);
   if (!match) return { error: `${id} is not an opportunity id. See ambit opportunities.` };
   const idx = Number(match[1]) - 1;

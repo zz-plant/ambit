@@ -12,7 +12,7 @@ export const INSTALL = 'npx ambit-cli';
 
 /**
  * Who an approval from the browser is recorded as. The terminal asks for a
- * name (`ambit approve <id> <who>`); the browser has none to give, so it signs
+ * name (`ambit approve <id> --by=<who>`); the browser has none to give, so it signs
  * as the web surface and the panel shows that as "you".
  */
 export const WEB_ACTOR = 'human:web';

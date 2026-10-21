@@ -15,7 +15,7 @@ import { CHECK_RUN } from './vocabulary.ts';
  * This is the managed-ops vertical's first turn: monitoring finds a failure,
  * the ledger starts an incident run, canExecute says whether a restart is
  * permitted (ALLOW / CONFIRM / DENY), and the operator or an agent resolves it
- * with `ambit incident resolve` — which closes the run and reports MTTR from
+ * with `ambit incidents resolve` — which closes the run and reports MTTR from
  * the ledger's own timestamps.
  *
  * Each probe is also a check on the device or service it asked. The manifest
@@ -26,7 +26,7 @@ import { CHECK_RUN } from './vocabulary.ts';
  * availability decision until it answers again, with no rule of its own.
  *
  *   ambit incidents               probe the manifest; open runs for offline services
- *   ambit incident resolve svc:ollama recovered
+ *   ambit incidents resolve svc:ollama recovered
  */
 
 /** The recovery capability the manifest's services are checked against. A
@@ -208,7 +208,7 @@ async function incidents(db: Db) {
         grant: decision.governing_grant?.scope || undefined,
         target: decision.scope || undefined,
       },
-      resolve_with: `ambit incident resolve ${id} recovered`,
+      resolve_with: `ambit incidents resolve ${id} recovered`,
     });
   }
 
@@ -270,7 +270,7 @@ async function incidents(db: Db) {
  * run's own timestamps.
  */
 function resolveIncident(db: Db, serviceId?: string, outcome?: string) {
-  if (!serviceId) return { error: 'Usage: ambit incident resolve <svc:key> <outcome>' };
+  if (!serviceId) return { error: 'Usage: ambit incidents resolve <svc:key> <outcome>' };
   const id = serviceId.startsWith('svc:') ? serviceId : `svc:${serviceId}`;
 
   const open = db

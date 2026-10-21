@@ -3,7 +3,12 @@ import type { HumanInterventionRow, ProposalRow, SessionLearningRow } from './ro
 // The intervention vocabulary lives in one file: this list was here, again
 // under another name in opportunities.ts, and a third time as a subset in the
 // promotion suggester.
-import { DECIDED_CAPABILITY_SQL, KEEPER_KINDS, MIDDLEWARE_KINDS } from './vocabulary.ts';
+import {
+  DEFAULT_WINDOW_DAYS,
+  DECIDED_CAPABILITY_SQL,
+  KEEPER_KINDS,
+  MIDDLEWARE_KINDS,
+} from './vocabulary.ts';
 
 /**
  * Where the human is in the graph — and how much of the work still runs
@@ -71,7 +76,7 @@ const FIX_FOR: Record<string, string> = {
  * intervention, not three accidents.
  */
 function humanDigest(db: Migratable, days?: number | string) {
-  const window = days && Number(days) > 0 ? Number(days) : 7;
+  const window = days && Number(days) > 0 ? Number(days) : DEFAULT_WINDOW_DAYS;
 
   const actions = db
     .prepare(
@@ -238,7 +243,8 @@ async function notify(db: Migratable, topic?: string, days?: number | string): P
         'Usage: ambit notify <topic> — the ntfy topic to push to. Nothing is sent without one.',
     };
   const server = process.env.NTFY_SERVER || 'https://ntfy.sh';
-  const message = digestMessage(db, days);
+  // A push is a week's digest: a phone told about a month at a time is told too late.
+  const message = digestMessage(db, days ?? 7);
   try {
     const res = await fetch(`${server}/${encodeURIComponent(topic)}`, {
       method: 'POST',
@@ -332,7 +338,7 @@ function pendingMessage(db: Migratable): string {
       `Approve: ambit approve ${drafts
         .slice(0, 3)
         .map(d => d.id)
-        .join(' ')} <your name>`
+        .join(' ')} --by=<your name>`
     );
   }
   if (pending.length) {
@@ -349,12 +355,12 @@ function pendingMessage(db: Migratable): string {
  * The attention router: pushes a message to ntfy, when — and only when — a
  * topic is configured.
  *
- *   ambit notify-approvals <topic>   "N approved proposals await apply"
+ *   ambit notify <topic> --approvals   "N approved proposals await apply"
  *   NTFY_SERVER=... overrides ntfy.sh for self-hosted instances.
  */
 async function notifyPending(db: Migratable, topic?: string): Promise<any> {
   if (!topic)
-    return { error: 'Usage: ambit notify-approvals <topic> — nothing is sent without a topic.' };
+    return { error: 'Usage: ambit notify <topic> --approvals — nothing is sent without a topic.' };
   const server = process.env.NTFY_SERVER || 'https://ntfy.sh';
   const message = pendingMessage(db);
   try {

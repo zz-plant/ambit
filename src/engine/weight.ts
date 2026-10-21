@@ -32,7 +32,7 @@ import { MCP_CLIENTS, discoverMcpClients } from './mcp-clients.ts';
 import { mcpEntries, parseJsonc } from '../shared/opencode.ts';
 import { carryByRuntime } from '../shared/carry.ts';
 import { nearest } from '../shared/nearest.ts';
-import { isReached, tokensOf } from './vocabulary.ts';
+import { DEFAULT_WINDOW_DAYS, isReached, tokensOf } from './vocabulary.ts';
 
 /** How long one server gets to start and list its tools. `npx` fetching a package on first run is most of it. */
 const DEFAULT_TIMEOUT_SECONDS = 30;
@@ -41,7 +41,7 @@ const AT_ONCE = 4;
 /** Pages of `tools/list` followed before a listing is taken as complete. */
 const MAX_PAGES = 20;
 /** The window "not called" is judged over. */
-const USE_WINDOW_DAYS = 30;
+const USE_WINDOW_DAYS = DEFAULT_WINDOW_DAYS;
 /** The protocol version asked for. A server answers with the one it speaks, and `tools/list` is the same in each. */
 const PROTOCOL_VERSION = '2025-06-18';
 

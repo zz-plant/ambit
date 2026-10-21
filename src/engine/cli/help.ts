@@ -23,8 +23,8 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
                     judge answers; it suggests and writes nothing
   goal --spec <dir|tasks.md>   what a Spec Kit or OpenSpec spec's tasks need,
                     and the gap; the file is read as data, nothing in it runs
-  opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
-                    ranked investments — observed burden, priced, compared
+  opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
+                    ranked investments, or one in full
   verify [cap] [--history]   run the declared check, or show past verification;
                              --failing re-runs only the checks now failing
                              or recovering
@@ -33,6 +33,8 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   connect [runtime] register Ambit's MCP server in each runtime config it can write
 
   Grouped: graph · plan · check · govern · report — try \`ambit plan\`
+  A decision is taken --by=<person>, or by the one person declared. A report
+  over the ledger looks back --days=30 unless told otherwise.
   help --all        every command
   help [term]       one concept explained`;
 
@@ -83,10 +85,10 @@ plan — what to acquire next, and whether it paid
                           a next step, blocked or failing, the steps in order,
                           and the tasks nothing routed. Spec Kit and OpenSpec;
                           read as data, so no command, link or URL in it runs
-  plan opportunities [--by=attention|cash|roi|reliability|frontier] [--budget=N]
-                          ranked investments — observed burden, priced, compared;
-                          --budget allocates the best combination within $N
-  plan opportunity <id>   one ranked case in full
+  plan opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
+                          ranked investments, observed burden priced and compared,
+                          or one case in full; --budget allocates the best
+                          combination within $N
   plan propose <cap> [option] [--by=<who>]   draft a reviewable acquisition, with
                           its simulation; --by records who drafted it
   plan roi [proposal-id]  cumulative savings and forecast accuracy, or one
@@ -135,9 +137,9 @@ check — what is proven, what is permitted, what is currently broken
                           the ledger never saw called. Remote servers are not
                           contacted.
                           --recorded reads the last weighing and starts nothing
-  check incidents         probe the manifest, record each answer as a check, open
-                          incident runs for offline services
-  check incident resolve <svc> <outcome>   close an incident; MTTR from the ledger
+  check incidents [resolve <svc> <outcome>]   probe the manifest, record each
+                          answer as a check and open incident runs for offline
+                          services; or close one, with MTTR from the ledger
   check doctor            setup health: what works, what fails, what rests on one piece
   check connect [runtime] register Ambit's MCP server in each runtime config it can
                           write; cursor --ledger also adds the hooks that record
@@ -152,9 +154,10 @@ check — what is proven, what is permitted, what is currently broken
 govern — the reviewable path from proposal to applied change
   govern people [add <id> ["Name"]]   who may approve and set budgets; adding
                           one declares a name and grants nothing
-  govern proposals [--pending] / govern proposal <id>
-  govern approve <id> [<id>…] <person>   several in one sitting
-  govern reject <id> <person> ["why"]    a no, recorded — it teaches the next draft
+  govern proposals [id] [--pending]   the drafts, what waits on a decision, or one
+  govern approve <id> [<id>…] [--by=<person>]   several in one sitting
+  govern reject <id> [--by=<person>] ["why"]    a no, recorded — it teaches the
+                          next draft
   govern apply <id> / govern rollback <id>
   govern dispatch <id> [--to=<url>]   push a proposal to Slack, Discord,
                           Telegram, ntfy or any JSON endpoint. A draft goes
@@ -204,9 +207,9 @@ report — what the system cost to operate
                           tokens, so a session's tokens on it are a spend
                           against Hosted Inference's budget
   report attention [days] how much work still runs through the human
-  report notify <topic>   push the attention digest to ntfy — nothing is sent
-                          without a topic
-  report notify-approvals <topic>   push the approved-waiting count to ntfy
+  report notify <topic> [--approvals]   push the week's attention digest to ntfy,
+                          or with --approvals what waits on a decision; nothing
+                          is sent without a topic
   report record <cap> [class] [note]   record that a task was blocked
   report record skill:<name> --provides=<cap> --verify="<command>"   put a skill
                           the agent wrote on the map, with the check that proves it

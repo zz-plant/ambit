@@ -14,7 +14,7 @@ import { draftSummary } from './attention.ts';
  * receipt `ambit apply` will verify.
  *
  * What it never does: mint an approval. A webhook is a one-way channel out.
- * The reply comes back through `ambit approve <id> <person>` on a machine that
+ * The reply comes back through `ambit approve <id> --by=<person>` on a machine that
  * holds the approval key, which is what keeps a compromised chat from granting
  * anything.
  */
@@ -88,8 +88,8 @@ function proposalMessage(row: ProposalRow) {
     const bill = summary.recurring ? `, ${summary.recurring}` : '';
     lines.push(`${row.id}: ${row.goal} — ${summary.cost}${bill}${buys}`);
     if (summary.privacy) lines.push(`Privacy: ${summary.privacy}`);
-    lines.push(`Approve: ambit approve ${row.id} <your name>`);
-    lines.push(`Decline: ambit reject ${row.id} <your name> "why"`);
+    lines.push(`Approve: ambit approve ${row.id} --by=<your name>`);
+    lines.push(`Decline: ambit reject ${row.id} --by=<your name> "why"`);
   } else if (row.status === 'approved') {
     title = 'Ambit · approved, awaiting apply';
     lines.push(`${row.id}: ${row.goal} — approved by ${row.approved_by || 'someone'}`);

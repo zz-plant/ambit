@@ -70,7 +70,8 @@ function inverseOf(patch: any, currentConfig: any): any | null {
  * down.
  */
 function approveProposals(db: Db, ids: string[], who?: string) {
-  if (!ids.length) return { error: 'Usage: ambit approve <proposal-id> [<proposal-id>…] <person>' };
+  if (!ids.length)
+    return { error: 'Usage: ambit approve <proposal-id> [<proposal-id>…] --by=<person>' };
   if (ids.length === 1) return approveProposal(db, ids[0], who);
   const results = ids.map(id => ({ id, ...(approveProposal(db, id, who) as any) }));
   const approved = results.filter(r => !r.error);
@@ -262,6 +263,21 @@ function addPerson(db: Db, who?: string, name?: string) {
   };
 }
 
+/**
+ * The person a decision is taken by when none is named: the one person the
+ * graph knows, if there is exactly one. Approving, rejecting, setting a budget
+ * and widening a grant each refuse an unnamed person, which is right when
+ * several could have; on a machine with one, it made that person type their
+ * own name into every decision. The web's own actor is not a candidate: it is
+ * the page, not someone at the terminal.
+ */
+function soleDecider(db: Db): string | undefined {
+  const people = db
+    .prepare("SELECT id FROM capabilities WHERE category = 'human' AND id != 'human:web'")
+    .all<{ id: string }>();
+  return people.length === 1 ? people[0].id : undefined;
+}
+
 /** The people the graph knows, by id and name. */
 function listPeople(db: Db) {
   const people = db
@@ -281,7 +297,7 @@ function listPeople(db: Db) {
  * of a no. The reason is optional and is the most valuable part of the row.
  */
 function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: string) {
-  if (!proposalId) return { error: 'Usage: ambit reject <proposal-id> <person> ["why"]' };
+  if (!proposalId) return { error: 'Usage: ambit reject <proposal-id> --by=<person> ["why"]' };
   const row = db.prepare('SELECT id, goal, status FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status === 'applied') {
@@ -290,7 +306,8 @@ function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: stri
     };
   }
   const humanId = who ? (who.startsWith('human:') ? who : `human:${who}`) : null;
-  if (!humanId) return { error: 'Name the person deciding: ambit reject <proposal-id> <person>' };
+  if (!humanId)
+    return { error: 'Name the person deciding: ambit reject <proposal-id> --by=<person>' };
   const person = db
     .prepare("SELECT id, name FROM capabilities WHERE id = ? AND category = 'human'")
     .get(humanId);
@@ -322,7 +339,7 @@ function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: stri
 }
 
 function approveProposal(db: Db, proposalId?: string, who?: string) {
-  if (!proposalId) return { error: 'Usage: ambit approve <proposal-id> <person>' };
+  if (!proposalId) return { error: 'Usage: ambit approve <proposal-id> --by=<person>' };
   const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status === 'approved')
@@ -333,7 +350,8 @@ function approveProposal(db: Db, proposalId?: string, who?: string) {
     };
 
   const humanId = who ? (who.startsWith('human:') ? who : `human:${who}`) : null;
-  if (!humanId) return { error: 'Name the person approving: ambit approve <proposal-id> <person>' };
+  if (!humanId)
+    return { error: 'Name the person approving: ambit approve <proposal-id> --by=<person>' };
   const person = db
     .prepare("SELECT id, name FROM capabilities WHERE id = ? AND category = 'human'")
     .get(humanId);
@@ -392,13 +410,13 @@ function pendingProposals(db: Db) {
   return {
     waiting: drafts.length,
     drafts,
-    approve_all: `ambit approve ${drafts.map(d => d.id).join(' ')} <your name>`,
-    note: 'Approving several at once is one sitting rather than several interruptions; each still gets its own signed artifact. `ambit reject <id> <person> "why"` records a no, which teaches the next draft.',
+    approve_all: `ambit approve ${drafts.map(d => d.id).join(' ')} --by=<your name>`,
+    note: 'Approving several at once is one sitting rather than several interruptions; each still gets its own signed artifact. `ambit reject <id> --by=<person> "why"` records a no, which teaches the next draft.',
   };
 }
 
 function showProposal(db: Db, id?: string) {
-  if (!id) return { error: 'Usage: ambit proposal <id>' };
+  if (!id) return { error: 'Usage: ambit proposals <id>' };
   const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
   if (!row) return { error: `No proposal ${id}. See ambit proposals.` };
   return {
@@ -434,7 +452,7 @@ function applyProposal(db: Db, proposalId?: string) {
   if (row.status === 'applied') return { error: `${proposalId} is already applied.` };
   if (row.status !== 'approved') {
     return {
-      error: `${proposalId} is ${row.status}. A person has to approve it first: ambit approve ${proposalId} <person>`,
+      error: `${proposalId} is ${row.status}. A person has to approve it first: ambit approve ${proposalId} --by=<person>`,
     };
   }
 
@@ -687,6 +705,7 @@ export {
   ensureActor,
   addPerson,
   listPeople,
+  soleDecider,
   approveProposal,
   approveProposals,
   decideDraft,

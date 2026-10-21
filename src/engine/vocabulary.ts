@@ -281,7 +281,20 @@ const TOKEN_SOURCES: Readonly<Record<string, string>> = {
   'amp-log': 'Amp',
 };
 
+/**
+ * How far back a report over the work ledger looks when no window is given:
+ * attention, the audit trail, failure signals, usage, unmapped use, token
+ * counts, the council and the opportunity ranking, and the loop page that
+ * shows them. They had settled on 30 days apiece, except `attention` and
+ * `audit`, at 7, so `ambit attention` and the Time & cost page read the same
+ * ledger over different months. A window that means something else keeps its
+ * own: ROI compares before and after over 60, a receipt covers the last hour,
+ * and `usage --windows` the last day.
+ */
+const DEFAULT_WINDOW_DAYS = 30;
+
 export {
+  DEFAULT_WINDOW_DAYS,
   REACHED_STATES,
   FAILING,
   RECOVERING,

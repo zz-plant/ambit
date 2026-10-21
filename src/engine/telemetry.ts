@@ -23,7 +23,7 @@ import type {
   WorkEventRow,
   WorkRunRow,
 } from './rows.ts';
-import { GATE_KINDS, TOKEN_SOURCES } from './vocabulary.ts';
+import { DEFAULT_WINDOW_DAYS, GATE_KINDS, TOKEN_SOURCES } from './vocabulary.ts';
 
 /**
  * The work ledger: one row per run of actual effort, the events inside it, the
@@ -615,7 +615,7 @@ function runTimeline(db: Migratable, id?: string): RunResponse {
  * often, for long, or by an intervention-heavy pattern of runs is a candidate
  * for "make this cheaper". Counts and seconds only — economic value is WP-4.
  */
-function usageReport(db: Migratable, days = 30): any {
+function usageReport(db: Migratable, days = DEFAULT_WINDOW_DAYS): any {
   const rows = db
     .prepare(
       `SELECT capability_id, COUNT(*) times, ${TIMED_SECONDS} duration_seconds, ${TIMED_USES} timed
@@ -683,7 +683,7 @@ function usageReport(db: Migratable, days = 30): any {
  * .ambit/techtree.json: a node matched to the entry by its id, which runs
  * nothing (rule 7), and nothing here writes it.
  */
-function unmappedUse(db: Db, days = 30): UnmappedResponse {
+function unmappedUse(db: Db, days = DEFAULT_WINDOW_DAYS): UnmappedResponse {
   let tools: { tool: string; last: string }[] = [];
   try {
     tools = db
@@ -819,7 +819,7 @@ const TOKEN_TIME = 'CASE WHEN r.written_at IS NULL THEN w.started_at ELSE r.reco
  *
  * A token is in the window when the hour it was used in is (`TOKEN_TIME`).
  */
-function tokenUsage(db: Migratable, days = 30) {
+function tokenUsage(db: Migratable, days = DEFAULT_WINDOW_DAYS) {
   const rows = db
     .prepare(
       `SELECT r.resource_id AS resource, r.unit AS unit, w.source AS source,

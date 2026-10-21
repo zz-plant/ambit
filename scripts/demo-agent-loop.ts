@@ -215,7 +215,7 @@ const frames: Frame[] = [
     who: 'human',
     hold: 3,
     lines: [
-      { t: `$ ambit approve ${proposalId} jordan`, c: CMD },
+      { t: `$ ambit approve ${proposalId} --by=jordan`, c: CMD },
       ...take(approveOut, 5),
       { t: '', c: TXT },
       { t: '  Signed, and it expires. An approval is an artifact, not a mood.', c: DIM },

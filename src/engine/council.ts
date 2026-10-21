@@ -20,7 +20,7 @@
 import { shellQuote } from '../shared/shell.ts';
 import type { LoopAdvisor, LoopCouncil } from '../shared/api.ts';
 import type { Db } from './db.ts';
-import { FAILING_SQL, REACHED_SQL } from './vocabulary.ts';
+import { DEFAULT_WINDOW_DAYS, FAILING_SQL, REACHED_SQL } from './vocabulary.ts';
 import { authorityReport, brokenFoundations, narrower, suggestPromotions } from './assurance.ts';
 import { computeDecay, singlePointsOfFailure } from './inference.ts';
 import { humanDigest } from './attention.ts';
@@ -33,7 +33,7 @@ type Motion = NonNullable<LoopCouncil['motion']>;
 type Node = { id: string; name: string };
 
 /** The ledger window the Treasury seat reads, the same as the loop page's. */
-const WINDOW_DAYS = 30;
+const WINDOW_DAYS = DEFAULT_WINDOW_DAYS;
 
 const plural = (n: number, one: string, many = `${one}s`) => (n === 1 ? one : many);
 const list = (names: string[], max = 3) =>
@@ -169,7 +169,7 @@ function treasury(db: Db, motion: Motion | null): LoopAdvisor {
     return {
       ...seat,
       says: `Stepping in for ${motion.name} cost ${hours}h this month; reaching it ${pays}.`,
-      command: `ambit opportunity ${shellQuote(String(priced.id))}`,
+      command: `ambit opportunities ${shellQuote(String(priced.id))}`,
       subject: { id: motion.id, name: motion.name },
       stance: payback_ == null ? 'against' : 'for',
     };
@@ -189,7 +189,7 @@ function treasury(db: Db, motion: Motion | null): LoopAdvisor {
     return {
       ...seat,
       says: `The ledger prices ${name} first: it pays back in ${payback(Number(first.payback_months))} and recovers $${saves} a month, and ${motion.name} is ${onTheWay ? 'the step to it' : 'not on the way to it'}.`,
-      command: `ambit opportunity ${shellQuote(String(first.id))}`,
+      command: `ambit opportunities ${shellQuote(String(first.id))}`,
       subject: { id: String(first.capability_id), name },
       stance: onTheWay ? 'for' : 'neutral',
     };

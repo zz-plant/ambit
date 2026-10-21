@@ -2,7 +2,13 @@ import type { Db } from './db.ts';
 import type { AuditEvent, AuditOutcome, AuditResponse } from '../shared/api.ts';
 import { canExecute } from './assurance.ts';
 import { delegationRecords } from './delegation.ts';
-import { ACT_OUTCOMES, AUDIT_OUTCOMES, RUN_FAILED, RUN_SUCCEEDED } from './vocabulary.ts';
+import {
+  DEFAULT_WINDOW_DAYS,
+  ACT_OUTCOMES,
+  AUDIT_OUTCOMES,
+  RUN_FAILED,
+  RUN_SUCCEEDED,
+} from './vocabulary.ts';
 import type {
   CapabilityRow,
   CapabilityUseRow,
@@ -562,7 +568,7 @@ function auditStream(db: Db | null, opts: { days?: number; limit?: number } = {}
 }
 
 function auditFor(db: Db, target?: string) {
-  if (!target) return auditRecent(db, 7);
+  if (!target) return auditRecent(db, DEFAULT_WINDOW_DAYS);
   if (/^run-/.test(target)) return auditRun(db, target);
   if (/^prop-/.test(target)) return auditProposal(db, target);
   if (/^human:/.test(target) || /^[a-z-]+$/.test(target)) return auditActor(db, target);

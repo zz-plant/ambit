@@ -635,7 +635,7 @@ export function executeThroughControlPlane(
         challenge: challengeHash,
         missing_node: missingAuthorizationNode,
         required_approver: 'human:security-lead',
-        command_to_remediate: `ambit approve ${proposalId} human:security-lead`,
+        command_to_remediate: `ambit approve ${proposalId} --by=human:security-lead`,
       },
       hmac_challenge: challengeHash,
       audit_summary: auditSummary,

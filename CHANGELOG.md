@@ -6,6 +6,15 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### One name for each command, one meaning for each flag, one default window
+
+Every old spelling still runs; help teaches the one below.
+
+- **One name per command.** `brief`, `digest` and `rules` are `briefing`, `attention` and `init-rules`. A command and its singular are one command: `proposals <id>`, `opportunities <id>` and `incidents resolve <svc> <outcome>` replace `proposal`, `opportunity` and `incident`, and `notify <topic> --approvals` replaces `notify-approvals`. The aliases live in one table in `src/engine/cli/groups.ts`, so the switch, the help and the typo suggestions all know the canonical name alone.
+- **`ambit check` lists its group**, as every other group does. It ran the doctor, under a name that also meant the CI check, which is `ambit ci`.
+- **`--by` always names a person.** `approve` and `reject` take `--by=<person>` as every other decision does, and the trailing name they took before still works; with neither, the decision is the one person the graph knows, so on a machine with one person nobody types their own name into every decision. A mistyped name is refused, never read as a second proposal. The ranking of opportunities is `--rank=`, and `record` names a runtime with `--runtime=`; `--by` still means each there.
+- **One default window.** Every report over the ledger looks back 30 days unless told otherwise (`DEFAULT_WINDOW_DAYS`), and takes `--days=N` as well as the bare number: `attention` and `audit` looked back 7, so `ambit attention` and the Time & cost page read the same ledger over different months. ROI keeps 60 days before and after, a receipt the last hour, `usage --windows` the last day, and `notify` a week, since a phone told about a month at a time is told too late.
+
 ### The first ten minutes, read the way they were meant
 
 A walk through the commands a new user types, from a fresh home, turned up five places the CLI made them do the work:

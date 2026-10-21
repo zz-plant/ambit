@@ -295,7 +295,7 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
         plan: `ambit goal ${shellQuote(short)}`,
         // Both rankers have priced this one. Say so rather than pretending
         // this is the only reading.
-        priced_case: priced.has(c.id) ? `ambit opportunity ${priced.get(c.id)}` : undefined,
+        priced_case: priced.has(c.id) ? `ambit opportunities ${priced.get(c.id)}` : undefined,
       };
     }),
     note: observed

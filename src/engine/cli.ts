@@ -107,6 +107,7 @@ import { auditFor } from './audit.ts';
 import {
   addPerson,
   listPeople,
+  soleDecider,
   approveProposal,
   approveProposals,
   rejectProposal,
@@ -155,6 +156,12 @@ async function runCommand(
   // exactly one node, and never a guess between two. Five commands each used
   // to read the word their own way, so `github` worked in one, was prefixed
   // into `combo:github` in another and printed "Nothing to report" in a third.
+  // The person deciding: `--by`, or else the one person the graph knows. Every
+  // decision names one, and `--by` is how every command takes it.
+  const by = () => value('by') ?? soleDecider(db);
+  // A window in days, as `--days=N` or the bare number every report used to
+  // take; undefined leaves the report its default (DEFAULT_WINDOW_DAYS).
+  const days = (positionalAt = arg) => Number(value('days')) || Number(positionalAt) || undefined;
   const named = (given?: string): { id: string } | { error: string; did_you_mean?: string[] } => {
     const r = resolveCapability(db, given);
     if (r.ok) return { id: r.id };
@@ -166,8 +173,7 @@ async function runCommand(
     // What an agent should know before its first tool call. Prose by default
     // because that is what gets pasted into a system prompt; --json for the
     // runtime hooks that compose it into something else.
-    case 'briefing':
-    case 'brief': {
+    case 'briefing': {
       if (flags.has('--json')) emit(briefing(db, { mark: !flags.has('--peek') }));
       else emitText(briefingText(db, { mark: !flags.has('--peek') }));
       break;
@@ -183,7 +189,7 @@ async function runCommand(
       emit(council(db));
       break;
     case 'signals':
-      emit(signalReport(db, Number(arg) || undefined));
+      emit(signalReport(db, days()));
       break;
     case 'preferences':
       // Declared, or observed: what someone said they want, and what they have
@@ -204,7 +210,7 @@ async function runCommand(
             amount: value('amount'),
             period: value('period'),
             scope: value('scope'),
-            person: value('by'),
+            person: by(),
           })
         );
       else if (arg === 'clear')
@@ -244,7 +250,7 @@ async function runCommand(
       else if (arg === 'combos') emit(discoverCombos(db));
       else if (arg === 'affordances') emit(affordanceDomains(db));
       else if (arg === 'capacity') emit(capacityReport());
-      else if (arg === 'unmapped') emit(unmappedUse(db, Number(value('days')) || 30));
+      else if (arg === 'unmapped') emit(unmappedUse(db, days(positional[1])));
       else emitRaw(exportGraph(db), false);
       break;
     }
@@ -308,15 +314,12 @@ async function runCommand(
       break;
     }
     case 'attention':
-    case 'digest':
-      emit(humanDigest(db, arg));
+      emit(humanDigest(db, days()));
       break;
     case 'notify':
-      // async: the push is an HTTP POST and must complete before close.
-      emit(await notify(db, arg));
-      break;
-    case 'notify-approvals':
-      emit(await notifyPending(db, arg));
+      // async: the push is an HTTP POST and must complete before close. The
+      // attention digest, or with --approvals what waits on a decision.
+      emit(flags.has('--approvals') ? await notifyPending(db, arg) : await notify(db, arg));
       break;
     case 'work':
       emit(workReport(db, parseInt(arg, 10) || 20));
@@ -332,7 +335,7 @@ async function runCommand(
         emit(usageWindows(db, { days: parseInt(arg, 10) || 1 }), r =>
           renderWindows(r, terminalPalette())
         );
-      else emit(usageReport(db, parseInt(arg, 10) || 30));
+      else emit(usageReport(db, days()));
       break;
     case 'economics':
       if (arg === 'price')
@@ -347,30 +350,30 @@ async function runCommand(
       else emit(economicsReport(db));
       break;
     case 'opportunities': {
-      const byFlag = [...flags].find(f => f.startsWith('--by='));
-      const by = (byFlag ? byFlag.slice(5) : undefined) as any;
+      // One case, or the ranked list. The order is `--rank=`; `--by=` named it
+      // before, and `--by=` names a person in every other command.
+      if (arg) {
+        emit(opportunityFor(db, arg));
+        break;
+      }
+      const by = (value('rank') ?? value('by')) as any;
       const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
       const budget = budgetFlag ? Number(budgetFlag.slice(9)) : undefined;
       emit(opportunitiesFor(db, by, Number.isFinite(budget as any) ? budget : undefined));
       break;
     }
-    case 'opportunity':
-      emit(opportunityFor(db, arg));
-      break;
     case 'roi':
       // No proposal id means the cumulative headline: what every applied
       // proposal saved, and whether the predictions held.
       emit(arg ? roiFor(db, arg) : roiSummary(db));
       break;
     case 'incidents':
-      // async: probing the manifest is a set of HTTP checks.
-      emit(await incidents(db));
-      break;
-    case 'incident': {
+      // Probe and open, or close one: `incidents resolve <svc> <outcome>`.
       if (arg === 'resolve') emit(resolveIncident(db, positional[1], positional[2]));
-      else emit({ error: 'Usage: ambit incident resolve <svc:key> <outcome>' });
+      else if (arg) emit({ error: 'Usage: ambit incidents [resolve <svc:key> <outcome>]' });
+      // async: probing the manifest is a set of HTTP checks.
+      else emit(await incidents(db));
       break;
-    }
     case 'portfolio': {
       const budgetFlag = [...flags].find(f => f.startsWith('--budget='));
       const budget = budgetFlag ? Number(budgetFlag.slice(9)) : undefined;
@@ -381,7 +384,8 @@ async function runCommand(
       emit(catalogReport(db, arg));
       break;
     case 'audit':
-      emit(auditFor(db, arg));
+      // A window by `--days=N` as everywhere else; the bare number still works.
+      emit(auditFor(db, value('days') ?? arg));
       break;
     case 'federation': {
       const verb = arg;
@@ -473,7 +477,7 @@ async function runCommand(
                 scope: value('scope'),
                 ttl: value('ttl'),
                 expires: value('expires'),
-                by: value('by'),
+                by: by(),
                 note: value('note'),
               })
             );
@@ -482,7 +486,7 @@ async function runCommand(
         // Somewhere acting does not matter, so evidence can be gathered where
         // a mistake costs nothing.
         if (positional[1] === 'remove') emit(removeSandbox(db, positional[2]));
-        else emit(declareSandbox(db, positional[1], value('by'), positional[2]));
+        else emit(declareSandbox(db, positional[1], by(), positional[2]));
       } else if (arg === 'promote') {
         if (!positional[1]) emit(promotionReport(db));
         else if (!('id' in named(positional[1]))) emit(named(positional[1]));
@@ -494,7 +498,7 @@ async function runCommand(
               after: value('after'),
               window: value('window'),
               scope: value('scope'),
-              person: value('by'),
+              person: by(),
             })
           );
       } else if (arg) {
@@ -569,7 +573,7 @@ async function runCommand(
         emit(
           recordObjection(db, {
             record: positional[1] || value('record') || '',
-            by: value('by') || '',
+            by: by() || '',
             basis: value('basis') || '',
             requested:
               value('requested') === 'reversal'
@@ -586,7 +590,7 @@ async function runCommand(
             objection: positional[1] || value('objection') || '',
             disposition: flags.has('--refuse') ? 'refused' : 'upheld',
             because: value('because') || '',
-            by: value('by') || '',
+            by: by() || '',
           })
         );
       else if (arg === 'objections') emit(unansweredObjections(db));
@@ -605,7 +609,7 @@ async function runCommand(
               system: value('system') || '',
               instance: value('instance'),
               location: value('from') || '',
-              by: value('by') || '',
+              by: by() || '',
             })
           );
         else if (action === 'disable') emit(setDelegationSourceEnabled(db, id, false));
@@ -673,22 +677,31 @@ async function runCommand(
       break;
     }
     case 'proposals':
-      // What exists, or what is actually waiting on a decision.
-      emit(flags.has('--pending') ? pendingProposals(db) : listProposals(db));
-      break;
-    case 'proposal':
-      emit(showProposal(db, arg));
+      // One in full, what exists, or what is actually waiting on a decision.
+      if (arg) emit(showProposal(db, arg));
+      else emit(flags.has('--pending') ? pendingProposals(db) : listProposals(db));
       break;
     case 'people':
       // Declaring is not granting: a name the trail can carry, nothing more.
       emit(arg === 'add' ? addPerson(db, positional[1], positional[2]) : listPeople(db));
       break;
     case 'approve': {
-      // The last positional is the person; everything before it is a proposal.
+      // Every positional is a proposal, unless the last names a person, which
+      // is how the person used to be given; `--by` is how every other decision
+      // takes one, and with neither it is the one person the graph knows.
       // Approving a week's drafts in one sitting is the difference between an
       // environment that grows and a backlog nobody opens.
-      const ids = positional.slice(0, -1);
-      const person = positional[positional.length - 1];
+      // A trailing word that is not a proposal id is the person, known or not:
+      // a mistyped name must be refused as one, never read as a second id and
+      // approved under the default person.
+      const last = positional[positional.length - 1];
+      const trailing = !value('by') && positional.length > 1 && !/^prop-/.test(last ?? '');
+      const ids = trailing ? positional.slice(0, -1) : positional;
+      const person = trailing ? positional[positional.length - 1] : by();
+      if (!person) {
+        emit({ error: whoDecides(db, 'ambit approve <id> [<id>…] --by=<person>') });
+        break;
+      }
       const approved: any =
         ids.length > 1 ? approveProposals(db, ids, person) : approveProposal(db, arg, person);
       // --dispatch sends the signed artifact where the person is, so what
@@ -709,9 +722,20 @@ async function runCommand(
       } else emit(approved);
       break;
     }
-    case 'reject':
-      emit(rejectProposal(db, arg, positional[1], positional[2]));
+    case 'reject': {
+      // `reject <id> --by=<person> ["why"]`, or the older `reject <id> <person> ["why"]`.
+      // One word is the person, as it always was; a reason has spaces in it.
+      // A misspelt name is refused, never filed as the reason under someone else.
+      const word = positional[1];
+      const trailing = !value('by') && Boolean(word) && !/\s/.test(word as string);
+      const person = trailing ? word : by();
+      if (!person) {
+        emit({ error: whoDecides(db, 'ambit reject <id> --by=<person> ["why"]') });
+        break;
+      }
+      emit(rejectProposal(db, arg, person, trailing ? positional[2] : positional[1]));
       break;
+    }
     case 'apply':
       emit(applyProposal(db, arg));
       break;
@@ -752,7 +776,9 @@ async function runCommand(
             name: value('name'),
             provides: value('provides'),
             verify: value('verify'),
-            runtime: value('by'),
+            // Which runtime wrote the skill. `--by` named it before, and names
+            // a person everywhere else.
+            runtime: value('runtime') ?? value('by'),
             description: value('description'),
           })
         );
@@ -820,8 +846,7 @@ async function runCommand(
       );
       break;
     }
-    case 'init-rules':
-    case 'rules': {
+    case 'init-rules': {
       const dryRun = flags.has('--dry-run');
       const target = value('target') || arg;
       emit(runInitRules(target, { dryRun }));
@@ -834,7 +859,13 @@ async function runCommand(
     }
     case 'check':
     case 'ci': {
-      if (flags.has('--ci') || cmd === 'ci' || arg === 'ci') {
+      // `ambit check` alone lists its group, as every other group does; it ran
+      // the doctor, under a name that also meant the CI check.
+      if (cmd === 'check' && !flags.has('--ci')) {
+        emitText(groupHelp('check'));
+        break;
+      }
+      {
         const strict = flags.has('--strict');
         const writeStepSummary =
           flags.has('--markdown') || flags.has('--ci') || Boolean(process.env.GITHUB_STEP_SUMMARY);
@@ -847,8 +878,6 @@ async function runCommand(
         if (!res.ok) {
           process.exitCode = res.exit_code;
         }
-      } else {
-        emit(runDoctor(db));
       }
       break;
     }
@@ -1065,7 +1094,7 @@ function result(argv: string[], state: { value: unknown; calls: number }): any {
  * without awaiting anything — which is all but three of them.
  *
  * Synchronous on purpose. `runCommand` is declared async because `notify`,
- * `notify-approvals`, `dispatch` and `incidents` reach the network, `weigh`
+ * `notify`, `dispatch` and `incidents` reach the network, `weigh`
  * waits on the tool servers it starts (and
  * `propose`/`approve` do when asked to `--dispatch`, and `goal` asks a local
  * judgment model when given `--judge`), but every other case
@@ -1250,6 +1279,19 @@ async function main() {
   }
   await runCommand(db, cmd, positional, flags, mappingOverride);
   db.close();
+}
+
+/** The error when no one can be taken to decide: who could, or how to become one. */
+function whoDecides(db: Db, usage: string): string {
+  const people = db
+    .prepare(
+      "SELECT id FROM capabilities WHERE category = 'human' AND id != 'human:web' ORDER BY id"
+    )
+    .all<{ id: string }>()
+    .map(p => p.id.replace(/^human:/, ''));
+  return people.length
+    ? `Name the person deciding: ${usage}, one of ${people.join(', ')}.`
+    : `No person is declared to decide. ambit people add <id> declares you; then ${usage}.`;
 }
 
 /**

@@ -186,7 +186,7 @@ export default function App() {
     // the terminal would run.
     proposalApproved: id =>
       setToast(
-        `Approved ${id}. Review it with \`ambit proposal ${id}\`, then apply it with \`ambit apply ${id}\`.`
+        `Approved ${id}. Review it with \`ambit proposals ${id}\`, then apply it with \`ambit apply ${id}\`.`
       ),
   });
 

@@ -11,7 +11,14 @@ import { join } from 'node:path';
 import type { Db } from './db.ts';
 import { ENGINE_DIR } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
-import { CHECK_RUN, CHECK_RUN_SQL, FAILING_SQL, graphCounts, REACHED_SQL } from './vocabulary.ts';
+import {
+  DEFAULT_WINDOW_DAYS,
+  CHECK_RUN,
+  CHECK_RUN_SQL,
+  FAILING_SQL,
+  graphCounts,
+  REACHED_SQL,
+} from './vocabulary.ts';
 import {
   authorityReport,
   evidenceCount,
@@ -862,7 +869,7 @@ export function loopView(db: Db): LoopResponse {
 }
 
 /** The window every figure on the loop page is drawn over. */
-const LOOP_WINDOW_DAYS = 30;
+const LOOP_WINDOW_DAYS = DEFAULT_WINDOW_DAYS;
 
 /**
  * What runs without a person, what could, and what is spent. Read from the

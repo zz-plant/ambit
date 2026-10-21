@@ -110,7 +110,7 @@ function demoCouncil(): LoopCouncil {
         seat: 'treasury',
         reads: 'the ledger',
         says: 'The ledger prices Vector Store first: it pays back in 9 days and recovers $248 a month, and Embeddings is the step to it.',
-        command: 'ambit opportunity opp-1',
+        command: 'ambit opportunities opp-1',
         subject: { id: 'combo:vector-store', name: 'Vector Store' },
         stance: 'for',
       },

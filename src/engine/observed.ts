@@ -166,7 +166,7 @@ function observedReport(db: Db) {
   const learned = observedPreferences(db);
   if (!decided.length) {
     return {
-      note: 'Nothing decided yet. Every approval and every rejection teaches the draft what to choose — `ambit reject <id> <person> "why"` is the half that used to go unrecorded.',
+      note: 'Nothing decided yet. Every approval and every rejection teaches the draft what to choose — `ambit reject <id> --by=<person> "why"` is the half that used to go unrecorded.',
     };
   }
   return {

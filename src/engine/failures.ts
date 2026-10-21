@@ -18,6 +18,7 @@
 import type { Db } from './db.ts';
 import { loadTechTree, recordingHint } from './paths.ts';
 import { type BLOCK_CLASSES, blockedAction } from './plan/deficits.ts';
+import { DEFAULT_WINDOW_DAYS } from './vocabulary.ts';
 
 type BlockClass = (typeof BLOCK_CLASSES)[number];
 
@@ -251,8 +252,8 @@ function captureFailure(db: Db, input: RawFailure) {
  * that the model cannot name is a gap in the model, and hiding it would make
  * Ambit look more complete than it is.
  */
-function signalReport(db: Db, days = 30) {
-  const window = `-${Number(days) > 0 ? Number(days) : 30} days`;
+function signalReport(db: Db, days = DEFAULT_WINDOW_DAYS) {
+  const window = `-${Number(days) > 0 ? Number(days) : DEFAULT_WINDOW_DAYS} days`;
   const total = db
     .prepare("SELECT COUNT(*) AS n FROM failure_signals WHERE timestamp >= datetime('now', ?)")
     .get(window);

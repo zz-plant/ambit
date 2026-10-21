@@ -380,7 +380,7 @@ Choosing the hosted alternatives (`ambit propose retrieval 1`) takes it to 13 mi
 Where an acquisition genuinely *is* a config change, the step carries a declarative patch and Ambit derives its undo, removing what it adds or restoring what it overwrites. Anything needing an installer gets no inverse, and a proposal is `applicable` only when every step has one.
 
 ```
-ambit approve prop-msrrv9c2 kanav
+ambit approve prop-msrrv9c2 --by=kanav
   proposal: prop-msrrv9c2 · goal: Web Research
   approved by: Kanav · applicable: true
   note: Approved. Every step has an inverse. The approval artifact is signed and expires in 24 hours.
@@ -435,7 +435,7 @@ graph      impact <id> · catalog <cap> · where · skills · objects [target]
 plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · next [n]
            goal --spec <dir|tasks.md> [--judge[=url]]
            reversible
-           opportunities [--by=…] [--budget=N] · opportunity <id>
+           opportunities [id] [--rank=…] [--budget=N]
            propose <cap> [option] [--for="…"] [--by=<who>] · roi [proposal-id]
            portfolio [--budget=N]
 check      verify [cap] [--history] [--target=<object>] · verify --failing
@@ -444,20 +444,20 @@ check      verify [cap] [--history] [--target=<object>] · verify --failing
            authority grant <cap> <mode> [--ttl=30m] [--scope=X] [--by=<person>]
            authority sandbox [<target> --by=<person>] · budget [set|clear]
            can <cap> [--target=X] [--spend=N] · gate (the Claude Code hook) · credentials
-           incidents · incident resolve <svc> <outcome>
+           incidents [resolve <svc> <outcome>]
            doctor · connect [runtime] [--ledger] [--statusline] [--dry-run]
            init-rules [target] [--dry-run]
            receipt [hours] · ci [--strict] [--markdown]
 govern     people [add <id> ["Name"]]
-           proposals [--pending] · proposal <id> · approve <id> [<id>…] <person>
-           reject <id> <person> ["why"]
+           proposals [id] [--pending] · approve <id> [<id>…] [--by=<person>]
+           reject <id> [--by=<person>] ["why"]
            apply <id> · rollback <id> · dispatch <id> [--to=<url>]
            history [since <when> [<until>]]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest <file>
            delegation object|answer|objections · delegation source add|sources|pull
 report     work [limit] · usage [days] [--windows] · economics [price <model>] · attention [days]
-           digest [days] · notify <topic> · notify-approvals <topic>
+           notify <topic> [--approvals]
            record <cap> [class] [note] · record skill:<name> --provides= --verify=
            signals [days] · preferences [--observed] · federation export|import
            statusline [--json] (the Claude Code status line)
@@ -504,7 +504,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | **govern** — *the reviewable path from proposal to applied change* | |
 | `ambit people add <id> ["Name"]` | Declare a person budgets and approvals can name. It grants nothing; it gives the trail a name to carry, and the engine refuses a decision from someone it does not know |
 | `ambit proposals --pending` | The drafts waiting on a decision, each with cost, bill and what it unlocks, so approving is one sitting and not one interruption per proposal |
-| `ambit reject <id> <person> ["why"]` | A refusal, recorded with its reason, so the next draft and `ambit preferences --observed` can learn the shape of a no. An approval the draft held can no longer be applied |
+| `ambit reject <id> --by=<person> ["why"]` | A refusal, recorded with its reason, so the next draft and `ambit preferences --observed` can learn the shape of a no. An approval the draft held can no longer be applied |
 | `ambit history since <when> [<until>]` | What became reachable since a past date, and what emerged with nothing added? Up to now, or up to a later observation, with the step in the sentence the map's timeline prints |
 | `ambit audit <run-…\|prop-…\|human:name\|days>` | The trail: who approved what, what ran, against what target, under which grant, and whether it held |
 | `ambit dispatch <id> [--to=<url>]` | Push a proposal to Slack, Discord, Telegram, ntfy or a JSON endpoint: the decision for a draft, the signed artifact once approved. One-way; the reply is `ambit approve` on a machine that holds the key |
@@ -612,7 +612,7 @@ Answers are kept small. The text half of a result is compact JSON, since a clien
 
 **The map through time.** Once the ledger holds two observations, the **History** button beside zoom opens a timeline under the map, one tick for each second a snapshot was taken. It stays closed until asked for, or until a link names a moment. Drag the playhead, or step it with the arrow keys, and the map redraws as that snapshot left it: states and checks from then, names, eras and edges from now, because a snapshot stores none of those. One sentence says what moved at each tick, such as "Sep 26: reached 43 to 45, 1 emergent, 1 went failing", in the words `ambit history since <then> <now>` prints for the same two observations. **Play**, at the timeline's left, steps through the observations on its own, slowly enough to read each sentence, from the playhead or from the first observation when the playhead is on now, and stops at now; with the playhead focused, Space plays and pauses. Dragging or stepping the playhead, closing the timeline, starting a simulation or selecting a node pauses it. The header's counts and the detail panel follow the playhead and say "as of". A snapshot keeps no grants, providers or attention either, so while the playhead is in the past the Attention and Authority lenses and the simulations wait for now. The playhead is a timestamp in the link, so a link to last week's map opens on it wherever the same ledger is. With fewer than two observations there is no History button, since there is nothing to scrub.
 
-**Approving proposals.** When an agent proposes an environment change over MCP, the **Proposals** panel reads it as a plan before you sign: how many steps, which of them nothing can undo, whether `ambit apply` can run it at all, the hours a month it is forecast to take before and after, what it costs, what it unlocks, and how you have decided on things like it before. Each proposal is drawn as a request beside the mark of whoever drafted it, which is the agent's runtime over MCP or whoever `ambit propose --by=` names. Your decision is drawn as the answer under it: a signed approval is a receipt with a seal and your mark, and a no is recorded with the reason, which is what the next draft learns from. When several drafts are waiting, tick the ones to decide and approve or turn them down together: each is still signed on its own, against the version you were shown, so one that changed since is refused while the rest go ahead, and nothing is applied. A draft your record leans against starts unticked. The same things happen from the terminal with `ambit approve <id> <who>` and `ambit reject <id> <who> "why"`. When you are away from the machine, `ambit dispatch <id>` pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.
+**Approving proposals.** When an agent proposes an environment change over MCP, the **Proposals** panel reads it as a plan before you sign: how many steps, which of them nothing can undo, whether `ambit apply` can run it at all, the hours a month it is forecast to take before and after, what it costs, what it unlocks, and how you have decided on things like it before. Each proposal is drawn as a request beside the mark of whoever drafted it, which is the agent's runtime over MCP or whoever `ambit propose --by=` names. Your decision is drawn as the answer under it: a signed approval is a receipt with a seal and your mark, and a no is recorded with the reason, which is what the next draft learns from. When several drafts are waiting, tick the ones to decide and approve or turn them down together: each is still signed on its own, against the version you were shown, so one that changed since is refused while the rest go ahead, and nothing is applied. A draft your record leans against starts unticked. The same things happen from the terminal with `ambit approve <id> --by=<who>` and `ambit reject <id> --by=<who> "why"`. When you are away from the machine, `ambit dispatch <id>` pushes the draft to a Slack, Discord or Telegram webhook, or an ntfy topic, with the commands that decide it; the decision itself still happens here, on a machine that holds the approval key.
 
 **Simulation is arithmetic on the graph, not on the host.** An outage walks the transitive downstream closure of the chosen node and counts what stops working; an unlock takes a locked node whose other hard prerequisites are already met and lights what becomes reachable. Neither reads a config file or writes one.
 
