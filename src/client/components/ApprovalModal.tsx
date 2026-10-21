@@ -239,7 +239,7 @@ export function ApprovalModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         className="uplink-modal"
         ref={dialog}
         tabIndex={-1}
-        style={{ maxWidth: '680px', width: '90%' }}
+        style={{ maxWidth: '680px', width: '100%' }}
         onClick={e => e.stopPropagation()}
         // Escape closes it from wherever the focus is inside it. Dismissal was
         // a click on the backdrop, and then a document listener this handler

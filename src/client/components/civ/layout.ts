@@ -1148,15 +1148,31 @@ export interface Framing {
  * to a phone left its labels at four pixels; framing only what is lit keeps
  * them legible. When even the floor is too wide, the frame starts at the
  * leftmost point, since a cascade spreads rightward from its origin.
+ *
+ * `inset` and `insetTop` are where the scene starts inside the scroller: the
+ * capability list's padding, and the canvas's own top margin. Leaving the
+ * margin out framed everything that much too low, which on a phone was the
+ * strip a bottom sheet covers. `keep` is the one point that has to be in view
+ * when not everything fits, the node whose panel is open: a selection framed
+ * from the top of what it needs and enables left the node itself under the
+ * sheet describing it.
  */
 export function frameScene(
   points: { x: number; y: number }[],
   view: { top: number; width: number; height: number },
-  opts: { min: number; max: number; pad?: number; inset?: number }
+  opts: {
+    min: number;
+    max: number;
+    pad?: number;
+    inset?: number;
+    insetTop?: number;
+    keep?: { x: number; y: number };
+  }
 ): Framing | null {
   if (!points.length || view.width <= 0 || view.height <= 0) return null;
   const pad = opts.pad ?? NODE_R + 40;
   const inset = opts.inset ?? 0;
+  const insetTop = opts.insetTop ?? 0;
   const xs = points.map(p => p.x);
   const ys = points.map(p => p.y);
   const minX = Math.min(...xs) - pad;
@@ -1168,9 +1184,20 @@ export function frameScene(
   const zoom = +Math.max(opts.min, Math.min(opts.max, fit)).toFixed(2);
   const wide = (maxX - minX) * zoom > view.width;
   const tall = (maxY - minY) * zoom > view.height;
-  const left = wide ? minX * zoom + inset : ((minX + maxX) / 2) * zoom + inset - view.width / 2;
-  const top = tall
-    ? minY * zoom - view.top
-    : ((minY + maxY) / 2) * zoom - view.top - view.height / 2;
+  let left = wide ? minX * zoom + inset : ((minX + maxX) / 2) * zoom + inset - view.width / 2;
+  let top = tall
+    ? minY * zoom + insetTop - view.top
+    : ((minY + maxY) / 2) * zoom + insetTop - view.top - view.height / 2;
+  if (opts.keep) {
+    // The circle, and the name that hangs under it.
+    const x = opts.keep.x * zoom + inset;
+    const y = opts.keep.y * zoom + insetTop;
+    const above = NODE_R * zoom;
+    const below = (NODE_R + 30) * zoom;
+    if (x - above < left || x + above > left + view.width) left = x - view.width / 2;
+    if (y - above < top + view.top || y + below > top + view.top + view.height) {
+      top = y - view.top - view.height / 2;
+    }
+  }
   return { zoom, left: Math.max(0, Math.round(left)), top: Math.max(0, Math.round(top)) };
 }

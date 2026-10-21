@@ -2322,6 +2322,31 @@ button.app-sample-tag:hover {
     font-size: var(--fs-md);
     border-radius: var(--radius-lg);
   }
+
+  /* The next step and the failing check under it are one stack: the same
+     width and corners, each sentence reading from the left edge with its
+     button at the right. Centred at their own widths, the two plates were
+     offset from each other, and the failing line wrapped into three centred
+     rows on a 320px screen. */
+  .civ-finding-wrap > * {
+    width: calc(100% - 32px);
+  }
+
+  .civ-finding-wrap > .civ-range {
+    border-radius: var(--radius-lg);
+  }
+
+  .civ-finding-wrap > .civ-range--bad {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    padding: 6px 8px 6px 12px;
+  }
+
+  .civ-finding > span:not(.civ-finding-dot),
+  .civ-range--bad > span:not(.civ-finding-dot) {
+    flex: 1;
+    min-width: 0;
+  }
 }
 
 /* ─── THE FRONTIER THROUGH TIME ─── */
@@ -4804,8 +4829,28 @@ button.app-sample-tag:hover {
     display: none;
   }
 
-  .app--touring .civ-tree-svg {
-    margin-top: 44px;
+  /* An open sheet is the same case: it is what is being read, and the map
+     above it is a strip of about a third of the screen. With the controls
+     kept, that strip was two rows of buttons over the first row of nodes, and
+     the node the sheet described sat under the sheet. Closing it brings
+     them back. */
+  .app--detail .civ-hud {
+    display: none;
+  }
+
+  .app--touring .civ-tree-svg,
+  .app--detail .civ-tree-svg {
+    margin-top: 12px;
+  }
+
+  /* A simulation's banner sits under both rows of controls, and at the top
+     of the strip when a sheet has put them away. */
+  .civ-sim-wrap:not(.civ-finding-wrap) {
+    top: 86px;
+  }
+
+  .app--detail .civ-sim-wrap:not(.civ-finding-wrap) {
+    top: 8px;
   }
 
   .app-guide {
@@ -4870,8 +4915,17 @@ button.app-sample-tag:hover {
     left: 0;
   }
 
+  /* What a tool opens hangs under both rows, out of the flow for the same
+     reason: in it, the key's 200px set the left column's width and pushed the
+     lenses to "Auth" at the screen's edge. */
+  .civ-hud-left {
+    position: relative;
+  }
+
   .civ-hud-left > .civ-key {
-    margin-top: 36px;
+    position: absolute;
+    top: 72px;
+    left: 0;
   }
 
   .tp-filter-chips {
@@ -4957,6 +5011,23 @@ button.app-sample-tag:hover {
 
   .loop-hero {
     margin-bottom: 10px;
+  }
+}
+
+/* The sample's top row is about 375px wide. At 360px, the width of many
+   Android phones, Map yours, Proposals and Docs wrapped to a third row that
+   ran over the map's controls. Map yours keeps its word and gives up its
+   arrow; at 320px the brand keeps its mark and gives up its name, except in
+   the tour, where the brand is all the header holds. */
+@media (max-width: 400px) {
+  .app-deck-btn--primary .app-deck-icon {
+    display: none;
+  }
+}
+
+@media (max-width: 340px) {
+  .app:not(.app--touring) .app-brand {
+    display: none;
   }
 }
 

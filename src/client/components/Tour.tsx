@@ -85,17 +85,19 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           .filter(i => !isEntry(i))
       : [];
 
+    // Each body is a sentence or two: the map is doing the showing, and on a
+    // phone a seventy-word card covered half of what it was describing.
     const list: Step[] = [];
     if (best) {
       list.push({
         key: 'next',
         title: `One step would open ${best.reaches} more`,
         body:
-          `This is a sample developer's agent setup, drawn from their config files. ` +
-          `What it can do is their ambit. Adding ${best.item.name} would ` +
-          `${cost ? `take about ${cost} of setup and ` : ''}open ${best.reaches} more things their agents could do` +
-          `${opened.length ? `: ${named(opened)}` : ''}. ` +
-          `Every next step is ranked by what it opens up, and agents can ask for the same ranking over MCP.`,
+          `This is a sample developer's agent setup. Setting up ${best.item.name}` +
+          `${cost ? ` (about ${cost})` : ''} would ` +
+          (opened.length
+            ? `unlock the ones in green: ${named(opened)}.`
+            : `open ${best.reaches} more things their agents could do.`),
         enter: () => {
           select(null);
           startAcquisition(best.item.id);
@@ -104,21 +106,16 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     }
     // Only what was working counts as stopped, and only that is filled red.
     // What was never set up is drawn as a red outline and named for what it
-    // is: drawn alike, the title said 4 over sixteen red circles.
+    // is: drawn alike, the title said 4 over sixteen red circles. A check
+    // that was already failing is the next card's subject, not this one's.
     if (outage?.stopped.length) {
-      const { stopped, broken, cutOff } = outage;
+      const { stopped, cutOff } = outage;
       list.push({
         key: 'outage',
         title: `And if ${COLD_OPEN_PLAIN} went down? ${stopped.length} things stop.`,
         body:
-          `The same map says what a reach rests on. ` +
-          `With no MCP server answering, these agents would lose ${named(stopped)}.` +
-          (broken.length
-            ? ` ${named(broken)} ${broken.length === 1 ? 'was' : 'were'} already failing ${broken.length === 1 ? 'its check' : 'their checks'}.`
-            : '') +
-          (cutOff.length
-            ? ` The ${cutOff.length} outlined in red ${cutOff.length === 1 ? 'was' : 'were'} never set up.`
-            : ''),
+          `They would lose ${named(stopped)}.` +
+          (cutOff.length ? ' The red outlines were never set up.' : ''),
         enter: () => {
           select(null);
           startOutage(COLD_OPEN_OUTAGE);
@@ -129,9 +126,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
       list.push({
         key: 'failing',
         title: 'Configured is not the same as working',
-        body:
-          `${broken.name} is set up, and its check is failing. Ambit runs each ` +
-          `capability's check and leaves a failing one out of everything it counts.`,
+        body: `${broken.name} is set up, but its check fails. Ambit won't count it until it passes.`,
         enter: () => {
           clearSimulation();
           select(broken.id);
@@ -142,8 +137,8 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
       key: 'approval',
       title: 'Nothing changes without you',
       body:
-        'Ambit writes a change as a proposal, with what it costs and whether it can be undone. ' +
-        'It is applied only after an approval. Approving is a separate local operation outside the MCP surface, and the approval is a signed receipt.',
+        'Agents propose changes, each with its cost and how to undo it. ' +
+        'Only you can approve one, and every approval is signed.',
       proposal: true,
       enter: () => {
         clearSimulation();
@@ -153,9 +148,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     list.push({
       key: 'yours',
       title: 'Now map yours',
-      body:
-        "Paste your agent's config, or pick what you use, and the map places your setup the same way: " +
-        'what it reaches now, and what one more step would open.',
+      body: 'See what your own agents can do, and what to set up next.',
       enter: () => {
         clearSimulation();
         select(null);

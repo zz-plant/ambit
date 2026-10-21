@@ -22,9 +22,7 @@ export function YourSetup({ onMapped, rows = 3 }: { onMapped: () => void; rows?:
           {copied ? 'Copied ✓' : 'Copy'}
         </button>
       </div>
-      <p className="app-tour-note">
-        The install reads every runtime on the machine and places it on the full map.
-      </p>
+      <p className="app-tour-note">The install maps every agent on the machine.</p>
     </div>
   );
 }

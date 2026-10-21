@@ -671,14 +671,31 @@ export default function CivTree({
     if (!lit.length || framedFor.current === key) return;
     framedFor.current = key;
     const points = lit.flatMap(id => nodePositionMap.get(id) ?? []);
-    // The zoom and lens controls, and the map's tools on a row of their own,
-    // sit over the canvas's first 88px, except in the tour, which hides them
-    // on a phone.
-    const hud = narrated ? 8 : 88;
+    // What lies over the top of the canvas, measured: the zoom and lens
+    // controls with the map's tools on a row of their own, and a simulation's
+    // banner. The tour and an open sheet hide the controls on a phone.
+    const box = el.getBoundingClientRect();
+    let hud = 0;
+    for (const over of surfaceRef.current?.querySelectorAll(
+      '.civ-zoom-hud, .civ-lens-hud, .civ-sim-banner'
+    ) ?? []) {
+      const r = over.getBoundingClientRect();
+      if (r.height > 0 && r.top < box.top + box.height / 2) hud = Math.max(hud, r.bottom - box.top);
+    }
+    hud += 8;
+    const svg = el.querySelector('svg');
+    const insetTop = svg ? Number.parseFloat(getComputedStyle(svg).marginTop) || 0 : 0;
+    const keepId = simulationMode !== 'none' ? simulatedNodeId : selectedId;
     const frame = frameScene(
       points,
       { top: hud, width: el.clientWidth - leftInset, height: el.clientHeight - hud - covered },
-      { min: 0.7, max: 1.1, inset: leftInset }
+      {
+        min: 0.7,
+        max: 1.1,
+        inset: leftInset,
+        insetTop,
+        keep: keepId ? nodePositionMap.get(keepId) : undefined,
+      }
     );
     if (!frame) return;
     setZoom(frame.zoom);
@@ -688,7 +705,6 @@ export default function CivTree({
     );
   }, [
     narrow,
-    narrated,
     simulationMode,
     simulatedNodeId,
     simSet,
@@ -882,6 +898,10 @@ export default function CivTree({
             // and on a wide screen out from under the tour's card (380px and
             // its 16px margin): at 800px the lit eras had nowhere to scroll to.
             paddingRight: rightInset + (narrated && !narrow ? 396 : 0),
+            // And on a phone, room below for whatever covers the bottom: the
+            // map is shorter than the screen there, so a node under the sheet
+            // describing it had nowhere to scroll up to.
+            paddingBottom: narrow ? covered : 0,
             cursor: isDragging ? 'grabbing' : 'default',
             userSelect: isDragging ? 'none' : 'auto',
             '--headline-pad': `${headlinePad}px`,
