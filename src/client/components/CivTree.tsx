@@ -505,7 +505,8 @@ export default function CivTree({
   const keyOpen = keyToggled ?? activeLens !== 'default';
   const narrow = useNarrow();
   // The strip under the map: the standard map's states, while nothing else is
-  // explaining the map. A phone has no room under it.
+  // explaining the map, with recovering and failing when a node is either.
+  // A phone has no room under it.
   const strip: LegendKey[] =
     isTreeView && activeLens === 'default' && !keyOpen && !narrated && !narrow
       ? simulationMode === 'none'
@@ -513,6 +514,7 @@ export default function CivTree({
             { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
             { kind: 'ring', label: 'Next step' },
             { kind: 'faded', label: 'Blocked' },
+            ...recoveringKeys,
             ...(findings.failing.length ? [failingKey] : []),
           ]
         : outageKeys
