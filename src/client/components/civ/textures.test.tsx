@@ -60,10 +60,10 @@ function nodes(html: string): Map<string, string> {
   return out;
 }
 
-const map = () =>
+const map = (drawn: Item[] = items) =>
   renderToStaticMarkup(
     <CivTree
-      items={items}
+      items={drawn}
       connections={connections}
       selectedId={null}
       hoveredId={null}
@@ -87,6 +87,15 @@ test('a recovering ring wavers by how many recent runs failed, and its fill stay
   expect(map()).toContain(
     'aria-label="File Editing, Combo, reached, recovering: 2 of the last 5 passed"'
   );
+  // The strip under the map names it, as the key does, and lights it when pressed.
+  const strip = (html: string) => {
+    const at = html.indexOf('class="civ-strip"');
+    return html.slice(at, html.indexOf('</div>', at));
+  };
+  expect(strip(map())).toMatch(/aria-pressed="false"[^>]*>(<svg.*?<\/svg>)?Recovering</);
+  seed({ items: demo.items, connections });
+  expect(strip(map(demo.items))).not.toContain('Recovering');
+  seed({ items, connections });
   // Nothing else on the map wavers, and nothing corrodes at rest.
   for (const [id, body] of drawn) {
     if (id !== RECOVERING) expect([id, body.includes('-waver-')]).toEqual([id, false]);
@@ -149,6 +158,16 @@ test('an outage corrodes the fill of what it stops, inside a ring that holds', (
   expect(html).toMatch(/aria-label="[^"]*stops working in this simulation"/);
   // During a simulation the recovering ring is drawn true: the simulation paints the node.
   expect(drawn.get(RECOVERING)).not.toContain('-waver-');
+  // Nor does a node it paints keep its check badge: "passing" on a node that stops.
+  const badge = /fill="var\(--(ok|error)\)" stroke="var\(--bg-canvas\)"/;
+  for (const id of [root, ...stops, ...weakened].filter(id => drawn.has(id))) {
+    expect([id, badge.test(drawn.get(id)!)]).toEqual([id, false]);
+  }
+});
+
+test('at rest a passing check keeps its badge', () => {
+  seed({ items, connections });
+  expect(map()).toMatch(/fill="var\(--ok\)" stroke="var\(--bg-canvas\)"/);
 });
 
 test('a saved still defines every filter its nodes name', () => {

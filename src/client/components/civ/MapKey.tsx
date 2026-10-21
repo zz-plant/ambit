@@ -7,7 +7,7 @@
  * click away and never in the way. A key that lights nodes is a button; the
  * rest are rows.
  */
-import { useRef } from 'react';
+import { type PointerEvent, type Ref, useRef, useState } from 'react';
 import { usePressAway } from '../../hooks/usePressAway';
 import { termTitle } from '../Term';
 import { KeySwatch, type LegendKey } from './marks';
@@ -26,19 +26,56 @@ interface MapKeyProps {
   onClose?: () => void;
 }
 
-export function MapKey({
+export function MapKey({ onClose, ...props }: MapKeyProps) {
+  const box = useRef<HTMLElement>(null);
+  const [explained, setExplained] = useState<string | null>(null);
+  usePressAway(box, onClose, '[data-key-toggle]');
+  return <MapKeyView {...props} explained={explained} onExplain={setExplained} boxRef={box} />;
+}
+
+const AT_REST = 'Press a key to light its nodes. Esc shows everything.';
+
+interface MapKeyViewProps extends Omit<MapKeyProps, 'onClose'> {
+  /** The entry whose meaning the last line says, if one is focused or pressed. */
+  explained: string | null;
+  onExplain: (label: string | null) => void;
+  boxRef?: Ref<HTMLElement>;
+}
+
+/**
+ * The key as drawn. An entry's meaning was a `title` only, which a touch
+ * screen never shows: focused, pressed or pointed at, the entry says it in
+ * the key's last line instead, in the place the line at rest takes, so the
+ * key is no taller until someone asks.
+ */
+export function MapKeyView({
   keys,
   spotlight,
   lights,
   onSpotlight,
   concepts,
   hazard,
-  onClose,
-}: MapKeyProps) {
-  const box = useRef<HTMLElement>(null);
-  usePressAway(box, onClose, '[data-key-toggle]');
+  explained,
+  onExplain,
+  boxRef,
+}: MapKeyViewProps) {
+  const meaning = (entry: LegendKey) => entry.hint ?? termTitle(concepts[entry.label] ?? '');
+  const shown = keys.find(k => k.kind !== 'label' && k.label === explained);
+  const said = shown && meaning(shown);
+  const explain = (label: string) => ({
+    onFocus: () => onExplain(label),
+    onPointerDown: () => onExplain(label),
+    onPointerEnter: (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') onExplain(label);
+    },
+    // A finger lifts before it leaves, so only a mouse takes the line back.
+    onPointerLeave: (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') onExplain(null);
+    },
+    onBlur: () => onExplain(null),
+  });
   return (
-    <section className="civ-key" aria-label="Key" ref={box}>
+    <section className="civ-key" aria-label="Key" ref={boxRef}>
       <ul className="civ-key-list">
         {keys.map(entry => {
           if (entry.kind === 'label') {
@@ -54,7 +91,6 @@ export function MapKey({
               <KeySwatch entry={entry} hazard={hazard} />
             </svg>
           );
-          const title = entry.hint ?? termTitle(concepts[entry.label] ?? '');
           return (
             <li key={entry.label}>
               {lights(entry.label) ? (
@@ -62,14 +98,15 @@ export function MapKey({
                   type="button"
                   className={`civ-key-row civ-key-row--button${on ? ' is-on' : ''}`}
                   aria-pressed={on}
-                  title={title}
+                  aria-describedby={explained === entry.label ? 'civ-key-said' : undefined}
                   onClick={() => onSpotlight(on ? null : entry.label)}
+                  {...explain(entry.label)}
                 >
                   {picture}
                   {entry.label}
                 </button>
               ) : (
-                <span className="civ-key-row" title={title}>
+                <span className="civ-key-row" {...explain(entry.label)}>
                   {picture}
                   {entry.label}
                 </span>
@@ -78,7 +115,16 @@ export function MapKey({
           );
         })}
       </ul>
-      <p className="civ-key-hint">Press a key to light its nodes. Esc shows everything.</p>
+      {/* The line at rest stays, unseen, under what an entry says: it keeps
+          the key's width, and what is said wraps inside it. */}
+      <p className={`civ-key-hint${said ? ' is-saying' : ''}`} aria-live="polite">
+        <span className="civ-key-at-rest">{AT_REST}</span>
+        {said && (
+          <span id="civ-key-said" className="civ-key-said">
+            {said}
+          </span>
+        )}
+      </p>
     </section>
   );
 }
