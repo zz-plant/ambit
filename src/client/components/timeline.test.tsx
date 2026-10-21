@@ -178,7 +178,7 @@ test('the map as Monday left it draws what Monday held, and none of what no snap
   expect(live).toContain('civ-range');
 
   const past = map(itemsAsOf([vc, ci], EDGES, MONDAY), 'Sep 21, 2026, 09:00 UTC');
-  expect(past).toContain('aria-label="Version Control, possibility"');
+  expect(past).toContain('aria-label="Version Control, Combo, failing"');
   expect(past).not.toContain('Continuous Integration');
   // The headline, with its week and its simulations, is today's.
   expect(past).not.toContain('civ-range');

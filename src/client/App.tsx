@@ -329,26 +329,38 @@ export default function App() {
    * page's colours are written into it and its faces embedded, and a PNG is
    * drawn at twice the map's size, or as large as a canvas allows.
    */
-  const mapFile = async (format: 'svg' | 'png', showing: Showing, fonts: string) => {
+  const mapFile = async (
+    format: 'svg' | 'png',
+    showing: Showing,
+    fonts: string,
+    what: 'map' | 'relief' = 'map'
+  ) => {
     // Fetched with the map's own chunk, which the page has loaded by now.
-    const { MapStill, stillLayout } = await import('./components/civ/MapScene');
+    const [{ MapStill, stillLayout }, { MapRelief, RELIEF_EXTRA }] = await Promise.all([
+      import('./components/civ/MapScene'),
+      import('./components/civ/Relief'),
+    ]);
     const layout = stillLayout(items, connections);
-    const scale = format === 'png' ? pngScale(layout.width, layout.height) : 1;
-    const still = (
-      <MapStill
-        items={items}
-        connections={connections}
-        layout={layout}
-        simulation={showing}
-        scale={scale}
-      />
-    );
+    const height = layout.height + (what === 'relief' ? RELIEF_EXTRA : 0);
+    const scale = format === 'png' ? pngScale(layout.width, height) : 1;
+    const still =
+      what === 'relief' ? (
+        <MapRelief connections={connections} layout={layout} scale={scale} />
+      ) : (
+        <MapStill
+          items={items}
+          connections={connections}
+          layout={layout}
+          simulation={showing}
+          scale={scale}
+        />
+      );
     const svg = standalone(renderStill(still), pageToken, fonts);
     const blob =
       format === 'png'
-        ? await svgToPng(svg, Math.round(layout.width * scale), Math.round(layout.height * scale))
+        ? await svgToPng(svg, Math.round(layout.width * scale), Math.round(height * scale))
         : new Blob([svg], { type: 'image/svg+xml' });
-    return new File([blob], mapFileName(format), { type: blob.type });
+    return new File([blob], mapFileName(format, new Date(), what), { type: blob.type });
   };
 
   // The map's finding as a portrait image, or the whole map: the share sheet
@@ -382,7 +394,12 @@ export default function App() {
         ? new File([await svgToPng(cardSvg(card, fonts), CARD_W, CARD_H)], cardFileName(card), {
             type: 'image/png',
           })
-        : await mapFile(kind === 'svg' ? 'svg' : 'png', showing, fonts);
+        : await mapFile(
+            kind === 'svg' ? 'svg' : 'png',
+            showing,
+            fonts,
+            kind === 'relief' ? 'relief' : 'map'
+          );
       if (isNarrow && navigator.canShare?.({ files: [file] })) {
         try {
           await navigator.share({ files: [file] });

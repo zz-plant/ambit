@@ -17,9 +17,13 @@ import {
   eraOf,
   frameScene,
   headlineReserve,
+  evidenceOf,
   isFailing,
+  isRecovering,
   isNext,
   isProven,
+  type OutageRole,
+  outageRole,
   type JointMark,
   jointMark,
   layoutNodes,
@@ -37,7 +41,14 @@ import { hasHistory } from './civ/history.ts';
 import { ImageMenu, type ImageKind } from './civ/ImageMenu.tsx';
 import { MapKey } from './civ/MapKey.tsx';
 import { AUTHORITY_FILL, AUTHORITY_SYM, heatBins, MapScene } from './civ/MapScene.tsx';
-import { HazardPattern, KeySwatch, type LegendKey } from './civ/marks.tsx';
+import {
+  HazardPattern,
+  KeySwatch,
+  type LegendKey,
+  MapFilters,
+  corrosionOf,
+  waverOf,
+} from './civ/marks.tsx';
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { usePinchZoom } from './civ/usePinchZoom.ts';
@@ -75,6 +86,14 @@ interface CivTreeProps {
   /** Save the map's finding as a card made to be posted, or the whole map as a file. */
   onSaveImage?: (kind: ImageKind) => void;
 }
+
+/** Which outage role each of the outage's keys draws. */
+const OUTAGE_ROLE: Record<string, OutageRole> = {
+  Down: 'down',
+  'Stops working': 'stops',
+  'Loses a provider': 'loses a provider',
+  'Cut off': 'cut off',
+};
 
 export default function CivTree({
   items,
@@ -279,6 +298,7 @@ export default function CivTree({
   const hovered = hoverItem || hoveredId;
   const hazardId = `hazard-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const hazard = `url(#${hazardId})`;
+  const filterPrefix = `fx-${hazardId}`;
   const focusId =
     selectedId && nodePositionMap.has(selectedId)
       ? selectedId
@@ -311,6 +331,7 @@ export default function CivTree({
     Agent: 'capability',
     Skill: 'capability',
     Passing: 'evidence',
+    Recovering: 'evidence',
     Failing: 'evidence',
     Required: 'prerequisite',
     Optional: 'prerequisite',
@@ -337,6 +358,7 @@ export default function CivTree({
     Keystone: keystone,
     Passing: isProven,
     Failing: isFailing,
+    Recovering: isRecovering,
     ...Object.fromEntries(
       (Object.keys(AUTHORITY_LABEL) as AuthorityMark[]).map(m => [
         AUTHORITY_LABEL[m],
@@ -361,6 +383,51 @@ export default function CivTree({
       mark: m,
       label: m === 'person' ? 'Needs a person' : 'Runs on a device',
     }));
+  // Keyed only when a node is recovering, as the joint marks are. At the
+  // widest step, since the swatch is a third of a node's size.
+  const recoveringKeys: LegendKey[] = filtered.some(isRecovering)
+    ? [
+        {
+          kind: 'waver',
+          label: 'Recovering',
+          filter: waverOf(filterPrefix, 4, 0).url,
+          hint: 'Recovering: its last check passed after recent ones failed. The further the ring slips, the more of the last five failed.',
+        },
+      ]
+    : [];
+  // While an outage runs, its own marks, in the banner's words, and only
+  // the ones it drew: a key for a mark nothing carries is a question with
+  // no answer. None of them lights nodes, since the simulation already has.
+  const roles = new Set(
+    simulationMode === 'outage' ? filtered.map(i => outageRole(i, simulation)) : []
+  );
+  const outageKeys: LegendKey[] = (
+    [
+      {
+        kind: 'node',
+        color: 'var(--error)',
+        label: 'Down',
+        hint: 'What this simulation takes away.',
+      },
+      {
+        kind: 'corroded',
+        label: 'Stops working',
+        filter: corrosionOf(filterPrefix, 0).url,
+        hint: 'Rests on what went down and nothing else, so it stops with it. Still configured, so its ring holds.',
+      },
+      {
+        kind: 'node',
+        color: 'var(--warn)',
+        label: 'Loses a provider',
+        hint: 'Loses one way to work and keeps another.',
+      },
+      {
+        kind: 'cutoff',
+        label: 'Cut off',
+        hint: 'Not set up yet, and could not be while this is down.',
+      },
+    ] satisfies LegendKey[]
+  ).filter(k => roles.has(OUTAGE_ROLE[k.label]));
   const directionKeys: LegendKey[] =
     selectedId && focusId === selectedId
       ? [
@@ -368,52 +435,68 @@ export default function CivTree({
           { kind: 'line', color: 'var(--accent)', label: 'Enables' },
         ]
       : [];
+  const failingKey: LegendKey = {
+    kind: 'node',
+    color: 'var(--error)',
+    sym: '!',
+    label: 'Failing',
+    hatch: true,
+    hint: 'Failing: its last check failed. Configured, and not working.',
+  };
   const legend: LegendKey[] =
-    activeLens === 'authority'
-      ? (Object.keys(AUTHORITY_LABEL) as AuthorityMark[]).map(
-          (m): LegendKey => ({
-            kind: 'node',
-            color: AUTHORITY_FILL[m],
-            sym: AUTHORITY_SYM[m],
-            label: AUTHORITY_LABEL[m],
-            hatch: m === 'forbidden',
-          })
-        )
-      : activeLens === 'attention'
-        ? [
-            // A scale with no unit is a row of coloured dots. Say what is
-            // being counted, once, at the head of the ramp.
-            { kind: 'label', label: 'Interventions a month' },
-            ...heatBins(attentionMax).map(
-              (b, i): LegendKey => ({ kind: 'node', color: `var(--heat-${i + 1})`, label: b.label })
-            ),
-          ]
-        : isTreeView
+    outageKeys.length && activeLens === 'default'
+      ? [...outageKeys, ...(filtered.some(isFailing) ? [failingKey] : [])]
+      : activeLens === 'authority'
+        ? (Object.keys(AUTHORITY_LABEL) as AuthorityMark[]).map(
+            (m): LegendKey => ({
+              kind: 'node',
+              color: AUTHORITY_FILL[m],
+              sym: AUTHORITY_SYM[m],
+              label: AUTHORITY_LABEL[m],
+              hatch: m === 'forbidden',
+            })
+          )
+        : activeLens === 'attention'
           ? [
-              { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
-              { kind: 'ring', label: 'Next step' },
-              { kind: 'eureka', label: 'Asked for' },
-              { kind: 'faded', label: 'Blocked' },
-              { kind: 'keystone', label: 'Keystone' },
-              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing', hatch: true },
-              { kind: 'line', label: 'Required' },
-              { kind: 'line', dashed: true, label: 'Optional' },
-              ...jointKeys,
-              ...directionKeys,
+              // A scale with no unit is a row of coloured dots. Say what is
+              // being counted, once, at the head of the ramp.
+              { kind: 'label', label: 'Interventions a month' },
+              ...heatBins(attentionMax).map(
+                (b, i): LegendKey => ({
+                  kind: 'node',
+                  color: `var(--heat-${i + 1})`,
+                  label: b.label,
+                })
+              ),
             ]
-          : [
-              { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Tool server' },
-              { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
-              { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
-              { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
-              { kind: 'keystone', label: 'Keystone' },
-              { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
-              { kind: 'node', color: 'var(--error)', sym: '!', label: 'Failing', hatch: true },
-              { kind: 'line', label: 'Required' },
-              { kind: 'line', dashed: true, label: 'Optional' },
-              ...directionKeys,
-            ];
+          : isTreeView
+            ? [
+                { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
+                { kind: 'ring', label: 'Next step' },
+                { kind: 'eureka', label: 'Asked for' },
+                { kind: 'faded', label: 'Blocked' },
+                { kind: 'keystone', label: 'Keystone' },
+                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                ...recoveringKeys,
+                failingKey,
+                { kind: 'line', label: 'Required' },
+                { kind: 'line', dashed: true, label: 'Optional' },
+                ...jointKeys,
+                ...directionKeys,
+              ]
+            : [
+                { kind: 'node', color: typeColor('mcp-server'), sym: '◈', label: 'Tool server' },
+                { kind: 'node', color: typeColor('agent'), sym: '◆', label: 'Agent' },
+                { kind: 'node', color: typeColor('skill'), sym: '◇', label: 'Skill' },
+                { kind: 'node', color: typeColor('possibility'), sym: '●', label: 'Combo' },
+                { kind: 'keystone', label: 'Keystone' },
+                { kind: 'node', color: 'var(--ok)', sym: '✓', label: 'Passing' },
+                ...recoveringKeys,
+                failingKey,
+                { kind: 'line', label: 'Required' },
+                { kind: 'line', dashed: true, label: 'Optional' },
+                ...directionKeys,
+              ];
   // A lens paints with a scale the standard map does not use, so switching to
   // one opens the key until someone closes it; the standard map's key waits
   // to be asked for.
@@ -424,28 +507,15 @@ export default function CivTree({
   // The strip under the map: the standard map's states, while nothing else is
   // explaining the map. A phone has no room under it.
   const strip: LegendKey[] =
-    isTreeView &&
-    activeLens === 'default' &&
-    !keyOpen &&
-    !narrated &&
-    simulationMode === 'none' &&
-    !narrow
-      ? [
-          { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
-          { kind: 'ring', label: 'Next step' },
-          { kind: 'faded', label: 'Blocked' },
-          ...(findings.failing.length
-            ? [
-                {
-                  kind: 'node',
-                  color: 'var(--error)',
-                  sym: '!',
-                  label: 'Failing',
-                  hatch: true,
-                } satisfies LegendKey,
-              ]
-            : []),
-        ]
+    isTreeView && activeLens === 'default' && !keyOpen && !narrated && !narrow
+      ? simulationMode === 'none'
+        ? [
+            { kind: 'node', color: 'var(--node-reached)', label: 'Reached' },
+            { kind: 'ring', label: 'Next step' },
+            { kind: 'faded', label: 'Blocked' },
+            ...(findings.failing.length ? [failingKey] : []),
+          ]
+        : outageKeys
       : [];
   const closeKey = React.useCallback(() => setKeyToggled(false), [setKeyToggled]);
   // The Image button's choices: the card, or the whole map as a file. They
@@ -922,6 +992,7 @@ export default function CivTree({
           <title>Capability tree: what this setup can do, by era</title>
           <defs>
             <HazardPattern id={hazardId} />
+            <MapFilters prefix={filterPrefix} />
           </defs>
           <MapScene
             items={items}
@@ -933,6 +1004,7 @@ export default function CivTree({
             downstream={downstream}
             simulation={simulation}
             hazard={hazard}
+            filters={filterPrefix}
             view={{
               lens: activeLens,
               attention: attentionInterventions,
@@ -983,8 +1055,33 @@ export default function CivTree({
               const downCount = (downstream.get(ni.id) || []).length;
               const isKey = downCount >= 3 || isRuntimeNode(ni);
 
+              // What the node's evidence says, or what a running outage does
+              // to it: the line that names a texture the map draws.
+              const role = outageRole(ni, simulation);
+              const evidence = evidenceOf(ni);
+              const said = role
+                ? {
+                    text: `${role === 'down' ? 'Down' : role === 'stops' ? 'Stops working' : role === 'cut off' ? 'Cut off before it was set up' : 'Loses a provider, keeps another'} in this simulation`,
+                    color: role === 'loses a provider' ? 'var(--warn)' : 'var(--error)',
+                  }
+                : evidence
+                  ? {
+                      text: isFailing(ni)
+                        ? '! Failing its check'
+                        : isProven(ni)
+                          ? '✓ Passing its check'
+                          : `${evidence[0].toUpperCase()}${evidence.slice(1)}`,
+                      color: isFailing(ni)
+                        ? 'var(--error)'
+                        : isProven(ni)
+                          ? 'var(--ok)'
+                          : 'var(--text-secondary)',
+                    }
+                  : null;
+
               const W = 236;
               const headH = 22;
+              const saidH = said ? 18 : 0;
               const keyH = isKey ? 18 : 0;
               const descH = lines.length * 15;
               const enablesH = enables.length ? 20 + enables.length * 15 : 0;
@@ -998,7 +1095,7 @@ export default function CivTree({
                   ? 'Click: details, and simulate unlocking it'
                   : 'Click: details, and simulate an outage';
               const hintH = 17;
-              const boxH = headH + keyH + descH + enablesH + hintH + 12;
+              const boxH = headH + saidH + keyH + descH + enablesH + hintH + 12;
 
               // To the right of the node, unless that runs past the map's edge:
               // the last column's card was cut off there.
@@ -1028,23 +1125,35 @@ export default function CivTree({
                   >
                     {ni.name}
                   </text>
-                  {isKey && (
+                  {said && (
                     <text
                       x={12}
                       y={headH + 12}
+                      fill={said.color}
+                      fontSize={11}
+                      fontWeight={600}
+                      fontFamily="var(--font-sans)"
+                    >
+                      {said.text}
+                    </text>
+                  )}
+                  {isKey && (
+                    <text
+                      x={12}
+                      y={headH + saidH + 12}
                       fill="var(--warn)"
                       fontSize={11}
                       fontWeight={600}
                       fontFamily="var(--font-sans)"
                     >
-                      ★ Keystone ({downCount} enables)
+                      ★ Keystone: {downCount} depend on it
                     </text>
                   )}
                   {lines.map((line, i) => (
                     <text
                       key={i}
                       x={12}
-                      y={headH + keyH + 12 + i * 15}
+                      y={headH + saidH + keyH + 12 + i * 15}
                       fill="var(--text-secondary)"
                       fontSize={12}
                       fontFamily="var(--font-sans)"
@@ -1055,7 +1164,7 @@ export default function CivTree({
                   {enables.length > 0 && (
                     <text
                       x={12}
-                      y={headH + keyH + descH + 15}
+                      y={headH + saidH + keyH + descH + 15}
                       fill="var(--text-muted)"
                       fontSize={11}
                       fontWeight={600}
@@ -1075,7 +1184,7 @@ export default function CivTree({
                       <text
                         key={did}
                         x={14}
-                        y={headH + keyH + descH + 30 + i * 15}
+                        y={headH + saidH + keyH + descH + 30 + i * 15}
                         fill="var(--text-primary)"
                         fontSize={12}
                         fontFamily="var(--font-sans)"
@@ -1127,12 +1236,31 @@ export default function CivTree({
       {strip.length > 0 && (
         <div
           className="civ-strip"
-          role="toolbar"
+          role="group"
           aria-label="What the circles mean"
           style={{ bottom: covered + 10, left: leftInset + 8 }}
         >
           {strip.map(entry => {
             const on = spotlight === entry.label;
+            const title = entry.hint ?? termTitle(LEGEND_CONCEPTS[entry.label] ?? '');
+            const picture = (
+              <svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true">
+                <KeySwatch entry={entry} hazard={hazard} />
+              </svg>
+            );
+            // An outage's marks say what the simulation drew, and light nothing.
+            if (!SPOTLIGHTS[entry.label]) {
+              return (
+                <span
+                  key={entry.label}
+                  className="civ-strip-key civ-strip-key--still"
+                  title={title}
+                >
+                  {picture}
+                  {entry.label}
+                </span>
+              );
+            }
             return (
               <button
                 key={entry.label}
@@ -1140,11 +1268,9 @@ export default function CivTree({
                 className={`civ-strip-key${on ? ' is-on' : ''}`}
                 aria-pressed={on}
                 onClick={() => setSpotlight(on ? null : entry.label)}
-                title={termTitle(LEGEND_CONCEPTS[entry.label] ?? '')}
+                title={title}
               >
-                <svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true">
-                  <KeySwatch entry={entry} hazard={hazard} />
-                </svg>
+                {picture}
                 {entry.label}
               </button>
             );

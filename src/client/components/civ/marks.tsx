@@ -119,13 +119,118 @@ export function HazardPattern({ id }: { id: string }) {
   );
 }
 
-/** One entry of the map's key: a swatch, a stroke, or a heading for the ramp. */
-export type LegendKey =
+/**
+ * How far a recovering ring wavers, by how many of its last five runs failed:
+ * one to four, since a recovering node passed the last. The pixels are what
+ * `feDisplacementMap` moves the line by at the noise's usual spread.
+ */
+const WAVER_SCALE = [5, 8, 11, 14];
+/** Noise patterns per filter, so a row of recovering nodes do not waver in step. */
+const SEEDS = 3;
+
+/** Which of the seeds a node's filters use: the same one every draw. */
+export function seedOf(id: string): number {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0;
+  return Math.abs(h) % SEEDS;
+}
+
+/**
+ * A texture over one half of a node: the ring, or the fill. The other half
+ * is drawn true, which is what lets a texture read as something that happened
+ * to the node and not as a different kind of node.
+ */
+export interface Texture {
+  url: string;
+  on: 'ring' | 'fill';
+}
+
+export const waverOf = (prefix: string, failed: number, seed: number): Texture => ({
+  url: `url(#${prefix}-waver-${Math.max(1, Math.min(WAVER_SCALE.length, failed))}-${seed})`,
+  on: 'ring',
+});
+export const corrosionOf = (prefix: string, seed: number): Texture => ({
+  url: `url(#${prefix}-corrode-${seed})`,
+  on: 'fill',
+});
+
+/**
+ * The map's two textures, each a filter that means one thing.
+ *
+ * A waver is a recovering capability: its last check passed and some of the
+ * recent ones did not. The fill stays where it is and the ring slips off it,
+ * like a print out of register, further the more of those runs failed. The
+ * line moves and the colour does not, so it reads in greyscale and stays out
+ * of the stripes' way: nothing about it refuses.
+ *
+ * Corrosion is what an outage stops. The ring holds, since the capability is
+ * still configured, and the fill inside it is eaten through to the canvas.
+ * Only during the outage simulation, so the one texture on the map that looks
+ * like damage is the one that is damage.
+ *
+ * Defined once per svg, prefixed as the stripes are, since a page can hold
+ * the map and a saved still at once.
+ */
+export function MapFilters({ prefix }: { prefix: string }) {
+  const seeds = Array.from({ length: SEEDS }, (_, s) => s);
+  return (
+    <>
+      {WAVER_SCALE.map((scale, i) =>
+        seeds.map(s => (
+          <filter
+            key={`w${i}${s}`}
+            id={`${prefix}-waver-${i + 1}-${s}`}
+            x="-25%"
+            y="-25%"
+            width="150%"
+            height="150%"
+          >
+            <feTurbulence type="fractalNoise" baseFrequency={0.05} numOctaves={1} seed={s + 1} />
+            <feDisplacementMap
+              in="SourceGraphic"
+              scale={scale}
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+            {/* Displacement moves whole pixels; this puts the edge back. */}
+            <feGaussianBlur stdDeviation={0.35} />
+          </filter>
+        ))
+      )}
+      {seeds.map(s => (
+        <filter
+          key={`c${s}`}
+          id={`${prefix}-corrode-${s}`}
+          x="0"
+          y="0"
+          width="100%"
+          height="100%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feTurbulence type="fractalNoise" baseFrequency={0.12} numOctaves={2} seed={s + 7} />
+          {/* The noise's red channel as coverage, cut steeply so a hole has
+              an edge and not a fade: below 0.4 is eaten through. */}
+          <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  16 0 0 0 -6.4" />
+          <feComposite in="SourceGraphic" operator="in" />
+        </filter>
+      ))}
+    </>
+  );
+}
+
+/**
+ * One entry of the map's key: a swatch, a stroke, or a heading for the ramp.
+ * `hint` is what hovering the entry says, when the glossary entry its label
+ * maps to would describe something else.
+ */
+export type LegendKey = (
   | { kind: 'label'; label: string }
   | { kind: 'node'; label: string; color: string; sym?: string; hatch?: boolean }
-  | { kind: 'ring' | 'faded' | 'keystone' | 'eureka'; label: string }
+  | { kind: 'ring' | 'faded' | 'keystone' | 'eureka' | 'cutoff'; label: string }
+  | { kind: 'waver' | 'corroded'; label: string; filter: string }
   | { kind: 'line'; label: string; color?: string; dashed?: boolean }
-  | { kind: 'joint'; label: string; mark: JointMark };
+  | { kind: 'joint'; label: string; mark: JointMark }
+) & { hint?: string };
 
 /** A key's picture, centred on the origin, as the map draws that state. */
 export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string }) {
@@ -180,6 +285,28 @@ export function KeySwatch({ entry, hazard }: { entry: LegendKey; hazard: string 
       );
     case 'ring':
       return <circle r={7} fill="var(--bg-canvas)" stroke="var(--accent)" strokeWidth={2} />;
+    case 'cutoff':
+      return <circle r={7} fill="var(--bg-canvas)" stroke="var(--error)" strokeWidth={1.5} />;
+    case 'corroded':
+      return (
+        <>
+          <circle r={7} fill="var(--error-deep)" filter={entry.filter} />
+          <circle r={7} fill="none" stroke="var(--error)" strokeWidth={1.5} />
+        </>
+      );
+    case 'waver':
+      return (
+        <>
+          <circle r={7} fill="var(--node-reached)" />
+          <circle
+            r={7}
+            fill="none"
+            stroke="var(--node-reached-ring)"
+            strokeWidth={1.25}
+            filter={entry.filter}
+          />
+        </>
+      );
     case 'faded':
       return (
         <circle

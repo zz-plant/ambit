@@ -335,11 +335,16 @@ src/client/                React frontend
                            beside zoom: the key, the timeline, the saved image
     civ/MapKey.tsx         The key, opened from those tools; it opens itself under a lens
     civ/ImageMenu.tsx      What Image offers, opened where the key opens: the finding as a card to
-                           post, or the whole map as an SVG or a PNG at twice its size
+                           post, the whole map as an SVG or a PNG at twice its size, or the relief
+    civ/Relief.tsx         The map as a plate in relief, saved and never drawn on the page: what is
+                           reached raised as ground and lit from the first era, the frontier cut as
+                           one line, the era names and one line of counts, and no node named
     civ/marks.tsx          The drawings the map and its key share: corner brackets for what the
                            map points at, the keystone wedge, the part fill inside a next step
                            that was asked for, stripes for what refuses, the joint mark, each
-                           swatch, and the spec-sheet callout
+                           swatch, and the spec-sheet callout. `MapFilters` holds the two
+                           textures, each over one half of a node: a ring that slips off its fill
+                           for what is recovering, and a fill eaten through for what an outage stops
     civ/SimulationBanner.tsx  The outage / unlock simulation banner
     civ/MapFinding.tsx     The map's one sentence: a failing check, else the best next step. On
                            the demo the next step leads and the failing check is the line under it

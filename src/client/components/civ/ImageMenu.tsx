@@ -3,18 +3,25 @@
  *
  * The card is the finding, cut to a post's shape. The whole map is every era,
  * node and edge as a file, whatever is on screen: a vector to print or edit,
- * or a PNG at twice the map's size.
+ * or a PNG at twice the map's size. The relief is the same map with no names,
+ * what is reached raised as ground and lit: a picture to keep, not to read.
  */
 import { type KeyboardEvent, useEffect, useRef } from 'react';
 import { usePressAway } from '../../hooks/usePressAway';
 
-export type ImageKind = 'card' | 'svg' | 'png';
+export type ImageKind = 'card' | 'svg' | 'png' | 'relief';
 
-/** Each choice: what it saves, and the file it saves it as. */
-export const IMAGE_CHOICES: readonly (readonly [ImageKind, string, string])[] = [
-  ['card', 'The finding, to post', 'PNG'],
-  ['svg', 'The whole map', 'SVG'],
-  ['png', 'The whole map', 'PNG, 2×'],
+/** Each choice: what it saves, the file it saves it as, and what hovering it says. */
+export const IMAGE_CHOICES: readonly (readonly [ImageKind, string, string, string])[] = [
+  ['card', 'The finding, as a card', 'PNG', "The map's one sentence, sized for a post"],
+  ['svg', 'The whole map', 'SVG', 'Every era, node and edge, to print or edit'],
+  ['png', 'The whole map', 'PNG, 2×', 'Every era, node and edge, at twice the size'],
+  [
+    'relief',
+    'Your reach, in relief',
+    'PNG, 2×',
+    'What you have reached raised as ground and lit, with no names on it',
+  ],
 ];
 
 export function ImageMenu({
@@ -40,11 +47,12 @@ export function ImageMenu({
   return (
     <section className="civ-key" aria-label="Save an image" ref={box}>
       <ul className="civ-key-list">
-        {IMAGE_CHOICES.map(([kind, what, format]) => (
+        {IMAGE_CHOICES.map(([kind, what, format, hint]) => (
           <li key={kind}>
             <button
               type="button"
               className="civ-key-row civ-key-row--button"
+              title={hint}
               onKeyDown={closeOnEscape}
               onClick={() => {
                 onClose();

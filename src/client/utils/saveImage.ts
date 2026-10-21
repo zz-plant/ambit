@@ -125,7 +125,11 @@ export function pngScale(width: number, height: number): number {
 }
 
 /** `ambit-map-2026-10-06.svg`: what the file is, and the day, local, it was saved. */
-export function mapFileName(format: 'svg' | 'png', now = new Date()): string {
+export function mapFileName(
+  format: 'svg' | 'png',
+  now = new Date(),
+  what: 'map' | 'relief' = 'map'
+): string {
   const two = (n: number) => String(n).padStart(2, '0');
-  return `ambit-map-${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}.${format}`;
+  return `ambit-${what}-${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}.${format}`;
 }
