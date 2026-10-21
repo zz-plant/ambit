@@ -450,7 +450,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                   className="sp-action-btn sp-action-btn--sim"
                   onClick={clearSim}
                 >
-                  Exit simulation
+                  End simulation
                 </button>
               ) : item.status === 'built' ? (
                 <button

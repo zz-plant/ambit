@@ -2114,6 +2114,8 @@ button.app-sample-tag:hover {
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: 600;
+  white-space: nowrap;
+  flex: none;
   cursor: pointer;
 }
 
