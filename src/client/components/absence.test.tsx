@@ -244,7 +244,10 @@ test('the era ladder states nothing about a node that recorded nothing', () => {
 test('my setup states nothing about an entry that recorded nothing', () => {
   seed({ items: [unstatedNode, neighbour], selectedItem: null, searchQuery: '' });
 
-  expectNothingUnstated(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'SetupView');
+  expectNothingUnstated(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />),
+    'SetupView'
+  );
 });
 
 test('the map states nothing about a node that recorded nothing', () => {

@@ -205,8 +205,19 @@ test('the page and the map take their keys plain, and leave a modified one to th
   for (const held of [{ ctrlKey: true }, { metaKey: true }, { altKey: true }]) {
     for (const key of ['=', '+', '-', '0', 'j', 'k', '1'])
       expect(mapKey(press(key, held))).toBeUndefined();
-    for (const key of ['g', 'G', '/', '?']) expect(pageKey(press(key, held))).toBeUndefined();
+    for (const key of ['g', 'G', '/', '?', '[', ']'])
+      expect(pageKey(press(key, held))).toBeUndefined();
   }
+});
+
+test('brackets step through the views, and stay the page’s on the map', () => {
+  // The map holds the digits for its lenses and its actual size, so the views
+  // step on the brackets, which nothing else claims.
+  expect(pageKey(press('['))).toBe('viewPrev');
+  expect(pageKey(press(']'))).toBe('viewNext');
+  // They are not the map's, wherever the press lands.
+  expect(mapKey(press('['))).toBeUndefined();
+  expect(mapKey(press(']'))).toBeUndefined();
 });
 
 // ── The timeline's Space ─────────────────────────────────────────────────────

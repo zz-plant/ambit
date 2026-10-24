@@ -408,6 +408,15 @@ code, pre, .code, .sp-cli-cmd {
   color: var(--text-primary);
 }
 
+/* The waiting count on the Proposals tab. Smaller than the header badge it
+   replaced, so five tabs carry the room the fourth had. */
+.app-deck-count--tab {
+  min-width: 15px;
+  padding: 0 4px;
+  font-size: var(--fs-xs);
+  line-height: 14px;
+}
+
 .app-deck-btn {
   height: 30px;
   padding: 0 11px;
@@ -570,6 +579,14 @@ button.app-sample-tag:hover {
   line-height: 1.5;
   color: var(--text-muted);
   max-width: 560px;
+}
+
+/* The entries' closing section, the gap the list is read against. */
+.setup-unmapped {
+  margin-top: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .setup-tabs {
@@ -2955,6 +2972,28 @@ button.app-sample-tag:hover {
 }
 
 /* ─── MODAL DIALOGS (GOVERNANCE / DOCS) ─── */
+/* Proposals as a view: the desk the modal draws, laid out as a page like the
+   other views are, wide as a decision needs to be and no wider. */
+.proposals-view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 24px 28px 40px;
+  background: var(--bg-deep);
+}
+
+.proposals-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.proposals-head {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
 .uplink-modal-overlay {
   position: fixed;
   inset: 0;
@@ -3310,14 +3349,6 @@ button.app-sample-tag:hover {
 
   .audit-time {
     min-width: 0;
-  }
-}
-
-/* The trail made four views. On the narrowest phones the tab icons give
-   their room to the words, so the four still fit across. */
-@media (max-width: 400px) {
-  .app-deck-nav .app-tab-icon {
-    display: none;
   }
 }
 
@@ -4738,7 +4769,10 @@ button.app-sample-tag:hover {
   }
 }
 
-@media (min-width: 769px) and (max-width: 1270px) {
+/* Up to 1270px the view tabs are icons: five of them no longer fit with
+   words on a phone, where the tab bar's own idiom is icon-first anyway, and
+   each keeps its name in aria-label and its tooltip. */
+@media (max-width: 1270px) {
   .app-deck-nav .app-deck-tab-label {
     display: none;
   }
@@ -4800,7 +4834,7 @@ button.app-sample-tag:hover {
   /* Two rows on a phone. The single row scrolled sideways, and at 390px
      Proposals and Docs sat past the right edge where nothing said they
      were; a count of waiting proposals nobody can see is no count. The
-     brand and the actions keep the top row, and the three views get the
+     brand and the actions keep the top row, and the views get the
      whole width under it, where a thumb finds them. */
   :root {
     --deck-h: 96px;

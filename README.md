@@ -286,16 +286,17 @@ The server delivers this instruction directly during MCP client connection hands
 
 ## The map
 
-`./bootstrap.sh web` serves four views over the graph the CLI reads.
+`./bootstrap.sh web` serves five views over the graph the CLI reads.
 
 - **Map**: The curated capability tree showing current reach, with status legends underneath. The top summary banner highlights primary findings: failing checks, or the highest-leverage next capability to acquire.
-- **My Setup**: Discovered configuration entries, their verification check history, and the capabilities each provides. The Briefing tab displays the context payload provided to agents on connection.
+- **My Setup**: Discovered configuration entries, their verification check history, and the capabilities each provides, closing with what the agents used that no node on the map accounts for. The Briefing section displays the context payload provided to agents on connection, and the Environment section draws the repository and infrastructure scans. Each section is part of the address, so a link can open on it.
 - **Time & cost**: The work ledger, unattended authority grants, recommended next steps, and frontier evolution over the past week.
 - **Audit**: Reverse-chronological audit log of proposals, approvals, check executions, and work sessions, searchable by query.
+- **Proposals**: The decision queue, one card per change an agent has drafted, several decidable together.
 
 Selecting a node displays downstream dependencies that fail if it goes down, or missing prerequisites and estimated setup times needed to reach it. **Simulate an outage** renders that cascade, filled red for broken dependencies, a red outline for unconfigured nodes, and amber for capabilities losing redundant providers. **Simulate unlocking** highlights nodes made reachable by acquiring a single prerequisite. Neither simulation writes data. Three lenses filter the map: **Standard** (reached, next step, blocked), **Attention** (tools causing frequent human interruptions), and **Authority** (unattended, human confirmation required, forbidden).
 
-When an agent proposes a configuration change over MCP, the **Proposals** panel reviews it as an execution plan before you sign: individual steps, irreversible actions, unlocked capabilities, costs, and historical approval precedents. Approving creates a signed artifact, applied locally via `ambit apply`.
+When an agent proposes a configuration change over MCP, the **Proposals** view reviews it as an execution plan before you sign: individual steps, irreversible actions, unlocked capabilities, costs, and historical approval precedents. Approving creates a signed artifact, applied locally via `ambit apply`.
 
 [The reference](./docs/deep-dive.md#the-map-and-what-it-is-allowed-to-do) covers the rest: what each mark means, focus, the minimap, the timeline that replays the map as it was, deciding several drafts at once, and pushing one to your phone.
 

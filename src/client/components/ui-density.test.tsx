@@ -93,7 +93,7 @@ afterAll(() => {
 });
 
 test('my setup lists each entry once and omits status chrome when nothing is filtered', () => {
-  const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />);
 
   expect(html).toContain('Core');
   expect(html).toContain('Tool');

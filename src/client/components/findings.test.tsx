@@ -109,7 +109,9 @@ test('My Setup leads with what is failing and what provides nothing', () => {
     c => !idle.has(c.from)
   );
   seed({ ...merged, connections });
-  const html = text(renderToStaticMarkup(<SetupView onShow={() => {}} />));
+  const html = text(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />)
+  );
   expect(html).toContain('playwright provides something whose check is failing');
   expect(html).toContain('grafana and kubernetes are enabled but provide nothing on the map');
   expect(html).toContain('check failing');
@@ -400,7 +402,9 @@ test('the states are keyed under the map, and a keystone is a wedge, not a box',
 test('My Setup on the sample says so, and leads with where it stands', () => {
   const order = (demo: boolean) => {
     seed({ ...merged, demo, loop: demoSnapshot() });
-    const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+    const html = renderToStaticMarkup(
+      <SetupView onShow={() => {}} tab="entries" onTab={() => {}} />
+    );
     return {
       sample: text(html).includes("A sample developer's setup."),
       findingsFirst: html.indexOf('setup-findings') < html.indexOf('journey-title'),

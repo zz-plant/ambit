@@ -364,7 +364,7 @@ test('the shell hands the collapse to the address bar with the rest of the view'
   vi.mocked(writeLinkState).mockClear();
   renderToStaticMarkup(<App />);
   expect(vi.mocked(writeLinkState).mock.lastCall?.[0]).toMatchObject({
-    view: 'tree',
+    view: 'map',
     focusId: ROOT,
     collapse: true,
     depth: 1,
@@ -395,13 +395,13 @@ test('a link lands collapsed only on a node the graph holds, and the address bar
       dir: link.dir,
     });
   };
-  expect(land(`?view=tree&focus=${ROOT}&collapse=1&depth=1`)).toBe(
-    `?view=tree&focus=${encodeURIComponent(ROOT)}&collapse=1&depth=1`
+  expect(land(`?view=map&focus=${ROOT}&collapse=1&depth=1`)).toBe(
+    `?view=map&focus=${encodeURIComponent(ROOT)}&collapse=1&depth=1`
   );
   // With no node, or one this graph lacks, the collapse is dropped from the
   // address bar, and the first node clicked is the whole map.
-  expect(land('?view=tree&collapse=1')).toBe('?view=tree');
-  expect(land('?view=tree&focus=combo:nope&collapse=1')).toBe('?view=tree');
+  expect(land('?view=map&collapse=1')).toBe('?view=map');
+  expect(land('?view=map&focus=combo:nope&collapse=1')).toBe('?view=map');
   useAmbitStore.getState().selectItem('combo:model-routing');
   expect(useAmbitStore.getState().collapsed).toBe(false);
   expect(places(map({ selectedId: 'combo:model-routing' })).size).toBe(drawn.length);
