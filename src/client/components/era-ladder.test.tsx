@@ -158,13 +158,13 @@ test('leaving the map closes an era ladder, and a node keeps its panel in My Set
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
   seed({ items, connections, selectedEra: 3, showDetailPanel: true });
   renderToStaticMarkup(<App />);
-  deck.props!.onShowView('config');
+  deck.props!.onShowView('setup');
   expect(useAmbitStore.getState()).toMatchObject({ selectedEra: null, showDetailPanel: false });
 
   // A node's panel means the same thing over the list, so it stays.
   seed({ selectedEra: null, selectedItem: 'combo:shell-execution', showDetailPanel: true });
   renderToStaticMarkup(<App />);
-  deck.props!.onShowView('config');
+  deck.props!.onShowView('setup');
   expect(useAmbitStore.getState()).toMatchObject({
     selectedItem: 'combo:shell-execution',
     showDetailPanel: true,
@@ -173,6 +173,6 @@ test('leaving the map closes an era ladder, and a node keeps its panel in My Set
   // And back on the map, a ladder opened there is left alone.
   seed({ selectedItem: null, selectedEra: 2, showDetailPanel: true });
   renderToStaticMarkup(<App />);
-  deck.props!.onShowView('tree');
+  deck.props!.onShowView('map');
   expect(useAmbitStore.getState().selectedEra).toBe(2);
 });

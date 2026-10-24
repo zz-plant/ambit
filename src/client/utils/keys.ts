@@ -140,13 +140,17 @@ export interface KeyPress {
 const held = (e: KeyPress) => e.ctrlKey || e.metaKey || e.altKey;
 
 /** The shell's own keys, pressed anywhere but in a field. */
-export type PageKey = 'search' | 'docs' | 'proposals' | 'escape';
+export type PageKey = 'search' | 'docs' | 'proposals' | 'viewPrev' | 'viewNext' | 'escape';
 
 export function pageKey(e: KeyPress): PageKey | undefined {
   if (held(e)) return undefined;
   if (e.key === '/' && !e.shiftKey) return 'search';
   if (e.key === '?' || e.key === '/') return 'docs';
   if (e.key === 'g' || e.key === 'G') return 'proposals';
+  // The map holds the digits (its lenses and actual size), so the views step
+  // on brackets, which nothing else on the page claims.
+  if (e.key === '[') return 'viewPrev';
+  if (e.key === ']') return 'viewNext';
   if (e.key === 'Escape') return 'escape';
   return undefined;
 }

@@ -53,6 +53,7 @@ interface AppDeckProps {
   entries: { enabled: number; total: number } | null;
   /** Whether the live-update stream is attached. */
   connected: boolean;
+  /** How many drafts wait on the Proposals tab, where the decision is made. */
   draftCount: number;
   /** The legend key lit on its own, if any; the header's segments light the same keys. */
   spotlight: string | null;
@@ -60,7 +61,6 @@ interface AppDeckProps {
   onSearch: () => void;
   onShowView: (view: View) => void;
   onShare: () => void;
-  onShowProposals: () => void;
   onShowDocs: () => void;
   /** The day of the observation the map is scrubbed to; the counts are that day's. */
   asOf?: string;
@@ -115,7 +115,7 @@ function breakdown(c: MapCounts): string {
   return [...parts, `${c.next} ${noun('Next step', c.next)}`, `${c.blocked} blocked`].join(', ');
 }
 
-/** The top bar: search, brand, the count for this view, the view tabs, share, proposals, docs. */
+/** The top bar: search, brand, the count for this view, the view tabs, share, docs. */
 export default function AppDeck(p: AppDeckProps) {
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
   const unsplit = p.counts?.reached !== undefined;
@@ -240,9 +240,9 @@ export default function AppDeck(p: AppDeckProps) {
         <nav className="app-deck-nav" aria-label="View">
           <button
             type="button"
-            className={tab(p.view === 'tree')}
-            aria-current={p.view === 'tree' ? 'page' : undefined}
-            onClick={() => p.onShowView('tree')}
+            className={tab(p.view === 'map')}
+            aria-current={p.view === 'map' ? 'page' : undefined}
+            onClick={() => p.onShowView('map')}
             // The name, for where the tab shows only its icon.
             aria-label="Map"
             title="The curated capability tree, with your position on it"
@@ -268,9 +268,9 @@ export default function AppDeck(p: AppDeckProps) {
           </button>
           <button
             type="button"
-            className={tab(p.view === 'config')}
-            aria-current={p.view === 'config' ? 'page' : undefined}
-            onClick={() => p.onShowView('config')}
+            className={tab(p.view === 'setup')}
+            aria-current={p.view === 'setup' ? 'page' : undefined}
+            onClick={() => p.onShowView('setup')}
             // The name, for where the tab shows only its icon.
             aria-label="My Setup"
             title="The servers, agents and models found on this machine, and what each one provides"
@@ -296,9 +296,9 @@ export default function AppDeck(p: AppDeckProps) {
           </button>
           <button
             type="button"
-            className={tab(p.view === 'loop')}
-            aria-current={p.view === 'loop' ? 'page' : undefined}
-            onClick={() => p.onShowView('loop')}
+            className={tab(p.view === 'cost')}
+            aria-current={p.view === 'cost' ? 'page' : undefined}
+            onClick={() => p.onShowView('cost')}
             // The name, for where the tab shows only its icon.
             aria-label="Time & cost"
             title="Where human attention goes, and what would pay back fastest"
@@ -347,6 +347,38 @@ export default function AppDeck(p: AppDeckProps) {
               <circle cx="2.5" cy="12" r="0.75" fill="currentColor" />
             </svg>
             <span className="app-deck-tab-label">Audit</span>
+          </button>
+          <button
+            type="button"
+            className={tab(p.view === 'proposals')}
+            aria-current={p.view === 'proposals' ? 'page' : undefined}
+            onClick={() => p.onShowView('proposals')}
+            // The name, for where the tab shows only its icon.
+            aria-label="Proposals"
+            title="What an agent wants to change, waiting on your decision (g)"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="app-tab-icon"
+              aria-hidden="true"
+            >
+              <path d="M3 2 H10 L13 5 V14 H3 Z" />
+              <path d="M9 2 V5 H13" />
+            </svg>
+            <span className="app-deck-tab-label">Proposals</span>
+            {/* The count carries the alert, as the header button it replaced
+                did: the tab is where the decision is made, so the waiting
+                number belongs there. */}
+            {p.draftCount > 0 && (
+              <span className="app-deck-count app-deck-count--tab">{p.draftCount}</span>
+            )}
           </button>
         </nav>
       </div>
@@ -404,33 +436,6 @@ export default function AppDeck(p: AppDeckProps) {
             <path d="M5.8 7.1 L10.2 4.9 M5.8 8.9 L10.2 11.1" />
           </svg>
           <span className="app-deck-btn-label">Share</span>
-        </button>
-        <button
-          type="button"
-          // The count carries the alert. The whole button in amber made it
-          // the loudest control on every screen, the tour's included.
-          className="app-deck-btn"
-          onClick={p.onShowProposals}
-          title="Changes an agent wants to make, waiting for your approval (g)"
-          aria-label={p.draftCount > 0 ? `Proposals (${p.draftCount} waiting)` : 'Proposals'}
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="app-deck-icon"
-            aria-hidden="true"
-          >
-            <path d="M3 2 H10 L13 5 V14 H3 Z" />
-            <path d="M9 2 V5 H13" />
-          </svg>
-          <span className="app-deck-btn-label">Proposals</span>
-          {p.draftCount > 0 && <span className="app-deck-count">{p.draftCount}</span>}
         </button>
         <button
           type="button"

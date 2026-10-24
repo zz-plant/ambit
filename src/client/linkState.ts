@@ -10,12 +10,32 @@
  */
 
 /**
- * The views. `tree` is the map, `config` is My Setup, `loop` is Time & cost,
- * `audit` is the trail. The words are the URL's, kept so that links written
- * before the setup view stopped being a second map still open where they did.
+ * The views, one question each: `map` is where you stand, `setup` is what this
+ * machine has, `cost` is Time & cost, `audit` is the trail, `proposals` is
+ * what waits on your decision. The words are the labels' own, so a link reads
+ * as it lands. Links written before the rename read the old words
+ * (`tree`, `config`, `loop`) as aliases, so they still open where they did.
  */
-export const VIEWS = ['tree', 'config', 'loop', 'audit'] as const;
+export const VIEWS = ['map', 'setup', 'cost', 'audit', 'proposals'] as const;
 export type View = (typeof VIEWS)[number];
+
+/** The words a link written before the rename read. */
+const VIEW_ALIASES: Record<string, View> = { tree: 'map', config: 'setup', loop: 'cost' };
+
+/** What a stated view word means, or null when it names no view. */
+const viewOf = (stated: string | null): View | null => {
+  if (!stated) return null;
+  if ((VIEWS as readonly string[]).includes(stated)) return stated as View;
+  return VIEW_ALIASES[stated] ?? null;
+};
+
+/**
+ * The sections My Setup holds, and the URL's words for them. `entries` is the
+ * default and is never written; the others are, so a link can open on the
+ * briefing, which was the point of giving the sections words.
+ */
+export const SETUP_TABS = ['entries', 'environment', 'briefing'] as const;
+export type SetupTab = (typeof SETUP_TABS)[number];
 
 /**
  * How the map is coloured. The lens changes nothing else about the view.
@@ -83,6 +103,8 @@ export interface LinkState {
   depth: FocusDepth;
   /** `?dir=`: `needs`, `both` or `enables`. */
   dir: FocusDirection;
+  /** `?tab=`: which section of My Setup is showing. */
+  tab: SetupTab;
   /**
    * `?tour=`: run the demo's tour from this step, seen before or not. Read
    * once and never written back, so the address bar a reader shares is the
@@ -117,14 +139,14 @@ const depthOf = (value: string | null): FocusDepth => {
 
 export function readLinkState(search: string): LinkState {
   const params = new URLSearchParams(search);
-  const stated = params.get('view');
+  const stated = viewOf(params.get('view'));
   const demo = params.get('demo') === '1';
   return {
     // ?demo=1 is the link the README leads with and the one the hero image is
     // a picture of: the map, nine eras. A local visit opens on the machine's
-    // own setup. An explicit view wins over both.
-    view: oneOf(VIEWS, stated, demo ? 'tree' : 'config'),
-    viewStated: (VIEWS as readonly string[]).includes(stated ?? ''),
+    // own setup. An explicit view wins over both, an old word included.
+    view: stated ?? (demo ? 'map' : 'setup'),
+    viewStated: stated !== null,
     focusId: params.get('focus') || null,
     docsOpen: params.get('docs') === 'open',
     demo,
@@ -134,6 +156,7 @@ export function readLinkState(search: string): LinkState {
     collapse: params.get('collapse') === '1',
     depth: depthOf(params.get('depth')),
     dir: oneOf(FOCUS_DIRECTIONS, params.get('dir'), DEFAULT_FOCUS_DIRECTION),
+    tab: oneOf(SETUP_TABS, params.get('tab'), 'entries'),
     tour: (TOUR_STEPS as readonly string[]).includes(params.get('tour') ?? '')
       ? (params.get('tour') as TourStep)
       : null,
@@ -169,7 +192,7 @@ export function linkFocus(
  */
 export function hostedLanding(link: LinkState, hosted: boolean): LinkState {
   if (!hosted || link.demo) return link;
-  return { ...link, demo: true, view: link.viewStated ? link.view : 'tree' };
+  return { ...link, demo: true, view: link.viewStated ? link.view : 'map' };
 }
 
 /**
@@ -181,37 +204,62 @@ export function hostedLanding(link: LinkState, hosted: boolean): LinkState {
  */
 export function initialView(link: LinkState, narrow: boolean, touring = false): View {
   if (link.viewStated) return link.view;
-  if (touring) return 'tree';
-  return narrow && link.view === 'tree' ? 'config' : link.view;
+  if (touring) return 'map';
+  return narrow && link.view === 'map' ? 'setup' : link.view;
 }
 
 /**
  * What `writeLinkState` needs to know. The guide and the stated-ness are
  * read-side facts. The collapse fields are optional: a caller that never
  * collapses has nothing to say about them, and a link without them is today's map.
+ * The section is optional too: it is written only while My Setup is the view,
+ * so no other view's URL carries a word that does nothing there.
  */
 export type ShareState = Omit<
   LinkState,
-  'guideOff' | 'viewStated' | 'collapse' | 'depth' | 'dir' | 'tour'
+  'guideOff' | 'viewStated' | 'tab' | 'collapse' | 'depth' | 'dir' | 'tour'
 > &
-  Partial<Pick<LinkState, 'collapse' | 'depth' | 'dir'>>;
+  Partial<Pick<LinkState, 'tab' | 'collapse' | 'depth' | 'dir'>>;
 
 /** Where an address is written: the page's location and history, or a stand-in for them. */
 export interface AddressBar {
   location: { search: string; hash: string };
-  history: { replaceState: (data: unknown, unused: string, url: string) => void };
+  history: {
+    replaceState: (data: unknown, unused: string, url: string) => void;
+    pushState: (data: unknown, unused: string, url: string) => void;
+  };
 }
 
 /**
- * Put `search` in the address bar, if it is not there already. Safari throws
- * once a page writes history a hundred times in thirty seconds, and scrubbing
- * a long ledger writes once per tick, so a write the browser refuses is
- * skipped: the next change writes the address again.
+ * Whether a change of address is a navigation, and so is pushed, or a restyle
+ * of the same place, and so replaces. The view, or the section of My Setup it
+ * shows, is where someone is; a lens, a focus and a scrub are how the same
+ * place looks, and Back must not step through eleven of them.
  */
-export function writeAddress(bar: AddressBar, search: string): void {
+export function addressMode(before: string, after: string): 'push' | 'replace' {
+  const place = (q: string) => {
+    const params = new URLSearchParams(q);
+    return `${params.get('view')}/${params.get('tab')}`;
+  };
+  return place(before) !== place(after) ? 'push' : 'replace';
+}
+
+/**
+ * Put `search` in the address bar, if it is not there already. A push makes
+ * the change a navigation, so Back steps onto it; a replace leaves history
+ * alone. Safari throws once a page writes history a hundred times in thirty
+ * seconds, and a write the browser refuses is skipped: the next change writes
+ * the address again.
+ */
+export function writeAddress(
+  bar: AddressBar,
+  search: string,
+  mode: 'push' | 'replace' = 'replace'
+): void {
   if (bar.location.search === search) return;
+  const write = mode === 'push' ? bar.history.pushState : bar.history.replaceState;
   try {
-    bar.history.replaceState({}, '', search + bar.location.hash);
+    write({}, '', search + bar.location.hash);
   } catch {
     /* the address bar catches up on the next change */
   }
@@ -224,6 +272,8 @@ export function writeAddress(bar: AddressBar, search: string): void {
  * says nothing, so only what differs is written. `view` is the exception: it is
  * always stated, because its default depends on `demo` and on the screen, and
  * a reader should not have to know either rule to predict where a link lands.
+ * `tab` is written only when My Setup is the view and a section other than
+ * Entries is showing.
  */
 export function writeLinkState(state: ShareState): string {
   const params = new URLSearchParams();
@@ -233,6 +283,7 @@ export function writeLinkState(state: ShareState): string {
   if (state.docsOpen) params.set('docs', 'open');
   if (state.lens !== 'default') params.set('lens', state.lens);
   if (state.at) params.set('at', state.at);
+  if (state.tab && state.tab !== 'entries') params.set('tab', state.tab);
   if (state.collapse) params.set('collapse', '1');
   if (state.depth !== undefined && state.depth !== DEFAULT_FOCUS_DEPTH) {
     params.set('depth', String(state.depth));

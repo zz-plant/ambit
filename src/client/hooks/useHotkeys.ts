@@ -7,8 +7,10 @@ interface Hotkeys {
   openSearch: () => void;
   /** `?`: toggle the docs overlay. */
   toggleDocs: () => void;
-  /** `g`: toggle the proposals panel. */
-  toggleGovernance: () => void;
+  /** `g`: go to the Proposals view, and back to the map from there. */
+  proposals: () => void;
+  /** `[` and `]`: step to the previous or next view. */
+  viewStep: (dir: 1 | -1) => void;
   /** `Esc`: close one thing, the one `escapeLayer` (utils/keys.ts) names. */
   escape: () => void;
 }
@@ -37,7 +39,13 @@ export function useHotkeys(keys: Hotkeys) {
         k.toggleDocs();
       } else if (key === 'proposals') {
         e.preventDefault();
-        k.toggleGovernance();
+        k.proposals();
+      } else if (key === 'viewPrev') {
+        e.preventDefault();
+        k.viewStep(-1);
+      } else if (key === 'viewNext') {
+        e.preventDefault();
+        k.viewStep(1);
       } else if (key === 'escape') {
         k.escape();
       }

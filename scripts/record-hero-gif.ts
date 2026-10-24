@@ -200,7 +200,6 @@ const byText = (sel: string, text: string) => `(() => {
   return found[0];
 })()`;
 const deckTab = (t: string) => byText('.app-deck-tab', t);
-const deckBtn = (t: string) => byText('.app-deck-btn', t);
 
 async function main() {
   if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}; set CHROME_PATH`);
@@ -604,13 +603,13 @@ async function main() {
 
   // 7 — the proposal waiting for a person
   console.log('  · proposals');
-  await cdp.clickWhere(deckBtn('Proposals'));
+  await cdp.clickWhere(deckTab('Proposals'));
   await sleep(1400);
   await hold(2.4);
 
   // 8 — My Setup, for the README's second still. Not a beat of the GIF: a
   // list holds still for as long as a reader wants, which a frame cannot.
-  await cdp.send('Page.navigate', { url: `http://127.0.0.1:${webPort}/ambit/?view=config` });
+  await cdp.send('Page.navigate', { url: `http://127.0.0.1:${webPort}/ambit/?view=setup` });
   await sleep(3000);
   await cdp.eval(`(() => {
     const rows = document.querySelectorAll('.setup-row');

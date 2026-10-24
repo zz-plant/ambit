@@ -1,6 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import AppDeck, { mapCounts } from './components/AppDeck';
-import ApprovalModal from './components/ApprovalModal';
 import { dayOf, hasHistory, itemsAsOf, momentOf, tickAt } from './components/civ/history';
 import { isEntry, unlockedSince, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
@@ -17,10 +16,19 @@ import WelcomeScreen from './components/WelcomeScreen';
 import { useGraphStream } from './hooks/useGraphStream';
 import { useGuide } from './hooks/useGuide';
 import { useHotkeys } from './hooks/useHotkeys';
+import { useLatest } from './hooks/useLatest';
 import { useToast } from './hooks/useToast';
 import { useUrlSync } from './hooks/useUrlSync';
 import { isNarrowScreen, useNarrow } from './hooks/useViewport';
-import { hostedLanding, initialView, linkFocus, readLinkState, type View } from './linkState';
+import {
+  hostedLanding,
+  initialView,
+  linkFocus,
+  readLinkState,
+  VIEWS,
+  type SetupTab,
+  type View,
+} from './linkState';
 import { isHostedDemo, useAmbitStore } from './store/ambitStore';
 import { statusLabel } from './utils/labels';
 import { escapeLayer } from './utils/keys';
@@ -32,10 +40,15 @@ import type { ImageKind } from './components/civ/ImageMenu';
 import { embeddedFontCss } from './fonts';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
-// Fetched when first opened: a visit lands on the map, and the two views it
+// Fetched when first opened: a visit lands on the map, and the views it
 // does not show were 41KB of the script every first load waited for.
 const LoopDashboard = React.lazy(() => import('./components/LoopDashboard'));
 const AuditView = React.lazy(() => import('./components/AuditView'));
+const ProposalsView = React.lazy(() => import('./components/ProposalsView'));
+// The modal is the tour's narration of the approval gate, on the demo alone;
+// the Proposals view is where decisions are read on a real machine. The desk
+// they share is a chunk of its own, so neither waits for the other.
+const ApprovalModal = React.lazy(() => import('./components/ApprovalModal'));
 
 /** The width of the detail panel. */
 const PANEL_W = 340;
@@ -96,8 +109,9 @@ export default function App() {
   const startOutage = useAmbitStore(s => s.startOutageSimulation);
   const setActiveLens = useAmbitStore(s => s.setActiveLens);
 
-  // The URL is read once; the controls own every later change.
-  const [link] = useState(() =>
+  // The URL is read once; the controls own every later change, and `popstate`
+  // owns the ones Back and Forward bring.
+  const [link, setLink] = useState(() =>
     hostedLanding(
       readLinkState(typeof window === 'undefined' ? '' : window.location.search),
       isHostedDemo()
@@ -107,6 +121,9 @@ export default function App() {
   const [view, setView] = useState<View>(() =>
     initialView(link, isNarrowScreen(), link.demo && (showGuide || Boolean(link.tour)))
   );
+  // Which section of My Setup is showing. App owns it, so a link can open on
+  // it and the address bar carries it.
+  const [setupTab, setSetupTab] = useState<SetupTab>(() => link.tab);
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
   const [finderOpen, setFinderOpen] = useState(false);
@@ -130,6 +147,7 @@ export default function App() {
     demo,
     lens,
     at: historyAt,
+    tab: view === 'setup' ? setupTab : undefined,
     collapse,
     depth,
     dir,
@@ -181,14 +199,16 @@ export default function App() {
       ),
   });
 
+  // The view the hotkeys read, current at the moment a key lands.
+  const viewNow = useLatest(view);
   useHotkeys({
     openSearch: () => setFinderOpen(true),
     toggleDocs: () => setShowDocs(o => !o),
-    toggleGovernance: () => {
-      const open = useAmbitStore.getState().showApprovalModal;
-      setShowApprovalModal(!open);
-      if (!open) loadProposals();
-    },
+    // `g` holds the one view its letter names: to the decisions, and back to
+    // the map from there.
+    proposals: () => showView(viewNow.current === 'proposals' ? 'map' : 'proposals'),
+    viewStep: dir =>
+      showView(VIEWS[(VIEWS.indexOf(viewNow.current) + dir + VIEWS.length) % VIEWS.length]),
     // One owner, and one thing a press: see escapeLayer.
     escape: () => {
       const s = useAmbitStore.getState();
@@ -196,7 +216,7 @@ export default function App() {
         docs: showDocs,
         proposals: s.showApprovalModal,
         finder: finderOpen,
-        onMap: view === 'tree',
+        onMap: view === 'map',
         key: s.keyToggled ?? s.activeLens !== 'default',
         spotlight: s.spotlight !== null,
         simulation: s.simulationMode !== 'none',
@@ -211,6 +231,32 @@ export default function App() {
       else if (layer === 'selection') selectItem(null);
     },
   });
+
+  // Back and Forward re-enter the app the way a first visit does: the address
+  // names the place, and what it says is applied. A lens, a focus and a scrub
+  // live in the store across views, so the URL's word for them agrees with
+  // what is already on screen; the view, its section and the docs are the
+  // changes a push recorded, and the ones that need applying.
+  useEffect(() => {
+    const onPop = () => {
+      const next = readLinkState(window.location.search);
+      setLink(next);
+      setView(next.view);
+      setSetupTab(next.tab);
+      setShowDocs(next.docsOpen);
+      const s = useAmbitStore.getState();
+      const target = linkFocus(next, s.items);
+      if (target) {
+        if (s.selectedItem !== target.id) s.selectItem(target.id);
+        if (target.collapse) s.setCollapsed(true);
+      } else if (s.selectedItem !== null || s.selectedEra !== null) {
+        // An address that names no node is a map with nothing selected.
+        s.selectItem(null);
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount only. The link is read once, and the store actions have stable identities. Re-running this on a re-render would re-seed the demo, which is exactly what it must not do.
   useEffect(() => {
@@ -262,7 +308,7 @@ export default function App() {
   const show = (id: string) => {
     const item = items.find(i => i.id === id);
     if (!item) return;
-    setView(isEntry(item) ? 'config' : 'tree');
+    setView(isEntry(item) ? 'setup' : 'map');
     select(id);
   };
 
@@ -271,14 +317,14 @@ export default function App() {
    * simulation running. Both happen on the map, so the map is shown first.
    */
   const showOnMap = (id: string) => {
-    setView('tree');
+    setView('map');
     select(id);
     startAcquisition(id);
   };
 
   /** The same, for the outage: the map, the node selected, and what stops. */
   const showOutage = (id: string) => {
-    setView('tree');
+    setView('map');
     select(id);
     startOutage(id);
   };
@@ -288,14 +334,20 @@ export default function App() {
     // The detail panel is meaningful over the map and the list, and in the
     // way over the figures. An era's ladder is the map's alone: it stayed open
     // over My Setup, covering the right edge of the list.
-    if (next !== 'tree' && useAmbitStore.getState().selectedEra !== null) selectEra(null);
-    if (next === 'loop') {
+    if (next !== 'map' && useAmbitStore.getState().selectedEra !== null) selectEra(null);
+    if (next === 'cost') {
       selectItem(null);
       if (!demo) loadLoop();
     }
     if (next === 'audit') {
       selectItem(null);
       loadAudit();
+    }
+    // The decisions are a page of their own: the panel over it was the map's
+    // business, and the queue decides in its own transaction anyway.
+    if (next === 'proposals') {
+      selectItem(null);
+      loadProposals();
     }
   };
 
@@ -373,13 +425,17 @@ export default function App() {
     }
   };
 
+  /**
+   * The modal is the tour's narration of the approval gate, on the demo; the
+   * decisions themselves are the Proposals view, which a link can name.
+   */
   const showProposals = () => {
     setShowApprovalModal(true);
     loadProposals();
   };
 
   /**
-   * What the finder's actions do to the page. Each one shows the map or a
+   * What the finder's actions do to the page. Each one shows a view or a
    * panel, and `view` lives here, so the finder is handed these and never sets
    * a view itself. A check is copied and never run: the page has no route that
    * runs one.
@@ -387,10 +443,15 @@ export default function App() {
   const paletteHandlers: PaletteHandlers = {
     simulate: (id, mode) => (mode === 'outage' ? showOutage(id) : showOnMap(id)),
     lens: lens => {
-      setView('tree');
+      setView('map');
       setActiveLens(lens);
     },
-    proposals: showProposals,
+    view: showView,
+    briefing: () => {
+      setSetupTab('briefing');
+      showView('setup');
+    },
+    proposals: () => showView('proposals'),
     copy: async (text, notice) => {
       try {
         await navigator.clipboard.writeText(text);
@@ -405,7 +466,7 @@ export default function App() {
   // only on the map, and not while the tour narrates the map as it is. The
   // header, the map and the panel all read `shown`, so they tell one date.
   const tick =
-    view === 'tree' && !(demo && (tourAsked || showGuide)) ? tickAt(history, historyAt) : null;
+    view === 'map' && !(demo && (tourAsked || showGuide)) ? tickAt(history, historyAt) : null;
   const shown = useMemo(
     () => (tick ? itemsAsOf(items, connections, tick) : items),
     [tick, items, connections]
@@ -425,11 +486,11 @@ export default function App() {
   const counts = mapCounts(visibleItems(shown), !(tick && !tick.lifecycles) && !reading);
   const entries = items.filter(isEntry);
   const hasTree = items.some(i => !isEntry(i));
-  const touring = demo && view === 'tree' && hasTree && (tourAsked || showGuide);
+  const touring = demo && view === 'map' && hasTree && (tourAsked || showGuide);
   // Under the map, once a series has come back. It explains itself when it
   // holds fewer than two ticks; with no engine behind the page it is absent.
   const showTimeline =
-    view === 'tree' && hasTree && !touring && (historyOpen || Boolean(tick)) && hasHistory(history);
+    view === 'map' && hasTree && !touring && (historyOpen || Boolean(tick)) && hasHistory(history);
   // Play runs only where it is seen. When the strip goes (another view, the
   // tour, an emptied graph) it pauses, and does not step on unseen and come
   // back somewhere else.
@@ -451,9 +512,9 @@ export default function App() {
     setMapYoursOpen(false);
     endTour();
     setReadoutOpen(true);
-    showView('tree');
+    showView('map');
   };
-  const readout = Boolean(reading) && readoutOpen && view === 'tree' && hasTree;
+  const readout = Boolean(reading) && readoutOpen && view === 'map' && hasTree;
 
   // No graph yet: the welcome page, on its own. The chrome around the map (a
   // status pill reading "0 of 0") would otherwise be the first thing a
@@ -464,12 +525,12 @@ export default function App() {
         <WelcomeScreen
           onExploreDemo={() => {
             seedDemo();
-            setView('tree');
+            setView('map');
             setTourAsked(true);
           }}
           onViewLoop={() => {
             seedDemo();
-            setView('loop');
+            showView('cost');
           }}
           onMapped={mapped}
         />
@@ -482,9 +543,9 @@ export default function App() {
     <div className={`app${touring ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}`}>
       <AppDeck
         view={view}
-        counts={view === 'tree' ? counts : null}
+        counts={view === 'map' ? counts : null}
         entries={
-          view === 'config'
+          view === 'setup'
             ? { enabled: entries.filter(i => i.status === 'built').length, total: entries.length }
             : null
         }
@@ -495,7 +556,6 @@ export default function App() {
         onSearch={() => setFinderOpen(true)}
         onShowView={showView}
         onShare={share}
-        onShowProposals={showProposals}
         onShowDocs={() => openDocs()}
         asOf={tick ? dayOf(tick.at) : undefined}
         sample={
@@ -505,7 +565,7 @@ export default function App() {
                   touring || !hasTree
                     ? undefined
                     : () => {
-                        showView('tree');
+                        showView('map');
                         setTourAsked(true);
                       },
                 onMapYours: () => setMapYoursOpen(true),
@@ -517,7 +577,7 @@ export default function App() {
             ? {
                 onOpen: () => {
                   setReadoutOpen(true);
-                  showView('tree');
+                  showView('map');
                 },
               }
             : undefined
@@ -534,7 +594,7 @@ export default function App() {
             </button>
           </div>
         )}
-        {view === 'loop' ? (
+        {view === 'cost' ? (
           <Suspense fallback={<Loading />}>
             <LoopDashboard onShowOnMap={showOnMap} onShow={show} />
           </Suspense>
@@ -542,8 +602,12 @@ export default function App() {
           <Suspense fallback={<Loading />}>
             <AuditView />
           </Suspense>
-        ) : view === 'config' ? (
-          <SetupView onShow={show} />
+        ) : view === 'proposals' ? (
+          <Suspense fallback={<Loading />}>
+            <ProposalsView />
+          </Suspense>
+        ) : view === 'setup' ? (
+          <SetupView onShow={show} tab={setupTab} onTab={setSetupTab} />
         ) : items.length > 0 && hasTree ? (
           <Suspense fallback={<Loading />}>
             <CivTree
@@ -571,7 +635,7 @@ export default function App() {
               file declares is in My Setup; for the map, clone the repository and run{' '}
               <code>./bootstrap.sh web</code>.
             </p>
-            <button type="button" className="tp-btn" onClick={() => showView('config')}>
+            <button type="button" className="tp-btn" onClick={() => showView('setup')}>
               Open My Setup
             </button>
           </div>
@@ -595,7 +659,7 @@ export default function App() {
             onSample={() => {
               seedDemo();
               setReadoutOpen(false);
-              showView('tree');
+              showView('map');
             }}
           />
         ) : touring ? (
@@ -608,7 +672,7 @@ export default function App() {
           />
         ) : (
           showGuide &&
-          view === 'tree' &&
+          view === 'map' &&
           hasTree && (
             <GettingStartedGuide
               style={
@@ -647,7 +711,11 @@ export default function App() {
         onShow={show}
         handlers={paletteHandlers}
       />
-      <ApprovalModal isOpen={showApprovalModal} onClose={() => setShowApprovalModal(false)} />
+      {showApprovalModal && (
+        <Suspense fallback={null}>
+          <ApprovalModal isOpen onClose={() => setShowApprovalModal(false)} />
+        </Suspense>
+      )}
       <DocsModal isOpen={showDocs} initialTab={docsTab} onClose={closeDocs} />
       <MapYoursDialog
         open={mapYoursOpen}
@@ -660,7 +728,7 @@ export default function App() {
           message={toast}
           onDismiss={() => setToast(null)}
           onViewProposals={() => {
-            setShowApprovalModal(true);
+            showView('proposals');
             setToast(null);
           }}
         />

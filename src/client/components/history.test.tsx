@@ -70,7 +70,7 @@ test('a row with runs draws its strip, and a row with none draws none', () => {
     items: [git, memory, steady, unchecked],
     connections: [...provides(git, steady), ...provides(memory, unchecked)],
   });
-  const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />);
 
   expect(rowOf(html, 'git')).toContain('fig-history');
   // Nothing recorded is nothing drawn (rule 16): not fourteen empty slots, which
@@ -83,7 +83,10 @@ test('the strip is a fixed window: runs at the new end, a faint tick for the res
   const n = node('two-runs', 'degraded', [run(4, false), run(5, true)]);
   const git = entry('git');
   seed({ items: [git, n], connections: provides(git, n) });
-  const row = rowOf(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'git');
+  const row = rowOf(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />),
+    'git'
+  );
 
   expect(count(row, 'fig-history-bar ')).toBe(CHECK_HISTORY_RUNS);
   expect(count(row, 'fig-history-bar--none')).toBe(CHECK_HISTORY_RUNS - 2);
@@ -101,7 +104,10 @@ test('a row shows the worst node it provides, and says whose runs they are', () 
     items: [playwright, fine, broken],
     connections: provides(playwright, fine, broken),
   });
-  const row = rowOf(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'playwright');
+  const row = rowOf(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />),
+    'playwright'
+  );
 
   expect(row).toContain('aria-label="browser-automation: last 2 checks, oldest first');
   expect(row).toContain('The latest failed.');
@@ -116,7 +122,10 @@ test('a recovering row says so, with how its runs went, and offers nothing to re
   const mending = node('browser-automation', 'degraded', [run(3, false), run(4, true)]);
   const playwright = entry('playwright');
   seed({ items: [playwright, mending], connections: provides(playwright, mending) });
-  const row = rowOf(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'playwright');
+  const row = rowOf(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />),
+    'playwright'
+  );
 
   expect(row).toContain('>recovering<');
   expect(row).toContain('title="Recovering: browser-automation, 1 of the last 2 passed"');
@@ -133,7 +142,7 @@ test('a failing row copies ambit verify for the failing node, where a reason lin
     items: [playwright, git, fine, broken],
     connections: [...provides(playwright, fine, broken), ...provides(git, fine)],
   });
-  const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />);
 
   const failing = rowOf(html, 'playwright');
   expect(failing).toContain('Copy ambit verify');
@@ -150,7 +159,10 @@ test('a failing row with no recorded runs still names the command, and draws no 
   const broken = node('browser-automation', 'broken');
   const playwright = entry('playwright');
   seed({ items: [playwright, broken], connections: provides(playwright, broken) });
-  const row = rowOf(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'playwright');
+  const row = rowOf(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />),
+    'playwright'
+  );
 
   expect(row).toContain('check failing');
   expect(row).toContain('Copy ambit verify');
@@ -168,7 +180,10 @@ test('when nodes are failing, the strip is one of theirs, never a passing neighb
     items: [git, failingNoRuns, passing],
     connections: provides(git, failingNoRuns, passing),
   });
-  const row = rowOf(renderToStaticMarkup(<SetupView onShow={() => {}} />), 'git');
+  const row = rowOf(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />),
+    'git'
+  );
 
   expect(row).toContain('check failing');
   expect(row).not.toContain('fig-history');

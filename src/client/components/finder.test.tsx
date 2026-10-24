@@ -82,6 +82,8 @@ function recorder() {
   return {
     simulate: vi.fn(),
     lens: vi.fn(),
+    view: vi.fn(),
+    briefing: vi.fn(),
     proposals: vi.fn(),
     copy: vi.fn(),
   } satisfies PaletteHandlers;
@@ -149,7 +151,7 @@ test('every action has what a registry entry needs, and no two share an id', () 
   for (const a of actions) {
     expect(a.id).toBeTruthy();
     expect(a.label).toBeTruthy();
-    expect(['Simulate', 'Check', 'Map', 'Proposals']).toContain(a.group);
+    expect(['Go to', 'Simulate', 'Check', 'Map', 'Proposals']).toContain(a.group);
     expect(typeof a.run).toBe('function');
   }
   expect(new Set(actions.map(a => a.id)).size).toBe(actions.length);
@@ -178,14 +180,14 @@ test('a lens is offered when it has something to paint, and not while it is show
   expect(lenses({ items: bare })).toEqual(['Switch to the Attention lens']);
 });
 
-test('proposals can always be opened, and the waiting ones can be decided on', () => {
+test('proposals can always be reached, and the waiting ones can be decided on', () => {
   const actions = buildActions(context());
   const waiting = demoProposals().filter(p => p.status === 'draft');
   expect(waiting).toHaveLength(1);
 
-  expect(byId(actions, 'proposals')).toMatchObject({
-    label: 'Open Proposals',
-    group: 'Proposals',
+  expect(byId(actions, 'view:proposals')).toMatchObject({
+    label: 'Go to Proposals',
+    group: 'Go to',
     hint: '1 waiting',
   });
   expect(byId(actions, `approve:${waiting[0].id}`)?.label).toBe(`Approve “${waiting[0].goal}”`);
@@ -196,10 +198,36 @@ test('proposals can always be opened, and the waiting ones can be decided on', (
   expect(byId(actions, `approve:${approved.id}`)).toBeUndefined();
   expect(byId(actions, `reject:${approved.id}`)).toBeUndefined();
 
-  // With none waiting the panel can still be opened, and says nothing about a queue.
+  // With none waiting the view can still be opened, and says nothing about a queue.
   const none = buildActions(context({ proposals: [] }));
-  expect(byId(none, 'proposals')?.hint).toBeUndefined();
+  expect(byId(none, 'view:proposals')?.hint).toBeUndefined();
   expect(none.some(a => a.id.startsWith('approve:'))).toBe(false);
+});
+
+test('the views are destinations, found by their own words and by their questions', () => {
+  const ctx = context();
+  const actions = buildActions(ctx);
+  const ids = (q: string) => actionIds(paletteRows(demo.items, buildActions(context()), q));
+
+  for (const [view, label] of [
+    ['map', 'the map'],
+    ['setup', 'My Setup'],
+    ['cost', 'Time & cost'],
+    ['audit', 'the trail'],
+    ['proposals', 'Proposals'],
+  ] as const) {
+    expect(byId(actions, `view:${view}`)?.label).toBe(`Go to ${label}`);
+  }
+  // Found by the question a person brings, not only the label.
+  expect(ids('spend')).toContain('view:cost');
+  expect(ids('approved ran')).toContain('view:audit');
+  expect(ids('decide')).toContain('view:proposals');
+  expect(ids('agent told')).toContain('view:briefing');
+  // And choosing one asks the shell to show it.
+  byId(actions, 'view:audit')!.run();
+  expect(ctx.handlers.view).toHaveBeenCalledWith('audit');
+  byId(actions, 'view:briefing')!.run();
+  expect(ctx.handlers.briefing).toHaveBeenCalled();
 });
 
 // ── What the finder lists ────────────────────────────────────────────────────
@@ -223,8 +251,18 @@ test('before anything is typed the actions that need no subject come first', () 
 
   expect(verbs.length).toBeGreaterThan(0);
   expect(verbs.every(r => r.kind === 'action')).toBe(true);
-  // Opening the panel leads: it is what the `g` key does, and it moves nothing.
-  expect(actionIds(rows)).toEqual(['proposals', 'lens:attention', 'lens:authority']);
+  // The views lead: they are where everything else lives, and going to one
+  // moves nothing on the way there.
+  expect(actionIds(rows)).toEqual([
+    'view:map',
+    'view:setup',
+    'view:cost',
+    'view:audit',
+    'view:proposals',
+    'view:briefing',
+    'lens:attention',
+    'lens:authority',
+  ]);
   // Nothing about a particular node or a particular proposal is listed until asked for.
   expect(actionIds(rows).some(id => /^(outage|unlock|verify|approve|reject):/.test(id))).toBe(
     false
@@ -384,7 +422,7 @@ const finder = (props: Partial<Parameters<typeof Finder>[0]> = {}) =>
 test('the finder lists its actions, under a heading of their own', () => {
   const html = finder();
   expect(html).toContain('Actions');
-  expect(html).toContain('Open Proposals');
+  expect(html).toContain('Go to Proposals');
   expect(html).toContain('1 waiting');
   expect(html).toContain('Switch to the Attention lens');
   expect(html).toContain('Key 2');
@@ -392,9 +430,9 @@ test('the finder lists its actions, under a heading of their own', () => {
   // twelve by name, which is how it always opened.
   expect(html).toContain('On the map');
   expect(html).toContain('Automated Tests');
-  // The verbs lead: the first row, the one Enter would run, opens the panel.
-  expect(html.indexOf('Open Proposals')).toBeLessThan(html.indexOf('Automated Tests'));
-  expect(html).toMatch(/aria-current="true"[^>]*>(?:(?!<\/button>).)*Open Proposals/);
+  // The verbs lead: the first row, the one Enter would run, goes to the map.
+  expect(html.indexOf('Go to the map')).toBeLessThan(html.indexOf('Automated Tests'));
+  expect(html).toMatch(/aria-current="true"[^>]*>(?:(?!<\/button>).)*Go to the map/);
   // The box says it does more than find.
   expect(html).toContain('type an action');
   expect(html).not.toContain('undefined');
@@ -403,7 +441,7 @@ test('the finder lists its actions, under a heading of their own', () => {
 test('without handlers the finder only finds', () => {
   const html = finder({ handlers: undefined });
   expect(html).not.toContain('Actions');
-  expect(html).not.toContain('Open Proposals');
+  expect(html).not.toContain('Go to the map');
   expect(html).toContain('Automated Tests');
 });
 

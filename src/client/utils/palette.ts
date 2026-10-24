@@ -20,7 +20,7 @@
 import type { ProposalRow } from '../../shared/api';
 import { authorityMark, isEntry } from '../components/civ/layout';
 import { LENSES as LENS_NAMES } from '../components/civ/ZoomHud';
-import type { ActiveLens } from '../linkState';
+import type { ActiveLens, View } from '../linkState';
 import { verifyCommand } from './checkHistory';
 import type { Item } from './configImporter';
 
@@ -30,15 +30,28 @@ export interface PaletteHandlers {
   simulate: (id: string, mode: 'outage' | 'acquisition') => void;
   /** Show the map in another lens. */
   lens: (lens: ActiveLens) => void;
-  /** Open the proposals panel, where a decision is made. */
+  /** Show a view. */
+  view: (view: View) => void;
+  /** Show My Setup on the briefing, what an agent is told at connect. */
+  briefing: () => void;
+  /** Show the Proposals view, where a decision is made. */
   proposals: () => void;
   /** Put text on the clipboard and say so. */
   copy: (text: string, notice: string) => void;
 }
 
 /** The kinds of thing an action does. The order here is the order they are listed in. */
-export const GROUPS = ['Simulate', 'Check', 'Proposals', 'Map'] as const;
+export const GROUPS = ['Go to', 'Simulate', 'Check', 'Proposals', 'Map'] as const;
 export type ActionGroup = (typeof GROUPS)[number];
+
+/** Each view, as a destination's label says it and a query finds it. */
+const VIEWS: [View, string, string][] = [
+  ['map', 'the map', 'tree reach frontier'],
+  ['setup', 'My Setup', 'inventory servers entries'],
+  ['cost', 'Time & cost', 'spend budget tokens pay'],
+  ['audit', 'the trail', 'approved ran happened'],
+  ['proposals', 'Proposals', 'decide approve waiting'],
+];
 
 export interface PaletteAction {
   id: string;
@@ -83,6 +96,30 @@ export interface PaletteContext {
 export function buildActions(ctx: PaletteContext): PaletteAction[] {
   const { items, proposals, activeLens, attention, handlers } = ctx;
   const actions: PaletteAction[] = [];
+
+  const waiting = proposals.filter(p => p.status === 'draft');
+  // The views, first, because they are where everything else lives: the
+  // finder was the one way around the page that could not take you to a
+  // page. Proposals says how many are waiting, as its tab does.
+  for (const [view, label, keywords] of VIEWS) {
+    actions.push({
+      id: `view:${view}`,
+      label: `Go to ${label}`,
+      group: 'Go to',
+      hint: view === 'proposals' && waiting.length ? `${waiting.length} waiting` : undefined,
+      keywords,
+      browse: true,
+      run: () => handlers.view(view),
+    });
+  }
+  actions.push({
+    id: 'view:briefing',
+    label: 'Read the briefing',
+    group: 'Go to',
+    keywords: 'agent told connects knows',
+    browse: true,
+    run: handlers.briefing,
+  });
 
   for (const item of items) {
     if (isEntry(item)) continue;
@@ -135,17 +172,7 @@ export function buildActions(ctx: PaletteContext): PaletteAction[] {
     });
   }
 
-  const waiting = proposals.filter(p => p.status === 'draft');
-  actions.push({
-    id: 'proposals',
-    label: 'Open Proposals',
-    group: 'Proposals',
-    hint: waiting.length ? `${waiting.length} waiting` : undefined,
-    keywords: 'decide approve reject',
-    browse: true,
-    run: handlers.proposals,
-  });
-  // Both open the panel and nothing else. Approving signs a receipt and
+  // Both go to the view and nothing else. Approving signs a receipt and
   // rejecting records a no, and each is a button there, one click from the
   // card, because a keystroke in a search box is too easy to land on the
   // wrong row.

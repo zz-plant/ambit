@@ -22,11 +22,15 @@ import { Term } from './Term';
  * columns with nearly every edge running to the runtime, which is a list drawn
  * as a star. The map is the tree; this is the setup, one row per entry with
  * the facts a config file and the engine have about it, and the tree nodes
- * each one proves, which is the join between the two views. Repositories and
- * infrastructure are the other two things a machine has, so they are tabs
- * here instead of in a side panel.
+ * each one proves, which is the join between the two views.
+ *
+ * The sections are three, each a different question about the same machine:
+ * Entries (what the configs declare, and what they use that the map does not
+ * account for), Environment (the repositories and devices around it) and
+ * Briefing (what an agent is told about it at connect). App owns which is
+ * showing, so the address bar can name one and a link can open on it.
  */
-type Tab = 'entries' | 'repos' | 'infra' | 'briefing' | 'unmapped';
+type Tab = 'entries' | 'environment' | 'briefing';
 
 /** Kinds in the order a person asks about them, with the glossary key where one exists. */
 const KINDS: { type: string; label: string; term?: string }[] = [
@@ -86,9 +90,12 @@ const nameList = (names: string[]) =>
 interface SetupViewProps {
   /** Show a tree node on the map, selected. */
   onShow: (id: string) => void;
+  /** Which section is showing; owned by the shell, so the URL carries it. */
+  tab: Tab;
+  onTab: (tab: Tab) => void;
 }
 
-export function SetupView({ onShow }: SetupViewProps) {
+export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
   const items = useAmbitStore(s => s.items);
   const connections = useAmbitStore(s => s.connections);
   const searchQuery = useAmbitStore(s => s.searchQuery);
@@ -108,7 +115,6 @@ export function SetupView({ onShow }: SetupViewProps) {
   const configMcp = useAmbitStore(s => s.configMcp);
   const toggleMcpEnabled = useAmbitStore(s => s.toggleMcpEnabled);
   const [kind, setKind] = useState<string>('all');
-  const [tab, setTab] = useState<Tab>('entries');
   const [copied, copy] = useCopied();
   // Which server is being written, if any. One write at a time: the route reads
   // the config, changes it and writes it back, and two in flight would each
@@ -130,15 +136,27 @@ export function SetupView({ onShow }: SetupViewProps) {
     }
   };
 
-  // Fetched when the tab is first opened, not on mount: the scans walk the
+  // Fetched when the section is first shown, not on mount: the scans walk the
   // disk, the briefing applies any threshold whose evidence now holds, and
-  // most sessions never ask.
+  // most sessions never ask. The unmapped report is a graph read, cheap, and
+  // belongs to the entries, so it is read with them.
   useEffect(() => {
-    if (tab === 'repos' && !repos) loadRepos();
-    if (tab === 'infra' && !infrastructure) loadInfrastructure();
+    if (tab === 'environment') {
+      if (!repos) loadRepos();
+      if (!infrastructure) loadInfrastructure();
+    }
     if (tab === 'briefing') loadBriefing();
-    if (tab === 'unmapped') loadUnmapped();
-  }, [tab, repos, infrastructure, loadRepos, loadInfrastructure, loadBriefing, loadUnmapped]);
+    if (tab === 'entries' && backend === 'live') loadUnmapped();
+  }, [
+    tab,
+    backend,
+    repos,
+    infrastructure,
+    loadRepos,
+    loadInfrastructure,
+    loadBriefing,
+    loadUnmapped,
+  ]);
 
   const entries = useMemo(() => items.filter(isEntry), [items]);
   const byId = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
@@ -248,7 +266,7 @@ export function SetupView({ onShow }: SetupViewProps) {
             {findingsFirst && findings}
           </div>
           {backend === 'live' && (
-            <div className="setup-tabs" role="tablist" aria-label="What this machine has">
+            <div className="setup-tabs" role="tablist" aria-label="Sections of My Setup">
               {(
                 [
                   [
@@ -273,10 +291,10 @@ export function SetupView({ onShow }: SetupViewProps) {
                     </svg>,
                   ],
                   [
-                    'repos',
-                    repos ? `Repos (${repos.repos.length})` : 'Repos',
+                    'environment',
+                    'Environment',
                     <svg
-                      key="r"
+                      key="n"
                       width="12"
                       height="12"
                       viewBox="0 0 16 16"
@@ -291,27 +309,6 @@ export function SetupView({ onShow }: SetupViewProps) {
                       <circle cx="4" cy="12" r="2" />
                       <circle cx="12" cy="7" r="2" />
                       <path d="M4 6 V10 M4 6 C4 9 12 5 12 7" />
-                    </svg>,
-                  ],
-                  [
-                    'infra',
-                    'Infra',
-                    <svg
-                      key="i"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      className="setup-tab-icon"
-                      aria-hidden="true"
-                    >
-                      <rect x="2" y="3" width="12" height="4" rx="1" />
-                      <rect x="2" y="9" width="12" height="4" rx="1" />
-                      <circle cx="4" cy="5" r="0.5" fill="currentColor" />
-                      <circle cx="4" cy="11" r="0.5" fill="currentColor" />
                     </svg>,
                   ],
                   [
@@ -333,25 +330,6 @@ export function SetupView({ onShow }: SetupViewProps) {
                       <path d="M5 5.5 H11 M5 8 H10 M5 10.5 H8" />
                     </svg>,
                   ],
-                  [
-                    'unmapped',
-                    'Not on the map',
-                    <svg
-                      key="u"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      className="setup-tab-icon"
-                      aria-hidden="true"
-                    >
-                      <circle cx="8" cy="8" r="5.5" strokeDasharray="2.5 2" />
-                      <path d="M8 5.5 V10.5 M5.5 8 H10.5" />
-                    </svg>,
-                  ],
                 ] as [Tab, string, React.ReactNode][]
               ).map(([key, label, icon]) => (
                 <button
@@ -360,17 +338,13 @@ export function SetupView({ onShow }: SetupViewProps) {
                   role="tab"
                   aria-selected={tab === key}
                   className={`setup-tab ${tab === key ? 'setup-tab--active' : ''}`}
-                  onClick={() => setTab(key)}
+                  onClick={() => onTab(key)}
                   title={
-                    key === 'repos'
-                      ? "How each repository's agent config differs from your global one"
-                      : key === 'infra'
-                        ? 'The devices and services in your manifest, probed just now'
-                        : key === 'briefing'
-                          ? 'What an agent is told about this machine when it connects'
-                          : key === 'unmapped'
-                            ? 'What the agents used that no node on the map accounts for'
-                            : undefined
+                    key === 'environment'
+                      ? "How each repository's agent config differs from your global one, and the devices and services in your manifest"
+                      : key === 'briefing'
+                        ? 'What an agent is told about this machine when it connects'
+                        : undefined
                   }
                 >
                   {icon}
@@ -381,11 +355,12 @@ export function SetupView({ onShow }: SetupViewProps) {
           )}
         </div>
 
-        {tab === 'repos' && <RepoDriftPanel scan={repos} />}
-        {tab === 'infra' && (
-          <InfrastructurePanel scan={infrastructure} onProbe={loadInfrastructure} />
+        {tab === 'environment' && (
+          <>
+            <RepoDriftPanel scan={repos} />
+            <InfrastructurePanel scan={infrastructure} onProbe={loadInfrastructure} />
+          </>
         )}
-        {tab === 'unmapped' && <UnmappedPanel report={unmapped} />}
         {tab === 'briefing' && (
           // What the agent believes about this machine, inspectable by the
           // person it believes it about. Served at connect as the MCP resource
@@ -653,6 +628,18 @@ export function SetupView({ onShow }: SetupViewProps) {
                   Show everything
                 </button>
               </div>
+            )}
+
+            {/* The gap the entries are read against: what the agents used that
+                no node of the map accounts for. It is the inventory's own
+                closing question, so it closes the list instead of hiding
+                behind a tab of its own. With no engine behind the page there
+                is no ledger to read, and the section is not offered. */}
+            {backend === 'live' && (
+              <section className="setup-unmapped" aria-label="Not on the map">
+                <h3 className="setup-group-title">Not on the map</h3>
+                <UnmappedPanel report={unmapped} />
+              </section>
             )}
           </>
         )}

@@ -25,7 +25,11 @@ const TABS: { id: Tab; label: string }[] = [
 const HOTKEYS = [
   {
     key: '/',
-    desc: 'Find a capability, on the map or in your setup, or run an action on it: an outage, an unlock, its check, a lens, Proposals',
+    desc: 'Find a capability, on the map or in your setup, or run an action on it: an outage, an unlock, its check, a lens, a view',
+  },
+  {
+    key: '[ / ]',
+    desc: 'Step through the views: the map, My Setup, Time & cost, Audit and Proposals',
   },
   {
     key: 'J / K',
@@ -37,11 +41,11 @@ const HOTKEYS = [
     desc: 'Zoom in / out about the middle of the map. A pinch, or the wheel with Ctrl or ⌘ held, zooms about the point under it',
   },
   { key: '0', desc: 'Back to actual size' },
-  { key: 'G', desc: 'Open proposals' },
+  { key: 'G', desc: 'Go to Proposals, where the decisions wait; from there, back to the map' },
   { key: '?', desc: 'Open this guide' },
   {
     key: 'Esc',
-    desc: 'Close one thing a press: this guide, Proposals or search first, then a highlight, a simulation, and last the selection',
+    desc: 'Close one thing a press: this guide, the tour’s Proposals card or search first, then a highlight, a simulation, and last the selection',
   },
 ];
 

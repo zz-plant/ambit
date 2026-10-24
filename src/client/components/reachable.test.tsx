@@ -72,7 +72,7 @@ afterEach(() => {
 const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
   renderToStaticMarkup(
     <AppDeck
-      view="tree"
+      view="map"
       counts={{ verified: 1, unproven: 0, failing: 0, next: 1, blocked: 1 }}
       entries={null}
       connected={false}
@@ -96,15 +96,15 @@ test('the time-and-cost view is offered on a real machine, not only in the demo'
 
 test('each view tab keeps its name where it shows only its icon', () => {
   // Between a phone and a wide screen the tabs give up their words, as the
-  // buttons beside them already did, or Proposals and Docs were pushed past
-  // the right edge (at 1024px Docs started at x=1035).
+  // buttons beside them already did, or Docs was pushed past the right edge
+  // (at 1024px Docs started at x=1035).
   const html = deck();
-  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit']) {
+  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit', 'Proposals']) {
     expect(html).toMatch(
       new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
     );
   }
-  expect(html.match(/class="app-deck-tab-label"/g)).toHaveLength(4);
+  expect(html.match(/class="app-deck-tab-label"/g)).toHaveLength(5);
   // And the one on screen says so: only a class marked it.
   expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
@@ -306,7 +306,7 @@ test('a server the config does not name gets no switch, in the panel or in the l
     configMcp: { elsewhere: { type: 'local', enabled: true } },
   });
   expect(renderToStaticMarkup(<NodeDetailPanel />)).not.toContain('sp-switch');
-  const list = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  const list = renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />);
   expect(list).not.toContain('role="switch"');
   // Nothing to explain, so nothing explained.
   expect(list).not.toContain('switch writes');
@@ -343,7 +343,7 @@ test('My Setup switches the tool servers the config names, and nothing else', ()
     configMcp: CONFIG_MCP,
     items: [server, github, strange, strangeOff, reviewer, bash],
   });
-  const html = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  const html = renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />);
 
   // Two switches, and both are real buttons that carry their state.
   expect(html.match(/role="switch"/g)).toHaveLength(2);
@@ -369,13 +369,15 @@ test('My Setup switches the tool servers the config names, and nothing else', ()
 
 test('the list offers no switch where no engine can write the config', () => {
   seed({ backend: 'static', configMcp: CONFIG_MCP, items: [server] });
-  const list = renderToStaticMarkup(<SetupView onShow={() => {}} />);
+  const list = renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />);
   expect(list).not.toContain('role="switch"');
   expect(list).not.toContain('switch writes');
   // The hosted demo has no engine either, and shows no switch on any row.
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
   seed({ backend: 'static', items, connections, configMcp: {} });
-  expect(renderToStaticMarkup(<SetupView onShow={() => {}} />)).not.toContain('role="switch"');
+  expect(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />)
+  ).not.toContain('role="switch"');
 });
 
 test('a house word carries its own definition, from the one glossary', () => {
@@ -418,7 +420,7 @@ test('the header leads with what is verified, and each count is a control', () =
   expect(failing).toContain('fig-eras-failing');
 
   // Off the map, the pill counts what that view lists.
-  const setup = deck({ view: 'config', counts: null, entries: { enabled: 9, total: 11 } });
+  const setup = deck({ view: 'setup', counts: null, entries: { enabled: 9, total: 11 } });
   expect(setup).toContain('9 of 11 enabled');
   expect(setup).not.toContain('Highlight');
 });
@@ -828,7 +830,9 @@ test('My Setup lists what the agents used that the map has no node for', () => {
   // The map can only show what the curated tree names; a server used every
   // day and matched by nothing was no part of the range anywhere.
   seed({ backend: 'live', items: [server] });
-  expect(renderToStaticMarkup(<SetupView onShow={() => {}} />)).toContain('Not on the map');
+  expect(
+    renderToStaticMarkup(<SetupView onShow={() => {}} tab="entries" onTab={() => {}} />)
+  ).toContain('Not on the map');
 
   const plain = (html: string) => html.replace(/<[^>]+>/g, '');
   expect(

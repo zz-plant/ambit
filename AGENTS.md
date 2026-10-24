@@ -252,26 +252,34 @@ One renderer: `CivTree.tsx` (SVG, drawn by `civ/MapScene.tsx`, which also draws 
 
 ```
 src/client/                React frontend
-  App.tsx                  The shell: which view is showing, and how the hooks and panels fit
+  App.tsx                  The shell: which view is showing, which section of My Setup, and how
+                           the hooks and panels fit; Back and Forward re-enter through `popstate`,
+                           applying what the address says the same way a first visit does
   fonts.ts                 The three faces, from this origin and latin only: Hubot Sans reads out
                            (titles and figures wide, labels narrow), Mona Sans is the text, Monaspace
                            Neon is code. Which selectors take Hubot is listed once, under TYPE ROLES
                            at the end of App.css; the saved images embed the same files
-  linkState.ts             The URL in both directions — which view, node, lens, focus and timeline
-                           moment it asks for, and how a view is written back to it. A bare visit
-                           to the hosted site is the demo, on the map. `linkFocus` says which node a
-                           link selects once the graph is read and whether to collapse to it, and
-                           `writeAddress` skips a write the browser refuses. Pure, tested without a
-                           window
+  linkState.ts             The URL in both directions — which view, which section of My Setup,
+                           node, lens, focus and timeline moment it asks for, and how a view is
+                           written back to it. A change of view or section is a navigation and is
+                           pushed, so Back and Forward step between them (`addressMode` draws the
+                           line); the rest replaces, and `writeAddress` skips a write the browser
+                           refuses. Old view words (`tree`, `config`, `loop`) read as aliases, so a
+                           link written before the rename still lands. A bare visit to the hosted
+                           site is the demo, on the map. `linkFocus` says which node a link selects
+                           once the graph is read and whether to collapse to it. Pure, tested
+                           without a window
   hooks/                   useViewport (narrow screens) · useHotkeys · useGraphStream (the AG-UI
                            state stream, and whether it is attached) · useUrlSync (the address bar
-                           follows the view) · useGuide · useToast · useLatest · useConfigImport
+                           follows the view, pushing a change of place and replacing the rest) ·
+                           useGuide · useToast · useLatest · useConfigImport
                            (a pasted or dropped config, read in the tab) · useDialogFocus (a dialog
                            takes the focus when it opens, keeps Tab inside, and gives it back) ·
                            usePressAway (a panel opened from a button closes on a press elsewhere)
   components/
-    AppDeck.tsx            The top bar: search, the count for the view, view tabs, live indicator,
-                           share, proposals, docs; the map's own tools sit on the map. `mapCounts`
+    AppDeck.tsx            The top bar: search, the count for the view, the five view tabs, live
+                           indicator, share, docs; the map's own tools sit on the map, and the
+                           waiting-draft count sits on the Proposals tab. `mapCounts`
                            counts reached, unproven (a recovering node among them), and a failing
                            node apart from both; the pill
                            shows verified, failing and next steps, and its tooltip the rest. On
@@ -285,9 +293,10 @@ src/client/                React frontend
                            the dialog's own handler
     SetupView.tsx          My Setup: one row per entry, with its evidence, the strip of its last
                            check runs, a switch for a tool server the config holds, and the nodes
-                           it provides; repo drift, infrastructure (with what an agent may do on
-                           each machine), the agent's briefing and what was used but is on no
-                           node of the map as its other tabs
+                           it provides. Three sections, owned by the shell so the address bar can
+                           name one: Entries, closing with what was used but is on no node of the
+                           map; Environment (repo drift, infrastructure with what an agent may do
+                           on each machine); Briefing (what an agent is told at connect)
     Journey.tsx            My Setup's opening readout: the loadout's seven legs from A to B, each
                            read from the graph and the ledger, with the one command that moves it
     AuditView.tsx          The Audit view: the trail as one stream, newest first, with a query bar
@@ -358,8 +367,14 @@ src/client/                React frontend
     FocusControls.tsx      Focus, from the panel of a selected node: which way, how far, and the
                            pill that says what it hides and ends it; clearing the selection ends it too
     EnvironmentPanels.tsx  What /api/repos/scan and /api/infrastructure/scan return, drawn
-    ApprovalModal.tsx      The proposal as a plan (what it does, what undoes it, what it forecasts),
-                           the one-click approval receipt, and the queue of drafts to decide together
+    ApprovalModal.tsx      The approval gate as the demo's tour narrates it over the map: a dialog
+                           over the desk the Proposals view draws, so the narration and the page
+                           can never disagree about what approving does
+    ProposalsView.tsx      The Proposals view: the desk as a page, named by the address bar and
+                           reached by `g` and `]`
+    ProposalsDesk.tsx      The decisions, drawn once: the waiting drafts as a queue, each draft as
+                           a plan (what it does, what undoes it, what it forecasts), the one-click
+                           approval receipt, and the queue of drafts to decide together
     DocsModal.tsx          Documentation overlay with node type legend, connection types, and usage guide
     Council.tsx            The council: the first step to reach, read by five seats, each a
                            sentence with its command and a stance; it says when they are split
