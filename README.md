@@ -86,7 +86,7 @@ npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh`
 
 ## Where Ambit sits in the stack
 
-Ambit sits above the protocol layer and below workflow orchestration. It neither routes calls nor runs them.
+Ambit sits above the protocol layer and below workflow orchestration. Its CLI, MCP server and gate neither route an agent's calls nor run them. The one part that can run an agent's step is [the control plane](#the-control-plane), which you start yourself, and only with its opt-in Docker adapter.
 
 | System | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -214,9 +214,9 @@ Ambit also publishes `ambit://briefing`, a resource a client reads on connect: w
 }
 ```
 
-The `PreToolUse` hook binds Ambit's gate to Claude Code. Before each tool call, `ambit gate` identifies the capability exercised: forbidden actions are denied, actions requiring human confirmation prompt the user, and permitted or unmapped actions defer to Claude Code's standard permission flow. The gate can only restrict permissions, never expand them. It adds ~125ms per call. Run `ambit gate` directly in a terminal to inspect its output.
+The `PreToolUse` hook binds Ambit's gate to Claude Code. Before each tool call, `ambit gate` identifies the capability exercised: forbidden actions are denied, actions requiring human confirmation prompt the user, and permitted or unmapped actions defer to Claude Code's standard permission flow. The gate can only restrict permissions, never expand them. It adds about 130 ms per call (measured with 0.6.0 on an Apple M1 Max). Run `ambit gate` directly in a terminal to inspect its output.
 
-`ambit statusline` prints a segment for Claude Code's status bar, refreshed after each message: failing checks, pending proposals, and verified capability counts (e.g. `! 1 failing: Browser Automation · › 2 proposals to decide`). Inactive categories are omitted, so a healthy graph displays `12 verified`. It queries the database read-only, writes nothing, and returns in ~50ms on an installed binary. Because plugins cannot configure status lines automatically, `ambit connect claude-code --statusline` adds the entry to `~/.claude/settings.json`, backing up the existing file to `settings.json.bak` and never overwriting a status line you already have. To configure manually:
+`ambit statusline` prints a segment for Claude Code's status bar, refreshed after each message: failing checks, pending proposals, and verified capability counts (e.g. `! 1 failing: Browser Automation · › 2 proposals to decide`). Inactive categories are omitted, so a healthy graph displays `12 verified`. It queries the database read-only, writes nothing, and returns in about 80 ms (measured with 0.6.0 on an Apple M1 Max). Because plugins cannot configure status lines automatically, `ambit connect claude-code --statusline` adds the entry to `~/.claude/settings.json`, backing up the existing file to `settings.json.bak` and never overwriting a status line you already have. To configure manually:
 
 ```json
 { "statusLine": { "type": "command", "command": "ambit statusline" } }
