@@ -260,7 +260,7 @@ test('the page tells one date: the timeline under the map, the header, the panel
   seed({ selectedItem: null, selectedEra: 1 });
   const ladder = text(renderToStaticMarkup(<App />));
   expect(ladder).toContain('0 of 1 reached · 1 failing');
-  expect(ladder).toContain('As of Sep 21, 2026, 09:00 UTC, as that observation recorded it.');
+  expect(ladder).toContain('As of Sep 21, 2026, 09:00 UTC.');
 
   // At now, the page is today's everywhere.
   seed({ historyAt: null });

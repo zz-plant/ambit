@@ -285,7 +285,7 @@ export function ProposalsDesk() {
           </span>
           <p className="gov-hint">
             A proposal that changed after this page loaded is skipped; reopening Proposals shows the
-            new version. Approving signs; applying is still a command you run.
+            new version.
           </p>
         </div>
       )}
@@ -294,7 +294,7 @@ export function ProposalsDesk() {
       {filtered.length === 0 ? (
         <div className="gov-empty">
           {proposals.length === 0
-            ? 'Nothing waiting. When an agent needs a change to your setup, it appears here for you to approve.'
+            ? 'Nothing waiting. A change drafted by an agent or by ambit propose appears here for you to decide.'
             : statusTab === 'draft'
               ? 'Nothing waiting for your approval.'
               : statusTab === 'rejected'
@@ -324,25 +324,20 @@ export function ProposalsDesk() {
                     </span>
                   )}
                   <div className="gov-ask">
+                    {/* The change leads, in words, beside where it stands; its id,
+                        which the commands take, follows it quietly. The card
+                        opened on prop-deploy-staging-42 above its own title. */}
                     <div className="gov-card-head">
-                      {showQueue && p.status === 'draft' ? (
-                        <label className="gov-pick">
-                          <input
-                            type="checkbox"
-                            checked={selected.has(p.id)}
-                            onChange={() => toggle(p.id)}
-                            aria-label={`Include ${p.id}`}
-                          />
-                          <code className="gov-id">{p.id}</code>
-                          {leansRefused(p) && (
-                            <span className="gov-pick-note">
-                              unticked to start: your record leans against it
-                            </span>
-                          )}
-                        </label>
-                      ) : (
-                        <code className="gov-id">{p.id}</code>
+                      {showQueue && p.status === 'draft' && (
+                        <input
+                          type="checkbox"
+                          className="gov-pick"
+                          checked={selected.has(p.id)}
+                          onChange={() => toggle(p.id)}
+                          aria-label={`Include ${p.id}`}
+                        />
                       )}
+                      <div className="gov-goal">{p.goal}</div>
                       <span
                         className={`gov-status ${isApproved ? 'gov-status--approved' : ''} ${isRejected ? 'gov-status--rejected' : ''}`}
                       >
@@ -355,8 +350,14 @@ export function ProposalsDesk() {
                               : 'Waiting for your approval'}
                       </span>
                     </div>
-
-                    <div className="gov-goal">{p.goal}</div>
+                    <p className="gov-meta">
+                      <code className="gov-id">{p.id}</code>
+                      {showQueue && p.status === 'draft' && leansRefused(p) && (
+                        <span className="gov-pick-note">
+                          unticked to start: you usually turn down changes like this
+                        </span>
+                      )}
+                    </p>
                     {/* What the change is for, in the drafter's words. Reach
                     serves a purpose someone named, and the approval binds
                     the purpose shown here. */}
@@ -399,7 +400,7 @@ export function ProposalsDesk() {
                 {isDeclining && (
                   <div className="gov-decline">
                     <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
-                      Why not? Optional. The next draft reads it.
+                      Reason, optional. The next draft reads it.
                     </label>
                     <input
                       id={`decline-${p.id}`}
@@ -444,7 +445,7 @@ export function ProposalsDesk() {
                     </>
                   ) : isRejected ? (
                     <span className="gov-reply">
-                      Turned down. The next draft takes the reason into account.
+                      The next draft takes any reason you gave into account.
                     </span>
                   ) : isDeclining ? (
                     <>

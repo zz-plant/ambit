@@ -110,6 +110,18 @@ test('each view tab keeps its name where it shows only its icon', () => {
   expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
 });
 
+test('the Proposals tab says how many drafts wait, to a screen reader too', () => {
+  // The fixed aria-label replaced the button's text, so the badge was never
+  // read out: a reader heard "Proposals" with two decisions waiting.
+  const html = deck({ draftCount: 2 });
+  expect(html).toMatch(
+    /<button[^>]*aria-label="Proposals"[^>]*aria-describedby="app-deck-drafts"|<button[^>]*aria-describedby="app-deck-drafts"[^>]*aria-label="Proposals"/
+  );
+  expect(html).toContain('<span id="app-deck-drafts" hidden="">2 waiting for your decision</span>');
+  // With nothing waiting there is nothing to describe.
+  expect(deck()).not.toContain('app-deck-drafts');
+});
+
 test('when the header is short of room the status pill wraps, and nothing else gives way', () => {
   // Every other part keeps its size; the counts wrap onto a second line inside
   // the deck's height. A live engine's indicator, a failing segment and an
@@ -240,9 +252,14 @@ test("a machine's own figures are not labelled as samples", () => {
   expect(html).not.toContain('sample data');
 });
 
-test('the demo says which of its numbers are illustration', () => {
+test('the demo says which of its numbers are illustration, beside the number', () => {
+  // A screenshot that keeps the figure keeps the label: it was a closed
+  // toggle under the figure, and the header's Sample tag is cropped off.
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
-  expect(renderToStaticMarkup(<LoopDashboard />)).toContain('This is sample data');
+  const html = renderToStaticMarkup(<LoopDashboard />);
+  const label = html.indexOf('<p class="loop-sample">Sample data</p>');
+  expect(label).toBeGreaterThan(-1);
+  expect(label).toBeLessThan(html.indexOf('loop-lead'));
 });
 
 test('a priced opportunity offers the map only when the node is on the graph in front of you', () => {
@@ -741,7 +758,7 @@ test('the ways to acquire a capability are compared, with the record\u2019s lean
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
   expect(html).toContain('Ways to acquire it');
-  expect(html).toContain('your record favors this');
+  expect(html).toContain('your past decisions favor this');
   // Cheapest first, so the first option drawn is the cheaper of the two.
   expect(html.indexOf('$4,560/yr')).toBeLessThan(html.indexOf('$5,880/yr'));
 });

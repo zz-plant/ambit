@@ -2,6 +2,7 @@ import type { LoopAdvisor, LoopCouncil } from '../../shared/api';
 import { useAmbitStore } from '../store/ambitStore';
 import { useCopied } from '../hooks/useCopied';
 import { Term } from './Term';
+import { Command } from './Command';
 
 /**
  * The council: the step `ambit next` puts first, read five ways.
@@ -100,14 +101,20 @@ export function CouncilFigure({
               </span>
               <span className="council-body">
                 <span className="council-says">{a.says}</span>
+                {/* The command itself, quiet, copied when pressed: five buttons
+                    saying "Copy the command" read as a form in any still of
+                    the council, and said nothing about what they copied. */}
                 {a.command && (
                   <button
                     type="button"
-                    className="fig-cta fig-cta--quiet"
-                    title={a.command}
+                    className="council-cmd"
+                    title="Copy the command; the page never runs it"
                     onClick={() => copy(a.seat, a.command as string)}
                   >
-                    {copied === a.seat ? 'Copied ✓' : 'Copy the command'}
+                    <code>
+                      <Command text={a.command} />
+                    </code>
+                    <span>{copied === a.seat ? 'Copied ✓' : 'Copy'}</span>
                   </button>
                 )}
               </span>
@@ -116,7 +123,7 @@ export function CouncilFigure({
                 {subject && show && onMap(subject.id) && (
                   <button
                     type="button"
-                    className="fig-row-btn"
+                    className="fig-row-btn council-map"
                     onClick={() => show(subject.id)}
                     title={
                       isMotion

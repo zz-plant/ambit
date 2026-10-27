@@ -79,7 +79,7 @@ function RangeLine({
         ·
       </span>
       {since === undefined ? null : !since ? (
-        <span className="civ-range-note">no earlier observation to compare yet</span>
+        <span className="civ-range-note">nothing recorded earlier to compare with yet</span>
       ) : up || down ? (
         <span>
           {up > 0 && (

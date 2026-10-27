@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
-import { ENGINE_DIR } from './paths.ts';
+import { ENGINE_DIR, typedCommand } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import {
   DEFAULT_WINDOW_DAYS,
@@ -35,6 +35,7 @@ import { machineModes } from './machines.ts';
 import { runTimeline, tokenUsage, unmappedUse, usageWindows } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { council } from './council.ts';
+import { seedSources } from './discovery.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
@@ -661,7 +662,9 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
   } catch {
     /* a database predating rejections */
   }
-  return rows.map(r => ({
+  // `applied_to` stays out: it holds the entry a rollback would put back,
+  // which was someone's own server and can carry tokens in its env.
+  return rows.map(({ applied_to: _appliedTo, ...r }) => ({
     ...r,
     status: (PROPOSAL_STATUSES as readonly string[]).includes(r.status)
       ? (r.status as ProposalStatus)
@@ -830,6 +833,10 @@ export function loopView(db: Db): LoopResponse {
     source: 'ledger',
     authority: loopAuthority(db),
     next: loopNext(db),
+    // What the last seed read, so the page's readout says it as `ambit` does.
+    read: seedSources(db),
+    // How a person types Ambit here, so a command the readout copies runs.
+    command: typedCommand('ambit'),
     since: loopSince(db),
     demand: loopDemand(db),
     council: council(db),

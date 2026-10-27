@@ -17,7 +17,7 @@ import { captureFailure } from './failures.ts';
 import { detectRuntimes, runDoctor } from './doctor.ts';
 import { CURSOR_LEDGER_EVENTS, cursorLedgerHook, runConnect, statusLineEntry } from './connect.ts';
 import { discoverMcpClients } from './mcp-clients.ts';
-import { ambitCommand, cursorLedgerScript } from './paths.ts';
+import { ambitCommand, cursorLedgerScript, typedCommand } from './paths.ts';
 import { runInitRules } from './init-rules.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
@@ -665,5 +665,15 @@ describe('ambit connect on the runtimes it only read before', () => {
     expect(ambitCommand('/opt/homebrew/lib/node_modules/ambit-cli/dist-cli/engine')).toEqual([
       'ambit',
     ]);
+  });
+
+  test('a command printed for a person is typed the way they ran this copy', () => {
+    const npx = '/Users/x/.npm/_npx/9f2/node_modules/ambit-cli/dist-cli/engine';
+    const brew = '/opt/homebrew/lib/node_modules/ambit-cli/dist-cli/engine';
+    expect(typedCommand('ambit web', npx)).toBe('npx ambit-cli web');
+    expect(typedCommand('ambit', npx)).toBe('npx ambit-cli');
+    expect(typedCommand('ambit web', brew)).toBe('ambit web');
+    // Only the command word is replaced, never a name that starts with it.
+    expect(typedCommand('ambitious plan', npx)).toBe('ambitious plan');
   });
 });

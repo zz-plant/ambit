@@ -93,6 +93,8 @@ export type ProposalRow = {
   approved_at: string | null;
   applied_at: string | null;
   backup_path: string | null;
+  /** JSON: the runtime, file and entry kind an apply wrote, with that file's inverse. */
+  applied_to?: string | null;
   economic_case: string | null;
   budget_cents: number | null;
   scope_exclude: string | null;

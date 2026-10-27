@@ -34,7 +34,7 @@ Ambit accounts for capacity to act. It records what is configured, what checks h
 
 History makes changes inspectable: adding credentials or a scheduler can complete a modeled capability without adding a dedicated provider for it. Removing one shared dependency can contract several capabilities at once.
 
-Today's snapshots preserve states, kinds and verification health. They use current names and edges when displayed. Reconstructing all routes and permissions at an incident's time requires additional historical records.
+Today's snapshots preserve states, kinds and verification health. They use current names and edges when displayed. Reconstructing every route and permission as it stood during an incident needs historical records Ambit does not keep yet.
 
 ## Effective agency as a governed object
 

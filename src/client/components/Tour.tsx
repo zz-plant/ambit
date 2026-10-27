@@ -4,7 +4,7 @@ import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
 import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
 import { costOf, isEntry, mapFindings, unlockCascade } from './civ/layout';
-import { YourSetup } from './MapYours';
+import ConfigIntake from './ConfigIntake';
 
 interface TourProps {
   /** Undefined on narrow screens, where the card is not inset by the panels. */
@@ -36,23 +36,28 @@ interface Step {
   enter: () => void;
   /** Offer the proposal panel beside the text. */
   proposal?: boolean;
+  /** Ask which agent the visitor uses, and take their config, under the text. */
+  intake?: boolean;
 }
 
 /**
- * The demo, narrated. A visitor who lands on the map used to get sixty
- * circles, a red banner and a card of instructions, and nothing happened
- * until they read the card and clicked. Now the map acts first: the opening
- * step plays the best next step, and what it would open lights before a word
- * is read. Each later step makes the map show one more thing the product does,
- * in the order the claim is built: what one more step opens, what stops if a
- * piece goes, what is broken without anyone noticing, and that nothing changes
- * without a person. Reach comes first because widening it is what the product
- * is for; the outage follows as the half that makes widening safe. The last
- * step is the visitor's own setup.
+ * The demo, narrated, and the way to the visitor's own setup on its first card.
  *
- * It replaces the first-run card on the demo only. A real graph gets the card,
- * because a person looking at their own machine needs the controls, not the
- * pitch.
+ * The map acts first: the opening card plays the sample's best next step, and
+ * what it would open lights before a word is read. Under it, the card asks
+ * which agent the visitor uses and takes their config, so what one more step
+ * would open for them is three presses away. It used to be the fifth card,
+ * after four about a stranger's setup, and a visitor who stopped reading
+ * before it never saw their own.
+ *
+ * The rest of the tour is the sample's other half, for whoever asks for it:
+ * what stops if a piece goes, what is broken without anyone noticing, and that
+ * nothing changes without a person. Reach comes first because widening it is
+ * what the product is for; the rest is what makes widening safe. Its last card
+ * leads back to the first, where the visitor's own setup goes in.
+ *
+ * It runs on the demo only. A machine's own graph opens on the readout of
+ * that setup instead (YourAmbit.tsx).
  */
 export default function Tour({ style, onDone, onShowProposals, onMapped, start }: TourProps) {
   const items = useAmbitStore(s => s.items);
@@ -91,6 +96,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     if (best) {
       list.push({
         key: 'next',
+        intake: true,
         title: `One step would open ${best.reaches} more`,
         body:
           `This is a sample developer's agent setup. Setting up ${best.item.name}` +
@@ -140,15 +146,6 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         'Agents propose changes, each with its cost and how to undo it. ' +
         'Only you can approve one, and every approval is signed.',
       proposal: true,
-      enter: () => {
-        clearSimulation();
-        select(null);
-      },
-    });
-    list.push({
-      key: 'yours',
-      title: 'Now map yours',
-      body: 'See what your own agents can do, and what to set up next.',
       enter: () => {
         clearSimulation();
         select(null);
@@ -204,7 +201,11 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         </button>
       )}
 
-      {last && <YourSetup onMapped={onMapped} />}
+      {step.intake && (
+        <div className="app-tour-yours">
+          <ConfigIntake onMapped={onMapped} rows={3} ask="What would one step open for you?" />
+        </div>
+      )}
 
       <div className="app-tour-nav">
         <div className="app-tour-dots" aria-hidden="true">
@@ -217,13 +218,22 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
             Back
           </button>
         )}
-        {/* The last card's main action is the paste box's Map it. Leaving for
-            the sample is the quieter choice: it was the one filled button on
-            the card, so the step titled "Now map yours" pointed away from it. */}
-        {last ? (
-          <button type="button" className="app-tour-back" onClick={finish}>
-            Keep exploring
+        {/* The first card's own action is the intake, so the way on through
+            the sample is the quieter button beside it. The last card leads
+            back to the first, where the visitor's setup goes in. */}
+        {step.intake ? (
+          <button type="button" className="app-tour-back" onClick={() => go(index + 1)}>
+            What else it shows
           </button>
+        ) : last ? (
+          <>
+            <button type="button" className="app-tour-back" onClick={finish}>
+              Keep exploring
+            </button>
+            <button type="button" className="app-tour-next" onClick={() => go(0)}>
+              Map yours
+            </button>
+          </>
         ) : (
           <button type="button" className="app-tour-next" onClick={() => go(index + 1)}>
             Next

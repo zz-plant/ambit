@@ -40,9 +40,10 @@ test('the sample is split, and the panel names who is for it and who against', (
   for (const seat of ['Science', 'Defence', 'Treasury', 'Justice', 'Interior']) {
     expect(words).toContain(seat);
   }
-  // Each seat's command is offered to copy and never run.
-  expect(html).toContain('title="ambit propose embeddings"');
-  expect(html).toContain('title="ambit impact combo:hosted-inference"');
+  // Each seat's command is shown, offered to copy and never run.
+  expect(words).toContain('ambit propose embeddings');
+  expect(words).toContain('ambit impact combo:hosted-inference');
+  expect(html).toContain('title="Copy the command; the page never runs it"');
   expect(html).not.toContain('Nothing to read');
 });
 

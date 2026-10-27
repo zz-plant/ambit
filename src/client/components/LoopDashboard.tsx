@@ -269,7 +269,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   const unreached = Math.max(status.total - status.reached, 0);
   const segments = [
     { key: 'proven', n: proven, label: 'check passed' },
-    { key: 'unproven', n: unproven, label: 'configured, never checked' },
+    { key: 'unproven', n: unproven, label: 'configured, not yet proven' },
     { key: 'failing', n: failing, label: 'check failing' },
     { key: 'unreached', n: unreached, label: 'not reached' },
   ];
@@ -302,7 +302,7 @@ function Fragility({ status }: { status: LoopSnapshot['status'] }) {
   // head the queue of what to reach instead.
   const rows = [
     { key: 'degraded', names: status.degraded, label: 'configured, not working' },
-    { key: 'spofs', names: status.spofs, label: 'one provider away from lost' },
+    { key: 'spofs', names: status.spofs, label: 'lost if one provider fails' },
   ].filter(r => r.names?.length);
 
   if (!rows.length) return null;
@@ -452,7 +452,7 @@ function InterruptionChart({ attention }: { attention: LoopSnapshot['attention']
       capability: k.capability,
       hours: k.hours,
       times: k.times,
-      note: `${k.kind} — never proposed for removal, however often it recurs`,
+      note: `${k.kind} only you can supply, so never proposed for removal`,
       kept: true,
     })),
   ].sort((a, b) => b.hours - a.hours);
@@ -465,7 +465,7 @@ function InterruptionChart({ attention }: { attention: LoopSnapshot['attention']
       <figcaption className="fig-caption">
         <span className="fig-caption-title">Where the interruptions are</span>
         <span className="fig-caption-note">
-          hours a month · {attention.interventions} interventions in the window
+          hours a month · {attention.interventions} times you stepped in
         </span>
       </figcaption>
 
@@ -662,7 +662,9 @@ function AuthorityFigure({
                   title={p.command}
                   onClick={() => copy(`${p.id}/${p.action}`, p.command)}
                 >
-                  {copied === `${p.id}/${p.action}` ? 'Copied ✓' : 'Copy the command that sets one'}
+                  {copied === `${p.id}/${p.action}`
+                    ? 'Copied ✓'
+                    : 'Copy the command to set a threshold'}
                 </button>
               </li>
             ))}
@@ -687,8 +689,7 @@ function AuthorityFigure({
               A session's tokens, read from the Claude Code transcripts and the Codex, OpenCode and
               Amp logs as they grow, are recorded as a spend on Hosted Inference, priced at what{' '}
               <code>ambit economics price</code> declares for its model. Nothing else records spend
-              on its own; an integration calls <code>recordSpend</code>. Until a spend is recorded a
-              budget has no pace to draw.
+              on its own.
             </p>
           )}
         </div>
@@ -891,7 +892,9 @@ function OptionCompare({
               <span className={`fig-tag ${a.privacy === 'local' ? 'fig-tag--local' : ''}`}>
                 {a.privacy}
               </span>
-              {a.favoured && <span className="fig-option-favoured">your record favors this</span>}
+              {a.favoured && (
+                <span className="fig-option-favoured">your past decisions favor this</span>
+              )}
             </span>
             {/* Text to read and to paste, and nothing else: a patch names a
                 command, so a surface shows it and never runs it. */}
@@ -1120,8 +1123,8 @@ function EmptyLedger({
       <div className="loop-inner">
         <h2 className="loop-title">Nothing recorded yet</h2>
         <p className="loop-subtitle">
-          Nothing has recorded your sessions on this machine yet. Install the Claude Code plugin or
-          the OpenCode telemetry plugin and each time you step in for an agent is counted here.
+          Nothing has recorded your agent sessions on this machine yet. Once a plugin below is
+          installed, each time you step in for an agent is counted here.
         </p>
         {loop && <SinceStrip since={loop.since ?? null} />}
 
@@ -1142,16 +1145,19 @@ function EmptyLedger({
           <NextFigure next={loop.next ?? []} demand={loop.demand ?? []} onShowOnMap={onShowOnMap} />
         )}
 
-        <p className="loop-subtitle">Two bridges fill the rest.</p>
+        <p className="loop-subtitle">To start recording:</p>
         <ol className="loop-empty-steps">
           <li>
-            <strong>Record the work.</strong> Copy <code>plugins/ambit-telemetry.js</code> into{' '}
-            <code>~/.config/opencode/plugins/</code> — it writes each tool run and permission prompt
-            to the ledger.
+            <strong>Record the work.</strong> In Claude Code, run{' '}
+            <code>claude plugin marketplace add zz-plant/ambit</code> and then{' '}
+            <code>claude plugin install ambit@ambit</code>. In OpenCode, copy{' '}
+            <code>plugins/ambit-telemetry.js</code> into <code>~/.config/opencode/plugins/</code>.
+            Either records each tool run and permission prompt.
           </li>
           <li>
-            <strong>Record the tending.</strong> Copy <code>plugins/ambit-tracker.js</code> beside
-            it for the configuration changes you make, which is what the attention lens colors.
+            <strong>Record config changes.</strong> In OpenCode, copy{' '}
+            <code>plugins/ambit-tracker.js</code> beside it. The map's attention lens colors what it
+            records.
           </li>
           <li>
             <strong>Come back after a week of sessions.</strong> The same numbers are in the
@@ -1209,6 +1215,10 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
       <div className="loop-inner">
         <div className="loop-hero">
           <div>
+            {/* Beside the figure, so a screenshot that keeps the number keeps
+                this too: the header's Sample tag is cropped off, and a phone
+                never showed it. */}
+            {sample && <p className="loop-sample">Sample data</p>}
             {saved ? (
               <h2 className="loop-lead">
                 <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in,
@@ -1233,8 +1243,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             )}
             <details className="loop-about">
               <summary>
-                {sample ? 'This is sample data.' : 'Read from this machine\u2019s ledger.'} How it
-                is counted
+                {sample ? 'How it is counted' : 'Recorded on this machine. How it is counted'}
               </summary>
               <p>
                 Each time someone had to step in for an agent is logged against the capability it
@@ -1265,8 +1274,8 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
                 intervention or a second month exists there is no figure. */}
             {attention.interventions === 0 && roi.monthly_hours.length < 2 ? (
               <p className="fig-note">
-                No interventions recorded in the window yet, so there is nothing to price. The
-                figure appears with the first one.
+                No time spent stepping in for an agent is recorded yet, so there is nothing to
+                price. The figure appears with the first one.
               </p>
             ) : (
               <>
@@ -1361,7 +1370,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
 
         <p className="loop-foot">
           {sample
-            ? 'On your own machine this comes from the work ledger, and starts empty: '
+            ? 'On your own machine these figures start empty and fill as sessions are recorded. In the terminal: '
             : 'The same figures in the terminal: '}
           <code>ambit attention</code>, <code>ambit opportunities</code> and <code>ambit roi</code>.
         </p>

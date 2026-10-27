@@ -29,6 +29,7 @@
     "assets:generate": "node --experimental-strip-types scripts/generate-scenes.ts",
     "assets:hero": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/record-hero-gif.ts",
     "render:images": "node --experimental-strip-types scripts/render-images.ts",
+    "shots": "node --experimental-strip-types scripts/shots.ts",
     "demo:generate": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/generate-demo-data.ts",
     "demo:check": "node --experimental-sqlite --disable-warning=ExperimentalWarning scripts/check-demo-data.ts",
     "lint": "biome check .",

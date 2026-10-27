@@ -29,6 +29,7 @@ import { Term } from './Term';
 import { carryDetail, carryOf, carryTokens } from '../utils/carry';
 import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
+import { Command } from './Command';
 
 /** The rungs a grant climbs, bottom first, as the panel draws them. */
 const RUNGS = ['ungranted', 'confirm', 'threshold', 'autonomous', 'budgeted'] as const;
@@ -337,8 +338,8 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
 
       {asOf && (
         <p className="sp-asof" role="status">
-          As of {asOf}, as that observation recorded it. A snapshot keeps no grants or providers, so
-          simulations wait for now.
+          As of {asOf}. A past moment records no grants or providers, so simulations are off until
+          you go back to now.
         </p>
       )}
 
@@ -363,7 +364,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             onClick={() => copy('verify', verifyCmd)}
             aria-label={`Copy command ${verifyCmd}`}
           >
-            <code>{verifyCmd}</code>
+            <code>
+              <Command text={verifyCmd} />
+            </code>
             <span>{copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}</span>
           </button>
         </div>
@@ -525,17 +528,17 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           Up takes a person's command or a threshold one set; down takes one
           failing check and nobody. A refusal is on no rung. */}
       {ladder && (
-        <div className="sp-ladder" aria-label="How far its grant has climbed">
+        <div className="sp-grant" aria-label="How far its grant has climbed">
           {ladder.rung === 'forbidden' ? (
-            <p className="sp-ladder-note">{ladder.note}</p>
+            <p className="sp-grant-note">{ladder.note}</p>
           ) : (
-            <ol className="sp-rungs">
+            <ol className="sp-grant-rungs">
               {RUNGS.map((r, i) => {
                 const at = RUNGS.indexOf(ladder.rung as (typeof RUNGS)[number]);
                 return (
                   <li
                     key={r}
-                    className={`sp-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
+                    className={`sp-grant-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
                     aria-current={i === at ? 'step' : undefined}
                   >
                     {RUNG_LABEL[r]}
@@ -545,12 +548,12 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             </ol>
           )}
           {ladder.rung !== 'forbidden' && ladder.note && (
-            <p className="sp-ladder-note">{ladder.note}</p>
+            <p className="sp-grant-note">{ladder.note}</p>
           )}
           {ladder.next && (
             <button
               type="button"
-              className={`sp-cli-copy-btn sp-ladder-next ${copiedCmd === 'ladder' ? 'sp-cli-copy-btn--copied' : ''}`}
+              className={`sp-cli-copy-btn sp-grant-next ${copiedCmd === 'ladder' ? 'sp-cli-copy-btn--copied' : ''}`}
               title={ladder.next.command}
               onClick={() => copy('ladder', ladder.next!.command)}
             >
@@ -563,8 +566,8 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           draws as the part fill inside a next step. */}
       {blocks > 0 && item.status !== 'built' && (
         <p className="sp-blocks">
-          <Term name="asked-for">Asked for</Term> {blocks}×: work was recorded blocked on it while
-          it was missing.
+          <Term name="asked-for">Asked for</Term> {blocks}×: work was blocked because it was
+          missing.
         </p>
       )}
       {/* What its tool list costs in context every session, as `ambit weigh`
@@ -644,7 +647,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             {toggleError ??
               (enabled
                 ? 'Switching this off writes enabled: false to your agent config. Restart the runtime for it to take effect.'
-                : 'Switched off in your agent config. Switch it back on here.')}
+                : 'Switched off in your agent config. After switching it back on, restart the runtime.')}
           </p>
         </div>
       )}
@@ -674,7 +677,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         <div className="sp-cli-actions">
           <div className="sp-section-label">Check it</div>
           <div className="sp-cli-row">
-            <code className="sp-cli-cmd">{verifyCmd}</code>
+            <code className="sp-cli-cmd">
+              <Command text={verifyCmd} />
+            </code>
             <button
               type="button"
               className={`sp-cli-copy-btn ${copiedCmd === 'verify' ? 'sp-cli-copy-btn--copied' : ''}`}

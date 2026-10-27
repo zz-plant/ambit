@@ -169,7 +169,7 @@ test('the week is stated as movement, and its absence is said, never printed as 
   expect(week).toContain('+2');
   expect(week).toContain('−1');
   expect(week).toContain('this week');
-  expect(render(null)).toContain('no earlier observation to compare yet');
+  expect(render(null)).toContain('nothing recorded earlier to compare with yet');
   expect(render(null)).not.toContain('+0');
   expect(
     render({ from: '2026-09-01', gained: [], emergent: [], lost: [], diminished: [] })
@@ -399,7 +399,10 @@ test('the states are keyed under the map, and a keystone is a wedge, not a box',
   expect(idle).not.toMatch(/<rect[^>]*stroke="var\(--warn\)"[^>]*stroke-dasharray/);
 });
 
-test('My Setup on the sample says so, and leads with where it stands', () => {
+test('My Setup on the sample says so, and the journey closes the list', () => {
+  // The seven legs led the page, so a first look met a framework before the
+  // entries; the readout on the map now says the next step, and the legs wait
+  // at the end for whoever asks.
   const order = (demo: boolean) => {
     seed({ ...merged, demo, loop: demoSnapshot() });
     const html = renderToStaticMarkup(
@@ -408,9 +411,10 @@ test('My Setup on the sample says so, and leads with where it stands', () => {
     return {
       sample: text(html).includes("A sample developer's setup."),
       findingsFirst: html.indexOf('setup-findings') < html.indexOf('journey-title'),
+      closed: html.indexOf('setup-journey') > html.indexOf('setup-group'),
     };
   };
-  expect(order(true)).toEqual({ sample: true, findingsFirst: false });
-  expect(order(false)).toEqual({ sample: false, findingsFirst: true });
+  expect(order(true)).toEqual({ sample: true, findingsFirst: true, closed: true });
+  expect(order(false)).toEqual({ sample: false, findingsFirst: true, closed: true });
   seed({ demo: false });
 });

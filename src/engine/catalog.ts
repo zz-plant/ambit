@@ -115,11 +115,23 @@ function installText(
   option: { provider: string; source?: string; rollback?: string }
 ): string | undefined {
   if (option.source !== 'techtree' || option.rollback !== 'reversible') return undefined;
-  const node = (shippedTree().nodes || []).find((n: any) => `combo:${n.id}` === capabilityId);
-  const alternative = (node?.acquisition?.alternatives || []).find(
-    (a: any) => a.name === option.provider && a.config_patch
-  );
-  return alternative ? JSON.stringify(alternative.config_patch, null, 2) : undefined;
+  const patch = shippedPatch(capabilityId, option.provider);
+  return patch ? JSON.stringify(patch, null, 2) : undefined;
 }
 
-export { catalogReport, installText, shippedTree };
+/**
+ * The patch the shipped tree gives one way to acquire a capability, or none.
+ *
+ * `ambit apply` writes a step's patch only when it is this one. A plan reads
+ * its alternatives from the tree with any project overlay merged in, and an
+ * overlay arrives with a cloned repository, so a patch it named would put its
+ * own command into a runtime's config, to start every session from then on.
+ */
+function shippedPatch(capabilityId: string, alternative: string): unknown {
+  const node = (shippedTree().nodes || []).find((n: any) => `combo:${n.id}` === capabilityId);
+  return (node?.acquisition?.alternatives || []).find(
+    (a: any) => a.name === alternative && a.config_patch
+  )?.config_patch;
+}
+
+export { catalogReport, installText, shippedPatch, shippedTree };

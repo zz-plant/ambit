@@ -8,8 +8,8 @@
  * still runs; these hold that it does, and that the new one is the one taught.
  */
 import { expect, test } from 'vitest';
-import { ALIASES, commandWords, resolveCommand } from './groups.ts';
-import { HELP } from './help.ts';
+import { ALIASES, GROUPS, commandWords, resolveCommand } from './groups.ts';
+import { HELP, groupHelp } from './help.ts';
 import { DEFAULT_WINDOW_DAYS } from '../vocabulary.ts';
 import { WITH_PEOPLE, cli, seed } from '../testing/cli.ts';
 
@@ -29,6 +29,14 @@ test('every old name runs as the command it now is, and help teaches only the ne
     expect([alias, commandWords().includes(alias)]).toEqual([alias, false]);
     expect([alias, new RegExp(`\\b${alias} [<\\[]`).test(HELP)]).toEqual([alias, false]);
   }
+});
+
+// `judge` dispatched for ten days with ten subcommands, and neither `help --all`
+// nor `ambit plan` named it, while a typo near it was offered the word.
+test('every verb a group owns is taught under that group', () => {
+  for (const [group, verbs] of Object.entries(GROUPS))
+    for (const verb of verbs)
+      expect([verb, groupHelp(group).includes(`${group} ${verb}`)]).toEqual([verb, true]);
 });
 
 test('a decision is taken by --by, or by the one person declared, and a mistyped name is refused', () => {

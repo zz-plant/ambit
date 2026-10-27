@@ -136,7 +136,10 @@ CREATE TABLE IF NOT EXISTS proposals (
     -- The work the change is for, in the drafter's words: the class of work a
     -- person wants done. Reach serves a purpose someone named, and an
     -- approval binds the purpose it was shown.
-    purpose TEXT
+    purpose TEXT,
+    -- Which runtime's config an apply wrote, and the inverse it computed for
+    -- that file, stored before the write so a rollback undoes that file.
+    applied_to TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);

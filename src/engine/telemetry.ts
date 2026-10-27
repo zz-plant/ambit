@@ -712,7 +712,6 @@ function unmappedUse(db: Db, days = DEFAULT_WINDOW_DAYS): UnmappedResponse {
      WHERE d.from_capability = ? AND d.kind IN (${provisions}) AND c.kind = 'capability'`
   );
   const nameOf = db.prepare('SELECT name FROM capabilities WHERE id = ?');
-  const entryExists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?');
   // A node whose every detect pattern matches the bare kind ("mcp:") would
   // match any entry of that kind: Tool Protocol is "at least one MCP server".
   // Supplying it says nothing about what this one server does, so it does
@@ -743,10 +742,9 @@ function unmappedUse(db: Db, days = DEFAULT_WINDOW_DAYS): UnmappedResponse {
 
   const groups = new Map<string, UnmappedEntry>();
   for (const t of tools) {
-    // A built-in tool is its own entry (`tool:bash`), and the tree detects the
-    // entry, not the tool's name; `attribute` resolves MCP names only.
-    const placed =
-      attribute(db, t.tool) ?? (entryExists.get(`tool:${t.tool}`) ? `tool:${t.tool}` : null);
+    // Placed as the gate places it: Claude Code's `Bash` is `tool:bash`, by
+    // the name the runtime gives it (tool-names.ts).
+    const placed = attribute(db, t.tool);
     if (placed && onMap(placed)) continue;
     const key = placed ?? `tool:${t.tool}`;
     const group = groups.get(key) ?? {

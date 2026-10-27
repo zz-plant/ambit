@@ -25,6 +25,10 @@ import {
   eraLadder,
   eraOf,
   frameScene,
+  bandSpan,
+  BAND_MARGIN,
+  snapToBand,
+  wholeColumnZoom,
   failingNeeds,
   isEntry,
   isNext,
@@ -848,4 +852,69 @@ test('j and k never hand the selection back, which would clear it, and never wal
   expect(stepSelection(list, 'a', -1, new Set(['a']))).toBeNull();
   expect(stepSelection([], null, 1)).toBeNull();
   expect(stepSelection(list, null, 1, new Set())).toBeNull();
+});
+
+test('a frame never starts inside a column', () => {
+  const second = bandSpan(1);
+  // An edge in the middle of the second band moves to show it whole, the nearer way.
+  const inside = second.left + 20;
+  expect(snapToBand(inside, 600, 9)).toBe(second.left - BAND_MARGIN);
+  // Near the band's far end, it moves on to the start of the third.
+  expect(snapToBand(second.right - 5, 600, 9)).toBe(bandSpan(2).left - BAND_MARGIN);
+  // An edge already in a gutter stays where it is.
+  const gutter = second.right + 4;
+  expect(snapToBand(gutter, 600, 9)).toBe(gutter);
+  // What has to stay in view wins over a clean edge.
+  const keep = { min: second.left + 30, max: second.left + 30 + 560 };
+  expect(snapToBand(second.left + 25, 600, 9, keep)).toBe(second.left - BAND_MARGIN);
+  expect(snapToBand(second.left + 25, 595, 9, keep)).toBe(second.left + 25);
+});
+
+test('a lit set framed on a phone starts on a whole column', () => {
+  // Two columns apart, too wide to fit at the floor, so the frame starts at
+  // the first lit node; that start lands on its band's edge, not inside it.
+  const points = [
+    { x: bandSpan(3).left + 77, y: 200 },
+    { x: bandSpan(6).left + 77, y: 200 },
+  ];
+  const f = frameScene(
+    points,
+    { top: 0, width: 375, height: 400 },
+    { min: 0.7, max: 1.1, columns: 9, inset: 8 }
+  )!;
+  const start = (f.left - 8) / f.zoom;
+  expect(start).toBeCloseTo(bandSpan(3).left - BAND_MARGIN, 0);
+});
+
+test('a phone opens on whole columns, as many as read at the floor', () => {
+  // At 390px three columns fit at 0.77, and four would need 0.58.
+  const z = wholeColumnZoom(390, 9, 0.66);
+  expect(z).toBeGreaterThan(0.76);
+  expect(z).toBeLessThan(0.78);
+  const span = 3 * COL_W - 16 + 2 * BAND_MARGIN;
+  expect(span * z).toBeLessThanOrEqual(390);
+  // A tree of two columns is shown whole at no more than full size.
+  expect(wholeColumnZoom(390, 2, 0.66)).toBe(1);
+});
+
+test('a frame that meets the scene end still starts on a whole column', () => {
+  // The last two columns, framed on a phone: the scroll stops at the scene's
+  // end, and the zoom moves so the frame's left edge falls between columns.
+  const points = [7, 8].map(ci => ({ x: bandSpan(ci).left + 77, y: 300 }));
+  const end = bandSpan(8).right + 68;
+  const view = { top: 0, width: 382, height: 400 };
+  const f = frameScene(points, view, {
+    min: 0.55,
+    max: 1.1,
+    columns: 9,
+    sceneWidth: end,
+    inset: 8,
+  })!;
+  const start = Math.min((f.left - 8) / f.zoom, end - view.width / f.zoom);
+  const cuts = Array.from({ length: 9 }, (_, i) => bandSpan(i)).some(
+    b => start > b.left - BAND_MARGIN + 0.5 && start < b.right
+  );
+  expect(cuts).toBe(false);
+  // Both lit columns are still in the frame.
+  expect(start).toBeLessThanOrEqual(bandSpan(7).left);
 });

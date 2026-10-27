@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useConfigImport } from '../hooks/useConfigImport';
 import { useCopied } from '../hooks/useCopied';
 import { mergeGraphs } from '../store/ambitStore';
@@ -6,7 +6,8 @@ import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { INSTALL } from '../utils/copy';
 import { demoSnapshot } from '../utils/demoSnapshot';
 import { BrandMark } from './BrandMark';
-import { mapFindings } from './civ/layout';
+import { bandSpan, COL_W, columnCentre, mapFindings, unlockCascade } from './civ/layout';
+import { MapStill, stillLayout } from './civ/MapScene';
 import ConfigIntake from './ConfigIntake';
 
 interface WelcomeProps {
@@ -44,16 +45,36 @@ const DOCS = `${import.meta.env.BASE_URL}docs/`;
 /**
  * The sample setup's best next step and how much it would open, on the graph
  * the demo seeds and by the walk the map draws, so the number here is the one
- * the tour's first step then shows.
+ * the tour's first step then shows. With it, a still of the columns it lights,
+ * for a wide screen: the front door was all words, and a screenshot of it
+ * showed no product.
  */
-function demoNextStep(): { name: string; reaches: number } | null {
+function demoNextStep() {
   const { items, connections } = mergeGraphs(demoTreeGraph(), demoConfigGraph());
   const { best } = mapFindings(
     items,
     connections,
     demoSnapshot().next.map(n => n.id)
   );
-  return best ? { name: best.item.name, reaches: best.reaches } : null;
+  if (!best) return null;
+  const layout = stillLayout(items, connections);
+  const cascade = unlockCascade(items, connections, best.item.id);
+  const lit = [best.item.id, ...cascade].flatMap(id => layout.positions.get(id) ?? []);
+  const column = (x: number) => Math.round((x - columnCentre(0)) / COL_W);
+  const first = Math.min(...lit.map(p => column(p.x)));
+  const last = Math.max(...lit.map(p => column(p.x)));
+  const left = bandSpan(first).left - 24;
+  return {
+    name: best.item.name,
+    reaches: best.reaches,
+    still: {
+      items,
+      connections,
+      layout,
+      simulation: { mode: 'acquisition', rootId: best.item.id, cascade },
+      crop: { x: left, y: 0, width: bandSpan(last).right + 24 - left, height: layout.height },
+    },
+  };
 }
 
 /**
@@ -77,7 +98,7 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
   const { readFile, error: dropError } = useConfigImport(onMapped);
   const [dropping, setDropping] = useState(false);
   const [copied, copy] = useCopied();
-  const next = demoNextStep();
+  const next = useMemo(demoNextStep, []);
 
   return (
     // The whole page takes a dropped file, so there is no target to aim at;
@@ -144,14 +165,14 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           </button>
         </div>
         <p className="app-welcome-local">
-          Runs the CLI with nothing installed, and maps every runtime on the machine. Homebrew and{' '}
-          <code>npm install -g ambit-cli</code> keep it.
+          Runs the CLI with nothing installed, and maps every runtime on the machine. To keep it,
+          install with Homebrew or <code>npm install -g ambit-cli</code>.
         </p>
         <nav className="app-welcome-more" aria-label="Read more">
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>
             Time &amp; cost
           </button>
-          <a href={`${DOCS}loadout/`}>Your loadout, from A to B</a>
+          <a href={`${DOCS}loadout/`}>From configs to work done without you</a>
           <a href={`${DOCS}guide/`}>Guide</a>
           <a href={`${DOCS}faq/`}>What it reads, and what leaves your machine</a>
           <a href="https://github.com/zz-plant/ambit" rel="noopener">
@@ -159,6 +180,19 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           </a>
         </nav>
       </div>
+      {/* On a wide screen, the step the fact names, already lit: the button
+          beside it plays it on the live map. Hidden on a narrow one, where
+          the hero is the whole width. */}
+      {next && (
+        <button
+          type="button"
+          className="app-welcome-still"
+          onClick={onExploreDemo}
+          aria-label={`Watch ${next.name} open on the sample map`}
+        >
+          <MapStill {...next.still} />
+        </button>
+      )}
     </main>
   );
 }

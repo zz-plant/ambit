@@ -1,10 +1,12 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import type { Item, Connection } from '../utils/configImporter';
 import { useAmbitStore } from '../store/ambitStore';
 import { mapKey, typingIn } from '../utils/keys';
 import { isRuntimeNode } from '../utils/labels';
 import { typeColor } from '../utils/typeColors';
 import {
+  BAND_MARGIN,
+  bandSpan,
   blocksOf,
   AUTHORITY_LABEL,
   type AuthorityMark,
@@ -35,6 +37,7 @@ import {
   START_Y,
   stepSelection,
   visibleItems,
+  wholeColumnZoom,
 } from './civ/layout.ts';
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
 import { hasHistory } from './civ/history.ts';
@@ -48,7 +51,7 @@ import { usePinchZoom } from './civ/usePinchZoom.ts';
 import { ZOOM_MIN } from './civ/viewport.ts';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
-import { useBottomOcclusion, useNarrow } from '../hooks/useViewport';
+import { useNarrow, useOcclusion } from '../hooks/useViewport';
 import { SITE_HOST } from '../utils/copy';
 
 interface CivTreeProps {
@@ -74,8 +77,6 @@ interface CivTreeProps {
    * week and its simulations.
    */
   asOf?: string;
-  /** Told where the headline's bottom edge is, so a card laid over the map can sit below it. */
-  onHeadline?: (bottom: number | null) => void;
   /** Save the map's finding as a card made to be posted, or the whole map as a file. */
   onSaveImage?: (kind: ImageKind) => void;
 }
@@ -102,7 +103,6 @@ export default function CivTree({
   rightInset = 0,
   narrated = false,
   asOf,
-  onHeadline,
   onSaveImage,
 }: CivTreeProps) {
   const requestedLens = useAmbitStore(s => s.activeLens);
@@ -279,9 +279,6 @@ export default function CivTree({
   // Measured from the controls' row, 12px down, so a headline that moved under
   // the controls on a narrow screen pushes the canvas by that much more.
   const headlinePad = headlineReserve(headlineBox ? headlineBox.bottom - 12 : null);
-  useEffect(() => {
-    onHeadline?.(headlineBox?.bottom ?? null);
-  }, [headlineBox, onHeadline]);
   const rangeSince = useAmbitStore(s => s.rangeSince);
   // The ledger reports the week by name; the tree's names are unique.
   const weekNames = useMemo(
@@ -536,36 +533,7 @@ export default function CivTree({
   ]);
 
   // The bottom of the canvas a tour card or a bottom sheet is covering.
-  const covered = useBottomOcclusion(containerRef);
-
-  // Centre the node in view: the selection, or else where a simulation
-  // started. On a wide screen the whole map is in view and this is a no-op; on
-  // a phone the framing below does it instead, fitted around the cards.
-  // A zoom made by hand centres nothing: it is anchored where it was asked
-  // for, and centring the selection again pulled every step of a pinch back
-  // to the node. Any other zoom, the fit on arrival included, centres it.
-  const centreOn = selectedId ?? (simulationMode !== 'none' ? simulatedNodeId : null);
-  const centred = React.useRef<string | null>(null);
-  React.useEffect(() => {
-    if (narrow) return;
-    if (centreOn && nodePositionMap.has(centreOn)) {
-      if (centred.current === centreOn && zoom === handZoom.current) return;
-      centred.current = centreOn;
-      const pos = nodePositionMap.get(centreOn)!;
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const targetScrollLeft = pos.x * zoom - container.clientWidth / 2;
-        const targetScrollTop = pos.y * zoom - container.clientHeight / 2;
-        container.scrollTo({
-          left: Math.max(0, targetScrollLeft),
-          top: Math.max(0, targetScrollTop),
-          behavior: 'smooth',
-        });
-      }
-    } else {
-      centred.current = null;
-    }
-  }, [narrow, centreOn, zoom, nodePositionMap, handZoom]);
+  const { bottom: covered, right: coveredRight } = useOcclusion(containerRef);
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
@@ -577,13 +545,76 @@ export default function CivTree({
   // widened kept its narrow zoom, or the reverse, with Foundation or Launch
   // Ready off the edge. Once someone zooms, the zoom controls own it.
   const [boxWidth, setBoxWidth] = useState<number | null>(null);
+  const [boxHeight, setBoxHeight] = useState<number | null>(null);
   React.useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => setBoxWidth(el.clientWidth));
+    const observer = new ResizeObserver(() => {
+      setBoxWidth(el.clientWidth);
+      setBoxHeight(el.clientHeight);
+    });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  /**
+   * The zoom the map opens at in a canvas `width` wide: every column on a
+   * wide screen, and on a phone, where that is a name four pixels tall, as
+   * many whole columns as read at 0.66 or more, which is three at 390px.
+   */
+  const restZoom = React.useCallback(
+    (width: number) =>
+      width < 700
+        ? wholeColumnZoom(width, colOrder.length, 0.66)
+        : Math.max(ZOOM_MIN, Math.min(1, +((width - leftInset - 16) / contentWidth).toFixed(2))),
+    [colOrder.length, leftInset, contentWidth]
+  );
+  // At rest, a tree shorter than the canvas sat at the top of it, 170px over
+  // the key at 1440 by 900; it is centred between the controls and the key.
+  const KEY_STRIP = 56;
+  const centring =
+    !narrow && boxHeight !== null
+      ? Math.max(
+          0,
+          Math.floor(
+            (boxHeight - (headlined ? headlinePad : 0) - 44 - contentHeight * zoom - KEY_STRIP) / 2
+          )
+        )
+      : 0;
+  // A scroll computed for a zoom being set waits for that zoom to draw. Sent
+  // in the next animation frame, it could reach the browser while the canvas
+  // was still the old size, and the browser held it to the old size's end: a
+  // phone framing the last two columns stopped 80px short, inside a third.
+  const pendingScroll = React.useRef<{ left: number; top: number; smooth: boolean } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the zoom is not read here; its change is the moment the canvas has its new size, which is when the waiting scroll can land.
+  React.useLayoutEffect(() => {
+    const el = containerRef.current;
+    const to = pendingScroll.current;
+    if (!el || !to) return;
+    pendingScroll.current = null;
+    el.scrollTo({ left: to.left, top: to.top, behavior: to.smooth ? 'smooth' : 'auto' });
+  }, [zoom]);
+  /**
+   * Set the zoom and then scroll, in that order, whether or not the zoom
+   * changes. The scroll glides, unless the reader has asked for less motion.
+   */
+  const zoomAndScroll = React.useCallback(
+    (next: number, left: number, top: number, glide = true) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const smooth =
+        glide &&
+        !(
+          typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+        );
+      if (next === zoom) {
+        el.scrollTo({ left, top, behavior: smooth ? 'smooth' : 'auto' });
+        return;
+      }
+      pendingScroll.current = { left, top, smooth };
+      setZoom(next);
+    },
+    [zoom]
+  );
   const fittedFor = React.useRef<number | null>(null);
   const fittedAt = React.useRef<{ width: number; zoom: number } | null>(null);
   React.useLayoutEffect(() => {
@@ -597,34 +628,57 @@ export default function CivTree({
       fittedAt.current.width !== width &&
       fittedAt.current.zoom === zoom;
     if (!fresh && !refit) return;
-    const available = width - leftInset - 16;
-    if (available <= 0) return;
+    if (width - leftInset - 16 <= 0) return;
     fittedFor.current = contentWidth;
-    // A phone fits the whole tree at about 0.3, where a node's name is four
-    // pixels tall. There the map opens at a scale its names can be read at,
-    // two columns or so across, and scrolls sideways; Fit still shows it all.
-    const floor = width < 700 ? 0.72 : ZOOM_MIN;
-    const fit = Math.max(floor, Math.min(1, +(available / contentWidth).toFixed(2)));
+    // A phone opens on whole columns and scrolls sideways; Fit still shows it
+    // all. It starts at the first column's edge, not the scene's margin, so
+    // the third column ends at the screen's edge instead of under it.
+    const fit = restZoom(width);
     fittedAt.current = { width, zoom: fit };
-    setZoom(fit);
-  }, [contentWidth, leftInset, boxWidth, zoom]);
+    // A framing decided before this fit was decided at the old zoom, and this
+    // fit would undo it unseen: a node selected by a link was framed at 100%,
+    // then the fit set 84%, and the panel cut a column. It is asked again.
+    framedWide.current = '';
+    if (width < 700) {
+      zoomAndScroll(fit, leftInset + (bandSpan(0).left - BAND_MARGIN) * fit, el.scrollTop, false);
+    } else setZoom(fit);
+  }, [contentWidth, leftInset, boxWidth, zoom, restZoom, zoomAndScroll]);
 
-  // On a wider screen the panel sits over the map's right edge, which is
-  // where the Product and Operations eras are, so a route to Launch Ready was
-  // numbered entirely under it. When a simulation lights a node that is off
-  // screen or under the panel, bring the lit part into the rest of the canvas,
-  // zooming out if it has to and never in. What is already in view stays put.
+  // On a wider screen the panel or a card sits over the map's right edge,
+  // which is where the Product and Operations eras are, so a route to Launch
+  // Ready was numbered entirely under it, and opening a node's panel cut a
+  // column at the panel's edge in every screenshot of it. What is lit, or the
+  // selected node with what it needs and enables, is brought into the canvas
+  // they leave. The whole tree comes first when it fits there at half size or
+  // more, since a frame of all of it cuts nothing; past that the subject alone,
+  // on whole columns, zooming out if it has to and never in. A zoom someone
+  // made by hand keeps its scale. When the subject goes, a zoom this chose
+  // gives way to the fit on arrival again.
   const framedWide = React.useRef('');
+  const framedZoom = React.useRef<number | null>(null);
   React.useEffect(() => {
     const el = containerRef.current;
-    if (narrow || !el || simulationMode === 'none') {
-      framedWide.current = '';
-      return;
-    }
-    const key = `${simulationMode}:${simulatedNodeId}`;
+    if (narrow || !el) return;
+    const subject =
+      simulationMode !== 'none'
+        ? [...simSet]
+        : selectedId
+          ? [selectedId, ...needs, ...enables]
+          : [];
+    // The card is measured a frame after it mounts, and a step lit before then
+    // was framed as if nothing covered the map.
+    const key = `${simulationMode}:${simulatedNodeId}:${selectedId}:${coveredRight}:${rightInset}`;
     if (framedWide.current === key) return;
     framedWide.current = key;
-    const points = [...simSet].flatMap(id => nodePositionMap.get(id) ?? []);
+    if (!subject.length) {
+      if (framedZoom.current !== null && zoom === framedZoom.current) {
+        zoomAndScroll(restZoom(el.clientWidth), 0, 0);
+      }
+      framedZoom.current = null;
+      return;
+    }
+    const points = subject.flatMap(id => nodePositionMap.get(id) ?? []);
+    if (!points.length) return;
     const hud = 88;
     const right = el.scrollLeft + el.clientWidth - rightInset;
     // While the tour narrates, its card covers the map's lower right, and a
@@ -650,39 +704,79 @@ export default function CivTree({
         !underCard
       );
     });
-    if (inView) return;
+    // The panel cuts whatever of the map runs under it.
+    const cut =
+      rightInset > 0 && leftInset + contentWidth * zoom - el.scrollLeft > right - el.scrollLeft;
+    const byHand = zoom === handZoom.current;
+    if (inView && (!cut || byHand)) return;
     const open = {
       top: hud,
-      width: el.clientWidth - leftInset - rightInset,
+      width: (card ? card.left : el.clientWidth - rightInset) - leftInset - 16,
       height: el.clientHeight - hud,
     };
-    const zoomRange = { min: ZOOM_MIN, max: zoom, inset: leftInset };
+    const scene = [
+      { x: bandSpan(0).left, y: START_Y },
+      { x: bandSpan(colOrder.length - 1).right, y: contentHeight - 60 },
+    ];
+    const whole = byHand
+      ? null
+      : frameScene(scene, open, { min: 0.5, max: zoom, inset: leftInset, pad: BAND_MARGIN * 2 });
+    // A zoom rounded to two places can come out a pixel or two over.
+    const wholeFits =
+      whole !== null &&
+      (bandSpan(colOrder.length - 1).right - bandSpan(0).left + BAND_MARGIN * 4) * whole.zoom <=
+        open.width + 4;
+    const zoomRange = {
+      min: ZOOM_MIN,
+      max: zoom,
+      inset: leftInset,
+      columns: colOrder.length,
+      sceneWidth: contentWidth,
+    };
     // With a card, the lit part goes beside it or above it, whichever leaves
     // the larger map.
-    const frame = card
-      ? [
-          frameScene(points, { ...open, width: card.left - leftInset - 16 }, zoomRange),
-          frameScene(points, { ...open, height: card.top - hud - 8 }, zoomRange),
-        ].reduce<ReturnType<typeof frameScene>>(
-          (best, f) => (f && (!best || f.zoom > best.zoom) ? f : best),
-          null
-        )
-      : frameScene(points, open, zoomRange);
+    const frame = wholeFits
+      ? whole!
+      : card
+        ? [
+            frameScene(points, open, zoomRange),
+            frameScene(
+              points,
+              {
+                ...open,
+                width: el.clientWidth - leftInset - rightInset,
+                height: card.top - hud - 8,
+              },
+              zoomRange
+            ),
+          ].reduce<ReturnType<typeof frameScene>>(
+            (best, f) => (f && (!best || f.zoom > best.zoom) ? f : best),
+            null
+          )
+        : frameScene(points, open, zoomRange);
     if (!frame) return;
-    if (frame.zoom !== zoom) setZoom(frame.zoom);
-    requestAnimationFrame(() =>
-      el.scrollTo({ left: frame.left, top: frame.top, behavior: 'smooth' })
-    );
+    if (frame.zoom !== zoom) framedZoom.current = frame.zoom;
+    zoomAndScroll(frame.zoom, frame.left, frame.top);
   }, [
     narrow,
     narrated,
     simulationMode,
     simulatedNodeId,
     simSet,
+    selectedId,
+    needs,
+    enables,
     nodePositionMap,
     leftInset,
     rightInset,
+    coveredRight,
     zoom,
+    handZoom,
+    colOrder.length,
+    contentWidth,
+    contentHeight,
+    restZoom,
+    zoomAndScroll,
   ]);
 
   // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
@@ -719,21 +813,27 @@ export default function CivTree({
     const keepId = simulationMode !== 'none' ? simulatedNodeId : selectedId;
     const frame = frameScene(
       points,
-      { top: hud, width: el.clientWidth - leftInset, height: el.clientHeight - hud - covered },
+      // The screen's width: the inset is where the scene starts inside the
+      // scroller, which `inset` places, and at the scene's end the scroll
+      // stops by the whole width. Less the inset, a frame there began a
+      // sliver of a column early.
+      { top: hud, width: el.clientWidth, height: el.clientHeight - hud - covered },
       {
-        min: 0.7,
+        // A simulation's card names everything it lights, so the whole set
+        // gets the screen, smaller if it has to be: at 0.7 the tour's first
+        // card said "the ones in green" over two of four, the rest past the
+        // edge. A selection keeps the floor its names can be read at.
+        min: simulationMode !== 'none' ? 0.55 : 0.7,
         max: 1.1,
         inset: leftInset,
         insetTop,
         keep: keepId ? nodePositionMap.get(keepId) : undefined,
+        columns: colOrder.length,
+        sceneWidth: contentWidth,
       }
     );
     if (!frame) return;
-    setZoom(frame.zoom);
-    // After the zoom lands, so the offsets are measured against the new size.
-    requestAnimationFrame(() =>
-      el.scrollTo({ left: frame.left, top: frame.top, behavior: 'smooth' })
-    );
+    zoomAndScroll(frame.zoom, frame.left, frame.top);
   }, [
     narrow,
     simulationMode,
@@ -745,6 +845,9 @@ export default function CivTree({
     covered,
     nodePositionMap,
     leftInset,
+    colOrder.length,
+    contentWidth,
+    zoomAndScroll,
   ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -798,7 +901,7 @@ export default function CivTree({
         rightInset={rightInset}
         lensNote={
           asOf
-            ? 'History keeps what was reached and what its checks said, not who stepped in or what may act. Return to today to use this view.'
+            ? 'A past moment keeps what was reached and what its checks said, not who stepped in or what may act. Go back to now to use this lens.'
             : undefined
         }
         tools={
@@ -819,7 +922,7 @@ export default function CivTree({
                 className={`civ-zoom-btn${historyOpen ? ' is-on' : ''}`}
                 aria-pressed={historyOpen}
                 onClick={() => setHistoryOpen(!historyOpen)}
-                title="The frontier through time: scrub the map back to an earlier observation"
+                title="The frontier through time: scrub the map back to an earlier moment"
               >
                 History
               </button>
@@ -831,7 +934,7 @@ export default function CivTree({
                 aria-expanded={imageOpen}
                 data-image-toggle
                 onClick={() => setImageOpen(!imageOpen)}
-                title="Save an image: the map's finding sized for posting, or the whole map"
+                title="Save the whole map, or its headline as a card to post"
               >
                 Image
               </button>
@@ -926,9 +1029,10 @@ export default function CivTree({
           {
             paddingLeft: leftInset,
             // Room to scroll the last columns out from under an open panel,
-            // and on a wide screen out from under the tour's card (380px and
-            // its 16px margin): at 800px the lit eras had nowhere to scroll to.
-            paddingRight: rightInset + (narrated && !narrow ? 396 : 0),
+            // and on a wide screen out from under the card in the corner, the
+            // tour's or the readout's, measured: at 800px the lit eras had
+            // nowhere to scroll to.
+            paddingRight: rightInset + coveredRight,
             // And on a phone, room below for whatever covers the bottom: the
             // map is shorter than the screen there, so a node under the sheet
             // describing it had nowhere to scroll up to.
@@ -948,6 +1052,7 @@ export default function CivTree({
             width: `${contentWidth * zoom}px`,
             height: `${contentHeight * zoom}px`,
             minWidth: `${contentWidth * zoom}px`,
+            ...(centring > 0 ? { marginTop: `${44 + centring}px` } : {}),
           }}
         >
           <title>Capability tree: what this setup can do, by era</title>
@@ -1052,7 +1157,7 @@ export default function CivTree({
               // on a node you have, an unlock on one you do not. While one
               // runs, the card does not offer the next over it.
               const hint = asOf
-                ? 'Click: details, as of this observation'
+                ? 'Click: details, as of this moment'
                 : simulationMode !== 'none'
                   ? 'Click: details'
                   : unreached

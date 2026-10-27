@@ -21,6 +21,7 @@ import {
   renderCarry,
   renderImpact,
   renderNext,
+  renderApply,
   renderDoctor,
   renderWindows,
   renderPlan,
@@ -89,6 +90,7 @@ import {
 } from './planning.ts';
 import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
+import { typedCommand } from './paths.ts';
 import { judgeGoal } from './judge.ts';
 import { judgeUnrouted, specGoal } from './spec.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
@@ -241,7 +243,7 @@ async function runCommand(
       // Drawn by its own renderer for a person; the sink and --json get the data.
       // `--brief` is what bare `ambit` shows: the next steps first, the rest here.
       if (flags.has('--brief'))
-        emit(briefReport(db), report => renderBrief(report, terminalPalette()));
+        emit(briefReport(db), report => renderBrief(report, terminalPalette(), typedCommand));
       else emit(statusReport(db), report => renderStatus(report, terminalPalette()));
       break;
     case 'graph': {
@@ -737,7 +739,9 @@ async function runCommand(
       break;
     }
     case 'apply':
-      emit(applyProposal(db, arg));
+      emit(applyProposal(db, arg, { to: value('to'), print: flags.has('--print') }), r =>
+        renderApply(r, terminalPalette())
+      );
       break;
     // What each tool server's listing costs in context. Weighing starts the
     // servers the configs declare, so it runs only when typed; --recorded

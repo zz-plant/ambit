@@ -38,6 +38,7 @@ import {
   type RepoScanResponse,
   type RunResponse,
 } from '../../shared/api';
+import { noGraphYet } from '../../shared/api';
 
 /**
  * The visualiser's state: the graph, what is selected, which lens and
@@ -291,7 +292,12 @@ interface StoreState {
 
   seedDemo: () => void;
   /** A config handed to the page; `picked` when it was built from servers ticked, not read from a file. */
-  loadFromJSON: (json: string, picked?: boolean) => boolean;
+  /**
+   * Read a config in the tab. `agent` is the one the visitor said they use,
+   * which names the runtime when the file itself does not: a bare
+   * `mcpServers` block, or servers ticked from a list.
+   */
+  loadFromJSON: (json: string, picked?: boolean, agent?: TabRuntime) => boolean;
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
   setSpotlight: (group: string | null) => void;
@@ -845,7 +851,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * it stands. Everything happens in the tab: nothing is uploaded, and the
    * file is not kept.
    */
-  loadFromJSON: (jsonStr, picked = false) => {
+  loadFromJSON: (jsonStr, picked = false, agent) => {
     let parsed: unknown;
     try {
       // A config may be `opencode.jsonc`, comments and all.
@@ -888,7 +894,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       ? { id: 'opencode', name: 'OpenCode' }
       : claude
         ? { id: 'claude-code', name: 'Claude Code' }
-        : { id: null, name: picked ? 'Your agent' : 'Your MCP client' };
+        : (agent ?? { id: null, name: picked ? 'Your agent' : 'Your MCP client' });
     const graph = looksLikeConfig
       ? importConfig(config as OpenCodeConfig)
       : claude
@@ -999,7 +1005,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       const mcp = (config?.config as { mcp?: Record<string, Record<string, unknown>> })?.mcp;
       set({ configMcp: mcp && typeof mcp === 'object' ? mcp : {} });
       if (!treeGraph && !configGraph) {
-        set({ error: 'No graph yet. Run ./bootstrap.sh to seed one.', loading: false });
+        set({ error: noGraphYet(), loading: false });
         return;
       }
       const merged = mergeGraphs(treeGraph, configGraph);

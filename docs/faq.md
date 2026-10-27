@@ -1,6 +1,6 @@
 # FAQ
 
-Short answers, with a pointer to the longer one where there is one. Terms are defined in [the README](../README.md#the-words-ambit-uses), and `ambit help <term>` looks any of them up from the terminal.
+Terms are defined in [the README](../README.md#the-words-ambit-uses), and `ambit help <term>` looks any of them up from the terminal.
 
 ## Is this for me
 
@@ -14,7 +14,7 @@ No. Ambit reads each of these runtimes from its standard config path: OpenCode, 
 
 ### I use Jev. Where does it fit?
 
-Ambit maps TypeSafe's Jev as **Typed Judgment**, in the Model Access era, and finds it however it arrives: as one of its MCP servers, as TypeSafe listed as a provider, or as an open clone that serves the same API. Cloudflare's Clef models answer in the same shape and are mapped the same way. A clone such as Kev or LitJev running on your own hardware also reaches **Local Typed Judgment** in Sovereignty. That difference matters because the hosted API may keep requests for a while unless you have a zero-retention agreement, and a local clone keeps the state it judges on your machine. `ambit verify combo:local-typed-judgment` asks the clone one trivial question on this machine and records whether it answered; it never contacts the hosted API. A clone can also route goals the tree's words do not cover: `ambit goal "triage incoming bug reports" --judge` puts the sentence to it as a Choice over the tree, and prints the likeliest capability with its probability as a suggestion. It writes nothing.
+Ambit maps TypeSafe's Jev as **Typed Judgment**, in the Model Access era (a column of the map), and finds it however it arrives: as one of its MCP servers, as TypeSafe listed as a provider, or as an open clone that serves the same API. Cloudflare's Clef models answer in the same shape and are mapped the same way. A clone such as Kev or LitJev running on your own hardware also reaches **Local Typed Judgment** in the Sovereignty era. The difference matters because the hosted API may keep requests for a while unless you have a zero-retention agreement, and a local clone keeps the state it judges on your machine. `ambit verify combo:local-typed-judgment` asks the clone one trivial question on this machine and records whether it answered; it never contacts the hosted API. A clone can also route goals the tree's words do not cover: `ambit goal "triage incoming bug reports" --judge` puts the sentence to it as a Choice over the tree, and prints the likeliest capability with its probability as a suggestion. It writes nothing.
 
 Use Jev to decide what to try, and `ambit_can` to decide whether it may run. Jev returns a probability, and text inside the state it reads can move that probability. In one published test, injected text dropped Jev's probability of blocking `rm -rf ~/.ssh` from 0.76 to 0.48. Ambit's answer to whether an action may run comes from a grant a person set, so nothing an agent reads can widen it.
 
@@ -60,7 +60,7 @@ Neither notify command sends anything without a topic. An ntfy topic is readable
 
 ### What does Ambit store about my machine?
 
-Names and structure. A credential is a node you declared in a `credentials` block, holding a name and a note; the schema has no column a secret could be written to, and discovery never reads one. The one `command` column in the database belongs to `declared_checks`, which holds a check a skill registered for itself, never anything read from your config. Discovery reads your config files and writes only the database. Writing back to one takes a person, which is the next answer.
+Names and structure. A credential is a node you declared in a `credentials` block, holding a name and a note; the schema has no column a secret could be written to, and discovery never reads one. The one `command` column in the database belongs to `declared_checks`, which holds a check a skill registered for itself, never anything read from your config. Discovery reads your config files and writes only the database. Writing back to one takes a person.
 
 ### Can an agent change my configuration through Ambit?
 
@@ -74,7 +74,9 @@ Privately, through [GitHub security advisories](https://github.com/zz-plant/ambi
 
 ### I ran `ambit attention` and it says nothing is recorded. Is it broken?
 
-No. `attention`, `work`, `usage`, `opportunities`, `roi`, and `audit` price the human cost of running your stack, and they read from a work ledger that starts empty. They become useful after a few weeks of recorded runs. In Claude Code, the `ambit` plugin records each session's tool runs, failures and approval prompts ([Connect it to your agent](../README.md#claude-code) has the install). In OpenCode, copying `plugins/ambit-telemetry.js` into `~/.config/opencode/plugins/` records every tool execution and permission prompt. In Cursor, `ambit connect cursor --ledger` adds a hook that records each conversation's shell commands, MCP calls and failures ([Cursor](../README.md#cursor) says exactly what it writes). Claude Code, Codex, OpenCode and Amp sessions also give their token counts with no plugin, read from the session logs those agents keep, so Time & cost has a token figure, and the current five-hour window beside it, from the first `ambit` command after you use one; tool runs and approvals still need a bridge, and other runtimes do not feed the ledger yet. [The deep dive](./deep-dive.md#the-work-ledger) covers the ledger.
+No. `attention`, `work`, `usage`, `opportunities`, `roi`, and `audit` price the human cost of running your stack, and they read from the work ledger, Ambit's local record of agent runs, which starts empty. They become useful after a few weeks of recorded runs.
+
+In Claude Code, the `ambit` plugin records each session's tool runs, failures and approval prompts ([Connect it to your agent](../README.md#claude-code) has the install). In OpenCode, copying `plugins/ambit-telemetry.js` into `~/.config/opencode/plugins/` records every tool execution and permission prompt. In Cursor, `ambit connect cursor --ledger` adds a hook that records each conversation's shell commands, MCP calls and failures ([Cursor](../README.md#cursor) says exactly what it writes). Claude Code, Codex, OpenCode and Amp sessions also give their token counts with no plugin, read from the session logs those agents keep, so Time & cost has a token figure, and the current five-hour window beside it, from the first `ambit` command after you use one; tool runs and approvals still need a bridge, and other runtimes do not feed the ledger yet. [The deep dive](./deep-dive.md#the-work-ledger) covers the ledger.
 
 ### What is the difference between "reached" and "verified"?
 

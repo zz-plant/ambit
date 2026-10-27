@@ -275,8 +275,8 @@ function socialCard(): string {
     </text>
 
     <text font-family="${FONT}" font-size="27" font-weight="500" fill="${SUB}">
-      <tspan x="80" y="392">Ambit maps Claude Code, Cursor, OpenCode</tspan>
-      <tspan x="80" y="428">and nine more into one graph: what works,</tspan>
+      <tspan x="80" y="392">Ambit maps Claude Code, Cursor, OpenCode and</tspan>
+      <tspan x="80" y="428">thirteen more into one graph: what works,</tspan>
       <tspan x="80" y="464">what to set up next, what breaks if it goes.</tspan>
     </text>
 

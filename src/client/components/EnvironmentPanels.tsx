@@ -114,8 +114,8 @@ export function RepoDriftPanel({ scan }: { scan: RepoScanResponse | null }) {
   if (!scan.repos.length) {
     return (
       <PanelNote icon={<RepoEmptyIllustration />}>
-        No repository carries its own <code>opencode.json</code>. Nothing has drifted, because
-        nothing is local yet.
+        No repository carries its own <code>opencode.json</code>, so there is nothing to compare
+        with the global config.
       </PanelNote>
     );
   }
@@ -124,8 +124,8 @@ export function RepoDriftPanel({ scan }: { scan: RepoScanResponse | null }) {
   return (
     <div className="tp-list">
       <p className="tp-note">
-        Global: {scan.globalStats.mcps} servers, {scan.globalStats.agents} agents,{' '}
-        {scan.globalStats.commands} commands. Each row is how far that repository differs.
+        Global config: {scan.globalStats.mcps} servers, {scan.globalStats.agents} agents,{' '}
+        {scan.globalStats.commands} commands.
       </p>
       {ranked.map(r => (
         <div key={r.name} className="tp-item tp-item--static">
@@ -226,8 +226,8 @@ export function InfrastructurePanel({
     return (
       <PanelNote icon={<InfraEmptyIllustration />}>
         No manifest at <code>~/.config/opencode/infrastructure.json</code>, and no Docker socket.
-        List the devices and services you run in the manifest and this becomes a live reading of
-        them, with any containers the local engine reports beside them — no addresses are built in.
+        List the devices and services you run in that file and this becomes a live reading of them,
+        with any local Docker containers beside them. No addresses are built in.
       </PanelNote>
     );
   }
@@ -335,13 +335,13 @@ function usedAgo(stamp: string): string {
  */
 export function UnmappedPanel({ report }: { report: UnmappedResponse | null }) {
   const [copied, copy] = useCopied();
-  if (!report) return <PanelNote>Reading the work ledger…</PanelNote>;
+  if (!report) return <PanelNote>Reading recorded tool use…</PanelNote>;
   if (!report.seen) {
     return (
       <PanelNote>
         No tool use recorded in the last {report.days} days, so there is nothing to compare with the
-        map yet. <code>plugins/ambit-telemetry.js</code> records it: copy it into{' '}
-        <code>~/.config/opencode/plugins/</code>.
+        map yet. Ambit's Claude Code plugin records it; for OpenCode, copy{' '}
+        <code>plugins/ambit-telemetry.js</code> into <code>~/.config/opencode/plugins/</code>.
       </PanelNote>
     );
   }
@@ -356,9 +356,9 @@ export function UnmappedPanel({ report }: { report: UnmappedResponse | null }) {
   return (
     <div className="tp-list">
       <p className="tp-note">
-        Used in the last {report.days} days, and on no node of the map. This is the part of the
-        range the curated tree does not name. A server that supplies only Tool Protocol is listed,
-        since that node says nothing about what it does.
+        Used in the last {report.days} days, and on no node of the map, because the curated tree
+        names nothing they do. A server that supplies only Tool Protocol is listed too, since that
+        node says nothing about what the server does.
       </p>
       {report.unmapped.map(u => {
         const ago = usedAgo(u.lastUsed);

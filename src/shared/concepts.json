@@ -26,7 +26,7 @@
       "key": "state",
       "term": "Reached, next step, blocked",
       "short": "Where you are on a tech tree node",
-      "long": "Reached: something in your config provides this and its required prerequisites are reached, and the graph records which entry provides it. Whether it works is a separate question, which its check answers. Next step: every required prerequisite is reached but nothing in your config provides it yet — these sit just past the frontier, and `ambit goal` lists it. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
+      "long": "Reached: something in your config provides this and its required prerequisites are reached, and the graph records which entry provides it. Whether it works is a separate question, which its check answers. Next step: every required prerequisite is reached but nothing in your config provides it yet. These sit just past the frontier, and `ambit next` ranks them. Blocked: you have the tooling but a prerequisite is missing, e.g. retrieval configured with no vector store. Blocked is usually the most informative of the three.",
       "seen": "The three keys in the map's Key and the strip under the map, and the header's counts, which lead with verified and give the rest in their tooltip"
     },
     {
@@ -40,7 +40,7 @@
       "key": "asked-for",
       "term": "Asked for",
       "short": "Work was blocked on it while it was missing",
-      "long": "Each time an agent records that a task stopped for want of a capability, the deficit is counted against that capability. On the map a next step fills from the inside as the count grows and is full at three. At that count the engine calls the deficit structural, meaning it has the same cause every time and so needs something new. `ambit next` ranks by these counts before it ranks by leverage, and the Time & cost page lists them under What to reach next.",
+      "long": "Each time an agent records that a task stopped for want of a capability, that capability's count goes up. On the map a next step fills from the inside as the count grows and is full at three. At three, Ambit calls the gap structural: it has the same cause every time, so it needs something new. `ambit next` ranks by these counts before it ranks by leverage, and the Time & cost page lists them under What to reach next.",
       "seen": "The part-filled next step on the map and its key, the panel of such a node, and ambit next"
     },
     {

@@ -575,4 +575,25 @@ describe('the short screen bare ambit shows', () => {
       db.close();
     }
   });
+
+  // Run through npx there is no `ambit` on the path, and the screen ended on
+  // `ambit web`, a command the shell that had just printed it could not find.
+  it('writes every command the way the person ran Ambit, and ends on one thing to do', () => {
+    const db = graphWithChecks(
+      [{ id: 'skill:a', name: 'A', kind: 'provider', lifecycle: 'configured' }],
+      ['skill:a']
+    );
+    try {
+      const npx = (command: string) => command.replace(/^ambit(?=\s|$)/, 'npx ambit-cli');
+      const lines = renderBrief(briefReport(db), PLAIN, npx);
+      const said = lines.join('\n');
+      expect(said).toContain('npx ambit-cli verify runs their checks');
+      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|--help)/m);
+      // One line marked as the thing to do, after everything else it says.
+      const close = lines.filter(l => l.trim().startsWith('› npx ambit-cli'));
+      expect(close).toEqual(['  › npx ambit-cli web  the same, on the map']);
+    } finally {
+      db.close();
+    }
+  });
 });

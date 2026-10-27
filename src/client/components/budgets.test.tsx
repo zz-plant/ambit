@@ -97,7 +97,7 @@ test('a budget with no recorded spend draws no tick and no day, and says what re
   expect(said).toContain('No spend recorded, so there is no pace to draw.');
   expect(said).toContain('are recorded as a spend on Hosted Inference');
   expect(said).toContain('ambit economics price');
-  expect(said).toContain('Nothing else records spend on its own; an integration calls recordSpend');
+  expect(said).toContain('Nothing else records spend on its own.');
 });
 
 test('the note about what records spend is drawn once, and only while a budget needs it', () => {

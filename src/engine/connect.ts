@@ -12,7 +12,7 @@ import { ambitCommand, cursorLedgerScript } from './paths.ts';
  * `mcpServers` (most JSON clients), OpenCode's `mcp`, VS Code's `servers`,
  * Zed's `context_servers`, and Codex's `[mcp_servers.<name>]` TOML tables.
  */
-type ConfigKind = 'mcpServers' | 'opencode' | 'servers' | 'context_servers' | 'codex';
+export type ConfigKind = 'mcpServers' | 'opencode' | 'servers' | 'context_servers' | 'codex';
 
 export interface ConnectTarget {
   runtime: string;
@@ -53,7 +53,9 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
   {
     runtime: 'claude-code',
     label: 'Claude Code',
-    paths: ['.claude.json'],
+    // Where the seed reads it (`claudeConfigPath`), so a write lands in the
+    // file the next read finds.
+    paths: home => [process.env.CLAUDE_CONFIG || join(home, '.claude.json')],
     kind: 'mcpServers',
   },
   {
@@ -137,6 +139,84 @@ const RUNTIME_TARGETS: ConnectTarget[] = [
     kind: 'mcpServers',
   },
 ];
+
+/**
+ * A local tool server as every runtime can say it: the name it is listed
+ * under, the program that starts it, and that program's arguments.
+ */
+export interface ServerSpec {
+  name: string;
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+}
+
+/** The runtime a word names, as `connect` and `apply --to` take it. */
+export function runtimeTarget(runtime: string): ConnectTarget | undefined {
+  return RUNTIME_TARGETS.find(t => t.runtime === runtime.toLowerCase());
+}
+
+/** Every runtime a config can be written for, by the word `--to` takes. */
+export function runtimeWords(): string[] {
+  return RUNTIME_TARGETS.map(t => t.runtime);
+}
+
+/** The file a runtime reads: the first of its paths that exists, else the first. */
+export function targetFile(target: ConnectTarget, home: string): { path: string; exists: boolean } {
+  const paths =
+    typeof target.paths === 'function' ? target.paths(home) : target.paths.map(p => join(home, p));
+  const found = paths.find(p => existsSync(p));
+  return { path: found ?? paths[0], exists: Boolean(found) };
+}
+
+/** The runtimes whose config file is on this machine, each with that file. */
+export function runtimesFound(home: string): { target: ConnectTarget; path: string }[] {
+  return RUNTIME_TARGETS.flatMap(target => {
+    const file = targetFile(target, home);
+    return file.exists ? [{ target, path: file.path }] : [];
+  });
+}
+
+/**
+ * A server's entry in the words of a file of this kind. VS Code names the
+ * transport, Zed marks a server it did not install, and the rest take the
+ * command and its arguments alone. OpenCode and Codex keep theirs in shapes
+ * of their own, and have none here.
+ */
+export function entryOf(kind: ConfigKind, server: Omit<ServerSpec, 'name'>) {
+  if (kind === 'opencode' || kind === 'codex') return undefined;
+  return {
+    ...(kind === 'servers' ? { type: 'stdio' } : {}),
+    ...(kind === 'context_servers' ? { source: 'custom' } : {}),
+    command: server.command,
+    args: server.args,
+    ...(server.env && Object.keys(server.env).length ? { env: server.env } : {}),
+  };
+}
+
+/**
+ * The one command that adds a server, for the runtimes that ship one, each
+ * checked against that CLI's own help: Claude Code at user scope, which is the
+ * `mcpServers` of `~/.claude.json` this module writes, Codex, and VS Code. A
+ * runtime without one is answered with its file and the entry that goes in it.
+ * Every word is quoted, since a name or an argument can be anything the tree
+ * gave it.
+ */
+export function addCommand(runtime: string, server: ServerSpec): string | undefined {
+  const q = (words: string[]) => words.map(shellQuote).join(' ');
+  const env = Object.entries(server.env ?? {}).map(([k, v]) => `${k}=${v}`);
+  const launch = q([server.command, ...server.args]);
+  switch (runtime) {
+    case 'claude-code':
+      return `claude mcp add --scope user ${q([server.name])}${env.length ? ` ${q(env.flatMap(e => ['-e', e]))}` : ''} -- ${launch}`;
+    case 'codex':
+      return `codex mcp add ${q([server.name])}${env.length ? ` ${q(env.flatMap(e => ['--env', e]))}` : ''} -- ${launch}`;
+    case 'vscode':
+      return `code --add-mcp ${shellQuote(JSON.stringify({ name: server.name, ...entryOf('servers', server) }))}`;
+    default:
+      return undefined;
+  }
+}
 
 /** One entry of a Cursor hooks.json list: the command, and seconds before Cursor gives up on it. */
 export interface CursorHook {
@@ -314,12 +394,7 @@ function configureFile(
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
-      // VS Code names the transport, and Zed marks a server it did not install.
-      servers.ambit = {
-        ...(kind === 'servers' ? { type: 'stdio' } : {}),
-        ...(kind === 'context_servers' ? { source: 'custom' } : {}),
-        ...serverCommand(),
-      };
+      servers.ambit = entryOf(kind, serverCommand());
     }
   } else if (kind === 'opencode') {
     if (!parsed.mcp || typeof parsed.mcp !== 'object') {

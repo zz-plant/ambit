@@ -241,7 +241,7 @@ test('a ledger with no run says what writes one', () => {
 
 test('before the ledger has answered, the section says it is reading', () => {
   seed({ run: null });
-  expect(text(renderToStaticMarkup(<RunSection />))).toContain('Reading the ledger');
+  expect(text(renderToStaticMarkup(<RunSection />))).toContain('Loading recorded runs');
 });
 
 test('several runs are offered to choose between, each with how often you were asked', () => {

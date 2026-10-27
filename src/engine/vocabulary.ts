@@ -139,6 +139,11 @@ const DECIDED_CAPABILITY_SQL = `CASE WHEN s.session_id IN ('approval', 'apply')
  * they provide, and the evidence rows under it counted only what carries a
  * check, so `ambit status` read "39 reached" over rows summing to 15. An
  * entry is the rest: reached, with no check of its own.
+ *
+ * The `tree` scope counts the curated capabilities alone, the yardstick the
+ * map's pill, a config read in the hosted page and the first-run readout all
+ * measure a setup against. Its total is the tree's for everyone, where the
+ * graph's grows by one with every server a person adds.
  */
 interface GraphCounts {
   total: number;
@@ -149,8 +154,12 @@ interface GraphCounts {
   entries: number;
 }
 
-function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }): GraphCounts {
+function graphCounts(
+  db: { prepare(sql: string): { get(...p: unknown[]): any } },
+  scope: 'graph' | 'tree' = 'graph'
+): GraphCounts {
   const of = (test: string) => `SUM(CASE WHEN ${REACHED_SQL} AND ${test} THEN 1 ELSE 0 END)`;
+  const counted = scope === 'tree' ? `${COUNTED_SQL} AND kind = 'capability'` : COUNTED_SQL;
   try {
     const row = db
       .prepare(
@@ -160,7 +169,7 @@ function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }
                 ${of(UNPROVEN_SQL)} AS unproven,
                 ${of(FAILING_SQL)} AS failing,
                 ${of(`lifecycle NOT IN (${sqlList([...PROVEN, ...UNPROVEN, ...FAILING])})`)} AS entries
-         FROM capabilities WHERE ${COUNTED_SQL}`
+         FROM capabilities WHERE ${counted}`
       )
       .get();
     return {
