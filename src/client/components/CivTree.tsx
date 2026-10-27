@@ -6,6 +6,7 @@ import { isRuntimeNode } from '../utils/labels';
 import { typeColor } from '../utils/typeColors';
 import {
   BAND_MARGIN,
+  bandOf,
   bandSpan,
   blocksOf,
   AUTHORITY_LABEL,
@@ -44,14 +45,21 @@ import { hasHistory } from './civ/history.ts';
 import { ImageMenu, type ImageKind } from './civ/ImageMenu.tsx';
 import { MapKey } from './civ/MapKey.tsx';
 import { AUTHORITY_FILL, AUTHORITY_SYM, heatBins, MapScene } from './civ/MapScene.tsx';
-import { HazardPattern, KeySwatch, type LegendKey, MapFilters, mapKeys } from './civ/marks.tsx';
+import {
+  calloutReach,
+  HazardPattern,
+  KeySwatch,
+  type LegendKey,
+  MapFilters,
+  mapKeys,
+} from './civ/marks.tsx';
 import { Minimap, type MinimapNode } from './civ/Minimap.tsx';
 import { SimulationBanner } from './civ/SimulationBanner.tsx';
 import { usePinchZoom } from './civ/usePinchZoom.ts';
 import { ZOOM_MIN } from './civ/viewport.ts';
 import { ZoomHud } from './civ/ZoomHud.tsx';
 import { termTitle } from './Term.tsx';
-import { useNarrow, useOcclusion } from '../hooks/useViewport';
+import { isNarrowScreen, useNarrow, useOcclusion } from '../hooks/useViewport';
 import { SITE_HOST } from '../utils/copy';
 
 interface CivTreeProps {
@@ -236,8 +244,30 @@ export default function CivTree({
   // reports it. The minimap owns the scroll subscription, so this changes when
   // the answer does and not on every scroll event.
   const [where, setWhere] = useState<string | null>(null);
+  // A simulation's banner takes the headline's place, a row lower: below the
+  // controls, where it sat on the era names, which are buttons, whenever the
+  // canvas was scrolled to its top. Its bottom is measured as the headline's is.
+  const [bannerBottom, setBannerBottom] = useState<number | null>(null);
+  const measureBanner = React.useCallback((el: HTMLDivElement | null) => {
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      // A phone frames below whatever covers its top, measured as it frames,
+      // and its canvas takes no headline padding.
+      if (isNarrowScreen()) {
+        setBannerBottom(null);
+        return;
+      }
+      const wrap = el.offsetParent as HTMLElement | null;
+      const bottom = (wrap?.offsetTop ?? 0) + el.offsetTop + el.offsetHeight;
+      setBannerBottom(prev => (prev === bottom ? prev : bottom));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const bannered = !narrated && simulationMode !== 'none' && bannerBottom !== null;
   // The headline is two rows when there is a finding under the range line.
-  const headlined = Boolean(!narrated && !asOf && (findings.failing.length || findings.best));
+  const headlined =
+    Boolean(!narrated && !asOf && (findings.failing.length || findings.best)) || bannered;
   // The node the headline is about, bracketed on the map while the headline
   // shows: the sentence names it, the corners say which circle that is.
   const findingShown =
@@ -278,7 +308,8 @@ export default function CivTree({
   }, []);
   // Measured from the controls' row, 12px down, so a headline that moved under
   // the controls on a narrow screen pushes the canvas by that much more.
-  const headlinePad = headlineReserve(headlineBox ? headlineBox.bottom - 12 : null);
+  const topBottom = Math.max(headlineBox?.bottom ?? 0, bannered ? bannerBottom : 0);
+  const headlinePad = headlineReserve(topBottom ? topBottom - 12 : null);
   const rangeSince = useAmbitStore(s => s.rangeSince);
   // The ledger reports the week by name; the tree's names are unique.
   const weekNames = useMemo(
@@ -667,7 +698,7 @@ export default function CivTree({
           : [];
     // The card is measured a frame after it mounts, and a step lit before then
     // was framed as if nothing covered the map.
-    const key = `${simulationMode}:${simulatedNodeId}:${selectedId}:${coveredRight}:${rightInset}`;
+    const key = `${simulationMode}:${simulatedNodeId}:${selectedId}:${coveredRight}:${rightInset}:${headlinePad}`;
     if (framedWide.current === key) return;
     framedWide.current = key;
     if (!subject.length) {
@@ -677,20 +708,47 @@ export default function CivTree({
       framedZoom.current = null;
       return;
     }
-    const points = subject.flatMap(id => nodePositionMap.get(id) ?? []);
+    const points: { x: number; y: number }[] = subject.flatMap(id => nodePositionMap.get(id) ?? []);
     if (!points.length) return;
-    const hud = 88;
+    // An outage's callout reaches left of its root, and past the map's edge
+    // when the root is in the first column: a frame flush to the bands cut
+    // "DOWN ·" off. Its count is at most what is lit, so this is never short.
+    const root =
+      simulationMode === 'outage' && simulatedNodeId ? nodePositionMap.get(simulatedNodeId) : null;
+    if (root) {
+      points.push({
+        x: root.x - calloutReach(NODE_R, `DOWN · STOPS ${simSet.size}`),
+        y: root.y - NODE_R - 28,
+      });
+    }
+    const box = el.getBoundingClientRect();
+    // What lies over the top of the canvas, measured as on a phone: the
+    // controls, a simulation's banner, the finding. A constant for the
+    // controls alone put the era names under a banner.
+    let hud = 88;
+    for (const over of surfaceRef.current?.querySelectorAll(
+      '.civ-zoom-hud, .civ-lens-hud, .civ-sim-banner, .civ-finding'
+    ) ?? []) {
+      const r = over.getBoundingClientRect();
+      if (r.height > 0 && r.top < box.top + box.height / 2) {
+        hud = Math.max(hud, r.bottom - box.top + 8);
+      }
+    }
+    // Where the scene starts below the scroller's top: the headline's padding
+    // and the canvas's margin. The centring is left out, since it is above
+    // zero only when the canvas is too short to scroll.
+    const svg = el.querySelector('svg');
+    const insetTop = svg ? svg.getBoundingClientRect().top - box.top + el.scrollTop - centring : 0;
     const right = el.scrollLeft + el.clientWidth - rightInset;
     // While the tour narrates, its card covers the map's lower right, and a
     // lit node under it is as hidden as one off screen: the outage's last eras
     // ran on under the card that was describing them. Measured in the
     // scroller's own viewport.
-    const box = el.getBoundingClientRect();
     const tour = narrated ? document.querySelector('.app-tour')?.getBoundingClientRect() : null;
     const card = tour ? { left: tour.left - box.left, top: tour.top - box.top } : null;
     const inView = points.every(p => {
       const x = p.x * zoom + leftInset;
-      const y = p.y * zoom;
+      const y = p.y * zoom + insetTop + centring;
       const underCard =
         card !== null &&
         x + NODE_R - el.scrollLeft >= card.left &&
@@ -715,21 +773,29 @@ export default function CivTree({
       height: el.clientHeight - hud,
     };
     const scene = [
-      { x: bandSpan(0).left, y: START_Y },
+      { x: Math.min(bandSpan(0).left, ...points.map(p => p.x)), y: START_Y },
       { x: bandSpan(colOrder.length - 1).right, y: contentHeight - 60 },
     ];
+    const head = bandOf(0, contentHeight).y;
     const whole = byHand
       ? null
-      : frameScene(scene, open, { min: 0.5, max: zoom, inset: leftInset, pad: BAND_MARGIN * 2 });
+      : frameScene(scene, open, {
+          min: 0.5,
+          max: zoom,
+          inset: leftInset,
+          insetTop,
+          head,
+          pad: BAND_MARGIN * 2,
+        });
     // A zoom rounded to two places can come out a pixel or two over.
     const wholeFits =
-      whole !== null &&
-      (bandSpan(colOrder.length - 1).right - bandSpan(0).left + BAND_MARGIN * 4) * whole.zoom <=
-        open.width + 4;
+      whole !== null && (scene[1].x - scene[0].x + BAND_MARGIN * 4) * whole.zoom <= open.width + 4;
     const zoomRange = {
       min: ZOOM_MIN,
       max: zoom,
       inset: leftInset,
+      insetTop,
+      head,
       columns: colOrder.length,
       sceneWidth: contentWidth,
     };
@@ -777,6 +843,8 @@ export default function CivTree({
     contentHeight,
     restZoom,
     zoomAndScroll,
+    centring,
+    headlinePad,
   ]);
 
   // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
@@ -983,6 +1051,7 @@ export default function CivTree({
           clearSimulation={clearSimulation}
           leftInset={leftInset}
           rightInset={rightInset}
+          bannerRef={measureBanner}
         />
       )}
 

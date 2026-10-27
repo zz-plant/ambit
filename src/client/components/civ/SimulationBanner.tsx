@@ -30,6 +30,8 @@ interface SimulationBannerProps {
   leftInset?: number;
   /** Pixels the detail panel covers on the right, so the banner stops short of it. */
   rightInset?: number;
+  /** The banner itself, for the map to measure and start below. */
+  bannerRef?: (el: HTMLDivElement | null) => void;
 }
 
 export function SimulationBanner({
@@ -43,6 +45,7 @@ export function SimulationBanner({
   clearSimulation,
   leftInset = 0,
   rightInset = 0,
+  bannerRef,
 }: SimulationBannerProps) {
   if (simulationMode === 'none') return null;
 
@@ -59,7 +62,11 @@ export function SimulationBanner({
       className="civ-sim-wrap"
       style={{ paddingLeft: 12 + leftInset, paddingRight: 12 + rightInset }}
     >
-      <div role="status" className={`civ-sim-banner civ-sim-banner--${simulationMode}`}>
+      <div
+        ref={bannerRef}
+        role="status"
+        className={`civ-sim-banner civ-sim-banner--${simulationMode}`}
+      >
         {simulationMode === 'outage' ? (
           <svg
             width="14"

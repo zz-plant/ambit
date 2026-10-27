@@ -918,3 +918,27 @@ test('a frame that meets the scene end still starts on a whole column', () => {
   // Both lit columns are still in the frame.
   expect(start).toBeLessThanOrEqual(bandSpan(7).left);
 });
+
+test('a frame shows the era names above what it lit when it has the room', () => {
+  // Lit nodes in the middle rows, framed from their centre, put the band's
+  // top under the banner; the frame moves up to show it, and no further than
+  // keeps the lowest name in view.
+  const points = [
+    { x: 400, y: 600 },
+    { x: 700, y: 700 },
+  ];
+  const head = 300;
+  const opts = { min: 0.5, max: 1, insetTop: 44, head };
+  const centred = frameScene(
+    points,
+    { top: 150, width: 900, height: 600 },
+    { ...opts, head: undefined }
+  )!;
+  expect(head * centred.zoom + 44 - centred.top).toBeLessThan(150);
+  const roomy = frameScene(points, { top: 150, width: 900, height: 600 }, opts)!;
+  expect(head * roomy.zoom + 44 - roomy.top).toBeGreaterThanOrEqual(150);
+  const short = { top: 150, width: 900, height: 300 };
+  const tight = frameScene(points, short, opts)!;
+  const lowest = (700 + NODE_R + 40 + 24) * tight.zoom + 44 - tight.top;
+  expect(lowest).toBeLessThanOrEqual(short.top + short.height + 1);
+});

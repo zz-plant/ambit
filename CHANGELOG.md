@@ -26,6 +26,8 @@ Audit and My Setup open on a sentence about what follows: how many events and wh
 
 `npm run shots` takes the same pictures, flags the faults a machine can see, and writes a contact sheet.
 
+Re-recording the README's images found three more. A simulation's banner sits a row under the map's controls, and on a canvas scrolled to its top it lay over the era names, which are buttons; the canvas now starts below it, as it does below the headline. The callout on an outage's root reaches left of its column, and a frame flush to the first column cut "DOWN ·" off Shell Execution; the frame keeps it. The agent-loop recording read the recording machine's local models, so on one holding an embedding model there was nothing to propose and it stopped, and its history showed that machine's counts. It reads only its fixture now, and shows each MCP answer a field to a line, where it printed one line of run-together JSON.
+
 ### One readout of your own setup, wherever you start
 
 A newcomer meets Ambit in one of four places: the hosted demo, `npx ambit-cli`, `ambit web` or the Claude Code plugin. They said different things about the same setup, or nothing. Three servers pasted into the demo reached "9 of 46" with Local Runtime next, and `npx ambit-cli` on the machine they came from said "18 of 55" with Hosting next. The page ranked by how far a step would let the tree reach eventually, the engine by blocked work and then leverage per hour, and the terminal counted the person's own servers as capabilities. The ranking now lives in `src/shared/nextSteps.ts`, which both read; the readout measures the curated tree, as the map does; and a test reads three configs both ways and holds them to the same reach and the same next steps, in the same words.
