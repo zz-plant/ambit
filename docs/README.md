@@ -28,7 +28,7 @@ The claim underneath is that what an agent setup can do is not written in any co
 ## Intent: ahead of the code, on purpose
 
 - [Roadmap](./roadmap.md) — design rationale, section by section: what each part decided and what it still lacks, including the proposed layer for defined outcomes and their evidence. Nothing in it has a date or an owner.
-- [Interface specs](./interface-specs.md) — changes to the surfaces, each with what it reads, the rules it touches and what done means. Most have shipped a slice, and the **Built** paragraph under each says what shipped and where it departs from the text.
+- [Interface specs](./interface-specs.md) — changes to the surfaces, including a proposed shorter path from a recommendation to a checked result. Each spec states its data, completion criteria and what has shipped.
 
 ## Record: what was said at the time, not edited
 
