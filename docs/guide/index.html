@@ -87,7 +87,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </div><hr>
 <h2 id="who-it-is-for"><a class="anchor" href="#who-it-is-for" aria-hidden="true" tabindex="-1">#</a>Who it is for</h2>
 <p>Anyone running AI agents who wants them to do more. On a small setup, one runtime and a few MCP servers, Ambit mostly answers what to add next, and what a single missing prerequisite would open. On a larger one, with several runtimes, dozens of servers and a second machine, it mostly answers which configured tools fail their checks and what would stop with them.</p>
-<p>The demo walks a sample setup: the next step worth taking and what it would open, the outage that shows what that reach rests on, a check that was already failing, and the approval every change waits for. It ends on your own config, pasted into the tab or picked from a list of common servers, placed on the same map with nothing uploaded, with the three next steps that would open the most for it.</p>
+<p>The demo opens on a sample setup&#39;s next step, lighting what it would open, and asks which agent you use. Paste that agent&#39;s config, or tick the servers it runs, and yours is placed on the same map with nothing uploaded: how much of the tree it reaches and the three next steps worth taking, ranked as <code>npx ambit-cli</code> ranks them on the machine itself. The rest of the sample is there for whoever asks: the outage that shows what that reach rests on, a check that was already failing, and the approval every change waits for.</p>
 <h2 id="get-started"><a class="anchor" href="#get-started" aria-hidden="true" tabindex="-1">#</a>Get started</h2>
 <table>
 <thead>
@@ -102,7 +102,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left"><strong>On your machine</strong></td>
-<td align="left"><code>npx ambit-cli</code> (Node 22.18 or newer), or <code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, reads your real agent configs, names what it found, and shows what one more step would open. That is the CLI, the MCP server and the map: <code>ambit web</code> serves the map on localhost from any install. <code>npm install -g ambit-cli</code> puts <code>ambit</code> on your path.</td>
+<td align="left"><code>npx ambit-cli</code> (Node 22.18 or newer), or <code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, reads your real agent configs, names what it found, and shows what one more step would open. It ends on one thing to do, <code>npx ambit-cli web</code>: the same readout on the map, served on localhost. <code>npm install -g ambit-cli</code> puts <code>ambit</code> on your path.</td>
 </tr>
 <tr>
 <td align="left"><strong>With the map</strong></td>
@@ -110,14 +110,14 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left"><strong>In a cloud IDE</strong></td>
-<td align="left"><a href="https://codespaces.new/zz-plant/ambit?quickstart=1"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces"></a> A full checkout with the map running, in a browser tab, touching nothing on your machine.</td>
+<td align="left"><a href="https://codespaces.new/zz-plant/ambit?quickstart=1"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces"></a> A full checkout with the map running, in a browser tab, touching nothing on your machine. The container holds none of your configs, so the map it shows has nothing of yours on it: a way to try the code, not to map your setup.</td>
 </tr>
 <tr>
 <td align="left"><strong>From your agent</strong></td>
 <td align="left">Register Ambit over MCP and the agent can ask what it is able to do before it tries. <a href="#connect-it-to-your-agent">Connect it to your agent</a> has the snippet.</td>
 </tr>
 </tbody></table>
-<p>npm and Homebrew install the tagged release, on macOS or Linux. <code>./bootstrap.sh</code> discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, links <code>ambit</code> into <code>~/.local/bin</code> (or prints the <code>ln -s</code> line when that is not on your PATH), and ends on <code>ambit status</code>. <code>--dry-run</code> shows what it would do first.</p>
+<p>npm and Homebrew install the tagged release, on macOS or Linux. <code>./bootstrap.sh</code> discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories <code>~/.agents/skills</code>, <code>~/.opencode/skills</code> and <code>~/.config/opencode/skills</code>, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout <code>npx ambit-cli</code> does, and links <code>ambit</code> into <code>~/.local/bin</code> when that directory is on your PATH (or prints the <code>ln -s</code> line when it is not). <code>./bootstrap.sh --dry-run</code> writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.</p>
 <div align="center">
 <img src="/ambit/docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
 <br><sub>My Setup lists every server, agent, and model found on the machine: whether it is on, what its check said, and which capabilities on the map it provides</sub>
@@ -274,7 +274,7 @@ ambit verify shell-execution --exit-code  # 1 unless every check that ran passed
 <pre><code class="language-bash">claude plugin marketplace add zz-plant/ambit
 claude plugin install ambit@ambit
 </code></pre>
-<p>The plugin registers the MCP server, prints a briefing at session start, and logs tool execution and approval spans to <code>~/.local/state/ambit/claude-code.jsonl</code>. It reads token usage from local session logs without writing to them. To disable recording, set <code>AMBIT_NO_LEDGER=1</code>.</p>
+<p>Then type <code>/ambit</code> in a session for the readout of your own setup: what it read, how much of the tree that reaches, and the step that would open the most. The plugin registers the MCP server, gives the agent a briefing at session start, and logs tool execution and approval spans to <code>~/.local/state/ambit/claude-code.jsonl</code>. It reads token usage from local session logs without writing to them. To disable recording, set <code>AMBIT_NO_LEDGER=1</code>.</p>
 <p>To register manually without the plugin:</p>
 <pre><code class="language-bash">claude mcp add ambit -- ambit mcp --profile=agent
 </code></pre>
@@ -309,7 +309,7 @@ printf &#39;%s  %s\n&#39; &quot;$(printf &#39;%s&#39; &quot;$input&quot; | npx c
 }
 </code></pre>
 <p>OpenCode 2 puts the same entry under <code>mcp.servers</code>, with <code>&quot;disabled&quot;: false</code> in place of <code>&quot;enabled&quot;: true</code>.</p>
-<p>Both clients assume <code>ambit</code> is on your PATH, which Homebrew and <code>bootstrap.sh</code> both arrange; failing that, use the absolute path to <code>cli.js</code>. An agent can read the map, ask what a goal is missing, and <strong>propose</strong> a configuration change. Applying one always requires an approval, and approving is a separate local operation, not an MCP tool.</p>
+<p>Both clients assume <code>ambit</code> is on your PATH. Homebrew and <code>npm install -g ambit-cli</code> put it there, and <code>bootstrap.sh</code> does when <code>~/.local/bin</code> is already on your PATH. Otherwise use <code>npx -y ambit-cli mcp --profile=agent</code>, or the absolute path to <code>cli.js</code>. An agent can read the map, ask what a goal is missing, and <strong>propose</strong> a configuration change. Applying one always requires an approval, and approving is a separate local operation, not an MCP tool.</p>
 <h3 id="cursor"><a class="anchor" href="#cursor" aria-hidden="true" tabindex="-1">#</a>Cursor</h3>
 <p><code>ambit connect cursor</code> adds the server to <code>~/.cursor/mcp.json</code>. With <code>--ledger</code> it also adds a hook to <code>~/.cursor/hooks.json</code> on four events, beside any hooks already there, keeping what the file held in <code>hooks.json.bak</code>; <code>--dry-run</code> prints the hook&#39;s command and events and writes nothing. The hook appends one line per event to the file the Claude Code plugin writes, <code>~/.local/state/ambit/claude-code.jsonl</code>: when it ran and the conversation&#39;s id; for a shell command or MCP call that ran, the server&#39;s and tool&#39;s names and how long Cursor says it took, your wait for approval left out; for a failed call, Cursor&#39;s id for it, its error text, its failure kind and whether you stopped it; and why a conversation ended. Never a command&#39;s text or output, an MCP call&#39;s arguments or result, a file, your prompt or your email. Cursor&#39;s hooks report no token counts and no approval prompts, so a Cursor run records neither. The hook asks Cursor for nothing, so it can neither block a call nor allow one, and <code>AMBIT_NO_LEDGER=1</code> turns it off. By hand, with the path the dry run prints:</p>
 <pre><code class="language-json">{
