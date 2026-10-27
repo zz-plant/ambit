@@ -252,9 +252,14 @@ test("a machine's own figures are not labelled as samples", () => {
   expect(html).not.toContain('sample data');
 });
 
-test('the demo says which of its numbers are illustration', () => {
+test('the demo says which of its numbers are illustration, beside the number', () => {
+  // A screenshot that keeps the figure keeps the label: it was a closed
+  // toggle under the figure, and the header's Sample tag is cropped off.
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
-  expect(renderToStaticMarkup(<LoopDashboard />)).toContain('This is sample data');
+  const html = renderToStaticMarkup(<LoopDashboard />);
+  const label = html.indexOf('<p class="loop-sample">Sample data</p>');
+  expect(label).toBeGreaterThan(-1);
+  expect(label).toBeLessThan(html.indexOf('loop-lead'));
 });
 
 test('a priced opportunity offers the map only when the node is on the graph in front of you', () => {

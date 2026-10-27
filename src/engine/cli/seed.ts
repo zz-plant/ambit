@@ -8,28 +8,14 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claudeCodeSeedInput, readClaudeCode } from '../claude-code.ts';
-import { seedFromConfig } from '../discovery.ts';
+import { SEED_SOURCES_KEY, type SeedSource, seedFromConfig } from '../discovery.ts';
 import { localModelStores } from '../local-models.ts';
 import { clientLocations, discoverMcpClients } from '../mcp-clients.ts';
 import { configDefault } from '../paths.ts';
 import { compareFrontiers, frontierNow } from '../ledger.ts';
-import { graphCounts } from '../vocabulary.ts';
 import { resolveDbPath } from '../../shared/db-path.ts';
 import { mcpEntries, parseJsonc } from '../../shared/opencode.ts';
 import { terminalPalette, type Palette } from './output.ts';
-
-/**
- * What one seed read: the runtime as a person knows it, and the servers it
- * listed, or for a local model server the models found in its folder.
- */
-export interface SeedSource {
-  label: string;
-  servers: string[];
-  models?: string[];
-}
-
-/** The `schema_meta` key the sources of the last seed are kept under. */
-export const SEED_SOURCES_KEY = 'seed-sources';
 
 /** A path as a person would type it: the home directory as `~`. */
 function tilde(path: string): string {
@@ -44,19 +30,6 @@ function opencodeServers(path: string): string[] {
     return bag ? Object.keys(bag) : [];
   } catch {
     return [];
-  }
-}
-
-/**
- * The sources the last seed read, or null for a graph seeded before they were
- * recorded. An empty list is an answer: nothing of the person's was found.
- */
-export function seedSources(db: any): SeedSource[] | null {
-  try {
-    const row = db.prepare('SELECT value FROM schema_meta WHERE key = ?').get(SEED_SOURCES_KEY);
-    return row ? JSON.parse(row.value) : null;
-  } catch {
-    return null;
   }
 }
 
@@ -231,11 +204,6 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
      ON CONFLICT(key) DO UPDATE SET value = excluded.value, applied_at = datetime('now')`
   ).run(SEED_SOURCES_KEY, JSON.stringify(read));
 
-  // The count `ambit status` reports a second later, from the one query every
-  // summary uses. Counting the whole table here reported 69 where status
-  // reported 41 in the same run of bootstrap, and a count of its own went on
-  // including a person once people stopped counting as capabilities.
-  const c = { cnt: graphCounts(db).total };
   // Printed by `ambit seed`, bootstrap.sh and the first run alike, any of which
   // may be writing to a pipe or a log.
   const paint = terminalPalette();
@@ -275,9 +243,11 @@ function runSeed(db: any, mappingOverride?: string, quiet = false): void {
     for (const line of movedLines(compareFrontiers(db, before, frontierNow(db)), paint)) say(line);
   }
   markSeen(db);
-  const whose = read.length ? '' : ', all from the curated model,';
+  // No count: the readout under this states the reach, against the tree. A
+  // count of the graph here put "55 capabilities" three lines above "9 of 46".
+  const whose = read.length ? '' : ', all from the curated model';
   say(
-    `    ${paint.grey}${c?.cnt ?? 0} capabilities${whose} written to ${tilde(resolveDbPath())}. Nothing was sent anywhere.${paint.reset}`
+    `    ${paint.grey}Written to ${tilde(resolveDbPath())}${whose}. Nothing was sent anywhere.${paint.reset}`
   );
 }
 

@@ -116,6 +116,17 @@ export interface ConferredAction {
 export const CHECK_HISTORY_RUNS = 14;
 
 /**
+ * What a person is told when there is no graph yet: the API before anything
+ * was seeded, and the page it answers. Both said "Run ./bootstrap.sh", a file
+ * only a checkout has, to everyone who installed the CLI. `seed` is the
+ * command typed the way Ambit runs on that machine. An agent is told the same
+ * thing in its own words, `notSeeded` in the engine's vocabulary.
+ */
+export function noGraphYet(seed = 'ambit seed'): string {
+  return `No graph yet. Run ${seed} to read this machine's agent configs.`;
+}
+
+/**
  * One run of a declared check. `id` is its row in the evidence ledger, which
  * orders runs where a timestamp cannot, since that resolves to the second and a
  * batch of checks lands inside one. It also orders a failure on one node against
@@ -682,6 +693,15 @@ export interface LoopSnapshot {
   };
   authority: LoopAuthority;
   next: LoopNext[];
+  /**
+   * What the last seed read: each runtime as a person knows it, with the
+   * servers it listed or the models in its folder. Null for a graph seeded
+   * before sources were recorded, and empty when nothing of the person's was
+   * found. Absent from the hosted demo, whose setup was never read.
+   */
+  read?: { label: string; servers: string[]; models?: string[] }[] | null;
+  /** How a person types Ambit on this machine: `ambit`, or `npx ambit-cli` when npx runs it. */
+  command?: string;
   since: LoopSince | null;
   /** Asked for and never there, worst first. Heads the queue of what to reach. */
   demand: LoopDemand[];

@@ -5,7 +5,6 @@ import { isEntry, unlockedSince, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
 import DocsModal, { type DocsTab } from './components/DocsModal';
 import Finder from './components/Finder';
-import GettingStartedGuide from './components/GettingStartedGuide';
 import MapYoursDialog from './components/MapYours';
 import NodeDetailPanel from './components/NodeDetailPanel';
 import SetupView from './components/SetupView';
@@ -38,6 +37,7 @@ import { svgToPng } from './utils/saveImage';
 import { buildCard, CARD_H, CARD_W, cardFileName, cardSvg, type Showing } from './utils/shareCard';
 import type { ImageKind } from './components/civ/ImageMenu';
 import { embeddedFontCss } from './fonts';
+import { INSTALL } from './utils/copy';
 
 const CivTree = React.lazy(() => import('./components/CivTree'));
 // Fetched when first opened: a visit lands on the map, and the views it
@@ -53,11 +53,50 @@ const ApprovalModal = React.lazy(() => import('./components/ApprovalModal'));
 /** The width of the detail panel. */
 const PANEL_W = 340;
 
-const Loading = () => (
+/** A view on its way, named: every view said "Loading the map…", Proposals and Audit included. */
+const Loading = ({ what }: { what: string }) => (
   <div className="app-loading">
     <div className="app-loading-ring" />
-    <p>Loading the map…</p>
+    <p>Loading {what}…</p>
   </div>
+);
+
+/**
+ * A view whose code could not be fetched, which is what an open page meets
+ * after a deploy replaces the files it was built from. The suspense fallback
+ * used to stay up forever; this says so and offers the one thing that works.
+ */
+class ViewBoundary extends React.Component<
+  { what: string; children: React.ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div className="app-loading" role="alert">
+        <p>
+          {this.props.what.charAt(0).toUpperCase() + this.props.what.slice(1)} could not load. The
+          page may be older than the files it asks for.
+        </p>
+        <button type="button" className="tp-btn" onClick={() => window.location.reload()}>
+          Reload
+        </button>
+      </div>
+    );
+  }
+}
+
+/** A lazy view: named while it loads, and a way out when it cannot. */
+const Lazy = ({ what, children }: { what: string; children: React.ReactNode }) => (
+  <ViewBoundary what={what}>
+    <Suspense fallback={<Loading what={what} />}>{children}</Suspense>
+  </ViewBoundary>
 );
 
 /**
@@ -118,8 +157,10 @@ export default function App() {
     )
   );
   const { showGuide, dismissGuide } = useGuide(link.guideOff);
+  // A first visit opens on the map: on the demo the tour narrates it, and on a
+  // machine of its own the readout lights the step that opens the most.
   const [view, setView] = useState<View>(() =>
-    initialView(link, isNarrowScreen(), link.demo && (showGuide || Boolean(link.tour)))
+    initialView(link, isNarrowScreen(), showGuide || Boolean(link.tour))
   );
   // Which section of My Setup is showing. App owns it, so a link can open on
   // it and the address bar carries it.
@@ -127,9 +168,6 @@ export default function App() {
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
   const [finderOpen, setFinderOpen] = useState(false);
-  // Where the map's headline ends, so the first-run card sits below it: at
-  // 1024px it sat on the finding and covered its Show button.
-  const [headlineBottom, setHeadlineBottom] = useState<number | null>(null);
 
   const openDocs = (tab?: DocsTab) => {
     setDocsTab(tab);
@@ -514,7 +552,12 @@ export default function App() {
     setReadoutOpen(true);
     showView('map');
   };
-  const readout = Boolean(reading) && readoutOpen && view === 'map' && hasTree;
+  // The readout: a config read in this tab, each time one is read, or this
+  // machine's own setup, once, on the first visit. The second replaced a card
+  // of instructions for the map's controls, which said nothing about the
+  // setup on it.
+  const firstLook = !demo && !reading && showGuide;
+  const readout = view === 'map' && hasTree && (reading ? readoutOpen : firstLook);
 
   // No graph yet: the welcome page, on its own. The chrome around the map (a
   // status pill reading "0 of 0") would otherwise be the first thing a
@@ -540,7 +583,11 @@ export default function App() {
   }
 
   return (
-    <div className={`app${touring ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}`}>
+    // The readout narrates the map as the tour does, so on a phone it puts the
+    // map's controls away too: two rows of buttons sat over the nodes it named.
+    <div
+      className={`app${touring || readout ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}`}
+    >
       <AppDeck
         view={view}
         counts={view === 'map' ? counts : null}
@@ -585,7 +632,7 @@ export default function App() {
       />
 
       <div className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}>
-        {loading && !items.length && <Loading />}
+        {loading && !items.length && <Loading what="your setup" />}
         {error && (
           <div className="app-error">
             <p>{error}</p>
@@ -595,21 +642,21 @@ export default function App() {
           </div>
         )}
         {view === 'cost' ? (
-          <Suspense fallback={<Loading />}>
+          <Lazy what="Time & cost">
             <LoopDashboard onShowOnMap={showOnMap} onShow={show} />
-          </Suspense>
+          </Lazy>
         ) : view === 'audit' ? (
-          <Suspense fallback={<Loading />}>
+          <Lazy what="Audit">
             <AuditView />
-          </Suspense>
+          </Lazy>
         ) : view === 'proposals' ? (
-          <Suspense fallback={<Loading />}>
+          <Lazy what="Proposals">
             <ProposalsView />
-          </Suspense>
+          </Lazy>
         ) : view === 'setup' ? (
           <SetupView onShow={show} tab={setupTab} onTab={setSetupTab} />
         ) : items.length > 0 && hasTree ? (
-          <Suspense fallback={<Loading />}>
+          <Lazy what="the map">
             <CivTree
               items={shown}
               connections={connections}
@@ -621,10 +668,9 @@ export default function App() {
               rightInset={detailOpen && !isNarrow ? PANEL_W : 0}
               narrated={touring || readout}
               asOf={tick ? momentOf(tick.at) : undefined}
-              onHeadline={setHeadlineBottom}
               onSaveImage={saveImage}
             />
-          </Suspense>
+          </Lazy>
         ) : items.length > 0 ? (
           // A config read in the browser has entries and no tree: placing
           // them on the curated tree is the engine's job, and there is none
@@ -632,8 +678,7 @@ export default function App() {
           <div className="app-map-empty">
             <p>
               What this file declares is in My Setup. Placing a setup on the map takes Ambit running
-              on your machine: run <code>ambit web</code>, or <code>./bootstrap.sh web</code> in a
-              clone of the repository.
+              on your machine: run <code>{INSTALL} web</code>.
             </p>
             <button type="button" className="tp-btn" onClick={() => showView('setup')}>
               Open My Setup
@@ -654,40 +699,26 @@ export default function App() {
         {readout ? (
           <YourAmbit
             style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
-            onClose={() => setReadoutOpen(false)}
-            onMapAnother={() => setMapYoursOpen(true)}
-            onSample={() => {
-              seedDemo();
-              setReadoutOpen(false);
-              showView('map');
-            }}
-          />
-        ) : touring ? (
-          <Tour
-            style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
-            onDone={endTour}
-            onShowProposals={showProposals}
-            onMapped={mapped}
-            start={tourStart}
+            onClose={reading ? () => setReadoutOpen(false) : dismissGuide}
+            onMapAnother={reading ? () => setMapYoursOpen(true) : undefined}
+            onSample={
+              reading
+                ? () => {
+                    seedDemo();
+                    setReadoutOpen(false);
+                    showView('map');
+                  }
+                : undefined
+            }
           />
         ) : (
-          showGuide &&
-          view === 'map' &&
-          hasTree && (
-            <GettingStartedGuide
-              style={
-                isNarrow
-                  ? undefined
-                  : {
-                      right: detailOpen ? PANEL_W + 16 : 16,
-                      ...(headlineBottom === null ? {} : { top: headlineBottom + 10 }),
-                    }
-              }
-              onDismiss={dismissGuide}
-              onReadMore={() => {
-                openDocs('reading');
-                dismissGuide();
-              }}
+          touring && (
+            <Tour
+              style={isNarrow ? undefined : { right: detailOpen ? PANEL_W + 16 : 16 }}
+              onDone={endTour}
+              onShowProposals={showProposals}
+              onMapped={mapped}
+              start={tourStart}
             />
           )
         )}

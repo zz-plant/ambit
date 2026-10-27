@@ -24,6 +24,32 @@ import {
   seedModels,
 } from './seed/structure.ts';
 
+/**
+ * What one seed read: the runtime as a person knows it, and the servers it
+ * listed, or for a local model server the models found in its folder.
+ */
+export interface SeedSource {
+  label: string;
+  servers: string[];
+  models?: string[];
+}
+
+/** The `schema_meta` key the sources of the last seed are kept under. */
+export const SEED_SOURCES_KEY = 'seed-sources';
+
+/**
+ * The sources the last seed read, or null for a graph seeded before they were
+ * recorded. An empty list is an answer: nothing of the person's was found.
+ */
+export function seedSources(db: any): SeedSource[] | null {
+  try {
+    const row = db.prepare('SELECT value FROM schema_meta WHERE key = ?').get(SEED_SOURCES_KEY);
+    return row ? JSON.parse(row.value) : null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Seed ─────────────────────────────────────────────────────────────────────
 
 /**

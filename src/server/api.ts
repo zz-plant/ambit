@@ -89,6 +89,11 @@ import type {
   TechTreeResponse,
   UnmappedResponse,
 } from '../shared/api.ts';
+import { noGraphYet } from '../shared/api.ts';
+import { typedCommand } from '../engine/paths.ts';
+
+/** What the API says before anything was seeded, with the fix typed as Ambit runs here. */
+const NO_GRAPH = noGraphYet(typedCommand('ambit seed'));
 
 /**
  * Who a browser decision is recorded as. The client's copy.ts carries the same
@@ -482,10 +487,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
 
   if (pathname === '/api/tech-tree' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json(
-        { error: 'No graph yet. Run ./bootstrap.sh to seed one.', items: [], connections: [] },
-        404
-      );
+      return json({ error: NO_GRAPH, items: [], connections: [] }, 404);
     }
     return json<TechTreeResponse>(withGraph(techTreeView));
   }
@@ -535,7 +537,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // terminal cannot disagree about one ledger.
   if (pathname === '/api/loop' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+      return json({ error: NO_GRAPH }, 404);
     }
     return json<LoopResponse>(withGraph(loopView));
   }
@@ -584,7 +586,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // is the newest run that recorded an ask.
   if (pathname === '/api/run' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+      return json({ error: NO_GRAPH }, 404);
     }
     const wanted = url.searchParams.get('id') || undefined;
     const view = withGraph(db => runView(db, wanted));
@@ -664,7 +666,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // the person reading it is not the agent.
   if (pathname === '/api/briefing' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+      return json({ error: NO_GRAPH }, 404);
     }
     return json<BriefingResponse>({
       text: withGraph(db => briefingText(db, { mark: false })),

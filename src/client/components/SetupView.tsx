@@ -81,6 +81,29 @@ function evidenceOf(item: Item, proves: Item[]): Evidence | null {
   return { text: 'never checked', tone: 'muted' };
 }
 
+/**
+ * The entries in one sentence, for the top of the page: how many are on, and
+ * how their checks stand. It read "29 of 29 entries enabled", which a
+ * screenshot of the list carried and which told nobody anything.
+ */
+export function setupSummary(entries: Item[], provides: Map<string, Item[]>): string {
+  const enabled = entries.filter(i => i.status === 'built');
+  const head = `${enabled.length} of ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'} enabled`;
+  const tally = new Map<string, number>();
+  for (const item of enabled) {
+    const text = evidenceOf(item, provides.get(item.id) || [])?.text;
+    if (text) tally.set(text, (tally.get(text) ?? 0) + 1);
+  }
+  const parts = [
+    ['check passed', (n: number) => `${n} ${n === 1 ? 'passes its' : 'pass their'} checks`],
+    ['check failing', (n: number) => `${n} failing`],
+    ['recovering', (n: number) => `${n} recovering`],
+    ['never checked', (n: number) => `${n} never checked`],
+  ] as const;
+  const said = parts.flatMap(([text, say]) => (tally.get(text) ? [say(tally.get(text)!)] : []));
+  return said.length ? `${head}: ${said.join(', ')}.` : `${head}.`;
+}
+
 /** "a", "a and b", "a, b and 3 more": names in a sentence, never a wall of them. */
 const nameList = (names: string[]) =>
   names.length <= 2
@@ -188,7 +211,6 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
     .map(k => ({ ...k, rows: shown.filter(i => i.type === k.type) }))
     .filter(g => g.rows.length > 0);
   const other = shown.filter(i => !KINDS.some(k => k.type === i.type));
-  const enabled = entries.filter(i => i.status === 'built').length;
   // Whether any row can be switched, so the note about what a switch does is
   // written only where there is a switch to explain.
   const anySwitch = entries.some(i => canSwitchMcp(i, backend, configMcp));
@@ -229,10 +251,6 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
       )}
     </ul>
   );
-  // On the sample the readout of where it stands leads, and what is failing
-  // follows it, as the map's headline orders them there. A visitor's phone
-  // opened on a failing check before anything said what the page was.
-  const findingsFirst = !(demo && placed);
 
   return (
     <div className="setup">
@@ -254,7 +272,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
             )}
             <p className="setup-subtitle">
               {demo ? "A sample developer's setup. " : ''}
-              {enabled} of {entries.length} entries enabled.
+              {setupSummary(entries, provides)}
             </p>
             {anySwitch && tab === 'entries' && (
               <p className="setup-subtitle setup-switch-note">
@@ -263,7 +281,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                 effect.
               </p>
             )}
-            {findingsFirst && findings}
+            {findings}
           </div>
           {backend === 'live' && (
             <div className="setup-tabs" role="tablist" aria-label="Sections of My Setup">
@@ -392,8 +410,6 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
         )}
         {tab === 'entries' && (
           <>
-            {placed && <Journey />}
-            {!findingsFirst && findings}
             <div className="setup-controls">
               <div className="tp-search-wrap">
                 <input
@@ -639,6 +655,17 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                 <h3 className="setup-group-title">Not on the map</h3>
                 <UnmappedPanel report={unmapped} />
               </section>
+            )}
+
+            {/* Where the setup is headed, leg by leg. It opened the page, so a
+                first look at a machine met a framework of seven steps before
+                the entries or the next one; the readout on the map now says
+                the next step, and this waits for whoever asks. */}
+            {placed && (
+              <details className="setup-journey">
+                <summary>Where this setup is headed</summary>
+                <Journey />
+              </details>
             )}
           </>
         )}

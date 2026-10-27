@@ -63,19 +63,19 @@ The terminal and the map use the same words.
 
 Anyone running AI agents who wants them to do more. On a small setup, one runtime and a few MCP servers, Ambit mostly answers what to add next, and what a single missing prerequisite would open. On a larger one, with several runtimes, dozens of servers and a second machine, it mostly answers which configured tools fail their checks and what would stop with them.
 
-The demo walks a sample setup: the next step worth taking and what it would open, the outage that shows what that reach rests on, a check that was already failing, and the approval every change waits for. It ends on your own config, pasted into the tab or picked from a list of common servers, placed on the same map with nothing uploaded, with the three next steps that would open the most for it.
+The demo opens on a sample setup's next step, lighting what it would open, and asks which agent you use. Paste that agent's config, or tick the servers it runs, and yours is placed on the same map with nothing uploaded: how much of the tree it reaches and the three next steps worth taking, ranked as `npx ambit-cli` ranks them on the machine itself. The rest of the sample is there for whoever asks: the outage that shows what that reach rests on, a check that was already failing, and the approval every change waits for.
 
 ## Get started
 
 | Way in | What it gives you |
 | :--- | :--- |
 | **In the browser** | [Open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) for a sample setup, or drop in your own MCP config from Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Cline, Roo Code, Copilot CLI, Kiro or OpenCode, and it is placed on the map in the tab, uploading nothing, with what one more step would open for it. No file at hand? Tick the servers you run. |
-| **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs, names what it found, and shows what one more step would open. That is the CLI, the MCP server and the map: `ambit web` serves the map on localhost from any install. `npm install -g ambit-cli` puts `ambit` on your path. |
+| **On your machine** | `npx ambit-cli` (Node 22.18 or newer), or `brew install zz-plant/tap/ambit && ambit`, reads your real agent configs, names what it found, and shows what one more step would open. It ends on one thing to do, `npx ambit-cli web`: the same readout on the map, served on localhost. `npm install -g ambit-cli` puts `ambit` on your path. |
 | **With the map** | `git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web` builds the graph from your own configs and serves the map the pictures on this page show. |
-| **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. |
+| **In a cloud IDE** | [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/zz-plant/ambit?quickstart=1) A full checkout with the map running, in a browser tab, touching nothing on your machine. The container holds none of your configs, so the map it shows has nothing of yours on it: a way to try the code, not to map your setup. |
 | **From your agent** | Register Ambit over MCP and the agent can ask what it is able to do before it tries. [Connect it to your agent](#connect-it-to-your-agent) has the snippet. |
 
-npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, links `ambit` into `~/.local/bin` (or prints the `ln -s` line when that is not on your PATH), and ends on `ambit status`. `--dry-run` shows what it would do first.
+npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh` discovers OpenCode, Claude Code, Cursor, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose and Kiro, the skill directories `~/.agents/skills`, `~/.opencode/skills` and `~/.config/opencode/skills`, and the models Ollama and LM Studio keep on disk, builds a local SQLite graph, prints the same readout `npx ambit-cli` does, and links `ambit` into `~/.local/bin` when that directory is on your PATH (or prints the `ln -s` line when it is not). `./bootstrap.sh --dry-run` writes nothing: it reports whether there is an OpenCode config, a running Ollama and a skills directory.
 
 <div align="center">
 <img src="docs/assets/screenshot-config.png" alt="The My Setup view: MCP servers, agents, and models read from local config, one row each, with what the engine has proved about them and the capabilities each provides" width="900">
@@ -191,7 +191,7 @@ claude plugin marketplace add zz-plant/ambit
 claude plugin install ambit@ambit
 ```
 
-The plugin registers the MCP server, prints a briefing at session start, and logs tool execution and approval spans to `~/.local/state/ambit/claude-code.jsonl`. It reads token usage from local session logs without writing to them. To disable recording, set `AMBIT_NO_LEDGER=1`.
+Then type `/ambit` in a session for the readout of your own setup: what it read, how much of the tree that reaches, and the step that would open the most. The plugin registers the MCP server, gives the agent a briefing at session start, and logs tool execution and approval spans to `~/.local/state/ambit/claude-code.jsonl`. It reads token usage from local session logs without writing to them. To disable recording, set `AMBIT_NO_LEDGER=1`.
 
 To register manually without the plugin:
 
@@ -247,7 +247,7 @@ printf '%s  %s\n' "$(printf '%s' "$input" | npx ccstatusline)" "$(printf '%s' "$
 
 OpenCode 2 puts the same entry under `mcp.servers`, with `"disabled": false` in place of `"enabled": true`.
 
-Both clients assume `ambit` is on your PATH, which Homebrew and `bootstrap.sh` both arrange; failing that, use the absolute path to `cli.js`. An agent can read the map, ask what a goal is missing, and **propose** a configuration change. Applying one always requires an approval, and approving is a separate local operation, not an MCP tool.
+Both clients assume `ambit` is on your PATH. Homebrew and `npm install -g ambit-cli` put it there, and `bootstrap.sh` does when `~/.local/bin` is already on your PATH. Otherwise use `npx -y ambit-cli mcp --profile=agent`, or the absolute path to `cli.js`. An agent can read the map, ask what a goal is missing, and **propose** a configuration change. Applying one always requires an approval, and approving is a separate local operation, not an MCP tool.
 
 ### Cursor
 

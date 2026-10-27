@@ -1000,19 +1000,23 @@ export function MapStill({
   layout,
   simulation,
   scale = 1,
+  crop,
 }: {
   items: Item[];
   connections: Connection[];
   layout: StillLayout;
   simulation: Showing;
   scale?: number;
+  /** The part of the scene to draw, in scene units; the whole of it when absent. */
+  crop?: { x: number; y: number; width: number; height: number };
 }) {
   const { width, height } = layout;
+  const view = crop ?? { x: 0, y: 0, width, height };
   return (
     <svg
-      width={Math.round(width * scale)}
-      height={Math.round(height * scale)}
-      viewBox={`0 0 ${width} ${height}`}
+      width={Math.round(view.width * scale)}
+      height={Math.round(view.height * scale)}
+      viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
       fontFamily="var(--font-sans)"
     >
       <title>Capability tree: what this setup can do, by era</title>
@@ -1020,7 +1024,7 @@ export function MapStill({
         <HazardPattern id="hazard" />
         <MapFilters prefix="map" />
       </defs>
-      <rect width={width} height={height} fill="var(--bg-canvas)" />
+      <rect x={view.x} y={view.y} width={view.width} height={view.height} fill="var(--bg-canvas)" />
       <MapScene
         items={items}
         connections={connections}

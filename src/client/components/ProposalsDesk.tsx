@@ -324,25 +324,20 @@ export function ProposalsDesk() {
                     </span>
                   )}
                   <div className="gov-ask">
+                    {/* The change leads, in words, beside where it stands; its id,
+                        which the commands take, follows it quietly. The card
+                        opened on prop-deploy-staging-42 above its own title. */}
                     <div className="gov-card-head">
-                      {showQueue && p.status === 'draft' ? (
-                        <label className="gov-pick">
-                          <input
-                            type="checkbox"
-                            checked={selected.has(p.id)}
-                            onChange={() => toggle(p.id)}
-                            aria-label={`Include ${p.id}`}
-                          />
-                          <code className="gov-id">{p.id}</code>
-                          {leansRefused(p) && (
-                            <span className="gov-pick-note">
-                              unticked to start: you usually turn down changes like this
-                            </span>
-                          )}
-                        </label>
-                      ) : (
-                        <code className="gov-id">{p.id}</code>
+                      {showQueue && p.status === 'draft' && (
+                        <input
+                          type="checkbox"
+                          className="gov-pick"
+                          checked={selected.has(p.id)}
+                          onChange={() => toggle(p.id)}
+                          aria-label={`Include ${p.id}`}
+                        />
                       )}
+                      <div className="gov-goal">{p.goal}</div>
                       <span
                         className={`gov-status ${isApproved ? 'gov-status--approved' : ''} ${isRejected ? 'gov-status--rejected' : ''}`}
                       >
@@ -355,8 +350,14 @@ export function ProposalsDesk() {
                               : 'Waiting for your approval'}
                       </span>
                     </div>
-
-                    <div className="gov-goal">{p.goal}</div>
+                    <p className="gov-meta">
+                      <code className="gov-id">{p.id}</code>
+                      {showQueue && p.status === 'draft' && leansRefused(p) && (
+                        <span className="gov-pick-note">
+                          unticked to start: you usually turn down changes like this
+                        </span>
+                      )}
+                    </p>
                     {/* What the change is for, in the drafter's words. Reach
                     serves a purpose someone named, and the approval binds
                     the purpose shown here. */}

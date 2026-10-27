@@ -29,6 +29,17 @@ export function ambitCommand(engineDir = ENGINE_DIR): string[] {
   return /[\\/]_npx[\\/]/.test(engineDir) ? ['npx', '-y', 'ambit-cli'] : ['ambit'];
 }
 
+/**
+ * A command as the person who ran this copy should type it. Run through npx,
+ * there is no `ambit` on their path, and a first screen that ended on
+ * `ambit web` sent them to a command their shell could not find.
+ */
+export function typedCommand(command: string, engineDir = ENGINE_DIR): string {
+  return ambitCommand(engineDir)[0] === 'npx'
+    ? command.replace(/^ambit(?=\s|$)/, 'npx ambit-cli')
+    : command;
+}
+
 export function telemetryBridgeInstall(): string {
   const file = join(ENGINE_DIR, '..', '..', 'plugins', 'ambit-telemetry.js');
   return `cp ${shellQuote(file)} ~/.config/opencode/plugins/`;

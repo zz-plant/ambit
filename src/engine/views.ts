@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
-import { ENGINE_DIR } from './paths.ts';
+import { ENGINE_DIR, typedCommand } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import {
   DEFAULT_WINDOW_DAYS,
@@ -35,6 +35,7 @@ import { machineModes } from './machines.ts';
 import { runTimeline, tokenUsage, unmappedUse, usageWindows } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { council } from './council.ts';
+import { seedSources } from './discovery.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
@@ -830,6 +831,10 @@ export function loopView(db: Db): LoopResponse {
     source: 'ledger',
     authority: loopAuthority(db),
     next: loopNext(db),
+    // What the last seed read, so the page's readout says it as `ambit` does.
+    read: seedSources(db),
+    // How a person types Ambit here, so a command the readout copies runs.
+    command: typedCommand('ambit'),
     since: loopSince(db),
     demand: loopDemand(db),
     council: council(db),

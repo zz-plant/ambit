@@ -12,6 +12,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { MCP_CLIENTS } from '../../engine/mcp-clients';
+import { AGENTS } from '../hooks/useConfigImport';
 import { mergeGraphs } from '../store/ambitStore';
 import { demoConfigGraph, demoTreeGraph } from '../store/demo';
 import { demoSnapshot } from '../utils/demoSnapshot';
@@ -45,13 +46,14 @@ test("the one number on the page is what the demo's best next step would open", 
   expect(html).toContain('Watch it open');
 });
 
-test('the landing offers to map a config by pasting it, with nothing installed', () => {
-  // The files live in hidden directories a picker does not show, so the paste
-  // box comes first and the paths are one click away.
-  expect(html).toContain('Paste an agent config');
-  expect(html).toContain('Where is mine?');
-  expect(html).toContain('~/.cursor/mcp.json');
-  expect(html).toContain('never uploaded');
+test('the landing asks which agent first, and knows where each keeps its file', () => {
+  // The agent decides the model a setup is placed with and the one file to
+  // paste, so it is the first question; the file's path follows the answer.
+  expect(html).toContain('Which agent do you use?');
+  for (const { runtime } of AGENTS) expect(html).toContain(runtime.name);
+  expect(AGENTS.find(a => a.runtime.name === 'Cursor')?.path).toBe('~/.cursor/mcp.json');
+  // Codex keeps TOML, which the tab cannot read, so it is offered no path.
+  expect(AGENTS.find(a => a.runtime.id === 'codex')?.path).toBeUndefined();
 });
 
 test('the landing names the runtimes it reads, so a visitor can tell it reads theirs', () => {
@@ -70,7 +72,7 @@ test('the count of the rest is the engine’s, so it cannot outlive a new reader
 });
 
 test('the demo comes before the paste box, so a phone shows it on its first screen', () => {
-  expect(html.indexOf('Watch it open')).toBeLessThan(html.indexOf('Paste an agent config'));
+  expect(html.indexOf('Watch it open')).toBeLessThan(html.indexOf('Which agent do you use?'));
 });
 
 test('a convinced visitor finds the install line and the docs without leaving for GitHub', () => {

@@ -94,6 +94,34 @@ export function AuditTrail({ events, query }: { events: AuditEvent[]; query: str
   );
 }
 
+/**
+ * The trail in one sentence, for the top of the page: how many events, and
+ * what came of them, what went wrong first. A screenshot of the trail was
+ * rows and nothing saying what they added up to.
+ */
+export function auditSummary(events: AuditEvent[], days: number): string {
+  const head = `${events.length} ${events.length === 1 ? 'event' : 'events'} in the last ${days} days`;
+  const order = { bad: 0, good: 1, neutral: 2 } as const;
+  const counts = new Map<string, { n: number; tone: AuditOutcome['tone'] }>();
+  for (const e of events) {
+    if (!e.outcome) continue;
+    const seen = counts.get(e.outcome.word);
+    counts.set(e.outcome.word, { n: (seen?.n ?? 0) + 1, tone: e.outcome.tone });
+  }
+  if (!counts.size) return `${head}.`;
+  // "check failed" is a noun and a verb; a signature is an approval's; a
+  // single word is how a run ended.
+  const phrase = (word: string, n: number) => {
+    const [noun, ...verb] = word === 'signed' ? ['approval', 'signed'] : word.split(' ');
+    if (!verb.length) return `${n} ${n === 1 ? 'run' : 'runs'} ${noun}`;
+    return `${n} ${n === 1 ? noun : `${noun}s`} ${verb.join(' ')}`;
+  };
+  const parts = [...counts]
+    .sort((a, b) => order[a[1].tone] - order[b[1].tone])
+    .map(([word, { n }]) => phrase(word, n));
+  return `${head}: ${parts.join(', ')}.`;
+}
+
 export default function AuditView() {
   const audit = useAmbitStore(s => s.audit);
   const demo = useAmbitStore(s => s.demo);
@@ -126,6 +154,7 @@ export default function AuditView() {
           </p>
         ) : (
           <>
+            <p className="audit-lede">{auditSummary(audit.events, audit.days)}</p>
             <div className="audit-query">
               <label className="visually-hidden" htmlFor="audit-query">
                 Filter the trail
@@ -145,14 +174,14 @@ export default function AuditView() {
                 exactly, colons and all. Any other word is looked for in every field.
               </p>
             </div>
-            <p className="audit-count">
-              {query.trim()
-                ? `${shownCount} of ${audit.events.length} events`
-                : `${audit.events.length} ${audit.events.length === 1 ? 'event' : 'events'}`}{' '}
-              in the last {audit.days} days
-              {audit.truncated &&
-                `. The window held more than ${audit.limit}; the oldest are not shown.`}
-            </p>
+            {(query.trim() || audit.truncated) && (
+              <p className="audit-count">
+                {query.trim() && `${shownCount} of ${audit.events.length} events match.`}
+                {query.trim() && audit.truncated && ' '}
+                {audit.truncated &&
+                  `The window held more than ${audit.limit}; the oldest are not shown.`}
+              </p>
+            )}
             <AuditTrail events={audit.events} query={query} />
           </>
         )}

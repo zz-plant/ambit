@@ -231,7 +231,15 @@ export function HistoryStrip({ runs, of }: { runs: CheckRun[]; of?: string }) {
   const shown = runs.slice(-CHECK_HISTORY_RUNS);
   const said = describeRuns(shown, of);
   return (
-    <span className="fig-history" role="img" aria-label={said} title={said}>
+    // Under three runs the empty slots are not drawn: a row of them ending in
+    // one tick read as a dotted rule, the same on every row of My Setup. The
+    // slots keep their width, so the latest run lines up down the list.
+    <span
+      className={`fig-history${shown.length < 3 ? ' fig-history--sparse' : ''}`}
+      role="img"
+      aria-label={said}
+      title={said}
+    >
       {Array.from({ length: CHECK_HISTORY_RUNS - shown.length }, (_, i) => (
         <span
           key={`none-${i}`}

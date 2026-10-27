@@ -23,7 +23,8 @@ import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import type { DoctorReport } from '../doctor.ts';
-import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
+import { markSeen, movedLines, unseenSince } from './seed.ts';
+import { seedSources } from '../discovery.ts';
 import { checkableNames, recovering } from '../assurance.ts';
 import type { usageWindows } from '../telemetry.ts';
 import {
@@ -399,7 +400,10 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
  */
 function briefReport(db: any) {
   const sources = seedSources(db);
-  const counts = graphCounts(db);
+  // Measured against the tree, as the map and the hosted page measure it: the
+  // graph's own count took in the person's servers, so the same three servers
+  // read "18 of 55" here and "9 of 46" on the page.
+  const counts = graphCounts(db, 'tree');
   const checkable = checkableNames(db);
   const ev = evidenceReport(db, checkable);
   const failing = db
@@ -459,31 +463,48 @@ function readFrom(read: { label: string; servers: string[]; models?: string[] }[
     : parts[0];
 }
 
-/** The short screen as lines; pure, like `renderStatus`. */
-function renderBrief(report: BriefReport, c: Palette = C): string[] {
+/**
+ * The short screen as lines; pure, like `renderStatus`.
+ *
+ * It is the readout every first surface gives, in one order: what was read,
+ * how much of the tree it reaches, the next step and what it opens, what is
+ * not proven yet, and one thing to do. The hosted page and `ambit web` say the
+ * same five things about the same setup. `typed` writes a command the way the
+ * person ran Ambit: under npx, `npx ambit-cli web`.
+ */
+function renderBrief(
+  report: BriefReport,
+  c: Palette = C,
+  typed: (command: string) => string = command => command
+): string[] {
   const heading = (text: string) => `${c.bold}${text}${c.reset}`;
   // No leading blank: the first run's seed report ends on one already.
   const lines = [heading('Where you are')];
-  const footer = [
+  // One thing to do, marked, and where the rest are. It used to end on three
+  // commands of equal weight after a command per step, so a first run offered
+  // six places to go and said which mattered of none.
+  const close = [
     '',
-    `${GUTTER}${c.bold}ambit status${c.reset}  ${c.grey}the full report: single providers, bottlenecks, the frontier${c.reset}`,
-    `${GUTTER}${c.bold}ambit web${c.reset}     ${c.grey}the map, on localhost${c.reset}`,
-    `${GUTTER}${c.bold}ambit --help${c.reset}  ${c.grey}every command, and ambit help <term> for a word${c.reset}`,
+    `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${typed('ambit web')}${c.reset}  ${c.grey}the same, on the map${c.reset}`,
+    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit --help')} for every command${c.reset}`,
     '',
   ];
 
   if (report.read && report.read.length === 0) {
     // Counts here would describe the curated model and read as the person's.
-    lines.push(
+    return [
+      ...lines,
       `${GUTTER}Nothing of yours is in the graph yet.`,
-      `${GUTTER}${c.grey}Add an agent config and run ambit seed, which lists where it looks.${c.reset}`
-    );
-    return [...lines, ...footer];
+      `${GUTTER}${c.grey}Add an agent config and run ${typed('ambit seed')}, which lists where it looks.${c.reset}`,
+      '',
+      `${GUTTER}${c.grey}${typed('ambit --help')} for every command${c.reset}`,
+      '',
+    ];
   }
 
   if (report.read) lines.push(`${GUTTER}${c.grey}Read from ${readFrom(report.read)}${c.reset}`);
   lines.push(
-    `${GUTTER}${report.reached} of ${report.total} capabilities reached · ${report.proven} proven`
+    `${GUTTER}You reach ${report.reached} of ${report.total} capabilities · ${report.proven} proven`
   );
   const moved = report.moved ? movedLines(report.moved, c) : [];
   if (moved.length) {
@@ -494,15 +515,20 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
     );
   }
 
-  if (report.next.length) {
-    lines.push('', heading('What one more step opens'));
-    for (const n of report.next) {
-      const cost = n.cost === 'unknown' ? '' : ` ${c.grey}· about ${n.cost}${c.reset}`;
-      lines.push(
-        `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${n.capability}${c.reset}${cost}`,
-        `${GUTTER}${n.why}`,
-        `${GUTTER}${c.grey}${n.command}${c.reset}`
-      );
+  const [first, ...rest] = report.next;
+  if (first) {
+    const about = (cost: string) => (cost === 'unknown' ? '' : ` · about ${cost}`);
+    lines.push(
+      '',
+      heading('What one more step opens'),
+      `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${first.capability}${c.reset}${c.grey}${about(first.cost)}${c.reset}`,
+      `${GUTTER}${first.why}`,
+      `${GUTTER}${c.grey}${typed(first.command)}${c.reset}`
+    );
+    // The others are named and priced, and planned by the same command.
+    if (rest.length) {
+      const also = rest.map(n => `${n.capability}${about(n.cost)}`).join(', ');
+      lines.push(`${GUTTER}${c.grey}Also one step away: ${also}${c.reset}`);
     }
   }
 
@@ -515,24 +541,25 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
         .join(', ');
       const more = report.failing.length > 3 ? ` and ${report.failing.length - 3} more` : '';
       lines.push(
-        `  ${c.yellow}!${c.reset} ${report.failing.length} configured and failing a check: ${shown}${more} ${c.grey}· ${report.failing[0].command}${c.reset}`
+        `  ${c.yellow}!${c.reset} ${report.failing.length} configured and failing a check: ${shown}${more} ${c.grey}· ${typed(report.failing[0].command)}${c.reset}`
       );
     }
     if (report.unproven) {
       // `verify` runs the checks there are, so the line says how many of these
       // have one when some do not.
       const checked = report.unproven - report.no_check;
+      const verify = typed('ambit verify');
       const how = !report.no_check
-        ? 'ambit verify runs their checks'
+        ? `${verify} runs their checks`
         : checked
-          ? `ambit verify checks ${checked} of them`
+          ? `${verify} checks ${checked} of them`
           : 'none of them declares a check';
       lines.push(
         `${GUTTER}${report.unproven} configured and not yet proven ${c.grey}· ${how}${c.reset}`
       );
     }
   }
-  return [...lines, ...footer];
+  return [...lines, ...close];
 }
 
 /** A step of a plan, as `planFor` returns it. */

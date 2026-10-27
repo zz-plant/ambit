@@ -21,6 +21,14 @@ import { deficits, simulateFrontier } from './planning.ts';
 import { catalogReport } from './catalog.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { PROVISION_EDGES } from './ontology.ts';
+import {
+  andList,
+  leverageSentence,
+  rankSteps,
+  readableCost,
+  stepCandidates,
+  stepReason,
+} from '../shared/nextSteps.ts';
 
 /** How many recommendations a curriculum is. Three is a choice; ten is a list. */
 const HOW_MANY = 3;
@@ -28,7 +36,7 @@ const HOW_MANY = 3;
 interface Candidate {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   setup_seconds: number;
   /** Dependents something already supplies: reaching this reaches them. */
   unlocks: string[];
@@ -37,6 +45,8 @@ interface Candidate {
   missing: string[];
   blocked_by_degraded: boolean;
   observed_blocks: number;
+  leverage: number;
+  blocks: number;
 }
 
 /**
@@ -55,7 +65,6 @@ function candidates(db: Db): Candidate[] {
     )
     .all<any>();
   const byId = new Map(caps.map(c => [c.id, c]));
-  const reached = (c: any) => c && c.state !== 'locked' && usable(c.lifecycle);
 
   // Requirements only. A provider's edge is hard too, and the provider is not
   // a capability this reads, so it counted as a prerequisite never met: no
@@ -67,14 +76,6 @@ function candidates(db: Db): Candidate[] {
          AND kind NOT IN (${PROVISION_EDGES.map(() => '?').join(', ')})`
     )
     .all<{ f: string; t: string }>(...PROVISION_EDGES);
-  const prereqs = new Map<string, string[]>();
-  const dependents = new Map<string, string[]>();
-  for (const d of hard) {
-    if (!prereqs.has(d.t)) prereqs.set(d.t, []);
-    prereqs.get(d.t)!.push(d.f);
-    if (!dependents.has(d.f)) dependents.set(d.f, []);
-    dependents.get(d.f)!.push(d.t);
-  }
 
   // How often each capability has actually stopped work. Present from the
   // first recorded deficit, which is what makes the ranking tip from
@@ -106,84 +107,31 @@ function candidates(db: Db): Candidate[] {
     }
   }
 
-  const out: Candidate[] = [];
-  for (const c of caps) {
-    if (reached(c)) continue;
-    const missing = (prereqs.get(c.id) || []).filter(p => !reached(byId.get(p)));
-    // One step means every prerequisite is met. The single exception is one
-    // that is configured and failing its check, which the step is to repair.
-    // A prerequisite not yet reached is a step of its own, and listing both
-    // priced the capability without it.
-    const degraded = (m: string) => {
-      const cap = byId.get(m);
-      return Boolean(cap && cap.state !== 'locked' && !usable(cap.lifecycle));
-    };
-    if (missing.length > 1 || (missing.length === 1 && !degraded(missing[0]))) continue;
-
-    // What this capability would let the graph reach that nothing else would:
-    // its dependents whose only unmet prerequisite is this one. Only those
-    // something already supplies are reached by it; the rest become next steps
-    // of their own. Both were called "already supplied", so Vector Store was
-    // promised on a machine with no vector store, and `goal --simulate`, which
-    // acquires only what is supplied, disagreed.
-    const waiting = (dependents.get(c.id) || []).filter(dep => {
-      const depCap = byId.get(dep);
-      if (!depCap || reached(depCap)) return false;
-      // Configured and failing its own check: no step brings it, a pass does.
-      if (depCap.state !== 'locked') return false;
-      return (prereqs.get(dep) || []).every(p => p === c.id || reached(byId.get(p)));
-    });
-    const unlocks = waiting.filter(dep => supplied.has(dep));
-    const opens = waiting.filter(dep => !supplied.has(dep));
-
-    out.push({
+  const nameOf = (id: string) => byId.get(id)?.name || id;
+  return stepCandidates({
+    nodes: caps.map(c => ({
       id: c.id,
       name: c.name,
-      description: c.description,
-      setup_seconds: c.unlock_cost_setup || 0,
-      unlocks: unlocks.map(u => byId.get(u)?.name || u),
-      opens: opens.map(u => byId.get(u)?.name || u),
-      missing: missing.map(m => byId.get(m)?.name || m),
-      blocked_by_degraded: missing.some(degraded),
-      observed_blocks: blocked.get(c.id) || 0,
-    });
-  }
-  return out;
-}
-
-/**
- * What reaching a capability does, in one sentence: what something here
- * already supplies is reached with it, through every hop the simulation
- * follows, and its own dependents that nothing supplies become next steps.
- */
-/**
- * "A, B and C": three joined by "and" alone read as a stammer. Past `max`
- * names, the rest are counted: "A, B, C and 2 more".
- */
-function andList(names: readonly string[], max = Number.POSITIVE_INFINITY): string {
-  const shown = names.slice(0, max);
-  const rest = names.length - shown.length;
-  const all = rest > 0 ? [...shown, `${rest} more`] : shown;
-  return all.length > 1
-    ? `${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}`
-    : (all[0] ?? '');
-}
-
-function whyLeverage(c: Pick<Candidate, 'unlocks' | 'opens'>): string {
-  const and = (names: string[]) => andList(names);
-  const reaches = c.unlocks.length
-    ? `Reaching it also reaches ${and(c.unlocks)}, which something here already supplies`
-    : '';
-  const opens = c.opens.length
-    ? `${reaches ? ', and makes' : 'Reaching it makes'} ${and(c.opens)} ${c.opens.length === 1 ? 'a next step' : 'next steps'}`
-    : '';
-  return `${reaches}${opens}.`;
-}
-
-/** Minutes, or hours once minutes stop being readable. */
-function readableCost(seconds: number): string {
-  if (!seconds) return 'unknown';
-  return seconds >= 3600 ? `${(seconds / 3600).toFixed(1)}h` : `${Math.round(seconds / 60)}m`;
+      configured: c.state !== 'locked',
+      usable: usable(c.lifecycle),
+      setupSeconds: c.unlock_cost_setup || 0,
+      blocks: blocked.get(c.id) || 0,
+    })),
+    requires: hard.map(d => ({ from: d.f, to: d.t })),
+    supplied,
+  }).map(c => ({
+    id: c.id,
+    name: c.name,
+    description: byId.get(c.id)?.description,
+    setup_seconds: c.setupSeconds,
+    unlocks: c.unlocks.map(nameOf),
+    opens: c.opens.map(nameOf),
+    missing: c.missing.map(nameOf),
+    blocked_by_degraded: c.blockedByDegraded,
+    observed_blocks: c.blocks,
+    leverage: c.leverage,
+    blocks: c.blocks,
+  }));
 }
 
 /**
@@ -220,21 +168,9 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
   } catch {
     /* the economic half needs a ledger; structural ranking stands alone */
   }
-  const scored = all
-    .map(c => {
-      const hours = Math.max(c.setup_seconds, 300) / 3600;
-      // Leverage per hour of setup, so a cheap capability that unblocks two
-      // things outranks an expensive one that unblocks three. The +1 counts
-      // the capability itself: reaching it is worth something even when
-      // nothing waits on it.
-      const leverage = (c.unlocks.length + c.opens.length + 1) / hours;
-      return { ...c, leverage };
-    })
-    // What blocked work comes first, as the basis says, and leverage only
-    // orders the rest. A weighted sum let a five-minute capability nothing had
-    // ever waited on outrank one that had blocked work.
-    .sort((a, b) => b.observed_blocks - a.observed_blocks || b.leverage - a.leverage)
-    .slice(0, howMany);
+  // What blocked work comes first, as the basis says, and leverage only
+  // orders the rest (src/shared/nextSteps.ts).
+  const scored = rankSteps(all).slice(0, howMany);
 
   return {
     basis: observed
@@ -251,8 +187,7 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
       const reaches = sim.blocked_by_degraded
         ? []
         : [...new Set([...c.unlocks, ...(sim.unblocked ?? []).map((u: any) => String(u.name))])];
-      const leverage =
-        reaches.length || c.opens.length ? whyLeverage({ unlocks: reaches, opens: c.opens }) : '';
+      const leverage = leverageSentence(reaches, c.opens);
       const cost = catalogReport(db, c.id) as any;
       const cheapest = Array.isArray(cost?.options) ? cost.options[0] : undefined;
       return {
@@ -268,12 +203,7 @@ function nextSteps(db: Db, howMany = HOW_MANY) {
             ]
               .filter(Boolean)
               .join(' ')
-          : leverage ||
-            // A seeded description carries its own hint after an em dash.
-            // The briefing wants the claim, not the instruction that follows
-            // it — `ambit goal <cap>` is where the instruction belongs.
-            (c.description || '').split(' — ')[0] ||
-            'It is one step away.',
+          : stepReason(leverage, c.description),
         // The same, as data: what reaching it reaches, what it makes a next
         // step, and how often work was blocked on it. The briefing says these
         // to the agent in its own words.

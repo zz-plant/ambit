@@ -14,6 +14,15 @@
  */
 import type { FocusDirection } from '../../linkState';
 import type { Connection, Item } from '../../utils/configImporter';
+import {
+  leverageSentence,
+  rankSteps,
+  reachedWith,
+  readableCost,
+  type StepGraph,
+  stepCandidates,
+  stepReason,
+} from '../../../shared/nextSteps';
 
 /**
  * Column order for a graph with no eras, where columns are domains. The map is
@@ -640,6 +649,54 @@ export const bandOf = (ci: number, sceneHeight: number) => ({
   height: sceneHeight - START_Y - 20,
 });
 
+/** Where a column's band starts and ends, in scene x. */
+export const bandSpan = (ci: number): { left: number; right: number } => {
+  const left = START_X + ci * COL_W - 8;
+  return { left, right: left + COL_W - 16 };
+};
+
+/** The room a frame leaves beside a band it starts or ends on, in scene units. */
+export const BAND_MARGIN = 6;
+
+/**
+ * Where a frame `width` scene units wide starts so that its left edge cuts no
+ * column. An edge inside a band moves to show that band whole, or to the start
+ * of the next, whichever is nearer and still holds `keep`, the range that has
+ * to stay in the frame. Framed flush to a lit node, the outage cut the Tool
+ * Use header and the callout on its own root, and a screenshot of it showed a
+ * sliver of a column for a frame's edge.
+ */
+export function snapToBand(
+  left: number,
+  width: number,
+  columns: number,
+  keep?: { min: number; max: number }
+): number {
+  for (let ci = 0; ci < columns; ci++) {
+    const band = bandSpan(ci);
+    if (left <= band.left - BAND_MARGIN || left >= band.right) continue;
+    const options = [band.left - BAND_MARGIN];
+    if (ci + 1 < columns) options.push(bandSpan(ci + 1).left - BAND_MARGIN);
+    const holds = options.filter(x => !keep || (x <= keep.min && x + width >= keep.max));
+    if (!holds.length) return left;
+    return holds.reduce((a, b) => (Math.abs(b - left) < Math.abs(a - left) ? b : a));
+  }
+  return left;
+}
+
+/**
+ * The zoom at which a frame `width` pixels wide shows a whole number of
+ * columns: as many as fit at `floor` or larger, then exactly that many. A
+ * phone opened at 0.72, two columns and most of a third, the third cut
+ * mid-label in every screenshot; three whole ones fit at 0.77.
+ */
+export function wholeColumnZoom(width: number, columns: number, floor: number, max = 1): number {
+  const span = (n: number) => n * COL_W - 16 + 2 * BAND_MARGIN;
+  const fit = Math.floor((width / floor + 16 - 2 * BAND_MARGIN) / COL_W);
+  const n = Math.min(columns, Math.max(1, fit));
+  return Math.min(max, Math.floor((width / span(n)) * 1000) / 1000);
+}
+
 export interface Placed {
   x: number;
   y: number;
@@ -1103,21 +1160,85 @@ export interface MapFindings {
  * outlined node was worth reaching. Both are answers the page can compute, so
  * it states them, and the circles become the evidence for a sentence.
  */
+/** A next step as the readout states it: by the engine's rule, in the engine's words. */
+export interface NextStep {
+  item: Item;
+  /** Setup time, as `ambit` prints it: "15m", "1.5h", or "unknown". */
+  cost: string;
+  /** What reaching it brings with it, and what it makes a next step. */
+  reaches: Item[];
+  opens: Item[];
+  /** The sentence `ambit` prints under the step: what it opens, or what it is. */
+  why: string;
+}
+
 /**
- * Every next step with what reaching it would open, the most first and the
- * quicker of a tie first. The map's finding names the first; a config read in
- * the tab lists the first few, since one step is a recommendation and three
- * are a choice.
+ * The tree as the shared ranking reads it (src/shared/nextSteps.ts): its
+ * nodes, the requirements between them, and which of them something here
+ * supplies. A node is configured when it is reached, since the map has no
+ * other word for it, and usable unless its last check failed.
  */
-export function nextSteps(
-  items: Item[],
-  connections: Connection[]
-): { item: Item; opens: Set<string> }[] {
-  const cost = (i: Item) => Number(i.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
-  return visibleItems(items)
-    .filter(i => !isEntry(i) && i.status !== 'built' && isNext(i))
-    .map(item => ({ item, opens: unlockCascade(items, connections, item.id) }))
-    .sort((a, b) => b.opens.size - a.opens.size || cost(a.item) - cost(b.item));
+function stepGraph(items: Item[], connections: Connection[]): StepGraph {
+  const tree = visibleItems(items).filter(i => !isEntry(i));
+  const onTree = new Set(tree.map(i => i.id));
+  return {
+    nodes: tree.map(i => ({
+      id: i.id,
+      name: i.name,
+      configured: i.status === 'built',
+      usable: !isFailing(i),
+      setupSeconds: Number(i.meta?.setupSeconds) || 0,
+      blocks: blocksOf(i),
+    })),
+    requires: connections
+      .filter(
+        c =>
+          c.type === 'hard-dep' &&
+          c.kind !== 'provides' &&
+          c.kind !== 'contributes' &&
+          onTree.has(c.from) &&
+          onTree.has(c.to)
+      )
+      .map(c => ({ from: c.from, to: c.to })),
+    supplied: new Set(
+      connections.filter(c => c.kind === 'provides' && onTree.has(c.to)).map(c => c.to)
+    ),
+  };
+}
+
+/**
+ * Every next step, ranked by the rule `ambit` ranks by: what blocked work
+ * first, then what each unblocks per hour of setup. The map used to rank by
+ * how much a step would let the tree reach eventually, so a config pasted
+ * here and the same config read by `npx ambit-cli` were told different next
+ * steps. A config read in the tab lists the first few, since one step is a
+ * recommendation and three are a choice.
+ */
+export function nextSteps(items: Item[], connections: Connection[]): NextStep[] {
+  const graph = stepGraph(items, connections);
+  const byId = new Map(items.map(i => [i.id, i]));
+  const named = (ids: readonly string[]) => ids.flatMap(id => byId.get(id) ?? []);
+  return rankSteps(stepCandidates(graph)).flatMap(c => {
+    const item = byId.get(c.id);
+    if (!item) return [];
+    const reaches = named([...new Set([...c.unlocks, ...reachedWith(graph, [c.id])])]);
+    const opens = named(c.opens);
+    return [
+      {
+        item,
+        cost: readableCost(c.setupSeconds),
+        reaches,
+        opens,
+        why: stepReason(
+          leverageSentence(
+            reaches.map(i => i.name),
+            opens.map(i => i.name)
+          ),
+          item.description
+        ),
+      },
+    ];
+  });
 }
 
 export function mapFindings(
@@ -1137,7 +1258,8 @@ export function mapFindings(
   if (pick) best = { item: pick, reaches: unlockCascade(items, connections, pick.id).size };
   else {
     const first = nextSteps(items, connections)[0];
-    if (first) best = { item: first.item, reaches: first.opens.size };
+    if (first)
+      best = { item: first.item, reaches: unlockCascade(items, connections, first.item.id).size };
   }
   let weakest: MapFindings['weakest'];
   // A node on the map, since that is what the line names and Simulate lights:
@@ -1216,6 +1338,10 @@ export function frameScene(
     inset?: number;
     insetTop?: number;
     keep?: { x: number; y: number };
+    /** How many columns the scene has, to start the frame on a whole one. */
+    columns?: number;
+    /** The scene's width, where the scroll stops. */
+    sceneWidth?: number;
   }
 ): Framing | null {
   if (!points.length || view.width <= 0 || view.height <= 0) return null;
@@ -1230,7 +1356,7 @@ export function frameScene(
   const minY = Math.min(...ys) - pad;
   const maxY = Math.max(...ys) + pad + 24;
   const fit = Math.min(view.width / (maxX - minX), view.height / (maxY - minY));
-  const zoom = +Math.max(opts.min, Math.min(opts.max, fit)).toFixed(2);
+  let zoom = +Math.max(opts.min, Math.min(opts.max, fit)).toFixed(2);
   const wide = (maxX - minX) * zoom > view.width;
   const tall = (maxY - minY) * zoom > view.height;
   let left = wide ? minX * zoom + inset : ((minX + maxX) / 2) * zoom + inset - view.width / 2;
@@ -1246,6 +1372,40 @@ export function frameScene(
     if (x - above < left || x + above > left + view.width) left = x - view.width / 2;
     if (y - above < top + view.top || y + below > top + view.top + view.height) {
       top = y - view.top - view.height / 2;
+    }
+  }
+  if (opts.columns) {
+    // What has to stay in view: the nodes, or where a frame too narrow for
+    // them starts, and the kept point.
+    const first = Math.min(...xs);
+    const keepX = opts.keep ? [opts.keep.x] : [];
+    const keep = {
+      min: Math.min(first, ...keepX) - NODE_R,
+      max: Math.max(wide ? first : Math.max(...xs), ...keepX) + NODE_R,
+    };
+    const snapped = snapToBand((left - inset) / zoom, view.width / zoom, opts.columns, keep);
+    left = snapped * zoom + inset;
+    // Past the scene's end the scroll stops, and the frame starts wherever
+    // that leaves it, which a frame of the last two columns put inside a third.
+    // The zoom moves instead: out, to take that column whole, which keeps the
+    // fit's height, or in, to start at the next, when out is past the floor.
+    const end = opts.sceneWidth;
+    if (end && (left - inset) / zoom + view.width / zoom > end) {
+      const start = end - view.width / zoom;
+      const ci = Array.from({ length: opts.columns }, (_, i) => i).find(i => {
+        const band = bandSpan(i);
+        return start > band.left - BAND_MARGIN && start < band.right;
+      });
+      if (ci !== undefined) {
+        const out = view.width / (end - (bandSpan(ci).left - BAND_MARGIN));
+        const inn =
+          ci + 1 < opts.columns ? view.width / (end - (bandSpan(ci + 1).left - BAND_MARGIN)) : 0;
+        const z = out >= opts.min ? out : inn && inn <= opts.max ? inn : 0;
+        if (z) {
+          zoom = Math.floor(z * 1000) / 1000;
+          left = (end - view.width / zoom) * zoom + inset;
+        }
+      }
     }
   }
   return { zoom, left: Math.max(0, Math.round(left)), top: Math.max(0, Math.round(top)) };

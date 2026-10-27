@@ -16,6 +16,7 @@ import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { type LegState, journeyLegs } from '../utils/journey';
 import { isEntry, isProven } from './civ/layout';
+import { Command } from './Command';
 
 const MARK: Record<LegState, string> = { done: '✓', open: '›', unrecorded: '·' };
 const WORD: Record<LegState, string> = {
@@ -77,7 +78,9 @@ export function Journey() {
                 onClick={() => copy(leg.key, leg.command as string)}
                 title="Copy the command; the page never runs it"
               >
-                <code>{leg.command}</code>
+                <code>
+                  <Command text={leg.command} />
+                </code>
                 <span>{copied === leg.key ? 'Copied ✓' : 'Copy'}</span>
               </button>
             )}

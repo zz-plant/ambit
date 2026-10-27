@@ -17,6 +17,7 @@ import { inverseOf } from '../governance.ts';
 import { economicCaseFor, opportunityFor } from '../opportunities.ts';
 import { preferredOption } from '../observed.ts';
 import { conflictForChosen, planFor } from './route.ts';
+import { reachedWith } from '../../shared/nextSteps.ts';
 
 // ─── Proposals ────────────────────────────────────────────────────────────────
 
@@ -77,33 +78,35 @@ function simulateFrontier(db: Db, assume: string[]) {
     return conferredBy.get(id) || id;
   };
   const assumed = new Set(assume.map(normalise));
-  const after = new Set([...before, ...assumed]);
 
-  // Fixpoint rather than a single pass: satisfying one prerequisite can unblock
-  // a capability that unblocks another, and the cascade is the point.
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const c of combos as any[]) {
-      if (after.has(c.id)) continue;
-      // Configured and failing its own check is not held back by a
-      // prerequisite, and no acquisition brings it: only a passing check
-      // does. Admitting it here reported it as unblocked by every
-      // simulation, one that assumed nothing included.
-      if (failing.has(c.id)) continue;
-      // Only something already provided can be unblocked. A capability nothing
-      // supplies does not appear merely because its prerequisites are met.
-      if (!(providers.get(c.id) || []).length) continue;
-      const met = (prereqs.get(c.id) || []).every(p => after.has(p) || !p.startsWith('combo:'));
-      if (met) {
-        after.add(c.id);
-        changed = true;
-      }
-    }
-  }
+  // A fixpoint, since satisfying one prerequisite can unblock a capability
+  // that unblocks another, and the cascade is the point. The rule is the one
+  // the hosted page ranks a pasted config by (src/shared/nextSteps.ts): only
+  // something already provided is unblocked, and a capability configured and
+  // failing its own check is brought by no acquisition, only by a passing
+  // check. Admitting it reported it as unblocked by every simulation, one
+  // that assumed nothing included.
+  const emergent = reachedWith(
+    {
+      nodes: (combos as any[]).map(c => ({
+        id: c.id,
+        name: c.name,
+        configured: c.state !== 'locked',
+        usable: usable(c.lifecycle),
+        setupSeconds: 0,
+      })),
+      requires: (hard as any[])
+        .filter(d => d.t.startsWith('combo:') && d.f.startsWith('combo:'))
+        .map(d => ({ from: d.f, to: d.t })),
+      supplied: new Set(
+        (combos as any[]).filter(c => (providers.get(c.id) || []).length).map(c => c.id)
+      ),
+    },
+    [...assumed]
+  );
+  const after = new Set([...before, ...assumed, ...emergent]);
 
   const gained = [...assumed].filter(id => !before.has(id));
-  const emergent = [...after].filter(id => !before.has(id) && !assumed.has(id));
   // An assumed acquisition whose hard prerequisite is broken rather than
   // missing: the preview must say why it will not cascade, or the plan reads
   // as if adding the step fixes the prerequisite. It does not.

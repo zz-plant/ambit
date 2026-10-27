@@ -110,7 +110,7 @@ test('nothing a pipe receives is painted', () => {
     // with the most colour in it.
     for (const [argv, says] of [
       [['credentials'], 'First run'],
-      [['seed'], 'capabilities'],
+      [['seed'], 'Written to'],
       [['nonsense'], 'Unknown'],
       [['help', 'frontier'], 'Where you see it'],
       [['help', 'no-such-term'], 'No concept matching'],

@@ -14,9 +14,10 @@ npm run dev                             # API on :3001 and Vite on :3000, togeth
 npx vitest run src/engine/cli.test.ts   # one test file
 ./cli.js where                          # which graph is open, and whether it is seeded
 npm run render:images -- --demo         # the saved map, relief and specimens, to output/images
+npm run shots                           # every view as a screenshot at three sizes, to output/shots
 ```
 
-Work on how the map draws starts at the specimen page: `npx vite`, or the `ambit-specimen` launch configuration, then `/ambit/dev/specimen.html`. It draws every node state at three times its size through the map's own code, beside the key entry for it, and `?still` draws them as a saved file does. `npm run render:images` writes the files the Image menu saves, and the specimen page whole, from a headless Chrome: this checkout's graph, or the demo with `--demo`. The demo carries a failing check and a recovering one, so the stripes and the waver show without a graph of your own.
+Work on how the map draws starts at the specimen page: `npx vite`, or the `ambit-specimen` launch configuration, then `/ambit/dev/specimen.html`. It draws every node state at three times its size through the map's own code, beside the key entry for it, and `?still` draws them as a saved file does. `npm run render:images` writes the files the Image menu saves, and the specimen page whole, from a headless Chrome: this checkout's graph, or the demo with `--demo`. The demo carries a failing check and a recovering one, so the stripes and the waver show without a graph of your own. `npm run shots` photographs every view at 1440×900, 1280×720 and a phone, with a contact sheet, and flags the frames a machine can fault: a status pill that wraps, a map column cut at the left edge, a view still loading. Look at it before a pull request that changes how a view looks; `--live --home <dir>` adds the machine's own views from a fixture's configs.
 
 `ambit web` runs Vite in a checkout. An installed copy has no Vite: it serves the page it shipped with (`dist/index.html` and `dist/assets`, built by `prepack`) from the compiled API server, on the first free loopback port from 3001.
 
@@ -105,7 +106,8 @@ src/engine/weight.ts       What a loadout carries: `ambit weigh` starts each loc
                            user-level configs declare, asks for its tools over MCP and records
                            what the list costs in context (`tool_listings`); `carryById` is what
                            the tree reads, and nothing but a typed command starts a server
-src/engine/next.ts         What to reach next and why — observed blocks, then leverage
+src/engine/next.ts         What to reach next and why — observed blocks, then leverage, by the rule
+                           in src/shared/nextSteps.ts, which the hosted page ranks a pasted config by
 src/engine/council.ts      The first of those read five ways, one seat per engine question:
                            frontier, fragility, ledger, authority, checks. Each is a sentence,
                            a command and a stance; it writes nothing and runs nothing
@@ -269,7 +271,8 @@ src/client/                React frontend
                            site is the demo, on the map. `linkFocus` says which node a link selects
                            once the graph is read and whether to collapse to it. Pure, tested
                            without a window
-  hooks/                   useViewport (narrow screens) · useHotkeys · useGraphStream (the AG-UI
+  hooks/                   useViewport (narrow screens, and how much a card laid over the map
+                           covers at its bottom or its right) · useHotkeys · useGraphStream (the AG-UI
                            state stream, and whether it is attached) · useUrlSync (the address bar
                            follows the view, pushing a change of place and replacing the rest) ·
                            useGuide · useToast · useLatest · useConfigImport
@@ -295,30 +298,36 @@ src/client/                React frontend
                            check runs, a switch for a tool server the config holds, and the nodes
                            it provides. Three sections, owned by the shell so the address bar can
                            name one: Entries, closing with what was used but is on no node of the
-                           map; Environment (repo drift, infrastructure with what an agent may do
+                           map and, behind a fold, the Journey; Environment (repo drift, infrastructure with what an agent may do
                            on each machine); Briefing (what an agent is told at connect)
-    Journey.tsx            My Setup's opening readout: the loadout's seven legs from A to B, each
-                           read from the graph and the ledger, with the one command that moves it
+    Journey.tsx            Where a setup is headed, at the end of My Setup's entries: the loadout's
+                           seven legs from A to B, each read from the graph and the ledger, with the
+                           one command that moves it
     AuditView.tsx          The Audit view: the trail as one stream, newest first, with a query bar
     ActorMark.tsx          Who acted: a shape for the kind (person, agent, machine, Ambit) and a
                            monogram; drawn only for an id whose prefix says what it is
     WelcomeScreen.tsx      What an empty graph shows: what you and your agents can do and what one
                            step would open, the word *ambit* defined, one number from the demo's
-                           best next step with a button that plays it, and the paste box
-    ConfigIntake.tsx       Paste a config or pick the file, and where each runtime keeps it; or
-                           tick the servers you run (`PICKS` in hooks/useConfigImport.ts)
-    YourAmbit.tsx          What a config read in the tab adds up to: how much of the tree it
-                           reaches and the next steps that open the most, each lit on the map
-    Tour.tsx               The demo narrated, on the hosted site's first visit: the next step and
-                           what it opens, then an outage as the guardrail, a failing check, the
-                           approval gate, your config
-    MapYours.tsx           The two ways onto the map, paste or install (`YourSetup`), shared by the
-                           tour's last card and the dialog the demo header's Map yours opens
+                           best next step with a button that plays it, and the intake
+    ConfigIntake.tsx       Which agent you use, asked first (`AGENTS` in hooks/useConfigImport.ts),
+                           then its config pasted or picked, with the path to copy; or the servers
+                           it runs, ticked (`PICKS`). The agent names the runtime a bare file omits
+    YourAmbit.tsx          The readout: what was read, how much of the tree it reaches, the next
+                           steps by the engine's rule, what is not proven yet, and one command. For
+                           a config read in the tab when it is read, and for the machine's own graph
+                           on the first visit to `ambit web`, where the steps are `/api/loop`'s.
+                           readout-parity.test.ts holds the tab to what `ambit` says of one config
+    Tour.tsx               The demo narrated, on the hosted site's first visit: the sample's next
+                           step lit, with the intake under it, then for whoever asks an outage as
+                           the guardrail, a failing check and the approval gate
+    MapYours.tsx           The intake and the install line (`YourSetup`), in the dialog the demo
+                           header's Map yours opens
     figures.tsx            The sparkline, reach bar and check-run strip every surface draws the same
                            way, and the seal on something signed
+    Command.tsx            A command as a person will paste it, broken across lines only at its
+                           spaces: an id broken at its hyphen read as two ids
     Term.tsx               A house word with its definition attached — one glossary, two renderings
                            (a popover in HTML, a <title> in the SVG map)
-    GettingStartedGuide.tsx  The first-run card on a real graph; the demo gets the tour instead
     Toast.tsx              A transient notice from the graph stream
     CivTree.tsx            The map on the page: zoom, selection, one-hop highlighting of what a node
                            needs and enables, focus, the lenses, the two simulations, and the tools
@@ -331,7 +340,9 @@ src/client/                React frontend
                            closes), `unlockedSince` (what a rebuild reached, as the toast says
                            it, with `reachedQuote`, the tree's own line for one node), `eurekaOf`
                            (how full the asks draw a next step), the era ladder, label
-                           wrapping — pure, and tested apart from the renderer
+                           wrapping, and where a frame starts so it cuts no column
+                           (`snapToBand`, `wholeColumnZoom`) — pure, and tested apart from
+                           the renderer
     civ/viewport.ts        The minimap's arithmetic, which way a failing node lies off screen, and
                            a zoom about a point: the range, and what one wheel event scales by
     civ/usePinchZoom.ts    Every way a zoom arrives, anchored where it was asked for: a trackpad
@@ -442,6 +453,9 @@ src/shared/carry.ts        `carryByRuntime`: each runtime's total over its weigh
                            sum `ambit weigh` and My Setup both print
 src/shared/placement.ts    `placeOnTree`: where a setup stands on the curated tree, from the ids
                            its config turned up. The seed and the page's paste box both place by it
+src/shared/nextSteps.ts    What to reach next, by one rule: which capabilities are one step away,
+                           their order (blocked work, then leverage per hour), what each reaches
+                           with it, and the sentence that says so. `ambit` and the page rank by it
 src/shared/runtimes.ts     What every runtime brings (`BUILT_INS`) and the hosted model a runtime
                            runs on when its config names none (`RUNTIME_MODEL`)
 src/shared/nearest.ts      The few names a mistyped one was probably meant to be: it suggests, never decides
@@ -460,6 +474,8 @@ scripts/check-reach.ts     That merged work reaches main: a pull request's base 
                            its way there, and every merged one has to have arrived. reach.yml
                            runs it on pull requests, on each push to main and daily
 scripts/check-demo-data.ts That demo-data.json still matches what the engine builds from the fixture
+scripts/shots.ts           Every view as a screenshot, from a production build in a headless Chrome,
+                           with the checks a machine can make of a frame and a contact sheet
 scripts/render-images.ts   The saved images, from the page's own code in a headless Chrome: the API
                            server and Vite on loopback for the run, Chrome's own traffic off, and
                            the files never under dist/ or src/. scripts/lib/chrome.ts is the

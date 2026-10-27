@@ -1215,6 +1215,10 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
       <div className="loop-inner">
         <div className="loop-hero">
           <div>
+            {/* Beside the figure, so a screenshot that keeps the number keeps
+                this too: the header's Sample tag is cropped off, and a phone
+                never showed it. */}
+            {sample && <p className="loop-sample">Sample data</p>}
             {saved ? (
               <h2 className="loop-lead">
                 <strong>{roi.hours_per_year} hours</strong> a year no longer spent stepping in,
@@ -1239,7 +1243,7 @@ export default function LoopDashboard({ onShowOnMap, onShow }: LoopDashboardProp
             )}
             <details className="loop-about">
               <summary>
-                {sample ? 'This is sample data.' : 'Recorded on this machine.'} How it is counted
+                {sample ? 'How it is counted' : 'Recorded on this machine. How it is counted'}
               </summary>
               <p>
                 Each time someone had to step in for an agent is logged against the capability it
