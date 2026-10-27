@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://zz-plant.github.io/ambit/og/mcp-config-locations.png" />
 <meta property="og:image:width" content="1280" />
 <meta property="og:image:height" content="640" />
-<meta property="og:image:alt" content="Twelve agents, twelve config files, one table" />
+<meta property="og:image:alt" content="Sixteen agents, sixteen config files, one table" />
 <meta property="og:site_name" content="Ambit" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more" />
@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/mcp-config-locations.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","description":"The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.","url":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/","dateModified":"2026-10-09","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","item":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","description":"The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.","url":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/","dateModified":"2026-10-27","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more","item":"https://zz-plant.github.io/ambit/docs/mcp-config-locations/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -219,7 +219,7 @@ args = [&quot;-y&quot;, &quot;@modelcontextprotocol/server-github&quot;]
 <p><code>CODEX_MCP_CONFIG</code> overrides it for Ambit.</p>
 <h2 id="opencode"><a class="anchor" href="#opencode" aria-hidden="true" tabindex="-1">#</a>OpenCode</h2>
 <p><code>~/.config/opencode/opencode.json</code>, or <code>opencode.jsonc</code> when that is the one present. Servers are under <code>mcp</code>, and each can carry <code>enabled: false</code> to stay declared and off. OpenCode is the format Ambit&#39;s own config switch writes, and <code>OPENCODE_CONFIG</code> points Ambit at a different file.</p>
-<p>OpenCode also reads an <code>opencode.json</code> at a project&#39;s root. Ambit does not put its servers on the graph; the <strong>Repos</strong> tab in My Setup reads the project configs of repositories under <code>REPO_PATH</code> and says how far each has drifted from the global one.</p>
+<p>OpenCode also reads an <code>opencode.json</code> at a project&#39;s root. Ambit does not put its servers on the graph; the <strong>Environment</strong> section of My Setup reads the project configs of repositories under <code>REPO_PATH</code> and says how far each has drifted from the global one.</p>
 <h2 id="cline-and-roo-code"><a class="anchor" href="#cline-and-roo-code" aria-hidden="true" tabindex="-1">#</a>Cline and Roo Code</h2>
 <p>Both are VS Code extensions and keep their servers in the extension&#39;s global storage, in a file named <code>cline_mcp_settings.json</code> with <code>mcpServers</code> at the top. <code>CLINE_MCP_CONFIG</code> and <code>ROO_CODE_MCP_CONFIG</code> override them for Ambit.</p>
 <h2 id="continue"><a class="anchor" href="#continue" aria-hidden="true" tabindex="-1">#</a>Continue</h2>
@@ -255,7 +255,7 @@ npx ambit-cli status   # which servers are on, what is failing, what has one pro
 <section class="try" aria-labelledby="try-ambit">
 <a class="shot" href="/ambit/?demo=1" tabindex="-1" aria-hidden="true"><img src="/ambit/docs/assets/screenshot-tree.png" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>
 <p class="try-title" id="try-ambit">See what your own agents can reach</p>
-<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and nine more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
 <p class="actions"><a class="button" href="/ambit/?demo=1">Open the live demo</a><span class="alt">a sample setup in your browser, nothing to install</span></p>
 <p>On your machine: <code>npx ambit-cli</code>, with Node 22.18 or newer on macOS or Linux.</p>
 <p class="trust">MIT licensed · one local SQLite file, no telemetry · on npm and in the official MCP registry</p>

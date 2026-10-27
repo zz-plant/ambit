@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/mcp-outage.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"What breaks if an MCP server goes down: blast radius for AI agents","description":"Find the single points of failure in an AI agent setup: what stops, what only weakens, and what was already broken if one MCP server, model or token goes.","url":"https://zz-plant.github.io/ambit/docs/mcp-outage/","dateModified":"2026-10-09","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"What breaks if an MCP server goes down: blast radius for AI agents","item":"https://zz-plant.github.io/ambit/docs/mcp-outage/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"What breaks if an MCP server goes down: blast radius for AI agents","description":"Find the single points of failure in an AI agent setup: what stops, what only weakens, and what was already broken if one MCP server, model or token goes.","url":"https://zz-plant.github.io/ambit/docs/mcp-outage/","dateModified":"2026-10-27","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"What breaks if an MCP server goes down: blast radius for AI agents","item":"https://zz-plant.github.io/ambit/docs/mcp-outage/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -85,10 +85,10 @@ ambit credentials          # what revoking each declared credential would end
 <p>Two of the answers need something from you first:</p>
 <ul>
 <li><strong>Shared credentials are declared, never inferred.</strong> Ambit cannot see that three servers present one token until a <code>credentials</code> block in the config names them (<a href="/ambit/docs/deep-dive/#what-a-node-is">the shape</a>). Until then <code>ambit credentials</code> says none are declared, and three providers behind one token read as three providers.</li>
-<li><strong>&quot;Already broken&quot; needs a declared check.</strong> A capability counts as failing only when it declares a check and that check last failed (<code>ambit verify</code> runs them). Most MCP servers a person adds have none, so they read as reached and unproven, which means they are counted as working and never shown as broken.</li>
+<li><strong>&quot;Already broken&quot; needs a declared check.</strong> A capability counts as failing only when it declares a check and that check last failed (<code>ambit verify</code> runs them). Most MCP servers a person adds have none, so they read as reached and unproven: counted as working, never shown as broken.</li>
 </ul>
 <h2 id="seeing-it-on-the-map"><a class="anchor" href="#seeing-it-on-the-map" aria-hidden="true" tabindex="-1">#</a>Seeing it on the map</h2>
-<p>The <a href="https://zz-plant.github.io/ambit/?demo=1&amp;tour=outage">hosted demo</a> opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press <strong>Simulate an outage</strong> to ask it of that one: what stops turns red, what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.</p>
+<p>The <a href="https://zz-plant.github.io/ambit/?demo=1&amp;tour=outage">hosted demo</a> opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press <strong>Simulate an outage</strong> to ask it of that one: what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.</p>
 <h2 id="acting-on-the-answer"><a class="anchor" href="#acting-on-the-answer" aria-hidden="true" tabindex="-1">#</a>Acting on the answer</h2>
 <p>Each answer has its own fix:</p>
 <ul>
@@ -97,13 +97,13 @@ ambit credentials          # what revoking each declared credential would end
 <li><strong>For what is already broken</strong>, fix or remove it, and declare a check where you can so the next failure shows up before an agent finds it.</li>
 </ul>
 <p>Before removing a server or revoking a token on purpose, run <code>ambit impact</code> on it first. Its answer is as complete as the declarations behind it: a shared token nobody declared, or a server with no check, is invisible to it.</p>
-<p>Knowing which pieces carry the most is the guardrail half of widening what a setup can do: every new capability rests on pieces that already exist, and this is what makes adding to them safe to lean on.</p>
+<p>Every new capability rests on pieces that already exist, so knowing which ones carry the most is the guardrail half of widening what a setup can do.</p>
 <p>Related: <a href="/ambit/docs/mcp-config-locations/">where each AI agent keeps its MCP config</a> and <a href="/ambit/docs/audit-mcp-servers/">auditing which MCP servers a coding agent has</a>.</p>
 
 <section class="try" aria-labelledby="try-ambit">
 <a class="shot" href="/ambit/?demo=1" tabindex="-1" aria-hidden="true"><img src="/ambit/docs/assets/screenshot-tree.png" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>
 <p class="try-title" id="try-ambit">See what your own agents can reach</p>
-<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and nine more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
 <p class="actions"><a class="button" href="/ambit/?demo=1">Open the live demo</a><span class="alt">a sample setup in your browser, nothing to install</span></p>
 <p>On your machine: <code>npx ambit-cli</code>, with Node 22.18 or newer on macOS or Linux.</p>
 <p class="trust">MIT licensed · one local SQLite file, no telemetry · on npm and in the official MCP registry</p>
