@@ -97,6 +97,28 @@ plan — what to acquire next, and whether it paid
                           spofs, where capex would produce the most
   plan reversible         which unreached capabilities could be acquired without
                           a person, and which need hands
+  plan judge goal <sentence> [--multi] [--threshold=0.8] [--record]   which
+                          capability a sentence means: the vocabulary first,
+                          then a judgment model for what it could not route;
+                          --multi scores each node apart. A suggestion with a
+                          probability, kept as a receipt only with --record
+  plan judge next <goal>  the next steps, reordered by how directly each one
+                          advances the goal; costs and checks stay the graph's
+  plan judge tools|failures|attention <file.json>   a model's reading of tool
+                          descriptions, reported failures or recorded
+                          interventions; none relabels the ledger or counts
+                          as evidence. judge media <file.json> sends one raw
+                          request, with its images or audio
+  plan judge evaluate [cases.json] [--live]   score routing against expected
+                          answers: the vocabulary alone, or the model with --live
+  plan judge history [--limit=N] · review <id> accepted|rejected · plan <id>
+                          the receipts kept, a person's one review of each, and
+                          the plans an accepted one asks for, from the graph now
+  plan judge … --provider=cloudflare [--model=clef|clef-flash|clef-omni]
+                          send the request to Workers AI, with
+                          CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN. The
+                          default is a model on this machine, loopback only:
+                          AMBIT_JUDGE_URL, or 127.0.0.1:8009
 
 check — what is proven, what is permitted, what is currently broken
   check verify [cap] [--history] [--target=<object>] [--exit-code]   run the

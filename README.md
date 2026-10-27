@@ -86,7 +86,7 @@ npm and Homebrew install the tagged release, on macOS or Linux. `./bootstrap.sh`
 
 ## Where Ambit sits in the stack
 
-Ambit sits above the protocol layer and below workflow orchestration. Its CLI, MCP server and gate neither route an agent's calls nor run them. The one part that can run an agent's step is [the control plane](#the-control-plane), which you start yourself, and only with its opt-in Docker adapter.
+Ambit sits above the protocol layer and below workflow orchestration. Its CLI, MCP server and gate neither route an agent's calls nor run them. The one part that can run an agent's step is [the control plane](#the-control-plane), which you start yourself from a checkout, and only with its opt-in Docker adapter.
 
 | System | Finds a tool | Knows prerequisite order | Tells working from configured | Prices human attention | Gates what an agent may do |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -199,7 +199,7 @@ To register manually without the plugin:
 claude mcp add ambit -- ambit mcp --profile=agent
 ```
 
-`--profile=agent` advertises ten tools, the planning and verification ones an agent uses to check before it acts, in about 4.4KB of prompt context. Omitting the flag advertises all sixty tools (~19.5KB); an unlisted tool stays callable by name in either mode. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) lists every tool and [explains how calls are dispatched](./docs/deep-dive.md#how-a-call-is-answered).
+`--profile=agent` advertises ten tools, the planning and verification ones an agent uses to check before it acts, in about 4.4KB of prompt context. Omitting the flag advertises every tool (~19.5KB). The server answers an unlisted tool by name either way, but most clients call only what they were shown, so under `--profile=agent` the connect instructions send the agent to the `ambit` command for the rest: single points of failure, budgets, incidents, the audit trail, everything `ambit help --all` lists. [The deep dive](./docs/deep-dive.md#the-full-mcp-surface) lists every tool and [explains how calls are dispatched](./docs/deep-dive.md#how-a-call-is-answered).
 
 `ambit-gate@ambit` is a companion plugin that puts `ambit gate` on every tool call, so what you refused or set to ask first in Ambit is denied or put to you. The hook block below does the same by hand.
 
@@ -327,9 +327,11 @@ Availability is decided by lifecycle, not state, and a check can only take avail
 
 Ambit answers whether a step may run wherever it is asked, and the answer binds in three places: `ambit apply`, always; this interceptor, for execution routed through it; and Claude Code's tool calls, once the `ambit gate` hook is installed. Other runtimes choose whether to ask `ambit_can`.
 
+**It runs from a checkout.** The interceptor is a reference implementation and not part of the `ambit` command, so npm and Homebrew do not install it. In a clone, `npm run demo:incident` replays the walkthrough at the end of this section on a throwaway graph, and `node --experimental-sqlite src/control_plane/cli.ts --help` lists its commands. `exec <envDir> <dbPath> '<request>'` routes one step through the gate against the graph at `dbPath`. The others serve the walkthrough: `setup-env` writes its fixture actors and capabilities into the graph it is given, replacing any row with the same id, and `verify-node` sets a lifecycle with no check run, so point both at a new file and never at the graph `ambit where` prints.
+
 Host-level agent tooling is a real attack surface, so the interceptor can stand between an agent and the shell. Before a tool call routed through it reaches your machine, the proxy in `src/control_plane/proxy.ts` verifies three conditions: prerequisite capabilities are present, the capability is verified and functioning, and the caller has explicit authorization. A call that fails any condition is refused (`AMBIT_BLOCKED_UNAUTHORIZED`, exit code `2`) and leaves system state unchanged. Blocked calls generate a draft proposal and an HMAC challenge; `ambit approve <proposal-id> --by=<person>` creates a signed authorization artifact verified by the executor, which expires or invalidates if the proposal is modified. Spans record each evaluation, challenge, and receipt.
 
-The decision runs against your graph. What sits on the other side of the gate is chosen when the control plane starts, and every span names it. The default, `simulatedAdapter`, is a fixture: it merges the change into a JSON file and runs nothing.
+The decision runs against the graph you name. What sits on the other side of the gate is chosen when the control plane starts, and every span names it. The default, `simulatedAdapter`, is a fixture: it merges the change into a JSON file and runs nothing.
 
 `AMBIT_ADAPTER=docker`, or `--adapter=docker` on `src/control_plane/cli.ts`, puts a Docker adapter there instead, and an approved step's `payload.command` runs in a throwaway container. The approval names the command: the step a person signs shows it, and a retry carrying a different one is refused. Break-glass runs nothing there, since an agent cannot authorise its own command. Each step gets its own container from an image you pulled yourself (`alpine:3.20` unless `AMBIT_DOCKER_IMAGE` names another), with no network, a read-only root, every Linux capability dropped, an unprivileged user, and limits on memory, CPU and processes. The container is removed afterwards and its output, capped, comes back in the result; a step that exits non-zero ends the run as failed. A step reaches the network only when you started the control plane with `AMBIT_DOCKER_NETWORK=bridge` and a grant for the `network` action on its capability answers ALLOW. Nothing from the host is mounted unless `AMBIT_DOCKER_WORKDIR` names a directory, which is mounted read-only, and never your home directory, its dot-directories or the Docker socket. If Docker cannot run the step, the control plane refuses before anything runs and does not fall back to the simulator.
 

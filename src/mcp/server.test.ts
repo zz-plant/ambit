@@ -552,6 +552,11 @@ test('the agent profile does not send an agent to a tool it was not shown', () =
   ];
   expect(full.result.instructions).toContain('ambit_cap');
   expect(agent.result.instructions).not.toContain('ambit_cap');
+  // What it was not shown is named as the command that answers it, so an agent
+  // on the short listing still learns the rest exists.
+  expect(agent.result.instructions).toContain('ambit help --all');
+  expect(full.result.instructions).not.toContain('ambit help --all');
+  expect(agent.result.instructions.length).toBeLessThan(1_200);
 });
 
 test('the server answers with the version the client asked for when it speaks it', () => {

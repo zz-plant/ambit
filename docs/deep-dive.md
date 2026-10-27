@@ -438,6 +438,7 @@ plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · 
            opportunities [id] [--rank=…] [--budget=N]
            propose <cap> [option] [--for="…"] [--by=<who>] · roi [proposal-id]
            portfolio [--budget=N]
+           judge goal|next|tools|failures|attention|media|evaluate|history|review|plan
 check      verify [cap] [--history] [--target=<object>] · verify --failing
            authority [cap] [scope <target>]
            authority promote [<cap> <action> --after=N --window=30d --scope=X --by=<person>]
@@ -487,6 +488,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit opportunities` | Ranked structural changes worth making — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence. `--by=attention\|cash\|roi\|reliability\|frontier`; `--budget=N` allocates the best combination within $N |
 | `ambit roi [proposal]` | One proposal's before/after verdict, or — with no argument — the cumulative headline: recorded hours and dollars per year and forecast accuracy |
 | `ambit portfolio [--budget=N]` | Across imported environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most |
+| `ambit judge goal\|next\|tools\|failures\|attention` | What a judgment model makes of what the graph's own words do not settle: which capability a sentence means once the vocabulary has had its turn, which next step serves a goal, what a list of tools, a reported failure or a recorded intervention is about. Each answer is a suggestion with a probability and writes nothing; `--record` keeps it as a receipt, a person reviews a receipt once (`judge review <id> accepted`), and only an accepted goal or spec receipt becomes plans, read from the graph as it stands. `judge evaluate` scores routing against cases with expected answers. A model on this machine answers by default (`AMBIT_JUDGE_URL`, or loopback port 8009), and `--provider=cloudflare` sends the request to Workers AI under your own account |
 | **check** — *what is proven, what is permitted, what is currently broken* | |
 | `ambit authority <cap>` | Which concrete actions does this confer, and which of them may run unattended? |
 | `ambit authority scope <target>` | What a scope actually covers and what it does not — a grant scoped elsewhere is named as excluded |
@@ -572,7 +574,7 @@ A capability is named by its id, its id without the kind (`shell-execution`) or 
 
 Answers are kept small. The text half of a result is compact JSON, since a client may send both halves to a model. `ambit_authority` returns who may act alone, who must ask and what is forbidden, which comes to about 0.7KB. It returns the row for every grant only for `detail: true`, and that adds about 10KB on a seeded machine.
 
-`ambit mcp --profile=agent`, or `AMBIT_MCP_PROFILE=agent`, lists only the tools an agent that asks before it acts uses (`ambit_briefing`, `ambit_can`, `ambit_next`, `ambit_impact`, `ambit_plan`, `ambit_goal`, `ambit_verify`, `ambit_record_failure`, `ambit_propose`, `ambit_register_skill`), and a test holds that listing under 5,000 bytes where the full one is held under 20,000. It changes the listing and nothing else: every tool still answers by name, and what may be done is decided by the graph's grants and never by which tools an agent was shown. A name it does not know stops the server from starting, because falling back to the full listing would answer a typo with the thing the flag was typed to avoid.
+`ambit mcp --profile=agent`, or `AMBIT_MCP_PROFILE=agent`, lists only the tools an agent that asks before it acts uses (`ambit_briefing`, `ambit_can`, `ambit_next`, `ambit_impact`, `ambit_plan`, `ambit_goal`, `ambit_verify`, `ambit_record_failure`, `ambit_propose`, `ambit_register_skill`), and a test holds that listing under 5,000 bytes where the full one is held under 20,000. It changes the listing and nothing else: every tool still answers by name, and what may be done is decided by the graph's grants and never by which tools an agent was shown. Most clients let a model call only the tools they listed, so the instructions under this profile name no unlisted tool; they say the rest is the `ambit` command in a shell, which `ambit help --all` lists, and that the server started without the flag lists it all as tools. A name it does not know stops the server from starting, because falling back to the full listing would answer a typo with the thing the flag was typed to avoid.
 
 ### The map, and what it is allowed to do
 

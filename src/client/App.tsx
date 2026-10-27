@@ -114,6 +114,7 @@ export default function App() {
   const loading = useAmbitStore(s => s.loading);
   const error = useAmbitStore(s => s.error);
   const demo = useAmbitStore(s => s.demo);
+  const backend = useAmbitStore(s => s.backend);
   const reading = useAmbitStore(s => s.reading);
   const lens = useAmbitStore(s => s.activeLens);
   const spotlight = useAmbitStore(s => s.spotlight);
@@ -165,6 +166,14 @@ export default function App() {
   // Which section of My Setup is showing. App owns it, so a link can open on
   // it and the address bar carries it.
   const [setupTab, setSetupTab] = useState<SetupTab>(() => link.tab);
+  // Environment and Briefing are read from the local API. A page with none,
+  // the hosted demo above all, has only the entries: a link or the finder that
+  // named another section opened one that never loaded, with its tabs hidden,
+  // so there was no way back. On the hosted demo that is known from the
+  // hostname before the first render, so the address there is corrected by a
+  // replace and adds no step to Back.
+  const noApi = backend === 'static' || isHostedDemo();
+  const shownTab: SetupTab = noApi ? 'entries' : setupTab;
   const [showDocs, setShowDocs] = useState(link.docsOpen);
   const [docsTab, setDocsTab] = useState<DocsTab | undefined>(undefined);
   const [finderOpen, setFinderOpen] = useState(false);
@@ -185,7 +194,7 @@ export default function App() {
     demo,
     lens,
     at: historyAt,
-    tab: view === 'setup' ? setupTab : undefined,
+    tab: view === 'setup' ? shownTab : undefined,
     collapse,
     depth,
     dir,
@@ -485,10 +494,12 @@ export default function App() {
       setActiveLens(lens);
     },
     view: showView,
-    briefing: () => {
-      setSetupTab('briefing');
-      showView('setup');
-    },
+    briefing: noApi
+      ? undefined
+      : () => {
+          setSetupTab('briefing');
+          showView('setup');
+        },
     proposals: () => showView('proposals'),
     copy: async (text, notice) => {
       try {
@@ -654,7 +665,7 @@ export default function App() {
             <ProposalsView />
           </Lazy>
         ) : view === 'setup' ? (
-          <SetupView onShow={show} tab={setupTab} onTab={setSetupTab} />
+          <SetupView onShow={show} tab={shownTab} onTab={setSetupTab} />
         ) : items.length > 0 && hasTree ? (
           <Lazy what="the map">
             <CivTree
