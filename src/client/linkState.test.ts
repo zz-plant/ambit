@@ -222,6 +222,24 @@ test('a history write the browser refuses is skipped, and the page goes on', () 
   expect(pushes).toEqual(['?view=setup#top']);
 });
 
+test('history methods keep their browser receiver for pushes and replacements', () => {
+  const writes: string[] = [];
+  const history = {
+    pushState(_data: unknown, _unused: string, url: string) {
+      if (this !== history) throw new TypeError('Illegal invocation');
+      writes.push(`push ${url}`);
+    },
+    replaceState(_data: unknown, _unused: string, url: string) {
+      if (this !== history) throw new TypeError('Illegal invocation');
+      writes.push(`replace ${url}`);
+    },
+  };
+  const bar = { location: { search: '?view=map', hash: '#top' }, history };
+  writeAddress(bar, '?view=setup', 'push');
+  writeAddress(bar, '?view=map&focus=combo:embeddings');
+  expect(writes).toEqual(['push ?view=setup#top', 'replace ?view=map&focus=combo:embeddings#top']);
+});
+
 test('a change of view is a navigation, and a change of how the same one looks is not', () => {
   // Every change of state used to replace the address, so Back out of the app
   // was the only back there was: an opportunity in Time & cost that opened its

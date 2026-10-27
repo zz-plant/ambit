@@ -259,7 +259,7 @@ export function writeAddress(
   if (bar.location.search === search) return;
   const write = mode === 'push' ? bar.history.pushState : bar.history.replaceState;
   try {
-    write({}, '', search + bar.location.hash);
+    write.call(bar.history, {}, '', search + bar.location.hash);
   } catch {
     /* the address bar catches up on the next change */
   }

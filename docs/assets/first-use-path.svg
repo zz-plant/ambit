@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="748" viewBox="0 0 480 748" role="img" aria-labelledby="title desc">
+  <title id="title">A proposed path from recommendation to checked result</title>
+  <desc id="desc">In the browser, understand a recommendation and review its plan. A preview changes only the view. On the local machine, review the CLI plan, perform setup with any required approval, and run the declared check. A missing or failing check leaves the capability unproven or failing; a passing check is evidence only for the behavior exercised.</desc>
+  <!-- Authored source; edit this SVG directly. -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="#aabbd1" stroke-width="1.5"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,sans-serif;fill:#f1f3f7;text-anchor:middle}
+      .heading{font-size:22px;font-weight:600;text-anchor:start}.label{font-size:20px;font-weight:500}.detail{font-size:17px;fill:#c0cbdb}.zone{font-size:17px;fill:#b7cdff;text-anchor:start}
+      .step{fill:#1a202a;stroke:#596b84;stroke-width:1.5}.edge{fill:none;stroke:#aabbd1;stroke-width:2;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="480" height="748" rx="16" fill="#101318"/>
+  <text x="24" y="38" class="heading">From suggestion to checked result</text>
+  <text x="24" y="80" class="zone">BROWSER</text>
+  <rect x="44" y="98" width="392" height="66" rx="9" class="step"/>
+  <text x="240" y="125" class="label">Understand the recommendation</text>
+  <text x="240" y="149" class="detail">Benefit · state · estimated effort</text>
+  <path d="M240 164V202" class="edge"/>
+  <rect x="44" y="202" width="392" height="66" rx="9" class="step"/>
+  <text x="240" y="229" class="label">Review the plan command</text>
+  <text x="240" y="253" class="detail">Preview changes only the view</text>
+  <path d="M240 268V354" class="edge"/>
+  <path d="M24 306H456" stroke="#596b84" stroke-width="1" stroke-dasharray="5 5"/>
+  <text x="24" y="334" class="zone">LOCAL MACHINE</text>
+  <rect x="44" y="354" width="392" height="66" rx="9" class="step"/>
+  <text x="240" y="381" class="label">Read the CLI plan</text>
+  <text x="240" y="405" class="detail">Compare routes and prerequisites</text>
+  <path d="M240 420V458" class="edge"/>
+  <rect x="44" y="458" width="392" height="66" rx="9" class="step"/>
+  <text x="240" y="485" class="label">Complete setup</text>
+  <text x="240" y="509" class="detail">Obtain any required approval</text>
+  <path d="M240 524V562" class="edge"/>
+  <rect x="44" y="562" width="392" height="66" rx="9" class="step"/>
+  <text x="240" y="589" class="label">Run the declared check</text>
+  <text x="240" y="613" class="detail">Read and record the result</text>
+  <path d="M240 628V664" class="edge"/>
+  <text x="240" y="689" class="detail">Missing or failed check: unresolved</text>
+  <text x="240" y="719" class="detail">Pass: evidence for what was tested</text>
+</svg>
