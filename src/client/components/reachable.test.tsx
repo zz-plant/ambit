@@ -110,6 +110,18 @@ test('each view tab keeps its name where it shows only its icon', () => {
   expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
 });
 
+test('the Proposals tab says how many drafts wait, to a screen reader too', () => {
+  // The fixed aria-label replaced the button's text, so the badge was never
+  // read out: a reader heard "Proposals" with two decisions waiting.
+  const html = deck({ draftCount: 2 });
+  expect(html).toMatch(
+    /<button[^>]*aria-label="Proposals"[^>]*aria-describedby="app-deck-drafts"|<button[^>]*aria-describedby="app-deck-drafts"[^>]*aria-label="Proposals"/
+  );
+  expect(html).toContain('<span id="app-deck-drafts" hidden="">2 waiting for your decision</span>');
+  // With nothing waiting there is nothing to describe.
+  expect(deck()).not.toContain('app-deck-drafts');
+});
+
 test('when the header is short of room the status pill wraps, and nothing else gives way', () => {
   // Every other part keeps its size; the counts wrap onto a second line inside
   // the deck's height. A live engine's indicator, a failing segment and an

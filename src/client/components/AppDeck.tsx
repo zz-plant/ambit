@@ -353,8 +353,11 @@ export default function AppDeck(p: AppDeckProps) {
             className={tab(p.view === 'proposals')}
             aria-current={p.view === 'proposals' ? 'page' : undefined}
             onClick={() => p.onShowView('proposals')}
-            // The name, for where the tab shows only its icon.
+            // The name, for where the tab shows only its icon. It stays the
+            // word on screen, so a voice command finds it; the label also hid
+            // the count, so the count is the description.
             aria-label="Proposals"
+            aria-describedby={p.draftCount > 0 ? 'app-deck-drafts' : undefined}
             title="What an agent wants to change, waiting on your decision (g)"
           >
             <svg
@@ -377,7 +380,14 @@ export default function AppDeck(p: AppDeckProps) {
                 did: the tab is where the decision is made, so the waiting
                 number belongs there. */}
             {p.draftCount > 0 && (
-              <span className="app-deck-count app-deck-count--tab">{p.draftCount}</span>
+              <>
+                <span className="app-deck-count app-deck-count--tab" aria-hidden="true">
+                  {p.draftCount}
+                </span>
+                <span id="app-deck-drafts" hidden>
+                  {p.draftCount} waiting for your decision
+                </span>
+              </>
             )}
           </button>
         </nav>
