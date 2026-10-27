@@ -18,11 +18,19 @@
  * decided by its grant like any other. The latest check decides, here as in
  * every plan; asking on mixed evidence would put each tool a fix brought back
  * to the person until five passes in a row had been typed by hand.
+ *
+ * A runtime's own tool is asked about as the action it is (tool-names.ts): a
+ * read as `observe`, which the tree lets run unasked, so `Read` and `Grep` are
+ * no answer while `Write` is asked about as `Edit` is. A shell call is also
+ * asked about as each program its command runs, so a grant on Version Control
+ * reaches `git push` and not only the git server. The command is read here and
+ * kept nowhere.
  */
 import { canExecute } from './assurance.ts';
 import type { Db } from './db.ts';
 import { attribute } from './failures.ts';
 import { PROVISION_EDGES } from './ontology.ts';
+import { type Act, builtInTool, commandExercises } from './tool-names.ts';
 
 export interface ToolCall {
   tool_name?: string;
@@ -40,16 +48,12 @@ export interface GateAnswer {
 const ORDER = { null: 0, ask: 1, deny: 2 } as const;
 
 /**
- * The capabilities a tool call exercises: the one its name attributes to, or
- * the built-in tool's own entry; and for an entry, the capabilities it
- * supplies, since grants are declared on those and not on the entry.
+ * The capabilities a tool call exercises: the one its name attributes to, and
+ * for an entry, the capabilities it supplies, since grants are declared on
+ * those and not on the entry.
  */
 export function capabilitiesFor(db: Db, tool: string): string[] {
-  const named =
-    attribute(db, tool) ??
-    (db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(`tool:${tool.toLowerCase()}`)
-      ? `tool:${tool.toLowerCase()}`
-      : null);
+  const named = attribute(db, tool);
   if (!named) return [];
   if (named.startsWith('combo:')) return [named];
   const kinds = (PROVISION_EDGES as string[]).map(() => '?').join(', ');
@@ -63,13 +67,34 @@ export function capabilitiesFor(db: Db, tool: string): string[] {
   return supplied.length ? supplied : [named];
 }
 
+/**
+ * What the gate asks about one call: each capability it exercises, with the
+ * action asked for. A tool the runtime does not own is asked about as
+ * `execute`, and one whose work arrives as calls of their own not at all.
+ */
+function questionsFor(db: Db, call: ToolCall): Array<{ capability: string; action: Act }> {
+  const tool = typeof call.tool_name === 'string' ? call.tool_name : '';
+  if (!tool) return [];
+  const own = builtInTool(tool);
+  const action = own ? own.act : 'execute';
+  const asked = action ? capabilitiesFor(db, tool).map(capability => ({ capability, action })) : [];
+  const command = (call.tool_input as { command?: unknown } | null | undefined)?.command;
+  if (own?.means === 'tool:bash' && typeof command === 'string') {
+    const exists = db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?');
+    for (const e of commandExercises(command)) {
+      if (exists.get(e.means)) asked.push({ capability: e.means, action: e.act });
+    }
+  }
+  return asked;
+}
+
 /** The answer for one tool call: the narrowest of the answers for what it exercises. */
 export function gateToolCall(db: Db, call: ToolCall): GateAnswer {
-  const tool = typeof call.tool_name === 'string' ? call.tool_name : '';
-  const capabilities = tool ? capabilitiesFor(db, tool) : [];
+  const questions = questionsFor(db, call);
+  const capabilities = [...new Set(questions.map(q => q.capability))];
   let answer: GateAnswer = { decision: null, capabilities };
-  for (const capability of capabilities) {
-    const d = canExecute(db, { capability }) as {
+  for (const { capability, action } of questions) {
+    const d = canExecute(db, { capability, action }) as {
       decision: string;
       reason?: string;
       refused?: string;
