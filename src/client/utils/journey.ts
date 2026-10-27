@@ -54,7 +54,7 @@ export function journeyLegs(
       ? `${next.capability} is next${next.cost ? `, ${next.cost} of setup` : ''}. ${next.why}`
       : loop
         ? 'Nothing is ranked next.'
-        : 'The ranking is read from the ledger.',
+        : 'Not ranked yet. The CLI ranks next steps once it has read this machine.',
     command: next ? `ambit propose ${shellQuote(next.id)}` : undefined,
   });
 
@@ -77,7 +77,7 @@ export function journeyLegs(
     title: 'Hand over trust gradually',
     state: !authority ? 'unrecorded' : promotable ? 'open' : authority.autonomous ? 'done' : 'open',
     said: !authority
-      ? 'Grants are read from the graph.'
+      ? 'Not read yet. The CLI reads which capabilities may act without asking.'
       : `${authority.autonomous} may act without asking, ${authority.confirm} ask first, ${authority.forbidden} forbidden.${
           promotable
             ? ` ${promotable.capability} has passed often enough to stop asking first. Set the number of passes you want and it stops asking, and asks again after one failing check.`
@@ -105,7 +105,7 @@ export function journeyLegs(
     said:
       attention && attention.interventions > 0
         ? `${plural(attention.interventions, 'time')} you stepped in, ${loop?.roi.hours_per_year ?? 0} hours a year saved so far.`
-        : 'Nothing recorded yet. The telemetry plugin records each time you step in, and the saving appears once there is a month to compare.',
+        : "Nothing recorded yet. Ambit's Claude Code or OpenCode plugin records each time you step in, and the saving appears once there is a month to compare.",
   });
 
   const demand = loop?.demand ?? [];

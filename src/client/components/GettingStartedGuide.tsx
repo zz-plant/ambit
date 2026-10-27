@@ -24,10 +24,10 @@ export default function GettingStartedGuide({ style, onDismiss, onReadMore }: Gu
         </li>
         <li>
           <strong>Click one that is not reached yet</strong>, outlined or dashed, and the simulation
-          runs the other way to show everything it would unlock.
+          runs the other way to show everything it would open.
         </li>
         <li>
-          <strong>Open the Key</strong> beside zoom and press one to highlight just that kind.{' '}
+          <strong>Open the Key</strong> beside zoom and press one to highlight only that kind.{' '}
           <strong>Share</strong> copies a link that opens the view you are looking at.
         </li>
       </ol>

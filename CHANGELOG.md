@@ -6,6 +6,14 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### The page and the landing docs, read as a newcomer would
+
+A pass over every string the page shows and over the README and the docs a search lands on, for the same two faults the last copy fix found in a dozen places. The first was the engine's own words used as if a reader knew them: "observation", "the ledger", "bridges", "tending", "an act", "the trail", a function name. Each now says what happened and what to do; a past moment of the map is a moment, Time & cost's empty page gives the Claude Code plugin's install commands beside OpenCode's, and the Audit view off a machine says to run `ambit web`. The second was text describing what the screen already shows, or saying one thing twice: the briefing tab listed the briefing printed under it, a repository row explained its own drift badge, a turned-down proposal said "Turned down" under a pill saying the same.
+
+Errors say what was refused and what to do instead: a paste too large names the 2 MB limit, and one that is not a config says what shape would be. The approval reason box asks for a reason, not "Why not?".
+
+Three things were wrong, not just unclear. The docs counted twelve runtimes when sixteen are read. The config-locations page sent readers to a Repos tab that is the Environment section. The audit guide said nothing leaves the machine, which a declared check that fetches a URL contradicts; it now points to the FAQ's list of every command that can.
+
 ### One name for each command, one meaning for each flag, one default window
 
 Every old spelling still runs; help teaches the one below.

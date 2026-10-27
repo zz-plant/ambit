@@ -169,7 +169,7 @@ test('the week is stated as movement, and its absence is said, never printed as 
   expect(week).toContain('+2');
   expect(week).toContain('−1');
   expect(week).toContain('this week');
-  expect(render(null)).toContain('no earlier observation to compare yet');
+  expect(render(null)).toContain('nothing recorded earlier to compare with yet');
   expect(render(null)).not.toContain('+0');
   expect(
     render({ from: '2026-09-01', gained: [], emergent: [], lost: [], diminished: [] })

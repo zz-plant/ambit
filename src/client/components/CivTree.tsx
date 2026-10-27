@@ -798,7 +798,7 @@ export default function CivTree({
         rightInset={rightInset}
         lensNote={
           asOf
-            ? 'History keeps what was reached and what its checks said, not who stepped in or what may act. Return to today to use this view.'
+            ? 'A past moment keeps what was reached and what its checks said, not who stepped in or what may act. Go back to now to use this lens.'
             : undefined
         }
         tools={
@@ -819,7 +819,7 @@ export default function CivTree({
                 className={`civ-zoom-btn${historyOpen ? ' is-on' : ''}`}
                 aria-pressed={historyOpen}
                 onClick={() => setHistoryOpen(!historyOpen)}
-                title="The frontier through time: scrub the map back to an earlier observation"
+                title="The frontier through time: scrub the map back to an earlier moment"
               >
                 History
               </button>
@@ -831,7 +831,7 @@ export default function CivTree({
                 aria-expanded={imageOpen}
                 data-image-toggle
                 onClick={() => setImageOpen(!imageOpen)}
-                title="Save an image: the map's finding sized for posting, or the whole map"
+                title="Save the whole map, or its headline as a card to post"
               >
                 Image
               </button>
@@ -1052,7 +1052,7 @@ export default function CivTree({
               // on a node you have, an unlock on one you do not. While one
               // runs, the card does not offer the next over it.
               const hint = asOf
-                ? 'Click: details, as of this observation'
+                ? 'Click: details, as of this moment'
                 : simulationMode !== 'none'
                   ? 'Click: details'
                   : unreached

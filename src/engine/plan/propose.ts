@@ -6,6 +6,7 @@
  * into something a person can approve — steps, an inverse for each, and the
  * economic case where one exists.
  */
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Db } from '../db.ts';
 import { configDefault } from '../paths.ts';
@@ -226,7 +227,8 @@ function propose(
       }
     : economicCaseFor(db, goalId);
 
-  const id = `prop-${Date.now().toString(36)}`;
+  // The clock alone named two proposals drafted in one millisecond the same.
+  const id = `prop-${Date.now().toString(36)}${randomBytes(3).toString('hex')}`;
   db.prepare(
     "INSERT INTO proposals (id, goal, status, steps, simulated, economic_case, proposed_by, purpose) VALUES (?, ?, 'draft', ?, ?, ?, ?, ?)"
   ).run(

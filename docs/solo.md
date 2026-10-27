@@ -21,7 +21,7 @@ The sentence is routed to **Launch Ready**, the launch infrastructure checklist,
 | Error Tracking | The stack trace a user hit, before they write in |
 | Uptime Monitoring | Something outside your laptop that notices when the site is down |
 
-Payments, user accounts, transactional email and product analytics are on the map beside them, in the same two eras (**Product** and **Operations**), and not required for launch, since not every product takes money on day one. Ask for any of them the same way: `ambit goal "take payments"`, `ambit goal "add login"`.
+Payments, user accounts, transactional email and product analytics are on the map beside them, in the same two columns of the map, the eras **Product** and **Operations**, and not required for launch, since not every product takes money on day one. Ask for any of them the same way: `ambit goal "take payments"`, `ambit goal "add login"`.
 
 After each step, `ambit seed` reads the configs again and the list moves.
 
@@ -54,7 +54,9 @@ Budgets and approvals name the person deciding, so declare yourself once: `ambit
 
 An ask-first default can be widened where a mistake is cheap. `ambit authority grant hosting autonomous --scope=staging --by=you` lets an agent deploy to staging without asking, while production, and any call that does not say where it is going, still asks. No grant widens a refusal, at any scope; that is what makes it one.
 
-A ceiling on spend is one line: `ambit budget set hosted-inference --amount=50 --period=month --by=you`, in dollars and without a `$`, which the shell would read. Past it, any caller that states what it is about to spend is refused until the month turns over, whether that is `ambit can --spend` or an agent's `ambit_can`. Claude Code sessions are the one spend recorded on their own: declare what a model costs with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and each session's tokens on it are charged to this budget when the session ends. A session under way is never stopped by the ceiling, and anything else counts only when its caller states it.
+A ceiling on spend is one line: `ambit budget set hosted-inference --amount=50 --period=month --by=you`, in dollars and without a `$`, which the shell would read. Past it, any caller that states what it is about to spend is refused until the month turns over, whether that is `ambit can --spend` or an agent's `ambit_can`.
+
+Claude Code sessions are the one spend recorded on their own: declare what a model costs with `ambit economics price <model> --input=5 --cache-read=0.5 --output=25`, in dollars per million tokens, and each session's tokens on it are charged to this budget when the session ends. A session under way is never stopped by the ceiling, and anything else counts only when its caller states it.
 
 ## When something breaks
 

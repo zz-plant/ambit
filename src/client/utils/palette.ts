@@ -49,7 +49,7 @@ const VIEWS: [View, string, string][] = [
   ['map', 'the map', 'tree reach frontier'],
   ['setup', 'My Setup', 'inventory servers entries'],
   ['cost', 'Time & cost', 'spend budget tokens pay'],
-  ['audit', 'the trail', 'approved ran happened'],
+  ['audit', 'Audit', 'trail approved ran happened'],
   ['proposals', 'Proposals', 'decide approve waiting'],
 ];
 

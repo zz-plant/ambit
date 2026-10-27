@@ -43,11 +43,11 @@ ambit credentials          # what revoking each declared credential would end
 Two of the answers need something from you first:
 
 - **Shared credentials are declared, never inferred.** Ambit cannot see that three servers present one token until a `credentials` block in the config names them ([the shape](./deep-dive.md#what-a-node-is)). Until then `ambit credentials` says none are declared, and three providers behind one token read as three providers.
-- **"Already broken" needs a declared check.** A capability counts as failing only when it declares a check and that check last failed (`ambit verify` runs them). Most MCP servers a person adds have none, so they read as reached and unproven, which means they are counted as working and never shown as broken.
+- **"Already broken" needs a declared check.** A capability counts as failing only when it declares a check and that check last failed (`ambit verify` runs them). Most MCP servers a person adds have none, so they read as reached and unproven: counted as working, never shown as broken.
 
 ## Seeing it on the map
 
-The [hosted demo](https://zz-plant.github.io/ambit/?demo=1&tour=outage) opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press **Simulate an outage** to ask it of that one: what stops turns red, what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.
+The [hosted demo](https://zz-plant.github.io/ambit/?demo=1&tour=outage) opens on the same answer for a sample setup: its MCP servers go down, and what stops turns red. Select any other node and press **Simulate an outage** to ask it of that one: what keeps another provider turns amber, and the node that went down is labelled with how many capabilities stop.
 
 ## Acting on the answer
 
@@ -59,6 +59,6 @@ Each answer has its own fix:
 
 Before removing a server or revoking a token on purpose, run `ambit impact` on it first. Its answer is as complete as the declarations behind it: a shared token nobody declared, or a server with no check, is invisible to it.
 
-Knowing which pieces carry the most is the guardrail half of widening what a setup can do: every new capability rests on pieces that already exist, and this is what makes adding to them safe to lean on.
+Every new capability rests on pieces that already exist, so knowing which ones carry the most is the guardrail half of widening what a setup can do.
 
 Related: [where each AI agent keeps its MCP config](./mcp-config-locations.md) and [auditing which MCP servers a coding agent has](./audit-mcp-servers.md).

@@ -13,7 +13,7 @@ export type ImageKind = 'card' | 'svg' | 'png' | 'relief';
 
 /** Each choice: what it saves, the file it saves it as, and what hovering it says. */
 export const IMAGE_CHOICES: readonly (readonly [ImageKind, string, string, string])[] = [
-  ['card', 'The finding, as a card', 'PNG', "The map's one sentence, sized for a post"],
+  ['card', 'The headline, as a card', 'PNG', "The map's one sentence, sized for a post"],
   ['svg', 'The whole map', 'SVG', 'Every era, node and edge, to print or edit'],
   ['png', 'The whole map', 'PNG, 2×', 'Every era, node and edge, at twice the size'],
   [

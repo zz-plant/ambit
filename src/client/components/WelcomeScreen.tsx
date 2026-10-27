@@ -144,14 +144,14 @@ export default function WelcomeScreen({ onExploreDemo, onViewLoop, onMapped }: W
           </button>
         </div>
         <p className="app-welcome-local">
-          Runs the CLI with nothing installed, and maps every runtime on the machine. Homebrew and{' '}
-          <code>npm install -g ambit-cli</code> keep it.
+          Runs the CLI with nothing installed, and maps every runtime on the machine. To keep it,
+          install with Homebrew or <code>npm install -g ambit-cli</code>.
         </p>
         <nav className="app-welcome-more" aria-label="Read more">
           <button type="button" className="app-welcome-link" onClick={onViewLoop}>
             Time &amp; cost
           </button>
-          <a href={`${DOCS}loadout/`}>Your loadout, from A to B</a>
+          <a href={`${DOCS}loadout/`}>From configs to work done without you</a>
           <a href={`${DOCS}guide/`}>Guide</a>
           <a href={`${DOCS}faq/`}>What it reads, and what leaves your machine</a>
           <a href="https://github.com/zz-plant/ambit" rel="noopener">

@@ -116,13 +116,13 @@ export default function AuditView() {
         {!audit ? (
           <p className="audit-empty">
             {backend === 'static' && !demo
-              ? 'The trail is read from the ledger on this machine, and no engine is answering here.'
+              ? 'No Ambit server is answering here, so there is no trail to read. Run ambit web on your machine to see it.'
               : 'Reading the trail…'}
           </p>
         ) : audit.events.length === 0 ? (
           <p className="audit-empty">
             Nothing recorded in the last {audit.days} days. Approving or turning down a proposal,
-            running <code>ambit verify</code>, and the telemetry bridges all write here.
+            running <code>ambit verify</code>, and the agent plugins all write here.
           </p>
         ) : (
           <>

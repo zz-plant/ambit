@@ -161,7 +161,7 @@ export function HoursSparkline({
       className="fig-spark"
       viewBox={`0 0 ${w} ${h}`}
       role="img"
-      aria-label={`Hours a person spent in the loop, ${baseline}h in ${series[0].month} down to ${last.hours}h in ${last.month}${placed.length ? `; ${placed.map(a => a.text).join(', ')}` : ''}`}
+      aria-label={`Hours spent stepping in, ${baseline}h in ${series[0].month} down to ${last.hours}h in ${last.month}${placed.length ? `; ${placed.map(a => a.text).join(', ')}` : ''}`}
     >
       <title>{series.map(p => `${p.month}: ${p.hours}h`).join(' · ')}</title>
       {/* The band is the saving. Everything else is context for it. */}

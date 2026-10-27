@@ -7,7 +7,7 @@
  * These run in-process against the proxy rather than through the CLI, so a
  * failure names the function that broke.
  */
-import { test, expect, beforeEach, afterEach } from 'vitest';
+import { test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -295,6 +295,25 @@ test('a signed approval does not excuse a failing prerequisite', () => {
   expect(result.ok).toBe(false);
   expect(result.intercept_reason).toContain('Unmet hard prerequisite');
   expect(onDisk().production_version).toBe('v1.4.2');
+});
+
+test('two requests in the same millisecond get their own run and their own proposal', () => {
+  // Both ids were the clock alone, and Node 24 on CI is fast enough to land
+  // two calls in one millisecond: the second failed on a primary key.
+  const now = vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000);
+  try {
+    const first = executeThroughControlPlane(db, envDir, DEPLOY);
+    const second = executeThroughControlPlane(db, envDir, DEPLOY);
+    expect(second.remediation_proposal_id).not.toBe(first.remediation_proposal_id);
+    const runs = db
+      .prepare("SELECT COUNT(*) AS n FROM work_runs WHERE id LIKE 'run-incident-%'")
+      .get() as {
+      n: number;
+    };
+    expect(runs.n).toBe(2);
+  } finally {
+    now.mockRestore();
+  }
 });
 
 test('a block leaves the environment byte-identical, hash included', () => {

@@ -631,9 +631,9 @@ export default function App() {
           // behind a dropped file.
           <div className="app-map-empty">
             <p>
-              The map places a setup on the curated tree, and placing it takes the engine. What this
-              file declares is in My Setup; for the map, clone the repository and run{' '}
-              <code>./bootstrap.sh web</code>.
+              What this file declares is in My Setup. Placing a setup on the map takes Ambit running
+              on your machine: run <code>ambit web</code>, or <code>./bootstrap.sh web</code> in a
+              clone of the repository.
             </p>
             <button type="button" className="tp-btn" onClick={() => showView('setup')}>
               Open My Setup

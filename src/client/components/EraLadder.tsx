@@ -66,7 +66,7 @@ export function EraLadderView({
 
       {asOf && (
         <p className="sp-asof" role="status">
-          As of {asOf}, as that observation recorded it.
+          As of {asOf}.
         </p>
       )}
 
@@ -89,7 +89,7 @@ export function EraLadderView({
       </div>
       <p className="sp-ladder-facts">{facts.join(' · ')}</p>
 
-      <ol className="sp-ladder" aria-label={`${ladder.name}, one rung per node`}>
+      <ol className="sp-ladder" aria-label={`Nodes in ${ladder.name}`}>
         {rows.map(row => (
           <li key={row.item.id}>
             <button
