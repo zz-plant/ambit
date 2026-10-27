@@ -383,7 +383,7 @@ Where an acquisition genuinely *is* a config change, the step carries a declarat
 ambit approve prop-msrrv9c2 --by=kanav
   proposal: prop-msrrv9c2 · goal: Web Research
   approved by: Kanav · applicable: true
-  note: Approved. Every step has an inverse. The approval artifact is signed and expires in 24 hours.
+  apply: ambit apply prop-msrrv9c2
 ```
 
 Approval mints a **signed artifact**: proposal hash, actor, budget, scope, expiry, timestamp, HMAC-signed with a machine-local key (`AMBIT_APPROVAL_KEY`, default `~/.config/opencode/ambit-approval.key`). It is also minted by the browser broker, `POST /api/proposals/:id/approve` (loopback, origin-allowlisted), which approves and signs but never applies. The visualizer's AG-UI stream surfaces the approval as a toast telling you exactly which terminal commands to run.
@@ -397,7 +397,19 @@ ambit rollback prop-msrsqzij
   removed: mcp.fetch          # git survives — the inverse reverses only this
 ```
 
-`apply` checks the artifact and each step's `canExecute`, writes the patch, and runs the goal's check when it declares one; a check that fails there reverses the change. Approval and apply stay off the MCP surface: an agent may draft, preview, and ask, but never approve or apply. Proposing more capability and granting more authority are different acts, and the artifact is what keeps them apart.
+`apply` checks the artifact and each step's `canExecute`, writes the patch, and runs the goal's check when it declares one; a check that fails there reverses the change.
+
+**Which runtime it writes.** `--to` names the runtime by the word `ambit connect` takes (`claude-code`, `cursor`, `opencode`, `vscode` and the rest). Without it, `apply` writes OpenCode when `OPENCODE_CONFIG` names its file, and otherwise the one runtime whose config is on the machine:
+
+```
+ambit apply prop-msrsqzij --to=claude-code
+  applied: true · runtime: Claude Code · keys: claude-code/mcpServers.fetch
+  backup: ~/.claude.json.ambit-prop-msrsqzij.bak
+```
+
+Several runtimes and none named is a question, never a guess. It writes nothing, prints `--to` for each, and says how to make the change by hand in each: the runtime's own command where it ships one (`claude mcp add --scope user …`, `codex mcp add …`, `code --add-mcp …`), otherwise its file and the entry for it. `--print` asks for that answer on purpose. Codex keeps TOML, which Ambit does not write, so it gets the command alone; a patch only OpenCode reads, such as a model provider, is refused anywhere else. The rollback undoes the file the apply wrote, from an inverse worked out against that file and stored before the write.
+
+A patch is written only when it is the one the shipped tree gives that alternative. A plan reads its alternatives from the tree with any project overlay merged in, and an overlay arrives with a cloned repository: its patch would put its own command into a runtime's config, to start with every session. Approval and apply stay off the MCP surface: an agent may draft, preview, and ask, but never approve or apply. Proposing more capability and granting more authority are different acts, and the artifact is what keeps them apart.
 
 ### Delegation records
 
@@ -438,6 +450,7 @@ plan       goal <cap-or-sentence> [--paths|--simulate|--prefs|--judge[=url]] · 
            opportunities [id] [--rank=…] [--budget=N]
            propose <cap> [option] [--for="…"] [--by=<who>] · roi [proposal-id]
            portfolio [--budget=N]
+           judge goal|next|tools|failures|attention|media|evaluate|history|review|plan
 check      verify [cap] [--history] [--target=<object>] · verify --failing
            authority [cap] [scope <target>]
            authority promote [<cap> <action> --after=N --window=30d --scope=X --by=<person>]
@@ -451,7 +464,7 @@ check      verify [cap] [--history] [--target=<object>] · verify --failing
 govern     people [add <id> ["Name"]]
            proposals [id] [--pending] · approve <id> [<id>…] [--by=<person>]
            reject <id> [--by=<person>] ["why"]
-           apply <id> · rollback <id> · dispatch <id> [--to=<url>]
+           apply <id> [--to=<runtime>] [--print] · rollback <id> · dispatch <id> [--to=<url>]
            history [since <when> [<until>]]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest <file>
@@ -487,6 +500,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | `ambit opportunities` | Ranked structural changes worth making — observed middleware burden priced by attention value, acquisition cost, expected effect, payback, confidence. `--by=attention\|cash\|roi\|reliability\|frontier`; `--budget=N` allocates the best combination within $N |
 | `ambit roi [proposal]` | One proposal's before/after verdict, or — with no argument — the cumulative headline: recorded hours and dollars per year and forecast accuracy |
 | `ambit portfolio [--budget=N]` | Across imported environments: the same human burden recurring in several places, person-specific SPOFs, and where capex would produce the most |
+| `ambit judge goal\|next\|tools\|failures\|attention` | What a judgment model makes of what the graph's own words do not settle: which capability a sentence means once the vocabulary has had its turn, which next step serves a goal, what a list of tools, a reported failure or a recorded intervention is about. Each answer is a suggestion with a probability and writes nothing; `--record` keeps it as a receipt, a person reviews a receipt once (`judge review <id> accepted`), and only an accepted goal or spec receipt becomes plans, read from the graph as it stands. `judge evaluate` scores routing against cases with expected answers. A model on this machine answers by default (`AMBIT_JUDGE_URL`, or loopback port 8009), and `--provider=cloudflare` sends the request to Workers AI under your own account |
 | **check** — *what is proven, what is permitted, what is currently broken* | |
 | `ambit authority <cap>` | Which concrete actions does this confer, and which of them may run unattended? |
 | `ambit authority scope <target>` | What a scope actually covers and what it does not — a grant scoped elsewhere is named as excluded |
@@ -504,6 +518,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | **govern** — *the reviewable path from proposal to applied change* | |
 | `ambit people add <id> ["Name"]` | Declare a person budgets and approvals can name. It grants nothing; it gives the trail a name to carry, and the engine refuses a decision from someone it does not know |
 | `ambit proposals --pending` | The drafts waiting on a decision, each with cost, bill and what it unlocks, so approving is one sitting and not one interruption per proposal |
+| `ambit apply <id> [--to=<runtime>]` | Write an approved change into the config of the runtime you use, Claude Code, Cursor or OpenCode among them, backed up first and checked after. Where it cannot write, it gives each runtime's own command instead ([which runtime it writes](#previewing-a-change)) |
 | `ambit reject <id> --by=<person> ["why"]` | A refusal, recorded with its reason, so the next draft and `ambit preferences --observed` can learn the shape of a no. An approval the draft held can no longer be applied |
 | `ambit history since <when> [<until>]` | What became reachable since a past date, and what emerged with nothing added? Up to now, or up to a later observation, with the step in the sentence the map's timeline prints |
 | `ambit audit <run-…\|prop-…\|human:name\|days>` | The trail: who approved what, what ran, against what target, under which grant, and whether it held |
@@ -572,7 +587,7 @@ A capability is named by its id, its id without the kind (`shell-execution`) or 
 
 Answers are kept small. The text half of a result is compact JSON, since a client may send both halves to a model. `ambit_authority` returns who may act alone, who must ask and what is forbidden, which comes to about 0.7KB. It returns the row for every grant only for `detail: true`, and that adds about 10KB on a seeded machine.
 
-`ambit mcp --profile=agent`, or `AMBIT_MCP_PROFILE=agent`, lists only the tools an agent that asks before it acts uses (`ambit_briefing`, `ambit_can`, `ambit_next`, `ambit_impact`, `ambit_plan`, `ambit_goal`, `ambit_verify`, `ambit_record_failure`, `ambit_propose`, `ambit_register_skill`), and a test holds that listing under 5,000 bytes where the full one is held under 20,000. It changes the listing and nothing else: every tool still answers by name, and what may be done is decided by the graph's grants and never by which tools an agent was shown. A name it does not know stops the server from starting, because falling back to the full listing would answer a typo with the thing the flag was typed to avoid.
+`ambit mcp --profile=agent`, or `AMBIT_MCP_PROFILE=agent`, lists only the tools an agent that asks before it acts uses (`ambit_briefing`, `ambit_can`, `ambit_next`, `ambit_impact`, `ambit_plan`, `ambit_goal`, `ambit_verify`, `ambit_record_failure`, `ambit_propose`, `ambit_register_skill`), and a test holds that listing under 5,000 bytes where the full one is held under 20,000. It changes the listing and nothing else: every tool still answers by name, and what may be done is decided by the graph's grants and never by which tools an agent was shown. Most clients let a model call only the tools they listed, so the instructions under this profile name no unlisted tool; they say the rest is the `ambit` command in a shell, which `ambit help --all` lists, and that the server started without the flag lists it all as tools. A name it does not know stops the server from starting, because falling back to the full listing would answer a typo with the thing the flag was typed to avoid.
 
 ### The map, and what it is allowed to do
 

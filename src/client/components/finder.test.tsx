@@ -230,6 +230,15 @@ test('the views are destinations, found by their own words and by their question
   expect(ctx.handlers.briefing).toHaveBeenCalled();
 });
 
+test('the briefing is not offered where no API composes one', () => {
+  // On the hosted demo it led to a section that never loaded, with the tabs
+  // that would leave it hidden.
+  const { briefing: _briefing, ...handlers } = recorder();
+  const actions = buildActions(context({ handlers }));
+  expect(byId(actions, 'view:briefing')).toBeUndefined();
+  expect(byId(actions, 'view:setup')).toBeDefined();
+});
+
 // ── What the finder lists ────────────────────────────────────────────────────
 
 test('typing "shell" lists the node and the actions for it', () => {

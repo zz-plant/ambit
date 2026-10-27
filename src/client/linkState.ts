@@ -257,9 +257,12 @@ export function writeAddress(
   mode: 'push' | 'replace' = 'replace'
 ): void {
   if (bar.location.search === search) return;
-  const write = mode === 'push' ? bar.history.pushState : bar.history.replaceState;
+  const url = search + bar.location.hash;
+  // Called on `history`: detached from it, each is an illegal invocation the
+  // catch below swallowed, so for four days the address bar never moved.
   try {
-    write({}, '', search + bar.location.hash);
+    if (mode === 'push') bar.history.pushState({}, '', url);
+    else bar.history.replaceState({}, '', url);
   } catch {
     /* the address bar catches up on the next change */
   }

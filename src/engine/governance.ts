@@ -1,5 +1,17 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { isDeepStrictEqual } from 'node:util';
 import { configDefault } from './paths.ts';
+import { shippedPatch } from './catalog.ts';
+import {
+  addCommand,
+  type ConfigKind,
+  entryOf,
+  runtimesFound,
+  runtimeTarget,
+  runtimeWords,
+  type ServerSpec,
+  targetFile,
+} from './connect.ts';
 import {
   configSection,
   entryInShape,
@@ -12,7 +24,7 @@ import { removeIn, setIn } from '../shared/jsonEdit.ts';
 import { getDb, type Db } from './db.ts';
 import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
-import { seedFromConfig } from './discovery.ts';
+import { seedEverySource, seedFromConfig } from './discovery.ts';
 import { mintApproval, proposalHash, verifyApproval } from './approval.ts';
 import { pendingDrafts } from './attention.ts';
 import type { ProposalRow } from './rows.ts';
@@ -382,9 +394,10 @@ function approveProposal(db: Db, proposalId?: string, who?: string) {
     applicable: blocking.length === 0,
     artifact: minted.artifact,
     steps_without_inverse: blocking.length ? blocking.map((s: any) => s.name) : undefined,
+    apply: blocking.length ? undefined : `ambit apply ${proposalId}`,
     note: blocking.length
       ? 'Approved, and still not applicable: these steps have no computed inverse, and nothing runs without one.'
-      : 'Approved. Every step has an inverse. The approval artifact is signed and expires in 24 hours.',
+      : 'Approved. Every step has an inverse. ambit apply writes it into the runtime whose config is on this machine, or the one --to names. The approval artifact is signed and expires in 24 hours.',
   };
 }
 
@@ -419,16 +432,20 @@ function showProposal(db: Db, id?: string) {
   if (!id) return { error: 'Usage: ambit proposals <id>' };
   const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(id);
   if (!row) return { error: `No proposal ${id}. See ambit proposals.` };
+  // Where it was written, and not the entry a rollback would put back, which
+  // was someone's own and can carry the tokens in its env.
+  const to = row.applied_to ? JSON.parse(row.applied_to) : undefined;
   return {
     ...row,
     steps: JSON.parse(row.steps),
     simulated: JSON.parse(row.simulated),
     economic_case: row.economic_case ? JSON.parse(row.economic_case) : undefined,
+    applied_to: to ? { runtime: to.label, file: to.path } : undefined,
   };
 }
 
 /**
- * Applies an approved proposal to the configuration, and only to it.
+ * Applies an approved proposal to one runtime's configuration, and only to it.
  *
  * The scope is a deliberate structural limit rather than a starting point. A
  * step carries a declarative patch or it carries nothing — there is no field
@@ -440,13 +457,23 @@ function showProposal(db: Db, id?: string) {
  *   not approved            → a person must have authorised it
  *   any step without an inverse → nothing runs that cannot be undone
  *   any step without a patch    → nothing else is applicable
+ *   a patch the shipped tree does not give → no overlay's command is written
  *   already applied         → not idempotent by accident
+ *
+ * It wrote OpenCode's config and no other, so a Claude Code or Cursor user
+ * could approve a change and never apply it. `--to` names the runtime, as
+ * `ambit connect` does; without it OpenCode when OPENCODE_CONFIG names its
+ * file, else the one runtime whose config is on the machine. Where it cannot
+ * write (several runtimes and none named, a runtime with no writer, a change
+ * only OpenCode reads) it writes nothing and says how to make the change by
+ * hand in each runtime, by that runtime's own command where it has one.
+ * `--print` asks for that answer on purpose.
  *
  * The file is backed up before it is touched, the inverse is stored before the
  * write rather than after, and a failed verification rolls back automatically.
  */
-function applyProposal(db: Db, proposalId?: string) {
-  if (!proposalId) return { error: 'Usage: ambit apply <proposal-id>' };
+function applyProposal(db: Db, proposalId?: string, options: ApplyOptions = {}) {
+  if (!proposalId) return { error: 'Usage: ambit apply <proposal-id> [--to=<runtime>] [--print]' };
   const row = db.prepare('SELECT * FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
   if (row.status === 'applied') return { error: `${proposalId} is already applied.` };
@@ -477,6 +504,17 @@ function applyProposal(db: Db, proposalId?: string) {
       error: `Refused. These are not configuration changes: ${noPatch.join(', ')}. Apply only edits configuration.`,
     };
   }
+  // A plan's alternatives come from the tree with any project overlay merged
+  // in, and an overlay arrives with a cloned repository. Its patch would put
+  // its own command into a runtime's config, started every session after.
+  const foreign = steps
+    .filter((s: any) => !isDeepStrictEqual(s.config_patch, shippedPatch(s.id, s.chosen)))
+    .map((s: any) => s.name);
+  if (foreign.length) {
+    return {
+      error: `Refused. ${foreign.join(', ')} carries a change Ambit's own tree does not ship, and a project overlay can name any command, so nothing is written.`,
+    };
+  }
 
   // Authority, enforced: every step must be permitted for its capability, or
   // the apply is refused even with a valid approval. CONFIRM is satisfied by
@@ -488,13 +526,237 @@ function applyProposal(db: Db, proposalId?: string) {
       action: 'execute',
     });
     if (decision.decision === 'DENY') {
-      return { error: `Refused. ${step.name} is not permitted: ${decision.reason}.` };
+      return {
+        error: `Refused. ${step.name} is not permitted: ${decision.reason.replace(/\.$/, '')}.`,
+      };
     }
   }
 
+  const home = options.home || process.env.HOME || '/';
+  const { servers, openCodeOnly } = serversOf(steps);
+  const chosen = chooseTarget(options.to, home);
+  if ('unknown' in chosen) {
+    return {
+      error: `No runtime called ${chosen.unknown}. Name one of: ${runtimeWords().join(', ')}.`,
+    };
+  }
+  if ('several' in chosen) {
+    const found = chosen.several;
+    // Nothing found is answered the same way, with the runtimes that have a
+    // command of their own, so the change can still be made by hand.
+    const shown = found.length
+      ? found
+      : ['claude-code', 'codex', 'vscode'].map(r => fileTarget(runtimeTarget(r)!, home));
+    return {
+      error: found.length
+        ? `More than one runtime's config is on this machine (${found.map(t => t.label).join(', ')}). Name the one to write with --to, or make the change by hand.`
+        : 'No runtime config was found on this machine. Name one with --to, or make the change by hand.',
+      apply_with: found.map(t => `ambit apply ${proposalId} --to=${t.runtime}`),
+      by_hand: shown.map(t => byHand(t, steps, servers, openCodeOnly)),
+    };
+  }
+  const target = chosen;
+
+  if (options.print) {
+    return {
+      proposal: proposalId,
+      applied: false,
+      by_hand: [byHand(target, steps, servers, openCodeOnly)],
+      note: `Nothing was written. Once it is made, ambit seed reads it; the proposal stays approved, since Ambit did not apply it.`,
+    };
+  }
+
+  const written =
+    target.runtime === 'opencode'
+      ? writeOpencode(db, proposalId, target, steps)
+      : writeRuntime(db, proposalId, target, steps, servers, openCodeOnly);
+  if ('error' in written) return written;
+
+  db.prepare(
+    "UPDATE proposals SET status = 'applied', applied_at = datetime('now'), backup_path = ? WHERE id = ?"
+  ).run(written.backup ?? null, proposalId);
+  db.prepare(
+    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('apply', ?, 'applied', 1, ?)"
+  ).run(row.approved_by, `${proposalId}: ${written.keys.join(', ')}`);
+
+  // Verify the goal if it declares a check. An unverified apply is reported as
+  // such rather than counted as a success.
+  const goalId = steps[steps.length - 1]?.id;
+  const verification = goalId ? (runVerification(db, goalId.replace('combo:', '')) as any) : null;
+  const failed = verification?.results?.some((r: any) => r.status === 'failed');
+
+  if (failed) {
+    // The rollback changes the config back and re-seeds, so the graph reflects
+    // the reverted state without waiting for the next manual seed.
+    const undo = rollbackProposal(db, proposalId) as any;
+    return {
+      proposal: proposalId,
+      applied: false,
+      rolled_back: true,
+      keys: written.keys,
+      reason: 'Verification failed after applying, so the change was reversed.',
+      rollback: undo,
+    };
+  }
+
+  // The graph should reflect the change now, not whenever someone next runs
+  // bootstrap. Re-seeding every runtime folds the applied configuration (and
+  // the verification evidence just recorded) into the graph immediately.
+  const seeded = seedEverySource(db).count;
+
+  return {
+    proposal: proposalId,
+    applied: true,
+    runtime: target.label,
+    file: target.path,
+    keys: written.keys,
+    backup: written.backup,
+    verified: verification?.verified ? true : undefined,
+    unverified:
+      verification && !verification.verified ? 'no check declared for this capability' : undefined,
+    seeded,
+    note:
+      target.runtime === 'opencode'
+        ? 'Applied and re-seeded — the graph reflects this change now.'
+        : `Applied and re-seeded — the graph reflects this change now. ${target.label} reads its servers when it starts, so a session already open does not have it yet.`,
+  };
+}
+
+interface ApplyOptions {
+  /** The runtime whose config is written, by the word `ambit connect` takes. */
+  to?: string;
+  /** Write nothing, and say how to make the change by hand. */
+  print?: boolean;
+  home?: string;
+}
+
+/** Where an apply writes: a runtime, the file it reads, and the shape of its entries. */
+interface ApplyTarget {
+  runtime: string;
+  label: string;
+  path: string;
+  kind: ConfigKind;
+}
+
+/** What `applied_to` holds: the target, and the inverse computed for its file. */
+interface AppliedTo extends ApplyTarget {
+  remove: string[];
+  restore?: Record<string, unknown>;
+}
+
+const opencodeTarget = (): ApplyTarget => ({
+  runtime: 'opencode',
+  label: 'OpenCode',
+  path: configDefault(),
+  kind: 'opencode',
+});
+
+function fileTarget(
+  target: NonNullable<ReturnType<typeof runtimeTarget>>,
+  home: string
+): ApplyTarget {
+  if (target.runtime === 'opencode') return opencodeTarget();
+  const { runtime, label, kind } = target;
+  return { runtime, label, kind, path: targetFile(target, home).path };
+}
+
+/**
+ * The runtime an apply writes: the one `--to` names; OpenCode when
+ * OPENCODE_CONFIG says which file is meant; else the one runtime whose config
+ * is on this machine. Several found is a question for the person, never a
+ * guess, since a server added where nobody works is a change nobody sees.
+ */
+function chooseTarget(
+  to: string | undefined,
+  home: string
+): ApplyTarget | { unknown: string } | { several: ApplyTarget[] } {
+  if (to) {
+    const target = runtimeTarget(to);
+    return target ? fileTarget(target, home) : { unknown: to };
+  }
+  if (process.env.OPENCODE_CONFIG) return opencodeTarget();
+  const found = runtimesFound(home).map(f => fileTarget(f.target, home));
+  return found.length === 1 ? found[0] : { several: found };
+}
+
+/**
+ * The local tool servers a proposal's patches add, as every runtime can say
+ * them, and the entries only OpenCode reads: a model provider, or a server it
+ * reaches by URL.
+ */
+function serversOf(steps: any[]): { servers: ServerSpec[]; openCodeOnly: string[] } {
+  const servers: ServerSpec[] = [];
+  const openCodeOnly: string[] = [];
+  for (const step of steps) {
+    for (const [section, entries] of Object.entries<any>(step.config_patch)) {
+      for (const [name, entry] of Object.entries<any>(entries)) {
+        const words = section === 'mcp' && entry?.type === 'local' ? entry.command : undefined;
+        if (
+          !Array.isArray(words) ||
+          !words.length ||
+          words.some((w: unknown) => typeof w !== 'string')
+        ) {
+          openCodeOnly.push(`${step.name} (${section}.${name})`);
+          continue;
+        }
+        const env = entry.environment;
+        servers.push({
+          name,
+          command: words[0],
+          args: words.slice(1),
+          ...(env && typeof env === 'object' ? { env } : {}),
+        });
+      }
+    }
+  }
+  return { servers, openCodeOnly };
+}
+
+/**
+ * How to make a proposal's change by hand in one runtime: its own command
+ * where it ships one, else its file and the entry that goes in it.
+ */
+function byHand(
+  target: ApplyTarget,
+  steps: any[],
+  servers: ServerSpec[],
+  openCodeOnly: string[]
+): Record<string, unknown> {
+  if (target.runtime === 'opencode') {
+    const add: Record<string, Record<string, unknown>> = {};
+    for (const step of steps)
+      for (const [section, entries] of Object.entries<any>(step.config_patch))
+        add[section] = { ...add[section], ...entries };
+    return { runtime: target.label, file: target.path, add };
+  }
+  if (openCodeOnly.length) {
+    return {
+      runtime: target.label,
+      cannot: `Only OpenCode reads ${openCodeOnly.join(', ')}, so there is nothing to add here.`,
+    };
+  }
+  const commands = servers.map(s => addCommand(target.runtime, s));
+  if (commands.every(Boolean)) return { runtime: target.label, run: commands };
+  return {
+    runtime: target.label,
+    file: target.path,
+    add: { [target.kind]: Object.fromEntries(servers.map(s => [s.name, entryOf(target.kind, s)])) },
+  };
+}
+
+/**
+ * Writes a proposal's patches into OpenCode's config, in whichever major
+ * version's shape the file is already in.
+ */
+function writeOpencode(
+  db: Db,
+  proposalId: string,
+  target: ApplyTarget,
+  steps: any[]
+): { keys: string[]; backup?: string } | { error: string } {
   // Read as OpenCode reads it, comments and trailing commas included: `seed`
   // already did, and a config it could map was one apply refused to read.
-  const configPath = configDefault();
+  const configPath = target.path;
   let text: string;
   let config: any;
   try {
@@ -517,10 +779,18 @@ function applyProposal(db: Db, proposalId?: string) {
     };
   }
 
+  // The file this apply wrote, so the rollback undoes that one even if
+  // OPENCODE_CONFIG names another by then. The steps carry the inverse.
+  const appliedTo: AppliedTo = { ...target, remove: [] };
+  db.prepare('UPDATE proposals SET applied_to = ? WHERE id = ?').run(
+    JSON.stringify(appliedTo),
+    proposalId
+  );
+
   // Each entry is spliced into the text where it goes, so the rest of the file
   // keeps its comments and its formatting, and the rollback that takes the
   // entry out again gives back the file as it was.
-  const applied: string[] = [];
+  const keys: string[] = [];
   for (const step of steps) {
     for (const [section, entries] of Object.entries<any>(step.config_patch)) {
       for (const [key, value] of Object.entries<any>(entries)) {
@@ -529,55 +799,101 @@ function applyProposal(db: Db, proposalId?: string) {
           [...sectionPath(config, section), key],
           entryInShape(config, section, value)
         );
-        applied.push(`${section}.${key}`);
+        keys.push(`${section}.${key}`);
       }
     }
   }
   writeFileSync(configPath, text);
+  return { keys, backup };
+}
 
-  db.prepare(
-    "UPDATE proposals SET status = 'applied', applied_at = datetime('now'), backup_path = ? WHERE id = ?"
-  ).run(backup, proposalId);
-  db.prepare(
-    "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('apply', ?, 'applied', 1, ?)"
-  ).run(row.approved_by, `${proposalId}: ${applied.join(', ')}`);
-
-  // Verify the goal if it declares a check. An unverified apply is reported as
-  // such rather than counted as a success.
-  const goalId = steps[steps.length - 1]?.id;
-  const verification = goalId ? (runVerification(db, goalId.replace('combo:', '')) as any) : null;
-  const failed = verification?.results?.some((r: any) => r.status === 'failed');
-
-  if (failed) {
-    // The rollback changes the config back and re-seeds, so the graph reflects
-    // the reverted state without waiting for the next manual seed.
-    const undo = rollbackProposal(db, proposalId) as any;
+/**
+ * Writes a proposal's servers into another runtime's config, in that file's
+ * own words (`entryOf`), spliced in so its layout and comments stay. The file
+ * has to exist: one that does not is a runtime that never ran here. Its
+ * inverse is worked out from the file as it stands and stored before the
+ * write, since the one the steps carry was computed against OpenCode's.
+ */
+function writeRuntime(
+  db: Db,
+  proposalId: string,
+  target: ApplyTarget,
+  steps: any[],
+  servers: ServerSpec[],
+  openCodeOnly: string[]
+): { keys: string[]; backup?: string } | { error: string; by_hand?: unknown[] } {
+  const by_hand = [
+    byHand(target, steps, servers, openCodeOnly),
+    byHand(opencodeTarget(), steps, servers, openCodeOnly),
+  ];
+  if (openCodeOnly.length) {
     return {
-      proposal: proposalId,
-      applied: false,
-      rolled_back: true,
-      keys: applied,
-      reason: 'Verification failed after applying, so the change was reversed.',
-      rollback: undo,
+      error: `Refused. ${openCodeOnly.join(', ')} is configuration only OpenCode reads, and ${target.label} has no equivalent.`,
+      by_hand,
+    };
+  }
+  if (!entryOf(target.kind, servers[0] ?? { command: '', args: [] })) {
+    return {
+      error: `Refused. ${target.label} keeps its servers in a format Ambit does not write. Add them by hand.`,
+      by_hand,
+    };
+  }
+  if (!existsSync(target.path)) {
+    return {
+      error: `Refused. ${target.path} does not exist, so ${target.label} has not run on this machine.`,
+      by_hand,
     };
   }
 
-  // The graph should reflect the change now, not whenever someone next runs
-  // bootstrap. Re-seeding folds the applied configuration (and the verification
-  // evidence just recorded) into the graph immediately.
-  const seeded = seedFromConfig(db);
+  let text = readFileSync(target.path, 'utf8');
+  let config: any;
+  try {
+    config = parseJsonc(text);
+  } catch {
+    return { error: `Cannot read ${target.path}; left unchanged.`, by_hand };
+  }
+  const isBag = (v: unknown) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
+  const bag = config?.[target.kind];
+  if (!isBag(config) || (bag !== undefined && !isBag(bag))) {
+    return {
+      error: `Refused. ${target.path} is not in the shape ${target.label} documents; left unchanged.`,
+      by_hand,
+    };
+  }
 
-  return {
-    proposal: proposalId,
-    applied: true,
-    keys: applied,
-    backup,
-    verified: verification?.verified ? true : undefined,
-    unverified:
-      verification && !verification.verified ? 'no check declared for this capability' : undefined,
-    seeded,
-    note: 'Applied and re-seeded — the graph reflects this change now.',
+  let backup: string | undefined;
+  try {
+    backup = keepBackup(target.path, `${target.path}.ambit-${proposalId}.bak`);
+  } catch (e) {
+    return {
+      error: `Refused. ${target.path} could not be backed up (${(e as Error).message}), and nothing is changed without one.`,
+    };
+  }
+
+  // Overwriting an entry means the rollback puts the old one back.
+  const remove: string[] = [];
+  const restore: Record<string, unknown> = {};
+  for (const server of servers) {
+    if (bag && Object.hasOwn(bag, server.name)) restore[server.name] = bag[server.name];
+    else remove.push(server.name);
+  }
+  const appliedTo: AppliedTo = {
+    ...target,
+    remove,
+    restore: Object.keys(restore).length ? restore : undefined,
   };
+  db.prepare('UPDATE proposals SET applied_to = ? WHERE id = ?').run(
+    JSON.stringify(appliedTo),
+    proposalId
+  );
+
+  const keys: string[] = [];
+  for (const server of servers) {
+    text = setIn(text, [target.kind, server.name], entryOf(target.kind, server));
+    keys.push(`${target.runtime}/${target.kind}.${server.name}`);
+  }
+  writeFileSync(target.path, text);
+  return { keys, backup };
 }
 
 /**
@@ -585,7 +901,9 @@ function applyProposal(db: Db, proposalId?: string) {
  *
  * Uses the recorded inverse rather than the backup file where it can, because
  * the inverse describes only what this proposal changed — restoring a whole
- * backup would also discard anything edited since.
+ * backup would also discard anything edited since. It undoes the file the
+ * apply wrote: OpenCode's from the steps' inverse, another runtime's from the
+ * one stored with `applied_to`.
  */
 function rollbackProposal(db: Db, proposalId?: string) {
   if (!proposalId) return { error: 'Usage: ambit rollback <proposal-id>' };
@@ -595,7 +913,8 @@ function rollbackProposal(db: Db, proposalId?: string) {
     return { error: `${proposalId} is ${row.status}; nothing to reverse.` };
 
   const steps = JSON.parse(row.steps);
-  const configPath = configDefault();
+  const appliedTo: AppliedTo | null = row.applied_to ? JSON.parse(row.applied_to) : null;
+  const configPath = appliedTo?.path ?? configDefault();
   let text: string;
   let config: any;
   try {
@@ -608,20 +927,35 @@ function rollbackProposal(db: Db, proposalId?: string) {
   // The inverse, spliced into the text the same way apply wrote the entry.
   const removed: string[] = [];
   const restored: string[] = [];
-  for (const step of steps) {
-    const inv = step.inverse || {};
-    for (const path of inv.remove || []) {
-      const [section, key] = path.split('.');
-      const bag = configSection(config, section);
-      if (bag && Object.hasOwn(bag, key)) {
-        text = removeIn(text, [...sectionPath(config, section), key]);
-        removed.push(path);
+  if (appliedTo && appliedTo.runtime !== 'opencode') {
+    const { kind, runtime } = appliedTo;
+    const bag = config?.[kind];
+    for (const name of appliedTo.remove) {
+      if (bag && typeof bag === 'object' && Object.hasOwn(bag, name)) {
+        text = removeIn(text, [kind, name]);
+        removed.push(`${runtime}/${kind}.${name}`);
       }
     }
-    for (const [path, value] of Object.entries<any>(inv.restore || {})) {
-      const [section, key] = path.split('.');
-      text = setIn(text, [...sectionPath(config, section), key], value);
-      restored.push(path);
+    for (const [name, value] of Object.entries(appliedTo.restore ?? {})) {
+      text = setIn(text, [kind, name], value);
+      restored.push(`${runtime}/${kind}.${name}`);
+    }
+  } else {
+    for (const step of steps) {
+      const inv = step.inverse || {};
+      for (const path of inv.remove || []) {
+        const [section, key] = path.split('.');
+        const bag = configSection(config, section);
+        if (bag && Object.hasOwn(bag, key)) {
+          text = removeIn(text, [...sectionPath(config, section), key]);
+          removed.push(path);
+        }
+      }
+      for (const [path, value] of Object.entries<any>(inv.restore || {})) {
+        const [section, key] = path.split('.');
+        text = setIn(text, [...sectionPath(config, section), key], value);
+        restored.push(path);
+      }
     }
   }
   writeFileSync(configPath, text);
@@ -630,7 +964,7 @@ function rollbackProposal(db: Db, proposalId?: string) {
   // The graph follows the config back, as it followed it forward on apply.
   // Without this the frontier stayed where the apply had moved it, and `goal`
   // went on calling what was rolled back already reached.
-  seedFromConfig(db);
+  seedEverySource(db);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('apply', ?, 'rolled_back', 0, ?)"
   ).run(row.approved_by || 'human:unknown', `${proposalId}`);
@@ -638,6 +972,8 @@ function rollbackProposal(db: Db, proposalId?: string) {
   return {
     proposal: proposalId,
     rolled_back: true,
+    runtime: appliedTo?.label,
+    file: configPath,
     removed,
     restored,
     backup_kept: row.backup_path || undefined,

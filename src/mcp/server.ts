@@ -130,6 +130,13 @@ const INSTRUCTIONS = [
   '- When a tool fails, report it with ambit_record_failure. When something missing blocks you, ambit_plan says what closes it and ambit_propose drafts the change for a person to approve.',
   '- You can ask and propose. You can never grant or approve.',
   `- A capability is named by id, such as combo:shell-execution. A bare name such as shell-execution works too${PROFILE === 'full' ? ', and ambit_cap finds one' : ''}.`,
+  // A client calls only the tools it was shown, so the rest of the catalogue
+  // is named as the command that answers it, never as tools to call.
+  ...(PROFILE === 'agent'
+    ? [
+        '- These ten tools are what a task needs. The rest (single points of failure, credentials, budgets, incidents, the audit trail, the council) is the ambit command in a shell: ambit help --all lists it. Started without --profile=agent, this server lists all of it as tools.',
+      ]
+    : []),
 ].join('\n');
 
 /**
