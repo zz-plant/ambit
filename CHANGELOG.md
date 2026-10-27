@@ -6,6 +6,10 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### The Proposals tab's count reaches a screen reader
+
+The tab's label is fixed at "Proposals" so it still names the tab where only the icon shows, and a label replaces everything inside the button: the badge with the number of drafts waiting was never read out. The count is now the tab's description, "2 waiting for your decision", and the badge itself is hidden from assistive technology so it is not read twice. The name stays the word on screen, which is what a voice command says.
+
 ### The page and the landing docs, read as a newcomer would
 
 A pass over every string the page shows and over the README and the docs a search lands on, for the same two faults the last copy fix found in a dozen places. The first was the engine's own words used as if a reader knew them: "observation", "the ledger", "bridges", "tending", "an act", "the trail", a function name. Each now says what happened and what to do; a past moment of the map is a moment, Time & cost's empty page gives the Claude Code plugin's install commands beside OpenCode's, and the Audit view off a machine says to run `ambit web`. The second was text describing what the screen already shows, or saying one thing twice: the briefing tab listed the briefing printed under it, a repository row explained its own drift badge, a turned-down proposal said "Turned down" under a pill saying the same.
