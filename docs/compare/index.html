@@ -51,7 +51,8 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <h1 id="ambit-and-mcp-gateways"><a class="anchor" href="#ambit-and-mcp-gateways" aria-hidden="true" tabindex="-1">#</a>Ambit and MCP gateways</h1>
 <p>Two kinds of tool answer questions about an agent&#39;s MCP servers, and they answer different ones.</p>
 <h2 id="mcp-gateways-and-governance-proxies"><a class="anchor" href="#mcp-gateways-and-governance-proxies" aria-hidden="true" tabindex="-1">#</a>MCP gateways and governance proxies</h2>
-<p>A gateway sits between an agent and its MCP servers, on the path every tool call takes. Each call passes through it, and it can allow the call, hold it for a person, or refuse it, and it logs what happened. Obsigno, Agentward, MCPX and Catalyst describe themselves this way, as do the enterprise MCP gateways. Enterprise discovery tools such as Akto&#39;s inventory the servers connected across a fleet.</p>
+<p>A gateway sits between an agent and its MCP servers, on the path every tool call takes. Each call passes through it, and depending on the product it can allow the call, refuse it, hold it for a person, and log what happened. <a href="https://docs.lunar.dev/mcpx">Lunar&#39;s MCPX</a> is a gateway in that sense, with scoped permissions and an audit trail. <a href="https://github.com/agentward-ai/agentward">AgentWard</a> proxies each call and can allow it, block it or hold it for approval, and logs all three. <a href="https://pypi.org/project/obsigno/">Obsigno</a> proxies calls to allow or deny them and records each decision in a signed ledger; it calls itself an evidence layer, not a general gateway. <a href="https://www.diagrid.io/blog/governing-mcp-access-across-the-enterprise">Diagrid&#39;s Catalyst</a> puts a policy proxy in front of each MCP server.</p>
+<p>Discovery tools answer a different question, which servers exist at all: <a href="https://www.akto.io/blog/mcp-discovery-tools">Akto</a> finds MCP servers across an organization&#39;s networks, cloud and registries.</p>
 <p>A gateway answers <strong>may this call go ahead, now?</strong> It sees calls as they happen, so it knows what was attempted.</p>
 <h2 id="ambit"><a class="anchor" href="#ambit" aria-hidden="true" tabindex="-1">#</a>Ambit</h2>
 <p>Ambit is not on the call path. It reads the configs of Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI and others into one local graph, and answers questions about the setup as a whole:</p>
@@ -93,7 +94,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </tr>
 <tr>
 <td align="left">Where data lives</td>
-<td align="left">Varies; often a hosted service</td>
+<td align="left">Varies: some run on your machine, others as a hosted or self-hosted service</td>
 <td align="left">One local SQLite file; nothing leaves except through a command you typed</td>
 </tr>
 </tbody></table>
