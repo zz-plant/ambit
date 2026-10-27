@@ -6,6 +6,14 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### An approved change reaches the runtime you use
+
+The tour ends on "Agents propose changes… Only you can approve one", and for most people approving was the end of it. `ambit apply` wrote OpenCode's config and nothing else, so a Claude Code or Cursor user who approved a change had no command that made it. It now writes the runtime `--to` names, by the word `ambit connect` takes, or, without one, the one runtime whose config is on the machine: `ambit apply <id> --to=claude-code` puts the server under `mcpServers` in `~/.claude.json`, keeping the rest of the file, and `ambit rollback` gives the file its bytes back. The re-seed after either reads every runtime, where it read OpenCode alone and left what it had just written unseen.
+
+Where it cannot write, it says how to make the change by hand instead of refusing with nothing: several runtimes and none named, Codex's TOML, a file that is not there. Each runtime gets its own command where it ships one (`claude mcp add --scope user …`, `codex mcp add …`, `code --add-mcp …`), each checked against that CLI's help, and otherwise its file and the entry. `--print` asks for that on purpose.
+
+A plan reads its ways to acquire a capability from the tree with any project overlay merged in, so an overlay, which can arrive with a cloned repository, could give a step its own command and `apply` would write it once someone approved. A patch is now written only when it is the shipped tree's.
+
 ### Every view, as a screenshot
 
 Each view was photographed at rest at 1440×900, 1280×720 and a phone, and fourteen things were wrong with the pictures.

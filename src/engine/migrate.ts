@@ -64,6 +64,9 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   // What the change is for. Bound into the hash only when present, so every
   // approval minted before it stays valid.
   ['proposals', 'purpose', 'TEXT'],
+  // Which runtime's config an apply wrote, and that file's inverse. Left out
+  // of the hash: the person typing `apply` names the runtime, after approving.
+  ['proposals', 'applied_to', 'TEXT'],
   // §12.6: a grant can carry the evidence threshold that would widen it. Null
   // means what it has always meant — this grant only ever changes by hand.
   ['authority', 'promote_after', 'INTEGER'],

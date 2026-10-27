@@ -662,7 +662,9 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
   } catch {
     /* a database predating rejections */
   }
-  return rows.map(r => ({
+  // `applied_to` stays out: it holds the entry a rollback would put back,
+  // which was someone's own server and can carry tokens in its env.
+  return rows.map(({ applied_to: _appliedTo, ...r }) => ({
     ...r,
     status: (PROPOSAL_STATUSES as readonly string[]).includes(r.status)
       ? (r.status as ProposalStatus)

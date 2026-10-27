@@ -21,6 +21,7 @@ import {
   renderCarry,
   renderImpact,
   renderNext,
+  renderApply,
   renderDoctor,
   renderWindows,
   renderPlan,
@@ -738,7 +739,9 @@ async function runCommand(
       break;
     }
     case 'apply':
-      emit(applyProposal(db, arg));
+      emit(applyProposal(db, arg, { to: value('to'), print: flags.has('--print') }), r =>
+        renderApply(r, terminalPalette())
+      );
       break;
     // What each tool server's listing costs in context. Weighing starts the
     // servers the configs declare, so it runs only when typed; --recorded

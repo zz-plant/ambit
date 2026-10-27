@@ -266,7 +266,7 @@ function propose(
     // is a claim about them, and they should be able to argue with it.
     chosen_because: chosenBecause.length ? chosenBecause[0] : undefined,
     note: steps.every((s: any) => s.inverse)
-      ? 'Every step is a reversible config change. A person approves it (ambit approve), then ambit apply edits the config, re-seeds, and rolls back on a failed check.'
+      ? "Every step is a reversible config change. A person approves it (ambit approve), then ambit apply writes it into a runtime's config (--to=claude-code, cursor, opencode or another), re-seeds, and rolls back on a failed check."
       : 'Draft only. A step without a computed inverse cannot be applied — it describes work a person does.',
   };
 }

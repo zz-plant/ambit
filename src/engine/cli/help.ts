@@ -180,7 +180,12 @@ govern — the reviewable path from proposal to applied change
   govern approve <id> [<id>…] [--by=<person>]   several in one sitting
   govern reject <id> [--by=<person>] ["why"]    a no, recorded — it teaches the
                           next draft
-  govern apply <id> / govern rollback <id>
+  govern apply <id> [--to=<runtime>] [--print]   write an approved change into a
+                          runtime's config: the one --to names (claude-code,
+                          cursor, opencode, vscode…), else the one found here.
+                          Where it cannot write, or with --print, it writes
+                          nothing and gives each runtime's own command
+  govern rollback <id>    undo it, in the file it was written to
   govern dispatch <id> [--to=<url>]   push a proposal to Slack, Discord,
                           Telegram, ntfy or any JSON endpoint. A draft goes
                           out for a decision, an approved one as its signed

@@ -292,7 +292,7 @@ The server sends this instruction in the MCP handshake. For clients that do not 
 
 Selecting a node displays downstream dependencies that fail if it goes down, or missing prerequisites and estimated setup times needed to reach it. **Simulate an outage** renders that cascade, filled red for broken dependencies, a red outline for unconfigured nodes, and amber for capabilities losing redundant providers. **Simulate unlocking** highlights nodes made reachable by acquiring a single prerequisite. Neither simulation writes data. Three lenses filter the map: **Standard** (reached, next step, blocked), **Attention** (tools causing frequent human interruptions), and **Authority** (unattended, human confirmation required, forbidden).
 
-When an agent proposes a configuration change over MCP, the **Proposals** view shows it as a plan before you sign: its steps, which of them cannot be undone, the capabilities it would unlock, its costs, and earlier approvals that bear on it. Approving creates a signed artifact, applied locally via `ambit apply`.
+When an agent proposes a configuration change over MCP, the **Proposals** view shows it as a plan before you sign: its steps, which of them cannot be undone, the capabilities it would unlock, its costs, and earlier approvals that bear on it. Approving creates a signed artifact, and `ambit apply` writes the change into Claude Code, Cursor, OpenCode or whichever runtime `--to` names, or prints that runtime's own command where it cannot.
 
 [The reference](./docs/deep-dive.md#the-map-and-what-it-is-allowed-to-do) covers the rest: what each mark means, focus, the minimap, the timeline that replays the map as it was, deciding several drafts at once, and pushing one to your phone.
 

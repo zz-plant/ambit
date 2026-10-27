@@ -383,7 +383,7 @@ Where an acquisition genuinely *is* a config change, the step carries a declarat
 ambit approve prop-msrrv9c2 --by=kanav
   proposal: prop-msrrv9c2 · goal: Web Research
   approved by: Kanav · applicable: true
-  note: Approved. Every step has an inverse. The approval artifact is signed and expires in 24 hours.
+  apply: ambit apply prop-msrrv9c2
 ```
 
 Approval mints a **signed artifact**: proposal hash, actor, budget, scope, expiry, timestamp, HMAC-signed with a machine-local key (`AMBIT_APPROVAL_KEY`, default `~/.config/opencode/ambit-approval.key`). It is also minted by the browser broker, `POST /api/proposals/:id/approve` (loopback, origin-allowlisted), which approves and signs but never applies. The visualizer's AG-UI stream surfaces the approval as a toast telling you exactly which terminal commands to run.
@@ -397,7 +397,19 @@ ambit rollback prop-msrsqzij
   removed: mcp.fetch          # git survives — the inverse reverses only this
 ```
 
-`apply` checks the artifact and each step's `canExecute`, writes the patch, and runs the goal's check when it declares one; a check that fails there reverses the change. Approval and apply stay off the MCP surface: an agent may draft, preview, and ask, but never approve or apply. Proposing more capability and granting more authority are different acts, and the artifact is what keeps them apart.
+`apply` checks the artifact and each step's `canExecute`, writes the patch, and runs the goal's check when it declares one; a check that fails there reverses the change.
+
+**Which runtime it writes.** `--to` names the runtime by the word `ambit connect` takes (`claude-code`, `cursor`, `opencode`, `vscode` and the rest). Without it, `apply` writes OpenCode when `OPENCODE_CONFIG` names its file, and otherwise the one runtime whose config is on the machine:
+
+```
+ambit apply prop-msrsqzij --to=claude-code
+  applied: true · runtime: Claude Code · keys: claude-code/mcpServers.fetch
+  backup: ~/.claude.json.ambit-prop-msrsqzij.bak
+```
+
+Several runtimes and none named is a question, never a guess. It writes nothing, prints `--to` for each, and says how to make the change by hand in each: the runtime's own command where it ships one (`claude mcp add --scope user …`, `codex mcp add …`, `code --add-mcp …`), otherwise its file and the entry for it. `--print` asks for that answer on purpose. Codex keeps TOML, which Ambit does not write, so it gets the command alone; a patch only OpenCode reads, such as a model provider, is refused anywhere else. The rollback undoes the file the apply wrote, from an inverse worked out against that file and stored before the write.
+
+A patch is written only when it is the one the shipped tree gives that alternative. A plan reads its alternatives from the tree with any project overlay merged in, and an overlay arrives with a cloned repository: its patch would put its own command into a runtime's config, to start with every session. Approval and apply stay off the MCP surface: an agent may draft, preview, and ask, but never approve or apply. Proposing more capability and granting more authority are different acts, and the artifact is what keeps them apart.
 
 ### Delegation records
 
@@ -452,7 +464,7 @@ check      verify [cap] [--history] [--target=<object>] · verify --failing
 govern     people [add <id> ["Name"]]
            proposals [id] [--pending] · approve <id> [<id>…] [--by=<person>]
            reject <id> [--by=<person>] ["why"]
-           apply <id> · rollback <id> · dispatch <id> [--to=<url>]
+           apply <id> [--to=<runtime>] [--print] · rollback <id> · dispatch <id> [--to=<url>]
            history [since <when> [<until>]]
            audit [run-…|prop-…|human:name|days]
            delegation [verify] [--record] [--export] · delegation ingest <file>
@@ -506,6 +518,7 @@ Two more sit outside the groups because they start a process instead of answerin
 | **govern** — *the reviewable path from proposal to applied change* | |
 | `ambit people add <id> ["Name"]` | Declare a person budgets and approvals can name. It grants nothing; it gives the trail a name to carry, and the engine refuses a decision from someone it does not know |
 | `ambit proposals --pending` | The drafts waiting on a decision, each with cost, bill and what it unlocks, so approving is one sitting and not one interruption per proposal |
+| `ambit apply <id> [--to=<runtime>]` | Write an approved change into the config of the runtime you use, Claude Code, Cursor or OpenCode among them, backed up first and checked after. Where it cannot write, it gives each runtime's own command instead ([which runtime it writes](#previewing-a-change)) |
 | `ambit reject <id> --by=<person> ["why"]` | A refusal, recorded with its reason, so the next draft and `ambit preferences --observed` can learn the shape of a no. An approval the draft held can no longer be applied |
 | `ambit history since <when> [<until>]` | What became reachable since a past date, and what emerged with nothing added? Up to now, or up to a later observation, with the step in the sentence the map's timeline prints |
 | `ambit audit <run-…\|prop-…\|human:name\|days>` | The trail: who approved what, what ran, against what target, under which grant, and whether it held |

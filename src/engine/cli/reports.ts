@@ -1121,6 +1121,38 @@ function renderNext(report: NextReport, c: Palette = C): string[] {
 }
 
 /**
+ * `ambit apply` where it wrote nothing: what stopped it, the `--to` that would
+ * write, and each runtime's way by hand, a command or an entry to a line, so
+ * what is printed is what gets pasted. The generic view joined the commands
+ * with commas and flattened an entry's list of arguments into one word.
+ * Anything else apply answers reads the generic way.
+ */
+function renderApply(result: any, c: Palette = C): string[] {
+  if (!Array.isArray(result?.by_hand)) return formatGeneric(result, c);
+  const lines = ['', `${GUTTER}${result.error ?? result.note ?? ''}`];
+  if (result.apply_with?.length) {
+    lines.push('', `${GUTTER}Name the runtime to write:`);
+    for (const command of result.apply_with)
+      lines.push(`  ${c.accent}${c.bold}›${c.reset} ${c.bold}${command}${c.reset}`);
+  }
+  lines.push('', `${GUTTER}${result.apply_with?.length ? 'Or by hand:' : 'By hand:'}`);
+  for (const way of result.by_hand) {
+    const head = `${GUTTER}${c.bold}${way.runtime}${c.reset}`;
+    if (way.run) {
+      lines.push(head, ...way.run.map((command: string) => `${GUTTER}  ${command}`));
+    } else if (way.add) {
+      lines.push(`${head} ${c.grey}· add to ${way.file}${c.reset}`);
+      for (const line of JSON.stringify(way.add, null, 2).split('\n'))
+        lines.push(`${GUTTER}  ${line}`);
+    } else if (way.cannot) {
+      lines.push(`${head} ${c.grey}· ${way.cannot}${c.reset}`);
+    }
+  }
+  lines.push('');
+  return lines;
+}
+
+/**
  * `ambit doctor` as a person reads it: the grade or why there is none, the
  * counts, which runtimes have Ambit connected, and what to do, one per line.
  * Its recommendations printed as one comma-joined string.
@@ -1209,6 +1241,7 @@ export {
   renderBrief,
   renderImpact,
   renderNext,
+  renderApply,
   renderDoctor,
   renderCarry,
   renderWindows,
