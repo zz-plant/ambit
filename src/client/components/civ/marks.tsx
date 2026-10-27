@@ -407,6 +407,15 @@ export const CAPS = {
 } as const;
 
 /**
+ * The rule under a callout's label: about 6.3px a character in the readout
+ * face's narrow capitals at 11px, as measured.
+ */
+const calloutWidth = (text: string) => text.length * 6.3 + 4;
+
+/** How far a callout reaches left of its node's centre, which a frame has to keep. */
+export const calloutReach = (r: number, text: string) => r + 12 + calloutWidth(text);
+
+/**
  * A spec-sheet callout, as the saved image draws one: a leader from the
  * node's upper left to a short rule, and a label in capitals on the rule.
  * Up and to the left, since the upper right carries a node's check badge and
@@ -427,9 +436,7 @@ export function Callout({
   const from = -r * 0.72;
   const elbowX = -r - 12;
   const elbowY = -r - 12;
-  // The rule runs the width of the label: about 6.3px a character in the
-  // readout face's narrow capitals at 11px, as measured.
-  const width = text.length * 6.3 + 4;
+  const width = calloutWidth(text);
   return (
     <g pointerEvents="none">
       <path

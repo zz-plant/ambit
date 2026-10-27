@@ -1326,7 +1326,9 @@ export interface Framing {
  * strip a bottom sheet covers. `keep` is the one point that has to be in view
  * when not everything fits, the node whose panel is open: a selection framed
  * from the top of what it needs and enables left the node itself under the
- * sheet describing it.
+ * sheet describing it. `head` is a scene y shown too when the frame has
+ * room for it without losing a point, the top of the era bands: framed from
+ * the centre of what it lit, the unlock put the era names under its banner.
  */
 export function frameScene(
   points: { x: number; y: number }[],
@@ -1338,6 +1340,7 @@ export function frameScene(
     inset?: number;
     insetTop?: number;
     keep?: { x: number; y: number };
+    head?: number;
     /** How many columns the scene has, to start the frame on a whole one. */
     columns?: number;
     /** The scene's width, where the scroll stops. */
@@ -1373,6 +1376,12 @@ export function frameScene(
     if (y - above < top + view.top || y + below > top + view.top + view.height) {
       top = y - view.top - view.height / 2;
     }
+  }
+  if (opts.head !== undefined && !tall) {
+    // Moved up to show the head only as far as the lowest name stays in view.
+    const show = opts.head * zoom + insetTop - view.top;
+    const lowest = maxY * zoom + insetTop - view.top - view.height;
+    if (show < top && show >= lowest) top = show;
   }
   if (opts.columns) {
     // What has to stay in view: the nodes, or where a frame too narrow for

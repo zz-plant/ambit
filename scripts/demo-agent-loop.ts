@@ -49,9 +49,21 @@ writeFileSync(
   )
 );
 
-// AMBIT_NO_LEDGER: the demo's graph must not read the session logs of the
-// machine it is recorded on.
-const ENV = { ...process.env, AMBIT_DB: dbPath, OPENCODE_CONFIG: configPath, AMBIT_NO_LEDGER: '1' };
+// The demo's graph reads nothing of the machine it is recorded on: not its
+// session logs, and not its local models, which on a machine holding an
+// embedding model reached Embeddings before the loop could propose it, and
+// would have put that machine's model names in the recording.
+const home = join(work, 'home');
+mkdirSync(home);
+const ENV = {
+  ...process.env,
+  HOME: home,
+  AMBIT_DB: dbPath,
+  OPENCODE_CONFIG: configPath,
+  OLLAMA_MODELS: join(home, '.ollama', 'models'),
+  AMBIT_LMSTUDIO_MODELS: join(home, '.lmstudio', 'models'),
+  AMBIT_NO_LEDGER: '1',
+};
 
 const strip = (s: string) =>
   // biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the point — this strips ANSI colour from captured output.
@@ -59,22 +71,30 @@ const strip = (s: string) =>
 
 function cli(...args: string[]): string[] {
   const r = spawnSync(
-    'node',
+    process.execPath,
     ['--experimental-sqlite', join(ROOT, 'src', 'engine', 'engine.ts'), ...args],
     { env: ENV, encoding: 'utf8' }
   );
   if (r.status !== 0) throw new Error(`ambit ${args.join(' ')} failed: ${r.stderr}`);
+  // The scratch directory is this machine's temp folder; the frame says where in general.
   return strip(r.stdout)
+    .replaceAll(tmpdir(), '$TMPDIR')
     .split('\n')
     .filter(l => l.trim() !== '');
 }
 
-/** One MCP session, real jsonrpc over the real server's stdio. */
-async function mcp(calls: { name: string; args: any }[]): Promise<string[][]> {
-  const proc = spawn('node', ['--experimental-sqlite', join(ROOT, 'src', 'mcp', 'server.ts')], {
-    env: ENV,
-    stdio: ['pipe', 'pipe', 'ignore'],
-  });
+type Answer = Record<string, unknown>;
+
+/** One MCP session, real jsonrpc over the real server's stdio. Each answer, parsed. */
+async function mcp(calls: { name: string; args: any }[]): Promise<Answer[]> {
+  const proc = spawn(
+    process.execPath,
+    ['--experimental-sqlite', join(ROOT, 'src', 'mcp', 'server.ts')],
+    {
+      env: ENV,
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }
+  );
   const send = (o: any) => proc.stdin.write(JSON.stringify(o) + '\n');
   let buf = '';
   const responses: any[] = [];
@@ -110,10 +130,12 @@ async function mcp(calls: { name: string; args: any }[]): Promise<string[][]> {
   });
   await done;
   proc.kill();
-  // First response is the handshake; the rest map 1:1 onto calls.
+  // First response is the handshake; the rest map 1:1 onto calls. A tool answers
+  // with one line of JSON, which split on newlines was one unreadable line.
   return responses.slice(1).map(r => {
-    const text = r.result?.content?.[0]?.text ?? JSON.stringify(r.result ?? r.error);
-    return text.split('\n');
+    const text = r.result?.content?.[0]?.text;
+    if (typeof text !== 'string') throw new Error(`no answer: ${JSON.stringify(r.error ?? r)}`);
+    return JSON.parse(text) as Answer;
   });
 }
 
@@ -135,8 +157,8 @@ const [blockedOut, goalOut] = await mcp([
   { name: 'ambit_goal', args: { goal: 'semantic search over the team wiki' } },
 ]);
 const [proposeOut] = await mcp([{ name: 'ambit_propose', args: { capId: 'embeddings' } }]);
-const proposalId = proposeOut.join('\n').match(/prop-[a-z0-9]+/)?.[0];
-if (!proposalId) throw new Error('no proposal id in propose output');
+const proposalId = typeof proposeOut.proposal === 'string' ? proposeOut.proposal : null;
+if (!proposalId) throw new Error(`no proposal id in propose output: ${JSON.stringify(proposeOut)}`);
 
 console.log(`Human side: approve + apply ${proposalId}…`);
 const approveOut = cli('approve', proposalId, 'jordan');
@@ -161,12 +183,14 @@ const CMD = '#7dd3fc',
 const take = (lines: string[], n: number) =>
   lines.slice(0, n).map(l => ({ t: l.length > 88 ? l.slice(0, 85) + '…' : l, c: TXT }));
 
-// JSON from MCP responses is dense; pull the lines that carry the story.
-const pick = (lines: string[], keys: string[], n = 10): Line[] =>
-  lines
-    .filter(l => keys.some(k => l.includes(k)))
-    .slice(0, n)
-    .map(l => ({ t: l.trim().replace(/[",]/g, '').slice(0, 86), c: TXT }));
+// An MCP answer carries more than a frame holds; show the fields that carry
+// the story, one to a line, in the order given.
+const pick = (answer: Answer, keys: string[]): Line[] =>
+  keys
+    .filter(k => answer[k] !== undefined && answer[k] !== null && typeof answer[k] !== 'object')
+    .map(k => ({ t: `${k}: ${String(answer[k])}`.slice(0, 86), c: TXT }));
+const first = (answer: Answer, key: string): Answer =>
+  (Array.isArray(answer[key]) ? (answer[key] as Answer[])[0] : undefined) ?? {};
 
 const frames: Frame[] = [
   {
@@ -179,7 +203,7 @@ const frames: Frame[] = [
       { t: '', c: TXT },
       { t: 'tool ▸ blocked { capId: "local-embeddings",', c: CMD },
       { t: '               classification: "infrastructure" }', c: CMD },
-      ...pick(blockedOut, ['recorded', 'times_blocked', 'classification'], 3),
+      ...pick(blockedOut, ['recorded', 'classification', 'times_blocked']),
       { t: '', c: TXT },
       { t: '  The deficit is on record. Same block twice is a pattern, not luck.', c: DIM },
     ],
@@ -190,7 +214,8 @@ const frames: Frame[] = [
     hold: 4,
     lines: [
       { t: 'tool ▸ goal { goal: "semantic search over the team wiki" }', c: CMD },
-      ...pick(goalOut, ['"goal"', 'reachable', 'steps', 'estimated', 'name'], 8),
+      ...pick(goalOut, ['goal']),
+      ...pick(first(goalOut, 'candidates'), ['name', 'reachable', 'steps', 'estimated_setup']),
       { t: '', c: TXT },
       { t: '  One config change away. Ambit knows the order and the cost.', c: DIM },
     ],
@@ -201,11 +226,9 @@ const frames: Frame[] = [
     hold: 4,
     lines: [
       { t: 'tool ▸ propose { capId: "embeddings" }', c: CMD },
-      ...pick(
-        proposeOut,
-        ['proposal', 'status', 'applicable', 'chosen', 'privacy', 'recurring'],
-        7
-      ),
+      ...pick(proposeOut, ['proposal', 'status']),
+      ...pick(first(proposeOut, 'steps'), ['chosen', 'recurring_cost', 'privacy']),
+      ...pick(proposeOut, ['applicable']),
       { t: '', c: TXT },
       { t: '  A draft, not an action. The agent can propose; only a person applies.', c: DIM },
     ],
