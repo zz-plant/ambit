@@ -126,7 +126,7 @@ export const PAGES: Page[] = [
     title: 'Where each AI agent keeps its MCP config: Claude Code, Cursor, Codex and more',
     description:
       'The MCP config files, user and project, and the key for Claude Code, Claude Desktop, Cursor, Windsurf, Gemini CLI, Codex CLI, OpenCode, Zed, VS Code and more.',
-    card: 'Twelve agents, twelve config files, one table',
+    card: 'Sixteen agents, sixteen config files, one table',
     pitch: {
       text: 'reads the user-level files below into one local map of what your agents can do together: which servers each runtime has, what one more step would open, and which pieces fail their checks.',
       href: tourAt('yours'),
@@ -361,7 +361,7 @@ export function tryCard(page: Page): string {
   return `<section class="try" aria-labelledby="try-ambit">
 <a class="shot" href="${DEMO}" tabindex="-1" aria-hidden="true"><img src="${BASE}${SHOT}" width="1280" height="800" loading="lazy" decoding="async" alt=""></a>
 <p class="try-title" id="try-ambit">See what your own agents can reach</p>
-<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and nine more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
+<p>Ambit reads the configs of Claude Code, Cursor, OpenCode and thirteen more agent runtimes into one local map: what your agents can do now, what one more step would open, and which pieces fail their checks.</p>
 <p class="actions"><a class="button" href="${DEMO}">Open the live demo</a><span class="alt">a sample setup in your browser, nothing to install</span></p>
 <p>On your machine: <code>npx ambit-cli</code>, with Node 22.18 or newer on macOS or Linux.</p>
 <p class="trust">MIT licensed · one local SQLite file, no telemetry · on npm and in the official MCP registry</p>

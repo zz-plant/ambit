@@ -247,7 +247,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                     Read in this tab: {entries.length} {entries.length === 1 ? 'entry' : 'entries'}.
                   </strong>{' '}
                   Placing them on the map, with what each one makes possible and what breaks without
-                  it, takes the engine, which reads every runtime on the machine:
+                  it, takes the CLI, which reads every runtime on the machine:
                 </p>
                 <code>{INSTALL}</code>
               </div>
@@ -367,10 +367,9 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
           // ambit://briefing; this is the same prose.
           <div className="setup-briefing">
             <p className="tp-note">
-              What an agent is told when it connects, before its first tool call: what works, what
-              is broken, what waits on you, what blocked work lately, and what to reach next. Capped
-              near {briefing?.budget ?? 1200} tokens and trimmed from the bottom, so the order is
-              the order of usefulness.
+              What an agent is told when it connects, before its first tool call. Capped near{' '}
+              {briefing?.budget ?? 1200} tokens and trimmed from the bottom, so the most useful
+              lines come first.
             </p>
             {briefing ? (
               // A message, and drawn as one: Ambit's, to the agent, at connect.

@@ -282,9 +282,9 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Key</span>
                   <span className="docs-answers">
-                    Beside zoom: what each mark on the map means. Press a key to highlight only that
-                    kind: keystones, failing checks, next steps. The counts in the header do the
-                    same. Esc closes the key, then clears the highlight
+                    Beside zoom: what each mark on the map means. Press an entry to highlight only
+                    that kind: keystones, failing checks, next steps. The counts in the header do
+                    the same. Esc closes the key, then clears the highlight
                   </span>
                 </div>
                 <div className="docs-action">
@@ -297,9 +297,9 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Lenses</span>
                   <span className="docs-answers">
-                    Over the map: how it is colored. Attention is offered once the ledger has
-                    recorded something to color; Authority shows what each reached node may do
-                    without asking
+                    Over the map: how it is colored. Attention is offered once a person has been
+                    recorded stepping in; Authority shows what each reached node may do without
+                    asking
                   </span>
                 </div>
                 <div className="docs-action">
@@ -312,8 +312,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Timeline</span>
                   <span className="docs-answers">
-                    From History beside zoom, once two observations are recorded. Drag the playhead
-                    or step it with the arrow keys, and the map redraws as that observation left it,
+                    From History beside zoom, once two seeds have recorded the frontier. Drag the
+                    playhead or step it with the arrow keys, and the map redraws as it stood then,
                     with today's names and edges. Play steps through them on its own up to now, and
                     Space on the playhead plays or pauses. Lenses and simulations wait for now
                   </span>
@@ -328,8 +328,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
                 <div className="docs-action">
                   <span className="docs-cmd">Live</span>
                   <span className="docs-answers">
-                    Shown when an engine is attached: the map redraws itself when the graph is
-                    rebuilt
+                    Shown while the page is connected to your graph: the map redraws itself when the
+                    graph changes
                   </span>
                 </div>
               </div>
@@ -348,13 +348,12 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
               </div>
               <h3 className="docs-h3">Start here</h3>
               <p className="docs-p">
-                If you only run one, run <code className="docs-cmd-inline">ambit status</code>. It
-                answers how the system is doing, what is reached, what is broken, and what is one
-                step away.
+                If you run one command, run <code className="docs-cmd-inline">ambit status</code>:
+                what is reached, what is failing, and the next steps.
               </p>
               <p className="docs-p docs-muted">
-                Run <code className="docs-cmd-inline">ambit help</code> for CLI definitions in the
-                terminal.
+                <code className="docs-cmd-inline">ambit help &lt;term&gt;</code> prints any of these
+                definitions in the terminal.
               </p>
             </>
           )}

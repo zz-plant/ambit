@@ -52,7 +52,7 @@ ambit graph unmapped --days=30   # what the agents used that no node accounts fo
 ambit audit 30                   # who approved what, what ran, and what came of it
 ```
 
-Both read the work ledger. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
+Both read the work ledger, Ambit's local record of what agents ran and who was asked. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
 
 `ambit graph unmapped` lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs, the runs the ledger recorded, and every grant that narrowed itself because a check failed.
 
@@ -60,6 +60,6 @@ Both read the work ledger. Five things fill it: the OpenCode telemetry plugin, t
 
 An audit is a snapshot. `ambit briefing` is the standing version. It is what an agent is told when it connects over MCP, before its first tool call, including what is broken and what waits on a person. Registering Ambit as an MCP server puts that briefing in front of every session, so the agent works from the audit and not from its own assumptions.
 
-Nothing in any of this leaves the machine. The graph is a local SQLite file, and there is no telemetry.
+The graph is a local SQLite file, and there is no telemetry. A declared check is a command and can reach the network; [the FAQ](./faq.md#does-anything-leave-my-machine) lists every command that can.
 
 Related: [what breaks if an MCP server goes down](./mcp-outage.md).

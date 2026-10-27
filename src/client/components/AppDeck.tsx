@@ -160,7 +160,7 @@ export default function AppDeck(p: AppDeckProps) {
           className="app-deck-btn"
           onClick={p.onSearch}
           title="Find a capability on the map or in your setup (/)"
-          aria-label="Search capabilities"
+          aria-label="Search capabilities and actions (/)"
         >
           <svg
             width="13"
@@ -228,7 +228,7 @@ export default function AppDeck(p: AppDeckProps) {
         {p.connected && (
           <span
             className="app-live"
-            title="Live: this map redraws itself when a seed, an adapter or another session rebuilds the graph"
+            title="Connected to your graph: the map redraws when a seed, a check or another session changes it"
           >
             <span className="app-live-dot" aria-hidden="true" />
             Live
@@ -301,7 +301,7 @@ export default function AppDeck(p: AppDeckProps) {
             onClick={() => p.onShowView('cost')}
             // The name, for where the tab shows only its icon.
             aria-label="Time & cost"
-            title="Where human attention goes, and what would pay back fastest"
+            title="Where your time and your agents' spend go, and what would pay back fastest"
           >
             <svg
               width="13"
@@ -442,7 +442,7 @@ export default function AppDeck(p: AppDeckProps) {
           className="app-deck-btn"
           onClick={p.onShowDocs}
           title="Every term on the map, defined (?)"
-          aria-label="Documentation and glossary"
+          aria-label="Docs: the guide and glossary (?)"
         >
           <svg
             width="13"

@@ -69,7 +69,7 @@ export function Timeline({
           className={`civ-timeline-play${playing ? ' is-on' : ''}`}
           aria-label="Play"
           aria-pressed={playing}
-          title={playing ? 'Pause (Space)' : 'Play each observation in turn, up to now (Space)'}
+          title={playing ? 'Pause (Space)' : 'Play each recorded moment in turn, up to now (Space)'}
           onClick={() => onPlay(!playing)}
         >
           <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">

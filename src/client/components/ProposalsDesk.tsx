@@ -285,7 +285,7 @@ export function ProposalsDesk() {
           </span>
           <p className="gov-hint">
             A proposal that changed after this page loaded is skipped; reopening Proposals shows the
-            new version. Approving signs; applying is still a command you run.
+            new version.
           </p>
         </div>
       )}
@@ -294,7 +294,7 @@ export function ProposalsDesk() {
       {filtered.length === 0 ? (
         <div className="gov-empty">
           {proposals.length === 0
-            ? 'Nothing waiting. When an agent needs a change to your setup, it appears here for you to approve.'
+            ? 'Nothing waiting. A change drafted by an agent or by ambit propose appears here for you to decide.'
             : statusTab === 'draft'
               ? 'Nothing waiting for your approval.'
               : statusTab === 'rejected'
@@ -336,7 +336,7 @@ export function ProposalsDesk() {
                           <code className="gov-id">{p.id}</code>
                           {leansRefused(p) && (
                             <span className="gov-pick-note">
-                              unticked to start: your record leans against it
+                              unticked to start: you usually turn down changes like this
                             </span>
                           )}
                         </label>
@@ -399,7 +399,7 @@ export function ProposalsDesk() {
                 {isDeclining && (
                   <div className="gov-decline">
                     <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
-                      Why not? Optional. The next draft reads it.
+                      Reason, optional. The next draft reads it.
                     </label>
                     <input
                       id={`decline-${p.id}`}
@@ -444,7 +444,7 @@ export function ProposalsDesk() {
                     </>
                   ) : isRejected ? (
                     <span className="gov-reply">
-                      Turned down. The next draft takes the reason into account.
+                      The next draft takes any reason you gave into account.
                     </span>
                   ) : isDeclining ? (
                     <>

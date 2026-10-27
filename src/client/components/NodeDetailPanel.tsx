@@ -337,8 +337,8 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
 
       {asOf && (
         <p className="sp-asof" role="status">
-          As of {asOf}, as that observation recorded it. A snapshot keeps no grants or providers, so
-          simulations wait for now.
+          As of {asOf}. A past moment records no grants or providers, so simulations are off until
+          you go back to now.
         </p>
       )}
 
@@ -563,8 +563,8 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           draws as the part fill inside a next step. */}
       {blocks > 0 && item.status !== 'built' && (
         <p className="sp-blocks">
-          <Term name="asked-for">Asked for</Term> {blocks}×: work was recorded blocked on it while
-          it was missing.
+          <Term name="asked-for">Asked for</Term> {blocks}×: work was blocked because it was
+          missing.
         </p>
       )}
       {/* What its tool list costs in context every session, as `ambit weigh`
@@ -644,7 +644,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             {toggleError ??
               (enabled
                 ? 'Switching this off writes enabled: false to your agent config. Restart the runtime for it to take effect.'
-                : 'Switched off in your agent config. Switch it back on here.')}
+                : 'Switched off in your agent config. After switching it back on, restart the runtime.')}
           </p>
         </div>
       )}

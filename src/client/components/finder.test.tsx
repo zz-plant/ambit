@@ -213,7 +213,7 @@ test('the views are destinations, found by their own words and by their question
     ['map', 'the map'],
     ['setup', 'My Setup'],
     ['cost', 'Time & cost'],
-    ['audit', 'the trail'],
+    ['audit', 'Audit'],
     ['proposals', 'Proposals'],
   ] as const) {
     expect(byId(actions, `view:${view}`)?.label).toBe(`Go to ${label}`);

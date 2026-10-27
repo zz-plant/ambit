@@ -76,21 +76,25 @@ export function useConfigImport(onMapped?: () => void) {
     setError(null);
     if (!text.trim()) return;
     if (text.length > MAX_CONFIG_BYTES) {
-      setError('That is far larger than an agent config. Nothing was read.');
+      setError(
+        'Nothing was read: that is over 2 MB, far larger than any agent config. Paste the config file itself.'
+      );
       return;
     }
     if (loadFromJSON(text)) onMapped?.();
     else
       setError(
-        'That is not an agent config or an `ambit graph` export — nothing in it to map. ' +
-          'Is it JSON with an `mcpServers` or `mcp` block?'
+        'Nothing to map: this is neither an agent config nor the output of ambit graph. ' +
+          'Paste JSON with an mcpServers or mcp block.'
       );
   };
 
   const readFile = async (file: File | undefined) => {
     if (!file) return;
     if (file.size > MAX_CONFIG_BYTES) {
-      setError('That file is far larger than an agent config. Nothing was read.');
+      setError(
+        'Nothing was read: that file is over 2 MB, far larger than any agent config. Choose the config file itself.'
+      );
       return;
     }
     readText(await file.text());

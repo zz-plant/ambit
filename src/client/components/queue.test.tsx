@@ -63,7 +63,7 @@ test('waiting drafts are a queue, and one the record leans against starts untick
   expect(boxFor(html, 'prop-a')).toContain('checked');
   expect(boxFor(html, 'prop-b')).toContain('checked');
   expect(boxFor(html, 'prop-c')).not.toContain('checked');
-  expect(html).toContain('unticked to start: your record leans against it');
+  expect(html).toContain('unticked to start: you usually turn down changes like this');
   // An approval has no field for a comment, so the sheet offers none.
   expect(html).not.toContain('<textarea');
   expect(html).not.toContain('type="text"');
