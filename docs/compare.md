@@ -4,7 +4,9 @@ Two kinds of tool answer questions about an agent's MCP servers, and they answer
 
 ## MCP gateways and governance proxies
 
-A gateway sits between an agent and its MCP servers, on the path every tool call takes. Each call passes through it, and it can allow the call, hold it for a person, or refuse it, and it logs what happened. Obsigno, Agentward, MCPX and Catalyst describe themselves this way, as do the enterprise MCP gateways. Enterprise discovery tools such as Akto's inventory the servers connected across a fleet.
+A gateway sits between an agent and its MCP servers, on the path every tool call takes. Each call passes through it, and depending on the product it can allow the call, refuse it, hold it for a person, and log what happened. [Lunar's MCPX](https://docs.lunar.dev/mcpx) is a gateway in that sense, with scoped permissions and an audit trail. [AgentWard](https://github.com/agentward-ai/agentward) proxies each call and can allow it, block it or hold it for approval, and logs all three. [Obsigno](https://pypi.org/project/obsigno/) proxies calls to allow or deny them and records each decision in a signed ledger; it calls itself an evidence layer, not a general gateway. [Diagrid's Catalyst](https://www.diagrid.io/blog/governing-mcp-access-across-the-enterprise) puts a policy proxy in front of each MCP server.
+
+Discovery tools answer a different question, which servers exist at all: [Akto](https://www.akto.io/blog/mcp-discovery-tools) finds MCP servers across an organization's networks, cloud and registries.
 
 A gateway answers **may this call go ahead, now?** It sees calls as they happen, so it knows what was attempted.
 
@@ -27,7 +29,7 @@ Ambit does have a gate. `ambit can` returns ALLOW, CONFIRM or DENY for an action
 | What it sees | Calls as they are made | The whole setup, including what was never called |
 | Main question | May this call go ahead? | What can this setup do, does it work, and what breaks if a piece goes? |
 | Approvals | Per call, as it happens | Per change to the setup, as a signed, reviewable proposal |
-| Where data lives | Varies; often a hosted service | One local SQLite file; nothing leaves except through a command you typed |
+| Where data lives | Varies: some run on your machine, others as a hosted or self-hosted service | One local SQLite file; nothing leaves except through a command you typed |
 
 ## Using both
 
