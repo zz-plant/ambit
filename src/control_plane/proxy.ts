@@ -525,7 +525,7 @@ export function executeThroughControlPlane(
       .slice(0, 24);
 
     // Draft a formal remediation proposal in the graph
-    const proposalId = `prop-remediate-${Date.now()}`;
+    const proposalId = `prop-remediate-${Date.now()}-${randomBytes(4).toString('hex')}`;
     const remediationSteps = [
       {
         id: 'combo:staging-healthcheck',
