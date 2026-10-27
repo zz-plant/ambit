@@ -538,6 +538,38 @@ test('what the agents used and the map has no node for, with an overlay to paste
   expect(loadTechTree().nodes.some((n: { id: string }) => n.id === 'tool-protocol')).toBe(true);
 });
 
+test("a runtime's own tools are on the map by the names that runtime gives them", () => {
+  const node = (id: string, name: string, category = 'combo'): CapabilityFixture => ({
+    id,
+    name,
+    category,
+    kind: category === 'combo' ? 'capability' : 'provider',
+    state: 'unlocked',
+  });
+  const db = makeGraph({
+    capabilities: [
+      node('combo:shell-execution', 'Shell Execution'),
+      node('combo:file-editing', 'File Editing'),
+      node('combo:subagents', 'Subagents'),
+      node('tool:bash', 'Shell Execution', 'tool'),
+      node('tool:edit', 'File Editor', 'tool'),
+    ],
+    dependencies: [
+      { from: 'tool:bash', to: 'combo:shell-execution', kind: 'provides', hard: true },
+      { from: 'tool:edit', to: 'combo:file-editing', kind: 'provides', hard: true },
+    ],
+  });
+  const { run } = beginRun(db, {});
+  // As Claude Code's hooks record them: capitalised, which the gate placed and this did not.
+  for (const tool of ['Bash', 'Edit', 'Write', 'Read', 'Grep', 'Task', 'TodoWrite']) {
+    addEvent(db, run, { kind: 'tool', action: tool, actor: 'agent' });
+  }
+  const report = unmappedView(db);
+  db.close();
+
+  expect(report.unmapped.map(u => u.tools)).toEqual([['TodoWrite']]);
+});
+
 test('with nothing recorded, the answer says so instead of claiming everything is on the map', () => {
   const db = makeGraph({});
   const report = unmappedView(db);

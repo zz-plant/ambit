@@ -183,3 +183,67 @@ test('the wrapper answers the hook as the engine does, in its own process', () =
   const nowhere = wrapper(call, join(dir, 'no', 'such', 'dir', 'graph.db'));
   expect([nowhere.status, nowhere.stdout]).toEqual([0, '']);
 });
+
+const decideCall = (tool_name: string, tool_input: unknown = {}) => {
+  const db = getDb(join(dir, 'graph.db'));
+  try {
+    return gateToolCall(db, { tool_name, tool_input });
+  } finally {
+    db.close();
+  }
+};
+
+test("a runtime's own tool is asked about as what it does: reads observed, writes as Edit is", () => {
+  seed(WITH_GITHUB).close();
+  cli('authority', 'grant', 'file-editing', 'confirm', '--by=kanav');
+  // `Write` said nothing while `Edit` asked; both change a file.
+  expect(decideCall('Edit').decision).toBe('ask');
+  expect(decideCall('Write')).toMatchObject({
+    decision: 'ask',
+    capabilities: ['combo:file-editing'],
+  });
+  // Reading is observed, which the tree lets run unasked, so the runtime decides.
+  for (const read of ['Read', 'Grep', 'grep_search']) {
+    expect(decideCall(read)).toMatchObject({
+      decision: null,
+      capabilities: ['combo:file-editing'],
+    });
+  }
+  // A subagent's own calls come through the gate; launching one is not asked about.
+  expect(decideCall('Task')).toEqual({ decision: null, capabilities: [] });
+});
+
+test('a shell call is asked about as each program its command runs', () => {
+  seed(WITH_GITHUB).close();
+  cli('authority', 'grant', 'version-control', 'forbidden', '--by=kanav');
+
+  const push = decideCall('Bash', { command: 'cd app && git push origin main' });
+  expect(push.capabilities).toEqual(['combo:shell-execution', 'combo:version-control']);
+  expect(push.decision).toBe('deny');
+  expect(push.reason).toMatch(/Version Control is forbidden/);
+
+  // The forbidden grant is on acting; a read of the repository is Shell Execution's to answer.
+  const status = decideCall('Bash', { command: 'git status' });
+  expect(status.decision).toBe('ask');
+  expect(status.reason).toMatch(/^Ambit: Shell Execution/);
+  // A word that only mentions git runs nothing, and a call with no command is the shell alone.
+  expect(decideCall('Bash', { command: 'echo "git push"' }).decision).toBe('ask');
+  expect(decideCall('Bash').capabilities).toEqual(['combo:shell-execution']);
+
+  // The tree forbids reading a secret; through the CLI as through the 1Password server.
+  const secret = decideCall('Bash', { command: 'op read op://private/github/token' });
+  expect(secret.capabilities).toContain('combo:secret-management');
+  expect(secret.decision).toBe('deny');
+  // The command is read only for a shell call: an edit's input names no program.
+  expect(decideCall('Edit', { command: 'op read x' }).capabilities).toEqual(['combo:file-editing']);
+});
+
+test('a secret read inside a quoted substitution is refused as the bare command is', () => {
+  seed(WITH_GITHUB).close();
+  // With the shell unattended, only the refusal on Secret Management can answer.
+  cli('authority', 'grant', 'shell-execution', 'autonomous', '--by=kanav');
+  for (const command of ['op read op://private/github/token', 'echo "$(op read op://p/t)"']) {
+    expect(decideCall('Bash', { command }).decision).toBe('deny');
+  }
+  expect(decideCall('Bash', { command: 'echo "op read x"' }).decision).toBeNull();
+});
