@@ -279,17 +279,30 @@ function gitReads(args: string[]): boolean {
 /**
  * A command line cut into its simple commands, each as its words with quotes
  * removed: `cd app && git push` is `cd app` and `git push`. Splits at `;`,
- * `&&`, `||`, `|`, `&`, newlines, parentheses, backquotes and `$(`, but not
- * inside quotes; skips comments and the body of a here-document, so a file
- * written with `cat <<EOF` is not read as commands. Anything stranger than
- * that is read as words, and at worst names a program the line does not run,
- * which costs a question and never lets anything through.
+ * `&&`, `||`, `|`, `&`, newlines and parentheses, but not inside quotes. A
+ * command substitution runs wherever it stands, inside double quotes too, so
+ * `echo "$(op read x)"` is read as `op read x`, and the rest of a quoted string
+ * is text. Skips comments and the body of a here-document, so a file written
+ * with `cat <<EOF` is not read as commands, and a `)` in a commit message
+ * written that way does not end the substitution around it. Anything stranger
+ * than that is read as words, and at worst names a program the line does not
+ * run, which costs a question and never lets anything through.
  */
 function simpleCommands(line: string): string[][] {
   const out: string[][] = [];
+  scan(line, 0, false, out);
+  return out;
+}
+
+/**
+ * Reads simple commands from `start` into `out` and returns where it stopped:
+ * the end of the line, or, inside a command substitution, the `)` closing it.
+ */
+function scan(line: string, start: number, inner: boolean, out: string[][]): number {
   let words: string[] = [];
   let word = '';
   let begun = false;
+  let depth = 0;
   const pending: string[] = [];
   const endWord = () => {
     if (word || begun) words.push(word);
@@ -302,7 +315,7 @@ function simpleCommands(line: string): string[][] {
     words = [];
   };
 
-  for (let i = 0; i < line.length; i++) {
+  for (let i = start; i < line.length; i++) {
     const c = line[i];
     if (c === '\\') {
       if (line[i + 1] !== '\n') word += line[i + 1] ?? '';
@@ -313,11 +326,15 @@ function simpleCommands(line: string): string[][] {
       begun = true;
       i = end < 0 ? line.length : end;
     } else if (c === '"') {
-      let j = i + 1;
-      while (j < line.length && line[j] !== '"') j += line[j] === '\\' ? 2 : 1;
-      word += line.slice(i + 1, j).replace(/\\(["\\$`])/g, '$1');
+      i = doubleQuoted(line, i, out, text => {
+        word += text;
+      });
       begun = true;
-      i = j;
+    } else if (c === '`') {
+      endCommand();
+      const end = closingBackquote(line, i);
+      scan(line.slice(i + 1, end), 0, false, out);
+      i = end;
     } else if (c === '<' && line[i + 1] === '<' && line[i + 2] !== '<') {
       // A here-document: its delimiter now, its body skipped at the newline.
       endWord();
@@ -325,11 +342,11 @@ function simpleCommands(line: string): string[][] {
       if (line[j] === '-') j++;
       while (line[j] === ' ' || line[j] === '\t') j++;
       const quote = line[j] === "'" || line[j] === '"' ? line[j] : '';
-      const start = quote ? j + 1 : j;
-      let end = start;
+      const from = quote ? j + 1 : j;
+      let end = from;
       while (end < line.length && (quote ? line[end] !== quote : !/[\s;&|<>()]/.test(line[end])))
         end++;
-      pending.push(line.slice(start, end));
+      pending.push(line.slice(from, end));
       i = quote ? end : end - 1;
     } else if (c === '\n') {
       endCommand();
@@ -345,11 +362,18 @@ function simpleCommands(line: string): string[][] {
       }
     } else if (c === ' ' || c === '\t') {
       endWord();
-    } else if (';&|()`'.includes(c)) {
-      endCommand();
     } else if (c === '$' && line[i + 1] === '(') {
       endCommand();
-      i++;
+      i = scan(line, i + 2, true, out);
+    } else if (c === '(') {
+      endCommand();
+      depth++;
+    } else if (c === ')') {
+      endCommand();
+      if (inner && depth === 0) return i;
+      depth = Math.max(0, depth - 1);
+    } else if (';&|'.includes(c)) {
+      endCommand();
     } else if (c === '#' && !word && !begun) {
       const end = line.indexOf('\n', i);
       i = end < 0 ? line.length : end - 1;
@@ -358,5 +382,45 @@ function simpleCommands(line: string): string[][] {
     }
   }
   endCommand();
-  return out;
+  return line.length;
+}
+
+/**
+ * A double-quoted string from the quote at `open`: its text to `add`, with the
+ * escapes a shell honours there undone, and each command substitution in it
+ * read into `out`. Returns the index of the closing quote.
+ */
+function doubleQuoted(
+  line: string,
+  open: number,
+  out: string[][],
+  add: (text: string) => void
+): number {
+  let j = open + 1;
+  while (j < line.length && line[j] !== '"') {
+    const c = line[j];
+    if (c === '\\' && j + 1 < line.length && '"\\$`\n'.includes(line[j + 1])) {
+      if (line[j + 1] !== '\n') add(line[j + 1]);
+      j += 2;
+    } else if (c === '$' && line[j + 1] === '(') {
+      j = scan(line, j + 2, true, out) + 1;
+    } else if (c === '`') {
+      const end = closingBackquote(line, j);
+      scan(line.slice(j + 1, end), 0, false, out);
+      j = end + 1;
+    } else {
+      add(c);
+      j++;
+    }
+  }
+  return j;
+}
+
+/** The backquote closing the one at `open`, or the end of the line. */
+function closingBackquote(line: string, open: number): number {
+  for (let j = open + 1; j < line.length; j++) {
+    if (line[j] === '\\') j++;
+    else if (line[j] === '`') return j;
+  }
+  return line.length;
 }

@@ -95,6 +95,21 @@ test('words that only mention a program run nothing', () => {
   expect(commandExercises('npx vitest run')).toEqual([]);
 });
 
+const SECRETS = { means: 'combo:secret-management', act: 'execute' };
+
+test('a command substitution runs inside double quotes, and the rest of the string is text', () => {
+  expect(commandExercises('echo "$(op read op://private/github/token)"')).toEqual([SECRETS]);
+  expect(commandExercises('echo "token: `op read x`"')).toEqual([SECRETS]);
+  expect(commandExercises('echo "$(echo "$(op read x)")"')).toEqual([SECRETS]);
+  // Arithmetic runs nothing, and neither does a quoted mention beside a substitution.
+  expect(commandExercises('echo "$((1 + 2)) and op read x"')).toEqual([]);
+  // A commit message written the way Claude Code writes one: the here-document's
+  // body is text, and a `)` in it does not close the substitution early.
+  expect(
+    commandExercises(`git commit -m "$(cat <<'EOF'\nStep 1) push it\nop read x\nEOF\n)"`)
+  ).toEqual([{ means: VC, act: 'execute' }]);
+});
+
 test('a failing call is attributed by the name its runtime gives the tool', () => {
   const db = makeGraph({
     capabilities: [

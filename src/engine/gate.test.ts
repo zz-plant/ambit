@@ -237,3 +237,13 @@ test('a shell call is asked about as each program its command runs', () => {
   // The command is read only for a shell call: an edit's input names no program.
   expect(decideCall('Edit', { command: 'op read x' }).capabilities).toEqual(['combo:file-editing']);
 });
+
+test('a secret read inside a quoted substitution is refused as the bare command is', () => {
+  seed(WITH_GITHUB).close();
+  // With the shell unattended, only the refusal on Secret Management can answer.
+  cli('authority', 'grant', 'shell-execution', 'autonomous', '--by=kanav');
+  for (const command of ['op read op://private/github/token', 'echo "$(op read op://p/t)"']) {
+    expect(decideCall('Bash', { command }).decision).toBe('deny');
+  }
+  expect(decideCall('Bash', { command: 'echo "op read x"' }).decision).toBeNull();
+});
