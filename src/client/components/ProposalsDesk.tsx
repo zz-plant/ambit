@@ -427,7 +427,8 @@ export function ProposalsDesk() {
 
                 {isDeclining && (
                   <div className="gov-decline">
-                    <div className="gov-decline-reasons" role="group" aria-label="Why turn it down">
+                    <fieldset className="gov-decline-reasons">
+                      <legend className="visually-hidden">Why turn it down</legend>
                       {REASONS.map(chip => (
                         <button
                           key={chip.kind}
@@ -447,7 +448,7 @@ export function ProposalsDesk() {
                       >
                         Something else
                       </button>
-                    </div>
+                    </fieldset>
                     {declining.wantsText && (
                       <>
                         <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
