@@ -6,6 +6,9 @@ import { isFailing, isNext, isProven } from './civ/layout';
 import { ReachBar } from './figures';
 import { termTitle } from './Term';
 
+/** The view's landmark, where the skip link and a finished tour send the keyboard. */
+export const VIEW_ID = 'view';
+
 /**
  * The map's nodes, counted over the nodes alone. Reached is split by the
  * evidence behind it: verified has a passing check, unproven is configured
@@ -146,6 +149,19 @@ export default function AppDeck(p: AppDeckProps) {
   const total = p.counts ? reached + failing + p.counts.next + p.counts.blocked : 0;
   return (
     <header className={`app-deck${p.sample ? ' app-deck--sample' : ''}`}>
+      {/* The first stop for a keyboard: past the header and the map's tools to
+          the view itself. Handled here, since a fragment in the address would
+          read as a navigation. */}
+      <a
+        className="app-skip"
+        href={`#${VIEW_ID}`}
+        onClick={e => {
+          e.preventDefault();
+          document.getElementById(VIEW_ID)?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       <div className="app-deck-left">
         <div className="app-brand-group">
           <BrandMark size={18} className="app-brand-mark" />

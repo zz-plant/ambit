@@ -449,7 +449,7 @@ Ambit implements the state and run subset of [AG-UI](https://docs.ag-ui.com), th
 `StateDelta` is the protocol's reason for existing: a patch is smaller than a snapshot, and a client that kept the connect snapshot can apply it. The delta is emitted for every change after the initial snapshot, so the transport is honest about what changed instead of resending the whole graph.
 
 The visual negotiating surface is shipping:
-1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* lights what becomes reachable in green. Neither writes anything.
+1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* rings what becomes reachable in blue. Neither writes anything.
 2. **Approval in one click.** The Proposals panel shows what an agent drafted, whether every step has an inverse, and signs a receipt; applying stays a command the person runs.
 3. **Three lenses**, switched on the map itself: Standard; Attention (nodes shaded by how often a person had to step in), offered once the ledger has recorded any; and Authority (each reached node by what it may do without asking, with "no grant yet" apart from a refusal). Shared credentials are not a lens: they are declared, and the engine reports them (`ambit credentials`).
 4. **A proposal read as a plan.** Above its steps the panel tallies them, marks any with no inverse, and says whether `ambit apply` would refuse the draft, before anyone approves it.

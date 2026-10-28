@@ -313,6 +313,55 @@ export function stepSelection(
   return pool[to].id === selectedId ? null : pool[to].id;
 }
 
+/** The map's nodes in the order it is read: down each era, then the next. */
+export const readingOrder = ({ cols, colOrder }: Columns): Item[] =>
+  colOrder.flatMap(c => cols[c] || []);
+
+/** Which way a key moves across the map. */
+export type GridMove = 'up' | 'down' | 'left' | 'right' | 'first' | 'last';
+
+/**
+ * The node a key moves to from `id`, as the map lays them out: up and down
+ * an era, and across to the nearest row of the next era with a node shown.
+ * Null at an edge. The arrows used to walk the list's order, so the one
+ * below a node in Memory could land in Assurance, and the focus stayed put.
+ */
+export function gridStep(
+  { cols, colOrder }: Columns,
+  id: string,
+  move: GridMove,
+  shown?: Set<string> | null
+): string | null {
+  const column = (ci: number) =>
+    (cols[colOrder[ci]] || [])
+      .map((item, row) => ({ id: item.id, row }))
+      .filter(n => !shown || shown.has(n.id));
+  const ci = colOrder.findIndex(c => (cols[c] || []).some(i => i.id === id));
+  if (ci < 0) return null;
+  const here = column(ci);
+  const at = here.findIndex(n => n.id === id);
+  const row = (cols[colOrder[ci]] || []).findIndex(i => i.id === id);
+  const to =
+    move === 'up'
+      ? here[at - 1]
+      : move === 'down'
+        ? here[at + 1]
+        : move === 'first'
+          ? here[0]
+          : move === 'last'
+            ? here[here.length - 1]
+            : undefined;
+  if (move !== 'left' && move !== 'right') return to && to.id !== id ? to.id : null;
+  const step = move === 'left' ? -1 : 1;
+  for (let c = ci + step; c >= 0 && c < colOrder.length; c += step) {
+    const there = column(c);
+    if (!there.length) continue;
+    return there.reduce((best, n) => (Math.abs(n.row - row) < Math.abs(best.row - row) ? n : best))
+      .id;
+  }
+  return null;
+}
+
 /** The edge kinds that mean "supplies", as the engine names them. */
 const PROVISION_KINDS = new Set(['provides', 'contributes']);
 
@@ -691,10 +740,77 @@ export function snapToBand(
  * mid-label in every screenshot; three whole ones fit at 0.77.
  */
 export function wholeColumnZoom(width: number, columns: number, floor: number, max = 1): number {
-  const span = (n: number) => n * COL_W - 16 + 2 * BAND_MARGIN;
+  const n = wholeColumns(width, columns, floor);
+  return Math.min(max, Math.floor((width / columnsSpan(n)) * 1000) / 1000);
+}
+
+/** How wide `n` whole columns are in the scene, with the room a frame leaves either side. */
+export const columnsSpan = (n: number): number => n * COL_W - 16 + 2 * BAND_MARGIN;
+
+/** How many whole columns a frame `width` pixels wide holds at `floor` or larger. */
+export function wholeColumns(width: number, columns: number, floor: number): number {
   const fit = Math.floor((width / floor + 16 - 2 * BAND_MARGIN) / COL_W);
-  const n = Math.min(columns, Math.max(1, fit));
-  return Math.min(max, Math.floor((width / span(n)) * 1000) / 1000);
+  return Math.min(columns, Math.max(1, fit));
+}
+
+/**
+ * The least zoom the map picks for itself on a wide screen. A name is set at
+ * 12 in the scene, so it draws at 10.8px here, beside the 11px of the page's
+ * smallest text. The whole tree fitted to 1440px drew names at 10px, and
+ * beside the detail panel at 8.
+ */
+export const READ_ZOOM = 0.9;
+
+/** The column a scene x falls in; the gutter after a band counts as that band's. */
+export const columnAt = (x: number, columns: number): number =>
+  Math.max(0, Math.min(columns - 1, Math.floor((x - bandSpan(0).left) / COL_W)));
+
+/**
+ * Where the map opens on a screen `width` pixels wide: every column, when all
+ * of them read at `floor` or larger; otherwise as many whole columns as do,
+ * from the first that holds a next step. That is the frontier's near edge, and
+ * the ground already held before it is a scroll away, on the minimap. The
+ * frame moves right only as far as `lead` needs, the column of the best next
+ * step, and never past the tree's end. `left` is in scene units.
+ */
+export function frontierFrame(
+  width: number,
+  columns: number,
+  frontier: number[],
+  lead: number | null,
+  floor: number,
+  max = 1
+): { first: number; count: number; zoom: number; left: number } {
+  if (columns < 1) return { first: 0, count: 0, zoom: max, left: 0 };
+  const count = wholeColumns(width, columns, floor);
+  const near = frontier.length ? Math.min(...frontier) : 0;
+  const wanted = lead !== null && lead > near + count - 1 ? lead - count + 1 : near;
+  const first = Math.max(0, Math.min(columns - count, wanted));
+  return {
+    first,
+    count,
+    zoom: wholeColumnZoom(width, columns, floor, max),
+    left: bandSpan(first).left - BAND_MARGIN,
+  };
+}
+
+/**
+ * The first of `count` whole columns that frame the columns in `lit`: centred
+ * on them when they fit, and otherwise from `keep`, the column of the node
+ * whose panel is open, or from the first of them, since a cascade spreads
+ * rightward from its origin. Never past either end of the tree.
+ */
+export function columnWindow(lit: number[], count: number, columns: number, keep?: number): number {
+  if (!lit.length || count >= columns) return 0;
+  const a = Math.min(...lit);
+  const b = Math.max(...lit);
+  const first =
+    b - a + 1 <= count
+      ? a - Math.floor((count - (b - a + 1)) / 2)
+      : keep !== undefined
+        ? keep - Math.floor(count / 2)
+        : a;
+  return Math.max(0, Math.min(columns - count, first));
 }
 
 export interface Placed {

@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import AppDeck, { mapCounts } from './components/AppDeck';
+import AppDeck, { mapCounts, VIEW_ID } from './components/AppDeck';
 import { dayOf, hasHistory, itemsAsOf, momentOf, tickAt } from './components/civ/history';
 import { isEntry, unlockedSince, visibleItems } from './components/civ/layout';
 import { Timeline } from './components/civ/Timeline';
@@ -52,6 +52,19 @@ const ApprovalModal = React.lazy(() => import('./components/ApprovalModal'));
 
 /** The width of the detail panel. */
 const PANEL_W = 340;
+
+/**
+ * What the browser's tab says for each view, after the page's own title,
+ * which the map keeps since it is what a search result and a link show.
+ */
+const VIEW_TITLES: Record<View, string | null> = {
+  map: null,
+  setup: 'My Setup',
+  cost: 'Time & cost',
+  audit: 'Audit',
+  proposals: 'Proposals',
+};
+const PAGE_TITLE = typeof document === 'undefined' ? 'Ambit' : document.title;
 
 /** A view on its way, named: every view said "Loading the map…", Proposals and Audit included. */
 const Loading = ({ what }: { what: string }) => (
@@ -163,6 +176,10 @@ export default function App() {
   const [view, setView] = useState<View>(() =>
     initialView(link, isNarrowScreen(), showGuide || Boolean(link.tour))
   );
+  useEffect(() => {
+    const name = VIEW_TITLES[view];
+    document.title = name ? `${name} · Ambit` : PAGE_TITLE;
+  }, [view]);
   // Which section of My Setup is showing. App owns it, so a link can open on
   // it and the address bar carries it.
   const [setupTab, setSetupTab] = useState<SetupTab>(() => link.tab);
@@ -524,6 +541,9 @@ export default function App() {
   const selected = selectedId ? shown.find(i => i.id === selectedId) : undefined;
   // A node the observation on screen did not hold has no panel to open.
   const detailOpen = Boolean(showDetailPanel && ((selectedId && selected) || selectedEra !== null));
+  // On a phone the sheet steps down to a peek while a simulation runs, so
+  // what it lights is on the screen the sheet would otherwise cover.
+  const simulating = useAmbitStore(s => s.simulationMode !== 'none');
 
   // The header counts one population per view: the map's nodes by state, or
   // the setup's entries by whether they are enabled. It used to count both in
@@ -597,7 +617,7 @@ export default function App() {
     // The readout narrates the map as the tour does, so on a phone it puts the
     // map's controls away too: two rows of buttons sat over the nodes it named.
     <div
-      className={`app${touring || readout ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}`}
+      className={`app${touring || readout ? ' app--touring' : ''}${detailOpen ? ' app--detail' : ''}${simulating ? ' app--simulating' : ''}`}
     >
       <AppDeck
         view={view}
@@ -642,7 +662,16 @@ export default function App() {
         }
       />
 
-      <div className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}>
+      <main
+        id={VIEW_ID}
+        tabIndex={-1}
+        className={`app-scene${showTimeline ? ' app-scene--timeline' : ''}`}
+      >
+        {/* One h1 per view. My Setup, Audit and Proposals show their name as
+            their title; the map and Time & cost lead with what they found. */}
+        {(view === 'map' || view === 'cost') && (
+          <h1 className="visually-hidden">{view === 'map' ? 'Map' : 'Time & cost'}</h1>
+        )}
         {loading && !items.length && <Loading what="your setup" />}
         {error && (
           <div className="app-error">
@@ -733,7 +762,7 @@ export default function App() {
             />
           )
         )}
-      </div>
+      </main>
 
       {/* On a phone the panel is a bottom sheet, and so is the tour card: while
           the tour narrates the node, the sheet under it said the same thing. */}

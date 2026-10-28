@@ -22,16 +22,23 @@ export interface Face {
   url: string;
   weight: string;
   stretch?: string;
+  /** Fetched when the page first sets something in it, not at the start. */
+  onUse?: boolean;
 }
 
 export const FACES: Face[] = [
   { family: 'Hubot Sans', url: hubot, weight: '200 900', stretch: '75% 125%' },
   { family: 'Mona Sans', url: mona, weight: '200 900' },
   { family: 'Monaspace Neon', url: neon400, weight: '400' },
-  { family: 'Monaspace Neon', url: neon500, weight: '500' },
+  // A few commands set in a button take 500; most visits show none, and
+  // the start of every one paid 44 KB for it.
+  { family: 'Monaspace Neon', url: neon500, weight: '500', onUse: true },
 ];
 
-/** Adds the faces to the document and starts loading them, before the first render. */
+/**
+ * Adds the faces to the document and starts loading them, before the first
+ * render; a face marked `onUse` loads when something is first set in it.
+ */
 export function installFonts(): void {
   if (typeof FontFace === 'undefined' || typeof document === 'undefined') return;
   for (const f of FACES) {
@@ -41,6 +48,7 @@ export function installFonts(): void {
       display: 'swap',
     });
     document.fonts.add(face);
+    if (f.onUse) continue;
     face.load().catch(() => {
       /* a face that fails to load falls back to the stack's next family */
     });

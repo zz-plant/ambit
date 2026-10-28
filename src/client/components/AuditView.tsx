@@ -135,7 +135,7 @@ export default function AuditView() {
   return (
     <div className="audit-view">
       <div className="audit-inner">
-        <h2 className="audit-title">Audit</h2>
+        <h1 className="audit-title">Audit</h1>
         <p className="audit-sub">
           Who approved what, what ran, and what came of it.
           {demo && ' This is sample data.'}

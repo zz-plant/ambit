@@ -29,6 +29,12 @@ import {
   BAND_MARGIN,
   snapToBand,
   wholeColumnZoom,
+  columnAt,
+  columnCentre,
+  columnsSpan,
+  columnWindow,
+  frontierFrame,
+  READ_ZOOM,
   failingNeeds,
   isEntry,
   isNext,
@@ -51,6 +57,8 @@ import {
   START_X,
   START_Y,
   stepSelection,
+  gridStep,
+  readingOrder,
   unlockCascade,
   visibleItems,
   wrapLabel,
@@ -827,6 +835,33 @@ test('an entry of My Setup has nothing on the map to collapse to', () => {
   expect(collapseTo(items, EDGES, 'nonesuch', 2, 'both')).toBeNull();
 });
 
+test('the arrows walk the map as it is laid out, and j and k read it down each era', () => {
+  // Three eras: a over b; c alone; d over e over f.
+  const cols = {
+    'era:1': ['a', 'b'].map(id => item(id)),
+    'era:2': [item('c')],
+    'era:3': ['d', 'e', 'f'].map(id => item(id)),
+  };
+  const map = { cols, colOrder: ['era:1', 'era:2', 'era:3'] };
+  expect(readingOrder(map).map(i => i.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+  // Up and down stay in the era, and stop at its ends.
+  expect(gridStep(map, 'a', 'down')).toBe('b');
+  expect(gridStep(map, 'b', 'down')).toBeNull();
+  expect(gridStep(map, 'a', 'up')).toBeNull();
+  expect(gridStep(map, 'd', 'last')).toBe('f');
+  expect(gridStep(map, 'f', 'first')).toBe('d');
+  // Across lands on the nearest row: b, on row 2, goes to c, the only one,
+  // and on to e, on row 2, not the d a list's order would give.
+  expect(gridStep(map, 'b', 'right')).toBe('c');
+  expect(gridStep(map, 'c', 'right')).toBe('d');
+  expect(gridStep(map, 'e', 'left')).toBe('c');
+  expect(gridStep(map, 'f', 'right')).toBeNull();
+  // An era a collapse empties is stepped over; a hidden row is not landed on.
+  expect(gridStep(map, 'b', 'right', new Set(['a', 'b', 'e', 'f']))).toBe('e');
+  expect(gridStep(map, 'd', 'down', new Set(['d', 'f']))).toBe('f');
+  expect(gridStep(map, 'nonesuch', 'down')).toBeNull();
+});
+
 test('j and k step through the nodes, skipping any a collapse hides', () => {
   const list = ['a', 'b', 'c', 'd'].map(id => rung(id, 'built', {}, 2));
   // Without a collapse it is the plain walk, wrapping at both ends.
@@ -895,6 +930,43 @@ test('a phone opens on whole columns, as many as read at the floor', () => {
   expect(span * z).toBeLessThanOrEqual(390);
   // A tree of two columns is shown whole at no more than full size.
   expect(wholeColumnZoom(390, 2, 0.66)).toBe(1);
+});
+
+test('the map opens on every column when they read, and on the frontier when they do not', () => {
+  // At 1440px all nine fit at 0.93, a size the names read at: the whole tree,
+  // where fitting the scene's margins too drew it at 0.84.
+  const desk = frontierFrame(1424, 9, [1, 2, 3, 4, 6, 7], 3, READ_ZOOM);
+  expect(desk).toMatchObject({ first: 0, count: 9 });
+  expect(desk.zoom).toBeGreaterThanOrEqual(READ_ZOOM);
+  expect(columnsSpan(9) * desk.zoom).toBeLessThanOrEqual(1424);
+  // At 1280px nine would draw at 0.83: eight whole ones, from the first that
+  // holds a next step.
+  const laptop = frontierFrame(1264, 9, [1, 2, 3, 4, 6, 7], 3, READ_ZOOM);
+  expect(laptop).toMatchObject({ first: 1, count: 8, left: bandSpan(1).left - BAND_MARGIN });
+  expect(laptop.zoom).toBeGreaterThanOrEqual(READ_ZOOM);
+  expect(columnsSpan(8) * laptop.zoom).toBeLessThanOrEqual(1264);
+  // A phone's three start at the frontier, and move right to hold the best step.
+  expect(frontierFrame(390, 9, [1, 2, 3], 3, 0.66).first).toBe(1);
+  expect(frontierFrame(390, 9, [1, 5], 5, 0.66).first).toBe(3);
+  // Never past the tree's end, and from its start when nothing is a next step.
+  expect(frontierFrame(390, 9, [8], 8, 0.66).first).toBe(6);
+  expect(frontierFrame(390, 9, [], null, 0.66).first).toBe(0);
+  expect(frontierFrame(390, 0, [], null, 0.66).zoom).toBe(1);
+});
+
+test('beside a panel, what is lit sits among whole columns', () => {
+  // Four lit columns in a frame of seven: centred, as far as the tree allows.
+  expect(columnWindow([3, 6], 7, 9)).toBe(2);
+  expect(columnWindow([2], 7, 9)).toBe(0);
+  expect(columnWindow([7, 8], 7, 9)).toBe(2);
+  // Wider than the frame: around the selected node, or from where a cascade starts.
+  expect(columnWindow([0, 8], 3, 9, 4)).toBe(3);
+  expect(columnWindow([2, 8], 3, 9)).toBe(2);
+  expect(columnWindow([4], 9, 9)).toBe(0);
+  // A node's column, and the gutter after it, which a callout reaching left lands in.
+  expect(columnAt(columnCentre(4), 9)).toBe(4);
+  expect(columnAt(bandSpan(4).right + 10, 9)).toBe(4);
+  expect(columnAt(0, 9)).toBe(0);
 });
 
 test('a frame that meets the scene end still starts on a whole column', () => {

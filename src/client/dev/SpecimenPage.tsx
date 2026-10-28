@@ -39,6 +39,8 @@ function view(s: Specimen): SceneView {
     onOpenEra: () => {},
     onSelect: () => {},
     onHover: () => {},
+    tabStop: null,
+    onMove: () => {},
   };
 }
 

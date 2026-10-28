@@ -1,9 +1,10 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
 import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
 import { costOf, isEntry, mapFindings, unlockCascade } from './civ/layout';
+import { VIEW_ID } from './AppDeck';
 import ConfigIntake from './ConfigIntake';
 
 interface TourProps {
@@ -102,7 +103,7 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           `This is a sample developer's agent setup. Setting up ${best.item.name}` +
           `${cost ? ` (about ${cost})` : ''} would ` +
           (opened.length
-            ? `unlock the ones in green: ${named(opened)}.`
+            ? `unlock the ones ringed in blue: ${named(opened)}.`
             : `open ${best.reaches} more things their agents could do.`),
         enter: () => {
           select(null);
@@ -172,9 +173,22 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     step.enter();
   }, [step.key]);
 
+  // A step's buttons are not the last step's, and the one that was pressed
+  // can be gone from the next: the keyboard fell to the page, eighty stops
+  // from the card. It lands on the step's title instead, which says where it is.
+  const title = useRef<HTMLHeadingElement>(null);
+  const shownStep = useRef(step.key);
+  useEffect(() => {
+    if (shownStep.current === step.key) return;
+    shownStep.current = step.key;
+    if (!document.activeElement || document.activeElement === document.body) title.current?.focus();
+  }, [step.key]);
+
   const finish = () => {
     clearSimulation();
     onDone();
+    // The card is going, and the focus with it: on to the view it was about.
+    document.getElementById(VIEW_ID)?.focus({ preventScroll: true });
   };
 
   return (
@@ -192,7 +206,9 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           Skip tour
         </button>
       </div>
-      <h2 className="app-tour-title">{step.title}</h2>
+      <h2 className="app-tour-title" ref={title} tabIndex={-1}>
+        {step.title}
+      </h2>
       <p className="app-tour-body">{step.body}</p>
 
       {step.proposal && (

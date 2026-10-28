@@ -257,7 +257,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
       <div className="setup-inner">
         <div className="setup-head">
           <div>
-            <h2 className="setup-title">My Setup</h2>
+            <h1 className="setup-title">My Setup</h1>
             {!placed && entries.length > 0 && tab === 'entries' && (
               <div className="setup-unplaced">
                 <p>
@@ -463,7 +463,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
               ...(other.length ? [{ type: 'other', label: 'Other', rows: other }] : []),
             ].map(g => (
               <section key={g.type} className="setup-group" aria-label={g.label}>
-                <h3 className="setup-group-title">
+                <h2 className="setup-group-title">
                   {'term' in g && g.term ? <Term name={g.term}>{g.label}</Term> : g.label}
                   <span className="setup-group-n">{g.rows.length}</span>
                   {g.type === 'mcp-server' && carried.length > 0 && (
@@ -479,7 +479,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                       measures it
                     </span>
                   )}
-                </h3>
+                </h2>
                 <div className="setup-rows">
                   {g.rows.map(item => {
                     const proves = provides.get(item.id) || [];
@@ -652,7 +652,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
                 is no ledger to read, and the section is not offered. */}
             {backend === 'live' && (
               <section className="setup-unmapped" aria-label="Not on the map">
-                <h3 className="setup-group-title">Not on the map</h3>
+                <h2 className="setup-group-title">Not on the map</h2>
                 <UnmappedPanel report={unmapped} />
               </section>
             )}
