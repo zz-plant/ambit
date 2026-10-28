@@ -14,11 +14,18 @@ import {
   authorityMark,
   buildAdjacency,
   buildColumns,
+  columnAt,
   columnCentre,
   columnOf,
+  columnsSpan,
+  columnWindow,
   collapseTo,
   eraOf,
+  type Framing,
   frameScene,
+  frontierFrame,
+  type GridMove,
+  gridStep,
   headlineReserve,
   evidenceOf,
   isFailing,
@@ -32,13 +39,16 @@ import {
   layoutNodes,
   mapFindings,
   NODE_R,
+  READ_ZOOM,
   ROW_H,
+  readingOrder,
   rungOf,
   sceneSize,
   START_Y,
   stepSelection,
   visibleItems,
-  wholeColumnZoom,
+  wholeColumnFill,
+  wholeColumns,
 } from './civ/layout.ts';
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
 import { hasHistory } from './civ/history.ts';
@@ -48,6 +58,7 @@ import { AUTHORITY_FILL, AUTHORITY_SYM, heatBins, MapScene } from './civ/MapScen
 import {
   calloutReach,
   HazardPattern,
+  KeystoneMark,
   KeySwatch,
   type LegendKey,
   MapFilters,
@@ -204,6 +215,16 @@ export default function CivTree({
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const surfaceRef = React.useRef<HTMLDivElement>(null);
+  /** Put the keyboard on a node, scrolling it into view when asked to. */
+  const focusNode = React.useCallback((id: string, scroll: boolean) => {
+    const node = containerRef.current?.querySelector<SVGGElement>(
+      `[data-node="${CSS.escape(id)}"]`
+    );
+    node?.focus({ preventScroll: !scroll });
+  }, []);
+  // The node the arrows last moved to, which keeps the map's one Tab stop
+  // when nothing is selected.
+  const [rove, setRove] = useState<string | null>(null);
   const { zoomTo, handZoom } = usePinchZoom({
     surface: surfaceRef,
     scroller: containerRef,
@@ -232,6 +253,20 @@ export default function CivTree({
       ),
     [items, connections, ranked]
   );
+  // The columns holding a next step, and the one holding the best of them:
+  // where the map opens when every column will not fit at a size to read.
+  const frontierCols = useMemo(
+    () =>
+      colOrder.flatMap((c, ci) =>
+        (cols[c] || []).some(i => i.status !== 'built' && isNext(i)) ? [ci] : []
+      ),
+    [cols, colOrder]
+  );
+  const leadCol = useMemo(() => {
+    const id = findings.best?.item.id;
+    const ci = id ? colOrder.findIndex(c => (cols[c] || []).some(i => i.id === id)) : -1;
+    return ci < 0 ? null : ci;
+  }, [findings.best, cols, colOrder]);
   // The thumbnail's dots: every node the map draws, where it sits and where it stands.
   const minimapNodes = useMemo<MinimapNode[]>(
     () =>
@@ -282,6 +317,20 @@ export default function CivTree({
         ? { id: findings.best.item.id, color: 'var(--accent)' }
         : null
     : null;
+  // The map's one Tab stop: the selection, else where the arrows last were,
+  // else the node the headline names, else the first node there is.
+  const tabStop =
+    [selectedId, rove, findingTarget?.id].find(
+      id => id && nodePositionMap.has(id) && (!collapse || collapse.shown.has(id))
+    ) ??
+    readingOrder({ cols, colOrder }).find(i => !collapse || collapse.shown.has(i.id))?.id ??
+    null;
+  const moveFocus = (from: string, move: GridMove) => {
+    const to = gridStep({ cols, colOrder }, from, move, collapse?.shown);
+    if (!to) return;
+    setRove(to);
+    focusNode(to, true);
+  };
   // Its height, measured, so the canvas starts below it however many lines its
   // rows wrap to. A fixed 40px reserved one line of each, and at 900px the
   // range line wraps and the finding sat on the era names, which are controls.
@@ -543,9 +592,20 @@ export default function CivTree({
       } else {
         e.preventDefault();
         // A collapse hides nodes, and a key that lands on one selects what
-        // nobody can see, so the walk skips them.
-        const to = stepSelection(filtered, selectedId, key.by, collapse?.shown);
-        if (to) onSelect(to);
+        // nobody can see, so the walk skips them. It walks the map as it is
+        // read, down an era and on to the next, and takes the focus along
+        // when the focus was on the map or nowhere.
+        const to = stepSelection(
+          readingOrder({ cols, colOrder }),
+          selectedId,
+          key.by,
+          collapse?.shown
+        );
+        if (to) {
+          onSelect(to);
+          const at = document.activeElement;
+          if (!at || at === document.body || at.closest?.('[data-node]')) focusNode(to, false);
+        }
       }
       // Escape is the shell's, which peels the spotlight, the simulation and
       // the selection one press at a time (escapeLayer, in utils/keys.ts).
@@ -558,7 +618,9 @@ export default function CivTree({
     authorityAvailable,
     selectedId,
     onSelect,
-    filtered,
+    cols,
+    colOrder,
+    focusNode,
     collapse,
     zoomTo,
   ]);
@@ -568,13 +630,14 @@ export default function CivTree({
 
   const { width: contentWidth, height: contentHeight } = sceneSize({ cols, colOrder });
 
-  // Open with every column on screen. At 100% the seventh era sat past the
-  // right edge with nothing to say it was there, and in the setup view every
-  // edge to the runtime column ran off the canvas towards a node nobody could
-  // see. Fits once per dataset, and again when the canvas changes width while
-  // the zoom is still the one the fit chose: a window opened narrow and then
-  // widened kept its narrow zoom, or the reverse, with Foundation or Launch
-  // Ready off the edge. Once someone zooms, the zoom controls own it.
+  // Open on what can be read. Every column when the names read at that size:
+  // at 1440px all nine at 93%, where fitting the scene's margins as well drew
+  // them at 84% and the names at ten pixels. A narrower screen opens on the
+  // frontier, on whole columns, with the rest a scroll away and on the
+  // minimap. Fits once per dataset, and again when the canvas changes width
+  // while the zoom is still the one the fit chose: a window opened narrow and
+  // then widened kept its narrow zoom, or the reverse, with Foundation or
+  // Launch Ready off the edge. Once someone zooms, the zoom controls own it.
   const [boxWidth, setBoxWidth] = useState<number | null>(null);
   const [boxHeight, setBoxHeight] = useState<number | null>(null);
   React.useEffect(() => {
@@ -588,16 +651,26 @@ export default function CivTree({
     return () => observer.disconnect();
   }, []);
   /**
-   * The zoom the map opens at in a canvas `width` wide: every column on a
-   * wide screen, and on a phone, where that is a name four pixels tall, as
-   * many whole columns as read at 0.66 or more, which is three at 390px.
+   * The zoom the map opens at in a canvas `width` wide, and the scroll that
+   * starts it on a whole column: as many columns as read at READ_ZOOM, and on
+   * a phone, where every column is a name four pixels tall, as many as read
+   * at 0.66, which is three at 390px. See frontierFrame for which ones.
    */
-  const restZoom = React.useCallback(
-    (width: number) =>
-      width < 700
-        ? wholeColumnZoom(width, colOrder.length, 0.66)
-        : Math.max(ZOOM_MIN, Math.min(1, +((width - leftInset - 16) / contentWidth).toFixed(2))),
-    [colOrder.length, leftInset, contentWidth]
+  const restFrame = React.useCallback(
+    (width: number) => {
+      const phone = width < 700;
+      const f = frontierFrame(
+        phone ? width : width - leftInset - 16,
+        colOrder.length,
+        frontierCols,
+        leadCol,
+        phone ? 0.66 : READ_ZOOM
+      );
+      // The room left over, which the frame was fitted inside, split either
+      // side of it: flush, the first column sat 6px from the window's edge.
+      return { zoom: f.zoom, left: leftInset + f.left * f.zoom - (phone ? 0 : 8) };
+    },
+    [colOrder.length, leftInset, frontierCols, leadCol]
   );
   // At rest, a tree shorter than the canvas sat at the top of it, 170px over
   // the key at 1440 by 900; it is centred between the controls and the key.
@@ -615,12 +688,24 @@ export default function CivTree({
   // in the next animation frame, it could reach the browser while the canvas
   // was still the old size, and the browser held it to the old size's end: a
   // phone framing the last two columns stopped 80px short, inside a third.
-  const pendingScroll = React.useRef<{ left: number; top: number; smooth: boolean } | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the zoom is not read here; its change is the moment the canvas has its new size, which is when the waiting scroll can land.
+  // It waits for its own zoom: run again at the old one, as React's strict mode
+  // runs an effect twice, it landed on the canvas at its old size and was lost.
+  // A zoom that moves somewhere else, a pinch say, leaves it with nothing to wait for.
+  const pendingScroll = React.useRef<{
+    left: number;
+    top: number;
+    smooth: boolean;
+    zoom: number;
+    from: number;
+  } | null>(null);
   React.useLayoutEffect(() => {
     const el = containerRef.current;
     const to = pendingScroll.current;
     if (!el || !to) return;
+    if (to.zoom !== zoom) {
+      if (zoom !== to.from) pendingScroll.current = null;
+      return;
+    }
     pendingScroll.current = null;
     el.scrollTo({ left: to.left, top: to.top, behavior: to.smooth ? 'smooth' : 'auto' });
   }, [zoom]);
@@ -641,7 +726,7 @@ export default function CivTree({
         el.scrollTo({ left, top, behavior: smooth ? 'smooth' : 'auto' });
         return;
       }
-      pendingScroll.current = { left, top, smooth };
+      pendingScroll.current = { left, top, smooth, zoom: next, from: zoom };
       setZoom(next);
     },
     [zoom]
@@ -661,30 +746,29 @@ export default function CivTree({
     if (!fresh && !refit) return;
     if (width - leftInset - 16 <= 0) return;
     fittedFor.current = contentWidth;
-    // A phone opens on whole columns and scrolls sideways; Fit still shows it
-    // all. It starts at the first column's edge, not the scene's margin, so
-    // the third column ends at the screen's edge instead of under it.
-    const fit = restZoom(width);
-    fittedAt.current = { width, zoom: fit };
+    // The map opens on whole columns and scrolls sideways; Fit still shows it
+    // all. It starts at a column's edge, not the scene's margin, so the last
+    // column it holds ends at the screen's edge instead of under it.
+    const rest = restFrame(width);
+    fittedAt.current = { width, zoom: rest.zoom };
     // A framing decided before this fit was decided at the old zoom, and this
     // fit would undo it unseen: a node selected by a link was framed at 100%,
     // then the fit set 84%, and the panel cut a column. It is asked again.
     framedWide.current = '';
-    if (width < 700) {
-      zoomAndScroll(fit, leftInset + (bandSpan(0).left - BAND_MARGIN) * fit, el.scrollTop, false);
-    } else setZoom(fit);
-  }, [contentWidth, leftInset, boxWidth, zoom, restZoom, zoomAndScroll]);
+    zoomAndScroll(rest.zoom, rest.left, el.scrollTop, false);
+  }, [contentWidth, leftInset, boxWidth, zoom, restFrame, zoomAndScroll]);
 
   // On a wider screen the panel or a card sits over the map's right edge,
   // which is where the Product and Operations eras are, so a route to Launch
   // Ready was numbered entirely under it, and opening a node's panel cut a
   // column at the panel's edge in every screenshot of it. What is lit, or the
   // selected node with what it needs and enables, is brought into the canvas
-  // they leave. The whole tree comes first when it fits there at half size or
-  // more, since a frame of all of it cuts nothing; past that the subject alone,
-  // on whole columns, zooming out if it has to and never in. A zoom someone
-  // made by hand keeps its scale. When the subject goes, a zoom this chose
-  // gives way to the fit on arrival again.
+  // they leave. The whole tree comes first when it fits there at READ_ZOOM,
+  // since a frame of all of it cuts nothing; past that, whole columns up to
+  // the panel's edge or the card's, the subject among them (columnFrame).
+  // Fitted at half size, the whole tree drew the names beside the panel at
+  // eight pixels. A zoom someone made by hand keeps its scale. When the
+  // subject goes, a frame this chose gives way to the one on arrival again.
   // An outage's callout reaches left of its root, and past the map's edge
   // when the root is in the first column: a frame flush to the bands cut
   // "DOWN ·" off. Its count is at most what is lit, so this is never short.
@@ -712,6 +796,10 @@ export default function CivTree({
     // The card is measured a frame after it mounts, and a step lit before then
     // was framed as if nothing covered the map.
     const key = `${simulationMode}:${simulatedNodeId}:${selectedId}:${coveredRight}:${rightInset}:${headlinePad}`;
+    // A frame worked out at a zoom about to change is worked out at the wrong
+    // one: the first visit's tour framed at 100% while the fit's zoom waited to
+    // draw. Asked again once it has, since the zoom is a dependency.
+    if (pendingScroll.current) return;
     if (framedWide.current === key) return;
     framedWide.current = key;
     // The person's own zoom, the last they chose, and whether the one on screen
@@ -721,9 +809,10 @@ export default function CivTree({
     // with names at eight pixels in the README, where it fits at theirs.
     const own = handZoom.current;
     const chosen = framedZoom.current !== null && zoom === framedZoom.current;
-    const ceiling = chosen ? (own ?? restZoom(el.clientWidth)) : zoom;
+    const ceiling = chosen ? (own ?? restFrame(el.clientWidth).zoom) : zoom;
     if (!subject.length) {
-      // The zoom the frames took over from: theirs, about the same middle, or the fit.
+      // The zoom the frames took over from: theirs, about the same middle, or
+      // the frame on arrival.
       if (chosen && own !== null) {
         const mid = (scroll: number, size: number, inset: number) =>
           ((scroll + size / 2 - inset) / zoom) * own + inset - size / 2;
@@ -732,7 +821,10 @@ export default function CivTree({
           mid(el.scrollLeft, el.clientWidth, leftInset),
           mid(el.scrollTop, el.clientHeight, 0)
         );
-      } else if (chosen) zoomAndScroll(restZoom(el.clientWidth), 0, 0);
+      } else if (chosen) {
+        const rest = restFrame(el.clientWidth);
+        zoomAndScroll(rest.zoom, rest.left, 0);
+      }
       framedZoom.current = null;
       return;
     }
@@ -801,7 +893,7 @@ export default function CivTree({
       own !== null
         ? null
         : frameScene(scene, open, {
-            min: 0.5,
+            min: READ_ZOOM,
             max: ceiling,
             inset: leftInset,
             insetTop,
@@ -811,38 +903,83 @@ export default function CivTree({
     // A zoom rounded to two places can come out a pixel or two over.
     const wholeFits =
       whole !== null && (scene[1].x - scene[0].x + BAND_MARGIN * 4) * whole.zoom <= open.width + 4;
+    const simulating = simulationMode !== 'none';
+    const kept = !simulating && selectedId ? nodePositionMap.get(selectedId) : undefined;
     const zoomRange = {
-      min: ZOOM_MIN,
+      min: simulating ? ZOOM_MIN : Math.min(READ_ZOOM, ceiling),
       max: ceiling,
       inset: leftInset,
       insetTop,
       head,
+      keep: kept,
       columns: colOrder.length,
       sceneWidth: contentWidth,
     };
-    // With a card, the lit part goes beside it or above it, whichever leaves
-    // the larger map.
+    const columns = colOrder.length;
+    const lit = points.map(p => columnAt(p.x, columns));
+    const keepCol = kept && columnAt(kept.x, columns);
+    // Whole columns up to an edge `room` pixels from where the scene starts:
+    // the panel's, or the card's. Exactly n of them fill it at one zoom each;
+    // of the two either side of the ceiling, the nearer that reads, never past
+    // it or 100%. A simulation takes as many as it lights. Filled to the edge,
+    // the frame is also one the scroller can reach: left short of it, a frame
+    // of the last columns asked for a scroll past the canvas's end.
+    // An outage rooted in the first era hangs its callout in the margin before
+    // that era, which a frame starting at the era's edge cut off; the frame
+    // takes in that much more.
+    const ahead = Math.max(
+      0,
+      bandSpan(0).left - BAND_MARGIN - Math.min(...points.map(p => p.x)) + 4
+    );
+    // A simulation's banner names all it lights, so the frame takes its
+    // height too: held to the columns' width alone, an outage six eras wide
+    // and four rows deep ran below the map beside the panel at 1280 by 720.
+    // The height is frameScene's: the nodes, the room round them, the names.
+    const ys = points.map(p => p.y);
+    const litHeight = Math.max(...ys) - Math.min(...ys) + 2 * (NODE_R + 40) + 24;
+    const heightFit = Math.max(ZOOM_MIN, open.height / litHeight);
+    const columnFrame = (room: number): Framing | null => {
+      const span = simulating ? Math.max(...lit) - Math.min(...lit) + 1 : 1;
+      const top = Math.min(1, ceiling, simulating ? heightFit : 1);
+      const near = wholeColumns(room, columns, top);
+      const options = [near, near + 1]
+        .map(n => Math.min(columns, Math.max(n, span)))
+        .map(n => ({ n, z: Math.floor((room / (columnsSpan(n) + ahead)) * 1000) / 1000 }))
+        .filter(o => o.z <= top + 0.005);
+      const reads = options.filter(o => o.z >= (simulating ? ZOOM_MIN : READ_ZOOM));
+      const pick = (reads.length ? reads : options).reduce<{ n: number; z: number } | null>(
+        (best, o) => (!best || Math.abs(o.z - top) < Math.abs(best.z - top) ? o : best),
+        null
+      ) ?? { n: columns, z: top };
+      const z = Math.max(ZOOM_MIN, pick.z);
+      const upright = frameScene(points, open, {
+        ...zoomRange,
+        min: z,
+        max: z,
+        columns: undefined,
+      });
+      if (!upright) return null;
+      // Where the scroller stops short of the frame, before a card is
+      // measured say, the frame starts a column earlier. Clamped there by the
+      // browser, it began inside one, and a frame with what is lit in view is
+      // not asked again.
+      const reach = leftInset + contentWidth * z + rightInset + coveredRight - el.clientWidth;
+      const at = (ci: number) =>
+        leftInset + (bandSpan(ci).left - BAND_MARGIN - (ci === 0 ? ahead : 0)) * z;
+      let first = columnWindow(lit, pick.n, columns, keepCol);
+      while (first > 0 && at(first) > reach + 1) first--;
+      return { zoom: z, top: upright.top, left: Math.max(0, Math.round(at(first))) };
+    };
     const frame = wholeFits
       ? whole!
-      : card
-        ? [
-            frameScene(points, open, zoomRange),
-            frameScene(
-              points,
-              {
-                ...open,
-                width: el.clientWidth - leftInset - rightInset,
-                height: card.top - hud - 8,
-              },
-              zoomRange
-            ),
-          ].reduce<ReturnType<typeof frameScene>>(
-            (best, f) => (f && (!best || f.zoom > best.zoom) ? f : best),
-            null
-          )
-        : frameScene(points, open, zoomRange);
+      : byHand
+        ? frameScene(points, open, zoomRange)
+        : columnFrame(card ? card.left - leftInset : el.clientWidth - rightInset - leftInset);
     if (!frame) return;
-    if (frame.zoom !== zoom) framedZoom.current = frame.zoom;
+    // Remembered whether or not the zoom moved, so the frame on arrival comes
+    // back when the subject goes: a selection that only scrolled left the map
+    // where the panel had needed it.
+    framedZoom.current = frame.zoom;
     zoomAndScroll(frame.zoom, frame.left, frame.top);
   }, [
     narrow,
@@ -862,7 +999,7 @@ export default function CivTree({
     colOrder.length,
     contentWidth,
     contentHeight,
-    restZoom,
+    restFrame,
     zoomAndScroll,
     centring,
     headlinePad,
@@ -902,27 +1039,67 @@ export default function CivTree({
     const svg = el.querySelector('svg');
     const insetTop = svg ? Number.parseFloat(getComputedStyle(svg).marginTop) || 0 : 0;
     const keepId = simulationMode !== 'none' ? simulatedNodeId : selectedId;
-    const frame = frameScene(
-      points,
-      // The screen's width: the inset is where the scene starts inside the
-      // scroller, which `inset` places, and at the scene's end the scroll
-      // stops by the whole width. Less the inset, a frame there began a
-      // sliver of a column early.
-      { top: hud, width: el.clientWidth, height: el.clientHeight - hud - covered },
-      {
-        // A simulation's card names everything it lights, so the whole set
-        // gets the screen, smaller if it has to be: at 0.7 the tour's first
-        // card said "the ones in green" over two of four, the rest past the
-        // edge. A selection keeps the floor its names can be read at.
-        min: simulationMode !== 'none' ? 0.55 : 0.7,
-        max: 1.1,
+    // The screen's width: the inset is where the scene starts inside the
+    // scroller, which `inset` places, and at the scene's end the scroll stops
+    // by the whole width. Less the inset, a frame there began a sliver of a
+    // column early.
+    const view = { top: hud, width: el.clientWidth, height: el.clientHeight - hud - covered };
+    // A simulation's card names everything it lights, so every column it
+    // lights gets the screen, whole, at the zoom that holds exactly those:
+    // framed round its points, the tour's first step at 390px cut Sovereignty
+    // at the right edge, and at 0.7 it had shown two of the four it named.
+    if (simulationMode !== 'none') {
+      const litCols = points.map(p => columnAt(p.x, colOrder.length));
+      const first = Math.min(...litCols);
+      const span = Math.max(...litCols) - first + 1;
+      // An outage's callout in the margin before the first era is taken in too.
+      const ahead =
+        first === 0
+          ? Math.max(0, bandSpan(0).left - BAND_MARGIN - Math.min(...points.map(p => p.x)) + 4)
+          : 0;
+      // As tall as it is wide: held to the width alone, a deep cascade ran
+      // under the sheet. A zoom the height holds down takes more columns,
+      // whole, not a sliver of the next.
+      const ys = points.map(p => p.y);
+      const tall = Math.max(...ys) - Math.min(...ys) + 2 * (NODE_R + 40) + 24;
+      const fit = wholeColumnFill(
+        view.width,
+        colOrder.length,
+        Math.min(1.1, view.height / tall),
+        span,
+        ahead
+      );
+      const z = Math.max(0.5, fit.zoom);
+      const from = Math.max(0, Math.min(first, colOrder.length - fit.n));
+      const keep = keepId ? nodePositionMap.get(keepId) : undefined;
+      const upright = frameScene(points, view, {
+        min: z,
+        max: z,
         inset: leftInset,
         insetTop,
-        keep: keepId ? nodePositionMap.get(keepId) : undefined,
-        columns: colOrder.length,
-        sceneWidth: contentWidth,
-      }
-    );
+        keep,
+      });
+      if (!upright) return;
+      zoomAndScroll(
+        z,
+        Math.max(
+          0,
+          Math.round(leftInset + (bandSpan(from).left - BAND_MARGIN - (from === 0 ? ahead : 0)) * z)
+        ),
+        upright.top
+      );
+      return;
+    }
+    const frame = frameScene(points, view, {
+      // A selection keeps the floor its names can be read at.
+      min: 0.7,
+      max: 1.1,
+      inset: leftInset,
+      insetTop,
+      keep: keepId ? nodePositionMap.get(keepId) : undefined,
+      columns: colOrder.length,
+      sceneWidth: contentWidth,
+    });
     if (!frame) return;
     zoomAndScroll(frame.zoom, frame.left, frame.top);
   }, [
@@ -1156,6 +1333,10 @@ export default function CivTree({
           }}
         >
           <title>Capability tree: what this setup can do, by era</title>
+          <desc>
+            The arrow keys move between capabilities, down an era and across to the next; Enter
+            opens one.
+          </desc>
           <defs>
             <HazardPattern id={hazardId} />
             <MapFilters prefix={filterPrefix} />
@@ -1189,6 +1370,8 @@ export default function CivTree({
                 onHover?.(id);
                 setHoverItem(id);
               },
+              tabStop,
+              onMove: moveFocus,
             }}
           />
           {/* Hover tooltip */}
@@ -1307,16 +1490,21 @@ export default function CivTree({
                     </text>
                   )}
                   {isKey && (
-                    <text
-                      x={12}
-                      y={headH + saidH + 12}
-                      fill="var(--warn)"
-                      fontSize={11}
-                      fontWeight={600}
-                      fontFamily="var(--font-sans)"
-                    >
-                      ★ Keystone: {downCount} depend on it
-                    </text>
+                    <>
+                      <g transform={`translate(17, ${headH + saidH + 8})`}>
+                        <KeystoneMark />
+                      </g>
+                      <text
+                        x={27}
+                        y={headH + saidH + 12}
+                        fill="var(--warn)"
+                        fontSize={11}
+                        fontWeight={600}
+                        fontFamily="var(--font-sans)"
+                      >
+                        Keystone: {downCount} depend on it
+                      </text>
+                    </>
                   )}
                   {lines.map((line, i) => (
                     <text
@@ -1393,7 +1581,13 @@ export default function CivTree({
           while anything is lit the lit thing is the point. The saved image
           carries the address either way. */}
       {!narrated && simulationMode === 'none' && !selectedId && (
-        <div className="civ-source" style={{ bottom: covered + 10, left: leftInset + 8 }}>
+        <div
+          className="civ-source"
+          style={{
+            left: leftInset + 8,
+            transform: covered ? `translateY(${-covered}px)` : undefined,
+          }}
+        >
           Ambit · {SITE_HOST}
         </div>
       )}
@@ -1463,6 +1657,14 @@ export default function CivTree({
           layoutKey={`${headlined}:${headlinePad}`}
           leftInset={leftInset}
           rightInset={rightInset}
+          across={
+            colOrder.length
+              ? {
+                  left: bandSpan(0).left - BAND_MARGIN,
+                  right: bandSpan(colOrder.length - 1).right + BAND_MARGIN,
+                }
+              : undefined
+          }
         />
       )}
     </div>

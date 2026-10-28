@@ -112,6 +112,20 @@ test('the whole map fits when the viewport holds the whole scene, and not before
   );
 });
 
+test('a map whose columns are all on screen draws no thumbnail, margins or not', () => {
+  // Of the scene's 1340 units across, the columns take the 1000 from 170: a
+  // screen holding those draws none, and one 50 short of them draws one.
+  const across = { left: 170, right: 1170 };
+  const holds = scroller(1, { width: 1000, height: 900 });
+  expect(minimapModel(holds, SCENE, BOX)).not.toBeNull();
+  expect(minimapModel(holds, SCENE, BOX, across)).toBeNull();
+  expect(minimapModel(scroller(1, { width: 950, height: 900 }), SCENE, BOX, across)).not.toBeNull();
+  // Too short is still too short.
+  expect(
+    minimapModel(scroller(1, { width: 1000, height: 400 }), SCENE, BOX, across)
+  ).not.toBeNull();
+});
+
 test('the thumbnail keeps the map in proportion inside its box', () => {
   const wide = thumbnail(SCENE, BOX);
   expect(wide.width).toBeCloseTo(176, 5);

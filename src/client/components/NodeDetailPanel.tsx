@@ -22,6 +22,7 @@ import {
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
 import type { AuthorityLadder } from '../../shared/api';
+import { KeystoneMark } from './civ/marks';
 import { EraLadderPanel } from './EraLadder';
 import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
@@ -100,6 +101,8 @@ function LinkList({
 }
 
 export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPanelProps = {}) {
+  /** The button that starts and ends a simulation, which keeps the keyboard. */
+  const simButton = React.useRef<HTMLButtonElement>(null);
   const storeItems = useAmbitStore(s => s.items);
   const items = pastItems ?? storeItems;
   const connections = useAmbitStore(s => s.connections);
@@ -345,7 +348,16 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
 
       {isKeystone && (
         <p className="sp-keystone">
-          <span aria-hidden="true">★</span>
+          {/* The map's wedge, where a star said the same in a second shape. */}
+          <svg
+            className="sp-keystone-mark"
+            width="12"
+            height="10"
+            viewBox="-6 -5 12 10"
+            aria-hidden="true"
+          >
+            <KeystoneMark />
+          </svg>
           <span>
             <Term name="keystone" /> · {enables.length} other{' '}
             {enables.length === 1 ? 'capability depends' : 'capabilities depend'} on this
@@ -447,42 +459,49 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                     : 'Prerequisites met. Unlocking it reaches nothing further on its own.'}
                 </p>
               )}
-              {isSimulated ? (
+              {/* One button whatever it starts or ends, so the press that
+                  starts a simulation leaves the keyboard on the button that
+                  ends it. Two buttons in turn, each replaced the other, and
+                  the focus fell to the page. */}
+              {!isSimulated && item.status !== 'built' && missing.length > 0 && (
                 <button
                   type="button"
-                  className="sp-action-btn sp-action-btn--sim"
-                  onClick={clearSim}
+                  className="sp-action-btn sp-action-btn--gap"
+                  onClick={() => {
+                    startGap(item.id);
+                    // This button goes when the steps show; the one that ends them stays.
+                    requestAnimationFrame(() => simButton.current?.focus());
+                  }}
                 >
-                  End simulation
+                  Show the steps on the map
                 </button>
-              ) : item.status === 'built' ? (
-                <button
-                  type="button"
-                  className={`sp-action-btn ${stops ? 'sp-action-btn--outage' : ''}`}
-                  onClick={() => startOutage(item.id)}
-                >
-                  Simulate an outage
-                </button>
-              ) : (
-                <>
-                  {missing.length > 0 && (
-                    <button
-                      type="button"
-                      className="sp-action-btn sp-action-btn--gap"
-                      onClick={() => startGap(item.id)}
-                    >
-                      Show the steps on the map
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="sp-action-btn sp-action-btn--unlock"
-                    onClick={() => startAcquisition(item.id)}
-                  >
-                    Simulate unlocking this
-                  </button>
-                </>
               )}
+              <button
+                ref={simButton}
+                type="button"
+                className={`sp-action-btn ${
+                  isSimulated
+                    ? 'sp-action-btn--sim'
+                    : item.status === 'built'
+                      ? stops
+                        ? 'sp-action-btn--outage'
+                        : ''
+                      : 'sp-action-btn--unlock'
+                }`}
+                onClick={
+                  isSimulated
+                    ? clearSim
+                    : item.status === 'built'
+                      ? () => startOutage(item.id)
+                      : () => startAcquisition(item.id)
+                }
+              >
+                {isSimulated
+                  ? 'End simulation'
+                  : item.status === 'built'
+                    ? 'Simulate an outage'
+                    : 'Simulate unlocking this'}
+              </button>
             </div>
           );
         })()}

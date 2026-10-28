@@ -478,8 +478,10 @@ test('the pill and the era headers count one map: a failing node is apart from r
         onHover={() => {}}
       />
     );
+    // The fade is the circle's, inside the node and after its focus ring; the
+    // name keeps its own.
     return html.match(
-      /opacity="([\d.]+)"[^>]*aria-label="Browser Automation, Combo, failing"/
+      /aria-label="Browser Automation, Combo, failing"[^>]*>(?:<circle[^>]*>(?:<\/circle>)?)?<g opacity="([\d.]+)"/
     )?.[1];
   };
   expect(opacityOf('Verified')).toBe('0.15');

@@ -186,6 +186,33 @@ code, pre, .code, .sp-cli-cmd {
   border: 0;
 }
 
+/* The first stop for a keyboard, past the header to the view: out of sight
+   until it has the focus, and then over the brand where the eye starts. */
+.app-skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.app-skip:focus {
+  transform: none;
+}
+
+/* The view takes the focus from the skip link and a finished tour, as a
+   place to start from; a ring round all of it marks nothing. */
+.app-scene:focus {
+  outline: none;
+}
+
 /* Under reduced motion, nothing transitions. A transition of 0.01ms is still
    one, and the initial transition-property is all: every change of width,
    height or position landed a frame late, so the map measured its old size
@@ -841,6 +868,7 @@ button.app-sample-tag:hover {
 
 /* A node this entry provides, as a link onto the map. */
 .setup-chip {
+  min-height: 24px;
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: 500;
@@ -1152,6 +1180,8 @@ button.app-sample-tag:hover {
 }
 
 .sp-close {
+  min-width: 24px;
+  min-height: 24px;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -1178,6 +1208,11 @@ button.app-sample-tag:hover {
   font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--warn);
+}
+
+.sp-keystone-mark {
+  flex: none;
+  align-self: center;
 }
 
 .sp-evidence {
@@ -1378,7 +1413,7 @@ button.app-sample-tag:hover {
 }
 
 .sp-status--specified {
-  color: var(--warn);
+  color: var(--accent);
 }
 
 .sp-status--deprecated {
@@ -1448,13 +1483,13 @@ button.app-sample-tag:hover {
 }
 
 .sp-action-btn--unlock {
-  border: 1px solid var(--ok);
-  color: var(--ok);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
   font-size: var(--fs-md);
 }
 
 .sp-action-btn--unlock:hover {
-  background: var(--ok-soft);
+  background: var(--accent-soft);
 }
 
 .sp-cli-actions {
@@ -1606,9 +1641,11 @@ button.app-sample-tag:hover {
   font-weight: 500;
   letter-spacing: 0.2px;
   color: var(--text-secondary);
+  bottom: 10px;
   pointer-events: none;
   user-select: none;
-  transition: bottom 0.2s;
+  /* Lifted over a sheet by a transform, which moves no layout. */
+  transition: transform 0.2s;
 }
 
 /* A phone's screenshot is the one that loses the address bar; a desktop
@@ -1866,6 +1903,24 @@ button.app-sample-tag:hover {
   stroke: var(--bg-canvas);
   stroke-width: 3px;
   stroke-linejoin: round;
+}
+
+/* A node's focus is a ring round its circle. The outline everything else
+   takes boxed the circle and its name together, with the box's edge through
+   the name and over the brackets. */
+.civ-node:focus-visible {
+  outline: none;
+}
+
+.civ-focus-ring {
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.civ-node:focus-visible > .civ-focus-ring {
+  opacity: 1;
 }
 
 /* Room for the HUD above the era headers, so it never sits on a column name. */
@@ -2153,8 +2208,8 @@ button.app-sample-tag:hover {
 }
 
 .civ-sim-banner--acquisition {
-  border: 1px solid var(--ok-line);
-  color: var(--ok);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
 }
 
 .civ-sim-banner-close {
@@ -2334,7 +2389,8 @@ button.app-sample-tag:hover {
 
 .civ-finding--bad {
   border-color: var(--error-line);
-  background: #231416;
+  /* Opaque, since it sits over the map: the failing red a step into the glass. */
+  background: color-mix(in srgb, var(--error) 7%, var(--bg-glass));
 }
 
 .civ-finding-dot {
@@ -3460,6 +3516,13 @@ button.app-sample-tag:hover {
 }
 
 .app-guide-close {
+  /* The hit area reaches past the word, the box staying where the word sat:
+     it was the glyph alone, 10 by 15 for the readout's close. */
+  min-width: 24px;
+  min-height: 24px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -3468,15 +3531,12 @@ button.app-sample-tag:hover {
 }
 
 /* ─── TIME & COST DASHBOARD ─── */
-/* Fills the scene beside the panel rather than under it: the left inset is
-   set inline from the same state that positions the map. */
 .loop-dashboard {
   position: absolute;
   inset: 0;
   overflow-y: auto;
   padding: 24px 28px 40px;
   background: var(--bg-deep);
-  transition: left 0.15s ease;
 }
 
 .loop-inner {
@@ -4876,6 +4936,25 @@ button.app-sample-tag:hover {
   white-space: nowrap;
 }
 
+/* A finger is wider than a pointer: the small controls take 44px on a touch
+   screen, where 24 is enough for a mouse. */
+@media (pointer: coarse) {
+  .app-guide-close,
+  .sp-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .setup-chip {
+    min-height: 32px;
+    padding: 4px 10px;
+  }
+
+  .setup-row-provides {
+    gap: 8px;
+  }
+}
+
 /* ─── RESPONSIVE RULES ─── */
 @media (max-width: 768px) {
   .star-panel {
@@ -4887,6 +4966,11 @@ button.app-sample-tag:hover {
     height: 60%;
     border-left: none;
     border-top: 1px solid var(--border);
+  }
+
+  /* A peek while a simulation runs: at 60% the sheet hid what it lit. */
+  .app--simulating .star-panel {
+    height: 34%;
   }
 
   .sp-grab-bar {
@@ -5477,7 +5561,7 @@ button.app-sample-tag:hover {
 .setup-unplaced {
   margin: 10px 0 4px;
   padding: 10px 14px;
-  border-left: 3px solid var(--accent);
+  border: 1px solid var(--accent-line);
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
   font-size: var(--fs-base);
