@@ -283,7 +283,7 @@ describe('what this person actually approves', () => {
     expect(rejectProposal(db, 'p1', 'kanav', 'much too expensive')).toMatchObject({
       reason_kind: 'cost',
     });
-    db.prepare("DELETE FROM proposal_rejections").run();
+    db.prepare('DELETE FROM proposal_rejections').run();
     db.prepare("UPDATE proposals SET status = 'draft' WHERE id = 'p1'").run();
     // Words that name no kind stay without one, and read as the whole step.
     const plain = rejectProposal(db, 'p1', 'kanav', 'it duplicates what we already run');
