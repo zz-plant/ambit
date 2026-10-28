@@ -46,10 +46,12 @@ test("the one number on the page is what the demo's best next step would open", 
   expect(html).toContain('Watch it open');
 });
 
-test('the landing asks which agent first, and knows where each keeps its file', () => {
-  // The agent decides the model a setup is placed with and the one file to
-  // paste, so it is the first question; the file's path follows the answer.
-  expect(html).toContain('Which agent do you use?');
+test('the landing opens on the paste box, and the agent row helps name it', () => {
+  // The file's shape says whose it is as often as not, so pasting costs no
+  // answer; the agent is named to find the file, and to place a bare block.
+  expect(html).toContain('Paste a config here');
+  expect(html).toContain('Which agent is it for?');
+  expect(html.indexOf('Paste a config here')).toBeLessThan(html.indexOf('Which agent is it for?'));
   for (const { runtime } of AGENTS) expect(html).toContain(runtime.name);
   expect(AGENTS.find(a => a.runtime.name === 'Cursor')?.path).toBe('~/.cursor/mcp.json');
   // Codex keeps TOML, which the tab cannot read, so it is offered no path.
@@ -72,7 +74,7 @@ test('the count of the rest is the engine’s, so it cannot outlive a new reader
 });
 
 test('the demo comes before the paste box, so a phone shows it on its first screen', () => {
-  expect(html.indexOf('Watch it open')).toBeLessThan(html.indexOf('Which agent do you use?'));
+  expect(html.indexOf('Watch it open')).toBeLessThan(html.indexOf('Paste a config here'));
 });
 
 test('a convinced visitor finds the install line and the docs without leaving for GitHub', () => {
