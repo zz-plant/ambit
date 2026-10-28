@@ -7,25 +7,27 @@ interface ConfigIntakeProps {
   onMapped?: () => void;
   /** Rows for the paste box; the tour card has less room than the landing. */
   rows?: number;
-  /** The question over the agents, which the tour words as its own. */
+  /** The question over the intake, which the tour words as its own. */
   ask?: string;
 }
 
 /**
- * The way a visitor's own setup gets in, asking first which agent they use.
+ * The way a visitor's own setup gets in: the config pasted or picked first,
+ * the agent named only to help.
  *
- * The agent decides what the setup is placed with (the model it runs on), the
- * one file to paste, and whether the tab can read that file at all, so it is
- * the first question and costs one press. Then the file, pasted or picked, or
- * the servers people most often run, to tick: a visitor on a phone, or one who
- * would sooner not open a dotfile for a demo, still sees their own map.
- * Pasting comes first because the files live in hidden directories a file
- * picker will not show by default.
+ * The file's shape says whose it is as often as not, and the readout says
+ * what it was read as and why, so the paste box is first and costs no
+ * answer. Naming the agent still does three things the file cannot: it
+ * points at the one file to paste, it names the client a bare `mcpServers`
+ * block leaves unnamed, which decides the model the setup is placed with,
+ * and for a runtime whose file this tab cannot read, it swaps the box for
+ * the servers to tick. Pasting comes first because the files live in
+ * hidden directories a file picker will not show by default.
  */
 export default function ConfigIntake({
   onMapped,
   rows = 4,
-  ask = 'Which agent do you use?',
+  ask,
 }: ConfigIntakeProps) {
   const [agent, setAgent] = useState<(typeof AGENTS)[number] | null>(null);
   const { readText, readFile, readPicked, error } = useConfigImport(onMapped, agent?.runtime);
@@ -42,8 +44,82 @@ export default function ConfigIntake({
 
   return (
     <div className="intake">
+      {ask && <p className="intake-ask">{ask}</p>}
+      {readable && (
+        <div className="intake-modes">
+          <button
+            type="button"
+            className="intake-mode"
+            aria-pressed={mode === 'paste'}
+            onClick={() => setMode('paste')}
+          >
+            Paste a config
+          </button>
+          <button
+            type="button"
+            className="intake-mode"
+            aria-pressed={mode === 'pick'}
+            onClick={() => setMode('pick')}
+          >
+            Tick what it runs
+          </button>
+        </div>
+      )}
+      {showing === 'pick' ? (
+        <>
+          <ul
+            className="intake-picks"
+            aria-label={`Servers ${agent?.runtime.name ?? 'your agent'} runs`}
+          >
+            {PICKS.map(p => (
+              <li key={p.server}>
+                <button
+                  type="button"
+                  className="intake-pick"
+                  aria-pressed={picked.includes(p.server)}
+                  onClick={() => toggle(p.server)}
+                >
+                  {p.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="intake-actions">
+            <button
+              type="button"
+              className="intake-btn"
+              disabled={!picked.length}
+              onClick={() => readPicked(picked)}
+            >
+              Map {picked.length ? `these ${picked.length}` : 'them'}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          {agent?.path && (
+            <div className="intake-path">
+              <code>{agent.path}</code>
+              <button
+                type="button"
+                onClick={() => copy('path', agent.path as string)}
+                aria-label={`Copy the path to ${agent.runtime.name}'s config`}
+              >
+                {copied === 'path' ? 'Copied ✓' : 'Copy path'}
+              </button>
+            </div>
+          )}
+          <PasteBox
+            text={text}
+            rows={rows}
+            onText={setText}
+            onRead={() => readText(text)}
+            onChoose={() => fileInput.current?.click()}
+          />
+        </>
+      )}
       <fieldset className="intake-agents">
-        <legend className="intake-ask">{ask}</legend>
+        <legend className="intake-ask">Which agent is it for?</legend>
         <div className="intake-agent-row">
           {AGENTS.map(a => (
             <button
@@ -51,118 +127,45 @@ export default function ConfigIntake({
               type="button"
               className="intake-agent"
               aria-pressed={agent?.runtime.name === a.runtime.name}
-              onClick={() => setAgent(a)}
+              onClick={() => setAgent(cur => (cur?.runtime.name === a.runtime.name ? null : a))}
             >
               {a.runtime.name}
             </button>
           ))}
         </div>
       </fieldset>
-      {agent && (
-        <>
-          {readable ? (
-            <div className="intake-modes">
-              <button
-                type="button"
-                className="intake-mode"
-                aria-pressed={mode === 'paste'}
-                onClick={() => setMode('paste')}
-              >
-                Paste its config
-              </button>
-              <button
-                type="button"
-                className="intake-mode"
-                aria-pressed={mode === 'pick'}
-                onClick={() => setMode('pick')}
-              >
-                Tick what it runs
-              </button>
-            </div>
-          ) : (
-            <p className="intake-note">
-              {agent.runtime.name} keeps its config in TOML, which only the CLI reads. Tick what it
-              runs, or run the CLI below.
-            </p>
-          )}
-          {showing === 'pick' ? (
-            <>
-              <ul className="intake-picks" aria-label={`Servers ${agent.runtime.name} runs`}>
-                {PICKS.map(p => (
-                  <li key={p.server}>
-                    <button
-                      type="button"
-                      className="intake-pick"
-                      aria-pressed={picked.includes(p.server)}
-                      onClick={() => toggle(p.server)}
-                    >
-                      {p.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div className="intake-actions">
-                <button
-                  type="button"
-                  className="intake-btn"
-                  disabled={!picked.length}
-                  onClick={() => readPicked(picked)}
-                >
-                  Map {picked.length ? `these ${picked.length}` : 'them'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              {agent.path && (
-                <div className="intake-path">
-                  <code>{agent.path}</code>
-                  <button
-                    type="button"
-                    onClick={() => copy('path', agent.path as string)}
-                    aria-label={`Copy the path to ${agent.runtime.name}'s config`}
-                  >
-                    {copied === 'path' ? 'Copied ✓' : 'Copy path'}
-                  </button>
-                </div>
-              )}
-              <PasteBox
-                text={text}
-                rows={rows}
-                onText={setText}
-                onRead={() => readText(text)}
-                onChoose={() => fileInput.current?.click()}
-              />
-            </>
-          )}
-          {error && (
-            <p className="intake-error" role="alert">
-              {error}
-            </p>
-          )}
-          {/* Every runtime's file, for a visitor whose agent is not listed. */}
-          {showing === 'paste' && !agent.path && (
-            <details className="intake-where">
-              <summary>Where is mine?</summary>
-              <dl>
-                {CONFIG_PATHS.map(p => (
-                  <div key={p.runtime}>
-                    <dt>{p.runtime}</dt>
-                    <dd>
-                      <code>{p.path}</code>
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </details>
-          )}
-          <p className="intake-note">
-            {showing === 'pick'
-              ? 'Placed in this tab; nothing is sent.'
-              : 'Read in this tab and never uploaded.'}
-          </p>
-        </>
+      {agent && !readable && (
+        <p className="intake-note">
+          {agent.runtime.name} keeps its config in TOML, which only the CLI reads. Tick what it
+          runs, or run the CLI below.
+        </p>
       )}
+      {error && (
+        <p className="intake-error" role="alert">
+          {error}
+        </p>
+      )}
+      {/* Every runtime's file, for a visitor whose agent is not listed. */}
+      {showing === 'paste' && !agent?.path && (
+        <details className="intake-where">
+          <summary>Where is mine?</summary>
+          <dl>
+            {CONFIG_PATHS.map(p => (
+              <div key={p.runtime}>
+                <dt>{p.runtime}</dt>
+                <dd>
+                  <code>{p.path}</code>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
+      <p className="intake-note">
+        {showing === 'pick'
+          ? 'Placed in this tab; nothing is sent.'
+          : 'Read in this tab and never uploaded.'}
+      </p>
       <input
         ref={fileInput}
         type="file"
