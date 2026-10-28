@@ -365,6 +365,9 @@ export interface ProposalRow {
   created_at: string;
   approved_by?: string | null;
   approved_at?: string | null;
+  /** How the no was given, where one was: the word, and the words beside it. */
+  rejected_kind?: RejectionKind | null;
+  rejected_reason?: string | null;
   /** Who drafted it, where something said: an agent's runtime, a person's --by, or `ambit`. */
   proposed_by?: string | null;
   /** The work the change is for, in the drafter's words, where they said. */
