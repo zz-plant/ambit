@@ -5738,37 +5738,6 @@ button.app-sample-tag:hover {
   cursor: pointer;
 }
 
-.intake-modes {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  align-self: flex-start;
-}
-
-.intake-mode {
-  height: 26px;
-  padding: 0 10px;
-  border: none;
-  border-radius: calc(var(--radius-sm) - 2px);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-sans);
-  font-size: var(--fs-md);
-  cursor: pointer;
-}
-
-.intake-mode:hover {
-  color: var(--text-primary);
-}
-
-.intake-mode[aria-pressed='true'] {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
 .intake-picks {
   margin: 0;
   padding: 0;

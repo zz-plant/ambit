@@ -41,26 +41,6 @@ export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakePr
   return (
     <div className="intake">
       {ask && <p className="intake-ask">{ask}</p>}
-      {readable && (
-        <div className="intake-modes">
-          <button
-            type="button"
-            className="intake-mode"
-            aria-pressed={mode === 'paste'}
-            onClick={() => setMode('paste')}
-          >
-            Paste a config
-          </button>
-          <button
-            type="button"
-            className="intake-mode"
-            aria-pressed={mode === 'pick'}
-            onClick={() => setMode('pick')}
-          >
-            Tick what it runs
-          </button>
-        </div>
-      )}
       {showing === 'pick' ? (
         <>
           <ul
@@ -89,6 +69,11 @@ export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakePr
             >
               Map {picked.length ? `these ${picked.length}` : 'them'}
             </button>
+            {readable && (
+              <button type="button" className="intake-link" onClick={() => setMode('paste')}>
+                or paste a config instead
+              </button>
+            )}
           </div>
         </>
       ) : (
@@ -111,6 +96,7 @@ export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakePr
             onText={setText}
             onRead={() => readText(text)}
             onChoose={() => fileInput.current?.click()}
+            onTick={() => setMode('pick')}
           />
         </>
       )}
@@ -157,11 +143,7 @@ export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakePr
           </dl>
         </details>
       )}
-      <p className="intake-note">
-        {showing === 'pick'
-          ? 'Placed in this tab; nothing is sent.'
-          : 'Read in this tab and never uploaded.'}
-      </p>
+      <p className="intake-note">Read in this tab; nothing is sent.</p>
       <input
         ref={fileInput}
         type="file"
@@ -180,9 +162,11 @@ interface PasteBoxProps {
   onText: (text: string) => void;
   onRead: () => void;
   onChoose: () => void;
+  /** Offered where the tab can swap to the servers to tick. */
+  onTick?: () => void;
 }
 
-function PasteBox({ text, rows, onText, onRead, onChoose }: PasteBoxProps) {
+function PasteBox({ text, rows, onText, onRead, onChoose, onTick }: PasteBoxProps) {
   return (
     <>
       <textarea
@@ -201,6 +185,11 @@ function PasteBox({ text, rows, onText, onRead, onChoose }: PasteBoxProps) {
         <button type="button" className="intake-link" onClick={onChoose}>
           or choose the file
         </button>
+        {onTick && (
+          <button type="button" className="intake-link" onClick={onTick}>
+            or tick what it runs
+          </button>
+        )}
       </div>
     </>
   );
