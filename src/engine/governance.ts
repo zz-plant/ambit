@@ -21,6 +21,7 @@ import {
 } from '../shared/opencode.ts';
 import { keepBackup } from '../shared/backup.ts';
 import { removeIn, setIn } from '../shared/jsonEdit.ts';
+import { REJECTION_KINDS, type RejectionKind } from '../shared/api.ts';
 import { getDb, type Db } from './db.ts';
 import { runVerification } from './assurance.ts';
 import { canExecute } from './assurance.ts';
@@ -145,7 +146,8 @@ function decideDraft(
   decision: 'approve' | 'reject',
   item: { id: string; proposalHash?: string },
   who: string,
-  reason?: string
+  reason?: string,
+  reasonKind?: string
 ): { ok: true; result: any } | ({ ok: false } & Refusal) {
   let open = false;
   const refuse = (refused: string, kind: Refusal['kind']) => {
@@ -175,7 +177,7 @@ function decideDraft(
     const result = (
       decision === 'approve'
         ? approveProposal(db, item.id, who)
-        : rejectProposal(db, item.id, who, reason)
+        : rejectProposal(db, item.id, who, reason, reasonKind)
     ) as { error?: string };
     if (result.error) return refuse(result.error, 'engine');
     db.exec('COMMIT');
@@ -308,7 +310,30 @@ function listPeople(db: Db) {
  * agreed to and never what they had declined, so nothing could learn the shape
  * of a no. The reason is optional and is the most valuable part of the row.
  */
-function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: string) {
+/**
+ * What a reason the words do not name is stored as: text only, which the
+ * tally reads as no kind at all. This classifies the free text a terminal
+ * typed into the words a page offers as one-press answers, so a "too
+ * expensive" typed as a sentence is the same row as the chip. First match
+ * wins; a reason that names two things is read as the one it says first.
+ */
+function classifyRejection(reason?: string): RejectionKind | undefined {
+  if (!reason) return undefined;
+  const said = reason.toLowerCase();
+  if (/\b(expensive|cheap|cost|price|priced|bill|dollars?)\b/.test(said)) return 'cost';
+  if (/\b(provider|vendor|hosted|local|self-?hosted|ollama|openai|anthropic)\b/.test(said))
+    return 'provider';
+  if (/\b(later|not now|quarter|pause|defer|timing|busy)\b/.test(said)) return 'later';
+  return undefined;
+}
+
+function rejectProposal(
+  db: Db,
+  proposalId?: string,
+  who?: string,
+  reason?: string,
+  reasonKind?: string
+) {
   if (!proposalId) return { error: 'Usage: ambit reject <proposal-id> --by=<person> ["why"]' };
   const row = db.prepare('SELECT id, goal, status FROM proposals WHERE id = ?').get(proposalId);
   if (!row) return { error: `No proposal ${proposalId}.` };
@@ -328,10 +353,14 @@ function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: stri
       error: `${humanId} is not a person in the graph. Declare them first: ambit people add ${shellQuote(humanId.replace(/^human:/, ''))}`,
     };
   }
+  const kind: RejectionKind | undefined =
+    reasonKind && (REJECTION_KINDS as readonly string[]).includes(reasonKind)
+      ? (reasonKind as RejectionKind)
+      : classifyRejection(reason);
   db.prepare(
-    `INSERT INTO proposal_rejections (proposal_id, rejected_by, reason) VALUES (?, ?, ?)
-     ON CONFLICT(proposal_id) DO UPDATE SET rejected_by = excluded.rejected_by, reason = excluded.reason`
-  ).run(proposalId, humanId, reason ?? null);
+    `INSERT INTO proposal_rejections (proposal_id, rejected_by, reason, reason_kind) VALUES (?, ?, ?, ?)
+     ON CONFLICT(proposal_id) DO UPDATE SET rejected_by = excluded.rejected_by, reason = excluded.reason, reason_kind = excluded.reason_kind`
+  ).run(proposalId, humanId, reason ?? null, kind ?? null);
   // A refusal withdraws whatever approval came before it. The artifact stays a
   // signed document that nothing else checks the row's status against, so it
   // was still spendable for its day after the page said "Turned down".
@@ -340,12 +369,13 @@ function rejectProposal(db: Db, proposalId?: string, who?: string, reason?: stri
   ).run(proposalId);
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('approval', ?, 'rejected', 0, ?)"
-  ).run(humanId, `${proposalId}: ${row.goal}${reason ? ` — ${reason}` : ''}`);
+  ).run(humanId, `${proposalId}: ${row.goal}${reason ? ` — ${reason}` : kind ? ` (${kind})` : ''}`);
   return {
     proposal: proposalId,
     goal: row.goal,
     rejected_by: person.name,
     reason,
+    reason_kind: kind,
     note: 'Recorded. A refusal teaches the next draft as much as an approval does — see ambit preferences --observed.',
   };
 }

@@ -89,7 +89,7 @@ import type {
   TechTreeResponse,
   UnmappedResponse,
 } from '../shared/api.ts';
-import { noGraphYet } from '../shared/api.ts';
+import { noGraphYet, REJECTION_KINDS } from '../shared/api.ts';
 import { typedCommand } from '../engine/paths.ts';
 
 /** What the API says before anything was seeded, with the fix typed as Ambit runs here. */
@@ -643,6 +643,12 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     const body = (await readJsonBody(req).catch(() => ({}))) as Partial<RejectRequest>;
     const reason =
       typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim() : undefined;
+    // A word that is not one of the kinds is not sent by the page; it is
+    // dropped here and the engine classifies the text instead.
+    const reasonKind =
+      body?.reasonKind && (REJECTION_KINDS as readonly string[]).includes(body.reasonKind)
+        ? body.reasonKind
+        : undefined;
     const decided = withGraph(db => {
       ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
       return decideDraft(
@@ -650,12 +656,18 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
         'reject',
         { id: reject[1], proposalHash: shownHash(body) },
         WEB_ACTOR,
-        reason
+        reason,
+        reasonKind
       );
     });
     if (!decided.ok) return json({ error: decided.refused }, refusalStatus(decided.kind));
     broadcast({ type: 'ProposalRejected', proposalId: reject[1], actor: WEB_ACTOR });
-    return json<RejectResponse>({ proposal: reject[1], rejected_by: WEB_ACTOR, reason });
+    return json<RejectResponse>({
+      proposal: reject[1],
+      rejected_by: WEB_ACTOR,
+      reason,
+      reason_kind: decided.result.reason_kind,
+    });
   }
 
   // What an agent is told at connect, shown to the person it describes the

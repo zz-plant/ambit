@@ -251,6 +251,16 @@ export type NodeType = (typeof NODE_TYPES)[number];
 export const PROPOSAL_STATUSES = ['draft', 'approved', 'applied', 'rejected'] as const;
 export type ProposalStatus = (typeof PROPOSAL_STATUSES)[number];
 
+/**
+ * What a structured rejection names. These are the words a page offers as
+ * one-press answers, and the only kinds the engine interprets; any other
+ * reason is stored as text and reads as no kind at all. The kind decides
+ * what the refusal is evidence about: the cost, the way chosen, the timing,
+ * or nothing narrower than the whole thing.
+ */
+export const REJECTION_KINDS = ['cost', 'provider', 'later', 'other'] as const;
+export type RejectionKind = (typeof REJECTION_KINDS)[number];
+
 export interface TreeItem {
   id: string;
   name: string;
@@ -355,6 +365,9 @@ export interface ProposalRow {
   created_at: string;
   approved_by?: string | null;
   approved_at?: string | null;
+  /** How the no was given, where one was: the word, and the words beside it. */
+  rejected_kind?: RejectionKind | null;
+  rejected_reason?: string | null;
   /** Who drafted it, where something said: an agent's runtime, a person's --by, or `ambit`. */
   proposed_by?: string | null;
   /** The work the change is for, in the drafter's words, where they said. */
@@ -405,12 +418,14 @@ export interface ApproveResponse {
 export interface RejectRequest {
   proposalHash: string;
   reason?: string;
+  reasonKind?: RejectionKind;
 }
 
 export interface RejectResponse {
   proposal: string;
   rejected_by: string;
   reason?: string;
+  reason_kind?: RejectionKind;
 }
 
 // ── POST /api/proposals/approve, POST /api/proposals/reject ──────────────────

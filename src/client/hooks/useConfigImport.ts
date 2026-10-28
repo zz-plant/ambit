@@ -38,12 +38,15 @@ export const CONFIG_PATHS: { runtime: string; path: string }[] = [
 ];
 
 /**
- * The agents the intake asks about before anything else. Which one a visitor
- * uses decides what their setup is placed with: the model it runs on, the
- * file to paste, and whether the tab can read that file at all. The question
- * used to come last or never, so three ticked servers were placed for "your
- * agent" with no model, and the count disagreed with what `npx ambit-cli`
- * then read on the same machine.
+ * The agents the intake can name, below the paste box.
+ *
+ * Naming one decides what a setup is placed with when the file does not say
+ * whose it is: the model it runs on. Three ticked servers placed for "your
+ * agent" with no model once disagreed with what `npx ambit-cli` read on the
+ * same machine, which is why the name is asked at all rather than inferred
+ * from the servers alone — the servers name what the setup runs, the agent
+ * names the client that runs it. The name also points at the one file to
+ * paste, and decides whether the tab can read that file at all.
  *
  * `path` is where the file is that this tab can read. Codex keeps TOML, which
  * only the engine's readers parse, so for Codex the intake offers the servers
@@ -112,6 +115,12 @@ export function useConfigImport(onMapped?: () => void, agent?: TabRuntime | null
       return;
     }
     if (loadFromJSON(text, false, hint)) onMapped?.();
+    // Codex's config.toml gives itself away by its leading section headers,
+    // which no JSON begins with. Said in the words the intake's own note uses.
+    else if (/^\s*\[[a-z_]/i.test(text))
+      setError(
+        'Nothing to map: this reads as TOML, which only the CLI reads. Tick what it runs instead, or run the CLI below.'
+      );
     else
       setError(
         'Nothing to map: this is neither an agent config nor the output of ambit graph. ' +

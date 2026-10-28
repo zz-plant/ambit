@@ -70,6 +70,22 @@ test('turning a card down sends the hash and the reason, and no actor', async ()
   ]);
 });
 
+test('a no given as a chip sends its kind, and the kind rides without text', async () => {
+  const sent = fakeApi();
+  useAmbitStore.setState({ demo: false, proposals: [draft] });
+
+  expect((await useAmbitStore.getState().rejectProposal('prop-1', undefined, 'cost')).ok).toBe(
+    true
+  );
+
+  expect(sent).toEqual([
+    {
+      path: '/api/proposals/prop-1/reject',
+      body: { proposalHash: 'abc123', reasonKind: 'cost' },
+    },
+  ]);
+});
+
 test('a proposal the page no longer holds is sent with no hash, so the server refuses it', async () => {
   const sent = fakeApi();
   useAmbitStore.setState({ demo: false, proposals: [] });

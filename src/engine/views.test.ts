@@ -14,7 +14,7 @@
 import { expect, test } from 'vitest';
 import { NODE_TYPES } from '../shared/api.ts';
 import { actionsReport, canExecute } from './assurance.ts';
-import { applyProposal, approveProposal } from './governance.ts';
+import { applyProposal, approveProposal, rejectProposal } from './governance.ts';
 import { recordFrontier } from './ledger.ts';
 import { loadTechTree } from './paths.ts';
 import { addEvent, beginRun } from './telemetry.ts';
@@ -123,6 +123,25 @@ test('the reading surfaces answer on a graph with nothing in it', () => {
   expect(recentProposals(db)).toEqual([]);
   expect(interventionHeatmap(db)).toEqual([]);
   expect(techTreeView(db).items).toEqual([]);
+  db.close();
+});
+
+test('a turned-down row carries how the no was given', () => {
+  const db = makeGraph({
+    capabilities: [{ id: 'human:kanav', name: 'Kanav', kind: 'actor', category: 'human' }],
+  });
+  for (const id of ['p1', 'p2'])
+    db.prepare(
+      "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES (?, 'goal', 'draft', '[]', '{}')"
+    ).run(id);
+  rejectProposal(db, 'p1', 'kanav', undefined, 'cost');
+  rejectProposal(db, 'p2', 'kanav', 'wrong shape');
+  const byId = new Map(recentProposals(db).map(r => [r.id, r]));
+  expect(byId.get('p1')).toMatchObject({ status: 'rejected', rejected_kind: 'cost' });
+  expect(byId.get('p1')!.rejected_reason).toBeNull();
+  // Text that names no kind carries itself, and no kind.
+  expect(byId.get('p2')!.rejected_kind).toBeNull();
+  expect(byId.get('p2')!.rejected_reason).toBe('wrong shape');
   db.close();
 });
 
