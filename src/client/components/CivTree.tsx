@@ -923,13 +923,20 @@ export default function CivTree({
     // it or 100%. A simulation takes as many as it lights. Filled to the edge,
     // the frame is also one the scroller can reach: left short of it, a frame
     // of the last columns asked for a scroll past the canvas's end.
+    // An outage rooted in the first era hangs its callout in the margin before
+    // that era, which a frame starting at the era's edge cut off; the frame
+    // takes in that much more.
+    const ahead = Math.max(
+      0,
+      bandSpan(0).left - BAND_MARGIN - Math.min(...points.map(p => p.x)) + 4
+    );
     const columnFrame = (room: number): Framing | null => {
       const span = simulating ? Math.max(...lit) - Math.min(...lit) + 1 : 1;
       const top = Math.min(1, ceiling);
       const near = wholeColumns(room, columns, top);
       const options = [near, near + 1]
         .map(n => Math.min(columns, Math.max(n, span)))
-        .map(n => ({ n, z: Math.floor((room / columnsSpan(n)) * 1000) / 1000 }))
+        .map(n => ({ n, z: Math.floor((room / (columnsSpan(n) + ahead)) * 1000) / 1000 }))
         .filter(o => o.z <= top + 0.005);
       const reads = options.filter(o => o.z >= (simulating ? ZOOM_MIN : READ_ZOOM));
       const pick = (reads.length ? reads : options).reduce<{ n: number; z: number } | null>(
@@ -949,7 +956,8 @@ export default function CivTree({
       // browser, it began inside one, and a frame with what is lit in view is
       // not asked again.
       const reach = leftInset + contentWidth * z + rightInset + coveredRight - el.clientWidth;
-      const at = (ci: number) => leftInset + (bandSpan(ci).left - BAND_MARGIN) * z;
+      const at = (ci: number) =>
+        leftInset + (bandSpan(ci).left - BAND_MARGIN - (ci === 0 ? ahead : 0)) * z;
       let first = columnWindow(lit, pick.n, columns, keepCol);
       while (first > 0 && at(first) > reach + 1) first--;
       return { zoom: z, top: upright.top, left: Math.max(0, Math.round(at(first))) };
@@ -1036,9 +1044,14 @@ export default function CivTree({
       const litCols = points.map(p => columnAt(p.x, colOrder.length));
       const first = Math.min(...litCols);
       const span = Math.max(...litCols) - first + 1;
+      // An outage's callout in the margin before the first era is taken in too.
+      const ahead =
+        first === 0
+          ? Math.max(0, bandSpan(0).left - BAND_MARGIN - Math.min(...points.map(p => p.x)) + 4)
+          : 0;
       const z = Math.max(
         0.5,
-        Math.min(1.1, Math.floor((view.width / columnsSpan(span)) * 1000) / 1000)
+        Math.min(1.1, Math.floor((view.width / (columnsSpan(span) + ahead)) * 1000) / 1000)
       );
       const keep = keepId ? nodePositionMap.get(keepId) : undefined;
       const upright = frameScene(points, view, {
@@ -1051,7 +1064,7 @@ export default function CivTree({
       if (!upright) return;
       zoomAndScroll(
         z,
-        Math.round(leftInset + (bandSpan(first).left - BAND_MARGIN) * z),
+        Math.max(0, Math.round(leftInset + (bandSpan(first).left - BAND_MARGIN - ahead) * z)),
         upright.top
       );
       return;
