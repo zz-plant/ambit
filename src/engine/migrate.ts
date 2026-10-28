@@ -99,6 +99,10 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   // a five-hour window can be read from the ledger. Empty on every row written
   // before: those rows stay as they were, a session's tokens at once.
   ['resource_consumption', 'written_at', 'TEXT'],
+  // What a rejection was given as: the cost, the way chosen, the timing, or
+  // something else. Empty on rows written before, and on free text that
+  // names none, which the tally reads as the whole step refused.
+  ['proposal_rejections', 'reason_kind', 'TEXT'],
 ];
 
 function addMissingColumns(db: Migratable) {

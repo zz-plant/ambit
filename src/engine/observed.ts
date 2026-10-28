@@ -17,17 +17,24 @@
  * and it says why, which makes the draft arguable rather than mysterious.
  */
 import type { Db } from './db.ts';
+import type { RejectionKind } from '../shared/api.ts';
 
 /** The properties of an alternative that a person tends to have opinions about. */
 interface Traits {
   privacy?: string;
+  /** The alternative named as the way this step is done: what "wrong provider" is about. */
+  via?: string;
   recurring: boolean;
   setup_seconds?: number;
 }
 
-function traitsOf(step: any): Traits {
+/** What a step with no choice made records in place of one. */
+export const NO_CHOICE = 'no alternative recorded';
+
+function traitsOf(step: any, via = step?.chosen): Traits {
   return {
     privacy: step?.privacy,
+    via: via === NO_CHOICE ? undefined : via,
     recurring: Boolean(step?.recurring_cost && step.recurring_cost !== 'none'),
     setup_seconds: step?.setup_seconds,
   };
@@ -52,12 +59,12 @@ function decisions(db: Db) {
     rejected = db
       .prepare(
         `SELECT p.id, p.goal, p.steps, r.rejected_by AS who, r.rejected_at AS at,
-                'rejected' AS verdict, r.reason
+                'rejected' AS verdict, r.reason, r.reason_kind AS kind
          FROM proposal_rejections r JOIN proposals p ON p.id = r.proposal_id`
       )
       .all<any>();
   } catch {
-    /* database predates the table */
+    /* database predates the table or the kind column */
   }
   return [...approved, ...rejected].map(r => {
     let steps: any[] = [];
@@ -66,9 +73,27 @@ function decisions(db: Db) {
     } catch {
       /* a proposal written by a version that shaped steps differently */
     }
-    return { ...r, traits: steps.map(traitsOf) };
+    // Not `map(traitsOf)`: the second argument map passes is the index,
+    // which would stand in for the way chosen.
+    return { ...r, traits: steps.map(s => traitsOf(s)) };
   });
 }
+
+/**
+ * What a rejection with a kind is evidence about, and nothing else.
+ *
+ * "Too expensive" is evidence against the cost of what was offered, not
+ * against its privacy or its way; "wrong provider" is against the way, and
+ * "later" is against nothing in it at all, being about timing. A reason that
+ * names no kind — free text, or none — keeps the whole step in the tally, as
+ * every rejection did before reasons had kinds.
+ */
+const REJECTION_SCOPE: Record<RejectionKind, 'cost' | 'via' | 'none' | 'all'> = {
+  cost: 'cost',
+  provider: 'via',
+  later: 'none',
+  other: 'all',
+};
 
 /**
  * How a trait has fared: how often it appeared in something approved, and how
@@ -83,8 +108,20 @@ function tally(db: Db) {
     else c.rejected++;
   };
   for (const d of decisions(db)) {
+    const scope =
+      d.verdict === 'rejected' ? REJECTION_SCOPE[d.kind as RejectionKind] ?? 'all' : 'all';
+    if (scope === 'none') continue;
     for (const t of d.traits) {
+      if (scope === 'cost') {
+        bump(t.recurring ? 'cost:recurring' : 'cost:one-off', d.verdict);
+        continue;
+      }
+      if (scope === 'via') {
+        if (t.via) bump(`via:${t.via}`, d.verdict);
+        continue;
+      }
       if (t.privacy) bump(`privacy:${t.privacy}`, d.verdict);
+      if (t.via) bump(`via:${t.via}`, d.verdict);
       bump(t.recurring ? 'cost:recurring' : 'cost:one-off', d.verdict);
     }
   }
@@ -121,11 +158,14 @@ function observedPreferences(db: Db) {
  * ordering alone.
  */
 function scoreAlternative(learned: ReturnType<typeof observedPreferences>, alt: any): number {
-  const t = traitsOf(alt);
+  // An option is a way of doing the step, so its name is what "wrong
+  // provider" was about; a stored step names it in `chosen` instead.
+  const t = traitsOf(alt, alt?.name);
   let score = 0;
   for (const l of learned) {
     if (l.leans === 'contested') continue;
     const weight = l.leans === 'accepted' ? 1 : -1;
+    if (t.via && l.trait === `via:${t.via}`) score += weight;
     if (l.trait === `privacy:${t.privacy}`) score += weight;
     if (l.trait === 'cost:recurring' && t.recurring) score += weight;
     if (l.trait === 'cost:one-off' && !t.recurring) score += weight;

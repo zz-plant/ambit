@@ -34,6 +34,7 @@ import {
   type QueueDecisionRequest,
   type QueueDecisionResponse,
   type QueueDecisionResult,
+  type RejectionKind,
   type RejectResponse,
   type RepoScanResponse,
   type RunResponse,
@@ -326,7 +327,7 @@ interface StoreState {
     proposalId: string,
     actor?: string
   ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
-  rejectProposal: (proposalId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>;
+  rejectProposal: (proposalId: string, reason?: string, reasonKind?: RejectionKind) => Promise<{ ok: boolean; error?: string }>;
   /** Several drafts, each approved or turned down on its own; the answer is per id. */
   decideQueue: (
     decision: 'approve' | 'reject',
@@ -599,7 +600,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * live, the engine records who turned it down and why, which is what the
    * next draft learns from.
    */
-  rejectProposal: async (proposalId: string, reason?: string) => {
+  rejectProposal: async (proposalId: string, reason?: string, reasonKind?: RejectionKind) => {
     if (get().demo || !(await backendAvailable())) {
       set(state => ({
         proposals: state.proposals.map(p =>
@@ -613,7 +614,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       const res = await fetch(`/api/proposals/${proposalId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposalHash, reason }),
+        body: JSON.stringify({ proposalHash, reason, reasonKind }),
       });
       if (res.ok) {
         (await res.json()) as RejectResponse;

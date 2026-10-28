@@ -15,7 +15,7 @@ import { usable } from '../assurance.ts';
 import { providersOf } from '../inference.ts';
 import { inverseOf } from '../governance.ts';
 import { economicCaseFor, opportunityFor } from '../opportunities.ts';
-import { preferredOption } from '../observed.ts';
+import { preferredOption, NO_CHOICE } from '../observed.ts';
 import { conflictForChosen, planFor } from './route.ts';
 import { reachedWith } from '../../shared/nextSteps.ts';
 
@@ -194,7 +194,7 @@ function propose(
     return {
       id: step.id,
       name: step.name,
-      chosen: chosen ? chosen.name : 'no alternative recorded',
+      chosen: chosen ? chosen.name : NO_CHOICE,
       setup_seconds: chosen?.setup_seconds ?? step.setup_seconds ?? 0,
       recurring_cost: chosen?.recurring_cost,
       privacy: chosen?.privacy,

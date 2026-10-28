@@ -253,7 +253,9 @@ function withProposals(db: any, rows: Array<[string, string, any]>) {
     db.prepare(
       "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES (?, 'goal', ?, ?, '{}')"
     ).run(id, status === 'rejected' ? 'draft' : status, JSON.stringify(steps));
-    if (status === 'rejected') rejectProposal(db, id, 'kanav', 'too expensive');
+    // No reason: a no whose words name nothing reads as the whole step
+    // refused, which is what these fixtures mean.
+    if (status === 'rejected') rejectProposal(db, id, 'kanav');
   }
 }
 
@@ -263,10 +265,83 @@ describe('what this person actually approves', () => {
     db.prepare(
       "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES ('p1', 'add a thing', 'draft', '[]', '{}')"
     ).run();
-    expect(rejectProposal(db, 'p1', 'kanav', 'not now')).toMatchObject({ reason: 'not now' });
+    expect(rejectProposal(db, 'p1', 'kanav', 'not now')).toMatchObject({
+      reason: 'not now',
+      reason_kind: 'later',
+    });
     expect(db.prepare("SELECT status FROM proposals WHERE id = 'p1'").get()?.status).toBe(
       'rejected'
     );
+    db.close();
+  });
+
+  it('reads the free text a terminal typed as the kind it names', () => {
+    const db = environment();
+    db.prepare(
+      "INSERT INTO proposals (id, goal, status, steps, simulated) VALUES ('p1', 'add a thing', 'draft', '[]', '{}')"
+    ).run();
+    expect(rejectProposal(db, 'p1', 'kanav', 'much too expensive')).toMatchObject({
+      reason_kind: 'cost',
+    });
+    db.prepare("DELETE FROM proposal_rejections").run();
+    db.prepare("UPDATE proposals SET status = 'draft' WHERE id = 'p1'").run();
+    // Words that name no kind stay without one, and read as the whole step.
+    const plain = rejectProposal(db, 'p1', 'kanav', 'it duplicates what we already run');
+    expect(plain.reason).toBe('it duplicates what we already run');
+    expect((plain as any).reason_kind).toBeUndefined();
+    db.close();
+  });
+
+  it('reads a structured reason as evidence about its own trait, and about nothing else', () => {
+    const db = environment();
+    // Three noes for the cost, none of which may read as a no to hosted.
+    for (let i = 1; i <= 3; i++) {
+      db.prepare(
+        `INSERT INTO proposals (id, goal, status, steps, simulated) VALUES
+         (?, 'goal', 'draft', ?, '{}')`
+      ).run(`p${i}`, JSON.stringify([{ privacy: 'hosted', recurring_cost: '$9/mo' }]));
+      rejectProposal(db, `p${i}`, 'kanav', undefined, 'cost');
+    }
+    const learned = observedPreferences(db);
+    expect(learned.find(l => l.trait === 'cost:recurring')).toMatchObject({ leans: 'refused' });
+    expect(learned.find(l => l.trait === 'privacy:hosted')).toBeUndefined();
+    db.close();
+  });
+
+  it('a timing no is evidence about nothing in the proposal', () => {
+    const db = environment();
+    for (let i = 1; i <= 3; i++) {
+      db.prepare(
+        `INSERT INTO proposals (id, goal, status, steps, simulated) VALUES
+         (?, 'goal', 'draft', ?, '{}')`
+      ).run(`p${i}`, JSON.stringify([{ privacy: 'hosted', recurring_cost: '$9/mo' }]));
+      rejectProposal(db, `p${i}`, 'kanav', undefined, 'later');
+    }
+    expect(observedPreferences(db)).toHaveLength(0);
+    // The noes still count as decisions, so the report can say how many.
+    expect(observedReport(db)).toMatchObject({ rejected: 3 });
+    db.close();
+  });
+
+  it('names the way chosen as its own trait, which a "wrong provider" no is about', () => {
+    const db = environment();
+    for (let i = 1; i <= 3; i++) {
+      db.prepare(
+        `INSERT INTO proposals (id, goal, status, steps, simulated) VALUES
+         (?, 'goal', 'draft', ?, '{}')`
+      ).run(`p${i}`, JSON.stringify([{ chosen: 'Hosted embeddings' }]));
+      rejectProposal(db, `p${i}`, 'kanav', undefined, 'provider');
+    }
+    expect(observedPreferences(db).find(l => l.trait === 'via:Hosted embeddings')).toMatchObject({
+      leans: 'refused',
+    });
+    // The next draft of the same step takes the other way, and says why.
+    const picked = preferredOption(db, [
+      { name: 'Hosted embeddings', privacy: 'hosted', recurring_cost: '$9/mo' },
+      { name: 'Local embeddings', privacy: 'local', recurring_cost: 'none' },
+    ]);
+    expect(picked.index).toBe(1);
+    expect(picked.because).toContain('via:Hosted embeddings refused');
     db.close();
   });
 
