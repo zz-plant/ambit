@@ -92,7 +92,7 @@ import { capabilityToAsk, resolveCapability } from './resolve.ts';
 import { goalFor, pathsFor } from './goals.ts';
 import { typedCommand } from './paths.ts';
 import { judgeGoal } from './judge.ts';
-import { judgeUnrouted, specGoal } from './spec.ts';
+import { judgeUnrouted, specDirHint, specGoal } from './spec.ts';
 import { humanDigest, notify, notifyPending } from './attention.ts';
 import { dispatchProposal, dispatchPending } from './dispatch.ts';
 import { workReport, usageReport, unmappedUse, usageWindows } from './telemetry.ts';
@@ -298,6 +298,13 @@ async function runCommand(
         // drawn as the plan for what it was taken to mean, said first; the
         // data, for --json and a script, is the routing as it always was.
         const routed = goalFor(db, arg) as any;
+        // One task of a spec reads as a sentence the words cannot place. When
+        // the checkout already carries a spec this command reads whole, name
+        // it: the flag is the way in, and the sentence was never the unit.
+        if (arg && !routed.exact && !routed.recommended) {
+          const spec = specDirHint();
+          if (spec) routed.try = `ambit goal --spec ${shellQuote(spec)}`;
+        }
         const palette = terminalPalette();
         emit(routed, r => {
           if (r.exact && Array.isArray(r.order)) return renderPlan(r, palette);

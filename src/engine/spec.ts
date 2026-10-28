@@ -38,7 +38,7 @@
  * seed matches config ids with: one index for intent, one for tool names, the
  * same two the rest of the engine reads.
  */
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { Db } from './db.ts';
 import { routeSentence } from './goals.ts';
@@ -84,6 +84,28 @@ interface ReadSpec {
 }
 
 type Failed = { error: string; did_you_mean?: string[] };
+
+/**
+ * Where a spec already sits in the checkout, when one does.
+ *
+ * `--spec` reads one directory named on the command line; a person routing a
+ * sentence does not know to name it. Only the two layouts this command
+ * parses are looked for, each known by its tasks.md: Spec Kit's
+ * `specs/<feature>/` and OpenSpec's `openspec/changes/<change>/`. Read only,
+ * and read from a typed command only, like the flag itself.
+ */
+export function specDirHint(base: string = process.cwd()): string | undefined {
+  for (const parent of ['specs', join('openspec', 'changes')]) {
+    try {
+      for (const entry of readdirSync(join(base, parent), { withFileTypes: true }))
+        if (entry.isDirectory() && existsSync(join(base, parent, entry.name, TASKS)))
+          return join(parent, entry.name);
+    } catch {
+      /* no such directory here */
+    }
+  }
+  return undefined;
+}
 
 /**
  * A line's words, and nothing a terminal or a shell would act on.
