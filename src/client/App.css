@@ -6825,6 +6825,14 @@ button.app-sample-tag:hover {
   gap: 6px;
 }
 
+/* The one-press answers read as choices of one kind, like the intake's
+   agents: the same pill each, wrapping to a second row on a narrow card. */
+.gov-decline-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .gov-decline-label {
   font-size: var(--fs-sm);
   color: var(--text-muted);

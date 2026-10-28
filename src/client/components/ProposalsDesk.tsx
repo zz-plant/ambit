@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import type { ProposalDecision, ProposalRow, QueueDecisionResult } from '../../shared/api';
+import type {
+  ProposalDecision,
+  ProposalRow,
+  QueueDecisionResult,
+  RejectionKind,
+} from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { WEB_ACTOR } from '../utils/copy';
@@ -26,6 +31,18 @@ function parseSteps(steps: string): StepLike[] {
     return [];
   }
 }
+
+/**
+ * The one-press answers to a no. Each names what the refusal is evidence
+ * about, and records itself: the cost, the way chosen, the timing. The
+ * words the engine classifies free text into, as the chips say them;
+ * "Something else" asks for words instead.
+ */
+const REASONS: { label: string; kind: RejectionKind }[] = [
+  { label: 'Too expensive', kind: 'cost' },
+  { label: 'Wrong provider', kind: 'provider' },
+  { label: 'Later', kind: 'later' },
+];
 
 /** Setup time the way a person says it: minutes under an hour. */
 const setupLabel = (hours: number) => (hours < 1 ? `${Math.round(hours * 60)}m` : `${hours}h`);
@@ -174,9 +191,16 @@ export function ProposalsDesk() {
   const [queueReport, setQueueReport] = useState<QueueReport | null>(null);
   const [copiedId, copy] = useCopied();
   const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved' | 'rejected'>('all');
-  // A no in progress: which card, and the reason typed so far. The reason is
-  // optional and is the most valuable part of the record.
-  const [declining, setDeclining] = useState<{ id: string; reason: string } | null>(null);
+  // A no in progress: which card, the reason typed so far, and how it was
+  // given. A chip is the whole answer and records itself; the text field is
+  // for what the chips do not name, and "Something else" is the word that
+  // none of the named reasons applies.
+  const [declining, setDeclining] = useState<{
+    id: string;
+    reason: string;
+    kind?: RejectionKind;
+    wantsText?: boolean;
+  } | null>(null);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
   const handleApprove = async (proposalId: string) => {
@@ -187,12 +211,16 @@ export function ProposalsDesk() {
     setApprovingId(null);
   };
 
-  const handleReject = async () => {
-    if (!declining) return;
+  const recordRejection = async (id: string, reason?: string, reasonKind?: RejectionKind) => {
     setDecisionError(null);
-    const result = await rejectProposal(declining.id, declining.reason.trim() || undefined);
+    const result = await rejectProposal(id, reason?.trim() || undefined, reasonKind);
     if (!result.ok) setDecisionError(result.error || 'Could not record the decision.');
     else setDeclining(null);
+  };
+
+  const handleReject = () => {
+    if (!declining) return;
+    void recordRejection(declining.id, declining.reason, declining.kind);
   };
 
   const copyApplyCmd = (id: string) => copy(id, `ambit apply ${id}`);
@@ -399,19 +427,51 @@ export function ProposalsDesk() {
 
                 {isDeclining && (
                   <div className="gov-decline">
-                    <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
-                      Reason, optional. The next draft reads it.
-                    </label>
-                    <input
-                      id={`decline-${p.id}`}
-                      className="tp-search gov-decline-input"
-                      placeholder="too expensive, wrong provider, not this quarter…"
-                      value={declining.reason}
-                      onChange={e => setDeclining({ id: p.id, reason: e.target.value })}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleReject();
-                      }}
-                    />
+                    <div className="gov-decline-reasons" role="group" aria-label="Why turn it down">
+                      {REASONS.map(chip => (
+                        <button
+                          key={chip.kind}
+                          type="button"
+                          className="tp-btn-sm"
+                          onClick={() => void recordRejection(p.id, undefined, chip.kind)}
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="tp-btn-sm"
+                        onClick={() =>
+                          setDeclining({ id: p.id, reason: '', kind: 'other', wantsText: true })
+                        }
+                      >
+                        Something else
+                      </button>
+                    </div>
+                    {declining.wantsText && (
+                      <>
+                        <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
+                          Reason, optional. The next draft reads it.
+                        </label>
+                        <input
+                          id={`decline-${p.id}`}
+                          className="tp-search gov-decline-input"
+                          placeholder="what none of those says…"
+                          value={declining.reason}
+                          onChange={e =>
+                            setDeclining({
+                              id: p.id,
+                              reason: e.target.value,
+                              kind: 'other',
+                              wantsText: true,
+                            })
+                          }
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleReject();
+                          }}
+                        />
+                      </>
+                    )}
                   </div>
                 )}
 
