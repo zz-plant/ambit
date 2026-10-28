@@ -766,6 +766,25 @@ export function frontierFrame(
 }
 
 /**
+ * The zoom at which whole columns fill `room` pixels, as many as it takes to
+ * come in at or under `cap`, and at least `fewest`. A frame held to a height
+ * takes more columns where it would otherwise show a sliver of one. `extra`
+ * is scene width the frame takes in beside the columns.
+ */
+export function wholeColumnFill(
+  room: number,
+  columns: number,
+  cap: number,
+  fewest = 1,
+  extra = 0
+): { n: number; zoom: number } {
+  const fill = (n: number) => Math.floor((room / (columnsSpan(n) + extra)) * 1000) / 1000;
+  let n = Math.max(1, Math.min(columns, fewest));
+  while (n < columns && fill(n) > cap) n++;
+  return { n, zoom: Math.min(cap, fill(n)) };
+}
+
+/**
  * The first of `count` whole columns that frame the columns in `lit`: centred
  * on them when they fit, and otherwise from `keep`, the column of the node
  * whose panel is open, or from the first of them, since a cascade spreads

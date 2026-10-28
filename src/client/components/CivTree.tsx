@@ -47,6 +47,7 @@ import {
   START_Y,
   stepSelection,
   visibleItems,
+  wholeColumnFill,
   wholeColumns,
 } from './civ/layout.ts';
 import { GAINED_THIS_WEEK, LOST_THIS_WEEK, MapFinding } from './civ/MapFinding.tsx';
@@ -930,9 +931,16 @@ export default function CivTree({
       0,
       bandSpan(0).left - BAND_MARGIN - Math.min(...points.map(p => p.x)) + 4
     );
+    // A simulation's banner names all it lights, so the frame takes its
+    // height too: held to the columns' width alone, an outage six eras wide
+    // and four rows deep ran below the map beside the panel at 1280 by 720.
+    // The height is frameScene's: the nodes, the room round them, the names.
+    const ys = points.map(p => p.y);
+    const litHeight = Math.max(...ys) - Math.min(...ys) + 2 * (NODE_R + 40) + 24;
+    const heightFit = Math.max(ZOOM_MIN, open.height / litHeight);
     const columnFrame = (room: number): Framing | null => {
       const span = simulating ? Math.max(...lit) - Math.min(...lit) + 1 : 1;
-      const top = Math.min(1, ceiling);
+      const top = Math.min(1, ceiling, simulating ? heightFit : 1);
       const near = wholeColumns(room, columns, top);
       const options = [near, near + 1]
         .map(n => Math.min(columns, Math.max(n, span)))
@@ -1049,10 +1057,20 @@ export default function CivTree({
         first === 0
           ? Math.max(0, bandSpan(0).left - BAND_MARGIN - Math.min(...points.map(p => p.x)) + 4)
           : 0;
-      const z = Math.max(
-        0.5,
-        Math.min(1.1, Math.floor((view.width / (columnsSpan(span) + ahead)) * 1000) / 1000)
+      // As tall as it is wide: held to the width alone, a deep cascade ran
+      // under the sheet. A zoom the height holds down takes more columns,
+      // whole, not a sliver of the next.
+      const ys = points.map(p => p.y);
+      const tall = Math.max(...ys) - Math.min(...ys) + 2 * (NODE_R + 40) + 24;
+      const fit = wholeColumnFill(
+        view.width,
+        colOrder.length,
+        Math.min(1.1, view.height / tall),
+        span,
+        ahead
       );
+      const z = Math.max(0.5, fit.zoom);
+      const from = Math.max(0, Math.min(first, colOrder.length - fit.n));
       const keep = keepId ? nodePositionMap.get(keepId) : undefined;
       const upright = frameScene(points, view, {
         min: z,
@@ -1064,7 +1082,10 @@ export default function CivTree({
       if (!upright) return;
       zoomAndScroll(
         z,
-        Math.max(0, Math.round(leftInset + (bandSpan(first).left - BAND_MARGIN - ahead) * z)),
+        Math.max(
+          0,
+          Math.round(leftInset + (bandSpan(from).left - BAND_MARGIN - (from === 0 ? ahead : 0)) * z)
+        ),
         upright.top
       );
       return;

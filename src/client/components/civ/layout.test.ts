@@ -33,6 +33,7 @@ import {
   columnCentre,
   columnsSpan,
   columnWindow,
+  wholeColumnFill,
   frontierFrame,
   READ_ZOOM,
   failingNeeds,
@@ -961,6 +962,22 @@ test('the map opens on every column when they read, and on the frontier when the
   expect(frontierFrame(390, 9, [8], 8, 0.66).first).toBe(6);
   expect(frontierFrame(390, 9, [], null, 0.66).first).toBe(0);
   expect(frontierFrame(390, 0, [], null, 0.66).zoom).toBe(1);
+});
+
+test('a frame held to a height takes more whole columns, not a sliver', () => {
+  // Six columns fill 1100px at 1.08; held to 0.8 by a cascade's height, it
+  // takes the nine that come in under it, whole.
+  const free = wholeColumnFill(1100, 9, 1.2, 6);
+  expect(free.n).toBe(6);
+  expect(columnsSpan(6) * free.zoom).toBeLessThanOrEqual(1100);
+  const held = wholeColumnFill(1100, 9, 0.8, 6);
+  expect(held.n).toBe(9);
+  expect(held.zoom).toBeLessThanOrEqual(0.8);
+  expect(columnsSpan(9) * held.zoom).toBeLessThanOrEqual(1100);
+  // Never more columns than the tree has, and never past the cap.
+  expect(wholeColumnFill(1100, 4, 0.5, 2)).toEqual({ n: 4, zoom: 0.5 });
+  // Room beside the columns, for a callout, comes off what they get.
+  expect(wholeColumnFill(1100, 9, 2, 6, 100).zoom).toBeLessThan(free.zoom);
 });
 
 test('beside a panel, what is lit sits among whole columns', () => {
