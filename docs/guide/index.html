@@ -57,7 +57,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <a href="https://github.com/zz-plant/ambit/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-informational?style=flat-square" alt="License: MIT"></a>
 <a href="https://glama.ai/mcp/servers/zz-plant/ambit"><img src="https://glama.ai/mcp/servers/zz-plant/ambit/badges/score.svg" alt="Glama Score"></a></p>
 <p><a href="https://zz-plant.github.io/ambit/?demo=1"><strong>Try the live demo</strong></a> · <a href="#get-started">Get started</a> · <a href="#connect-it-to-your-agent">Connect it to your agent</a> · <a href="/ambit/docs/faq/">FAQ</a> · <a href="https://zz-plant.github.io/ambit/docs/">Docs</a></p>
-<br><img src="/ambit/docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Embeddings, a next step, is selected and simulating it lights the four capabilities it would make reachable in green; then Shell Execution is switched off, what depends on it turns red, and nine working capabilities would stop; a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920"><p><sub>One setup, mapped. Pick a next step and Ambit shows what it would open: four more capabilities. Pick one you rely on and switch it off, and it counts the nine working things that would stop with it. Then which tools interrupt you most, and a change waiting on your approval.</sub></p>
+<br><img src="/ambit/docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Embeddings, a next step, is selected and simulating it lights the two capabilities it would make reachable in green; then Shell Execution is switched off, what depends on it turns red, and nine working capabilities would stop; a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920"><p><sub>One setup, mapped. Pick a next step and Ambit shows what it would open: two more capabilities. Pick one you rely on and switch it off, and it counts the nine working things that would stop with it. Then which tools interrupt you most, and a change waiting on your approval.</sub></p>
 <p><code>npx ambit-cli</code>, or <code>brew install zz-plant/tap/ambit &amp;&amp; ambit</code>, or <a href="https://zz-plant.github.io/ambit/?demo=1">open the hosted demo</a> and install nothing.</p>
 </div><hr>
 <h2 id="what-ambit-is"><a class="anchor" href="#what-ambit-is" aria-hidden="true" tabindex="-1">#</a>What Ambit is</h2>
@@ -229,8 +229,8 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <!-- example: ambit status -->
 <pre><code class="language-console">$ ambit status
 
-    39 of 70 reached · 0 proven · 8 with a single provider
-    ──────────────────────────────────────────────────────
+    15 of 46 reached, and 24 of your own · 0 proven · 8 with a single provider
+    ────────────────────────────────────────────────────────────────────────
     proven          0
   › unproven       15  11 provable now · 4 with no check
     failing         0
@@ -239,15 +239,15 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 
     actions: 18/66 reached
     provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution and 3 more
+    reach: 15 of 46 capabilities reached, and 24 of your own
     domains:
       ████░░░░░░ ai-ml     5/13
       ██████░░░░ backend   7/11
-      █████░░░░░ devops    4/8
     …
 
     Next  ambit verify · turns 11 of the unproven into evidence
 </code></pre>
-<!-- /example --><p>This is a fresh graph, before any check has run: reached and proven lead, the four counts under the rule add up to the reached figure, the <code>›</code> marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.</p>
+<!-- /example --><p>This is a fresh graph, before any check has run: reached and proven lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together, the <code>›</code> marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.</p>
 <h3 id="ambit-impact--downstream-dependency-impact"><a class="anchor" href="#ambit-impact--downstream-dependency-impact" aria-hidden="true" tabindex="-1">#</a>ambit impact — downstream dependency impact</h3>
 <!-- example: ambit impact mcp:playwright -->
 <pre><code class="language-console">$ ambit impact mcp:playwright
