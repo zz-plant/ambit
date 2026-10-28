@@ -109,7 +109,7 @@ function tally(db: Db) {
   };
   for (const d of decisions(db)) {
     const scope =
-      d.verdict === 'rejected' ? REJECTION_SCOPE[d.kind as RejectionKind] ?? 'all' : 'all';
+      d.verdict === 'rejected' ? (REJECTION_SCOPE[d.kind as RejectionKind] ?? 'all') : 'all';
     if (scope === 'none') continue;
     for (const t of d.traits) {
       if (scope === 'cost') {

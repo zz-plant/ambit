@@ -24,11 +24,7 @@ interface ConfigIntakeProps {
  * the servers to tick. Pasting comes first because the files live in
  * hidden directories a file picker will not show by default.
  */
-export default function ConfigIntake({
-  onMapped,
-  rows = 4,
-  ask,
-}: ConfigIntakeProps) {
+export default function ConfigIntake({ onMapped, rows = 4, ask }: ConfigIntakeProps) {
   const [agent, setAgent] = useState<(typeof AGENTS)[number] | null>(null);
   const { readText, readFile, readPicked, error } = useConfigImport(onMapped, agent?.runtime);
   const [text, setText] = useState('');

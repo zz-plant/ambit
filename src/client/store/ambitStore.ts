@@ -327,7 +327,11 @@ interface StoreState {
     proposalId: string,
     actor?: string
   ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
-  rejectProposal: (proposalId: string, reason?: string, reasonKind?: RejectionKind) => Promise<{ ok: boolean; error?: string }>;
+  rejectProposal: (
+    proposalId: string,
+    reason?: string,
+    reasonKind?: RejectionKind
+  ) => Promise<{ ok: boolean; error?: string }>;
   /** Several drafts, each approved or turned down on its own; the answer is per id. */
   decideQueue: (
     decision: 'approve' | 'reject',
