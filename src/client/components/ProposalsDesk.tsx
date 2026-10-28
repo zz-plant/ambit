@@ -252,9 +252,12 @@ export function ProposalsDesk() {
   const draftCount = proposals.filter(p => p.status === 'draft').length;
   const approvedCount = proposals.filter(p => p.status === 'approved').length;
   const rejectedCount = proposals.filter(p => p.status === 'rejected').length;
+  // The deck's Proposals tab carries the waiting count, and All is the sum of
+  // the rest, so neither is counted here; what a tab holds is what the tab
+  // shows. Approved and turned down are said nowhere else.
   const tabs: [typeof statusTab, string][] = [
-    ['all', `All (${proposals.length})`],
-    ['draft', `Waiting${draftCount > 0 ? ` (${draftCount})` : ''}`],
+    ['all', 'All'],
+    ['draft', 'Waiting'],
     ['approved', `Approved (${approvedCount})`],
     ...(rejectedCount > 0
       ? ([['rejected', `Turned down (${rejectedCount})`]] as [typeof statusTab, string][])
@@ -280,6 +283,12 @@ export function ProposalsDesk() {
           </button>
         ))}
       </div>
+
+      {/* What approving does, said once for the desk rather than on every
+          card that asks for the decision. */}
+      {draftCount > 0 && (statusTab === 'all' || statusTab === 'draft') && (
+        <p className="gov-hint">Approving signs a receipt; nothing runs yet.</p>
+      )}
 
       {/* The queue. No comment box: an approval has no field to keep one
           in yet, and a box whose words are dropped would be a lie. */}
@@ -323,11 +332,7 @@ export function ProposalsDesk() {
         <div className="gov-empty">
           {proposals.length === 0
             ? 'Nothing waiting. A change drafted by an agent or by ambit propose appears here for you to decide.'
-            : statusTab === 'draft'
-              ? 'Nothing waiting for your approval.'
-              : statusTab === 'rejected'
-                ? 'Nothing turned down.'
-                : 'Nothing approved yet.'}
+            : 'Nothing here yet.'}
         </div>
       ) : (
         <div className="gov-list">
@@ -504,10 +509,6 @@ export function ProposalsDesk() {
                         </button>
                       )}
                     </>
-                  ) : isRejected ? (
-                    <span className="gov-reply">
-                      The next draft takes any reason you gave into account.
-                    </span>
                   ) : isDeclining ? (
                     <>
                       <button
