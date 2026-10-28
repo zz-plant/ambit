@@ -481,17 +481,31 @@ async function main() {
       return { scale, size, framed: framed.length };
     })()`);
 
-  const label = await labelSize();
-  const shownPx = +(label.size * label.scale * (GIF_WIDTH / WIDTH)).toFixed(1);
-  if (shownPx < MIN_LABEL_PX)
-    throw new Error(
-      `node labels would render at ${shownPx}px in the GIF, under the ${MIN_LABEL_PX}px floor`
-    );
-  if (label.framed < MIN_NODES_IN_FRAME)
-    throw new Error(`only ${label.framed} labelled nodes are fully in frame`);
-  console.log(
-    `  · canvas at ${zoom}%, ${label.framed} nodes framed, labels ${shownPx}px in the GIF`
-  );
+  /**
+   * The floor, held for every beat that is read and not only the first. The
+   * map frames what a beat lights by its own rule, and when that rule changed
+   * the unlock beat's names went to eight pixels with nothing to say so.
+   */
+  const legible = async (beat: string) => {
+    const label = await labelSize();
+    const shownPx = +(label.size * label.scale * (GIF_WIDTH / WIDTH)).toFixed(1);
+    if (shownPx < MIN_LABEL_PX)
+      throw new Error(
+        `${beat}: node labels would render at ${shownPx}px in the GIF, under the ${MIN_LABEL_PX}px floor`
+      );
+    if (label.framed < MIN_NODES_IN_FRAME)
+      throw new Error(`${beat}: only ${label.framed} labelled nodes are fully in frame`);
+    return `${label.framed} nodes framed, labels ${shownPx}px in the GIF`;
+  };
+  console.log(`  · canvas at ${zoom}%, ${await legible('the map')}`);
+
+  /**
+   * The pointer, parked off the map. It rests where it last clicked, and when
+   * the map reframed under it the selected beat wore a node's tooltip that no
+   * reader had hovered.
+   */
+  const park = () =>
+    cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: WIDTH - 4, y: HEIGHT - 4 });
 
   await sleep(400);
   await hold(2.0, 'a region of the map');
@@ -511,6 +525,7 @@ async function main() {
       nodes.slice(0, 40).map(n => n.getAttribute('aria-label')).join(' | '));
   })()`);
   console.log(`  selected ${next}`);
+  await park();
   await cdp.eval(`document.activeElement?.blur?.(); true`);
   await sleep(900);
   const unlocked = await cdp.clickWhere(`(() => {
@@ -521,6 +536,7 @@ async function main() {
     return b;
   })()`);
   console.log(`  ${unlocked}`);
+  await park();
   await sleep(1200);
   const opened = await cdp.eval(
     `document.querySelector('.civ-sim-banner span')?.textContent ?? ''`
@@ -528,9 +544,10 @@ async function main() {
   if (!/would make [1-9]\d* more capabilit(y|ies) reachable/.test(String(opened)))
     throw new Error(`the unlock beat opens nothing: "${opened}"`);
   console.log(`  · ${opened}`);
+  console.log(`  · ${await legible('one more step')}`);
   await hold(2.4, 'one more step');
   await cdp.eval(`(() => {
-    const b = [...document.querySelectorAll('.sp-action-btn')].find(e => /clear|exit|stop/i.test(e.textContent));
+    const b = [...document.querySelectorAll('.sp-action-btn')].find(e => /end simulation|clear|exit|stop/i.test(e.textContent));
     if (b) b.click();
     const c = document.querySelector('.sp-close'); if (c) c.click();
     return true;
@@ -559,12 +576,14 @@ async function main() {
       nodes.slice(0, 40).map(n => n.getAttribute('aria-label')).join(' | '));
   })()`);
   console.log(`  selected ${picked}`);
+  await park();
   // The recorder's click leaves the node focused with the keyboard ring drawn
   // round it, which a pointer click in a browser does not, so the README's
   // selected node wore a box no reader clicking it would see. Selection is
   // store state and survives the blur.
   await cdp.eval(`document.activeElement?.blur?.(); true`);
   await sleep(1100);
+  console.log(`  · ${await legible('one capability selected')}`);
   await hold(1.6, 'one capability selected');
 
   // 4 — blast radius, the guardrail
@@ -576,6 +595,7 @@ async function main() {
     return b;
   })()`);
   console.log(`  ${simmed}`);
+  await park();
   await sleep(1200);
   const said = await cdp.eval(`document.querySelector('.civ-sim-banner span')?.textContent ?? ''`);
   if (!/\d+ capabilit(y|ies) would stop working/.test(String(said)))
@@ -585,7 +605,7 @@ async function main() {
 
   // 5 — back to a clean map
   await cdp.eval(`(() => {
-    const b = [...document.querySelectorAll('.sp-action-btn')].find(e => /clear|exit|stop/i.test(e.textContent));
+    const b = [...document.querySelectorAll('.sp-action-btn')].find(e => /end simulation|clear|exit|stop/i.test(e.textContent));
     if (b) b.click();
     const c = document.querySelector('.sp-close'); if (c) c.click();
     return true;
@@ -595,6 +615,11 @@ async function main() {
   // 6 — where the human time goes. The scenario rows above are what give the
   // lens something to colour; without them it is offered disabled.
   console.log('  · attention lens');
+  // A lens reads across the whole map, so the beat fits it first: at the
+  // zoom the earlier beats read at, it coloured two nodes of a region.
+  await cdp.clickWhere(byText('.civ-zoom-btn', 'Fit'));
+  await park();
+  await sleep(700);
   await cdp.clickWhere(deckTab('Attention'));
   await sleep(1300);
   await hold(2.4, 'attention lens');

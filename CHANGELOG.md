@@ -6,6 +6,16 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### One reach, one step, said the same way everywhere
+
+Bare `ambit` said "9 of 46 capabilities" where `ambit status`, the agent's briefing, `ambit doctor` and My Setup's journey said "18 of 55" of the same setup. The larger figure counts the person's own servers, models and runtimes as well, and both are true. Every sentence that states reach now holds both, "9 of 46 capabilities reached, and 9 of your own", so each agrees with the other surfaces and the evidence rows under `ambit status` still add up. The page's Time & cost and journey count the tree, as the map does, and `ambit_stats` carries the sentence for an agent to quote.
+
+The map lit what a step would make reachable eventually, taking each next step it opened as reached and going on past it. So Hosting lit Launch Ready, three steps away, beside a sentence naming the three next steps on the way. What a step brings is now one rule in `src/shared/nextSteps.ts`, the capabilities reached with it and the next steps that leaves, which the map lights, the finding counts, the banner and the panel state, and the readout names. On the demo, Embeddings opens two where the map said four.
+
+A frame on the map may zoom out to fit what is lit, and now zooms back to the person's own zoom for the next thing lit and when the simulation ends. It used to keep the smaller zoom the previous frame chose, so an unlock after a selection drew its names at eight pixels. On a phone an outage keeps its root's callout in frame, and a sheet open on the simulated node takes the banner's place, which repeated its sentence in three lines over the era names. `npm run shots` photographs an unlock after a zoom by hand and an outage rooted in the first column, and flags a banner over an era name and a callout off the map. The hero recording holds its ten-pixel floor in every beat that is read, and ends a simulation by the button's real name, which it had been missing, so its selection beat no longer showed the unlock still running.
+
+The concurrency test ran its "concurrent" writers one after another, and a writer that failed said nothing of why. They now hold the lock against each other and report their stderr. The status line's half-second budget scales with the machine's load, so a saturated machine no longer fails it.
+
 ### An approved change reaches the runtime you use
 
 The tour ends on "Agents propose changes… Only you can approve one", and for most people approving was the end of it. `ambit apply` wrote OpenCode's config and nothing else, so a Claude Code or Cursor user who approved a change had no command that made it. It now writes the runtime `--to` names, by the word `ambit connect` takes, or, without one, the one runtime whose config is on the machine: `ambit apply <id> --to=claude-code` puts the server under `mcpServers` in `~/.claude.json`, keeping the rest of the file, and `ambit rollback` gives the file its bytes back. The re-seed after either reads every runtime, where it read OpenCode alone and left what it had just written unseen.

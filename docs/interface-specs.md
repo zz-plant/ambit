@@ -24,6 +24,7 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 
 | ID | Change | Lands in | Size | Status |
 | :--- | :--- | :--- | :--- | :--- |
+| [U1](#u1-one-path-from-recommendation-to-checked-result) | A shorter first-use path | My Setup, Map | M | Proposed; history fix built |
 | [M1](#m1-collapse-to-the-neighborhood) | Collapse the map to a node's neighborhood | Map | M | Built |
 | [M2](#m2-a-minimap-that-carries-the-alarm) | A minimap that carries the alarm | Map | M | Built |
 | [M3](#m3-scrub-the-frontier-through-time) | Scrub the frontier through time | Map | L | Built |
@@ -40,6 +41,43 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 | [L3](#l3-one-row-per-machine) | One row per machine | My Setup, Infra | L | Slices 1 and 2 built |
 | [K1](#k1-a-palette-that-speaks-verbs) | A palette that speaks verbs | Finder | M | Built |
 | [K2](#k2-the-terminal-is-a-surface-too) | `ambit status` as a designed surface | CLI | S | Built |
+
+## First use
+
+### U1. One path from recommendation to checked result
+
+*Size M. Status: proposed, with a navigation fix built. The layouts below are design options, not shipped screens.*
+
+**The question.** What works in my setup, what should I change next, and how will I know the change worked?
+
+**Today.** The answer is spread across several surfaces. My Setup opens with the seven-leg Journey before the entries. The Map offers a next step, a preview and a detail panel, but setup and checking require local commands. A preview and the selected node can remain visible when moving to My Setup. At compact widths, navigation names disappear; on phones, the Sample label disappears too. Time & cost leads with annual attention value, which is easy to read as money earned.
+
+**The change.** Make one recommendation usable without learning the map's vocabulary. Keep the full map available for exploring dependencies.
+
+![Proposed first-use path, showing the browser and local execution boundary](./assets/first-use-path.svg)
+
+Two layouts use the same sequence:
+
+- **Guided start, recommended for first use.** Open My Setup with the next useful change, any failing checks, then the entry list. Move the Journey into an optional guide. Each recommendation gives a plain-language benefit, current state, estimated effort and one primary action: **Review setup plan**.
+- **Map first, for exploration.** Start with the selected recommendation and readable prerequisites and dependents. Offer the whole map as an expansion. Keep **Review setup plan** beside that selection, so the diagram leads to the same action.
+
+**Review setup plan** explains where the command runs and what it does. For the demo's Embeddings example, `ambit goal combo:embeddings --paths` lists available routes locally. It does not install a model. After setup, copy `ambit verify combo:embeddings` to run its declared check. A missing check remains unproven; a passing check supports only the behavior it exercises.
+
+Keep prerequisites, permission and evidence separate under **Why this recommendation?** A modeled route can be reachable while untested or unauthorized. Any future claim about operating a service unattended needs the outcome evidence proposed in [roadmap §17](./roadmap.md#17-defined-outcomes--proposed).
+
+**Supporting changes.**
+
+- Retain visible navigation names and sample status on narrow screens. Reflow the controls before removing their labels.
+- Keep simulations on the Map. Leaving it closes the preview and its controls; returning does not imply a real change occurred. A preview always says **Your setup has not changed**.
+- Put recorded spend before estimated attention value. Keep the valuation basis beside the estimate, including that it is not cash received.
+- In Proposals, lead with waiting decisions. Before approval, state whether execution is manual and whether automatic undo exists. Approval signs a plan; execution is separate.
+- Offer ordinary text search and visible activity filters before exposing query syntax or technical identifiers.
+
+**Implementation seams.** `AppDeck.tsx` and its responsive CSS own navigation; `SetupView.tsx` owns the entry order; `App.tsx` owns view transitions and preview cleanup. `NodeDetailPanel.tsx` can put the existing plan command beside the preview and check command. `LoopDashboard.tsx` and `ProposalsDesk.tsx` own the valuation and decision wording. Keep those surfaces on their existing projections. No new browser command-execution route is needed. Any displayed glossary term still comes from `src/shared/concepts.json`.
+
+**Done when.** A first-time user can identify a failing check, explain one recommendation, review its local setup command, close a preview and find how to check the result. Navigation names and sample status remain visible at 320, 390, 768 and 1024 pixels. Moving between views leaves no map controls covering another page. Browser Back, Forward and reload restore the named view. Task completion and comprehension still need observation with new users; a working prototype does not establish improved usability.
+
+**Built.** `writeAddress` now retains the History API receiver for both push and replace. The previous detached call threw in a browser and the catch hid it, so navigation could change the screen without updating the URL. The regression test exercises both receiver-sensitive methods. The other changes in this spec remain proposed.
 
 ## Map
 

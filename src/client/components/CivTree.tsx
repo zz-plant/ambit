@@ -768,6 +768,19 @@ export default function CivTree({
   // Fitted at half size, the whole tree drew the names beside the panel at
   // eight pixels. A zoom someone made by hand keeps its scale. When the
   // subject goes, a frame this chose gives way to the one on arrival again.
+  // An outage's callout reaches left of its root, and past the map's edge
+  // when the root is in the first column: a frame flush to the bands cut
+  // "DOWN ·" off. Its count is at most what is lit, so this is never short.
+  const outageCallout = useMemo(() => {
+    const root =
+      simulationMode === 'outage' && simulatedNodeId ? nodePositionMap.get(simulatedNodeId) : null;
+    return root
+      ? {
+          x: root.x - calloutReach(NODE_R, `DOWN · STOPS ${simSet.size}`),
+          y: root.y - NODE_R - 28,
+        }
+      : null;
+  }, [simulationMode, simulatedNodeId, nodePositionMap, simSet]);
   const framedWide = React.useRef('');
   const framedZoom = React.useRef<number | null>(null);
   React.useEffect(() => {
@@ -788,8 +801,26 @@ export default function CivTree({
     if (pendingScroll.current) return;
     if (framedWide.current === key) return;
     framedWide.current = key;
+    // The person's own zoom, the last they chose, and whether the one on screen
+    // is a frame's instead. A frame goes up to theirs and never past it. The
+    // zoom the frame before chose is no ceiling: selecting Embeddings zoomed
+    // out to take in what it needs, and the unlock after it kept that zoom,
+    // with names at eight pixels in the README, where it fits at theirs.
+    const own = handZoom.current;
+    const chosen = framedZoom.current !== null && zoom === framedZoom.current;
+    const ceiling = chosen ? (own ?? restFrame(el.clientWidth).zoom) : zoom;
     if (!subject.length) {
-      if (framedZoom.current !== null && zoom === framedZoom.current) {
+      // The zoom the frames took over from: theirs, about the same middle, or
+      // the frame on arrival.
+      if (chosen && own !== null) {
+        const mid = (scroll: number, size: number, inset: number) =>
+          ((scroll + size / 2 - inset) / zoom) * own + inset - size / 2;
+        zoomAndScroll(
+          own,
+          mid(el.scrollLeft, el.clientWidth, leftInset),
+          mid(el.scrollTop, el.clientHeight, 0)
+        );
+      } else if (chosen) {
         const rest = restFrame(el.clientWidth);
         zoomAndScroll(rest.zoom, rest.left, 0);
       }
@@ -798,17 +829,7 @@ export default function CivTree({
     }
     const points: { x: number; y: number }[] = subject.flatMap(id => nodePositionMap.get(id) ?? []);
     if (!points.length) return;
-    // An outage's callout reaches left of its root, and past the map's edge
-    // when the root is in the first column: a frame flush to the bands cut
-    // "DOWN ·" off. Its count is at most what is lit, so this is never short.
-    const root =
-      simulationMode === 'outage' && simulatedNodeId ? nodePositionMap.get(simulatedNodeId) : null;
-    if (root) {
-      points.push({
-        x: root.x - calloutReach(NODE_R, `DOWN · STOPS ${simSet.size}`),
-        y: root.y - NODE_R - 28,
-      });
-    }
+    if (outageCallout) points.push(outageCallout);
     const box = el.getBoundingClientRect();
     // What lies over the top of the canvas, measured as on a phone: the
     // controls, a simulation's banner, the finding. A constant for the
@@ -853,8 +874,9 @@ export default function CivTree({
     // The panel cuts whatever of the map runs under it.
     const cut =
       rightInset > 0 && leftInset + contentWidth * zoom - el.scrollLeft > right - el.scrollLeft;
-    const byHand = zoom === handZoom.current;
-    if (inView && (!cut || byHand)) return;
+    const byHand = own !== null && (zoom === own || chosen);
+    // A zoom a frame chose is framed again for what is lit now, which may fit larger.
+    if (inView && (!cut || byHand) && !chosen) return;
     const open = {
       top: hud,
       width: (card ? card.left : el.clientWidth - rightInset) - leftInset - 16,
@@ -865,24 +887,26 @@ export default function CivTree({
       { x: bandSpan(colOrder.length - 1).right, y: contentHeight - 60 },
     ];
     const head = bandOf(0, contentHeight).y;
-    const whole = byHand
-      ? null
-      : frameScene(scene, open, {
-          min: READ_ZOOM,
-          max: zoom,
-          inset: leftInset,
-          insetTop,
-          head,
-          pad: BAND_MARGIN * 2,
-        });
+    // Once someone has chosen a zoom, the whole tree is no frame of theirs.
+    const whole =
+      own !== null
+        ? null
+        : frameScene(scene, open, {
+            min: READ_ZOOM,
+            max: ceiling,
+            inset: leftInset,
+            insetTop,
+            head,
+            pad: BAND_MARGIN * 2,
+          });
     // A zoom rounded to two places can come out a pixel or two over.
     const wholeFits =
       whole !== null && (scene[1].x - scene[0].x + BAND_MARGIN * 4) * whole.zoom <= open.width + 4;
     const simulating = simulationMode !== 'none';
     const kept = !simulating && selectedId ? nodePositionMap.get(selectedId) : undefined;
     const zoomRange = {
-      min: simulating ? ZOOM_MIN : Math.min(READ_ZOOM, zoom),
-      max: zoom,
+      min: simulating ? ZOOM_MIN : Math.min(READ_ZOOM, ceiling),
+      max: ceiling,
       inset: leftInset,
       insetTop,
       head,
@@ -895,22 +919,23 @@ export default function CivTree({
     const keepCol = kept && columnAt(kept.x, columns);
     // Whole columns up to an edge `room` pixels from where the scene starts:
     // the panel's, or the card's. Exactly n of them fill it at one zoom each;
-    // of the two either side of the zoom already drawn, the nearer that reads,
-    // and never past 100%. A simulation takes as many as it lights. Filled to
-    // the edge, the frame is also one the scroller can reach: left short of
-    // it, a frame of the last columns asked for a scroll past the canvas's end.
+    // of the two either side of the ceiling, the nearer that reads, never past
+    // it or 100%. A simulation takes as many as it lights. Filled to the edge,
+    // the frame is also one the scroller can reach: left short of it, a frame
+    // of the last columns asked for a scroll past the canvas's end.
     const columnFrame = (room: number): Framing | null => {
       const span = simulating ? Math.max(...lit) - Math.min(...lit) + 1 : 1;
-      const near = wholeColumns(room, columns, zoom);
+      const top = Math.min(1, ceiling);
+      const near = wholeColumns(room, columns, top);
       const options = [near, near + 1]
         .map(n => Math.min(columns, Math.max(n, span)))
         .map(n => ({ n, z: Math.floor((room / columnsSpan(n)) * 1000) / 1000 }))
-        .filter(o => o.z <= 1);
+        .filter(o => o.z <= top + 0.005);
       const reads = options.filter(o => o.z >= (simulating ? ZOOM_MIN : READ_ZOOM));
       const pick = (reads.length ? reads : options).reduce<{ n: number; z: number } | null>(
-        (best, o) => (!best || Math.abs(o.z - zoom) < Math.abs(best.z - zoom) ? o : best),
+        (best, o) => (!best || Math.abs(o.z - top) < Math.abs(best.z - top) ? o : best),
         null
-      ) ?? { n: columns, z: 1 };
+      ) ?? { n: columns, z: top };
       const z = Math.max(ZOOM_MIN, pick.z);
       const upright = frameScene(points, open, {
         ...zoomRange,
@@ -962,6 +987,7 @@ export default function CivTree({
     zoomAndScroll,
     centring,
     headlinePad,
+    outageCallout,
   ]);
 
   // On a phone, whatever is lit gets the screen: a simulation's cascade, or a
@@ -980,7 +1006,8 @@ export default function CivTree({
     const key = `${simulationMode}:${simulatedNodeId}:${selectedId}:${covered}`;
     if (!lit.length || framedFor.current === key) return;
     framedFor.current = key;
-    const points = lit.flatMap(id => nodePositionMap.get(id) ?? []);
+    const points: { x: number; y: number }[] = lit.flatMap(id => nodePositionMap.get(id) ?? []);
+    if (outageCallout) points.push(outageCallout);
     // What lies over the top of the canvas, measured: the zoom and lens
     // controls with the map's tools on a row of their own, and a simulation's
     // banner. The tour and an open sheet hide the controls on a phone.
@@ -1055,6 +1082,7 @@ export default function CivTree({
     colOrder.length,
     contentWidth,
     zoomAndScroll,
+    outageCallout,
   ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -1095,7 +1123,11 @@ export default function CivTree({
     <div className="civ-tree" ref={surfaceRef}>
       <ZoomHud
         zoom={zoom}
-        setZoom={setZoom}
+        setZoom={z => {
+          // Fit and actual size are a zoom the person chose, as a pinch is.
+          handZoom.current = z;
+          setZoom(z);
+        }}
         zoomTo={zoomTo}
         containerRef={containerRef}
         contentWidth={contentWidth}
@@ -1178,7 +1210,10 @@ export default function CivTree({
         }
       />
 
-      {!narrated && (
+      {/* On a phone, a sheet open on the simulated node holds the banner's
+          sentence and its way out, and the banner took three lines over the
+          era names to repeat them. */}
+      {!narrated && !(narrow && selectedId !== null && selectedId === simulatedNodeId) && (
         <SimulationBanner
           simulationMode={simulationMode}
           simulatedNodeId={simulatedNodeId}
@@ -1528,9 +1563,8 @@ export default function CivTree({
           look could decode, and the key that names them waited behind a
           button. The rest of the marks stay in the Key. */}
       {strip.length > 0 && (
-        <div
+        <fieldset
           className="civ-strip"
-          role="group"
           aria-label="What the circles mean"
           style={{ bottom: covered + 10, left: leftInset + 8 }}
         >
@@ -1569,7 +1603,7 @@ export default function CivTree({
               </button>
             );
           })}
-        </div>
+        </fieldset>
       )}
 
       {/* Not while a tour narrates the map: its card sits where the thumbnail

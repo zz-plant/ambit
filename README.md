@@ -16,9 +16,9 @@ That is your *ambit*. Ambit reads the configs of Claude Code, Cursor, OpenCode a
 
 <br>
 
-<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Embeddings, a next step, is selected and simulating it rings in blue the four capabilities it would make reachable; then Shell Execution is switched off, what depends on it turns red, and nine working capabilities would stop; a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
+<img src="docs/assets/capability-graph-demo.gif" alt="Ambit showing one developer setup as a map: Embeddings, a next step, is selected and simulating it rings in blue the two capabilities it would make reachable; then Shell Execution is switched off, what depends on it turns red, and nine working capabilities would stop; a second view colors the tools that interrupt a person most often, and a proposed config change waits for approval" width="920">
 
-<sub>One setup, mapped. Pick a next step and Ambit shows what it would open: four more capabilities. Pick one you rely on and switch it off, and it counts the nine working things that would stop with it. Then which tools interrupt you most, and a change waiting on your approval.</sub>
+<sub>One setup, mapped. Pick a next step and Ambit shows what it would open: two more capabilities. Pick one you rely on and switch it off, and it counts the nine working things that would stop with it. Then which tools interrupt you most, and a change waiting on your approval.</sub>
 
 `npx ambit-cli`, or `brew install zz-plant/tap/ambit && ambit`, or [open the hosted demo](https://zz-plant.github.io/ambit/?demo=1) and install nothing.
 
@@ -124,8 +124,8 @@ The commands above read the capability graph. A second group (`attention`, `work
 ```console
 $ ambit status
 
-    39 of 70 reached · 0 proven · 8 with a single provider
-    ──────────────────────────────────────────────────────
+    15 of 46 reached, and 24 of your own · 0 proven · 8 with a single provider
+    ────────────────────────────────────────────────────────────────────────
     proven          0
   › unproven       15  11 provable now · 4 with no check
     failing         0
@@ -134,17 +134,17 @@ $ ambit status
 
     actions: 18/66 reached
     provable now: Automated Tests, Browser Automation, Code Intelligence, Continuous Delivery, Data Access, File Editing, Local Runtime, Shell Execution and 3 more
+    reach: 15 of 46 capabilities reached, and 24 of your own
     domains:
       ████░░░░░░ ai-ml     5/13
       ██████░░░░ backend   7/11
-      █████░░░░░ devops    4/8
     …
 
     Next  ambit verify · turns 11 of the unproven into evidence
 ```
 <!-- /example -->
 
-This is a fresh graph, before any check has run: reached and proven lead, the four counts under the rule add up to the reached figure, the `›` marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
+This is a fresh graph, before any check has run: reached and proven lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together, the `›` marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
 
 ### ambit impact — downstream dependency impact
 

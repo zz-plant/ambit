@@ -21,6 +21,7 @@ import {
   readableCost,
   type StepGraph,
   stepCandidates,
+  stepEffect,
   stepReason,
 } from '../../../shared/nextSteps';
 
@@ -533,46 +534,16 @@ export const readableSeconds = (s: number): string =>
   !s ? '' : s >= 3600 ? `${Math.round((s / 3600) * 10) / 10}h` : `${Math.round(s / 60)}m`;
 
 /**
- * What becomes reachable if `id` were reached: every node whose required
- * prerequisites are then all met, closed over itself. The unlock simulation
- * draws this set and the detail panel states its size.
+ * What reaching `id` brings, as the readout says it and the unlock simulation
+ * lights it: what is reached with it, and the next steps that leaves
+ * (`stepEffect`). The detail panel and the map's finding state its size.
  *
- * Only what depends on `id` counts. The closure is taken twice, with and
- * without it, and the difference is the answer. Taken once, it credited every
- * node already reachable from somewhere else, so on the demo tree each of six
- * unrelated next steps "made 18 more reachable", the same 18.
+ * Only what depends on `id` counts: taken over the whole tree, each of six
+ * unrelated next steps on the demo "made 18 more reachable", the same 18.
  */
 export function unlockCascade(items: Item[], connections: Connection[], id: string): Set<string> {
-  const required = new Map<string, string[]>();
-  for (const c of connections) {
-    if (c.type !== 'hard-dep') continue;
-    if (!required.has(c.to)) required.set(c.to, []);
-    required.get(c.to)!.push(c.from);
-  }
-  const reached = new Set(items.filter(i => i.status === 'built').map(i => i.id));
-  // `barred` is never admitted: without it, the baseline would reach `id`
-  // itself the moment its own prerequisites were met, and so everything after.
-  const closure = (start: Set<string>, barred?: string) => {
-    const have = new Set(start);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const [target, prereqs] of required) {
-        if (have.has(target) || target === barred) continue;
-        if (prereqs.every(p => have.has(p))) {
-          have.add(target);
-          changed = true;
-        }
-      }
-    }
-    return have;
-  };
-  const without = closure(reached, id);
-  const unlocked = new Set<string>();
-  for (const n of closure(new Set([...reached, id]))) {
-    if (n !== id && !without.has(n)) unlocked.add(n);
-  }
-  return unlocked;
+  const { reaches, opens } = stepEffect(stepGraph(items, connections), id);
+  return new Set([...reaches, ...opens]);
 }
 
 /**
