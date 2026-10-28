@@ -69,6 +69,7 @@ import {
   type ProposalDecision,
   type ProposalRow,
   type ProposalStatus,
+  type RejectionKind,
   type RunResponse,
   type TechTreeResponse,
   type TreeConnection,
@@ -662,6 +663,20 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
   } catch {
     /* a database predating rejections */
   }
+  // How each no was given, so the card can say the word instead of a
+  // promise about the next draft. Kept apart from the row query so a
+  // database predating the table answers with nothing instead of failing.
+  let rejections = new Map<string, { reason_kind: any; reason: any }>();
+  try {
+    rejections = new Map(
+      db
+        .prepare('SELECT proposal_id, reason_kind, reason FROM proposal_rejections')
+        .all<any>()
+        .map((r: any) => [r.proposal_id, r])
+    );
+  } catch {
+    /* a database predating rejections */
+  }
   // `applied_to` stays out: it holds the entry a rollback would put back,
   // which was someone's own server and can carry tokens in its env.
   return rows.map(({ applied_to: _appliedTo, ...r }) => ({
@@ -670,6 +685,8 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
       ? (r.status as ProposalStatus)
       : 'draft',
     decision: decisionFor(r, learned),
+    rejected_kind: (rejections.get(r.id)?.reason_kind ?? null) as RejectionKind | null,
+    rejected_reason: rejections.get(r.id)?.reason ?? null,
     // The hash an approval artifact binds, so the queue can send back what
     // it showed and a proposal that changed since is refused, not signed.
     proposal_hash: proposalHash(db, r),

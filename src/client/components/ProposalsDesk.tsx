@@ -44,6 +44,12 @@ const REASONS: { label: string; kind: RejectionKind }[] = [
   { label: 'Later', kind: 'later' },
 ];
 
+/** The recorded no, said inline the way the chips say it. */
+const REASON_WORDS = {
+  ...Object.fromEntries(REASONS.map(({ kind, label }) => [kind, label.toLowerCase()])),
+  other: 'something else',
+} as Record<RejectionKind, string>;
+
 /** Setup time the way a person says it: minutes under an hour. */
 const setupLabel = (hours: number) => (hours < 1 ? `${Math.round(hours * 60)}m` : `${hours}h`);
 
@@ -509,6 +515,13 @@ export function ProposalsDesk() {
                         </button>
                       )}
                     </>
+                  ) : isRejected ? (
+                    p.rejected_kind || p.rejected_reason ? (
+                      <span className="gov-reply">
+                        Turned down ·{' '}
+                        {p.rejected_kind ? REASON_WORDS[p.rejected_kind] : `"${p.rejected_reason}"`}
+                      </span>
+                    ) : null
                   ) : isDeclining ? (
                     <>
                       <button
