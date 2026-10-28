@@ -6831,6 +6831,10 @@ button.app-sample-tag:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 
 .gov-decline-label {
