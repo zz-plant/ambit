@@ -34,6 +34,7 @@ import {
   PROBE_COMMAND,
   REACHED_SQL,
   graphCounts,
+  reachPhrase,
   recheckCommand,
 } from '../vocabulary.ts';
 
@@ -239,9 +240,11 @@ function statusReport(db: any) {
   const checkable = checkableNames(db);
 
   return {
+    // The data's sentence, as scripts have read it; `reach` is the one people see.
     summary:
       `${g.reached}/${g.total} capabilities reached` +
       (worried.length ? ` · ${worried.join(' · ')}` : ' · nothing failing'),
+    reach: reachPhrase(db),
     reached: g.reached,
     total: g.total,
     verified: g.verified,
@@ -319,7 +322,8 @@ const SAID_IN_HEAD = new Set([
  */
 function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const ev = report.evidence[0];
-  const lead = `${report.reached} of ${report.total} reached · ${ev.proven} proven`;
+  // Eighty columns hold the head without its noun, and the rows say what is counted.
+  const lead = `${report.reach.replace(' capabilities reached', ' reached')} · ${ev.proven} proven`;
   const worried = worries(report);
   const tail = worried.length ? worried.join(' · ') : 'nothing failing';
 
@@ -1163,7 +1167,7 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
   const lines = [
     '',
     `${GUTTER}${c.bold}${head}${c.reset}`,
-    `${GUTTER}${cap.reached} of ${cap.total} reached · ${cap.proven} proven · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
+    `${GUTTER}${report.reach} · ${cap.proven} proven · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
   ];
   if (!report.grade) {
     lines.push(

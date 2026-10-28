@@ -528,11 +528,11 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           Up takes a person's command or a threshold one set; down takes one
           failing check and nobody. A refusal is on no rung. */}
       {ladder && (
-        <div className="sp-grant" aria-label="How far its grant has climbed">
+        <div className="sp-grant">
           {ladder.rung === 'forbidden' ? (
             <p className="sp-grant-note">{ladder.note}</p>
           ) : (
-            <ol className="sp-grant-rungs">
+            <ol className="sp-grant-rungs" aria-label="How far its grant has climbed">
               {RUNGS.map((r, i) => {
                 const at = RUNGS.indexOf(ladder.rung as (typeof RUNGS)[number]);
                 return (

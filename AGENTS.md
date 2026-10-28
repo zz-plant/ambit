@@ -17,7 +17,7 @@ npm run render:images -- --demo         # the saved map, relief and specimens, t
 npm run shots                           # every view as a screenshot at three sizes, to output/shots
 ```
 
-Work on how the map draws starts at the specimen page: `npx vite`, or the `ambit-specimen` launch configuration, then `/ambit/dev/specimen.html`. It draws every node state at three times its size through the map's own code, beside the key entry for it, and `?still` draws them as a saved file does. `npm run render:images` writes the files the Image menu saves, and the specimen page whole, from a headless Chrome: this checkout's graph, or the demo with `--demo`. The demo carries a failing check and a recovering one, so the stripes and the waver show without a graph of your own. `npm run shots` photographs every view at 1440×900, 1280×720 and a phone, with a contact sheet, and flags the frames a machine can fault: a status pill that wraps, a map column cut at the left edge, a view still loading. Look at it before a pull request that changes how a view looks; `--live --home <dir>` adds the machine's own views from a fixture's configs.
+Work on how the map draws starts at the specimen page: `npx vite`, or the `ambit-specimen` launch configuration, then `/ambit/dev/specimen.html`. It draws every node state at three times its size through the map's own code, beside the key entry for it, and `?still` draws them as a saved file does. `npm run render:images` writes the files the Image menu saves, and the specimen page whole, from a headless Chrome: this checkout's graph, or the demo with `--demo`. The demo carries a failing check and a recovering one, so the stripes and the waver show without a graph of your own. `npm run shots` photographs every view at 1440×900, 1280×720 and a phone, with a contact sheet, and flags the frames a machine can fault: a status pill that wraps, a map column cut at the left edge or under the panel, a simulation's banner over an era name, an outage's callout off the map, a view still loading. Look at it before a pull request that changes how a view looks; `--live --home <dir>` adds the machine's own views from a fixture's configs.
 
 `ambit web` runs Vite in a checkout. An installed copy has no Vite: it serves the page it shipped with (`dist/index.html` and `dist/assets`, built by `prepack`) from the compiled API server, on the first free loopback port from 3001.
 
@@ -48,8 +48,10 @@ src/engine/ontology.ts     Node kinds and edge kinds — what a thing is, what a
 src/engine/vocabulary.ts   The words the engine counts with — which states mean reached,
                            which lifecycles mean failing or recovering, which interventions are
                            middleware, which ledger actions are a check run, the audit
-                           trail's outcome words, the one graph-summary query, and
-                           `DEFAULT_WINDOW_DAYS`, how far back a report over the ledger looks
+                           trail's outcome words, the one graph-summary query, `reachPhrase`
+                           ("9 of 46 capabilities reached, and 9 of your own", the one way a
+                           sentence states reach), and `DEFAULT_WINDOW_DAYS`, how far back a
+                           report over the ledger looks
 src/engine/schema.sql      SQLite schema (capabilities, dependencies, authority, catalog,
                            preferences, synergies, session_learning, frontier_snapshots,
                            proposals, proposal_rejections, schema_meta, work ledger,
@@ -464,7 +466,9 @@ src/shared/placement.ts    `placeOnTree`: where a setup stands on the curated tr
                            its config turned up. The seed and the page's paste box both place by it
 src/shared/nextSteps.ts    What to reach next, by one rule: which capabilities are one step away,
                            their order (blocked work, then leverage per hour), what each reaches
-                           with it, and the sentence that says so. `ambit` and the page rank by it
+                           with it, and the sentence that says so. `ambit` and the page rank by it.
+                           `stepEffect` is what one step brings, what it reaches and the next steps
+                           that leaves, which the map lights and the sentence names
 src/shared/runtimes.ts     What every runtime brings (`BUILT_INS`) and the hosted model a runtime
                            runs on when its config names none (`RUNTIME_MODEL`)
 src/shared/nearest.ts      The few names a mistyped one was probably meant to be: it suggests, never decides

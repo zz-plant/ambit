@@ -96,7 +96,9 @@ export function stepCandidates(graph: StepGraph): StepCandidate[] {
       return (prereqs.get(dep) || []).every(p => p === node.id || reached(p));
     });
     const unlocks = waiting.filter(dep => graph.supplied.has(dep));
-    const opens = waiting.filter(dep => !graph.supplied.has(dep));
+    // Next steps past everything it reaches, not only past itself: Embeddings
+    // reaches Local Embeddings, and what waits on that opens with it.
+    const { opens } = stepEffect(graph, node.id);
     const hours = Math.max(node.setupSeconds, 300) / 3600;
     out.push({
       id: node.id,
@@ -160,6 +162,36 @@ export function reachedWith(graph: StepGraph, assume: readonly string[]): string
   }
   const assumed = new Set(assume);
   return [...after].filter(id => !before.has(id) && !assumed.has(id));
+}
+
+/**
+ * What reaching `id` brings: the capabilities reached with it, through every
+ * hop of what something here supplies, and the next steps that leaves, one hop
+ * past all of them and no further. The readout says this set and the map
+ * lights it. The map kept a closure of its own, which took a next step as
+ * reached and went on past it, so Hosting lit Launch Ready, three steps away,
+ * beside a sentence naming the three next steps on the way to it.
+ */
+export function stepEffect(graph: StepGraph, id: string): { reaches: string[]; opens: string[] } {
+  const prereqs = new Map<string, string[]>();
+  for (const { from, to } of graph.requires) {
+    if (!prereqs.has(to)) prereqs.set(to, []);
+    prereqs.get(to)!.push(from);
+  }
+  const reaches = reachedWith(graph, [id]);
+  const before = new Set(graph.nodes.filter(reachedIn).map(n => n.id));
+  const after = new Set([...before, id, ...reaches]);
+  const opens = graph.nodes
+    .filter(node => {
+      if (after.has(node.id)) return false;
+      // Configured and failing its own check: no step brings it, a pass does.
+      if (node.configured) return false;
+      const needs = prereqs.get(node.id) || [];
+      // Met only now: one already met was a next step before this one.
+      return needs.length > 0 && needs.every(p => after.has(p)) && needs.some(p => !before.has(p));
+    })
+    .map(node => node.id);
+  return { reaches, opens };
 }
 
 /**

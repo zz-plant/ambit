@@ -186,6 +186,24 @@ function graphCounts(
 }
 
 /**
+ * Reach in words, the same wherever a sentence states it: the curated
+ * capabilities reached of the tree's, then the reached nodes that are the
+ * person's own, their servers, models, runtimes, devices and skills. The readout, the map and the hosted page
+ * measure against the tree, and `ambit status`, the briefing and `ambit
+ * doctor` called the same setup "18 of 55" where the readout said "9 of 46".
+ * Both were true; a sentence holding both agrees with each, and the evidence
+ * rows under it still add up to the two together.
+ */
+function reachPhrase(db: { prepare(sql: string): { get(...p: unknown[]): any } }): string {
+  const tree = graphCounts(db, 'tree');
+  const more = graphCounts(db).reached - tree.reached;
+  return (
+    `${tree.reached} of ${tree.total} capabilities reached` +
+    (more > 0 ? `, and ${more} of your own` : '')
+  );
+}
+
+/**
  * Characters to a token, for every token count the engine states.
  *
  * Roughly four, which is close enough to hold a budget and to compare one
@@ -324,6 +342,7 @@ export {
   DECIDED_CAPABILITY_SQL,
   sqlList,
   graphCounts,
+  reachPhrase,
   type GraphCounts,
   NOT_SEEDED,
   notSeeded,

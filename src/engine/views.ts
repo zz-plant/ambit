@@ -782,7 +782,10 @@ export function interventionHeatmap(db: Db): Record<string, any>[] {
  * because no report draws a line.
  */
 export function loopView(db: Db): LoopResponse {
-  const counts = graphCounts(db);
+  // Over the curated tree, as the map, its pill and the readout count: the
+  // graph's figure took in the config's own entries, and My Setup's journey
+  // said "18 of 55" under a readout saying "9 of 46".
+  const counts = graphCounts(db, 'tree');
   const digest = humanDigest(db, LOOP_WINDOW_DAYS) as {
     interventions?: number;
     reducible?: Intervention[];

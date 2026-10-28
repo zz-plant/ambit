@@ -1626,6 +1626,9 @@ button.app-sample-tag:hover {
   z-index: 5;
   display: flex;
   gap: 2px;
+  /* A fieldset, which a browser gives a margin and a minimum width. */
+  margin: 0;
+  min-width: 0;
   padding: 3px;
   border-radius: var(--radius-md);
   background: var(--bg-glass);

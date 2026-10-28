@@ -19,7 +19,7 @@ export const LENSES: readonly [ActiveLens, string, string][] = [
 interface ZoomHudProps {
   zoom: number;
   /** Sets the zoom outright: fit and actual size, which say where the map scrolls to. */
-  setZoom: React.Dispatch<React.SetStateAction<number>>;
+  setZoom: (zoom: number) => void;
   /** A step in or out, about the middle of the canvas. */
   zoomTo: (to: (zoom: number) => number) => void;
   containerRef: React.RefObject<HTMLDivElement | null>;

@@ -429,7 +429,7 @@ describe('the session briefing', () => {
     const b = briefing(db) as any;
     expect(graphCounts(db).failing).toBe(1);
     expect(b.environment).toBe(
-      '2/2 capabilities reached · 1 proven · 1 failing · 1 failing action'
+      '2 of 2 capabilities reached · 1 proven · 1 failing · 1 failing action'
     );
     // The list is still the finest-grained answer, and names both.
     expect(b.broken.map((x: any) => x.id).sort()).toEqual([
@@ -448,7 +448,7 @@ describe('the session briefing', () => {
     });
     const b = briefing(db) as any;
     expect(b.environment).toBe(
-      '1/1 capabilities reached · 1 proven · 0 failing · 1 failing action'
+      '1 of 1 capabilities reached · 1 proven · 0 failing · 1 failing action'
     );
     expect(b.broken).toHaveLength(1);
     db.close();
@@ -463,7 +463,7 @@ describe('the session briefing', () => {
     learn(db, 'combo:version-control', 'failed', { score: 0 });
     learn(db, 'combo:version-control', 'verified');
     const b = briefing(db) as any;
-    expect(b.environment).toBe('1/1 capabilities reached · 0 proven · 0 failing');
+    expect(b.environment).toBe('1 of 1 capabilities reached · 0 proven · 0 failing');
     expect(b.broken).toBeUndefined();
     expect(b.recovering).toEqual([
       { id: 'combo:version-control', name: 'Version Control', recent: '1 of the last 2 passed' },

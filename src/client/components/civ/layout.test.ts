@@ -317,7 +317,7 @@ test('an outage cascades along every hop downstream', () => {
   expect(outageCascade(edges, 'c').size).toBe(0);
 });
 
-test('an unlock reaches what its required prerequisites then allow, closed over itself', () => {
+test('an unlock lights the next steps it leaves, and stops there', () => {
   const items = [
     withStatus('have', 1, 'built'),
     withStatus('gap', 1, 'specified', true),
@@ -331,9 +331,18 @@ test('an unlock reaches what its required prerequisites then allow, closed over 
     { from: 'then', to: 'later', type: 'hard-dep' },
     { from: 'gap', to: 'optional-only', type: 'soft-dep' },
   ];
-  // Reaching the gap satisfies `then`, which satisfies `later`. A soft edge
-  // gates nothing, so the optional target is not claimed.
-  expect([...unlockCascade(items, deps, 'gap')].sort()).toEqual(['later', 'then']);
+  // Reaching the gap makes `then` a next step. `later` waits on `then`, which
+  // is a step of its own, so it is not claimed, as the readout's sentence does
+  // not claim it. A soft edge gates nothing, so the optional target is not
+  // claimed either.
+  expect([...unlockCascade(items, deps, 'gap')]).toEqual(['then']);
+  // Once something here supplies `then`, the gap reaches it, and `later` is
+  // the next step that leaves.
+  const supplied: Connection[] = [
+    ...deps,
+    { from: 'mcp:then', to: 'then', type: 'hard-dep', kind: 'provides' },
+  ];
+  expect([...unlockCascade(items, supplied, 'gap')].sort()).toEqual(['later', 'then']);
 });
 
 test('an unlock claims only what depends on it, not what another step already allows', () => {

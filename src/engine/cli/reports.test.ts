@@ -154,7 +154,9 @@ describe('the evidence counts', () => {
       expect(ev.proven + ev.unproven + ev.failing + ev.entries).toBe(report.reached);
 
       const lines = renderStatus(report, PLAIN);
-      const reached = Number(lines[1].match(/(\d+) of \d+ reached/)?.[1]);
+      // The tree's capabilities, plus the person's own: together, the graph's reach.
+      const head = lines[1].match(/(\d+) of \d+ reached, and (\d+) of your own/);
+      const reached = Number(head?.[1]) + Number(head?.[2]);
       const rowSum = evidenceRows(lines)
         .filter(r => !r.includes('last check'))
         .reduce((sum, r) => sum + Number(cellsOf(r).match(/(\d+)$/)?.[1]), 0);
@@ -258,7 +260,7 @@ describe('one count of what is failing', () => {
       },
     ]);
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · 1 failing');
+    expect(lines[1]).toBe('    1 of 1 reached, and 1 of your own · 1 proven · 1 failing');
     expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual(['  › failing         1']);
     expect(report.next?.command).toBe('ambit verify skill:pdf');
   });

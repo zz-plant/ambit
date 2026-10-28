@@ -144,8 +144,9 @@ test('an outage corrodes the fill of what it stops, inside a ring that holds', (
   );
   // The strip under the map names the outage's marks, as words that light nothing.
   const html = map();
+  // A fieldset is a group a screen reader announces by its label.
+  expect(html).toContain('<fieldset class="civ-strip" aria-label="What the circles mean"');
   const strip = html.slice(html.indexOf('class="civ-strip"'));
-  expect(strip).toContain('role="group"');
   expect(strip).toContain('Stops working');
   expect(strip).not.toContain('<button');
   // A screen reader hears what the texture says.

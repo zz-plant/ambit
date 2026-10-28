@@ -12,7 +12,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { availableParallelism, loadavg, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { C, PLAIN } from './cli/output.ts';
@@ -263,5 +263,9 @@ test('it writes nothing: the graph file is the same bytes afterwards', () => {
 test('it answers well inside the time between two messages', () => {
   const graph = graphFile({ lifecycles: { 'combo:version-control': 'verified' } });
   const fastest = Math.min(...[1, 2, 3].map(() => statusline(graph).ms));
-  expect(fastest).toBeLessThan(500);
+  // Half a second on a machine with a core to spare. A saturated one runs
+  // every process slower by about its load per core, and the suite failed
+  // there on a measure of the machine and not of the command.
+  const busy = Math.max(1, loadavg()[0] / availableParallelism());
+  expect(fastest).toBeLessThan(500 * busy);
 });

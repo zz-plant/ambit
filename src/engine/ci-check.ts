@@ -1,6 +1,6 @@
 import { appendFileSync } from 'node:fs';
 import type { Db } from './db.ts';
-import { FAILING_SQL, REACHED_SQL, graphCounts } from './vocabulary.ts';
+import { FAILING_SQL, REACHED_SQL, graphCounts, reachPhrase } from './vocabulary.ts';
 import { singlePointsOfFailure } from './inference.ts';
 
 export interface CiCheckResult {
@@ -74,7 +74,7 @@ export function runCiCheck(
     `### Ambit Capability Guard: ${statusBadge}`,
     '',
     `- **Status:** ${statusBadge}`,
-    `- **Reached Capabilities:** ${counts.reached} / ${counts.total}`,
+    `- **Reached:** ${reachPhrase(db)}`,
     `- **Verified (Proven):** ${counts.proven} / ${counts.reached}`,
     `- **Failing Checks:** ${counts.failing}`,
     `- **Strict Mode:** ${strict ? 'Enabled' : 'Disabled'}`,

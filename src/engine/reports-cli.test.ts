@@ -679,6 +679,7 @@ test('status keeps every field it had, names what is recovering, and adds next a
   const status = cli('status');
   expect(Object.keys(status)).toEqual([
     'summary',
+    'reach',
     'reached',
     'total',
     'verified',
@@ -718,7 +719,7 @@ test('status piped is plain text, carries the same lines, and ends on Next', () 
   const out = run();
   expect(out).not.toContain(String.fromCharCode(27));
   const lines = out.split('\n').filter(line => line.trim());
-  expect(lines[0]).toMatch(/^ {4}\d+ of \d+ reached · \d+ proven/);
+  expect(lines[0]).toMatch(/^ {4}\d+ of \d+ reached(, and \d+ of your own)? · \d+ proven/);
   expect(lines[1]).toMatch(/^ {4}─+$/);
   expect(lines.some(line => line.startsWith('  › unproven '))).toBe(true);
 
