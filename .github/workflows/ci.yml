@@ -69,6 +69,12 @@ jobs:
       - name: Check README examples match real output
         run: npm run docs:examples:check
 
+      # The tool listing is what every connecting agent loads into context.
+      # server.test.ts holds it under 95% of its ceiling; this prints how much
+      # room is left on every run, so the number is seen before it is a problem.
+      - name: Check MCP listing size and quality
+        run: npm run mcp:check
+
       # The published demo is derived from a fixture through the engine. If the
       # model moves and this is not regenerated, the demo shows a system this
       # engine would not build — which is how it came to describe a machine

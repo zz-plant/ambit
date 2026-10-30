@@ -127,9 +127,12 @@ test('each tool is advertised once, under the product name', () => {
   expect(new Set(names).size).toBe(names.length);
   expect(names.filter(n => !n.startsWith('ambit_'))).toEqual([]);
 
-  // The listing is what costs context, so its size is the thing to hold.
+  // The listing is what costs context, so its size is the thing to hold. The
+  // ceiling is 20,000; the gate is 19,000, so a tool that would land the
+  // listing above 95% of it has to shorten a description first. The listing
+  // sat at 98.9% once, where the next tool could not be added at all.
   const bytes = Buffer.byteLength(JSON.stringify(list.result.tools));
-  expect(bytes).toBeLessThan(20_000);
+  expect(bytes).toBeLessThan(19_000);
 });
 
 test('the agent profile lists ten tools in under five kilobytes, and the rest still answer', () => {
