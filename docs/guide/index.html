@@ -76,7 +76,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <ul>
 <li><strong>Capability</strong>: one thing your setup can do. Every MCP server, agent, skill, provider, model and command in your config becomes one, as does every node of the curated tree.</li>
 <li><strong>Reached, next step, blocked</strong>: Reached means a configured provider satisfies it and its required prerequisites are met. A next step has all required prerequisites met but lacks a configured provider; it sits just beyond the frontier and appears in <code>ambit goal</code>. Blocked means a required prerequisite is missing.</li>
-<li><strong>Verified</strong>: Reached, and its declared check recently passed. <code>ambit status</code> reports these as proven. Reached is a fact about the config; verified is a fact about a check that ran.</li>
+<li><strong>Verified</strong>: Reached, and its declared check recently passed. <code>ambit status</code> reports these as verified. Reached is a fact about the config; verified is a fact about a check that ran.</li>
 <li><strong>Required vs optional prerequisite</strong>: a required prerequisite gates the capability; an optional one strengthens it without gating. Only required ones block a node. The data model and the CLI call these hard and soft.</li>
 <li><strong>Combo</strong>: a capability the curated tree defines as composed from others, such as semantic retrieval from a vector store and local embeddings. Every node on the map is one, which is why their ids start with <code>combo:</code>.</li>
 <li><strong>Era</strong>: how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.</li>
@@ -188,7 +188,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 </thead>
 <tbody><tr>
 <td align="left"><code>ambit status</code></td>
-<td align="left">Environment health: what is reached and how much of it is proven, what is failing its declared check, what has a single provider, pending approvals, and the one command to type next</td>
+<td align="left">Environment health: what is reached and how much of it is verified, what is failing its declared check, what has a single provider, pending approvals, and the one command to type next</td>
 </tr>
 <tr>
 <td align="left"><code>ambit goal &lt;name&gt;</code></td>
@@ -229,10 +229,10 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <!-- example: ambit status -->
 <pre><code class="language-console">$ ambit status
 
-    15 of 46 reached, and 24 of your own · 0 proven · 8 with a single provider
+    15 of 46 reached, and 24 of your own · 0 verified · 8 with a single provider
     ────────────────────────────────────────────────────────────────────────
-    proven          0
-  › unproven       15  11 provable now · 4 with no check
+    verified        0
+  › unverified     15  11 provable now · 4 with no check
     failing         0
     entries        24  from your config; checks run on what they provide
     last check  never
@@ -245,9 +245,9 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
       ██████░░░░ backend   7/11
     …
 
-    Next  ambit verify · turns 11 of the unproven into evidence
+    Next  ambit verify · turns 11 of the unverified into evidence
 </code></pre>
-<!-- /example --><p>This is a fresh graph, before any check has run: reached and proven lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together, the <code>›</code> marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.</p>
+<!-- /example --><p>This is a fresh graph, before any check has run: reached and verified lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together, the <code>›</code> marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.</p>
 <h3 id="ambit-impact--downstream-dependency-impact"><a class="anchor" href="#ambit-impact--downstream-dependency-impact" aria-hidden="true" tabindex="-1">#</a>ambit impact — downstream dependency impact</h3>
 <!-- example: ambit impact mcp:playwright -->
 <pre><code class="language-console">$ ambit impact mcp:playwright
@@ -280,7 +280,7 @@ claude plugin install ambit@ambit
 </code></pre>
 <p><code>--profile=agent</code> advertises ten tools, the planning and verification ones an agent uses to check before it acts, in about 4.4KB of prompt context. Omitting the flag advertises every tool (~19.5KB). The server answers an unlisted tool by name either way, but most clients call only what they were shown, so under <code>--profile=agent</code> the connect instructions send the agent to the <code>ambit</code> command for the rest: single points of failure, budgets, incidents, the audit trail, everything <code>ambit help --all</code> lists. <a href="/ambit/docs/deep-dive/#the-full-mcp-surface">The deep dive</a> lists every tool and <a href="/ambit/docs/deep-dive/#how-a-call-is-answered">explains how calls are dispatched</a>.</p>
 <p><code>ambit-gate@ambit</code> is a companion plugin that puts <code>ambit gate</code> on every tool call, so what you refused or set to ask first in Ambit is denied or put to you. The hook block below does the same by hand.</p>
-<p>Ambit also publishes <code>ambit://briefing</code>, a resource a client reads on connect: what is reached and proven, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next with what each step would reach, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to <code>~/.claude/settings.json</code>:</p>
+<p>Ambit also publishes <code>ambit://briefing</code>, a resource a client reads on connect: what is reached and verified, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next with what each step would reach, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to <code>~/.claude/settings.json</code>:</p>
 <pre><code class="language-json">{
   &quot;hooks&quot;: {
     &quot;SessionStart&quot;: [{ &quot;hooks&quot;: [{ &quot;type&quot;: &quot;command&quot;, &quot;command&quot;: &quot;ambit briefing&quot; }] }],
@@ -356,7 +356,7 @@ already recorded the deficit, so do not retry it under another name.</p>
 <li><code>state</code> is <strong>structural</strong>: is this thing configured, and what does it depend on. This is what the frontier ledger records.</li>
 <li><code>lifecycle</code> is <strong>health</strong>: did its declared verification command actually pass. A capability can be fully configured and still <code>broken</code>, or <code>degraded</code>, which means it is recovering: its last check passed after one that failed.</li>
 </ul>
-<p>Availability is decided by lifecycle, not state, and a check can only take availability away: an unverified capability stays in plans, and one whose check fails is excluded from plans, simulations, goals, authority checks, and opportunity rankings. A single successful check restores a broken capability to unproven status, and it is marked as recovering until five consecutive checks pass. <code>ambit status</code> reports proven, unproven and failing counts, and the map badges each reached node: <code>✓</code> for a passing check, <code>!</code> for a failing one, nothing for configured but never verified, or recovering.</p>
+<p>Availability is decided by lifecycle, not state, and a check can only take availability away: an unverified capability stays in plans, and one whose check fails is excluded from plans, simulations, goals, authority checks, and opportunity rankings. A single successful check restores a broken capability to unverified status, and it is marked as recovering until five consecutive checks pass. <code>ambit status</code> reports verified, unverified and failing counts, and the map badges each reached node: <code>✓</code> for a passing check, <code>!</code> for a failing one, nothing for configured but never verified, or recovering.</p>
 <h3 id="fragility-is-computed-not-guessed"><a class="anchor" href="#fragility-is-computed-not-guessed" aria-hidden="true" tabindex="-1">#</a>Fragility is computed, not guessed</h3>
 <ul>
 <li><strong>Single points of failure</strong>: capabilities with exactly one provider.</li>
