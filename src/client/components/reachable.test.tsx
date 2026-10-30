@@ -195,7 +195,7 @@ test('a ledger with nothing in it still says what the graph proves', () => {
   const html = renderToStaticMarkup(<LoopDashboard />);
 
   expect(html).toContain('What the graph can prove');
-  expect(html).toContain('8 of 19 proved');
+  expect(html).toContain('8 of 19 verified');
   // and still asks for the half that is missing
   expect(html).toContain('ambit-telemetry.js');
 });
@@ -542,7 +542,7 @@ test('the governance half is on the page: authority, next steps, and the week', 
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
   expect(html).toContain('What runs without asking');
-  expect(html).toContain('Proven enough to stop asking');
+  expect(html).toContain('Earned enough to stop asking');
   expect(html).toContain('What to reach next');
   expect(html).toContain('emergent');
 });
