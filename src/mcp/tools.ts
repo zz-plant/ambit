@@ -264,7 +264,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'digest',
     description:
-      'Analyze human interventions over a window to find friction. Raw runs: ambit_work.',
+      'Analyze human interventions over a window: which capability interrupts you most. Raw runs: ambit_work.',
     inputSchema: {
       type: 'object',
       properties: { days: num('Window in days') },
@@ -274,7 +274,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'work',
     description:
-      'Recent work runs and costs: time, events, tools, interventions. Friction: ambit_digest.',
+      'Recent work runs and costs: time, events, tools, interventions. What interrupts you: ambit_digest.',
     inputSchema: {
       type: 'object',
       properties: { limit: num('Max runs') },
@@ -378,7 +378,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'opportunities',
     description:
-      'Rank proposed acquisitions by attention, ROI, or reliability. Details: ambit_opportunity.',
+      'Rank opportunities by attention, ROI, or reliability. Details: ambit_opportunity.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -391,7 +391,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'opportunity',
     description:
-      'Details for one ranked opportunity: burden, method, impact, payback. List: ambit_opportunities.',
+      'Details for one ranked opportunity: attention, method, impact, payback. List: ambit_opportunities.',
     inputSchema: {
       type: 'object',
       properties: { id: str('Opportunity ID') },
@@ -482,7 +482,7 @@ const BASE_TOOLS: ToolDef[] = [
   {
     name: 'portfolio',
     description:
-      'Federation receipts across environments: burdens, SPOFs, spend. Local stats: ambit_stats.',
+      'Federation receipts across environments: attention, single points of failure, spend. Local stats: ambit_stats.',
     inputSchema: {
       type: 'object',
       properties: { budget: num('Budget cap dollars') },

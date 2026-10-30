@@ -8,7 +8,7 @@
 
 // Six commands cover most first sessions. Everything else is `help --all` —
 // forty verbs on first contact taught nothing; depth should be discovered.
-const HELP_SHORT = `ambit - what your system can do, what it costs, what to change
+const HELP_SHORT = `ambit - what your setup can do, what it costs, what to change
 
   seed              seed from the agent config
   briefing          what an agent should know before its first tool call
@@ -24,7 +24,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   goal --spec <dir|tasks.md>   what a Spec Kit or OpenSpec spec's tasks need,
                     and the gap; the file is read as data, nothing in it runs
   opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
-                    ranked investments, or one in full
+                    ranked opportunities, or one in full
   verify [cap] [--history]   run the declared check, or show past verification;
                              --failing re-runs only the checks now failing
                              or recovering
@@ -38,7 +38,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   help --all        every command
   help [term]       one concept explained`;
 
-const HELP = `ambit - what your system can do, what it costs, what to change
+const HELP = `ambit - what your setup can do, what it costs, what to change
 
 Five groups. Every verb also works on its own — \`ambit impact x\` and
 \`ambit graph impact x\` are the same command.
@@ -86,15 +86,15 @@ plan — what to acquire next, and whether it paid
                           and the tasks nothing routed. Spec Kit and OpenSpec;
                           read as data, so no command, link or URL in it runs
   plan opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
-                          ranked investments, observed burden priced and compared,
+                          ranked opportunities, observed attention priced and compared,
                           or one case in full; --budget allocates the best
                           combination within $N
   plan propose <cap> [option] [--by=<who>]   draft a reviewable acquisition, with
                           its simulation; --by records who drafted it
   plan roi [proposal-id]  cumulative savings and forecast accuracy, or one
                           proposal's before/after verdict
-  plan portfolio [--budget=N]   across imported environments — shared burden,
-                          spofs, where capex would produce the most
+  plan portfolio [--budget=N]   across imported environments — shared attention,
+                          single points of failure, where capex would produce the most
   plan reversible         which unreached capabilities could be acquired without
                           a person, and which need hands
   plan judge goal <sentence> [--multi] [--threshold=0.8] [--record]   which
@@ -217,7 +217,7 @@ govern — the reviewable path from proposal to applied change
                           read, or read them all now. A source that goes quiet
                           says so rather than looking like a quiet week
 
-report — what the system cost to operate
+report — what the setup cost to operate
   report work [limit]     recent runs, each with what it cost
   report usage [days]     where capability effort actually went
   report usage --windows [days]
