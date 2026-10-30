@@ -149,6 +149,21 @@ test('a Spec Kit feature routes each task through the goal vocabulary', () => {
   }
 });
 
+test('a sentence the words cannot place is pointed at the spec the checkout holds', () => {
+  seed(BUILDER).close();
+  // No spec in sight: the sentence is answered as it always was.
+  expect(cli('goal', 'add a greeble farm to the admin panel').try).toBeUndefined();
+
+  const feature = specKitFeature();
+  const cwd = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+  const report = cli('goal', 'add a greeble farm to the admin panel');
+  cwd.mockRestore();
+  // The flag reads the whole feature, tasks and plan together, which is what
+  // one sentence out of it was reaching for.
+  expect(report.try).toBe(`ambit goal --spec ${join('specs', '001-team-billing')}`);
+  expect(feature).toBeTruthy();
+});
+
 test("the plan's tools route by the patterns the seed reads configs with", () => {
   seed(BUILDER).close();
   const needs = byId(cli('goal', '--spec', specKitFeature()));

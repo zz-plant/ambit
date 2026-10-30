@@ -45,6 +45,11 @@ const RETIRED: Record<string, string> = {
   'Hard prerequisite': 'Required',
   'Soft prerequisite': 'Optional',
   Bottleneck: 'Keystone',
+  // One state, one phrase. The plain words replaced `autonomous` in every
+  // sentence a person reads; the mode keeps its own name in the data model.
+  'Acts without asking': 'Runs without asking',
+  'may act without asking': 'Runs without asking',
+  'run unattended': 'Runs without asking',
 };
 
 /** Quoted strings and JSX text — what a reader could actually end up seeing. */
@@ -64,6 +69,48 @@ test('no surface uses a name the glossary retired', () => {
     for (const [retired, replacement] of Object.entries(RETIRED)) {
       if (text.includes(retired)) {
         offences.push(`${file.replace(CLIENT_DIR, 'src/client')}: "${retired}" → "${replacement}"`);
+      }
+    }
+  }
+  expect(offences).toEqual([]);
+});
+
+/**
+ * The same rule for the two surfaces the client check never read: the words
+ * `ambit` prints, and the words an agent is given over MCP.
+ *
+ * The glossary claims every term is "the exact word the interface uses", and
+ * the interface is more than the page. `ambit status` said "proven" for the
+ * term the glossary calls Verified, `ambit help` called an opportunity an
+ * investment, and a capability that runs without asking was "needs approval"
+ * on one surface and "ask first" on another. Each phrase below reached a
+ * person and was replaced; a new one reaching a person again fails here.
+ */
+const RETIRED_PLATFORM: Record<string, string> = {
+  'needs approval': 'asks first',
+  'ranked investments': 'ranked opportunities',
+  'proposed acquisitions': 'opportunities',
+  'find friction': 'what interrupts you',
+  'the system can do': 'the setup can do',
+};
+
+/** The terminal's own files, and the one that describes every MCP tool. */
+function platformSources(): string[] {
+  const root = join(CLIENT_DIR, '..', '..');
+  const cli = join(root, 'src', 'engine', 'cli');
+  const files = readdirSync(cli)
+    .filter(name => name.endsWith('.ts') && !name.includes('.test.'))
+    .map(name => join(cli, name));
+  return [...files, join(root, 'src', 'engine', 'cli.ts'), join(root, 'src', 'mcp', 'tools.ts')];
+}
+
+test('the terminal and the MCP roster use the same words as the glossary', () => {
+  const offences: string[] = [];
+  for (const file of platformSources()) {
+    const text = readableText(readFileSync(file, 'utf8'));
+    for (const [retired, replacement] of Object.entries(RETIRED_PLATFORM)) {
+      if (text.includes(retired)) {
+        offences.push(`${file.split('/ambit/')[1]}: "${retired}" → "${replacement}"`);
       }
     }
   }

@@ -8,7 +8,7 @@
 
 // Six commands cover most first sessions. Everything else is `help --all` —
 // forty verbs on first contact taught nothing; depth should be discovered.
-const HELP_SHORT = `ambit - what your system can do, what it costs, what to change
+const HELP_SHORT = `ambit - what your setup can do, what it costs, what to change
 
   seed              seed from the agent config
   briefing          what an agent should know before its first tool call
@@ -24,7 +24,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   goal --spec <dir|tasks.md>   what a Spec Kit or OpenSpec spec's tasks need,
                     and the gap; the file is read as data, nothing in it runs
   opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
-                    ranked investments, or one in full
+                    ranked opportunities, or one in full
   verify [cap] [--history]   run the declared check, or show past verification;
                              --failing re-runs only the checks now failing
                              or recovering
@@ -38,7 +38,7 @@ const HELP_SHORT = `ambit - what your system can do, what it costs, what to chan
   help --all        every command
   help [term]       one concept explained`;
 
-const HELP = `ambit - what your system can do, what it costs, what to change
+const HELP = `ambit - what your setup can do, what it costs, what to change
 
 Five groups. Every verb also works on its own — \`ambit impact x\` and
 \`ambit graph impact x\` are the same command.
@@ -86,17 +86,39 @@ plan — what to acquire next, and whether it paid
                           and the tasks nothing routed. Spec Kit and OpenSpec;
                           read as data, so no command, link or URL in it runs
   plan opportunities [id] [--rank=attention|cash|roi|reliability|frontier] [--budget=N]
-                          ranked investments, observed burden priced and compared,
+                          ranked opportunities, observed attention priced and compared,
                           or one case in full; --budget allocates the best
                           combination within $N
   plan propose <cap> [option] [--by=<who>]   draft a reviewable acquisition, with
                           its simulation; --by records who drafted it
   plan roi [proposal-id]  cumulative savings and forecast accuracy, or one
                           proposal's before/after verdict
-  plan portfolio [--budget=N]   across imported environments — shared burden,
-                          spofs, where capex would produce the most
+  plan portfolio [--budget=N]   across imported environments — shared attention,
+                          single points of failure, where capex would produce the most
   plan reversible         which unreached capabilities could be acquired without
                           a person, and which need hands
+  plan judge goal <sentence> [--multi] [--threshold=0.8] [--record]   which
+                          capability a sentence means: the vocabulary first,
+                          then a judgment model for what it could not route;
+                          --multi scores each node apart. A suggestion with a
+                          probability, kept as a receipt only with --record
+  plan judge next <goal>  the next steps, reordered by how directly each one
+                          advances the goal; costs and checks stay the graph's
+  plan judge tools|failures|attention <file.json>   a model's reading of tool
+                          descriptions, reported failures or recorded
+                          interventions; none relabels the ledger or counts
+                          as evidence. judge media <file.json> sends one raw
+                          request, with its images or audio
+  plan judge evaluate [cases.json] [--live]   score routing against expected
+                          answers: the vocabulary alone, or the model with --live
+  plan judge history [--limit=N] · review <id> accepted|rejected · plan <id>
+                          the receipts kept, a person's one review of each, and
+                          the plans an accepted one asks for, from the graph now
+  plan judge … --provider=cloudflare [--model=clef|clef-flash|clef-omni]
+                          send the request to Workers AI, with
+                          CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN. The
+                          default is a model on this machine, loopback only:
+                          AMBIT_JUDGE_URL, or 127.0.0.1:8009
 
 check — what is proven, what is permitted, what is currently broken
   check verify [cap] [--history] [--target=<object>] [--exit-code]   run the
@@ -158,7 +180,12 @@ govern — the reviewable path from proposal to applied change
   govern approve <id> [<id>…] [--by=<person>]   several in one sitting
   govern reject <id> [--by=<person>] ["why"]    a no, recorded — it teaches the
                           next draft
-  govern apply <id> / govern rollback <id>
+  govern apply <id> [--to=<runtime>] [--print]   write an approved change into a
+                          runtime's config: the one --to names (claude-code,
+                          cursor, opencode, vscode…), else the one found here.
+                          Where it cannot write, or with --print, it writes
+                          nothing and gives each runtime's own command
+  govern rollback <id>    undo it, in the file it was written to
   govern dispatch <id> [--to=<url>]   push a proposal to Slack, Discord,
                           Telegram, ntfy or any JSON endpoint. A draft goes
                           out for a decision, an approved one as its signed
@@ -190,7 +217,7 @@ govern — the reviewable path from proposal to applied change
                           read, or read them all now. A source that goes quiet
                           says so rather than looking like a quiet week
 
-report — what the system cost to operate
+report — what the setup cost to operate
   report work [limit]     recent runs, each with what it cost
   report usage [days]     where capability effort actually went
   report usage --windows [days]

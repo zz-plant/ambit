@@ -53,7 +53,7 @@ const ALL_PROVEN: CapabilityFixture[] = [
 
 /** The five evidence rows of a rendering, wherever they sit. */
 const evidenceRows = (lines: string[]) =>
-  lines.filter(l => /^( {4}| {2}› )(proven|unproven|failing|entries|last check) /.test(l));
+  lines.filter(l => /^( {4}| {2}› )(verified|unverified|failing|entries|last check) /.test(l));
 
 /** A row up to the end of its value, leaving out what is said beside it. */
 const cellsOf = (row: string) => row.match(/^( {4}| {2}› )\S+(?: \S+)? +\S+/)?.[0] ?? row;
@@ -70,12 +70,12 @@ describe('the head of the report', () => {
   it('leads with the two numbers that matter, then what is wrong', () => {
     const lines = renderStatus(reportOf(MIXED), PLAIN);
     expect(lines[0]).toBe('');
-    expect(lines[1]).toBe('    3 of 4 reached · 1 proven · 1 failing');
+    expect(lines[1]).toBe('    3 of 4 reached · 1 verified · 1 failing');
   });
 
   it('says so when nothing is wrong', () => {
     const lines = renderStatus(reportOf(ALL_PROVEN), PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 2 proven · nothing failing');
+    expect(lines[1]).toBe('    2 of 2 reached · 2 verified · nothing failing');
   });
 
   it('takes its worries from the same place as the summary the data carries', () => {
@@ -117,8 +117,8 @@ describe('the evidence counts', () => {
   it('read down one column, labels on the left and values on the right', () => {
     const rows = evidenceRows(renderStatus(reportOf(MIXED), PLAIN));
     expect(rows).toEqual([
-      '    proven          1',
-      '    unproven        1  1 with no check',
+      '    verified        1',
+      '    unverified      1  1 with no check',
       '  › failing         1',
       '    entries         0',
       '    last check  never',
@@ -154,7 +154,9 @@ describe('the evidence counts', () => {
       expect(ev.proven + ev.unproven + ev.failing + ev.entries).toBe(report.reached);
 
       const lines = renderStatus(report, PLAIN);
-      const reached = Number(lines[1].match(/(\d+) of \d+ reached/)?.[1]);
+      // The tree's capabilities, plus the person's own: together, the graph's reach.
+      const head = lines[1].match(/(\d+) of \d+ reached, and (\d+) of your own/);
+      const reached = Number(head?.[1]) + Number(head?.[2]);
       const rowSum = evidenceRows(lines)
         .filter(r => !r.includes('last check'))
         .reduce((sum, r) => sum + Number(cellsOf(r).match(/(\d+)$/)?.[1]), 0);
@@ -172,7 +174,7 @@ describe('the evidence counts', () => {
     }
   });
 
-  it('say how the unproven split, in parts that add up to it', () => {
+  it('say how the unverified split, in parts that add up to it', () => {
     const db = graphWithChecks(
       [
         { id: 'skill:a', name: 'A', kind: 'provider', lifecycle: 'configured' },
@@ -187,12 +189,12 @@ describe('the evidence counts', () => {
       expect(report.evidence[0]).toMatchObject({ unproven: 4, recovering: 1, no_check: 1 });
       expect(report.evidence[0].provable_now).toEqual(['A', 'B']);
       expect(evidenceRows(renderStatus(report, PLAIN))).toContain(
-        '  › unproven        4  2 provable now · 1 recovering · 1 with no check'
+        '  › unverified      4  2 provable now · 1 recovering · 1 with no check'
       );
       // The last line counts the same two.
       expect(report.next).toEqual({
         command: 'ambit verify',
-        why: 'turns 2 of the unproven into evidence',
+        why: 'turns 2 of the unverified into evidence',
       });
     } finally {
       db.close();
@@ -211,19 +213,19 @@ describe('the evidence counts', () => {
       expect(report.evidence[0].provable_now).toHaveLength(11);
       const text = renderStatus(report, PLAIN).join('\n');
       expect(text).toContain('provable now: s00, s01, s02, s03, s04, s05, s06, s07 and 3 more');
-      expect(text).toContain('turns 11 of the unproven into evidence');
+      expect(text).toContain('turns 11 of the unverified into evidence');
     } finally {
       db.close();
     }
   });
 
-  it('mark a failing check before an unproven one, since a repair comes first', () => {
+  it('mark a failing check before an unverified one, since a repair comes first', () => {
     const marked = evidenceRows(renderStatus(reportOf(MIXED), PLAIN)).filter(r => r.includes('›'));
     expect(marked).toHaveLength(1);
     expect(marked[0]).toContain('failing');
   });
 
-  it('mark the unproven count when nothing fails', () => {
+  it('mark the unverified count when nothing fails', () => {
     const lines = renderStatus(
       reportOf([
         { id: 'combo:a', name: 'Alpha', lifecycle: 'verified' },
@@ -233,7 +235,7 @@ describe('the evidence counts', () => {
     );
     const marked = evidenceRows(lines).filter(r => r.includes('›'));
     expect(marked).toHaveLength(1);
-    expect(marked[0]).toContain('unproven');
+    expect(marked[0]).toContain('unverified');
   });
 
   it('mark nothing when there is nothing to act on', () => {
@@ -258,7 +260,7 @@ describe('one count of what is failing', () => {
       },
     ]);
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · 1 failing');
+    expect(lines[1]).toBe('    1 of 1 reached, and 1 of your own · 1 verified · 1 failing');
     expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual(['  › failing         1']);
     expect(report.next?.command).toBe('ambit verify skill:pdf');
   });
@@ -280,7 +282,7 @@ describe('one count of what is failing', () => {
       },
     ]);
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    1 of 1 reached · 0 proven · 1 failing');
+    expect(lines[1]).toBe('    1 of 1 reached · 0 verified · 1 failing');
     expect(report.failing).toBe(1);
     expect(report.degraded?.map((d: { id: string }) => d.id)).toEqual(['combo:shell-execution']);
     expect(evidenceRows(lines)).toContain('  › failing         1');
@@ -293,7 +295,7 @@ describe('one count of what is failing', () => {
 
 describe('a capability recovering from a failed check', () => {
   // The latest check decides: its last run passed, so it is not failing and
-  // nothing asks for a repair. Its record is mixed, so it is not proven.
+  // nothing asks for a repair. Its record is mixed, so it is not verified.
   const recovering = () => {
     const db = makeGraph({
       capabilities: [
@@ -311,14 +313,14 @@ describe('a capability recovering from a failed check', () => {
     }
   };
 
-  it('is counted with the unproven, and nothing is failing', () => {
+  it('is counted with the unverified, and nothing is failing', () => {
     const report = recovering();
     const lines = renderStatus(report, PLAIN);
-    expect(lines[1]).toBe('    2 of 2 reached · 1 proven · nothing failing');
+    expect(lines[1]).toBe('    2 of 2 reached · 1 verified · nothing failing');
     expect(report.failing).toBe(0);
     expect(report.degraded).toBeUndefined();
     expect(evidenceRows(lines).filter(r => r.includes('›'))).toEqual([
-      expect.stringMatching(/^ {2}› unproven +1 {2}1 recovering$/),
+      expect.stringMatching(/^ {2}› unverified +1 {2}1 recovering$/),
     ]);
     // Nothing to repair, so the report does not end on re-running its check.
     expect(report.next?.command ?? '').not.toContain('verify');
@@ -540,10 +542,10 @@ describe('renderImpact', () => {
 });
 
 describe('the short screen bare ambit shows', () => {
-  // It said "ambit verify runs their checks" of every unproven capability,
+  // It said "ambit verify runs their checks" of every unverified capability,
   // and verify runs only the checks that are declared.
   const leanLine = (db: ReturnType<typeof makeGraph>) =>
-    renderBrief(briefReport(db), PLAIN).find(l => l.includes('not yet proven'));
+    renderBrief(briefReport(db), PLAIN).find(l => l.includes('not yet verified'));
 
   it('says how many of the unproven verify would check when some declare none', () => {
     const db = graphWithChecks(
@@ -555,7 +557,7 @@ describe('the short screen bare ambit shows', () => {
     );
     try {
       expect(leanLine(db)).toBe(
-        '    2 configured and not yet proven · ambit verify checks 1 of them'
+        '    2 configured and not yet verified · ambit verify checks 1 of them'
       );
     } finally {
       db.close();
@@ -569,8 +571,29 @@ describe('the short screen bare ambit shows', () => {
     );
     try {
       expect(leanLine(db)).toBe(
-        '    1 configured and not yet proven · ambit verify runs their checks'
+        '    1 configured and not yet verified · ambit verify runs their checks'
       );
+    } finally {
+      db.close();
+    }
+  });
+
+  // Run through npx there is no `ambit` on the path, and the screen ended on
+  // `ambit web`, a command the shell that had just printed it could not find.
+  it('writes every command the way the person ran Ambit, and ends on one thing to do', () => {
+    const db = graphWithChecks(
+      [{ id: 'skill:a', name: 'A', kind: 'provider', lifecycle: 'configured' }],
+      ['skill:a']
+    );
+    try {
+      const npx = (command: string) => command.replace(/^ambit(?=\s|$)/, 'npx ambit-cli');
+      const lines = renderBrief(briefReport(db), PLAIN, npx);
+      const said = lines.join('\n');
+      expect(said).toContain('npx ambit-cli verify runs their checks');
+      expect(said).not.toMatch(/(^|[^-])\bambit (web|status|verify|goal|--help)/m);
+      // One line marked as the thing to do, after everything else it says.
+      const close = lines.filter(l => l.trim().startsWith('› npx ambit-cli'));
+      expect(close).toEqual(['  › npx ambit-cli web  the same, on the map']);
     } finally {
       db.close();
     }

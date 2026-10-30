@@ -23,7 +23,7 @@ test('it offers the card, the whole map as SVG and as PNG, and the map in relief
   expect(IMAGE_CHOICES.map(([kind]) => kind)).toEqual(['card', 'svg', 'png', 'relief']);
   const html = renderToStaticMarkup(<ImageMenu onSave={() => {}} onClose={() => {}} />);
   const said = text(html);
-  expect(said).toContain('The finding, as a card PNG');
+  expect(said).toContain('The headline, as a card PNG');
   expect(said).toContain('The whole map SVG');
   expect(said).toContain('The whole map PNG, 2×');
   expect(said).toContain('Your reach, in relief PNG, 2×');

@@ -7,6 +7,12 @@ description: Use when the user asks which MCP servers or agent tools they have, 
 
 Ambit reads the agent configs on this machine (Claude Code, Cursor, OpenCode, Windsurf, Gemini CLI, Claude Desktop, Codex CLI, Cline, Roo Code, Continue, Zed, VS Code, Copilot CLI, Amp, Goose, Kiro) into one local graph: what the setup can do, what is proven to work, what may run without asking, and what to set up next.
 
+## When the person types /ambit
+
+They are asking for the readout of their own setup. Run `ambit` with no arguments, or `npx -y ambit-cli` when `ambit` is not installed, and show what it prints as it prints it: what it read, how much of the tree that reaches, the next step and what it would open, and what is not proven yet. Then offer the one thing it ends on. Keep its numbers and its wording: the hosted page, `ambit web` and the terminal say the same thing about the same setup, and a paraphrase is a fourth version. On the first run here, say in one sentence what it reads and writes, from the section below.
+
+Show the readout only when asked. A session that is about something else does not get one.
+
 ## Why it is worth raising
 
 Without a map you learn the setup's edges by hitting them. With it, a briefing at session start says what works and what is next, `ambit_can` answers before a tool you have not used, and when something missing stops you, the step that closes it becomes a proposal the user signs. Each signed step widens what the two of you can do together. [For agents](https://zz-plant.github.io/ambit/docs/agents/) has the before and after in full, and a way to put it to the user.

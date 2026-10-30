@@ -18,6 +18,7 @@
 import type { Db } from './db.ts';
 import { loadTechTree, recordingHint } from './paths.ts';
 import { type BLOCK_CLASSES, blockedAction } from './plan/deficits.ts';
+import { builtInTool } from './tool-names.ts';
 import { DEFAULT_WINDOW_DAYS } from './vocabulary.ts';
 
 type BlockClass = (typeof BLOCK_CLASSES)[number];
@@ -149,16 +150,23 @@ function classifySignal(input: RawFailure): { class: BlockClass; signal: string 
 let detectors: Array<{ id: string; res: RegExp[] }> | null = null;
 
 /**
- * The capability a tool belongs to, using the curated model's own `detect`
- * vocabulary.
+ * The capability a tool belongs to, or the entry that supplies it.
  *
- * This is the same matching that turns a config file into a graph, pointed at a
- * tool name instead. Reusing it means attribution cannot drift from detection:
- * if `\bgit\b` is what makes a git MCP server Version Control, it is also what
- * makes a failing `git push` a Version Control deficit.
+ * In order: an MCP tool is its server's entry; a runtime's own tool is what
+ * its name means (`builtInTool` in tool-names.ts), and nothing else, so
+ * Cursor's `grep_search` is a read of the files here and never Web Research;
+ * a tool a runtime registered is its own entry (`tool:steward`); and anything
+ * else is matched by the curated model's own `detect` vocabulary.
+ *
+ * That last is the same matching that turns a config file into a graph, pointed
+ * at a tool name instead. Reusing it means attribution cannot drift from
+ * detection: if `\bgit\b` is what makes a git MCP server Version Control, it is
+ * also what makes a failing `git push` a Version Control deficit.
  */
 function attribute(db: Db, tool?: string): string | null {
   if (!tool) return null;
+  const known = (id: string) =>
+    Boolean(db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id));
   // An MCP tool names its server:
   // - Claude Code: mcp__github__create_issue → mcp:github
   // - OpenCode / standard URI: github/create_issue or mcp:github:create_issue or mcp/github/create_issue
@@ -169,8 +177,11 @@ function attribute(db: Db, tool?: string): string | null {
   const serverCandidate = mcpClaude?.[1] || mcpSlashOrColon?.[1] || mcpUnderscore?.[1];
   if (serverCandidate) {
     const id = `mcp:${serverCandidate.replace(/_/g, '-')}`;
-    if (db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(id)) return id;
+    if (known(id)) return id;
   }
+  const own = builtInTool(tool);
+  if (own) return known(own.means) ? own.means : null;
+  if (known(`tool:${tool.toLowerCase()}`)) return `tool:${tool.toLowerCase()}`;
   if (!detectors) {
     try {
       detectors = (loadTechTree().nodes || [])
@@ -184,9 +195,7 @@ function attribute(db: Db, tool?: string): string | null {
     }
   }
   for (const d of detectors ?? []) {
-    if (d.res.some(re => re.test(tool))) {
-      if (db.prepare('SELECT 1 AS ok FROM capabilities WHERE id = ?').get(d.id)) return d.id;
-    }
+    if (d.res.some(re => re.test(tool)) && known(d.id)) return d.id;
   }
   return null;
 }

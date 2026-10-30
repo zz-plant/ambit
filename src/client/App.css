@@ -186,13 +186,44 @@ code, pre, .code, .sp-cli-cmd {
   border: 0;
 }
 
+/* The first stop for a keyboard, past the header to the view: out of sight
+   until it has the focus, and then over the brand where the eye starts. */
+.app-skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.app-skip:focus {
+  transform: none;
+}
+
+/* The view takes the focus from the skip link and a finished tour, as a
+   place to start from; a ring round all of it marks nothing. */
+.app-scene:focus {
+  outline: none;
+}
+
+/* Under reduced motion, nothing transitions. A transition of 0.01ms is still
+   one, and the initial transition-property is all: every change of width,
+   height or position landed a frame late, so the map measured its old size
+   after a zoom, and a scroll aimed past the old end stopped there. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }
@@ -837,6 +868,7 @@ button.app-sample-tag:hover {
 
 /* A node this entry provides, as a link onto the map. */
 .setup-chip {
+  min-height: 24px;
   font-family: var(--font-sans);
   font-size: var(--fs-sm);
   font-weight: 500;
@@ -1148,6 +1180,8 @@ button.app-sample-tag:hover {
 }
 
 .sp-close {
+  min-width: 24px;
+  min-height: 24px;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -1174,6 +1208,11 @@ button.app-sample-tag:hover {
   font-size: var(--fs-md);
   line-height: 1.4;
   color: var(--warn);
+}
+
+.sp-keystone-mark {
+  flex: none;
+  align-self: center;
 }
 
 .sp-evidence {
@@ -1265,9 +1304,14 @@ button.app-sample-tag:hover {
   font-size: var(--fs-md);
   font-weight: 500;
   text-align: left;
-  /* Wraps at any character: an id cut to "combo:browser-…" was a command
-     that could not be read before it was copied. */
-  overflow-wrap: anywhere;
+  /* A command breaks at its spaces only: broken anywhere, an id read as
+     two ids ("browser-" over "automation") in every screenshot of it. A
+     single token wider than the box scrolls inside it. */
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  min-width: 0;
 }
 
 .sp-note {
@@ -1369,7 +1413,7 @@ button.app-sample-tag:hover {
 }
 
 .sp-status--specified {
-  color: var(--warn);
+  color: var(--accent);
 }
 
 .sp-status--deprecated {
@@ -1439,13 +1483,13 @@ button.app-sample-tag:hover {
 }
 
 .sp-action-btn--unlock {
-  border: 1px solid var(--ok);
-  color: var(--ok);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
   font-size: var(--fs-md);
 }
 
 .sp-action-btn--unlock:hover {
-  background: var(--ok-soft);
+  background: var(--accent-soft);
 }
 
 .sp-cli-actions {
@@ -1467,7 +1511,14 @@ button.app-sample-tag:hover {
 .sp-cli-cmd {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
-  overflow-wrap: anywhere;
+  /* A command breaks at its spaces only: broken anywhere, an id read as
+     two ids ("browser-" over "automation") in every screenshot of it. A
+     single token wider than the box scrolls inside it. */
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  min-width: 0;
 }
 
 .sp-cli-copy-btn {
@@ -1590,9 +1641,11 @@ button.app-sample-tag:hover {
   font-weight: 500;
   letter-spacing: 0.2px;
   color: var(--text-secondary);
+  bottom: 10px;
   pointer-events: none;
   user-select: none;
-  transition: bottom 0.2s;
+  /* Lifted over a sheet by a transform, which moves no layout. */
+  transition: transform 0.2s;
 }
 
 /* A phone's screenshot is the one that loses the address bar; a desktop
@@ -1610,6 +1663,9 @@ button.app-sample-tag:hover {
   z-index: 5;
   display: flex;
   gap: 2px;
+  /* A fieldset, which a browser gives a margin and a minimum width. */
+  margin: 0;
+  min-width: 0;
   padding: 3px;
   border-radius: var(--radius-md);
   background: var(--bg-glass);
@@ -1849,6 +1905,24 @@ button.app-sample-tag:hover {
   stroke-linejoin: round;
 }
 
+/* A node's focus is a ring round its circle. The outline everything else
+   takes boxed the circle and its name together, with the box's edge through
+   the name and over the brackets. */
+.civ-node:focus-visible {
+  outline: none;
+}
+
+.civ-focus-ring {
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.civ-node:focus-visible > .civ-focus-ring {
+  opacity: 1;
+}
+
 /* Room for the HUD above the era headers, so it never sits on a column name. */
 .civ-tree-svg {
   display: block;
@@ -1953,14 +2027,23 @@ button.app-sample-tag:hover {
   box-shadow: var(--shadow-md);
 }
 
+/* What the map is, in the key: the tab titles say it on hover only. */
+.civ-key-lead {
+  margin: 0 0 8px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 .civ-key-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-}
+  gap: 1px;}
 
 .civ-key-head {
   padding: 4px 6px 2px;
@@ -2134,8 +2217,8 @@ button.app-sample-tag:hover {
 }
 
 .civ-sim-banner--acquisition {
-  border: 1px solid var(--ok-line);
-  color: var(--ok);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
 }
 
 .civ-sim-banner-close {
@@ -2315,7 +2398,8 @@ button.app-sample-tag:hover {
 
 .civ-finding--bad {
   border-color: var(--error-line);
-  background: #231416;
+  /* Opaque, since it sits over the map: the failing red a step into the glass. */
+  background: color-mix(in srgb, var(--error) 7%, var(--bg-glass));
 }
 
 .civ-finding-dot {
@@ -2768,6 +2852,48 @@ button.app-sample-tag:hover {
   gap: 20px;
 }
 
+/* The sample's next step, already lit, beside the hero where there is room;
+   pressing it plays the step on the live map. */
+.app-welcome-still {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .app-welcome {
+    justify-content: center;
+    align-items: center;
+    gap: 56px;
+  }
+
+  .app-welcome-hero {
+    margin: auto 0;
+    flex: 0 1 600px;
+  }
+
+  .app-welcome-still {
+    display: block;
+    flex: 0 1 520px;
+    min-width: 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--bg-canvas);
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .app-welcome-still:hover {
+    border-color: var(--accent-line);
+  }
+
+  .app-welcome-still svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+}
+
 .app-welcome-brand {
   display: inline-flex;
   align-items: center;
@@ -3076,10 +3202,17 @@ button.app-sample-tag:hover {
 
 .gov-card-head {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+}
+
+.gov-card-head .gov-goal {
+  flex: 1;
+  min-width: 0;
+}
+
+.gov-card-head .gov-status {
+  flex: none;
 }
 
 .gov-id {
@@ -3165,12 +3298,18 @@ button.app-sample-tag:hover {
 
 .gov-queue-all,
 .gov-pick {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--fs-md);
-  color: var(--text-secondary);
+  flex: none;
+  margin: 0;
   cursor: pointer;
+}
+
+/* The id the commands take, under the change it names. */
+.gov-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: -4px 0 0;
 }
 
 .gov-pick-note {
@@ -3264,6 +3403,16 @@ button.app-sample-tag:hover {
   max-width: 560px;
 }
 
+/* The trail in a sentence, between what the page is and the trail itself.
+   Not .audit-summary: that is each line's own description. */
+.audit-lede {
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 1.45;
+  color: var(--text-primary);
+  max-width: 720px;
+}
+
 .audit-hint,
 .audit-count {
   margin: 0;
@@ -3352,10 +3501,9 @@ button.app-sample-tag:hover {
   }
 }
 
-/* ─── GUIDE CALLOUT ─── */
-/* Top right, under the lens switcher. It used to sit bottom left, where it
-   covered the legend and the last row of nodes — in the README screenshots
-   too. Insets for the detail panel are set inline. */
+/* ─── CARD OVER THE MAP ───
+   The frame the tour and the readout share. Insets for the detail panel are
+   set inline. */
 .app-guide {
   position: absolute;
   top: 56px;
@@ -3376,13 +3524,14 @@ button.app-sample-tag:hover {
   margin-bottom: 8px;
 }
 
-.app-guide-head strong {
-  font-size: var(--fs-base);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .app-guide-close {
+  /* The hit area reaches past the word, the box staying where the word sat:
+     it was the glyph alone, 10 by 15 for the readout's close. */
+  min-width: 24px;
+  min-height: 24px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -3390,37 +3539,13 @@ button.app-sample-tag:hover {
   font-size: var(--fs-md);
 }
 
-.app-guide-steps {
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: var(--fs-base);
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.app-guide-more {
-  margin-top: 10px;
-  background: transparent;
-  border: none;
-  color: var(--accent);
-  font-size: var(--fs-md);
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0;
-}
-
 /* ─── TIME & COST DASHBOARD ─── */
-/* Fills the scene beside the panel rather than under it: the left inset is
-   set inline from the same state that positions the map. */
 .loop-dashboard {
   position: absolute;
   inset: 0;
   overflow-y: auto;
   padding: 24px 28px 40px;
   background: var(--bg-deep);
-  transition: left 0.15s ease;
 }
 
 .loop-inner {
@@ -3439,6 +3564,20 @@ button.app-sample-tag:hover {
   flex-wrap: wrap;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
+}
+
+/* What the figure under it is: the sample's, said where the number is. */
+.loop-sample {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-full);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 .loop-title {
@@ -3856,6 +3995,10 @@ button.app-sample-tag:hover {
 .fig-history-bar--none {
   height: 2px;
   background: var(--border-bright);
+}
+
+.fig-history--sparse .fig-history-bar--none {
+  visibility: hidden;
 }
 
 /* ── Two marks on one axis ── */
@@ -4523,6 +4666,23 @@ button.app-sample-tag:hover {
   gap: 16px;
 }
 
+/* The foot of the help overlay: the one link from the terms and the map to the
+   published pages. */
+.docs-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.docs-foot a {
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.docs-foot a:hover {
+  text-decoration: underline;
+}
+
 .docs-lede {
   font-size: var(--fs-base);
   line-height: 1.5;
@@ -4747,20 +4907,14 @@ button.app-sample-tag:hover {
 }
 
 /* Narrower, the sample gives up Share (the address bar is the same link, and
-   the map's Image tool stays), then the Sample tag, which Map yours already
-   implies; past that the pill wraps to two lines, as it does anywhere. At
-   800px the pill was three lines over a 52px bar. */
+   the map's Image tool stays). The Sample tag stays at every width: a phone's
+   screenshot of the demo said whose setup it was nowhere else. */
 @media (max-width: 1100px) {
   .app-deck--sample .app-deck-btn--share {
     display: none;
   }
 }
 
-@media (max-width: 960px) {
-  .app-deck--sample .app-sample-tag {
-    display: none;
-  }
-}
 
 /* Narrow, the bar beside the counts goes: it draws the same numbers. */
 @media (min-width: 769px) and (max-width: 860px) {
@@ -4808,6 +4962,25 @@ button.app-sample-tag:hover {
   white-space: nowrap;
 }
 
+/* A finger is wider than a pointer: the small controls take 44px on a touch
+   screen, where 24 is enough for a mouse. */
+@media (pointer: coarse) {
+  .app-guide-close,
+  .sp-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .setup-chip {
+    min-height: 32px;
+    padding: 4px 10px;
+  }
+
+  .setup-row-provides {
+    gap: 8px;
+  }
+}
+
 /* ─── RESPONSIVE RULES ─── */
 @media (max-width: 768px) {
   .star-panel {
@@ -4819,6 +4992,11 @@ button.app-sample-tag:hover {
     height: 60%;
     border-left: none;
     border-top: 1px solid var(--border);
+  }
+
+  /* A peek while a simulation runs: at 60% the sheet hid what it lit. */
+  .app--simulating .star-panel {
+    height: 34%;
   }
 
   .sp-grab-bar {
@@ -5159,6 +5337,23 @@ button.app-sample-tag:hover {
   box-shadow: 0 0 0 3px var(--ok-soft);
 }
 
+/* On a phone the dot says it, and the word stays for a screen reader: the
+   header keeps the Sample tag there now, and the row has room for one. */
+@media (max-width: 560px) {
+  .app-live {
+    padding: 7px;
+  }
+
+  .app-live-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 /* A lens the ledger has nothing for is offered, disabled, with the reason
    in its tooltip. */
 .civ-lens-hud .app-deck-tab:disabled {
@@ -5392,7 +5587,7 @@ button.app-sample-tag:hover {
 .setup-unplaced {
   margin: 10px 0 4px;
   padding: 10px 14px;
-  border-left: 3px solid var(--accent);
+  border: 1px solid var(--accent-line);
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
   font-size: var(--fs-base);
@@ -5415,13 +5610,97 @@ button.app-sample-tag:hover {
 }
 
 /* ─── A CONFIG OF YOUR OWN ───
-   The paste box, the file button and where each runtime keeps its file.
-   Shared by the landing and the tour's last step. */
+   Which agent, then its file pasted or picked, or its servers ticked.
+   Shared by the landing, the tour's first card and Map yours. */
 .intake {
   display: flex;
   flex-direction: column;
   gap: 8px;
   text-align: left;
+}
+
+/* The agents read as choices of one kind, so each is the same pill; the one
+   chosen says so by its border and its weight as well as its colour. */
+.intake-agents {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.intake-ask {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.intake-agent-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.intake-agent {
+  height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  cursor: pointer;
+}
+
+.intake-agent:hover {
+  border-color: var(--border-hover);
+}
+
+.intake-agent[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* The one file to paste, with its path ready to copy into a terminal or a
+   file picker: hidden directories are where a visitor gives up. */
+.intake-path {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+}
+
+.intake-path code {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.intake-path button {
+  flex: none;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.intake-path button:hover {
+  color: var(--text-primary);
 }
 
 .intake-paste {
@@ -5483,37 +5762,6 @@ button.app-sample-tag:hover {
   font-size: var(--fs-base);
   color: var(--accent);
   cursor: pointer;
-}
-
-.intake-modes {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  align-self: flex-start;
-}
-
-.intake-mode {
-  height: 26px;
-  padding: 0 10px;
-  border: none;
-  border-radius: calc(var(--radius-sm) - 2px);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-sans);
-  font-size: var(--fs-md);
-  cursor: pointer;
-}
-
-.intake-mode:hover {
-  color: var(--text-primary);
-}
-
-.intake-mode[aria-pressed='true'] {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-weight: 600;
 }
 
 .intake-picks {
@@ -5599,6 +5847,15 @@ button.app-sample-tag:hover {
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+/* What happens to a pasted config, at reading weight and beside the box: it
+   decides whether a visitor pastes one at all, and it used to be the last
+   muted note in the form. */
+.intake-trust {
+  margin: 2px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
 /* ─── THE TOUR ───
@@ -5936,6 +6193,10 @@ button.app-sample-tag:hover {
   border: none;
   background: none;
   font: inherit;
+  /* A button resets both, so in a heading set in capitals the term was the
+     one word that was not: "Tool servers" under "RUNTIME". */
+  text-transform: inherit;
+  letter-spacing: inherit;
   color: inherit;
   cursor: help;
   text-decoration: underline dotted;
@@ -6568,6 +6829,18 @@ button.app-sample-tag:hover {
   gap: 6px;
 }
 
+/* The one-press answers read as choices of one kind, like the intake's
+   agents: the same pill each, wrapping to a second row on a narrow card. */
+.gov-decline-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
 .gov-decline-label {
   font-size: var(--fs-sm);
   color: var(--text-muted);
@@ -7051,7 +7324,14 @@ button.app-sample-tag:hover {
   margin-top: 4px;
   font-size: var(--fs-md);
   color: var(--text-primary);
-  overflow-wrap: anywhere;
+  /* A command breaks at its spaces only: broken anywhere, an id read as
+     two ids ("browser-" over "automation") in every screenshot of it. A
+     single token wider than the box scrolls inside it. */
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  min-width: 0;
 }
 
 /* The run's asks, as exchanges: requests on the left, answers on the right. */
@@ -7191,6 +7471,21 @@ button.app-sample-tag:hover {
   gap: 8px;
 }
 
+/* On a wide page the drafter's mark hangs in the margin, so the bubble lines
+   up with the page's title above it; it sat 30px in from that column. */
+@media (min-width: 769px) {
+  .gov-ask-row:has(> .gov-asker) {
+    margin-left: -30px;
+  }
+
+  /* The list scrolls, and clips: it reaches into the page's margin by as much
+     as the mark hangs, or the mark is cut off. */
+  .gov-list {
+    margin-left: -30px;
+    padding-left: 30px;
+  }
+}
+
 .gov-ask-row > .gov-ask {
   flex: 1;
   min-width: 0;
@@ -7205,6 +7500,26 @@ button.app-sample-tag:hover {
    Seven rows above My Setup's list: what the pieces add up to on the way
    from A to B, one move per leg. A leg under way is quiet, the next one is
    the accent, and one nothing has recorded says so in muted type. */
+/* Where a setup is headed, closed at the end of the entries until asked for. */
+.setup-journey {
+  margin-top: 24px;
+}
+
+.setup-journey > summary {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.setup-journey > summary:hover {
+  color: var(--text-primary);
+}
+
+.setup-journey[open] > summary {
+  margin-bottom: 10px;
+}
+
 .journey {
   margin: 0 0 20px;
   padding: 14px 16px;
@@ -7302,7 +7617,13 @@ button.app-sample-tag:hover {
   color: var(--text-muted);
 }
 
-.journey-cmd {
+/* A command's words, each kept whole, so a line breaks only at a space. */
+.cmd-token {
+  white-space: nowrap;
+}
+
+.journey-cmd,
+.council-cmd {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -7317,12 +7638,40 @@ button.app-sample-tag:hover {
   cursor: pointer;
 }
 
-.journey-cmd code {
-  overflow-wrap: anywhere;
+.journey-cmd code,
+.council-cmd code {
+  /* A command breaks at its spaces only: broken anywhere, an id read as
+     two ids ("browser-" over "automation") in every screenshot of it. A
+     single token wider than the box scrolls inside it. */
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  min-width: 0;
   text-align: left;
 }
 
-.journey-cmd:hover {
+.journey-cmd:hover,
+.council-cmd:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+
+/* In the council the chip sits under the seat's sentence, and is as wide as
+   the column lets it be. */
+.council-cmd {
+  max-width: 100%;
+  margin-top: 6px;
+  align-self: flex-start;
+}
+
+/* Five seats, five of these: quiet until pointed at. */
+.council-map {
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.council-map:hover {
   border-color: var(--border-bright);
   color: var(--text-primary);
 }
@@ -7477,12 +7826,14 @@ button.app-sample-tag:hover {
 
 /* ─── The ladder, the asks, the emergent tick ─── */
 /* The second tree in the panel: five rungs a grant climbs, the one it is on
-   lit, those below it filled. Up takes a person; down takes one failing check. */
-.sp-ladder {
+   lit, those below it filled. Up takes a person; down takes one failing check.
+   Its own names: it shared the era ladder's, whose rung is a three-column
+   grid, so "Unattended" was squeezed into a 14px column and clipped. */
+.sp-grant {
   margin: 10px 0 0;
 }
 
-.sp-rungs {
+.sp-grant-rungs {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -7491,9 +7842,13 @@ button.app-sample-tag:hover {
   gap: 3px;
 }
 
-.sp-rung {
+.sp-grant-rung {
   position: relative;
   padding: 8px 0 0;
+  /* Narrow, as the map's other short labels are: at the panel's width a
+     fifth of it is 61px, and "Unattended" in the text face is wider. */
+  font-family: var(--font-display);
+  font-stretch: var(--stretch-narrow);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
@@ -7503,7 +7858,7 @@ button.app-sample-tag:hover {
   text-overflow: ellipsis;
 }
 
-.sp-rung::before {
+.sp-grant-rung::before {
   content: '';
   position: absolute;
   top: 0;
@@ -7514,26 +7869,26 @@ button.app-sample-tag:hover {
   background: var(--border);
 }
 
-.sp-rung.is-past::before {
+.sp-grant-rung.is-past::before {
   background: var(--accent-line);
 }
 
-.sp-rung.is-on {
+.sp-grant-rung.is-on {
   color: var(--text-primary);
 }
 
-.sp-rung.is-on::before {
+.sp-grant-rung.is-on::before {
   background: var(--accent);
 }
 
-.sp-ladder-note {
+.sp-grant-note {
   margin: 8px 0 0;
   font-size: var(--fs-sm);
   line-height: 1.45;
   color: var(--text-secondary);
 }
 
-.sp-ladder-next {
+.sp-grant-next {
   margin-top: 8px;
 }
 

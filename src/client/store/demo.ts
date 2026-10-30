@@ -104,7 +104,7 @@ export function demoConfigGraph(): Graph {
  * nothing: a lens that appeared broken because its data pointed at a graph
  * that had been regenerated out from under it.
  *
- * The counts are the same four the Time & cost page prices, so the two
+ * The counts are the same four the Time & authority page prices, so the two
  * surfaces are reading one ledger rather than telling two stories.
  */
 export const DEMO_ATTENTION: Record<string, number> = {

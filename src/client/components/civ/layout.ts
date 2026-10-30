@@ -14,6 +14,16 @@
  */
 import type { FocusDirection } from '../../linkState';
 import type { Connection, Item } from '../../utils/configImporter';
+import {
+  leverageSentence,
+  rankSteps,
+  reachedWith,
+  readableCost,
+  type StepGraph,
+  stepCandidates,
+  stepEffect,
+  stepReason,
+} from '../../../shared/nextSteps';
 
 /**
  * Column order for a graph with no eras, where columns are domains. The map is
@@ -304,6 +314,55 @@ export function stepSelection(
   return pool[to].id === selectedId ? null : pool[to].id;
 }
 
+/** The map's nodes in the order it is read: down each era, then the next. */
+export const readingOrder = ({ cols, colOrder }: Columns): Item[] =>
+  colOrder.flatMap(c => cols[c] || []);
+
+/** Which way a key moves across the map. */
+export type GridMove = 'up' | 'down' | 'left' | 'right' | 'first' | 'last';
+
+/**
+ * The node a key moves to from `id`, as the map lays them out: up and down
+ * an era, and across to the nearest row of the next era with a node shown.
+ * Null at an edge. The arrows used to walk the list's order, so the one
+ * below a node in Memory could land in Assurance, and the focus stayed put.
+ */
+export function gridStep(
+  { cols, colOrder }: Columns,
+  id: string,
+  move: GridMove,
+  shown?: Set<string> | null
+): string | null {
+  const column = (ci: number) =>
+    (cols[colOrder[ci]] || [])
+      .map((item, row) => ({ id: item.id, row }))
+      .filter(n => !shown || shown.has(n.id));
+  const ci = colOrder.findIndex(c => (cols[c] || []).some(i => i.id === id));
+  if (ci < 0) return null;
+  const here = column(ci);
+  const at = here.findIndex(n => n.id === id);
+  const row = (cols[colOrder[ci]] || []).findIndex(i => i.id === id);
+  const to =
+    move === 'up'
+      ? here[at - 1]
+      : move === 'down'
+        ? here[at + 1]
+        : move === 'first'
+          ? here[0]
+          : move === 'last'
+            ? here[here.length - 1]
+            : undefined;
+  if (move !== 'left' && move !== 'right') return to && to.id !== id ? to.id : null;
+  const step = move === 'left' ? -1 : 1;
+  for (let c = ci + step; c >= 0 && c < colOrder.length; c += step) {
+    const there = column(c);
+    if (!there.length) continue;
+    return there.reduce((best, n) => (Math.abs(n.row - row) < Math.abs(best.row - row) ? n : best))
+      .id;
+  }
+  return null;
+}
+
 /** The edge kinds that mean "supplies", as the engine names them. */
 const PROVISION_KINDS = new Set(['provides', 'contributes']);
 
@@ -475,46 +534,16 @@ export const readableSeconds = (s: number): string =>
   !s ? '' : s >= 3600 ? `${Math.round((s / 3600) * 10) / 10}h` : `${Math.round(s / 60)}m`;
 
 /**
- * What becomes reachable if `id` were reached: every node whose required
- * prerequisites are then all met, closed over itself. The unlock simulation
- * draws this set and the detail panel states its size.
+ * What reaching `id` brings, as the readout says it and the unlock simulation
+ * lights it: what is reached with it, and the next steps that leaves
+ * (`stepEffect`). The detail panel and the map's finding state its size.
  *
- * Only what depends on `id` counts. The closure is taken twice, with and
- * without it, and the difference is the answer. Taken once, it credited every
- * node already reachable from somewhere else, so on the demo tree each of six
- * unrelated next steps "made 18 more reachable", the same 18.
+ * Only what depends on `id` counts: taken over the whole tree, each of six
+ * unrelated next steps on the demo "made 18 more reachable", the same 18.
  */
 export function unlockCascade(items: Item[], connections: Connection[], id: string): Set<string> {
-  const required = new Map<string, string[]>();
-  for (const c of connections) {
-    if (c.type !== 'hard-dep') continue;
-    if (!required.has(c.to)) required.set(c.to, []);
-    required.get(c.to)!.push(c.from);
-  }
-  const reached = new Set(items.filter(i => i.status === 'built').map(i => i.id));
-  // `barred` is never admitted: without it, the baseline would reach `id`
-  // itself the moment its own prerequisites were met, and so everything after.
-  const closure = (start: Set<string>, barred?: string) => {
-    const have = new Set(start);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const [target, prereqs] of required) {
-        if (have.has(target) || target === barred) continue;
-        if (prereqs.every(p => have.has(p))) {
-          have.add(target);
-          changed = true;
-        }
-      }
-    }
-    return have;
-  };
-  const without = closure(reached, id);
-  const unlocked = new Set<string>();
-  for (const n of closure(new Set([...reached, id]))) {
-    if (n !== id && !without.has(n)) unlocked.add(n);
-  }
-  return unlocked;
+  const { reaches, opens } = stepEffect(stepGraph(items, connections), id);
+  return new Set([...reaches, ...opens]);
 }
 
 /**
@@ -639,6 +668,140 @@ export const bandOf = (ci: number, sceneHeight: number) => ({
   width: COL_W - 16,
   height: sceneHeight - START_Y - 20,
 });
+
+/** Where a column's band starts and ends, in scene x. */
+export const bandSpan = (ci: number): { left: number; right: number } => {
+  const left = START_X + ci * COL_W - 8;
+  return { left, right: left + COL_W - 16 };
+};
+
+/** The room a frame leaves beside a band it starts or ends on, in scene units. */
+export const BAND_MARGIN = 6;
+
+/**
+ * Where a frame `width` scene units wide starts so that its left edge cuts no
+ * column. An edge inside a band moves to show that band whole, or to the start
+ * of the next, whichever is nearer and still holds `keep`, the range that has
+ * to stay in the frame. Framed flush to a lit node, the outage cut the Tool
+ * Use header and the callout on its own root, and a screenshot of it showed a
+ * sliver of a column for a frame's edge.
+ */
+export function snapToBand(
+  left: number,
+  width: number,
+  columns: number,
+  keep?: { min: number; max: number }
+): number {
+  for (let ci = 0; ci < columns; ci++) {
+    const band = bandSpan(ci);
+    if (left <= band.left - BAND_MARGIN || left >= band.right) continue;
+    const options = [band.left - BAND_MARGIN];
+    if (ci + 1 < columns) options.push(bandSpan(ci + 1).left - BAND_MARGIN);
+    const holds = options.filter(x => !keep || (x <= keep.min && x + width >= keep.max));
+    if (!holds.length) return left;
+    return holds.reduce((a, b) => (Math.abs(b - left) < Math.abs(a - left) ? b : a));
+  }
+  return left;
+}
+
+/**
+ * The zoom at which a frame `width` pixels wide shows a whole number of
+ * columns: as many as fit at `floor` or larger, then exactly that many. A
+ * phone opened at 0.72, two columns and most of a third, the third cut
+ * mid-label in every screenshot; three whole ones fit at 0.77.
+ */
+export function wholeColumnZoom(width: number, columns: number, floor: number, max = 1): number {
+  const n = wholeColumns(width, columns, floor);
+  return Math.min(max, Math.floor((width / columnsSpan(n)) * 1000) / 1000);
+}
+
+/** How wide `n` whole columns are in the scene, with the room a frame leaves either side. */
+export const columnsSpan = (n: number): number => n * COL_W - 16 + 2 * BAND_MARGIN;
+
+/** How many whole columns a frame `width` pixels wide holds at `floor` or larger. */
+export function wholeColumns(width: number, columns: number, floor: number): number {
+  const fit = Math.floor((width / floor + 16 - 2 * BAND_MARGIN) / COL_W);
+  return Math.min(columns, Math.max(1, fit));
+}
+
+/**
+ * The least zoom the map picks for itself on a wide screen. A name is set at
+ * 12 in the scene, so it draws at 10.8px here, beside the 11px of the page's
+ * smallest text. The whole tree fitted to 1440px drew names at 10px, and
+ * beside the detail panel at 8.
+ */
+export const READ_ZOOM = 0.9;
+
+/** The column a scene x falls in; the gutter after a band counts as that band's. */
+export const columnAt = (x: number, columns: number): number =>
+  Math.max(0, Math.min(columns - 1, Math.floor((x - bandSpan(0).left) / COL_W)));
+
+/**
+ * Where the map opens on a screen `width` pixels wide: every column, when all
+ * of them read at `floor` or larger; otherwise as many whole columns as do,
+ * from the first that holds a next step. That is the frontier's near edge, and
+ * the ground already held before it is a scroll away, on the minimap. The
+ * frame moves right only as far as `lead` needs, the column of the best next
+ * step, and never past the tree's end. `left` is in scene units.
+ */
+export function frontierFrame(
+  width: number,
+  columns: number,
+  frontier: number[],
+  lead: number | null,
+  floor: number,
+  max = 1
+): { first: number; count: number; zoom: number; left: number } {
+  if (columns < 1) return { first: 0, count: 0, zoom: max, left: 0 };
+  const count = wholeColumns(width, columns, floor);
+  const near = frontier.length ? Math.min(...frontier) : 0;
+  const wanted = lead !== null && lead > near + count - 1 ? lead - count + 1 : near;
+  const first = Math.max(0, Math.min(columns - count, wanted));
+  return {
+    first,
+    count,
+    zoom: wholeColumnZoom(width, columns, floor, max),
+    left: bandSpan(first).left - BAND_MARGIN,
+  };
+}
+
+/**
+ * The zoom at which whole columns fill `room` pixels, as many as it takes to
+ * come in at or under `cap`, and at least `fewest`. A frame held to a height
+ * takes more columns where it would otherwise show a sliver of one. `extra`
+ * is scene width the frame takes in beside the columns.
+ */
+export function wholeColumnFill(
+  room: number,
+  columns: number,
+  cap: number,
+  fewest = 1,
+  extra = 0
+): { n: number; zoom: number } {
+  const fill = (n: number) => Math.floor((room / (columnsSpan(n) + extra)) * 1000) / 1000;
+  let n = Math.max(1, Math.min(columns, fewest));
+  while (n < columns && fill(n) > cap) n++;
+  return { n, zoom: Math.min(cap, fill(n)) };
+}
+
+/**
+ * The first of `count` whole columns that frame the columns in `lit`: centred
+ * on them when they fit, and otherwise from `keep`, the column of the node
+ * whose panel is open, or from the first of them, since a cascade spreads
+ * rightward from its origin. Never past either end of the tree.
+ */
+export function columnWindow(lit: number[], count: number, columns: number, keep?: number): number {
+  if (!lit.length || count >= columns) return 0;
+  const a = Math.min(...lit);
+  const b = Math.max(...lit);
+  const first =
+    b - a + 1 <= count
+      ? a - Math.floor((count - (b - a + 1)) / 2)
+      : keep !== undefined
+        ? keep - Math.floor(count / 2)
+        : a;
+  return Math.max(0, Math.min(columns - count, first));
+}
 
 export interface Placed {
   x: number;
@@ -1055,7 +1218,7 @@ export function authorityMark(item: Item): AuthorityMark | undefined {
 
 /** The lens's words for each mark, which the legend and the headline share. */
 export const AUTHORITY_LABEL: Record<AuthorityMark, string> = {
-  autonomous: 'Acts without asking',
+  autonomous: 'Runs without asking',
   confirm: 'Asks first',
   forbidden: 'Forbidden',
   ungranted: 'No grant yet',
@@ -1103,21 +1266,85 @@ export interface MapFindings {
  * outlined node was worth reaching. Both are answers the page can compute, so
  * it states them, and the circles become the evidence for a sentence.
  */
+/** A next step as the readout states it: by the engine's rule, in the engine's words. */
+export interface NextStep {
+  item: Item;
+  /** Setup time, as `ambit` prints it: "15m", "1.5h", or "unknown". */
+  cost: string;
+  /** What reaching it brings with it, and what it makes a next step. */
+  reaches: Item[];
+  opens: Item[];
+  /** The sentence `ambit` prints under the step: what it opens, or what it is. */
+  why: string;
+}
+
 /**
- * Every next step with what reaching it would open, the most first and the
- * quicker of a tie first. The map's finding names the first; a config read in
- * the tab lists the first few, since one step is a recommendation and three
- * are a choice.
+ * The tree as the shared ranking reads it (src/shared/nextSteps.ts): its
+ * nodes, the requirements between them, and which of them something here
+ * supplies. A node is configured when it is reached, since the map has no
+ * other word for it, and usable unless its last check failed.
  */
-export function nextSteps(
-  items: Item[],
-  connections: Connection[]
-): { item: Item; opens: Set<string> }[] {
-  const cost = (i: Item) => Number(i.meta?.setupSeconds) || Number.POSITIVE_INFINITY;
-  return visibleItems(items)
-    .filter(i => !isEntry(i) && i.status !== 'built' && isNext(i))
-    .map(item => ({ item, opens: unlockCascade(items, connections, item.id) }))
-    .sort((a, b) => b.opens.size - a.opens.size || cost(a.item) - cost(b.item));
+function stepGraph(items: Item[], connections: Connection[]): StepGraph {
+  const tree = visibleItems(items).filter(i => !isEntry(i));
+  const onTree = new Set(tree.map(i => i.id));
+  return {
+    nodes: tree.map(i => ({
+      id: i.id,
+      name: i.name,
+      configured: i.status === 'built',
+      usable: !isFailing(i),
+      setupSeconds: Number(i.meta?.setupSeconds) || 0,
+      blocks: blocksOf(i),
+    })),
+    requires: connections
+      .filter(
+        c =>
+          c.type === 'hard-dep' &&
+          c.kind !== 'provides' &&
+          c.kind !== 'contributes' &&
+          onTree.has(c.from) &&
+          onTree.has(c.to)
+      )
+      .map(c => ({ from: c.from, to: c.to })),
+    supplied: new Set(
+      connections.filter(c => c.kind === 'provides' && onTree.has(c.to)).map(c => c.to)
+    ),
+  };
+}
+
+/**
+ * Every next step, ranked by the rule `ambit` ranks by: what blocked work
+ * first, then what each unblocks per hour of setup. The map used to rank by
+ * how much a step would let the tree reach eventually, so a config pasted
+ * here and the same config read by `npx ambit-cli` were told different next
+ * steps. A config read in the tab lists the first few, since one step is a
+ * recommendation and three are a choice.
+ */
+export function nextSteps(items: Item[], connections: Connection[]): NextStep[] {
+  const graph = stepGraph(items, connections);
+  const byId = new Map(items.map(i => [i.id, i]));
+  const named = (ids: readonly string[]) => ids.flatMap(id => byId.get(id) ?? []);
+  return rankSteps(stepCandidates(graph)).flatMap(c => {
+    const item = byId.get(c.id);
+    if (!item) return [];
+    const reaches = named([...new Set([...c.unlocks, ...reachedWith(graph, [c.id])])]);
+    const opens = named(c.opens);
+    return [
+      {
+        item,
+        cost: readableCost(c.setupSeconds),
+        reaches,
+        opens,
+        why: stepReason(
+          leverageSentence(
+            reaches.map(i => i.name),
+            opens.map(i => i.name)
+          ),
+          item.description
+        ),
+      },
+    ];
+  });
 }
 
 export function mapFindings(
@@ -1128,7 +1355,7 @@ export function mapFindings(
   const tree = visibleItems(items).filter(i => !isEntry(i));
   const failing = tree.filter(isFailing);
   let best: MapFindings['best'];
-  // The engine ranks what to reach next for My Setup, Time & cost and `ambit
+  // The engine ranks what to reach next for My Setup, Time & authority and `ambit
   // next`, by what blocked work and then by leverage per hour. The map ranked
   // by its own rule and named a different step on the same page, so its pick
   // is the engine's whenever the engine made one that is on the map.
@@ -1137,7 +1364,8 @@ export function mapFindings(
   if (pick) best = { item: pick, reaches: unlockCascade(items, connections, pick.id).size };
   else {
     const first = nextSteps(items, connections)[0];
-    if (first) best = { item: first.item, reaches: first.opens.size };
+    if (first)
+      best = { item: first.item, reaches: unlockCascade(items, connections, first.item.id).size };
   }
   let weakest: MapFindings['weakest'];
   // A node on the map, since that is what the line names and Simulate lights:
@@ -1204,7 +1432,9 @@ export interface Framing {
  * strip a bottom sheet covers. `keep` is the one point that has to be in view
  * when not everything fits, the node whose panel is open: a selection framed
  * from the top of what it needs and enables left the node itself under the
- * sheet describing it.
+ * sheet describing it. `head` is a scene y shown too when the frame has
+ * room for it without losing a point, the top of the era bands: framed from
+ * the centre of what it lit, the unlock put the era names under its banner.
  */
 export function frameScene(
   points: { x: number; y: number }[],
@@ -1216,6 +1446,11 @@ export function frameScene(
     inset?: number;
     insetTop?: number;
     keep?: { x: number; y: number };
+    head?: number;
+    /** How many columns the scene has, to start the frame on a whole one. */
+    columns?: number;
+    /** The scene's width, where the scroll stops. */
+    sceneWidth?: number;
   }
 ): Framing | null {
   if (!points.length || view.width <= 0 || view.height <= 0) return null;
@@ -1230,7 +1465,7 @@ export function frameScene(
   const minY = Math.min(...ys) - pad;
   const maxY = Math.max(...ys) + pad + 24;
   const fit = Math.min(view.width / (maxX - minX), view.height / (maxY - minY));
-  const zoom = +Math.max(opts.min, Math.min(opts.max, fit)).toFixed(2);
+  let zoom = +Math.max(opts.min, Math.min(opts.max, fit)).toFixed(2);
   const wide = (maxX - minX) * zoom > view.width;
   const tall = (maxY - minY) * zoom > view.height;
   let left = wide ? minX * zoom + inset : ((minX + maxX) / 2) * zoom + inset - view.width / 2;
@@ -1246,6 +1481,46 @@ export function frameScene(
     if (x - above < left || x + above > left + view.width) left = x - view.width / 2;
     if (y - above < top + view.top || y + below > top + view.top + view.height) {
       top = y - view.top - view.height / 2;
+    }
+  }
+  if (opts.head !== undefined && !tall) {
+    // Moved up to show the head only as far as the lowest name stays in view.
+    const show = opts.head * zoom + insetTop - view.top;
+    const lowest = maxY * zoom + insetTop - view.top - view.height;
+    if (show < top && show >= lowest) top = show;
+  }
+  if (opts.columns) {
+    // What has to stay in view: the nodes, or where a frame too narrow for
+    // them starts, and the kept point.
+    const first = Math.min(...xs);
+    const keepX = opts.keep ? [opts.keep.x] : [];
+    const keep = {
+      min: Math.min(first, ...keepX) - NODE_R,
+      max: Math.max(wide ? first : Math.max(...xs), ...keepX) + NODE_R,
+    };
+    const snapped = snapToBand((left - inset) / zoom, view.width / zoom, opts.columns, keep);
+    left = snapped * zoom + inset;
+    // Past the scene's end the scroll stops, and the frame starts wherever
+    // that leaves it, which a frame of the last two columns put inside a third.
+    // The zoom moves instead: out, to take that column whole, which keeps the
+    // fit's height, or in, to start at the next, when out is past the floor.
+    const end = opts.sceneWidth;
+    if (end && (left - inset) / zoom + view.width / zoom > end) {
+      const start = end - view.width / zoom;
+      const ci = Array.from({ length: opts.columns }, (_, i) => i).find(i => {
+        const band = bandSpan(i);
+        return start > band.left - BAND_MARGIN && start < band.right;
+      });
+      if (ci !== undefined) {
+        const out = view.width / (end - (bandSpan(ci).left - BAND_MARGIN));
+        const inn =
+          ci + 1 < opts.columns ? view.width / (end - (bandSpan(ci + 1).left - BAND_MARGIN)) : 0;
+        const z = out >= opts.min ? out : inn && inn <= opts.max ? inn : 0;
+        if (z) {
+          zoom = Math.floor(z * 1000) / 1000;
+          left = (end - view.width / zoom) * zoom + inset;
+        }
+      }
     }
   }
   return { zoom, left: Math.max(0, Math.round(left)), top: Math.max(0, Math.round(top)) };

@@ -6,6 +6,58 @@ An entry that refers to the previous entry therefore points down the page, not u
 
 ## [Unreleased](https://github.com/zz-plant/ambit/compare/v0.6.0...main)
 
+### One reach, one step, said the same way everywhere
+
+Bare `ambit` said "9 of 46 capabilities" where `ambit status`, the agent's briefing, `ambit doctor` and My Setup's journey said "18 of 55" of the same setup. The larger figure counts the person's own servers, models and runtimes as well, and both are true. Every sentence that states reach now holds both, "9 of 46 capabilities reached, and 9 of your own", so each agrees with the other surfaces and the evidence rows under `ambit status` still add up. The page's Time & cost and journey count the tree, as the map does, and `ambit_stats` carries the sentence for an agent to quote.
+
+The map lit what a step would make reachable eventually, taking each next step it opened as reached and going on past it. So Hosting lit Launch Ready, three steps away, beside a sentence naming the three next steps on the way. What a step brings is now one rule in `src/shared/nextSteps.ts`, the capabilities reached with it and the next steps that leaves, which the map lights, the finding counts, the banner and the panel state, and the readout names. On the demo, Embeddings opens two where the map said four.
+
+A frame on the map may zoom out to fit what is lit, and now zooms back to the person's own zoom for the next thing lit and when the simulation ends. It used to keep the smaller zoom the previous frame chose, so an unlock after a selection drew its names at eight pixels. On a phone an outage keeps its root's callout in frame, and a sheet open on the simulated node takes the banner's place, which repeated its sentence in three lines over the era names. `npm run shots` photographs an unlock after a zoom by hand and an outage rooted in the first column, and flags a banner over an era name and a callout off the map. The hero recording holds its ten-pixel floor in every beat that is read, and ends a simulation by the button's real name, which it had been missing, so its selection beat no longer showed the unlock still running.
+
+The concurrency test ran its "concurrent" writers one after another, and a writer that failed said nothing of why. They now hold the lock against each other and report their stderr. The status line's half-second budget scales with the machine's load, so a saturated machine no longer fails it.
+
+### An approved change reaches the runtime you use
+
+The tour ends on "Agents propose changes… Only you can approve one", and for most people approving was the end of it. `ambit apply` wrote OpenCode's config and nothing else, so a Claude Code or Cursor user who approved a change had no command that made it. It now writes the runtime `--to` names, by the word `ambit connect` takes, or, without one, the one runtime whose config is on the machine: `ambit apply <id> --to=claude-code` puts the server under `mcpServers` in `~/.claude.json`, keeping the rest of the file, and `ambit rollback` gives the file its bytes back. The re-seed after either reads every runtime, where it read OpenCode alone and left what it had just written unseen.
+
+Where it cannot write, it says how to make the change by hand instead of refusing with nothing: several runtimes and none named, Codex's TOML, a file that is not there. Each runtime gets its own command where it ships one (`claude mcp add --scope user …`, `codex mcp add …`, `code --add-mcp …`), each checked against that CLI's help, and otherwise its file and the entry. `--print` asks for that on purpose.
+
+A plan reads its ways to acquire a capability from the tree with any project overlay merged in, so an overlay, which can arrive with a cloned repository, could give a step its own command and `apply` would write it once someone approved. A patch is now written only when it is the shipped tree's.
+
+### Every view, as a screenshot
+
+Each view was photographed at rest at 1440×900, 1280×720 and a phone, and fourteen things were wrong with the pictures.
+
+The map framed what it lit flush left, so the outage cut the Tool Use column and the callout on its own root, and the first local visit sliced a column at the left with empty canvas by the card. Opening a node's panel left a column cut at the panel's edge. A phone opened on two columns and most of a third. Now, beside a panel or a card, the map shows the whole tree when it fits there at half size, since a frame of all of it cuts nothing, and otherwise starts on a whole column. A phone opens on three whole columns, at 0.77 where it was 0.72, and the readout puts the map's controls away there as the tour does. At rest, a tree shorter than the canvas is centred between the controls and the key.
+
+The demo's "worth $9,600" said "sample" only in a closed toggle under it, and a phone dropped the Sample tag; the label now sits on the figure and the tag stays. Every lazily loaded view said "Loading the map…", and one whose code failed to load spun forever; each now names itself and offers Reload. At 1280px the header's status pill wrapped onto a second line, and it now folds its bar, then its last count, into the tooltip. The grant ladder shared the era ladder's class names and was squeezed into "Unattendec". A command broke mid-id on a phone.
+
+Audit and My Setup open on a sentence about what follows: how many events and what came of them, and how the checks stand. The council shows each seat's command where five buttons said "Copy the command". A proposal leads with its title, not its id. The welcome screen shows the sample's next step lit beside the hero on a wide screen.
+
+`npm run shots` takes the same pictures, flags the faults a machine can see, and writes a contact sheet.
+
+Re-recording the README's images found three more. A simulation's banner sits a row under the map's controls, and on a canvas scrolled to its top it lay over the era names, which are buttons; the canvas now starts below it, as it does below the headline. The callout on an outage's root reaches left of its column, and a frame flush to the first column cut "DOWN ·" off Shell Execution; the frame keeps it. The agent-loop recording read the recording machine's local models, so on one holding an embedding model there was nothing to propose and it stopped, and its history showed that machine's counts. It reads only its fixture now, and shows each MCP answer a field to a line, where it printed one line of run-together JSON.
+
+### One readout of your own setup, wherever you start
+
+A newcomer meets Ambit in one of four places: the hosted demo, `npx ambit-cli`, `ambit web` or the Claude Code plugin. They said different things about the same setup, or nothing. Three servers pasted into the demo reached "9 of 46" with Local Runtime next, and `npx ambit-cli` on the machine they came from said "18 of 55" with Hosting next. The page ranked by how far a step would let the tree reach eventually, the engine by blocked work and then leverage per hour, and the terminal counted the person's own servers as capabilities. The ranking now lives in `src/shared/nextSteps.ts`, which both read; the readout measures the curated tree, as the map does; and a test reads three configs both ways and holds them to the same reach and the same next steps, in the same words.
+
+The demo asks for your setup on its first card. It used to be the fifth, after four about a stranger's setup. The sample's next step still lights first, and the outage, the failing check and the approval follow for whoever asks. The intake asks which agent you use before anything else, since that decides the model a setup is placed with and the file to paste, whose path it offers to copy. Codex keeps TOML, which the tab cannot read, so for Codex it offers the servers to tick.
+
+`npx ambit-cli` ends on one thing to do and writes each command the way Ambit was run: `npx ambit-cli web`, where it said `ambit web`, a command an npx user does not have. `./bootstrap.sh` prints the same readout. The first visit to `ambit web` opens on the map with the readout over it and the engine's next step lit, where a card used to explain the map's controls, and My Setup's seven-step journey moved to the end of the entries. In Claude Code, `/ambit` shows the readout. A phone fits everything a simulation lights, and the map measures a card in its corner and scrolls its last columns out from under it. The API, the page and a checkout without the map's dependencies no longer send people to `./bootstrap.sh`, or to clone the repository they are in.
+
+### The Proposals tab's count reaches a screen reader
+
+The tab's label is fixed at "Proposals" so it still names the tab where only the icon shows, and a label replaces everything inside the button: the badge with the number of drafts waiting was never read out. The count is now the tab's description, "2 waiting for your decision", and the badge itself is hidden from assistive technology so it is not read twice. The name stays the word on screen, which is what a voice command says.
+
+### The page and the landing docs, read as a newcomer would
+
+A pass over every string the page shows and over the README and the docs a search lands on, for the same two faults the last copy fix found in a dozen places. The first was the engine's own words used as if a reader knew them: "observation", "the ledger", "bridges", "tending", "an act", "the trail", a function name. Each now says what happened and what to do; a past moment of the map is a moment, Time & cost's empty page gives the Claude Code plugin's install commands beside OpenCode's, and the Audit view off a machine says to run `ambit web`. The second was text describing what the screen already shows, or saying one thing twice: the briefing tab listed the briefing printed under it, a repository row explained its own drift badge, a turned-down proposal said "Turned down" under a pill saying the same.
+
+Errors say what was refused and what to do instead: a paste too large names the 2 MB limit, and one that is not a config says what shape would be. The approval reason box asks for a reason, not "Why not?".
+
+Three things were wrong, not just unclear. The docs counted twelve runtimes when sixteen are read. The config-locations page sent readers to a Repos tab that is the Environment section. The audit guide said nothing leaves the machine, which a declared check that fetches a URL contradicts; it now points to the FAQ's list of every command that can.
+
 ### One name for each command, one meaning for each flag, one default window
 
 Every old spelling still runs; help teaches the one below.

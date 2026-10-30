@@ -200,17 +200,23 @@ test('a history write the browser refuses is skipped, and the page goes on', () 
   // out of an effect, and could take the page down with it.
   const written: string[] = [];
   const pushes: string[] = [];
+  // Like the browser's History, each write needs `this`: a write detached from
+  // it threw "Illegal invocation" in Chrome, was skipped as refused, and the
+  // address bar never moved while this test passed.
+  class FakeHistory {
+    constructor(private refuse: boolean) {}
+    replaceState(_data: unknown, _unused: string, url: string) {
+      if (this.refuse) throw new Error('SecurityError: too many calls to the History API');
+      written.push(url);
+    }
+    pushState(_data: unknown, _unused: string, url: string) {
+      if (this.refuse) throw new Error('SecurityError: too many calls to the History API');
+      pushes.push(url);
+    }
+  }
   const bar = (refuse: boolean) => ({
     location: { search: '?view=map', hash: '#top' },
-    history: {
-      replaceState: (_data: unknown, _unused: string, url: string) => {
-        if (refuse) throw new Error('SecurityError: too many calls to the History API');
-        written.push(url);
-      },
-      pushState: (_data: unknown, _unused: string, url: string) => {
-        pushes.push(url);
-      },
-    },
+    history: new FakeHistory(refuse),
   });
   expect(() => writeAddress(bar(true), '?view=map&at=2026-09-21T09%3A00%3A00Z')).not.toThrow();
   writeAddress(bar(false), '?view=cost');
@@ -240,5 +246,5 @@ test('a change of view is a navigation, and a change of how the same one looks i
   );
   expect(addressMode('?view=map&focus=a', '?view=map&focus=b')).toBe('replace');
   expect(addressMode('?view=map', '?view=map&at=2026-09-26T10%3A00%3A00Z')).toBe('replace');
-  expect(addressMode('?view=map&docs=open', '?view=map')).toBe('replace');
+  expect(addressMode('?view=map&help=open', '?view=map')).toBe('replace');
 });

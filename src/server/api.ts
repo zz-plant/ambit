@@ -89,6 +89,11 @@ import type {
   TechTreeResponse,
   UnmappedResponse,
 } from '../shared/api.ts';
+import { noGraphYet, REJECTION_KINDS } from '../shared/api.ts';
+import { typedCommand } from '../engine/paths.ts';
+
+/** What the API says before anything was seeded, with the fix typed as Ambit runs here. */
+const NO_GRAPH = noGraphYet(typedCommand('ambit seed'));
 
 /**
  * Who a browser decision is recorded as. The client's copy.ts carries the same
@@ -482,10 +487,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
 
   if (pathname === '/api/tech-tree' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json(
-        { error: 'No graph yet. Run ./bootstrap.sh to seed one.', items: [], connections: [] },
-        404
-      );
+      return json({ error: NO_GRAPH, items: [], connections: [] }, 404);
     }
     return json<TechTreeResponse>(withGraph(techTreeView));
   }
@@ -535,7 +537,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // terminal cannot disagree about one ledger.
   if (pathname === '/api/loop' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+      return json({ error: NO_GRAPH }, 404);
     }
     return json<LoopResponse>(withGraph(loopView));
   }
@@ -584,7 +586,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // is the newest run that recorded an ask.
   if (pathname === '/api/run' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+      return json({ error: NO_GRAPH }, 404);
     }
     const wanted = url.searchParams.get('id') || undefined;
     const view = withGraph(db => runView(db, wanted));
@@ -641,6 +643,12 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
     const body = (await readJsonBody(req).catch(() => ({}))) as Partial<RejectRequest>;
     const reason =
       typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim() : undefined;
+    // A word that is not one of the kinds is not sent by the page; it is
+    // dropped here and the engine classifies the text instead.
+    const reasonKind =
+      body?.reasonKind && (REJECTION_KINDS as readonly string[]).includes(body.reasonKind)
+        ? body.reasonKind
+        : undefined;
     const decided = withGraph(db => {
       ensureActor(db, WEB_ACTOR, WEB_ACTOR_NAME, WEB_ACTOR_ROLE);
       return decideDraft(
@@ -648,12 +656,18 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
         'reject',
         { id: reject[1], proposalHash: shownHash(body) },
         WEB_ACTOR,
-        reason
+        reason,
+        reasonKind
       );
     });
     if (!decided.ok) return json({ error: decided.refused }, refusalStatus(decided.kind));
     broadcast({ type: 'ProposalRejected', proposalId: reject[1], actor: WEB_ACTOR });
-    return json<RejectResponse>({ proposal: reject[1], rejected_by: WEB_ACTOR, reason });
+    return json<RejectResponse>({
+      proposal: reject[1],
+      rejected_by: WEB_ACTOR,
+      reason,
+      reason_kind: decided.result.reason_kind,
+    });
   }
 
   // What an agent is told at connect, shown to the person it describes the
@@ -664,7 +678,7 @@ async function route(req: IncomingMessage, url: URL): Promise<Reply | null> {
   // the person reading it is not the agent.
   if (pathname === '/api/briefing' && method === 'GET') {
     if (!existsSync(GRAPH_DB_PATH)) {
-      return json({ error: 'No graph yet. Run ./bootstrap.sh to seed one.' }, 404);
+      return json({ error: NO_GRAPH }, 404);
     }
     return json<BriefingResponse>({
       text: withGraph(db => briefingText(db, { mark: false })),

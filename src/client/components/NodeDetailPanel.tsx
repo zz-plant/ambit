@@ -22,6 +22,7 @@ import {
 } from './civ/layout';
 import { useCopied } from '../hooks/useCopied';
 import type { AuthorityLadder } from '../../shared/api';
+import { KeystoneMark } from './civ/marks';
 import { EraLadderPanel } from './EraLadder';
 import { FocusControls } from './FocusControls';
 import { HistoryStrip } from './figures';
@@ -29,6 +30,7 @@ import { Term } from './Term';
 import { carryDetail, carryOf, carryTokens } from '../utils/carry';
 import { runsOf, verifyCommand } from '../utils/checkHistory';
 import { typeColor, typeSymbol } from '../utils/typeColors';
+import { Command } from './Command';
 
 /** The rungs a grant climbs, bottom first, as the panel draws them. */
 const RUNGS = ['ungranted', 'confirm', 'threshold', 'autonomous', 'budgeted'] as const;
@@ -36,7 +38,7 @@ const RUNG_LABEL: Record<(typeof RUNGS)[number], string> = {
   ungranted: 'No grant',
   confirm: 'Asks',
   threshold: 'Threshold',
-  autonomous: 'Unattended',
+  autonomous: 'Without asking',
   budgeted: 'Ceiling',
 };
 
@@ -99,6 +101,8 @@ function LinkList({
 }
 
 export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPanelProps = {}) {
+  /** The button that starts and ends a simulation, which keeps the keyboard. */
+  const simButton = React.useRef<HTMLButtonElement>(null);
   const storeItems = useAmbitStore(s => s.items);
   const items = pastItems ?? storeItems;
   const connections = useAmbitStore(s => s.connections);
@@ -337,14 +341,23 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
 
       {asOf && (
         <p className="sp-asof" role="status">
-          As of {asOf}, as that observation recorded it. A snapshot keeps no grants or providers, so
-          simulations wait for now.
+          As of {asOf}. A past moment records no grants or providers, so simulations are off until
+          you go back to now.
         </p>
       )}
 
       {isKeystone && (
         <p className="sp-keystone">
-          <span aria-hidden="true">★</span>
+          {/* The map's wedge, where a star said the same in a second shape. */}
+          <svg
+            className="sp-keystone-mark"
+            width="12"
+            height="10"
+            viewBox="-6 -5 12 10"
+            aria-hidden="true"
+          >
+            <KeystoneMark />
+          </svg>
           <span>
             <Term name="keystone" /> · {enables.length} other{' '}
             {enables.length === 1 ? 'capability depends' : 'capabilities depend'} on this
@@ -363,7 +376,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             onClick={() => copy('verify', verifyCmd)}
             aria-label={`Copy command ${verifyCmd}`}
           >
-            <code>{verifyCmd}</code>
+            <code>
+              <Command text={verifyCmd} />
+            </code>
             <span>{copiedCmd === 'verify' ? 'Copied ✓' : 'Copy'}</span>
           </button>
         </div>
@@ -444,42 +459,49 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
                     : 'Prerequisites met. Unlocking it reaches nothing further on its own.'}
                 </p>
               )}
-              {isSimulated ? (
+              {/* One button whatever it starts or ends, so the press that
+                  starts a simulation leaves the keyboard on the button that
+                  ends it. Two buttons in turn, each replaced the other, and
+                  the focus fell to the page. */}
+              {!isSimulated && item.status !== 'built' && missing.length > 0 && (
                 <button
                   type="button"
-                  className="sp-action-btn sp-action-btn--sim"
-                  onClick={clearSim}
+                  className="sp-action-btn sp-action-btn--gap"
+                  onClick={() => {
+                    startGap(item.id);
+                    // This button goes when the steps show; the one that ends them stays.
+                    requestAnimationFrame(() => simButton.current?.focus());
+                  }}
                 >
-                  End simulation
+                  Show the steps on the map
                 </button>
-              ) : item.status === 'built' ? (
-                <button
-                  type="button"
-                  className={`sp-action-btn ${stops ? 'sp-action-btn--outage' : ''}`}
-                  onClick={() => startOutage(item.id)}
-                >
-                  Simulate an outage
-                </button>
-              ) : (
-                <>
-                  {missing.length > 0 && (
-                    <button
-                      type="button"
-                      className="sp-action-btn sp-action-btn--gap"
-                      onClick={() => startGap(item.id)}
-                    >
-                      Show the steps on the map
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="sp-action-btn sp-action-btn--unlock"
-                    onClick={() => startAcquisition(item.id)}
-                  >
-                    Simulate unlocking this
-                  </button>
-                </>
               )}
+              <button
+                ref={simButton}
+                type="button"
+                className={`sp-action-btn ${
+                  isSimulated
+                    ? 'sp-action-btn--sim'
+                    : item.status === 'built'
+                      ? stops
+                        ? 'sp-action-btn--outage'
+                        : ''
+                      : 'sp-action-btn--unlock'
+                }`}
+                onClick={
+                  isSimulated
+                    ? clearSim
+                    : item.status === 'built'
+                      ? () => startOutage(item.id)
+                      : () => startAcquisition(item.id)
+                }
+              >
+                {isSimulated
+                  ? 'End simulation'
+                  : item.status === 'built'
+                    ? 'Simulate an outage'
+                    : 'Simulate unlocking this'}
+              </button>
             </div>
           );
         })()}
@@ -506,7 +528,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           {authority.ungranted
             ? 'No grant yet: an agent asking to run it is refused until someone grants one'
             : authority.execute === 'autonomous'
-              ? 'Acts without asking'
+              ? 'Runs without asking'
               : authority.execute === 'confirm'
                 ? 'Asks before acting'
                 : 'Forbidden to act'}
@@ -525,17 +547,17 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           Up takes a person's command or a threshold one set; down takes one
           failing check and nobody. A refusal is on no rung. */}
       {ladder && (
-        <div className="sp-ladder" aria-label="How far its grant has climbed">
+        <div className="sp-grant">
           {ladder.rung === 'forbidden' ? (
-            <p className="sp-ladder-note">{ladder.note}</p>
+            <p className="sp-grant-note">{ladder.note}</p>
           ) : (
-            <ol className="sp-rungs">
+            <ol className="sp-grant-rungs" aria-label="How far its grant has climbed">
               {RUNGS.map((r, i) => {
                 const at = RUNGS.indexOf(ladder.rung as (typeof RUNGS)[number]);
                 return (
                   <li
                     key={r}
-                    className={`sp-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
+                    className={`sp-grant-rung ${i === at ? 'is-on' : i < at ? 'is-past' : ''}`}
                     aria-current={i === at ? 'step' : undefined}
                   >
                     {RUNG_LABEL[r]}
@@ -545,12 +567,12 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             </ol>
           )}
           {ladder.rung !== 'forbidden' && ladder.note && (
-            <p className="sp-ladder-note">{ladder.note}</p>
+            <p className="sp-grant-note">{ladder.note}</p>
           )}
           {ladder.next && (
             <button
               type="button"
-              className={`sp-cli-copy-btn sp-ladder-next ${copiedCmd === 'ladder' ? 'sp-cli-copy-btn--copied' : ''}`}
+              className={`sp-cli-copy-btn sp-grant-next ${copiedCmd === 'ladder' ? 'sp-cli-copy-btn--copied' : ''}`}
               title={ladder.next.command}
               onClick={() => copy('ladder', ladder.next!.command)}
             >
@@ -563,8 +585,8 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           draws as the part fill inside a next step. */}
       {blocks > 0 && item.status !== 'built' && (
         <p className="sp-blocks">
-          <Term name="asked-for">Asked for</Term> {blocks}×: work was recorded blocked on it while
-          it was missing.
+          <Term name="asked-for">Asked for</Term> {blocks}×: work was blocked because it was
+          missing.
         </p>
       )}
       {/* What its tool list costs in context every session, as `ambit weigh`
@@ -644,7 +666,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
             {toggleError ??
               (enabled
                 ? 'Switching this off writes enabled: false to your agent config. Restart the runtime for it to take effect.'
-                : 'Switched off in your agent config. Switch it back on here.')}
+                : 'Switched off in your agent config. After switching it back on, restart the runtime.')}
           </p>
         </div>
       )}
@@ -674,7 +696,9 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
         <div className="sp-cli-actions">
           <div className="sp-section-label">Check it</div>
           <div className="sp-cli-row">
-            <code className="sp-cli-cmd">{verifyCmd}</code>
+            <code className="sp-cli-cmd">
+              <Command text={verifyCmd} />
+            </code>
             <button
               type="button"
               className={`sp-cli-copy-btn ${copiedCmd === 'verify' ? 'sp-cli-copy-btn--copied' : ''}`}

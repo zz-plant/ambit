@@ -34,12 +34,12 @@ fi
 # summary below; the engine now reports for itself when it found no config.
 node --experimental-sqlite "$ROOT/src/engine/engine.ts" seed
 
-# The first-run report is `ambit status` itself, so what the installer prints
-# and what the command prints a minute later are the same thing. The copy that
-# used to live here counted every row in the capabilities table — the action
-# rows and the providers included — and announced "28/69 capabilities" seconds
-# before `ambit status` said "15/41" about the same graph.
-node --experimental-sqlite --disable-warning=ExperimentalWarning "$ROOT/src/engine/engine.ts" status 2>/dev/null || true
+# The first-run report is the readout bare `ambit` prints, so a checkout's
+# first screen and `npx ambit-cli`'s are the same: what was read, how much of
+# the tree it reaches, the next step, what is not proven yet. The copy that
+# used to live here counted every row in the capabilities table and announced
+# "28/69 capabilities" seconds before `ambit status` said "15/41".
+node --experimental-sqlite --disable-warning=ExperimentalWarning "$ROOT/src/engine/engine.ts" status --brief 2>/dev/null || true
 
 # Link the \`ambit\` command onto the PATH when ~/.local/bin is on it.
 echo ""
@@ -62,16 +62,7 @@ if [ "$MODE" = "web" ]; then
   echo "Starting visualizer at http://localhost:3000"
   npm run dev
 else
-  # Only commands that answer on a graph built one second ago. `attention` and
-  # `opportunities` read the work ledger, which is empty until runs have been
-  # recorded — recommending them here sent every new user straight into two
-  # "nothing recorded yet" notes as their first experience of the tool.
-  echo "ambit status         — health, single points of failure, what is unverified"
-  echo "ambit goal <name>    — what it would take to reach a capability"
-  echo "ambit impact <id>    — what stops working if this goes away"
-  echo "./bootstrap.sh web   — open the visualiser"
-  echo ""
-  echo "ambit attention and ambit opportunities price the human cost of running"
-  echo "this. They read a work ledger that starts empty, so they become useful"
-  echo "after runs have been recorded — not on first run."
+  # The readout above ends on the one thing to do. In a checkout the map's
+  # dependencies are installed by this script, so that is how it opens.
+  echo "In this checkout, ./bootstrap.sh web installs the map's dependencies and opens it."
 fi

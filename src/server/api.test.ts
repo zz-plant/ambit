@@ -167,11 +167,13 @@ test('the browser can decide either way, and the graph knows who decided', async
   const rejected = await decide(drafts[0].id, 'reject', {
     proposalHash: drafts[0].proposal_hash,
     reason: 'not this quarter',
+    reasonKind: 'later',
   });
   expect(rejected.status).toBe(200);
   const body = await json(rejected);
   expect(body.rejected_by).toBe('human:web');
   expect(body.reason).toBe('not this quarter');
+  expect(body.reason_kind).toBe('later');
 
   const after = await json(await fetch(`${base}/api/proposals`));
   expect(after.proposals.find((p: any) => p.id === drafts[0].id).status).toBe('rejected');

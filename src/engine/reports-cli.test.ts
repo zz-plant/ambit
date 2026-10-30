@@ -434,8 +434,8 @@ test('a command whose answer is a list prints the list', () => {
     },
     encoding: 'utf8',
   });
-  expect(out).toContain('autonomous:');
-  expect(out).toContain('needs approval:');
+  expect(out).toContain('runs without asking:');
+  expect(out).toContain('asks first:');
 });
 
 test('a graph declaring no credentials analyses exactly as before', () => {
@@ -637,10 +637,10 @@ test('status ends on the command that turns what is listed into evidence', () =>
   seed(LOCAL_ONLY).close();
   const status = cli('status');
   expect(status.next.command).toBe('ambit verify');
-  expect(status.next.why).toMatch(/^turns \d+ of the unproven into evidence$/);
+  expect(status.next.why).toMatch(/^turns \d+ of the unverified into evidence$/);
 
   // It is the same fact the evidence note states, from the same set.
-  const count = (text: string) => Number(text.match(/(\d+) of the unproven/)?.[1]);
+  const count = (text: string) => Number(text.match(/(\d+) of the unverified/)?.[1]);
   expect(count(status.next.why)).toBeGreaterThan(0);
   expect(count(status.next.why)).toBe(count(status.evidence[0].note));
 });
@@ -679,6 +679,7 @@ test('status keeps every field it had, names what is recovering, and adds next a
   const status = cli('status');
   expect(Object.keys(status)).toEqual([
     'summary',
+    'reach',
     'reached',
     'total',
     'verified',
@@ -718,9 +719,9 @@ test('status piped is plain text, carries the same lines, and ends on Next', () 
   const out = run();
   expect(out).not.toContain(String.fromCharCode(27));
   const lines = out.split('\n').filter(line => line.trim());
-  expect(lines[0]).toMatch(/^ {4}\d+ of \d+ reached · \d+ proven/);
+  expect(lines[0]).toMatch(/^ {4}\d+ of \d+ reached(, and \d+ of your own)? · \d+ verified/);
   expect(lines[1]).toMatch(/^ {4}─+$/);
-  expect(lines.some(line => line.startsWith('  › unproven '))).toBe(true);
+  expect(lines.some(line => line.startsWith('  › unverified '))).toBe(true);
 
   // The same content as the data: the last line is `next`, and --json has it.
   const { next } = JSON.parse(run('--json'));

@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import type { ProposalDecision, ProposalRow, QueueDecisionResult } from '../../shared/api';
+import type {
+  ProposalDecision,
+  ProposalRow,
+  QueueDecisionResult,
+  RejectionKind,
+} from '../../shared/api';
 import { useCopied } from '../hooks/useCopied';
 import { useAmbitStore } from '../store/ambitStore';
 import { WEB_ACTOR } from '../utils/copy';
@@ -26,6 +31,24 @@ function parseSteps(steps: string): StepLike[] {
     return [];
   }
 }
+
+/**
+ * The one-press answers to a no. Each names what the refusal is evidence
+ * about, and records itself: the cost, the way chosen, the timing. The
+ * words the engine classifies free text into, as the chips say them;
+ * "Something else" asks for words instead.
+ */
+const REASONS: { label: string; kind: RejectionKind }[] = [
+  { label: 'Too expensive', kind: 'cost' },
+  { label: 'Wrong provider', kind: 'provider' },
+  { label: 'Later', kind: 'later' },
+];
+
+/** The recorded no, said inline the way the chips say it. */
+const REASON_WORDS = {
+  ...Object.fromEntries(REASONS.map(({ kind, label }) => [kind, label.toLowerCase()])),
+  other: 'something else',
+} as Record<RejectionKind, string>;
 
 /** Setup time the way a person says it: minutes under an hour. */
 const setupLabel = (hours: number) => (hours < 1 ? `${Math.round(hours * 60)}m` : `${hours}h`);
@@ -174,9 +197,16 @@ export function ProposalsDesk() {
   const [queueReport, setQueueReport] = useState<QueueReport | null>(null);
   const [copiedId, copy] = useCopied();
   const [statusTab, setStatusTab] = useState<'all' | 'draft' | 'approved' | 'rejected'>('all');
-  // A no in progress: which card, and the reason typed so far. The reason is
-  // optional and is the most valuable part of the record.
-  const [declining, setDeclining] = useState<{ id: string; reason: string } | null>(null);
+  // A no in progress: which card, the reason typed so far, and how it was
+  // given. A chip is the whole answer and records itself; the text field is
+  // for what the chips do not name, and "Something else" is the word that
+  // none of the named reasons applies.
+  const [declining, setDeclining] = useState<{
+    id: string;
+    reason: string;
+    kind?: RejectionKind;
+    wantsText?: boolean;
+  } | null>(null);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
   const handleApprove = async (proposalId: string) => {
@@ -187,12 +217,16 @@ export function ProposalsDesk() {
     setApprovingId(null);
   };
 
-  const handleReject = async () => {
-    if (!declining) return;
+  const recordRejection = async (id: string, reason?: string, reasonKind?: RejectionKind) => {
     setDecisionError(null);
-    const result = await rejectProposal(declining.id, declining.reason.trim() || undefined);
+    const result = await rejectProposal(id, reason?.trim() || undefined, reasonKind);
     if (!result.ok) setDecisionError(result.error || 'Could not record the decision.');
     else setDeclining(null);
+  };
+
+  const handleReject = () => {
+    if (!declining) return;
+    void recordRejection(declining.id, declining.reason, declining.kind);
   };
 
   const copyApplyCmd = (id: string) => copy(id, `ambit apply ${id}`);
@@ -224,9 +258,12 @@ export function ProposalsDesk() {
   const draftCount = proposals.filter(p => p.status === 'draft').length;
   const approvedCount = proposals.filter(p => p.status === 'approved').length;
   const rejectedCount = proposals.filter(p => p.status === 'rejected').length;
+  // The deck's Proposals tab carries the waiting count, and All is the sum of
+  // the rest, so neither is counted here; what a tab holds is what the tab
+  // shows. Approved and turned down are said nowhere else.
   const tabs: [typeof statusTab, string][] = [
-    ['all', `All (${proposals.length})`],
-    ['draft', `Waiting${draftCount > 0 ? ` (${draftCount})` : ''}`],
+    ['all', 'All'],
+    ['draft', 'Waiting'],
     ['approved', `Approved (${approvedCount})`],
     ...(rejectedCount > 0
       ? ([['rejected', `Turned down (${rejectedCount})`]] as [typeof statusTab, string][])
@@ -252,6 +289,12 @@ export function ProposalsDesk() {
           </button>
         ))}
       </div>
+
+      {/* What approving does, said once for the desk rather than on every
+          card that asks for the decision. */}
+      {draftCount > 0 && (statusTab === 'all' || statusTab === 'draft') && (
+        <p className="gov-hint">Approving signs a receipt; nothing runs yet.</p>
+      )}
 
       {/* The queue. No comment box: an approval has no field to keep one
           in yet, and a box whose words are dropped would be a lie. */}
@@ -285,7 +328,7 @@ export function ProposalsDesk() {
           </span>
           <p className="gov-hint">
             A proposal that changed after this page loaded is skipped; reopening Proposals shows the
-            new version. Approving signs; applying is still a command you run.
+            new version.
           </p>
         </div>
       )}
@@ -294,12 +337,8 @@ export function ProposalsDesk() {
       {filtered.length === 0 ? (
         <div className="gov-empty">
           {proposals.length === 0
-            ? 'Nothing waiting. When an agent needs a change to your setup, it appears here for you to approve.'
-            : statusTab === 'draft'
-              ? 'Nothing waiting for your approval.'
-              : statusTab === 'rejected'
-                ? 'Nothing turned down.'
-                : 'Nothing approved yet.'}
+            ? 'Nothing waiting. A change drafted by an agent or by ambit propose appears here for you to decide.'
+            : 'Nothing here yet.'}
         </div>
       ) : (
         <div className="gov-list">
@@ -324,25 +363,20 @@ export function ProposalsDesk() {
                     </span>
                   )}
                   <div className="gov-ask">
+                    {/* The change leads, in words, beside where it stands; its id,
+                        which the commands take, follows it quietly. The card
+                        opened on prop-deploy-staging-42 above its own title. */}
                     <div className="gov-card-head">
-                      {showQueue && p.status === 'draft' ? (
-                        <label className="gov-pick">
-                          <input
-                            type="checkbox"
-                            checked={selected.has(p.id)}
-                            onChange={() => toggle(p.id)}
-                            aria-label={`Include ${p.id}`}
-                          />
-                          <code className="gov-id">{p.id}</code>
-                          {leansRefused(p) && (
-                            <span className="gov-pick-note">
-                              unticked to start: your record leans against it
-                            </span>
-                          )}
-                        </label>
-                      ) : (
-                        <code className="gov-id">{p.id}</code>
+                      {showQueue && p.status === 'draft' && (
+                        <input
+                          type="checkbox"
+                          className="gov-pick"
+                          checked={selected.has(p.id)}
+                          onChange={() => toggle(p.id)}
+                          aria-label={`Include ${p.id}`}
+                        />
                       )}
+                      <div className="gov-goal">{p.goal}</div>
                       <span
                         className={`gov-status ${isApproved ? 'gov-status--approved' : ''} ${isRejected ? 'gov-status--rejected' : ''}`}
                       >
@@ -355,8 +389,14 @@ export function ProposalsDesk() {
                               : 'Waiting for your approval'}
                       </span>
                     </div>
-
-                    <div className="gov-goal">{p.goal}</div>
+                    <p className="gov-meta">
+                      <code className="gov-id">{p.id}</code>
+                      {showQueue && p.status === 'draft' && leansRefused(p) && (
+                        <span className="gov-pick-note">
+                          unticked to start: you usually turn down changes like this
+                        </span>
+                      )}
+                    </p>
                     {/* What the change is for, in the drafter's words. Reach
                     serves a purpose someone named, and the approval binds
                     the purpose shown here. */}
@@ -398,19 +438,52 @@ export function ProposalsDesk() {
 
                 {isDeclining && (
                   <div className="gov-decline">
-                    <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
-                      Why not? Optional. The next draft reads it.
-                    </label>
-                    <input
-                      id={`decline-${p.id}`}
-                      className="tp-search gov-decline-input"
-                      placeholder="too expensive, wrong provider, not this quarter…"
-                      value={declining.reason}
-                      onChange={e => setDeclining({ id: p.id, reason: e.target.value })}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleReject();
-                      }}
-                    />
+                    <fieldset className="gov-decline-reasons">
+                      <legend className="visually-hidden">Why turn it down</legend>
+                      {REASONS.map(chip => (
+                        <button
+                          key={chip.kind}
+                          type="button"
+                          className="tp-btn-sm"
+                          onClick={() => void recordRejection(p.id, undefined, chip.kind)}
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="tp-btn-sm"
+                        onClick={() =>
+                          setDeclining({ id: p.id, reason: '', kind: 'other', wantsText: true })
+                        }
+                      >
+                        Something else
+                      </button>
+                    </fieldset>
+                    {declining.wantsText && (
+                      <>
+                        <label className="gov-decline-label" htmlFor={`decline-${p.id}`}>
+                          Reason, optional. The next draft reads it.
+                        </label>
+                        <input
+                          id={`decline-${p.id}`}
+                          className="tp-search gov-decline-input"
+                          placeholder="what none of those says…"
+                          value={declining.reason}
+                          onChange={e =>
+                            setDeclining({
+                              id: p.id,
+                              reason: e.target.value,
+                              kind: 'other',
+                              wantsText: true,
+                            })
+                          }
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleReject();
+                          }}
+                        />
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -443,9 +516,12 @@ export function ProposalsDesk() {
                       )}
                     </>
                   ) : isRejected ? (
-                    <span className="gov-reply">
-                      Turned down. The next draft takes the reason into account.
-                    </span>
+                    p.rejected_kind || p.rejected_reason ? (
+                      <span className="gov-reply">
+                        Turned down ·{' '}
+                        {p.rejected_kind ? REASON_WORDS[p.rejected_kind] : `"${p.rejected_reason}"`}
+                      </span>
+                    ) : null
                   ) : isDeclining ? (
                     <>
                       <button

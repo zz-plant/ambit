@@ -139,6 +139,11 @@ const DECIDED_CAPABILITY_SQL = `CASE WHEN s.session_id IN ('approval', 'apply')
  * they provide, and the evidence rows under it counted only what carries a
  * check, so `ambit status` read "39 reached" over rows summing to 15. An
  * entry is the rest: reached, with no check of its own.
+ *
+ * The `tree` scope counts the curated capabilities alone, the yardstick the
+ * map's pill, a config read in the hosted page and the first-run readout all
+ * measure a setup against. Its total is the tree's for everyone, where the
+ * graph's grows by one with every server a person adds.
  */
 interface GraphCounts {
   total: number;
@@ -149,8 +154,12 @@ interface GraphCounts {
   entries: number;
 }
 
-function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }): GraphCounts {
+function graphCounts(
+  db: { prepare(sql: string): { get(...p: unknown[]): any } },
+  scope: 'graph' | 'tree' = 'graph'
+): GraphCounts {
   const of = (test: string) => `SUM(CASE WHEN ${REACHED_SQL} AND ${test} THEN 1 ELSE 0 END)`;
+  const counted = scope === 'tree' ? `${COUNTED_SQL} AND kind = 'capability'` : COUNTED_SQL;
   try {
     const row = db
       .prepare(
@@ -160,7 +169,7 @@ function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }
                 ${of(UNPROVEN_SQL)} AS unproven,
                 ${of(FAILING_SQL)} AS failing,
                 ${of(`lifecycle NOT IN (${sqlList([...PROVEN, ...UNPROVEN, ...FAILING])})`)} AS entries
-         FROM capabilities WHERE ${COUNTED_SQL}`
+         FROM capabilities WHERE ${counted}`
       )
       .get();
     return {
@@ -174,6 +183,24 @@ function graphCounts(db: { prepare(sql: string): { get(...p: unknown[]): any } }
   } catch {
     return { total: 0, reached: 0, proven: 0, unproven: 0, failing: 0, entries: 0 };
   }
+}
+
+/**
+ * Reach in words, the same wherever a sentence states it: the curated
+ * capabilities reached of the tree's, then the reached nodes that are the
+ * person's own, their servers, models, runtimes, devices and skills. The readout, the map and the hosted page
+ * measure against the tree, and `ambit status`, the briefing and `ambit
+ * doctor` called the same setup "18 of 55" where the readout said "9 of 46".
+ * Both were true; a sentence holding both agrees with each, and the evidence
+ * rows under it still add up to the two together.
+ */
+function reachPhrase(db: { prepare(sql: string): { get(...p: unknown[]): any } }): string {
+  const tree = graphCounts(db, 'tree');
+  const more = graphCounts(db).reached - tree.reached;
+  return (
+    `${tree.reached} of ${tree.total} capabilities reached` +
+    (more > 0 ? `, and ${more} of your own` : '')
+  );
 }
 
 /**
@@ -286,7 +313,7 @@ const TOKEN_SOURCES: Readonly<Record<string, string>> = {
  * attention, the audit trail, failure signals, usage, unmapped use, token
  * counts, the council and the opportunity ranking, and the loop page that
  * shows them. They had settled on 30 days apiece, except `attention` and
- * `audit`, at 7, so `ambit attention` and the Time & cost page read the same
+ * `audit`, at 7, so `ambit attention` and the Time & authority page read the same
  * ledger over different months. A window that means something else keeps its
  * own: ROI compares before and after over 60, a receipt covers the last hour,
  * and `usage --windows` the last day.
@@ -315,6 +342,7 @@ export {
   DECIDED_CAPABILITY_SQL,
   sqlList,
   graphCounts,
+  reachPhrase,
   type GraphCounts,
   NOT_SEEDED,
   notSeeded,

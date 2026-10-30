@@ -1,0 +1,688 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T01:57:19+00:00",
+  "title": "Design System: Ambit",
+  "extensions": {
+    "colorMeta": {
+      "readout-blue": {
+        "role": "primary",
+        "displayName": "Readout Blue",
+        "canonical": "#7aa2f7",
+        "oklch": "oklch(71.9% 0.132 264.2)",
+        "tonalRamp": [
+          "oklch(15% 0.064 264.2)",
+          "oklch(26% 0.088 264.2)",
+          "oklch(37% 0.113 264.2)",
+          "oklch(48% 0.132 264.2)",
+          "oklch(59% 0.132 264.2)",
+          "oklch(70% 0.119 264.2)",
+          "oklch(82% 0.093 264.2)",
+          "oklch(95% 0.064 264.2)"
+        ]
+      },
+      "readout-blue-pressed": {
+        "role": "primary",
+        "displayName": "Readout Blue Pressed",
+        "canonical": "#6b93e8",
+        "oklch": "oklch(67.1% 0.134 264.0)",
+        "tonalRamp": [
+          "oklch(15% 0.065 264.0)",
+          "oklch(26% 0.089 264.0)",
+          "oklch(37% 0.114 264.0)",
+          "oklch(48% 0.134 264.0)",
+          "oklch(59% 0.134 264.0)",
+          "oklch(70% 0.121 264.0)",
+          "oklch(82% 0.094 264.0)",
+          "oklch(95% 0.065 264.0)"
+        ]
+      },
+      "needs-violet": {
+        "role": "secondary",
+        "displayName": "Needs Violet",
+        "canonical": "#b89af0",
+        "oklch": "oklch(74.6% 0.125 299.4)",
+        "tonalRamp": [
+          "oklch(15% 0.062 299.4)",
+          "oklch(26% 0.084 299.4)",
+          "oklch(37% 0.107 299.4)",
+          "oklch(48% 0.125 299.4)",
+          "oklch(59% 0.125 299.4)",
+          "oklch(70% 0.114 299.4)",
+          "oklch(82% 0.089 299.4)",
+          "oklch(95% 0.062 299.4)"
+        ]
+      },
+      "held-ground": {
+        "role": "secondary",
+        "displayName": "Held Ground",
+        "canonical": "#3a5288",
+        "oklch": "oklch(44.6% 0.094 264.8)",
+        "tonalRamp": [
+          "oklch(15% 0.051 264.8)",
+          "oklch(26% 0.068 264.8)",
+          "oklch(37% 0.086 264.8)",
+          "oklch(48% 0.094 264.8)",
+          "oklch(59% 0.094 264.8)",
+          "oklch(70% 0.090 264.8)",
+          "oklch(82% 0.072 264.8)",
+          "oklch(95% 0.051 264.8)"
+        ]
+      },
+      "held-ground-ring": {
+        "role": "secondary",
+        "displayName": "Held Ground Ring",
+        "canonical": "#7896dc",
+        "oklch": "oklch(67.9% 0.110 265.9)",
+        "tonalRamp": [
+          "oklch(15% 0.057 265.9)",
+          "oklch(26% 0.077 265.9)",
+          "oklch(37% 0.097 265.9)",
+          "oklch(48% 0.110 265.9)",
+          "oklch(59% 0.110 265.9)",
+          "oklch(70% 0.102 265.9)",
+          "oklch(82% 0.080 265.9)",
+          "oklch(95% 0.057 265.9)"
+        ]
+      },
+      "passing-green": {
+        "role": "tertiary",
+        "displayName": "Passing Green",
+        "canonical": "#56c28a",
+        "oklch": "oklch(73.6% 0.130 158.2)",
+        "tonalRamp": [
+          "oklch(15% 0.063 158.2)",
+          "oklch(26% 0.087 158.2)",
+          "oklch(37% 0.111 158.2)",
+          "oklch(48% 0.130 158.2)",
+          "oklch(59% 0.130 158.2)",
+          "oklch(70% 0.117 158.2)",
+          "oklch(82% 0.091 158.2)",
+          "oklch(95% 0.063 158.2)"
+        ]
+      },
+      "caution-amber": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "#e0a94a",
+        "oklch": "oklch(76.9% 0.128 78.3)",
+        "tonalRamp": [
+          "oklch(15% 0.063 78.3)",
+          "oklch(26% 0.086 78.3)",
+          "oklch(37% 0.110 78.3)",
+          "oklch(48% 0.128 78.3)",
+          "oklch(59% 0.128 78.3)",
+          "oklch(70% 0.116 78.3)",
+          "oklch(82% 0.090 78.3)",
+          "oklch(95% 0.063 78.3)"
+        ]
+      },
+      "failing-red": {
+        "role": "tertiary",
+        "displayName": "Failing Red",
+        "canonical": "#ef6461",
+        "oklch": "oklch(67.7% 0.173 24.1)",
+        "tonalRamp": [
+          "oklch(15% 0.078 24.1)",
+          "oklch(26% 0.109 24.1)",
+          "oklch(37% 0.141 24.1)",
+          "oklch(48% 0.173 24.1)",
+          "oklch(59% 0.173 24.1)",
+          "oklch(70% 0.150 24.1)",
+          "oklch(82% 0.115 24.1)",
+          "oklch(95% 0.078 24.1)"
+        ]
+      },
+      "failing-red-deep": {
+        "role": "tertiary",
+        "displayName": "Failing Red Deep",
+        "canonical": "#d8504d",
+        "oklch": "oklch(61.4% 0.172 24.8)",
+        "tonalRamp": [
+          "oklch(15% 0.077 24.8)",
+          "oklch(26% 0.109 24.8)",
+          "oklch(37% 0.140 24.8)",
+          "oklch(48% 0.172 24.8)",
+          "oklch(59% 0.172 24.8)",
+          "oklch(70% 0.149 24.8)",
+          "oklch(82% 0.114 24.8)",
+          "oklch(95% 0.077 24.8)"
+        ]
+      },
+      "heat-1": {
+        "role": "tertiary",
+        "displayName": "Heat 1",
+        "canonical": "#a3691f",
+        "oklch": "oklch(57.1% 0.113 67.5)",
+        "tonalRamp": [
+          "oklch(15% 0.058 67.5)",
+          "oklch(26% 0.078 67.5)",
+          "oklch(37% 0.099 67.5)",
+          "oklch(48% 0.113 67.5)",
+          "oklch(59% 0.113 67.5)",
+          "oklch(70% 0.105 67.5)",
+          "oklch(82% 0.082 67.5)",
+          "oklch(95% 0.058 67.5)"
+        ]
+      },
+      "heat-2": {
+        "role": "tertiary",
+        "displayName": "Heat 2",
+        "canonical": "#c98a2c",
+        "oklch": "oklch(68.1% 0.130 72.4)",
+        "tonalRamp": [
+          "oklch(15% 0.063 72.4)",
+          "oklch(26% 0.087 72.4)",
+          "oklch(37% 0.111 72.4)",
+          "oklch(48% 0.130 72.4)",
+          "oklch(59% 0.130 72.4)",
+          "oklch(70% 0.117 72.4)",
+          "oklch(82% 0.091 72.4)",
+          "oklch(95% 0.063 72.4)"
+        ]
+      },
+      "heat-3": {
+        "role": "tertiary",
+        "displayName": "Heat 3",
+        "canonical": "#e8b04b",
+        "oklch": "oklch(79.1% 0.133 79.3)",
+        "tonalRamp": [
+          "oklch(15% 0.064 79.3)",
+          "oklch(26% 0.089 79.3)",
+          "oklch(37% 0.113 79.3)",
+          "oklch(48% 0.133 79.3)",
+          "oklch(59% 0.133 79.3)",
+          "oklch(70% 0.120 79.3)",
+          "oklch(82% 0.093 79.3)",
+          "oklch(95% 0.064 79.3)"
+        ]
+      },
+      "heat-4": {
+        "role": "tertiary",
+        "displayName": "Heat 4",
+        "canonical": "#f5cd6e",
+        "oklch": "oklch(86.4% 0.122 86.9)",
+        "tonalRamp": [
+          "oklch(15% 0.061 86.9)",
+          "oklch(26% 0.083 86.9)",
+          "oklch(37% 0.106 86.9)",
+          "oklch(48% 0.122 86.9)",
+          "oklch(59% 0.122 86.9)",
+          "oklch(70% 0.112 86.9)",
+          "oklch(82% 0.087 86.9)",
+          "oklch(95% 0.061 86.9)"
+        ]
+      },
+      "kind-agent": {
+        "role": "tertiary",
+        "displayName": "Agent Pink",
+        "canonical": "#e58bb4",
+        "oklch": "oklch(74.2% 0.120 351.6)",
+        "tonalRamp": [
+          "oklch(15% 0.060 351.6)",
+          "oklch(26% 0.082 351.6)",
+          "oklch(37% 0.104 351.6)",
+          "oklch(48% 0.120 351.6)",
+          "oklch(59% 0.120 351.6)",
+          "oklch(70% 0.110 351.6)",
+          "oklch(82% 0.086 351.6)",
+          "oklch(95% 0.060 351.6)"
+        ]
+      },
+      "kind-provider": {
+        "role": "tertiary",
+        "displayName": "Provider Cyan",
+        "canonical": "#4fb0d6",
+        "oklch": "oklch(71.4% 0.106 226.9)",
+        "tonalRamp": [
+          "oklch(15% 0.055 226.9)",
+          "oklch(26% 0.075 226.9)",
+          "oklch(37% 0.094 226.9)",
+          "oklch(48% 0.106 226.9)",
+          "oklch(59% 0.106 226.9)",
+          "oklch(70% 0.099 226.9)",
+          "oklch(82% 0.078 226.9)",
+          "oklch(95% 0.055 226.9)"
+        ]
+      },
+      "kind-model": {
+        "role": "tertiary",
+        "displayName": "Model Periwinkle",
+        "canonical": "#8c9cf2",
+        "oklch": "oklch(71.6% 0.127 274.7)",
+        "tonalRamp": [
+          "oklch(15% 0.062 274.7)",
+          "oklch(26% 0.085 274.7)",
+          "oklch(37% 0.109 274.7)",
+          "oklch(48% 0.127 274.7)",
+          "oklch(59% 0.127 274.7)",
+          "oklch(70% 0.115 274.7)",
+          "oklch(82% 0.090 274.7)",
+          "oklch(95% 0.062 274.7)"
+        ]
+      },
+      "kind-combo": {
+        "role": "tertiary",
+        "displayName": "Combo Violet",
+        "canonical": "#a58cf0",
+        "oklch": "oklch(70.4% 0.144 293.9)",
+        "tonalRamp": [
+          "oklch(15% 0.068 293.9)",
+          "oklch(26% 0.095 293.9)",
+          "oklch(37% 0.121 293.9)",
+          "oklch(48% 0.144 293.9)",
+          "oklch(59% 0.144 293.9)",
+          "oklch(70% 0.128 293.9)",
+          "oklch(82% 0.099 293.9)",
+          "oklch(95% 0.068 293.9)"
+        ]
+      },
+      "kind-tool": {
+        "role": "tertiary",
+        "displayName": "Tool Copper",
+        "canonical": "#d28a4f",
+        "oklch": "oklch(69.5% 0.116 58.5)",
+        "tonalRamp": [
+          "oklch(15% 0.059 58.5)",
+          "oklch(26% 0.080 58.5)",
+          "oklch(37% 0.101 58.5)",
+          "oklch(48% 0.116 58.5)",
+          "oklch(59% 0.116 58.5)",
+          "oklch(70% 0.107 58.5)",
+          "oklch(82% 0.084 58.5)",
+          "oklch(95% 0.059 58.5)"
+        ]
+      },
+      "kind-device": {
+        "role": "tertiary",
+        "displayName": "Device Teal",
+        "canonical": "#4db6a8",
+        "oklch": "oklch(71.1% 0.099 183.4)",
+        "tonalRamp": [
+          "oklch(15% 0.053 183.4)",
+          "oklch(26% 0.071 183.4)",
+          "oklch(37% 0.089 183.4)",
+          "oklch(48% 0.099 183.4)",
+          "oklch(59% 0.099 183.4)",
+          "oklch(70% 0.094 183.4)",
+          "oklch(82% 0.074 183.4)",
+          "oklch(95% 0.053 183.4)"
+        ]
+      },
+      "kind-network": {
+        "role": "tertiary",
+        "displayName": "Network Sky",
+        "canonical": "#5aa7d6",
+        "oklch": "oklch(69.8% 0.103 237.5)",
+        "tonalRamp": [
+          "oklch(15% 0.054 237.5)",
+          "oklch(26% 0.073 237.5)",
+          "oklch(37% 0.092 237.5)",
+          "oklch(48% 0.103 237.5)",
+          "oklch(59% 0.103 237.5)",
+          "oklch(70% 0.097 237.5)",
+          "oklch(82% 0.077 237.5)",
+          "oklch(95% 0.054 237.5)"
+        ]
+      },
+      "ink-canvas": {
+        "role": "neutral",
+        "displayName": "Ink Canvas",
+        "canonical": "#0f1013",
+        "oklch": "oklch(17.3% 0.006 271.0)",
+        "tonalRamp": [
+          "oklch(15% 0.006 271.0)",
+          "oklch(26% 0.006 271.0)",
+          "oklch(37% 0.006 271.0)",
+          "oklch(48% 0.006 271.0)",
+          "oklch(59% 0.006 271.0)",
+          "oklch(70% 0.006 271.0)",
+          "oklch(82% 0.006 271.0)",
+          "oklch(95% 0.006 271.0)"
+        ]
+      },
+      "ink-glass": {
+        "role": "neutral",
+        "displayName": "Ink Glass",
+        "canonical": "#131418",
+        "oklch": "oklch(19.2% 0.008 274.5)",
+        "tonalRamp": [
+          "oklch(15% 0.008 274.5)",
+          "oklch(26% 0.008 274.5)",
+          "oklch(37% 0.008 274.5)",
+          "oklch(48% 0.008 274.5)",
+          "oklch(59% 0.008 274.5)",
+          "oklch(70% 0.008 274.5)",
+          "oklch(82% 0.008 274.5)",
+          "oklch(95% 0.008 274.5)"
+        ]
+      },
+      "ink-surface": {
+        "role": "neutral",
+        "displayName": "Ink Surface",
+        "canonical": "#16171b",
+        "oklch": "oklch(20.5% 0.008 274.5)",
+        "tonalRamp": [
+          "oklch(15% 0.008 274.5)",
+          "oklch(26% 0.008 274.5)",
+          "oklch(37% 0.008 274.5)",
+          "oklch(48% 0.008 274.5)",
+          "oklch(59% 0.008 274.5)",
+          "oklch(70% 0.008 274.5)",
+          "oklch(82% 0.008 274.5)",
+          "oklch(95% 0.008 274.5)"
+        ]
+      },
+      "ink-elevated": {
+        "role": "neutral",
+        "displayName": "Ink Elevated",
+        "canonical": "#1d1f24",
+        "oklch": "oklch(23.9% 0.010 268.3)",
+        "tonalRamp": [
+          "oklch(15% 0.010 268.3)",
+          "oklch(26% 0.010 268.3)",
+          "oklch(37% 0.010 268.3)",
+          "oklch(48% 0.010 268.3)",
+          "oklch(59% 0.010 268.3)",
+          "oklch(70% 0.010 268.3)",
+          "oklch(82% 0.010 268.3)",
+          "oklch(95% 0.010 268.3)"
+        ]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Primary Text",
+        "canonical": "#e8e8ea",
+        "oklch": "oklch(93.2% 0.003 286.3)",
+        "tonalRamp": [
+          "oklch(15% 0.003 286.3)",
+          "oklch(26% 0.003 286.3)",
+          "oklch(37% 0.003 286.3)",
+          "oklch(48% 0.003 286.3)",
+          "oklch(59% 0.003 286.3)",
+          "oklch(70% 0.003 286.3)",
+          "oklch(82% 0.003 286.3)",
+          "oklch(95% 0.003 286.3)"
+        ]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary Text",
+        "canonical": "#a4a7ae",
+        "oklch": "oklch(72.8% 0.011 267.3)",
+        "tonalRamp": [
+          "oklch(15% 0.011 267.3)",
+          "oklch(26% 0.011 267.3)",
+          "oklch(37% 0.011 267.3)",
+          "oklch(48% 0.011 267.3)",
+          "oklch(59% 0.011 267.3)",
+          "oklch(70% 0.011 267.3)",
+          "oklch(82% 0.011 267.3)",
+          "oklch(95% 0.011 267.3)"
+        ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Muted Text",
+        "canonical": "#8a8e96",
+        "oklch": "oklch(64.6% 0.013 264.5)",
+        "tonalRamp": [
+          "oklch(15% 0.013 264.5)",
+          "oklch(26% 0.013 264.5)",
+          "oklch(37% 0.013 264.5)",
+          "oklch(48% 0.013 264.5)",
+          "oklch(59% 0.013 264.5)",
+          "oklch(70% 0.013 264.5)",
+          "oklch(82% 0.013 264.5)",
+          "oklch(95% 0.013 264.5)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The welcome screen's title."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "What a view, a dialog or a verdict is called, and the wordmark."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "A KPI read at a glance, with tabular figures."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "What a plate, a section or a proposal is about."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Everything read as text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Era names, table heads, section labels and map callouts, in narrow caps."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Commands, ids and paths a person types or pastes."
+      }
+    },
+    "shadows": [
+      {
+        "name": "surface-edge",
+        "value": "inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+        "purpose": "The lit top edge of a plate on the canvas."
+      },
+      {
+        "name": "shadow-sm",
+        "value": "0 1px 2px rgba(0, 0, 0, 0.25)",
+        "purpose": "The header bar and the active view tab."
+      },
+      {
+        "name": "shadow-md",
+        "value": "0 4px 14px rgba(0, 0, 0, 0.3)",
+        "purpose": "The finding over the map, and popovers."
+      },
+      {
+        "name": "shadow-lg",
+        "value": "0 10px 30px rgba(0, 0, 0, 0.4)",
+        "purpose": "A card laid over the map."
+      },
+      {
+        "name": "shadow-modal",
+        "value": "0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.07)",
+        "purpose": "Dialogs and the finder, over the scrim."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "0.15s ease",
+        "purpose": "Colour, border and ground changes on hover and press."
+      },
+      {
+        "name": "map-tool",
+        "value": "0.12s ease",
+        "purpose": "The map tools, a touch quicker."
+      },
+      {
+        "name": "card-slide",
+        "value": "0.25s ease",
+        "purpose": "A card over the map moving aside for a panel."
+      },
+      {
+        "name": "reduced",
+        "value": "transition-duration: 0s",
+        "purpose": "Under prefers-reduced-motion nothing transitions."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "768px"
+      },
+      {
+        "name": "compact",
+        "value": "720px"
+      },
+      {
+        "name": "wide-welcome",
+        "value": "1100px"
+      },
+      {
+        "name": "deck-icons",
+        "value": "1270px"
+      },
+      {
+        "name": "deck-labels",
+        "value": "1420px"
+      },
+      {
+        "name": "deck-labels-demo",
+        "value": "1520px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action in a view: Readout Blue with ink text.",
+      "html": "<button class=\"ds-btn-primary\">Approve</button>",
+      "css": ".ds-btn-primary { font-family: var(--font-sans); font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease; height: 32px; padding: 0 14px; font-size: 13px; font-weight: 600; background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent); } .ds-btn-primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action: elevated ink, a hairline, primary text.",
+      "html": "<button class=\"ds-btn\">Reject</button>",
+      "css": ".ds-btn { font-family: var(--font-sans); font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease; height: 32px; padding: 0 14px; font-size: 13px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary); } .ds-btn:hover { border-color: var(--border-bright); } .ds-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Small Button",
+      "kind": "button",
+      "refersTo": "button-small",
+      "description": "Row-level actions such as copying a command.",
+      "html": "<button class=\"ds-btn-sm\">Copy</button>",
+      "css": ".ds-btn-sm { font-family: var(--font-sans); font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease; height: 26px; padding: 0 10px; font-size: 12px; background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-secondary); } .ds-btn-sm:hover { border-color: var(--border-bright); color: var(--text-primary); } .ds-btn-sm:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "View Tabs",
+      "kind": "nav",
+      "refersTo": "view-tab",
+      "description": "The five views in the header; the active one sits on elevated ink.",
+      "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab ds-tab--active\">Map</button><button class=\"ds-tab\">My Setup</button><button class=\"ds-tab\">Proposals</button></nav>",
+      "css": ".ds-tabs { display: flex; gap: 2px; padding: 8px; background: var(--bg-glass); } .ds-tab { font-family: var(--font-sans); font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease; padding: 4px 12px; font-size: 13px; background: transparent; border: 1px solid transparent; color: var(--text-secondary); } .ds-tab:hover { color: var(--text-primary); background: var(--bg-hover); } .ds-tab--active, .ds-tab--active:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--border-bright); box-shadow: var(--shadow-sm); font-weight: 600; } .ds-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "filter-chip",
+      "description": "A filter in a list: a pill with muted text.",
+      "html": "<button class=\"ds-chip\">failing</button>",
+      "css": ".ds-chip { padding: 3px 9px; border-radius: 9999px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; } .ds-chip:hover { color: var(--text-secondary); border-color: var(--border-bright); } .ds-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Plate",
+      "kind": "card",
+      "refersTo": "plate",
+      "description": "A figure on a gauge view: flat ink with a lit top edge, a caps label and a wide figure.",
+      "html": "<section class=\"ds-plate\"><h3 class=\"ds-plate-label\">Verified</h3><p class=\"ds-plate-figure\">14</p><p class=\"ds-plate-note\">of 23 reached capabilities passed their last check.</p></section>",
+      "css": ".ds-plate { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px 16px; box-shadow: var(--surface-edge); color: var(--text-primary); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; max-width: 320px; } .ds-plate-label { margin: 0 0 6px; font-family: var(--font-display); font-stretch: 87.5%; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); } .ds-plate-figure { margin: 0 0 6px; font-family: var(--font-display); font-stretch: 112.5%; font-weight: 800; font-size: 28px; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; } .ds-plate-note { margin: 0; color: var(--text-secondary); font-size: 13px; }"
+    },
+    {
+      "name": "Map Finding",
+      "kind": "custom",
+      "description": "The map's one sentence, floating over the map with a Readout Blue hairline.",
+      "html": "<div class=\"ds-finding\"><span>Embeddings is one step away and opens 4 more.</span><button class=\"ds-finding-btn\">Show</button></div>",
+      "css": ".ds-finding { display: inline-flex; align-items: center; gap: 12px; padding: 8px 10px 8px 16px; border-radius: 12px; border: 1px solid var(--accent-line); background: var(--bg-glass); box-shadow: var(--shadow-md); font-family: var(--font-sans); font-size: 13px; color: var(--text-secondary); } .ds-finding-btn { font-family: var(--font-sans); font-weight: 500; cursor: pointer; border-radius: var(--radius-sm); transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease; height: 26px; padding: 0 10px; font-size: 12px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary); } .ds-finding-btn:hover { border-color: var(--border-bright); } .ds-finding-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Map Nodes",
+      "kind": "custom",
+      "refersTo": "map-node-reached",
+      "description": "Reached, next step, failing and selected, as the map draws them.",
+      "html": "<svg class=\"ds-nodes\" viewBox=\"0 0 300 70\" width=\"300\" height=\"70\" role=\"img\" aria-label=\"Reached, next step, failing, selected\"><defs><pattern id=\"ds-hz\" width=\"6\" height=\"6\" patternUnits=\"userSpaceOnUse\" patternTransform=\"rotate(45)\"><rect width=\"3\" height=\"6\" fill=\"rgba(15,16,19,0.55)\"/></pattern></defs><circle cx=\"40\" cy=\"35\" r=\"22\" fill=\"#3a5288\" stroke=\"#7896dc\" stroke-width=\"2\"/><circle cx=\"115\" cy=\"35\" r=\"22\" fill=\"none\" stroke=\"#7aa2f7\" stroke-width=\"2\"/><circle cx=\"190\" cy=\"35\" r=\"22\" fill=\"#ef6461\"/><circle cx=\"190\" cy=\"35\" r=\"22\" fill=\"url(#ds-hz)\"/><text x=\"190\" y=\"41\" text-anchor=\"middle\" font-size=\"16\" font-weight=\"700\" fill=\"#0f1013\">!</text><circle cx=\"265\" cy=\"35\" r=\"22\" fill=\"#3a5288\" stroke=\"#7896dc\" stroke-width=\"2\"/><path d=\"M237 15v-8h8M285 7h8v8M293 55v8h-8M245 63h-8v-8\" fill=\"none\" stroke=\"#7aa2f7\" stroke-width=\"2\"/></svg>",
+      "css": ".ds-nodes { background: #0f1013; border-radius: 8px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Instrument Panel",
+    "overview": "Ambit is read the way an instrument panel is read: a dark, quiet housing, and on it only the lights that mean something. The ground is ink with a trace of warmth, never navy, so a colour on the page is always a reading: blue for what the panel points at and the steps just past the frontier, green for a check that passed, red for one that failed, amber for caution and for the attention lens. Titles and figures are set wide in Hubot Sans the way a readout sets them, column and section labels narrow and in caps, and everything a person reads as text is Mona Sans. What a person types is Monaspace Neon.\n\nThe capability map is the panel's main instrument and the reason the rest exists. Its eras run as columns, what the setup reaches is drawn as filled ground, the frontier's next steps as blue rings around nothing, and every other state as a mark with one meaning. The other views (My Setup, Audit, Proposals, Time & cost) are the panel's gauges: flat plates of figures and rows, laid on the same ink, quiet until something on them needs a person.\n\nDensity is high and deliberate: an operator's surface, at 14px body on an eight-step scale, with nothing ornamental between the reader and the reading. The system is dark only (`color-scheme: dark`). The confirmed anti-reference is the palette it replaced: a framework's defaults, slate grounds, an indigo accent and two radial glows behind everything.",
+    "keyCharacteristics": [
+      "One accent, Readout Blue, and four status colours; every other hue names a kind of node.",
+      "Three faces with one job each: Hubot reads out, Mona is the text, Monaspace is typed.",
+      "Flat ink plates that catch the light along their top edge; shadow only on what floats.",
+      "Every map state carried by shape, texture or a mark as well as colour.",
+      "Quiet until pressed: thin hairlines, low-contrast grounds, colour reserved for data and the one primary action."
+    ],
+    "rules": [
+      {
+        "name": "The Lit Reading Rule",
+        "body": "Colour on the page is a reading. A hue that means nothing is not added, and no surface carries a tint for atmosphere.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Blue Rule",
+        "body": "Readout Blue is the only accent. A second accent, a gradient or a glow is a regression to the palette this one replaced.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-On-Fill Rule",
+        "body": "Text on a blue, green or red fill is Ink Canvas, never white. White on a saturated fill was 4.5:1 at best and glared at the size of a button.",
+        "section": "colors"
+      },
+      {
+        "name": "The Eight Steps Rule",
+        "body": "Sizes are 11, 12, 13, 14, 16, 20, 28 and 36px, and nothing between. A half-pixel step reads as a mistake, not a level.",
+        "section": "typography"
+      },
+      {
+        "name": "The Roles Block Rule",
+        "body": "Which selectors take Hubot is listed once, under TYPE ROLES at the end of `App.css`, by role and not by size. A new title, figure or label joins its role there; it does not set the family itself.",
+        "section": "typography"
+      },
+      {
+        "name": "The Whole Column Rule",
+        "body": "A frame of the map never cuts an era column at the left edge or under a panel. Beside a panel, the map shows the whole tree only when it reads there at 0.9 or more, and otherwise as many whole columns as fill the room to the panel's edge.",
+        "section": "layout"
+      },
+      {
+        "name": "The Readable Name Rule",
+        "body": "The map chooses no zoom of its own below 0.9 on a wide screen, and a faded name keeps 4.5:1 or better. A view that fits everything by drawing it too small to read has shown nothing.",
+        "section": "layout"
+      },
+      {
+        "name": "The Lit Edge Rule",
+        "body": "A plate on the canvas gets the one-pixel lit top edge and no drop shadow. A drop shadow says the thing floats; a plate does not.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Meaning Rule",
+        "body": "A mark stands for one fact. A new use either fits that fact exactly or gets its own mark. Blurring a stale check was rejected under this rule, since the header would still count the node as proven.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do use Readout Blue (#7aa2f7) only for what the panel points at: next steps, what an unlock would open, the selection, focus, links and the one primary action per view.",
+      "Do keep Passing Green for a check that passed.",
+      "Do carry every map state by shape, texture or mark as well as colour, so the map reads in greyscale.",
+      "Do pick a size from the eight steps (11, 12, 13, 14, 16, 20, 28, 36px) and a role from the TYPE ROLES block.",
+      "Do set counts with tabular figures, so a changing number does not move its neighbours.",
+      "Do put Ink Canvas (#0f1013) text on any coloured fill.",
+      "Do give a plate the lit top edge and keep drop shadows for what floats.",
+      "Do stop non-essential motion under `prefers-reduced-motion`, with `transition-duration: 0s`, not 0.01ms, which lands every layout change a frame late."
+    ],
+    "donts": [
+      "Don't add a second accent, a gradient, or radial glows behind the page; that was the framework-default palette this one replaced.",
+      "Don't use a slate or navy ground; the ink keeps a trace of warmth so the only colour is colour that means something.",
+      "Don't reuse a mark for a second meaning, draw corrosion at rest, or blur a node to say its check is stale.",
+      "Don't put a hue next to Passing Green that a reader could take for it, as the old teal \"needs\" edge was.",
+      "Don't set white text on a saturated fill.",
+      "Don't cut an era column at the frame's edge or under a panel.",
+      "Don't add a CSS framework or utility classes; the styles are vanilla CSS on custom properties."
+    ]
+  }
+}

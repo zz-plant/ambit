@@ -212,8 +212,8 @@ test('the views are destinations, found by their own words and by their question
   for (const [view, label] of [
     ['map', 'the map'],
     ['setup', 'My Setup'],
-    ['cost', 'Time & cost'],
-    ['audit', 'the trail'],
+    ['cost', 'Time & authority'],
+    ['audit', 'Audit'],
     ['proposals', 'Proposals'],
   ] as const) {
     expect(byId(actions, `view:${view}`)?.label).toBe(`Go to ${label}`);
@@ -228,6 +228,15 @@ test('the views are destinations, found by their own words and by their question
   expect(ctx.handlers.view).toHaveBeenCalledWith('audit');
   byId(actions, 'view:briefing')!.run();
   expect(ctx.handlers.briefing).toHaveBeenCalled();
+});
+
+test('the briefing is not offered where no API composes one', () => {
+  // On the hosted demo it led to a section that never loaded, with the tabs
+  // that would leave it hidden.
+  const { briefing: _briefing, ...handlers } = recorder();
+  const actions = buildActions(context({ handlers }));
+  expect(byId(actions, 'view:briefing')).toBeUndefined();
+  expect(byId(actions, 'view:setup')).toBeDefined();
 });
 
 // ── What the finder lists ────────────────────────────────────────────────────

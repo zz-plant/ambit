@@ -219,6 +219,14 @@ if (cmd === 'web') {
       ? srcServer
       : resolve(ROOT, 'dist-cli', 'server', 'api.js');
     if (!existsSync(page) || !existsSync(server)) {
+      // A checkout set up without the map's dependencies, which `./bootstrap.sh`
+      // skips unless asked for the map. It was told to clone the repository
+      // it was already in. The npm package ships no bootstrap.sh.
+      if (existsSync(resolve(ROOT, 'bootstrap.sh'))) {
+        console.log(`\n  The map needs its dependencies first. In this checkout:\n`);
+        console.log(`    cd ${ROOT} && ./bootstrap.sh web\n`);
+        process.exit(1);
+      }
       console.log(`\n  This install does not carry the map. From a git checkout:\n`);
       console.log(
         `    git clone https://github.com/zz-plant/ambit.git && cd ambit && ./bootstrap.sh web\n`

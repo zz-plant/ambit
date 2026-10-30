@@ -31,14 +31,21 @@ export function useNarrow(): boolean {
 export const OCCLUDES_MAP = 'data-occludes-map';
 
 /**
- * How many pixels at the bottom of `ref` are covered by a card laid across it:
- * the tour, the first-run card, a detail panel that became a bottom sheet.
- * Only a card spanning most of the width and resting on the bottom edge
- * counts, since a card in one corner leaves the rest of the map in view. Re-measured when a card mounts, resizes
- * or leaves, which is also when a tour step changes its text.
+ * How much of `ref` a card laid over it covers, along each edge it rests on:
+ * the tour, the readout, a detail panel that became a bottom sheet.
+ *
+ * `bottom` counts a card spanning most of the width and resting on the bottom
+ * edge, a sheet on a phone. `right` counts a card in the right corner, as the
+ * tour and the readout sit on a wider screen: it covers the map's last
+ * columns, where an outage ends and where Hosting is, so the map needs that
+ * much room to scroll them out from under it. Re-measured when a card mounts,
+ * resizes or leaves, which is also when a tour step changes its text.
  */
-export function useBottomOcclusion(ref: RefObject<HTMLElement | null>): number {
-  const [covered, setCovered] = useState(0);
+export function useOcclusion(ref: RefObject<HTMLElement | null>): {
+  bottom: number;
+  right: number;
+} {
+  const [covered, setCovered] = useState({ bottom: 0, right: 0 });
   useEffect(() => {
     const host = ref.current;
     if (!host || typeof ResizeObserver === 'undefined') return;
@@ -47,21 +54,32 @@ export function useBottomOcclusion(ref: RefObject<HTMLElement | null>): number {
     const sizes = new ResizeObserver(() => schedule());
     const measure = () => {
       const box = host.getBoundingClientRect();
-      let most = 0;
+      let bottom = 0;
+      let right = 0;
       for (const el of document.querySelectorAll(`[${OCCLUDES_MAP}]`)) {
         if (!observed.has(el)) {
           observed.add(el);
           sizes.observe(el);
         }
         const r = el.getBoundingClientRect();
+        if (r.height === 0 || r.top >= box.bottom) continue;
         const across = Math.min(r.right, box.right) - Math.max(r.left, box.left);
-        if (r.height === 0 || across < box.width * 0.6) continue;
         // Anchored to the bottom edge; a headline at the top is not a sheet.
-        if (r.bottom < box.bottom - 48 || r.top <= box.top + box.height * 0.25) continue;
-        if (r.top >= box.bottom) continue;
-        most = Math.max(most, box.bottom - r.top);
+        const onBottom = r.bottom >= box.bottom - 48 && r.top > box.top + box.height * 0.25;
+        if (across >= box.width * 0.6) {
+          if (onBottom) bottom = Math.max(bottom, box.bottom - r.top);
+        } else if (
+          r.right >= box.right - 48 &&
+          r.left > box.left &&
+          // A card in the corner, not the detail panel, which runs the
+          // canvas's full height and has a padding of its own already.
+          r.height < box.height * 0.85
+        ) {
+          right = Math.max(right, box.right - r.left);
+        }
       }
-      setCovered(Math.round(most));
+      const next = { bottom: Math.round(bottom), right: Math.round(right) };
+      setCovered(prev => (prev.bottom === next.bottom && prev.right === next.right ? prev : next));
     };
     const schedule = () => {
       cancelAnimationFrame(frame);

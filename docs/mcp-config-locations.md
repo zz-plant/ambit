@@ -87,7 +87,7 @@ args = ["-y", "@modelcontextprotocol/server-github"]
 
 `~/.config/opencode/opencode.json`, or `opencode.jsonc` when that is the one present. Servers are under `mcp`, and each can carry `enabled: false` to stay declared and off. OpenCode is the format Ambit's own config switch writes, and `OPENCODE_CONFIG` points Ambit at a different file.
 
-OpenCode also reads an `opencode.json` at a project's root. Ambit does not put its servers on the graph; the **Repos** tab in My Setup reads the project configs of repositories under `REPO_PATH` and says how far each has drifted from the global one.
+OpenCode also reads an `opencode.json` at a project's root. Ambit does not put its servers on the graph; the **Environment** section of My Setup reads the project configs of repositories under `REPO_PATH` and says how far each has drifted from the global one.
 
 ## Cline and Roo Code
 

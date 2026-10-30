@@ -136,7 +136,10 @@ CREATE TABLE IF NOT EXISTS proposals (
     -- The work the change is for, in the drafter's words: the class of work a
     -- person wants done. Reach serves a purpose someone named, and an
     -- approval binds the purpose it was shown.
-    purpose TEXT
+    purpose TEXT,
+    -- Which runtime's config an apply wrote, and the inverse it computed for
+    -- that file, stored before the write so a rollback undoes that file.
+    applied_to TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status);
@@ -495,10 +498,16 @@ CREATE TABLE IF NOT EXISTS sandboxes (
 -- start and refusal was not, so the graph could only ever learn what someone
 -- said yes to — which is half a signal, and the wrong half for predicting what
 -- they will accept next.
+--
+-- `reason_kind` is the word the answer was given as, when it was given as one:
+-- the page offers a no as the cost, the way chosen, the timing, or something
+-- else. Text that says no kind stays without one, and reads as the whole
+-- step being refused, as every rejection did before kinds existed.
 CREATE TABLE IF NOT EXISTS proposal_rejections (
     proposal_id TEXT PRIMARY KEY REFERENCES proposals(id),
     rejected_by TEXT NOT NULL,
     reason TEXT,
+    reason_kind TEXT,
     rejected_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

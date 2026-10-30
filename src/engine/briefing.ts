@@ -22,7 +22,14 @@ import { ledgerSince } from './ledger.ts';
 import { andList, nextSteps } from './next.ts';
 import { council, councilLines } from './council.ts';
 import { signalReport } from './failures.ts';
-import { CHARS_PER_TOKEN, FAILING_SQL, REACHED_SQL, graphCounts, notSeeded } from './vocabulary.ts';
+import {
+  CHARS_PER_TOKEN,
+  FAILING_SQL,
+  REACHED_SQL,
+  graphCounts,
+  notSeeded,
+  reachPhrase,
+} from './vocabulary.ts';
 
 const TOKEN_BUDGET = 1200;
 
@@ -119,7 +126,7 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
 
   return {
     environment:
-      `${g.reached}/${g.total} capabilities reached · ${g.proven} proven · ${g.failing} failing` +
+      `${reachPhrase(db)} · ${g.proven} verified · ${g.failing} failing` +
       (failingActions
         ? ` · ${failingActions} failing ${failingActions === 1 ? 'action' : 'actions'}`
         : ''),

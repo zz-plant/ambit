@@ -2,7 +2,7 @@
 
 > **Design rationale, not a plan of record.** Each section takes one part of Ambit and says what it decided, why, and whether it is built; what each part still lacks is collected in [the status table](#status-at-a-glance). Nothing here has a date or an owner. Work that is going to be built belongs in an issue, where it can be assigned and closed.
 
-Ambit reads your configuration, places it on a curated tech tree, and answers questions about the structure: what is reached, what the next step is, what would break if a given thing disappeared. That is a model of **what exists**. The sections below extend it to a model of **what can be acquired**, proven and authorized, and close the loop between the two, and most of that is built.
+Ambit reads your configuration, places it on a curated tech tree, and answers questions about the structure: what is reached, what the next step is, what would break if a given thing disappeared. That is a model of **what exists**. The sections below extend it to a model of **what can be acquired**, verified and authorized, and close the loop between the two, and most of that is built.
 
 Ambit takes its name from the Latin *ambitus*: circuit, perimeter, sphere of action. In Roman law and modern governance alike, an ambit is the boundary within which authority is legitimate and outside of which power is unauthorized or invalid. An agent without an ambit is either reckless (executing until an unhandled permission error crashes the session) or paralyzed (asking for confirmation on every keystroke). Ambit is the dynamic, verifiable model of that perimeter: what the human-agent system can reliably do right now, what it is authorized to do autonomously, and how that perimeter safely expands over time.
 
@@ -12,7 +12,7 @@ Ambit takes its name from the Latin *ambitus*: circuit, perimeter, sphere of act
 
 > A capability is not something configured. A capability is an action the system has evidence it can perform.
 
-Everything here follows from taking that seriously. It is the first half of the claim [the ideas page](./ideas.md) states whole: what an agent setup can do is not written in any config file, because it is composed, it has to be proven, and it differs from what the setup is allowed to do.
+Everything here follows from taking that seriously. It is the first half of the claim [the ideas page](./ideas.md) states whole: what an agent setup can do is not written in any config file, because it is composed, it has to be verified, and it differs from what the setup is allowed to do.
 
 That claim gives four layers, ordered by ambition. Each is defensible on its own; each depends on the one above it.
 
@@ -219,9 +219,9 @@ Built: nodes may declare a read-only `verify` command; `ambit verify` runs it an
 
 Checks execute, so a curated check lives in this repository, a skill's is registered with the skill (§12.5), and none runs until asked. Nothing verifies on seed. Most capabilities, and most MCP servers a person adds, declare no check at all.
 
-What the checks decide is narrow on purpose. A capability is **reached** when a config provides it and its required prerequisites are reached, and **proven** when it is reached and its declared check last passed. One that has never been checked is reached and unproven, and still counts everywhere. A failing check takes a capability out of every plan, permission and ranking. Checks only ever take away; permission is a separate layer (§9), so the chain is `installed ≠ working ≠ authorized`.
+What the checks decide is narrow on purpose. A capability is **reached** when a config provides it and its required prerequisites are reached, and **verified** when it is reached and its declared check last passed. One that has never been checked is reached and unverified, and still counts everywhere. A failing check takes a capability out of every plan, permission and ranking. Checks only ever take away; permission is a separate layer (§9), so the chain is `installed ≠ working ≠ authorized`.
 
-The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `detected`, `configured`, `verified`, `reliable`, `degraded` or `broken`, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is `reliable`, one passing run is `verified`, a check whose last run failed is `broken`, and a pass after a failure is `degraded`, which reads as recovering. The latest check decides availability: only `broken` is left out, and a recovering capability is usable and counted as unproven until its window is clean.
+The lifecycle is built and stored. `capabilities.lifecycle` holds `unknown`, `detected`, `configured`, `verified`, `reliable`, `degraded` or `broken`, derived on seed and after each verification from providers and recorded evidence — five runs with the last five passing is `reliable`, one passing run is `verified`, a check whose last run failed is `broken`, and a pass after a failure is `degraded`, which reads as recovering. The latest check decides availability: only `broken` is left out, and a recovering capability is usable and counted as unverified until its window is clean.
 
 `state` is untouched beside it, deliberately: `state` is what every frontier snapshot records, so repurposing it would break the ledger to answer a question the ledger does not ask. A capability whose check fails is therefore `broken` and still in the frontier — reachable and working are different columns, and collapsing them would lose the distinction this section exists to make.
 
@@ -449,7 +449,7 @@ Ambit implements the state and run subset of [AG-UI](https://docs.ag-ui.com), th
 `StateDelta` is the protocol's reason for existing: a patch is smaller than a snapshot, and a client that kept the connect snapshot can apply it. The delta is emitted for every change after the initial snapshot, so the transport is honest about what changed instead of resending the whole graph.
 
 The visual negotiating surface is shipping:
-1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* lights what becomes reachable in green. Neither writes anything.
+1. **Simulation on the canvas.** *Simulate an outage* dims the map and draws the multi-hop cascade in red with a count of what stops working; *Simulate unlocking this* rings what becomes reachable in blue. Neither writes anything.
 2. **Approval in one click.** The Proposals panel shows what an agent drafted, whether every step has an inverse, and signs a receipt; applying stays a command the person runs.
 3. **Three lenses**, switched on the map itself: Standard; Attention (nodes shaded by how often a person had to step in), offered once the ledger has recorded any; and Authority (each reached node by what it may do without asking, with "no grant yet" apart from a refusal). Shared credentials are not a lens: they are declared, and the engine reports them (`ambit credentials`).
 4. **A proposal read as a plan.** Above its steps the panel tallies them, marks any with no inverse, and says whether `ambit apply` would refuse the draft, before anyone approves it.

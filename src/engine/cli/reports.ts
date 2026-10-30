@@ -23,7 +23,8 @@ import { listProposals } from '../governance.ts';
 import { nextSteps, readableCost } from '../next.ts';
 import { C, formatGeneric, terminalPalette, type Palette } from './output.ts';
 import type { DoctorReport } from '../doctor.ts';
-import { markSeen, movedLines, seedSources, unseenSince } from './seed.ts';
+import { markSeen, movedLines, unseenSince } from './seed.ts';
+import { seedSources } from '../discovery.ts';
 import { checkableNames, recovering } from '../assurance.ts';
 import type { usageWindows } from '../telemetry.ts';
 import {
@@ -33,6 +34,7 @@ import {
   PROBE_COMMAND,
   REACHED_SQL,
   graphCounts,
+  reachPhrase,
   recheckCommand,
 } from '../vocabulary.ts';
 
@@ -50,11 +52,11 @@ function ago(ts: string | null | undefined): string | undefined {
 /**
  * What the graph can prove versus what it merely lists.
  *
- * Reached nodes split by the worth of their evidence: proven (check passed),
- * unproven (configured and never checked, or recovering: the last run passed
+ * Reached nodes split by the worth of their evidence: verified (check passed),
+ * unverified (configured and never checked, or recovering: the last run passed
  * and recent ones did not), failing (the last check failed), and entries,
  * which carry no check of their own. The four are `graphCounts`'s, so they add
- * up to the reached figure the head prints. The unproven-with-a-declared-check
+ * up to the reached figure the head prints. The unverified-with-a-declared-check
  * set is named, because it is the one a single command turns into evidence —
  * and an inventory that cannot say "installed is not working" is the failure
  * this project exists to prevent.
@@ -81,7 +83,7 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
     last_check: ago(last?.t) || 'never',
     provable_now: checkable,
     note: checkable.length
-      ? `configured is not working — ambit verify would turn ${checkable.length} of the unproven into evidence`
+      ? `configured is not working — ambit verify would turn ${checkable.length} of the unverified into evidence`
       : undefined,
   };
 }
@@ -115,7 +117,7 @@ interface NextMove {
  * In the order a person would fix things. A check that fails comes first,
  * because nothing built on it can be trusted. A draft waiting on a decision
  * comes next, since an agent stays idle until someone makes it. Then the
- * checks that turn configured into proven, which is the whole of a fresh
+ * checks that turn configured into verified, which is the whole of a fresh
  * install. Last is the capability `ambit next` ranks first. Absent when none
  * of them has anything to say, and the report then ends without the line.
  */
@@ -155,7 +157,7 @@ function nextMove(
   if (found.checkable) {
     return {
       command: 'ambit verify',
-      why: `turns ${found.checkable} of the unproven into evidence`,
+      why: `turns ${found.checkable} of the unverified into evidence`,
     };
   }
   // The hint is the least important line of a health report, so a failure
@@ -238,9 +240,11 @@ function statusReport(db: any) {
   const checkable = checkableNames(db);
 
   return {
+    // The data's sentence, as scripts have read it; `reach` is the one people see.
     summary:
       `${g.reached}/${g.total} capabilities reached` +
       (worried.length ? ` · ${worried.join(' · ')}` : ' · nothing failing'),
+    reach: reachPhrase(db),
     reached: g.reached,
     total: g.total,
     verified: g.verified,
@@ -264,7 +268,7 @@ function statusReport(db: any) {
     evidence: [evidenceReport(db, checkable)],
     domains,
     degraded: degraded.length ? degraded : undefined,
-    // Counted with the unproven above, and named here with how their recent
+    // Counted with the unverified above, and named here with how their recent
     // runs went, since a pass after a failure reads as fixed.
     recovering: recoveringNow.length ? recoveringNow : undefined,
     spofs,
@@ -302,14 +306,14 @@ const SAID_IN_HEAD = new Set([
 /**
  * `ambit status` as a person reads it, as lines.
  *
- * The head carries the two numbers that matter, reached and proven, and the
+ * The head carries the two numbers that matter, reached and verified, and the
  * worries the report's own summary names. Under a rule come the evidence
  * counts in one aligned column that adds up to the reached figure, with a
- * marker on the one that wants a person: a failing check before an unproven
+ * marker on the one that wants a person: a failing check before an unverified
  * one, since a repair comes before an acquisition. The marker is a character
  * and colour only adds to it, so the row is found in a pipe and by someone
  * who cannot tell the colours apart. A row whose number another line repeats
- * in part says which part, so "11 of the unproven" on the last line has its
+ * in part says which part, so "11 of the unverified" on the last line has its
  * 11 above it. Whatever else the report found follows as it always has, and
  * the last line is the one thing to type next, taken from the report's `next`.
  *
@@ -318,7 +322,8 @@ const SAID_IN_HEAD = new Set([
  */
 function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const ev = report.evidence[0];
-  const lead = `${report.reached} of ${report.total} reached · ${ev.proven} proven`;
+  // Eighty columns hold the head without its noun, and the rows say what is counted.
+  const lead = `${report.reach.replace(' capabilities reached', ' reached')} · ${ev.proven} verified`;
   const worried = worries(report);
   const tail = worried.length ? worried.join(' · ') : 'nothing failing';
 
@@ -328,8 +333,8 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
     ev.no_check ? `${ev.no_check} with no check` : null,
   ].filter(Boolean);
   const rows: [label: string, value: string, gloss?: string][] = [
-    ['proven', String(ev.proven)],
-    ['unproven', String(ev.unproven), unprovenParts.join(' · ') || undefined],
+    ['verified', String(ev.proven)],
+    ['unverified', String(ev.unproven), unprovenParts.join(' · ') || undefined],
     ['failing', String(ev.failing)],
     [
       'entries',
@@ -340,7 +345,7 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   ];
   const labelWidth = Math.max(...rows.map(([label]) => label.length));
   const valueWidth = Math.max(...rows.map(([, value]) => value.length));
-  const wants = ev.failing ? 'failing' : ev.unproven ? 'unproven' : undefined;
+  const wants = ev.failing ? 'failing' : ev.unproven ? 'unverified' : undefined;
 
   const head = [
     `${GUTTER}${c.bold}${lead}${c.reset} · ${tail}`,
@@ -363,6 +368,8 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const rest = Object.fromEntries(
     Object.entries(report)
       .filter(([key]) => !SAID_IN_HEAD.has(key))
+      // A degraded capability is one that is recovering, and the text says so;
+      // `--json` keeps the key it has always had.
       .map(([key, value]) => [key === 'degraded' ? 'not_working' : key, value])
   );
   const provable =
@@ -391,15 +398,18 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
  * check before leaning on it.
  *
  * `status` is the whole report, and a first run that printed it opened on a
- * count of what was unproven and sixty lines of single providers and
+ * count of what was unverified and sixty lines of single providers and
  * bottlenecks, ending on a suggestion to run checks. That is the guardrail
  * shown before the purpose. This leads with the next steps `ambit next` ranks,
- * keeps a failing check and the unproven count as the two things worth
+ * keeps a failing check and the unverified count as the two things worth
  * knowing first, and leaves the rest of the fragility detail to `status`.
  */
 function briefReport(db: any) {
   const sources = seedSources(db);
-  const counts = graphCounts(db);
+  // Measured against the tree, as the map and the hosted page measure it: the
+  // graph's own count took in the person's servers, so the same three servers
+  // read "18 of 55" here and "9 of 46" on the page.
+  const counts = graphCounts(db, 'tree');
   const checkable = checkableNames(db);
   const ev = evidenceReport(db, checkable);
   const failing = db
@@ -459,31 +469,48 @@ function readFrom(read: { label: string; servers: string[]; models?: string[] }[
     : parts[0];
 }
 
-/** The short screen as lines; pure, like `renderStatus`. */
-function renderBrief(report: BriefReport, c: Palette = C): string[] {
+/**
+ * The short screen as lines; pure, like `renderStatus`.
+ *
+ * It is the readout every first surface gives, in one order: what was read,
+ * how much of the tree it reaches, the next step and what it opens, what is
+ * not verified yet, and one thing to do. The hosted page and `ambit web` say the
+ * same five things about the same setup. `typed` writes a command the way the
+ * person ran Ambit: under npx, `npx ambit-cli web`.
+ */
+function renderBrief(
+  report: BriefReport,
+  c: Palette = C,
+  typed: (command: string) => string = command => command
+): string[] {
   const heading = (text: string) => `${c.bold}${text}${c.reset}`;
   // No leading blank: the first run's seed report ends on one already.
   const lines = [heading('Where you are')];
-  const footer = [
+  // One thing to do, marked, and where the rest are. It used to end on three
+  // commands of equal weight after a command per step, so a first run offered
+  // six places to go and said which mattered of none.
+  const close = [
     '',
-    `${GUTTER}${c.bold}ambit status${c.reset}  ${c.grey}the full report: single providers, bottlenecks, the frontier${c.reset}`,
-    `${GUTTER}${c.bold}ambit web${c.reset}     ${c.grey}the map, on localhost${c.reset}`,
-    `${GUTTER}${c.bold}ambit --help${c.reset}  ${c.grey}every command, and ambit help <term> for a word${c.reset}`,
+    `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${typed('ambit web')}${c.reset}  ${c.grey}the same, on the map${c.reset}`,
+    `${GUTTER}${c.grey}${typed('ambit status')} for the full report, ${typed('ambit --help')} for every command${c.reset}`,
     '',
   ];
 
   if (report.read && report.read.length === 0) {
     // Counts here would describe the curated model and read as the person's.
-    lines.push(
+    return [
+      ...lines,
       `${GUTTER}Nothing of yours is in the graph yet.`,
-      `${GUTTER}${c.grey}Add an agent config and run ambit seed, which lists where it looks.${c.reset}`
-    );
-    return [...lines, ...footer];
+      `${GUTTER}${c.grey}Add an agent config and run ${typed('ambit seed')}, which lists where it looks.${c.reset}`,
+      '',
+      `${GUTTER}${c.grey}${typed('ambit --help')} for every command${c.reset}`,
+      '',
+    ];
   }
 
   if (report.read) lines.push(`${GUTTER}${c.grey}Read from ${readFrom(report.read)}${c.reset}`);
   lines.push(
-    `${GUTTER}${report.reached} of ${report.total} capabilities reached · ${report.proven} proven`
+    `${GUTTER}You reach ${report.reached} of ${report.total} capabilities · ${report.proven} proven`
   );
   const moved = report.moved ? movedLines(report.moved, c) : [];
   if (moved.length) {
@@ -494,15 +521,20 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
     );
   }
 
-  if (report.next.length) {
-    lines.push('', heading('What one more step opens'));
-    for (const n of report.next) {
-      const cost = n.cost === 'unknown' ? '' : ` ${c.grey}· about ${n.cost}${c.reset}`;
-      lines.push(
-        `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${n.capability}${c.reset}${cost}`,
-        `${GUTTER}${n.why}`,
-        `${GUTTER}${c.grey}${n.command}${c.reset}`
-      );
+  const [first, ...rest] = report.next;
+  if (first) {
+    const about = (cost: string) => (cost === 'unknown' ? '' : ` · about ${cost}`);
+    lines.push(
+      '',
+      heading('What one more step opens'),
+      `  ${c.accent}${c.bold}›${c.reset} ${c.bold}${first.capability}${c.reset}${c.grey}${about(first.cost)}${c.reset}`,
+      `${GUTTER}${first.why}`,
+      `${GUTTER}${c.grey}${typed(first.command)}${c.reset}`
+    );
+    // The others are named and priced, and planned by the same command.
+    if (rest.length) {
+      const also = rest.map(n => `${n.capability}${about(n.cost)}`).join(', ');
+      lines.push(`${GUTTER}${c.grey}Also one step away: ${also}${c.reset}`);
     }
   }
 
@@ -515,24 +547,25 @@ function renderBrief(report: BriefReport, c: Palette = C): string[] {
         .join(', ');
       const more = report.failing.length > 3 ? ` and ${report.failing.length - 3} more` : '';
       lines.push(
-        `  ${c.yellow}!${c.reset} ${report.failing.length} configured and failing a check: ${shown}${more} ${c.grey}· ${report.failing[0].command}${c.reset}`
+        `  ${c.yellow}!${c.reset} ${report.failing.length} configured and failing a check: ${shown}${more} ${c.grey}· ${typed(report.failing[0].command)}${c.reset}`
       );
     }
     if (report.unproven) {
       // `verify` runs the checks there are, so the line says how many of these
       // have one when some do not.
       const checked = report.unproven - report.no_check;
+      const verify = typed('ambit verify');
       const how = !report.no_check
-        ? 'ambit verify runs their checks'
+        ? `${verify} runs their checks`
         : checked
-          ? `ambit verify checks ${checked} of them`
+          ? `${verify} checks ${checked} of them`
           : 'none of them declares a check';
       lines.push(
-        `${GUTTER}${report.unproven} configured and not yet proven ${c.grey}· ${how}${c.reset}`
+        `${GUTTER}${report.unproven} configured and not yet verified ${c.grey}· ${how}${c.reset}`
       );
     }
   }
-  return [...lines, ...footer];
+  return [...lines, ...close];
 }
 
 /** A step of a plan, as `planFor` returns it. */
@@ -1094,6 +1127,38 @@ function renderNext(report: NextReport, c: Palette = C): string[] {
 }
 
 /**
+ * `ambit apply` where it wrote nothing: what stopped it, the `--to` that would
+ * write, and each runtime's way by hand, a command or an entry to a line, so
+ * what is printed is what gets pasted. The generic view joined the commands
+ * with commas and flattened an entry's list of arguments into one word.
+ * Anything else apply answers reads the generic way.
+ */
+function renderApply(result: any, c: Palette = C): string[] {
+  if (!Array.isArray(result?.by_hand)) return formatGeneric(result, c);
+  const lines = ['', `${GUTTER}${result.error ?? result.note ?? ''}`];
+  if (result.apply_with?.length) {
+    lines.push('', `${GUTTER}Name the runtime to write:`);
+    for (const command of result.apply_with)
+      lines.push(`  ${c.accent}${c.bold}›${c.reset} ${c.bold}${command}${c.reset}`);
+  }
+  lines.push('', `${GUTTER}${result.apply_with?.length ? 'Or by hand:' : 'By hand:'}`);
+  for (const way of result.by_hand) {
+    const head = `${GUTTER}${c.bold}${way.runtime}${c.reset}`;
+    if (way.run) {
+      lines.push(head, ...way.run.map((command: string) => `${GUTTER}  ${command}`));
+    } else if (way.add) {
+      lines.push(`${head} ${c.grey}· add to ${way.file}${c.reset}`);
+      for (const line of JSON.stringify(way.add, null, 2).split('\n'))
+        lines.push(`${GUTTER}  ${line}`);
+    } else if (way.cannot) {
+      lines.push(`${head} ${c.grey}· ${way.cannot}${c.reset}`);
+    }
+  }
+  lines.push('');
+  return lines;
+}
+
+/**
  * `ambit doctor` as a person reads it: the grade or why there is none, the
  * counts, which runtimes have Ambit connected, and what to do, one per line.
  * Its recommendations printed as one comma-joined string.
@@ -1104,11 +1169,11 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
   const lines = [
     '',
     `${GUTTER}${c.bold}${head}${c.reset}`,
-    `${GUTTER}${cap.reached} of ${cap.total} reached · ${cap.proven} proven · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
+    `${GUTTER}${report.reach} · ${cap.proven} verified · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
   ];
   if (!report.grade) {
     lines.push(
-      `${GUTTER}${c.grey}No check has run, so nothing is proven or failing yet.${c.reset}`
+      `${GUTTER}${c.grey}No check has run, so nothing is verified or failing yet.${c.reset}`
     );
   }
   for (const d of cap.degraded.slice(0, 5)) {
@@ -1182,6 +1247,7 @@ export {
   renderBrief,
   renderImpact,
   renderNext,
+  renderApply,
   renderDoctor,
   renderCarry,
   renderWindows,

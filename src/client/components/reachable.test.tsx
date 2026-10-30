@@ -91,7 +91,7 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
 test('the time-and-cost view is offered on a real machine, not only in the demo', () => {
   // The tab was rendered behind `demo &&`, so the half of the product that
   // prices your time was invisible to anyone running it on their own setup.
-  expect(deck()).toContain('Time &amp; cost');
+  expect(deck()).toContain('Time &amp; authority');
 });
 
 test('each view tab keeps its name where it shows only its icon', () => {
@@ -99,7 +99,7 @@ test('each view tab keeps its name where it shows only its icon', () => {
   // buttons beside them already did, or Docs was pushed past the right edge
   // (at 1024px Docs started at x=1035).
   const html = deck();
-  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit', 'Proposals']) {
+  for (const name of ['Map', 'My Setup', 'Time &amp; authority', 'Audit', 'Proposals']) {
     expect(html).toMatch(
       new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
     );
@@ -108,6 +108,18 @@ test('each view tab keeps its name where it shows only its icon', () => {
   // And the one on screen says so: only a class marked it.
   expect(html.match(/aria-current="page"/g)).toHaveLength(1);
   expect(html).toMatch(/<button[^>]*aria-current="page"[^>]*aria-label="Map"/);
+});
+
+test('the Proposals tab says how many drafts wait, to a screen reader too', () => {
+  // The fixed aria-label replaced the button's text, so the badge was never
+  // read out: a reader heard "Proposals" with two decisions waiting.
+  const html = deck({ draftCount: 2 });
+  expect(html).toMatch(
+    /<button[^>]*aria-label="Proposals"[^>]*aria-describedby="app-deck-drafts"|<button[^>]*aria-describedby="app-deck-drafts"[^>]*aria-label="Proposals"/
+  );
+  expect(html).toContain('<span id="app-deck-drafts" hidden="">2 waiting for your decision</span>');
+  // With nothing waiting there is nothing to describe.
+  expect(deck()).not.toContain('app-deck-drafts');
 });
 
 test('when the header is short of room the status pill wraps, and nothing else gives way', () => {
@@ -183,7 +195,7 @@ test('a ledger with nothing in it still says what the graph proves', () => {
   const html = renderToStaticMarkup(<LoopDashboard />);
 
   expect(html).toContain('What the graph can prove');
-  expect(html).toContain('8 of 19 proved');
+  expect(html).toContain('8 of 19 verified');
   // and still asks for the half that is missing
   expect(html).toContain('ambit-telemetry.js');
 });
@@ -240,9 +252,14 @@ test("a machine's own figures are not labelled as samples", () => {
   expect(html).not.toContain('sample data');
 });
 
-test('the demo says which of its numbers are illustration', () => {
+test('the demo says which of its numbers are illustration, beside the number', () => {
+  // A screenshot that keeps the figure keeps the label: it was a closed
+  // toggle under the figure, and the header's Sample tag is cropped off.
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
-  expect(renderToStaticMarkup(<LoopDashboard />)).toContain('This is sample data');
+  const html = renderToStaticMarkup(<LoopDashboard />);
+  const label = html.indexOf('<p class="loop-sample">Sample data</p>');
+  expect(label).toBeGreaterThan(-1);
+  expect(label).toBeLessThan(html.indexOf('loop-lead'));
 });
 
 test('a priced opportunity offers the map only when the node is on the graph in front of you', () => {
@@ -461,8 +478,10 @@ test('the pill and the era headers count one map: a failing node is apart from r
         onHover={() => {}}
       />
     );
+    // The fade is the circle's, inside the node and after its focus ring; the
+    // name keeps its own.
     return html.match(
-      /opacity="([\d.]+)"[^>]*aria-label="Browser Automation, Combo, failing"/
+      /aria-label="Browser Automation, Combo, failing"[^>]*>(?:<circle[^>]*>(?:<\/circle>)?)?<g opacity="([\d.]+)"/
     )?.[1];
   };
   expect(opacityOf('Verified')).toBe('0.15');
@@ -522,8 +541,8 @@ test('the governance half is on the page: authority, next steps, and the week', 
   // until now, and the most decision-shaped data the engine holds.
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
-  expect(html).toContain('What may act without asking');
-  expect(html).toContain('Proven enough to stop asking');
+  expect(html).toContain('What runs without asking');
+  expect(html).toContain('Earned enough to stop asking');
   expect(html).toContain('What to reach next');
   expect(html).toContain('emergent');
 });
@@ -741,7 +760,7 @@ test('the ways to acquire a capability are compared, with the record\u2019s lean
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
   expect(html).toContain('Ways to acquire it');
-  expect(html).toContain('your record favors this');
+  expect(html).toContain('your past decisions favor this');
   // Cheapest first, so the first option drawn is the cheaper of the two.
   expect(html.indexOf('$4,560/yr')).toBeLessThan(html.indexOf('$5,880/yr'));
 });
@@ -821,7 +840,7 @@ test('the map has an authority lens, keyed by what the demo actually grants', ()
     />
   );
   expect(html).toMatch(/aria-pressed="true"[^>]*>Authority</);
-  for (const label of ['Acts without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
+  for (const label of ['Runs without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
     expect(html).toContain(label);
   }
 });

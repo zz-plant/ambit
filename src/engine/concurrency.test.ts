@@ -8,7 +8,7 @@
  * with an unhandled `SQLITE_BUSY`: a stack trace in the user's terminal and a
  * silently lost observation.
  */
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,21 +39,24 @@ test('concurrent writers all land, and none of them crash', async () => {
   try {
     execFileSync('node', ['--experimental-sqlite', ENGINE, 'seed'], { env, stdio: 'ignore' });
 
+    // Started together, so they hold the lock against one another. Each ran
+    // to the end before the next began while this called `execFileSync`, so
+    // nothing here contended and a writer that failed said nothing of why.
     const failures: string[] = [];
     await Promise.all(
       Array.from(
         { length: WRITERS },
         () =>
           new Promise<void>(resolve => {
-            try {
-              execFileSync('node', ['--experimental-sqlite', ENGINE, 'record', 'vector-store'], {
-                env,
-                stdio: 'ignore',
-              });
-            } catch (e) {
-              failures.push(e instanceof Error ? e.message : String(e));
-            }
-            resolve();
+            execFile(
+              'node',
+              ['--experimental-sqlite', ENGINE, 'record', 'vector-store'],
+              { env },
+              (error, _stdout, stderr) => {
+                if (error) failures.push(`${error.message}\n${stderr}`);
+                resolve();
+              }
+            );
           })
       )
     );

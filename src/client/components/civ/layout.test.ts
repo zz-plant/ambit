@@ -25,6 +25,17 @@ import {
   eraLadder,
   eraOf,
   frameScene,
+  bandSpan,
+  BAND_MARGIN,
+  snapToBand,
+  wholeColumnZoom,
+  columnAt,
+  columnCentre,
+  columnsSpan,
+  columnWindow,
+  wholeColumnFill,
+  frontierFrame,
+  READ_ZOOM,
   failingNeeds,
   isEntry,
   isNext,
@@ -47,6 +58,8 @@ import {
   START_X,
   START_Y,
   stepSelection,
+  gridStep,
+  readingOrder,
   unlockCascade,
   visibleItems,
   wrapLabel,
@@ -313,7 +326,7 @@ test('an outage cascades along every hop downstream', () => {
   expect(outageCascade(edges, 'c').size).toBe(0);
 });
 
-test('an unlock reaches what its required prerequisites then allow, closed over itself', () => {
+test('an unlock lights the next steps it leaves, and stops there', () => {
   const items = [
     withStatus('have', 1, 'built'),
     withStatus('gap', 1, 'specified', true),
@@ -327,9 +340,18 @@ test('an unlock reaches what its required prerequisites then allow, closed over 
     { from: 'then', to: 'later', type: 'hard-dep' },
     { from: 'gap', to: 'optional-only', type: 'soft-dep' },
   ];
-  // Reaching the gap satisfies `then`, which satisfies `later`. A soft edge
-  // gates nothing, so the optional target is not claimed.
-  expect([...unlockCascade(items, deps, 'gap')].sort()).toEqual(['later', 'then']);
+  // Reaching the gap makes `then` a next step. `later` waits on `then`, which
+  // is a step of its own, so it is not claimed, as the readout's sentence does
+  // not claim it. A soft edge gates nothing, so the optional target is not
+  // claimed either.
+  expect([...unlockCascade(items, deps, 'gap')]).toEqual(['then']);
+  // Once something here supplies `then`, the gap reaches it, and `later` is
+  // the next step that leaves.
+  const supplied: Connection[] = [
+    ...deps,
+    { from: 'mcp:then', to: 'then', type: 'hard-dep', kind: 'provides' },
+  ];
+  expect([...unlockCascade(items, supplied, 'gap')].sort()).toEqual(['later', 'then']);
 });
 
 test('an unlock claims only what depends on it, not what another step already allows', () => {
@@ -823,6 +845,33 @@ test('an entry of My Setup has nothing on the map to collapse to', () => {
   expect(collapseTo(items, EDGES, 'nonesuch', 2, 'both')).toBeNull();
 });
 
+test('the arrows walk the map as it is laid out, and j and k read it down each era', () => {
+  // Three eras: a over b; c alone; d over e over f.
+  const cols = {
+    'era:1': ['a', 'b'].map(id => item(id)),
+    'era:2': [item('c')],
+    'era:3': ['d', 'e', 'f'].map(id => item(id)),
+  };
+  const map = { cols, colOrder: ['era:1', 'era:2', 'era:3'] };
+  expect(readingOrder(map).map(i => i.id)).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+  // Up and down stay in the era, and stop at its ends.
+  expect(gridStep(map, 'a', 'down')).toBe('b');
+  expect(gridStep(map, 'b', 'down')).toBeNull();
+  expect(gridStep(map, 'a', 'up')).toBeNull();
+  expect(gridStep(map, 'd', 'last')).toBe('f');
+  expect(gridStep(map, 'f', 'first')).toBe('d');
+  // Across lands on the nearest row: b, on row 2, goes to c, the only one,
+  // and on to e, on row 2, not the d a list's order would give.
+  expect(gridStep(map, 'b', 'right')).toBe('c');
+  expect(gridStep(map, 'c', 'right')).toBe('d');
+  expect(gridStep(map, 'e', 'left')).toBe('c');
+  expect(gridStep(map, 'f', 'right')).toBeNull();
+  // An era a collapse empties is stepped over; a hidden row is not landed on.
+  expect(gridStep(map, 'b', 'right', new Set(['a', 'b', 'e', 'f']))).toBe('e');
+  expect(gridStep(map, 'd', 'down', new Set(['d', 'f']))).toBe('f');
+  expect(gridStep(map, 'nonesuch', 'down')).toBeNull();
+});
+
 test('j and k step through the nodes, skipping any a collapse hides', () => {
   const list = ['a', 'b', 'c', 'd'].map(id => rung(id, 'built', {}, 2));
   // Without a collapse it is the plain walk, wrapping at both ends.
@@ -848,4 +897,146 @@ test('j and k never hand the selection back, which would clear it, and never wal
   expect(stepSelection(list, 'a', -1, new Set(['a']))).toBeNull();
   expect(stepSelection([], null, 1)).toBeNull();
   expect(stepSelection(list, null, 1, new Set())).toBeNull();
+});
+
+test('a frame never starts inside a column', () => {
+  const second = bandSpan(1);
+  // An edge in the middle of the second band moves to show it whole, the nearer way.
+  const inside = second.left + 20;
+  expect(snapToBand(inside, 600, 9)).toBe(second.left - BAND_MARGIN);
+  // Near the band's far end, it moves on to the start of the third.
+  expect(snapToBand(second.right - 5, 600, 9)).toBe(bandSpan(2).left - BAND_MARGIN);
+  // An edge already in a gutter stays where it is.
+  const gutter = second.right + 4;
+  expect(snapToBand(gutter, 600, 9)).toBe(gutter);
+  // What has to stay in view wins over a clean edge.
+  const keep = { min: second.left + 30, max: second.left + 30 + 560 };
+  expect(snapToBand(second.left + 25, 600, 9, keep)).toBe(second.left - BAND_MARGIN);
+  expect(snapToBand(second.left + 25, 595, 9, keep)).toBe(second.left + 25);
+});
+
+test('a lit set framed on a phone starts on a whole column', () => {
+  // Two columns apart, too wide to fit at the floor, so the frame starts at
+  // the first lit node; that start lands on its band's edge, not inside it.
+  const points = [
+    { x: bandSpan(3).left + 77, y: 200 },
+    { x: bandSpan(6).left + 77, y: 200 },
+  ];
+  const f = frameScene(
+    points,
+    { top: 0, width: 375, height: 400 },
+    { min: 0.7, max: 1.1, columns: 9, inset: 8 }
+  )!;
+  const start = (f.left - 8) / f.zoom;
+  expect(start).toBeCloseTo(bandSpan(3).left - BAND_MARGIN, 0);
+});
+
+test('a phone opens on whole columns, as many as read at the floor', () => {
+  // At 390px three columns fit at 0.77, and four would need 0.58.
+  const z = wholeColumnZoom(390, 9, 0.66);
+  expect(z).toBeGreaterThan(0.76);
+  expect(z).toBeLessThan(0.78);
+  const span = 3 * COL_W - 16 + 2 * BAND_MARGIN;
+  expect(span * z).toBeLessThanOrEqual(390);
+  // A tree of two columns is shown whole at no more than full size.
+  expect(wholeColumnZoom(390, 2, 0.66)).toBe(1);
+});
+
+test('the map opens on every column when they read, and on the frontier when they do not', () => {
+  // At 1440px all nine fit at 0.93, a size the names read at: the whole tree,
+  // where fitting the scene's margins too drew it at 0.84.
+  const desk = frontierFrame(1424, 9, [1, 2, 3, 4, 6, 7], 3, READ_ZOOM);
+  expect(desk).toMatchObject({ first: 0, count: 9 });
+  expect(desk.zoom).toBeGreaterThanOrEqual(READ_ZOOM);
+  expect(columnsSpan(9) * desk.zoom).toBeLessThanOrEqual(1424);
+  // At 1280px nine would draw at 0.83: eight whole ones, from the first that
+  // holds a next step.
+  const laptop = frontierFrame(1264, 9, [1, 2, 3, 4, 6, 7], 3, READ_ZOOM);
+  expect(laptop).toMatchObject({ first: 1, count: 8, left: bandSpan(1).left - BAND_MARGIN });
+  expect(laptop.zoom).toBeGreaterThanOrEqual(READ_ZOOM);
+  expect(columnsSpan(8) * laptop.zoom).toBeLessThanOrEqual(1264);
+  // A phone's three start at the frontier, and move right to hold the best step.
+  expect(frontierFrame(390, 9, [1, 2, 3], 3, 0.66).first).toBe(1);
+  expect(frontierFrame(390, 9, [1, 5], 5, 0.66).first).toBe(3);
+  // Never past the tree's end, and from its start when nothing is a next step.
+  expect(frontierFrame(390, 9, [8], 8, 0.66).first).toBe(6);
+  expect(frontierFrame(390, 9, [], null, 0.66).first).toBe(0);
+  expect(frontierFrame(390, 0, [], null, 0.66).zoom).toBe(1);
+});
+
+test('a frame held to a height takes more whole columns, not a sliver', () => {
+  // Six columns fill 1100px at 1.08; held to 0.8 by a cascade's height, it
+  // takes the nine that come in under it, whole.
+  const free = wholeColumnFill(1100, 9, 1.2, 6);
+  expect(free.n).toBe(6);
+  expect(columnsSpan(6) * free.zoom).toBeLessThanOrEqual(1100);
+  const held = wholeColumnFill(1100, 9, 0.8, 6);
+  expect(held.n).toBe(9);
+  expect(held.zoom).toBeLessThanOrEqual(0.8);
+  expect(columnsSpan(9) * held.zoom).toBeLessThanOrEqual(1100);
+  // Never more columns than the tree has, and never past the cap.
+  expect(wholeColumnFill(1100, 4, 0.5, 2)).toEqual({ n: 4, zoom: 0.5 });
+  // Room beside the columns, for a callout, comes off what they get.
+  expect(wholeColumnFill(1100, 9, 2, 6, 100).zoom).toBeLessThan(free.zoom);
+});
+
+test('beside a panel, what is lit sits among whole columns', () => {
+  // Four lit columns in a frame of seven: centred, as far as the tree allows.
+  expect(columnWindow([3, 6], 7, 9)).toBe(2);
+  expect(columnWindow([2], 7, 9)).toBe(0);
+  expect(columnWindow([7, 8], 7, 9)).toBe(2);
+  // Wider than the frame: around the selected node, or from where a cascade starts.
+  expect(columnWindow([0, 8], 3, 9, 4)).toBe(3);
+  expect(columnWindow([2, 8], 3, 9)).toBe(2);
+  expect(columnWindow([4], 9, 9)).toBe(0);
+  // A node's column, and the gutter after it, which a callout reaching left lands in.
+  expect(columnAt(columnCentre(4), 9)).toBe(4);
+  expect(columnAt(bandSpan(4).right + 10, 9)).toBe(4);
+  expect(columnAt(0, 9)).toBe(0);
+});
+
+test('a frame that meets the scene end still starts on a whole column', () => {
+  // The last two columns, framed on a phone: the scroll stops at the scene's
+  // end, and the zoom moves so the frame's left edge falls between columns.
+  const points = [7, 8].map(ci => ({ x: bandSpan(ci).left + 77, y: 300 }));
+  const end = bandSpan(8).right + 68;
+  const view = { top: 0, width: 382, height: 400 };
+  const f = frameScene(points, view, {
+    min: 0.55,
+    max: 1.1,
+    columns: 9,
+    sceneWidth: end,
+    inset: 8,
+  })!;
+  const start = Math.min((f.left - 8) / f.zoom, end - view.width / f.zoom);
+  const cuts = Array.from({ length: 9 }, (_, i) => bandSpan(i)).some(
+    b => start > b.left - BAND_MARGIN + 0.5 && start < b.right
+  );
+  expect(cuts).toBe(false);
+  // Both lit columns are still in the frame.
+  expect(start).toBeLessThanOrEqual(bandSpan(7).left);
+});
+
+test('a frame shows the era names above what it lit when it has the room', () => {
+  // Lit nodes in the middle rows, framed from their centre, put the band's
+  // top under the banner; the frame moves up to show it, and no further than
+  // keeps the lowest name in view.
+  const points = [
+    { x: 400, y: 600 },
+    { x: 700, y: 700 },
+  ];
+  const head = 300;
+  const opts = { min: 0.5, max: 1, insetTop: 44, head };
+  const centred = frameScene(
+    points,
+    { top: 150, width: 900, height: 600 },
+    { ...opts, head: undefined }
+  )!;
+  expect(head * centred.zoom + 44 - centred.top).toBeLessThan(150);
+  const roomy = frameScene(points, { top: 150, width: 900, height: 600 }, opts)!;
+  expect(head * roomy.zoom + 44 - roomy.top).toBeGreaterThanOrEqual(150);
+  const short = { top: 150, width: 900, height: 300 };
+  const tight = frameScene(points, short, opts)!;
+  const lowest = (700 + NODE_R + 40 + 24) * tight.zoom + 44 - tight.top;
+  expect(lowest).toBeLessThanOrEqual(short.top + short.height + 1);
 });

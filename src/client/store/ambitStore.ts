@@ -34,10 +34,12 @@ import {
   type QueueDecisionRequest,
   type QueueDecisionResponse,
   type QueueDecisionResult,
+  type RejectionKind,
   type RejectResponse,
   type RepoScanResponse,
   type RunResponse,
 } from '../../shared/api';
+import { noGraphYet } from '../../shared/api';
 
 /**
  * The visualiser's state: the graph, what is selected, which lens and
@@ -136,8 +138,15 @@ async function getJson<K extends keyof ApiRoutes>(path: K): Promise<ApiRoutes[K]
 }
 
 let backendProbe: Promise<boolean> | null = null;
-/** What a failed request says to the person: the error's own words, or that the network did not answer. */
-const errorMessage = (e: unknown) => (e instanceof Error && e.message) || 'Network error';
+/**
+ * What a failed request says to the person. The API is on loopback, so a
+ * request that gets no answer at all means the server is not running: that is
+ * a thing to fix, and the sentence says which. It used to say "Network error",
+ * which named nothing and suggested nothing.
+ */
+const errorMessage = (e: unknown) =>
+  (e instanceof Error && e.message) ||
+  'Could not reach the local server. Check that ambit web is still running, then try again.';
 
 /** Served from GitHub Pages, where no engine can be listening. */
 export const isHostedDemo = (
@@ -291,7 +300,12 @@ interface StoreState {
 
   seedDemo: () => void;
   /** A config handed to the page; `picked` when it was built from servers ticked, not read from a file. */
-  loadFromJSON: (json: string, picked?: boolean) => boolean;
+  /**
+   * Read a config in the tab. `agent` is the one the visitor said they use,
+   * which names the runtime when the file itself does not: a bare
+   * `mcpServers` block, or servers ticked from a list.
+   */
+  loadFromJSON: (json: string, picked?: boolean, agent?: TabRuntime) => boolean;
   setShowApprovalModal: (show: boolean) => void;
   setActiveLens: (lens: ActiveLens) => void;
   setSpotlight: (group: string | null) => void;
@@ -320,7 +334,11 @@ interface StoreState {
     proposalId: string,
     actor?: string
   ) => Promise<{ ok: boolean; artifact?: any; error?: string }>;
-  rejectProposal: (proposalId: string, reason?: string) => Promise<{ ok: boolean; error?: string }>;
+  rejectProposal: (
+    proposalId: string,
+    reason?: string,
+    reasonKind?: RejectionKind
+  ) => Promise<{ ok: boolean; error?: string }>;
   /** Several drafts, each approved or turned down on its own; the answer is per id. */
   decideQueue: (
     decision: 'approve' | 'reject',
@@ -582,7 +600,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return { ok: true, artifact: data.artifact };
       }
       const err = (await res.json()) as { error?: string };
-      return { ok: false, error: err?.error || 'Approval failed' };
+      return {
+        ok: false,
+        error: err?.error || 'The approval did not go through, so nothing was signed. Try again.',
+      };
     } catch (e) {
       return { ok: false, error: errorMessage(e) };
     }
@@ -593,7 +614,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * live, the engine records who turned it down and why, which is what the
    * next draft learns from.
    */
-  rejectProposal: async (proposalId: string, reason?: string) => {
+  rejectProposal: async (proposalId: string, reason?: string, reasonKind?: RejectionKind) => {
     if (get().demo || !(await backendAvailable())) {
       set(state => ({
         proposals: state.proposals.map(p =>
@@ -607,7 +628,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       const res = await fetch(`/api/proposals/${proposalId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposalHash, reason }),
+        body: JSON.stringify({ proposalHash, reason, reasonKind }),
       });
       if (res.ok) {
         (await res.json()) as RejectResponse;
@@ -615,7 +636,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return { ok: true };
       }
       const err = (await res.json()) as { error?: string };
-      return { ok: false, error: err?.error || 'Could not record the decision' };
+      return {
+        ok: false,
+        error: err?.error || 'The decision was not recorded, so nothing changed. Try again.',
+      };
     } catch (e) {
       return { ok: false, error: errorMessage(e) };
     }
@@ -660,7 +684,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return {
           ok: false,
           results: [],
-          error: isApiError(data) ? data.error : 'Could not record the decisions',
+          error: isApiError(data)
+            ? data.error
+            : 'The decisions were not recorded, so nothing changed. Try again.',
         };
       }
       await get().loadProposals();
@@ -845,7 +871,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
    * it stands. Everything happens in the tab: nothing is uploaded, and the
    * file is not kept.
    */
-  loadFromJSON: (jsonStr, picked = false) => {
+  loadFromJSON: (jsonStr, picked = false, agent) => {
     let parsed: unknown;
     try {
       // A config may be `opencode.jsonc`, comments and all.
@@ -888,7 +914,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       ? { id: 'opencode', name: 'OpenCode' }
       : claude
         ? { id: 'claude-code', name: 'Claude Code' }
-        : { id: null, name: picked ? 'Your agent' : 'Your MCP client' };
+        : (agent ?? { id: null, name: picked ? 'Your agent' : 'Your MCP client' });
     const graph = looksLikeConfig
       ? importConfig(config as OpenCodeConfig)
       : claude
@@ -999,7 +1025,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
       const mcp = (config?.config as { mcp?: Record<string, Record<string, unknown>> })?.mcp;
       set({ configMcp: mcp && typeof mcp === 'object' ? mcp : {} });
       if (!treeGraph && !configGraph) {
-        set({ error: 'No graph yet. Run ./bootstrap.sh to seed one.', loading: false });
+        set({ error: noGraphYet(), loading: false });
         return;
       }
       const merged = mergeGraphs(treeGraph, configGraph);
@@ -1013,7 +1039,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         reading: null,
       });
     } catch (e) {
-      set({ error: 'Could not load: ' + (e as Error).message, loading: false });
+      set({ error: 'Could not read your graph: ' + (e as Error).message, loading: false });
     }
   },
 

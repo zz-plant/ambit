@@ -82,7 +82,7 @@ import {
 import { judgeGoal } from '../engine/judge.ts';
 import { council } from '../engine/council.ts';
 import { judgeUnrouted, specGoal } from '../engine/spec.ts';
-import { REACHED_SQL, graphCounts, notSeeded } from '../engine/vocabulary.ts';
+import { REACHED_SQL, graphCounts, notSeeded, reachPhrase } from '../engine/vocabulary.ts';
 
 const DB_PATH = resolveDbPath();
 const VERSION = JSON.parse(
@@ -130,6 +130,13 @@ const INSTRUCTIONS = [
   '- When a tool fails, report it with ambit_record_failure. When something missing blocks you, ambit_plan says what closes it and ambit_propose drafts the change for a person to approve.',
   '- You can ask and propose. You can never grant or approve.',
   `- A capability is named by id, such as combo:shell-execution. A bare name such as shell-execution works too${PROFILE === 'full' ? ', and ambit_cap finds one' : ''}.`,
+  // A client calls only the tools it was shown, so the rest of the catalogue
+  // is named as the command that answers it, never as tools to call.
+  ...(PROFILE === 'agent'
+    ? [
+        '- These ten tools are what a task needs. The rest (single points of failure, credentials, budgets, incidents, the audit trail, the council) is the ambit command in a shell: ambit help --all lists it. Started without --profile=agent, this server lists all of it as tools.',
+      ]
+    : []),
 ].join('\n');
 
 /**
@@ -377,6 +384,8 @@ async function handleLine(line: string) {
                 const c = graphCounts(db);
                 return {
                   stats: {
+                    // The sentence the person's own screens print, to quote.
+                    reach: reachPhrase(db),
                     total: c.total,
                     unlocked: c.reached,
                     verified: c.proven,

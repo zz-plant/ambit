@@ -19,9 +19,9 @@ None of this is anyone's fault. The setup is spread across a config file per run
 
 ## The first look
 
-With the person's go-ahead, `npx ambit-cli status` reads the agent configs on the machine and the token counts in the session logs agents keep. It writes one local file, `~/.local/share/ambit/graph.db`, changes no config and sends nothing. Deleting that file undoes it. It prints what is reached, how much of it is proven, what is failing, and the one command to type next.
+With the person's go-ahead, `npx ambit-cli status` reads the agent configs on the machine and the token counts in the session logs agents keep. It writes one local file, `~/.local/share/ambit/graph.db`, changes no config and sends nothing. Deleting that file undoes it. It prints what is reached, how much of it is verified, what is failing, and the one command to type next.
 
-On the demo's setup, 16 of the 46 capabilities on the map are reached and 12 of those are proven. `ambit next` names Embeddings: it has blocked work four times, and reaching it also opens Vector Store. That is the before and the after for one setup, in two lines.
+On the demo's setup, 16 of the 46 capabilities on the map are reached and 12 of those are verified. `ambit next` names Embeddings: it has blocked work four times, and reaching it also opens Vector Store.
 
 ## After, session by session
 
@@ -33,7 +33,7 @@ On the demo's setup, 16 of the 46 capabilities on the map are reached and 12 of 
 
 **Over weeks.** Grants are per action and per target. The person can set a bar once, such as ten passing checks, and a grant widens when the evidence reaches it. One failing check narrows it again with nobody asked. The prompts that remain are the ones that should reach a person. In the demo, 31 capabilities may act without asking, 12 ask first and 3 are forbidden.
 
-**When it is time to judge.** With the Claude Code or OpenCode plugin, the ledger records each time the person stepped in so you could continue. A step taken is measured against the hours it was forecast to save, so both of you can tell whether it paid. The demo records 89 interventions and 41 hours a year saved.
+**When it is time to judge.** With the Claude Code or OpenCode plugin, Ambit's work ledger records each time the person stepped in so you could continue. A step taken is measured against the hours it was forecast to save, so both of you can tell whether it paid. The demo records 89 interventions and 41 hours a year saved.
 
 ## Together
 
@@ -48,7 +48,9 @@ Widening the ambit is shared work, and the division of it is fixed.
 | Draft the change, with the work it is for | Set the bar a grant widens past |
 | Prove a step with its check | Grant, revoke or forbid |
 
-Each signed step moves the frontier for both of you. Maximizing the ambit does not mean reaching every capability on the map. It means the work the person cares about runs with its reach known, its pieces proven and its autonomy earned, and with them present where judgment is needed. A wide reach that nobody can see or revoke is a bigger blast radius, and Ambit refuses one part of it outright: autonomy that widens with no person having set the bar. You can ask and propose. You can never grant or approve.
+Each signed step moves the frontier, the edge of what the two of you can reach. Maximizing the ambit does not mean reaching every capability on the map. It means the work the person cares about runs with its reach known, its pieces verified and its autonomy earned, and with them present where judgment is needed.
+
+A wide reach that nobody can see or revoke is a bigger blast radius, and Ambit refuses one part of it outright: autonomy that widens with no person having set the bar. You can ask and propose. You can never grant or approve.
 
 ## Putting it to the person
 

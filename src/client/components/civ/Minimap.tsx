@@ -190,6 +190,8 @@ interface MinimapProps {
   layoutKey?: string;
   leftInset?: number;
   rightInset?: number;
+  /** Where the scene holds anything from side to side, in scene x: its columns. */
+  across?: { left: number; right: number };
 }
 
 export function Minimap({
@@ -204,6 +206,7 @@ export function Minimap({
   layoutKey,
   leftInset = 0,
   rightInset = 0,
+  across,
 }: MinimapProps) {
   const [geometry, setGeometry] = useState<Geometry | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -239,7 +242,7 @@ export function Minimap({
     };
   }, [containerRef, zoom, width, height, leftInset, layoutKey]);
 
-  const model = geometry ? minimapModel(geometry, scene, BOX) : null;
+  const model = geometry ? minimapModel(geometry, scene, BOX, across) : null;
   const target = watch ? nodes.find(n => n.id === watch) : undefined;
   const where =
     geometry && model && target ? offscreenLabel(viewportRect(geometry), target, NODE_R) : null;

@@ -321,7 +321,9 @@ export function executeThroughControlPlane(
   const preState = adapter.read();
   const preHash = adapter.hashOf(preState);
 
-  const runId = request.run_id || `run-incident-${Date.now()}`;
+  // The clock alone collided: two requests in one millisecond named the same
+  // run, and the second failed on the work_runs key before the gate ran.
+  const runId = request.run_id || `run-incident-${Date.now()}-${randomBytes(4).toString('hex')}`;
   beginRun(db, {
     id: runId,
     goal: request.intent,
@@ -523,7 +525,7 @@ export function executeThroughControlPlane(
       .slice(0, 24);
 
     // Draft a formal remediation proposal in the graph
-    const proposalId = `prop-remediate-${Date.now()}`;
+    const proposalId = `prop-remediate-${Date.now()}-${randomBytes(4).toString('hex')}`;
     const remediationSteps = [
       {
         id: 'combo:staging-healthcheck',

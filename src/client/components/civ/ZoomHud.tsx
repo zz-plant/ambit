@@ -19,7 +19,7 @@ export const LENSES: readonly [ActiveLens, string, string][] = [
 interface ZoomHudProps {
   zoom: number;
   /** Sets the zoom outright: fit and actual size, which say where the map scrolls to. */
-  setZoom: React.Dispatch<React.SetStateAction<number>>;
+  setZoom: (zoom: number) => void;
   /** A step in or out, about the middle of the canvas. */
   zoomTo: (to: (zoom: number) => number) => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -200,7 +200,7 @@ export function ZoomHud({
                   : unavailable && lens === 'authority'
                     ? 'Nothing reached has an authority mode yet. Install Ambit and run ambit seed on your machine to read them from your configs.'
                     : unavailable
-                      ? 'Nothing recorded yet. This view shades each capability by how often you had to step in, and fills once the Claude Code plugin or OpenCode telemetry plugin records your sessions.'
+                      ? 'Nothing recorded yet. This lens shades each capability by how often you had to step in, and fills once the Claude Code plugin or OpenCode telemetry plugin records your sessions.'
                       : `${label} lens (${hotkey})`
               }
             >

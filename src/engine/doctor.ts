@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
-import { FAILING_SQL, REACHED_SQL, graphCounts } from './vocabulary.ts';
+import { FAILING_SQL, REACHED_SQL, graphCounts, reachPhrase } from './vocabulary.ts';
 import { singlePointsOfFailure } from './inference.ts';
 import { clientConfigs } from './mcp-clients.ts';
 import { parseJsonc } from '../shared/opencode.ts';
@@ -19,6 +19,8 @@ export interface DoctorReport {
   score: number | null;
   grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
   summary: string;
+  /** "9 of 46 capabilities reached, and 9 of your own", as every surface says it. */
+  reach: string;
   capabilities: {
     total: number;
     reached: number;
@@ -186,7 +188,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   // round in a circle.
   if (provable > 0) {
     recommendations.push(
-      `Verify ${provable} unproven ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into proven`
+      `Verify ${provable} unverified ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into verified`
     );
   }
   if (runtimes.length > 0 && !hasConnected) {
@@ -201,14 +203,16 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   }
   recommendations.push('Inspect interactive tech tree: run "ambit web" to explore your setup map');
 
+  const reach = reachPhrase(db);
   const summary = evidence
-    ? `${grade} (${score}/100) : ${counts.reached}/${counts.total} reached, ${counts.proven} verified, ${counts.failing} failing`
-    : `Not graded yet: ${counts.reached}/${counts.total} reached, and no check has run, so nothing is proven or failing. ambit verify runs them.`;
+    ? `${grade} (${score}/100) : ${reach}, ${counts.proven} verified, ${counts.failing} failing`
+    : `Not graded yet: ${reach}, and no check has run, so nothing is verified or failing. ambit verify runs them.`;
 
   return {
     score,
     grade,
     summary,
+    reach,
     capabilities: {
       total: counts.total,
       reached: counts.reached,

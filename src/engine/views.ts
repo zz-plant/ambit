@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Db } from './db.ts';
-import { ENGINE_DIR } from './paths.ts';
+import { ENGINE_DIR, typedCommand } from './paths.ts';
 import { PROVISION_EDGES } from './ontology.ts';
 import {
   DEFAULT_WINDOW_DAYS,
@@ -35,6 +35,7 @@ import { machineModes } from './machines.ts';
 import { runTimeline, tokenUsage, unmappedUse, usageWindows } from './telemetry.ts';
 import { nextSteps } from './next.ts';
 import { council } from './council.ts';
+import { seedSources } from './discovery.ts';
 import { observedPreferences, preferredOption, traitsOf } from './observed.ts';
 import { opportunitiesFor } from './opportunities.ts';
 import { roiSummary } from './roi.ts';
@@ -68,6 +69,7 @@ import {
   type ProposalDecision,
   type ProposalRow,
   type ProposalStatus,
+  type RejectionKind,
   type RunResponse,
   type TechTreeResponse,
   type TreeConnection,
@@ -440,7 +442,7 @@ function ladderFor(
       rung: 'threshold',
       note: failing
         ? `Held: a check is failing inside the ${days}-day window.`
-        : `${have} of ${row.promote_after} in ${days}d${row.promote_set_by ? `, set by ${row.promote_set_by}` : ''}; ${left} more passing ${left === 1 ? 'check or successful use' : 'checks or successful uses'} and it runs unattended.`,
+        : `${have} of ${row.promote_after} in ${days}d${row.promote_set_by ? `, set by ${row.promote_set_by}` : ''}; ${left} more passing ${left === 1 ? 'check or successful use' : 'checks or successful uses'} and it runs without asking.`,
     };
   }
   if (budgeted) {
@@ -661,12 +663,30 @@ export function recentProposals(db: Db, limit = 50): ProposalRow[] {
   } catch {
     /* a database predating rejections */
   }
-  return rows.map(r => ({
+  // How each no was given, so the card can say the word instead of a
+  // promise about the next draft. Kept apart from the row query so a
+  // database predating the table answers with nothing instead of failing.
+  let rejections = new Map<string, { reason_kind: any; reason: any }>();
+  try {
+    rejections = new Map(
+      db
+        .prepare('SELECT proposal_id, reason_kind, reason FROM proposal_rejections')
+        .all<any>()
+        .map((r: any) => [r.proposal_id, r])
+    );
+  } catch {
+    /* a database predating rejections */
+  }
+  // `applied_to` stays out: it holds the entry a rollback would put back,
+  // which was someone's own server and can carry tokens in its env.
+  return rows.map(({ applied_to: _appliedTo, ...r }) => ({
     ...r,
     status: (PROPOSAL_STATUSES as readonly string[]).includes(r.status)
       ? (r.status as ProposalStatus)
       : 'draft',
     decision: decisionFor(r, learned),
+    rejected_kind: (rejections.get(r.id)?.reason_kind ?? null) as RejectionKind | null,
+    rejected_reason: rejections.get(r.id)?.reason ?? null,
     // The hash an approval artifact binds, so the queue can send back what
     // it showed and a proposal that changed since is refused, not signed.
     proposal_hash: proposalHash(db, r),
@@ -779,7 +799,10 @@ export function interventionHeatmap(db: Db): Record<string, any>[] {
  * because no report draws a line.
  */
 export function loopView(db: Db): LoopResponse {
-  const counts = graphCounts(db);
+  // Over the curated tree, as the map, its pill and the readout count: the
+  // graph's figure took in the config's own entries, and My Setup's journey
+  // said "18 of 55" under a readout saying "9 of 46".
+  const counts = graphCounts(db, 'tree');
   const digest = humanDigest(db, LOOP_WINDOW_DAYS) as {
     interventions?: number;
     reducible?: Intervention[];
@@ -830,6 +853,10 @@ export function loopView(db: Db): LoopResponse {
     source: 'ledger',
     authority: loopAuthority(db),
     next: loopNext(db),
+    // What the last seed read, so the page's readout says it as `ambit` does.
+    read: seedSources(db),
+    // How a person types Ambit here, so a command the readout copies runs.
+    command: typedCommand('ambit'),
     since: loopSince(db),
     demand: loopDemand(db),
     council: council(db),

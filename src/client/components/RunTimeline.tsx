@@ -16,7 +16,7 @@ import { NUM } from './figures';
 /**
  * One run, laid out in time: where it went, and how much of it was yours.
  *
- * The Time & cost page prices a month of attention in aggregate, and a person
+ * The Time & authority page prices a month of attention in aggregate, and a person
  * who wants to know what a single session cost them had only a list of counts.
  * This draws one run from what the ledger recorded and nothing else. The run is
  * a bar, the capabilities it used are bars of the length they were measured to
@@ -252,7 +252,7 @@ function RunKey() {
         <svg width="14" height="12" aria-hidden="true">
           <path className="fig-run-ask-pt fig-run-ask--gate is-timed" d={diamond(7, 6, 5)} />
         </svg>
-        a figure was recorded, and no end
+        a duration recorded, with no end time
       </li>
       <li>
         <svg width="14" height="12" aria-hidden="true">
@@ -335,7 +335,7 @@ const label = (r: { id: string; goal?: string; started_at: string; asks: number 
 };
 
 /**
- * The run section of the Time & cost page: a chooser over recent runs and the
+ * The run section of the Time & authority page: a chooser over recent runs and the
  * one chosen, drawn. The store loads it, from the ledger on a real machine and
  * from a hand-written run on the demo; the ledger having no runs is a state
  * the section says, and not a blank.
@@ -372,11 +372,12 @@ export default function RunSection() {
         )}
       </div>
 
-      {!data && <p className="fig-note">Reading the ledger…</p>}
+      {!data && <p className="fig-note">Loading recorded runs…</p>}
       {data && !data.run && (
         <p className="fig-note">
           No run recorded yet. A run groups the capabilities used, the events and the times you were
-          asked in one session; <code>plugins/ambit-telemetry.js</code> writes one per session.
+          asked in one session; the Claude Code plugin and <code>plugins/ambit-telemetry.js</code>{' '}
+          each write one per session.
         </p>
       )}
       {data?.run && (

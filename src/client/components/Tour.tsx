@@ -1,10 +1,11 @@
-import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { useAmbitStore } from '../store/ambitStore';
 import { COLD_OPEN_OUTAGE, COLD_OPEN_PLAIN, coldOpen } from '../store/demo';
 import type { TourStep } from '../linkState';
 import type { Item } from '../utils/configImporter';
 import { costOf, isEntry, mapFindings, unlockCascade } from './civ/layout';
-import { YourSetup } from './MapYours';
+import { VIEW_ID } from './AppDeck';
+import ConfigIntake from './ConfigIntake';
 
 interface TourProps {
   /** Undefined on narrow screens, where the card is not inset by the panels. */
@@ -27,6 +28,19 @@ const named = (list: Item[]) =>
         .map(i => i.name)
         .join(', ')} and ${list[list.length - 1].name}`;
 
+/**
+ * The way on from the first card, named for the card it opens. "What else it
+ * shows" said nothing about where the press went, and the first card is the
+ * one a visitor decides on.
+ */
+const NEXT_LABEL: Record<TourStep, string> = {
+  next: 'Next',
+  outage: 'See what breaks',
+  failing: 'See a failing check',
+  approval: 'See the approval gate',
+  yours: 'Map yours',
+};
+
 interface Step {
   /** The name a link opens this step by (`?tour=`). */
   key: TourStep;
@@ -36,23 +50,28 @@ interface Step {
   enter: () => void;
   /** Offer the proposal panel beside the text. */
   proposal?: boolean;
+  /** Ask which agent the visitor uses, and take their config, under the text. */
+  intake?: boolean;
 }
 
 /**
- * The demo, narrated. A visitor who lands on the map used to get sixty
- * circles, a red banner and a card of instructions, and nothing happened
- * until they read the card and clicked. Now the map acts first: the opening
- * step plays the best next step, and what it would open lights before a word
- * is read. Each later step makes the map show one more thing the product does,
- * in the order the claim is built: what one more step opens, what stops if a
- * piece goes, what is broken without anyone noticing, and that nothing changes
- * without a person. Reach comes first because widening it is what the product
- * is for; the outage follows as the half that makes widening safe. The last
- * step is the visitor's own setup.
+ * The demo, narrated, and the way to the visitor's own setup on its first card.
  *
- * It replaces the first-run card on the demo only. A real graph gets the card,
- * because a person looking at their own machine needs the controls, not the
- * pitch.
+ * The map acts first: the opening card plays the sample's best next step, and
+ * what it would open lights before a word is read. Under it, the card asks
+ * which agent the visitor uses and takes their config, so what one more step
+ * would open for them is three presses away. It used to be the fifth card,
+ * after four about a stranger's setup, and a visitor who stopped reading
+ * before it never saw their own.
+ *
+ * The rest of the tour is the sample's other half, for whoever asks for it:
+ * what stops if a piece goes, what is broken without anyone noticing, and that
+ * nothing changes without a person. Reach comes first because widening it is
+ * what the product is for; the rest is what makes widening safe. Its last card
+ * leads back to the first, where the visitor's own setup goes in.
+ *
+ * It runs on the demo only. A machine's own graph opens on the readout of
+ * that setup instead (YourAmbit.tsx).
  */
 export default function Tour({ style, onDone, onShowProposals, onMapped, start }: TourProps) {
   const items = useAmbitStore(s => s.items);
@@ -84,6 +103,11 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           .flatMap(id => byId.get(id) ?? [])
           .filter(i => !isEntry(i))
       : [];
+    // The baseline the delta is a delta from, counted as the welcome screen
+    // counts it, so the card a visitor lands on says the same thing the
+    // button that brought them there said.
+    const tree = items.filter(i => !isEntry(i));
+    const reached = tree.filter(i => i.status === 'built').length;
 
     // Each body is a sentence or two: the map is doing the showing, and on a
     // phone a seventy-word card covered half of what it was describing.
@@ -91,13 +115,17 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     if (best) {
       list.push({
         key: 'next',
+        intake: true,
         title: `One step would open ${best.reaches} more`,
-        body:
-          `This is a sample developer's agent setup. Setting up ${best.item.name}` +
-          `${cost ? ` (about ${cost})` : ''} would ` +
-          (opened.length
-            ? `unlock the ones in green: ${named(opened)}.`
-            : `open ${best.reaches} more things their agents could do.`),
+        body: (() => {
+          const opening =
+            `This sample setup reaches ${reached} of ${tree.length} capabilities. Setting up ` +
+            `${best.item.name}${cost ? ` (about ${cost})` : ''} would take it to ` +
+            `${reached + best.reaches}`;
+          return opened.length
+            ? `${opening} and unlock the ones ringed in blue: ${named(opened)}.`
+            : `${opening}.`;
+        })(),
         enter: () => {
           select(null);
           startAcquisition(best.item.id);
@@ -145,15 +173,6 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         select(null);
       },
     });
-    list.push({
-      key: 'yours',
-      title: 'Now map yours',
-      body: 'See what your own agents can do, and what to set up next.',
-      enter: () => {
-        clearSimulation();
-        select(null);
-      },
-    });
     return list;
   }, [items, connections, ranked, selectItem, startOutage, startAcquisition, clearSimulation]);
 
@@ -175,9 +194,22 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
     step.enter();
   }, [step.key]);
 
+  // A step's buttons are not the last step's, and the one that was pressed
+  // can be gone from the next: the keyboard fell to the page, eighty stops
+  // from the card. It lands on the step's title instead, which says where it is.
+  const title = useRef<HTMLHeadingElement>(null);
+  const shownStep = useRef(step.key);
+  useEffect(() => {
+    if (shownStep.current === step.key) return;
+    shownStep.current = step.key;
+    if (!document.activeElement || document.activeElement === document.body) title.current?.focus();
+  }, [step.key]);
+
   const finish = () => {
     clearSimulation();
     onDone();
+    // The card is going, and the focus with it: on to the view it was about.
+    document.getElementById(VIEW_ID)?.focus({ preventScroll: true });
   };
 
   return (
@@ -195,7 +227,9 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           Skip tour
         </button>
       </div>
-      <h2 className="app-tour-title">{step.title}</h2>
+      <h2 className="app-tour-title" ref={title} tabIndex={-1}>
+        {step.title}
+      </h2>
       <p className="app-tour-body">{step.body}</p>
 
       {step.proposal && (
@@ -204,7 +238,11 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         </button>
       )}
 
-      {last && <YourSetup onMapped={onMapped} />}
+      {step.intake && (
+        <div className="app-tour-yours">
+          <ConfigIntake onMapped={onMapped} rows={3} ask="What would one step open for you?" />
+        </div>
+      )}
 
       <div className="app-tour-nav">
         <div className="app-tour-dots" aria-hidden="true">
@@ -217,13 +255,27 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
             Back
           </button>
         )}
-        {/* The last card's main action is the paste box's Map it. Leaving for
-            the sample is the quieter choice: it was the one filled button on
-            the card, so the step titled "Now map yours" pointed away from it. */}
-        {last ? (
-          <button type="button" className="app-tour-back" onClick={finish}>
-            Keep exploring
+        {/* The first card's own action is the intake, so the way on through
+            the sample is the quieter button beside it. The last card leads
+            back to the first, where the visitor's setup goes in. */}
+        {step.intake ? (
+          <button
+            type="button"
+            className="app-tour-back"
+            onClick={() => go(index + 1)}
+            disabled={index + 1 >= steps.length}
+          >
+            {NEXT_LABEL[steps[index + 1]?.key ?? 'next']} →
           </button>
+        ) : last ? (
+          <>
+            <button type="button" className="app-tour-back" onClick={finish}>
+              Keep exploring
+            </button>
+            <button type="button" className="app-tour-next" onClick={() => go(0)}>
+              Map yours
+            </button>
+          </>
         ) : (
           <button type="button" className="app-tour-next" onClick={() => go(index + 1)}>
             Next

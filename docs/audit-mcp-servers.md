@@ -11,7 +11,7 @@ Servers are declared per runtime and sometimes per project, in files with differ
 ```bash
 npx ambit-cli              # reads every runtime's user-level config on this machine
 npm install -g ambit-cli   # keeps the `ambit` command the steps below use
-ambit status               # what is reached, what is proven, what is failing
+ambit status               # what is reached, what is verified, what is failing
 ```
 
 The map's **My Setup** view is the same list, one row per server, agent, model or command, with which runtime declared it and whether it is enabled.
@@ -25,9 +25,9 @@ ambit verify            # run every declared check, and record the result
 ambit doctor            # setup health: what works, what fails, what rests on one piece
 ```
 
-A capability with a passing check is **proven**; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
+A capability with a passing check is **verified**; one with a failing check is configured and not working, and every plan, permission and ranking leaves it out until it passes again. `ambit verify <capability> --history` shows its past runs.
 
-A check exists only where one is declared: the curated tree declares some, and a skill registered with `ambit record skill:` carries its own. Most MCP servers a person adds have none. Those read as reached and unproven. They still count as working, and `ambit verify` cannot tell you whether they work; calling one of the server's tools yourself is the check.
+A check exists only where one is declared: the curated tree declares some, and a skill registered with `ambit record skill:` carries its own. Most MCP servers a person adds have none. Those read as reached and unverified. They still count as working, and `ambit verify` cannot tell you whether they work; calling one of the server's tools yourself is the check.
 
 ## 3. See what each one may do without asking
 
@@ -52,7 +52,7 @@ ambit graph unmapped --days=30   # what the agents used that no node accounts fo
 ambit audit 30                   # who approved what, what ran, and what came of it
 ```
 
-Both read the work ledger. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
+Both read the work ledger, Ambit's local record of what agents ran and who was asked. Five things fill it: the OpenCode telemetry plugin, the Claude Code plugin's hooks, Cursor's hook (`ambit connect cursor --ledger` adds it), the control plane, and MCP calls. Other runtimes do not feed it yet, so for an agent on Windsurf or Gemini CLI, `ambit graph unmapped` comes back empty or nearly so, because its tool calls were never recorded, not because none were made.
 
 `ambit graph unmapped` lists each tool used with nothing on the map that accounts for it. `ambit audit` is the trail: proposals, approvals, check runs, the runs the ledger recorded, and every grant that narrowed itself because a check failed.
 
@@ -60,6 +60,6 @@ Both read the work ledger. Five things fill it: the OpenCode telemetry plugin, t
 
 An audit is a snapshot. `ambit briefing` is the standing version. It is what an agent is told when it connects over MCP, before its first tool call, including what is broken and what waits on a person. Registering Ambit as an MCP server puts that briefing in front of every session, so the agent works from the audit and not from its own assumptions.
 
-Nothing in any of this leaves the machine. The graph is a local SQLite file, and there is no telemetry.
+The graph is a local SQLite file, and there is no telemetry. A declared check is a command and can reach the network; [the FAQ](./faq.md#does-anything-leave-my-machine) lists every command that can.
 
 Related: [what breaks if an MCP server goes down](./mcp-outage.md).

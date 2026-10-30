@@ -22,6 +22,7 @@ import {
   buildAdjacency,
   buildColumns,
   type Columns,
+  type GridMove,
   cascadeDepths,
   COL_W,
   columnCentre,
@@ -163,7 +164,7 @@ function ColumnCount({
         y={START_Y - 16}
         textAnchor="middle"
         fill="var(--text-muted)"
-        fontSize={11}
+        fontSize={12}
         fontWeight={500}
         style={{ fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}
       >
@@ -305,6 +306,9 @@ export interface SceneView {
   onOpenEra: (era: number) => void;
   onSelect: (id: string | null) => void;
   onHover: (id: string | null) => void;
+  /** The one node the Tab key lands on; the arrows move from there. */
+  tabStop: string | null;
+  onMove: (from: string, move: GridMove) => void;
 }
 
 export interface MapSceneProps {
@@ -333,6 +337,19 @@ const LABEL_HALO = {
   strokeWidth: 3,
   strokeLinejoin: 'round',
 } as const;
+
+/** The keys that walk the map, and where each goes. */
+const MOVES: Record<string, GridMove> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  Home: 'first',
+  End: 'last',
+};
+
+/** A fade eases, on the page; a still has nothing to ease. */
+const FADE = { transition: 'opacity .15s' } as const;
 
 const NOTHING = new Set<string>();
 const UNRECORDED: Record<string, number> = {};
@@ -486,7 +503,7 @@ export function MapScene({
             ? 'var(--error)'
             : simulationMode === 'gap'
               ? 'var(--warn)'
-              : 'var(--ok)'
+              : 'var(--accent)'
           : intoFocus
             ? 'var(--edge-needs)'
             : outOfFocus
@@ -559,9 +576,27 @@ export function MapScene({
               // Blocked is not faded: the dashed ring and the muted label say
               // it, and a node drawn at three quarters with a grey label on
               // top came out near 3:1, too faint to read the name.
-              const baseOpacity =
-                isSimRoot || isSimAffected ? 1 : !isSpotlit ? 0.15 : dimmed ? 0.25 : 1;
+              // What is faded is context: the circle steps back and the name
+              // does not, in muted grey at 5.6:1, since a faded node is still a
+              // control and its name is held to text's contrast. Faded with its
+              // circle to 0.25, a name came out at 1.4:1, and at 0.7 at 3.4:1,
+              // and the tour's first card, about what one step opens beside what
+              // the setup has, could not show what it has. Ground already held,
+              // and working, stays a step brighter than the rest.
               const failingNode = isFailing(item);
+              const held = reached && !failingNode;
+              const faded =
+                isSimRoot || isSimAffected
+                  ? 1
+                  : !isSpotlit
+                    ? held
+                      ? 0.3
+                      : 0.15
+                    : dimmed
+                      ? held
+                        ? 0.45
+                        : 0.25
+                      : 1;
 
               // Reached is done, so it is the quietest filled state; a next
               // step is the recommendation, so it is the loudest ring on the
@@ -648,14 +683,18 @@ export function MapScene({
                   sw = 2;
                 }
               } else if (simulationMode === 'acquisition') {
+                // What one step would open is drawn as ground it would hold,
+                // ringed in the colour of what the map points at. It was the
+                // green of a passing check, which also meant "acts without
+                // asking" under the authority lens: one hue, three facts.
                 if (isSimRoot) {
                   nodeFill = 'var(--accent)';
                   sc = 'var(--text-primary)';
                   sw = 2.5;
                 } else if (isSimAffected) {
-                  nodeFill = 'var(--ok)';
-                  sc = 'var(--on-accent)';
-                  sw = 2;
+                  nodeFill = 'var(--node-reached)';
+                  sc = 'var(--accent)';
+                  sw = 2.25;
                 }
               } else if (mark) {
                 // Four categories, so four hues, each with its own glyph
@@ -684,204 +723,220 @@ export function MapScene({
               // it to press, focus or animate.
               const body = (
                 <>
-                  {(isSimRoot || isSimAffected) && !still && (
-                    <circle
-                      // Remounted per simulation, so each one replays its ripple.
-                      key={`${simulationMode}:${simulatedNodeId}`}
-                      className="civ-sim-ripple"
-                      r={NODE_R}
-                      fill="none"
-                      stroke={
-                        simulationMode === 'outage'
-                          ? 'var(--error)'
-                          : simulationMode === 'gap'
-                            ? 'var(--warn)'
-                            : 'var(--ok)'
-                      }
-                      strokeWidth={2}
-                    />
-                  )}
-                  {/* Quiet until asked for. Five amber squares were the loudest
+                  {/* Focus is a ring round the circle; the outline the page
+                      gives everything else boxed the circle and its name. */}
+                  {!still && <circle className="civ-focus-ring" r={NODE_R + 6} fill="none" />}
+                  <g
+                    opacity={faded}
+                    className={
+                      !still && dimmed && isSpotlit && faded < 1 ? 'civ-node--dim' : undefined
+                    }
+                    style={still ? undefined : FADE}
+                  >
+                    {(isSimRoot || isSimAffected) && !still && (
+                      <circle
+                        // Remounted per simulation, so each one replays its ripple.
+                        key={`${simulationMode}:${simulatedNodeId}`}
+                        className="civ-sim-ripple"
+                        r={NODE_R}
+                        fill="none"
+                        stroke={
+                          simulationMode === 'outage'
+                            ? 'var(--error)'
+                            : simulationMode === 'gap'
+                              ? 'var(--warn)'
+                              : 'var(--accent)'
+                        }
+                        strokeWidth={2}
+                      />
+                    )}
+                    {/* Quiet until asked for. Five amber squares were the loudest
                       marks on the map, louder than the one failing node, for
                       a structural fact nobody acts on first. The legend's
                       Keystone key, or selecting the node, fills it in. Not
                       during a simulation, whose callout takes this corner. */}
-                  {isKeystone && !dimmed && simulationMode === 'none' && (
-                    <g transform={`translate(${-NODE_R + 3}, ${-NODE_R + 3})`}>
-                      {!still && (
-                        <title>{`Keystone: ${(downstream.get(item.id) || []).length} capabilities depend on it`}</title>
-                      )}
-                      <KeystoneMark lit={spotlight === 'Keystone' || selected} />
-                    </g>
-                  )}
+                    {isKeystone && !dimmed && simulationMode === 'none' && (
+                      <g transform={`translate(${-NODE_R + 3}, ${-NODE_R + 3})`}>
+                        {!still && (
+                          <title>{`Keystone: ${(downstream.get(item.id) || []).length} capabilities depend on it`}</title>
+                        )}
+                        <KeystoneMark lit={spotlight === 'Keystone' || selected} />
+                      </g>
+                    )}
 
-                  {/* The node an outage started at, labelled on the map
+                    {/* The node an outage started at, labelled on the map
                       where the banner names it: the one callout the map
                       draws, so it is the one place the eye goes. */}
-                  {isSimRoot && simulationMode === 'outage' && (
-                    <Callout
-                      r={NODE_R}
-                      text={outageStops ? `DOWN · STOPS ${outageStops}` : 'DOWN'}
-                      color="var(--error)"
-                      still={still}
-                    />
-                  )}
-                  {selected ? (
-                    <Brackets r={NODE_R} color="var(--accent)" />
-                  ) : (
-                    findingTarget?.id === item.id &&
-                    !dimmed && <Brackets r={NODE_R} color={findingTarget.color} />
-                  )}
+                    {isSimRoot && simulationMode === 'outage' && (
+                      <Callout
+                        r={NODE_R}
+                        text={outageStops ? `DOWN · STOPS ${outageStops}` : 'DOWN'}
+                        color="var(--error)"
+                        still={still}
+                      />
+                    )}
+                    {selected ? (
+                      <Brackets r={NODE_R} color="var(--accent)" />
+                    ) : (
+                      findingTarget?.id === item.id &&
+                      !dimmed && <Brackets r={NODE_R} color={findingTarget.color} />
+                    )}
 
-                  {/* A next step is the outlined circle the legend draws, with
+                    {/* A next step is the outlined circle the legend draws, with
                     its setup cost beside it. It used to carry a second ring
                     outside that one and an amber "Boost" tag that no legend,
                     glossary or document explained. */}
-                  {((next && !dimmed && !isSimAffected) || routeStep.has(item.id)) &&
-                    costOf(item) && (
-                      <text
-                        x={NODE_R + 6}
-                        y={-NODE_R + 4}
-                        textAnchor="start"
-                        fill="var(--accent)"
-                        fontSize={12}
-                        fontWeight={600}
-                        fontFamily="var(--font-sans)"
-                      >
-                        {costOf(item)}
-                      </text>
-                    )}
+                    {((next && !dimmed && !isSimAffected) || routeStep.has(item.id)) &&
+                      costOf(item) && (
+                        <text
+                          x={NODE_R + 6}
+                          y={-NODE_R + 4}
+                          textAnchor="start"
+                          fill="var(--accent)"
+                          fontSize={12}
+                          fontWeight={600}
+                          fontFamily="var(--font-sans)"
+                        >
+                          {costOf(item)}
+                        </text>
+                      )}
 
-                  {/* One circle, or with a texture the fill and the ring
+                    {/* One circle, or with a texture the fill and the ring
                       as two, so the filter takes the half it means. */}
-                  <circle
-                    r={NODE_R}
-                    fill={nodeFill}
-                    fillOpacity={
-                      reached &&
-                      !treeNode &&
-                      simulationMode === 'none' &&
-                      !isAttentionHot &&
-                      !mark &&
-                      !selected &&
-                      !failingNode
-                        ? 0.6
-                        : 1
-                    }
-                    stroke={texture ? 'none' : sc}
-                    strokeWidth={sw}
-                    strokeDasharray={
-                      !reached && !next && simulationMode === 'none' && !isAttentionHot
-                        ? '5,4'
-                        : undefined
-                    }
-                    filter={texture?.on === 'fill' ? texture.url : undefined}
-                  />
-                  {texture && (
                     <circle
                       r={NODE_R}
-                      fill="none"
-                      stroke={sc}
+                      fill={nodeFill}
+                      fillOpacity={
+                        reached &&
+                        !treeNode &&
+                        simulationMode === 'none' &&
+                        !isAttentionHot &&
+                        !mark &&
+                        !selected &&
+                        !failingNode
+                          ? 0.6
+                          : 1
+                      }
+                      stroke={texture ? 'none' : sc}
                       strokeWidth={sw}
-                      filter={texture.on === 'ring' ? texture.url : undefined}
+                      strokeDasharray={
+                        !reached && !next && simulationMode === 'none' && !isAttentionHot
+                          ? '5,4'
+                          : undefined
+                      }
+                      filter={texture?.on === 'fill' ? texture.url : undefined}
                     />
-                  )}
-                  {/* The asks behind a next step, as a part fill inside the
+                    {texture && (
+                      <circle
+                        r={NODE_R}
+                        fill="none"
+                        stroke={sc}
+                        strokeWidth={sw}
+                        filter={texture.on === 'ring' ? texture.url : undefined}
+                      />
+                    )}
+                    {/* The asks behind a next step, as a part fill inside the
                       ring: what has blocked work while this was missing. Only
                       at rest, since a simulation or a lens paints the node. */}
-                  {!reached &&
-                    !dimmed &&
-                    simulationMode === 'none' &&
-                    !mark &&
-                    !isAttentionHot &&
-                    blocksOf(item) > 0 && (
-                      <g>
-                        {!still && (
-                          <title>{`Asked for: work was blocked on it ${blocksOf(item)} ${blocksOf(item) === 1 ? 'time' : 'times'} while it was missing`}</title>
-                        )}
-                        <EurekaMark r={NODE_R} fraction={eurekaOf(item)} />
+                    {!reached &&
+                      !dimmed &&
+                      simulationMode === 'none' &&
+                      !mark &&
+                      !isAttentionHot &&
+                      blocksOf(item) > 0 && (
+                        <g>
+                          {!still && (
+                            <title>{`Asked for: work was blocked on it ${blocksOf(item)} ${blocksOf(item) === 1 ? 'time' : 'times'} while it was missing`}</title>
+                          )}
+                          <EurekaMark r={NODE_R} fraction={eurekaOf(item)} />
+                        </g>
+                      )}
+                    {routeStep.has(item.id) && (
+                      <text
+                        className={still ? undefined : 'civ-route-step'}
+                        y={5}
+                        textAnchor="middle"
+                        fill="var(--on-accent)"
+                        fontSize={14}
+                        fontWeight={700}
+                        fontFamily="var(--font-sans)"
+                      >
+                        {routeStep.get(item.id)}
+                      </text>
+                    )}
+                    {sym && (
+                      <text
+                        y={4.5}
+                        textAnchor="middle"
+                        fill={
+                          mark === 'ungranted'
+                            ? 'var(--text-muted)'
+                            : nodeFill === hazard
+                              ? 'var(--text-primary)'
+                              : mark || reached
+                                ? 'var(--on-accent)'
+                                : 'var(--text-muted)'
+                        }
+                        fontSize={13}
+                        fontWeight={700}
+                      >
+                        {sym}
+                      </text>
+                    )}
+
+                    {!dimmed && badged && isProven(item) && (
+                      <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
+                        <circle
+                          r={6.5}
+                          fill="var(--ok)"
+                          stroke="var(--bg-canvas)"
+                          strokeWidth={2}
+                        />
+                        <text
+                          y={3}
+                          textAnchor="middle"
+                          fill="var(--on-accent)"
+                          fontSize={9}
+                          fontWeight={700}
+                        >
+                          ✓
+                        </text>
                       </g>
                     )}
-                  {routeStep.has(item.id) && (
-                    <text
-                      className={still ? undefined : 'civ-route-step'}
-                      y={5}
-                      textAnchor="middle"
-                      fill="var(--on-accent)"
-                      fontSize={14}
-                      fontWeight={700}
-                      fontFamily="var(--font-sans)"
-                    >
-                      {routeStep.get(item.id)}
-                    </text>
-                  )}
-                  {sym && (
-                    <text
-                      y={4.5}
-                      textAnchor="middle"
-                      fill={
-                        mark === 'ungranted'
-                          ? 'var(--text-muted)'
-                          : nodeFill === hazard
-                            ? 'var(--text-primary)'
-                            : mark || reached
-                              ? 'var(--on-accent)'
-                              : 'var(--text-muted)'
-                      }
-                      fontSize={13}
-                      fontWeight={700}
-                    >
-                      {sym}
-                    </text>
-                  )}
-
-                  {!dimmed && badged && isProven(item) && (
-                    <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
-                      <circle r={6.5} fill="var(--ok)" stroke="var(--bg-canvas)" strokeWidth={2} />
-                      <text
-                        y={3}
-                        textAnchor="middle"
-                        fill="var(--on-accent)"
-                        fontSize={9}
-                        fontWeight={700}
-                      >
-                        ✓
-                      </text>
-                    </g>
-                  )}
-                  {!dimmed && badged && failingNode && (
-                    <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
-                      <circle
-                        r={6.5}
-                        fill="var(--error)"
-                        stroke="var(--bg-canvas)"
-                        strokeWidth={2}
-                      />
-                      <text
-                        y={3}
-                        textAnchor="middle"
-                        fill="var(--on-accent)"
-                        fontSize={9}
-                        fontWeight={700}
-                      >
-                        !
-                      </text>
-                    </g>
-                  )}
-                  {!dimmed && jointMark(item) && (
-                    <g transform={`translate(${-NODE_R + 3}, ${NODE_R - 3})`}>
-                      {/* Who and which: names a person can read on the page,
+                    {!dimmed && badged && failingNode && (
+                      <g transform={`translate(${NODE_R - 4}, ${-NODE_R + 4})`}>
+                        <circle
+                          r={6.5}
+                          fill="var(--error)"
+                          stroke="var(--bg-canvas)"
+                          strokeWidth={2}
+                        />
+                        <text
+                          y={3}
+                          textAnchor="middle"
+                          fill="var(--on-accent)"
+                          fontSize={9}
+                          fontWeight={700}
+                        >
+                          !
+                        </text>
+                      </g>
+                    )}
+                    {!dimmed && jointMark(item) && (
+                      <g transform={`translate(${-NODE_R + 3}, ${NODE_R - 3})`}>
+                        {/* Who and which: names a person can read on the page,
                           and that a file never carries. */}
-                      {!still && (
-                        <title>
-                          {jointMark(item) === 'person'
-                            ? `Needs a person: ${((item.meta?.people as string[]) ?? []).join(', ')}`
-                            : `Runs on a device: ${((item.meta?.devices as string[]) ?? []).join(', ')}`}
-                        </title>
-                      )}
-                      <JointIcon mark={jointMark(item)!} />
-                    </g>
-                  )}
+                        {!still && (
+                          <title>
+                            {jointMark(item) === 'person'
+                              ? `Needs a person: ${((item.meta?.people as string[]) ?? []).join(', ')}`
+                              : `Runs on a device: ${((item.meta?.devices as string[]) ?? []).join(', ')}`}
+                          </title>
+                        )}
+                        <JointIcon mark={jointMark(item)!} />
+                      </g>
+                    )}
+                  </g>
                   {/* Two lines where the name needs them. A trailing space
                       on the first keeps the element's text the whole name,
                       which the recorder matches against the aria-label. The
@@ -911,7 +966,7 @@ export function MapScene({
               );
               if (still) {
                 return (
-                  <g key={item.id} transform={`translate(${cx}, ${cy})`} opacity={baseOpacity}>
+                  <g key={item.id} transform={`translate(${cx}, ${cy})`}>
                     {body}
                   </g>
                 );
@@ -921,21 +976,24 @@ export function MapScene({
                 <g
                   key={item.id}
                   transform={`translate(${cx}, ${cy})`}
-                  opacity={baseOpacity}
-                  className={
-                    isSimRoot || isSimAffected
-                      ? 'civ-sim-hit'
-                      : dimmed && isSpotlit
-                        ? 'civ-node--dim'
-                        : undefined
-                  }
-                  tabIndex={0}
+                  className={`civ-node${isSimRoot || isSimAffected ? ' civ-sim-hit' : ''}`}
+                  // One stop for the whole map, where it had one per node: a
+                  // keyboard crossed forty-six of them to reach the page past it.
+                  tabIndex={item.id === view.tabStop ? 0 : -1}
                   role="button"
                   aria-pressed={selected}
                   aria-label={nodeLabel(item, outageRole(item, simulation))}
                   data-node={item.id}
                   onClick={() => view.onSelect(selected ? null : item.id)}
                   onKeyDown={e => {
+                    const move = MOVES[e.key];
+                    if (move && !e.altKey && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      // The map's own keys on the window step the selection.
+                      e.stopPropagation();
+                      view.onMove(item.id, move);
+                      return;
+                    }
                     if (e.key !== 'Enter' && e.key !== ' ') return;
                     e.preventDefault();
                     view.onSelect(selected ? null : item.id);
@@ -946,7 +1004,6 @@ export function MapScene({
                   onMouseLeave={() => view.onHover(null)}
                   style={{
                     cursor: 'pointer',
-                    transition: 'opacity .15s',
                     ...hopStyle(item.id),
                   }}
                 >
@@ -986,7 +1043,7 @@ export function stillLayout(items: Item[], connections: Connection[]): StillLayo
  * spotlight or headline, and a running simulation as the page draws it.
  *
  * Always in the standard lens. The other two paint who stepped in and what
- * may act without asking, which the allow-list in src/engine/share.ts keeps
+ * runs without asking, which the allow-list in src/engine/share.ts keeps
  * out of a shared picture of the map; the standard lens draws only names,
  * states, checks and edges. No tooltip is drawn either, so no description and
  * no person's name.
@@ -1000,19 +1057,23 @@ export function MapStill({
   layout,
   simulation,
   scale = 1,
+  crop,
 }: {
   items: Item[];
   connections: Connection[];
   layout: StillLayout;
   simulation: Showing;
   scale?: number;
+  /** The part of the scene to draw, in scene units; the whole of it when absent. */
+  crop?: { x: number; y: number; width: number; height: number };
 }) {
   const { width, height } = layout;
+  const view = crop ?? { x: 0, y: 0, width, height };
   return (
     <svg
-      width={Math.round(width * scale)}
-      height={Math.round(height * scale)}
-      viewBox={`0 0 ${width} ${height}`}
+      width={Math.round(view.width * scale)}
+      height={Math.round(view.height * scale)}
+      viewBox={`${view.x} ${view.y} ${view.width} ${view.height}`}
       fontFamily="var(--font-sans)"
     >
       <title>Capability tree: what this setup can do, by era</title>
@@ -1020,7 +1081,7 @@ export function MapStill({
         <HazardPattern id="hazard" />
         <MapFilters prefix="map" />
       </defs>
-      <rect width={width} height={height} fill="var(--bg-canvas)" />
+      <rect x={view.x} y={view.y} width={view.width} height={view.height} fill="var(--bg-canvas)" />
       <MapScene
         items={items}
         connections={connections}

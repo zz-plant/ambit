@@ -1,9 +1,13 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { View } from '../linkState';
 import type { Item } from '../utils/configImporter';
 import { BrandMark } from './BrandMark';
 import { isFailing, isNext, isProven } from './civ/layout';
 import { ReachBar } from './figures';
 import { termTitle } from './Term';
+
+/** The view's landmark, where the skip link and a finished tour send the keyboard. */
+export const VIEW_ID = 'view';
 
 /**
  * The map's nodes, counted over the nodes alone. Reached is split by the
@@ -116,8 +120,28 @@ function breakdown(c: MapCounts): string {
 }
 
 /** The top bar: search, brand, the count for this view, the view tabs, share, docs. */
+/** Whether a row of chips has wrapped: its last item sits lower than its first. */
+function wraps(row: HTMLElement): boolean {
+  const kids = [...row.children].filter(k => (k as HTMLElement).offsetHeight > 0) as HTMLElement[];
+  return kids.length > 1 && kids[kids.length - 1].offsetTop > kids[0].offsetTop + 2;
+}
+
 export default function AppDeck(p: AppDeckProps) {
   const tab = (on: boolean) => `app-deck-tab ${on ? 'app-deck-tab--active' : ''}`;
+  // How much of the pill gives way so it stays on one line: nothing, then the
+  // bar (which draws the same numbers), then its last count. It wrapped onto a
+  // second line at 1280px, the size most screenshots are, with the second
+  // line opening on a stray "·". What gives way is still in its tooltip.
+  const pill = useRef<HTMLDivElement>(null);
+  const [fold, setFold] = useState(0);
+  useLayoutEffect(() => {
+    if (pill.current && fold < 2 && wraps(pill.current)) setFold(fold + 1);
+  });
+  useEffect(() => {
+    const unfold = () => setFold(0);
+    window.addEventListener('resize', unfold);
+    return () => window.removeEventListener('resize', unfold);
+  }, []);
   const unsplit = p.counts?.reached !== undefined;
   const reached = p.counts ? (p.counts.reached ?? p.counts.verified + p.counts.unproven) : 0;
   // Nothing is known to fail where no lifecycle was recorded.
@@ -125,6 +149,19 @@ export default function AppDeck(p: AppDeckProps) {
   const total = p.counts ? reached + failing + p.counts.next + p.counts.blocked : 0;
   return (
     <header className={`app-deck${p.sample ? ' app-deck--sample' : ''}`}>
+      {/* The first stop for a keyboard: past the header and the map's tools to
+          the view itself. Handled here, since a fragment in the address would
+          read as a navigation. */}
+      <a
+        className="app-skip"
+        href={`#${VIEW_ID}`}
+        onClick={e => {
+          e.preventDefault();
+          document.getElementById(VIEW_ID)?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       <div className="app-deck-left">
         <div className="app-brand-group">
           <BrandMark size={18} className="app-brand-mark" />
@@ -160,7 +197,7 @@ export default function AppDeck(p: AppDeckProps) {
           className="app-deck-btn"
           onClick={p.onSearch}
           title="Find a capability on the map or in your setup (/)"
-          aria-label="Search capabilities"
+          aria-label="Search capabilities and actions (/)"
         >
           <svg
             width="13"
@@ -181,20 +218,24 @@ export default function AppDeck(p: AppDeckProps) {
         </button>
         {p.counts && (
           <div
+            ref={pill}
             className="app-status-pill"
             title={`The map by state${p.asOf ? `, as of ${p.asOf}` : ''}: ${breakdown(p.counts)}`}
           >
-            <ReachBar
-              proven={unsplit ? undefined : p.counts.verified}
-              reached={reached}
-              failing={failing}
-              next={p.counts.next}
-              total={total}
-            />
+            {fold < 1 && (
+              <ReachBar
+                proven={unsplit ? undefined : p.counts.verified}
+                reached={reached}
+                failing={failing}
+                next={p.counts.next}
+                total={total}
+              />
+            )}
             {/* Failing is a segment only when something is: a zero there
                 would be a count of a problem nobody has. */}
-            {(unsplit ? UNSPLIT : SEGMENTS.filter(([key]) => key !== 'failing' || failing > 0)).map(
-              ([key, group]) => (
+            {(unsplit ? UNSPLIT : SEGMENTS.filter(([key]) => key !== 'failing' || failing > 0))
+              .filter((_, i, all) => fold < 2 || i < all.length - 1)
+              .map(([key, group]) => (
                 <button
                   key={key}
                   type="button"
@@ -213,8 +254,7 @@ export default function AppDeck(p: AppDeckProps) {
                   <span className="app-status-n">{p.counts![key]}</span>
                   {noun(group, p.counts![key] ?? 0)}
                 </button>
-              )
-            )}
+              ))}
             {p.asOf && <span className="app-status-asof">as of {p.asOf}</span>}
           </div>
         )}
@@ -228,10 +268,10 @@ export default function AppDeck(p: AppDeckProps) {
         {p.connected && (
           <span
             className="app-live"
-            title="Live: this map redraws itself when a seed, an adapter or another session rebuilds the graph"
+            title="Connected to your graph: the map redraws when a seed, a check or another session changes it"
           >
             <span className="app-live-dot" aria-hidden="true" />
-            Live
+            <span className="app-live-label">Live</span>
           </span>
         )}
       </div>
@@ -300,8 +340,8 @@ export default function AppDeck(p: AppDeckProps) {
             aria-current={p.view === 'cost' ? 'page' : undefined}
             onClick={() => p.onShowView('cost')}
             // The name, for where the tab shows only its icon.
-            aria-label="Time & cost"
-            title="Where human attention goes, and what would pay back fastest"
+            aria-label="Time & authority"
+            title="Where your time and your agents' spend go, what may run without asking, and what would pay back fastest"
           >
             <svg
               width="13"
@@ -318,7 +358,7 @@ export default function AppDeck(p: AppDeckProps) {
               <path d="M2 12 L6 8 L9 11 L14 4" />
               <circle cx="14" cy="4" r="1.5" fill="currentColor" />
             </svg>
-            <span className="app-deck-tab-label">Time &amp; cost</span>
+            <span className="app-deck-tab-label">Time &amp; authority</span>
           </button>
           <button
             type="button"
@@ -353,8 +393,11 @@ export default function AppDeck(p: AppDeckProps) {
             className={tab(p.view === 'proposals')}
             aria-current={p.view === 'proposals' ? 'page' : undefined}
             onClick={() => p.onShowView('proposals')}
-            // The name, for where the tab shows only its icon.
+            // The name, for where the tab shows only its icon. It stays the
+            // word on screen, so a voice command finds it; the label also hid
+            // the count, so the count is the description.
             aria-label="Proposals"
+            aria-describedby={p.draftCount > 0 ? 'app-deck-drafts' : undefined}
             title="What an agent wants to change, waiting on your decision (g)"
           >
             <svg
@@ -377,7 +420,14 @@ export default function AppDeck(p: AppDeckProps) {
                 did: the tab is where the decision is made, so the waiting
                 number belongs there. */}
             {p.draftCount > 0 && (
-              <span className="app-deck-count app-deck-count--tab">{p.draftCount}</span>
+              <>
+                <span className="app-deck-count app-deck-count--tab" aria-hidden="true">
+                  {p.draftCount}
+                </span>
+                <span id="app-deck-drafts" hidden>
+                  {p.draftCount} waiting for your decision
+                </span>
+              </>
             )}
           </button>
         </nav>
@@ -441,8 +491,8 @@ export default function AppDeck(p: AppDeckProps) {
           type="button"
           className="app-deck-btn"
           onClick={p.onShowDocs}
-          title="Every term on the map, defined (?)"
-          aria-label="Documentation and glossary"
+          title="Every term on the map, defined, and what each view does (?)"
+          aria-label="Help: every term, and what the map shows (?)"
         >
           <svg
             width="13"
@@ -458,7 +508,7 @@ export default function AppDeck(p: AppDeckProps) {
           >
             <path d="M2 3.5 C2 2.7 2.7 2 3.5 2 H7.5 V14 H3.5 C2.7 14 2 13.3 2 12.5 Z M14 3.5 C14 2.7 13.3 2 12.5 2 H8.5 V14 H12.5 C13.3 14 14 13.3 14 12.5 Z" />
           </svg>
-          <span className="app-deck-btn-label">Docs</span>
+          <span className="app-deck-btn-label">Help</span>
         </button>
       </div>
     </header>

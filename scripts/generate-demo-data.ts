@@ -125,7 +125,7 @@ const once = (passed: boolean, at = FIRST_CHECKS): DemoRun[] => [{ at, passed }]
  * What the demo's checks said, by capability: each run, oldest first, dated.
  *
  * A seed verifies nothing, so the tree used to arrive with every reached node
- * "configured, never checked", while the Time & cost page beside it reported
+ * "configured, never checked", while the Time & authority page beside it reported
  * checks passing and one failing. Two views of one invented machine disagreed
  * about whether anything had been proved. The results are run through the
  * engine's own check runner, with `true` and `false` standing in for the real
@@ -134,7 +134,7 @@ const once = (passed: boolean, at = FIRST_CHECKS): DemoRun[] => [{ at, passed }]
  *
  * Every run carries a fixed date, so a check's age and strip of runs read the
  * same on every build. Observability is recovering: its last run passed after
- * two that failed, the payment anomaly the Time & cost page prices, so the
+ * two that failed, the payment anomaly the Time & authority page prices, so the
  * demo draws the map's waver and says "2 of the last 4 passed".
  *
  * Two reached nodes are left unchecked on purpose: "configured is not working"

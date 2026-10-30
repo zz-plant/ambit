@@ -32,8 +32,11 @@ export interface PaletteHandlers {
   lens: (lens: ActiveLens) => void;
   /** Show a view. */
   view: (view: View) => void;
-  /** Show My Setup on the briefing, what an agent is told at connect. */
-  briefing: () => void;
+  /**
+   * Show My Setup on the briefing, what an agent is told at connect. Absent
+   * where no local API composes one, as on the hosted demo, and so is the action.
+   */
+  briefing?: () => void;
   /** Show the Proposals view, where a decision is made. */
   proposals: () => void;
   /** Put text on the clipboard and say so. */
@@ -48,8 +51,8 @@ export type ActionGroup = (typeof GROUPS)[number];
 const VIEWS: [View, string, string][] = [
   ['map', 'the map', 'tree reach frontier'],
   ['setup', 'My Setup', 'inventory servers entries'],
-  ['cost', 'Time & cost', 'spend budget tokens pay'],
-  ['audit', 'the trail', 'approved ran happened'],
+  ['cost', 'Time & authority', 'spend budget tokens pay permission authority unattended'],
+  ['audit', 'Audit', 'trail approved ran happened'],
   ['proposals', 'Proposals', 'decide approve waiting'],
 ];
 
@@ -112,14 +115,15 @@ export function buildActions(ctx: PaletteContext): PaletteAction[] {
       run: () => handlers.view(view),
     });
   }
-  actions.push({
-    id: 'view:briefing',
-    label: 'Read the briefing',
-    group: 'Go to',
-    keywords: 'agent told connects knows',
-    browse: true,
-    run: handlers.briefing,
-  });
+  if (handlers.briefing)
+    actions.push({
+      id: 'view:briefing',
+      label: 'Read the briefing',
+      group: 'Go to',
+      keywords: 'agent told connects knows',
+      browse: true,
+      run: handlers.briefing,
+    });
 
   for (const item of items) {
     if (isEntry(item)) continue;
