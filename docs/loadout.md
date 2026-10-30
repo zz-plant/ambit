@@ -12,9 +12,11 @@ B is not "the agent does everything." It is a loadout that reliably does a class
 
 The person's role changes on the way. At A they operate and approve each call. At B they set thresholds and judge proposals.
 
-## The seven legs
+## The seven steps
 
-My Setup in the app opens on a readout of these seven legs for the loadout on screen, each with where it stands and the one command that moves it.
+My Setup in the app closes with these seven steps, under **Where this setup is headed**, each with where it stands and the one command that moves it.
+
+A step ends with the kind of change it is. *Easier* is the same result for less work. *Tractable* is work that does not grow with the setup. *Possible* is something the setup could not express before.
 
 **1. See where it stands.** Each runtime keeps its servers in a file of its own ([where each one keeps it](./mcp-config-locations.md)), and none of them says whether a server works. `ambit seed` reads them all into one map, and `ambit verify` runs each declared check. The demo's loadout reaches 16 of the 46 capabilities on its map, and 12 of those are proven. *Easier: this was always possible by hand.*
 
@@ -22,7 +24,7 @@ My Setup in the app opens on a readout of these seven legs for the loadout on sc
 
 **3. Add it safely.** `ambit propose` writes the change as a proposal: what it does, what undoes it, what it costs, what it is forecast to save, and, with `--for`, the work it is for. Your approval binds that purpose, so a proposal whose purpose changes after you sign it is no longer covered. You sign it, `ambit apply` applies it, `ambit rollback` undoes it, and a check proves the result. *Easier: no hand-edited JSON, no change without a record.*
 
-**4. Hand over trust gradually.** This is the leg that separates A from B. A grant is per action and per target, so "deploy to staging without asking" can be true while "deploy to production" still asks. `ambit authority promote <capability> <action> --after=10 --by=<you>` sets the bar once: the grant widens when the evidence reaches it, and narrows again on a single failing check, with nobody asked. A sandbox relaxes confirmation inside it and never a refusal, and `--ttl=30m` grants a window that closes on its own. The demo's loadout has 31 capabilities that may act without asking, 12 that ask first and 3 forbidden, and Secret Management has passed often enough to stop asking, once someone sets the number of passes. In Claude Code, the `ambit gate` hook makes these answers binding on every tool call: forbidden is refused, asking first is put to you, and it never allows anything Claude Code would otherwise ask about. *Possible: approval per action and per target, with a bar you set, instead of a runtime-wide approve-everything or ask-everything setting.*
+**4. Hand over trust gradually.** This is the step that separates A from B. A grant is per action and per target, so "deploy to staging without asking" can be true while "deploy to production" still asks. `ambit authority promote <capability> <action> --after=10 --by=<you>` sets the bar once: the grant widens when the evidence reaches it, and narrows again on a single failing check, with nobody asked. A sandbox relaxes confirmation inside it and never a refusal, and `--ttl=30m` grants a window that closes on its own. The demo's loadout has 31 capabilities that run without asking, 12 that ask first and 3 forbidden, and Secret Management has passed often enough to stop asking, once someone sets the number of passes. In Claude Code, the `ambit gate` hook makes these answers binding on every tool call: forbidden is refused, asking first is put to you, and it never allows anything Claude Code would otherwise ask about. *Possible: approval per action and per target, with a bar you set, instead of a runtime-wide approve-everything or ask-everything setting.*
 
 **5. Keep it standing.** A loadout decays: tokens expire, binaries move, services go down. `ambit status` lists what is configured but failing and the pieces the setup rests on alone, and [`ambit impact`](./mcp-outage.md) says what would stop before you revoke or remove one. *Tractable: maintenance grows with every piece added, and a model is what keeps it from growing faster than the loadout.*
 
@@ -53,7 +55,7 @@ Every capability reached moves the frontier, the edge of what the loadout reache
 ## Where the journey still has gaps
 
 - **Leg 4 is enforced where it can be.** Ambit's own `apply`, its control plane for execution routed through it, and Claude Code once the `ambit gate` hook is installed. Cursor and the other runtimes still choose whether to ask `ambit_can`, so there the gradual hand-over depends on the agent following its instructions.
-- **Legs 6 and 7 need a record.** The OpenCode telemetry plugin and the Claude Code plugin fill it, other runtimes do not yet, and the figures need weeks of history. On day one those legs say so.
+- **Steps 6 and 7 need a record.** The OpenCode telemetry plugin and the Claude Code plugin fill it, other runtimes do not yet, and the figures need weeks of history. On day one those steps say so.
 - **Leg 2 knows the curated tree.** A goal outside it needs the judgment model or an overlay in `.ambit/techtree.json`.
 - **It is one person's journey.** The same path for a team, with shared thresholds and several approvers, is only partly built.
 

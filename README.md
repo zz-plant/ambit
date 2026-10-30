@@ -286,7 +286,7 @@ The server sends this instruction in the MCP handshake. For clients that do not 
 
 - **Map**: The curated tree with your reach drawn on it. The line on top names what the map found: a failing check, or else the next step that opens the most.
 - **My Setup**: The entries your configs declare, their check history, and the capabilities each provides, closing with what the agents used that no node on the map accounts for. The Briefing section displays the context payload provided to agents on connection, and the Environment section draws the repository and infrastructure scans. Each section is part of the address, so a link can open on it.
-- **Time & cost**: The work ledger, what may act without asking, what to reach next, and frontier evolution over the past week.
+- **Time & authority**: The work ledger, what may act without asking, what to reach next, and frontier evolution over the past week.
 - **Audit**: Reverse-chronological audit log of proposals, approvals, check executions, and work sessions, searchable by query.
 - **Proposals**: The decision queue, one card per change an agent has drafted, several decidable together.
 

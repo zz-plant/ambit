@@ -31,13 +31,13 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 | [S1](#s1-the-row-is-the-report) | A check-history strip on each row | My Setup | M | Built |
 | [S2](#s2-switch-tool-count-show-output) | An MCP switch, and the output of a failing check | My Setup | L | Switch built, output decision first |
 | [S3](#s3-a-ladder-made-of-named-rules) | An era ladder of named rules | Map | M | Built |
-| [S4](#s4-what-it-needs-and-is-it-met-here) | What an option needs, met here | Time & cost | L | Reduced slice built |
+| [S4](#s4-what-it-needs-and-is-it-met-here) | What an option needs, met here | Time & authority | L | Reduced slice built |
 | [G1](#g1-plan-first-then-apply) | Plan first, then apply | Proposals | S | Built |
 | [G2](#g2-review-the-queue-sign-once-each) | Review the queue, sign once each | Proposals | M | Built |
 | [G3](#g3-once-here-or-never) | A scoped grant, proposed from what interrupts you | Authority | L | Decision first |
 | [G4](#g4-the-trail-one-line-per-event) | The trail, one line per event | Audit | M | First slice built |
-| [L1](#l1-spans-with-a-lane-for-you) | A run's spans with a lane for you | Time & cost | L | As-recorded slice built |
-| [L2](#l2-a-ceiling-with-a-forecast-tick) | A budget ceiling with a forecast tick | Time & cost | M | Built |
+| [L1](#l1-spans-with-a-lane-for-you) | A run's spans with a lane for you | Time & authority | L | As-recorded slice built |
+| [L2](#l2-a-ceiling-with-a-forecast-tick) | A budget ceiling with a forecast tick | Time & authority | M | Built |
 | [L3](#l3-one-row-per-machine) | One row per machine | My Setup, Infra | L | Slices 1 and 2 built |
 | [K1](#k1-a-palette-that-speaks-verbs) | A palette that speaks verbs | Finder | M | Built |
 | [K2](#k2-the-terminal-is-a-surface-too) | `ambit status` as a designed surface | CLI | S | Built |
@@ -50,7 +50,7 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 
 **The question.** What works in my setup, what should I change next, and how will I know the change worked?
 
-**Today.** The answer is spread across several surfaces. My Setup opens with the seven-leg Journey before the entries. The Map offers a next step, a preview and a detail panel, but setup and checking require local commands. A preview and the selected node can remain visible when moving to My Setup. At compact widths, navigation names disappear; on phones, the Sample label disappears too. Time & cost leads with annual attention value, which is easy to read as money earned.
+**Today.** The answer is spread across several surfaces. My Setup opens with the seven-leg Journey before the entries. The Map offers a next step, a preview and a detail panel, but setup and checking require local commands. A preview and the selected node can remain visible when moving to My Setup. At compact widths, navigation names disappear; on phones, the Sample label disappears too. Time & authority leads with annual attention value, which is easy to read as money earned.
 
 **The change.** Make one recommendation usable without learning the map's vocabulary. Keep the full map available for exploring dependencies.
 
@@ -317,7 +317,7 @@ Keep prerequisites, permission and evidence separate under **Why this recommenda
 
 **Today.** A run has a start and an end. Events are points, with an `at` and no duration or parent. Tool uses have `used_at` and `duration_seconds`. Interventions have `started_at`, `ended_at`, `active_seconds` and `waiting_seconds`, and the person's total is the sum of the last two. There is no per-run read: `auditRun` drops intervention times and `used_at`, `/api/loop` is aggregates, and `ApiRoutes` has no run. The producers write points. The OpenCode plugin logs the ask and cannot observe the reply, so the intervention never ends. MCP cannot pass a start and an end, the control-plane proxy writes 0 seconds, and only `/api/telemetry` accepts `startedAt` and `endedAt`. `work_events` never syncs (rule 12).
 
-**The change.** The as-recorded slice (M) draws a run from what was recorded: the run bar, tool uses with their durations, events as points, and interventions as amber spans where both times exist or as a marked point, "not timed", where they do not. An unmeasured ask never draws as zero (rule 16). Amber kinds come from `GATE_KINDS` in `vocabulary.ts` (rule 5). It needs a run projection in `views.ts`, a wire type and a route, and a way in from the Time & cost page.
+**The change.** The as-recorded slice (M) draws a run from what was recorded: the run bar, tool uses with their durations, events as points, and interventions as amber spans where both times exist or as a marked point, "not timed", where they do not. An unmeasured ask never draws as zero (rule 16). Amber kinds come from `GATE_KINDS` in `vocabulary.ts` (rule 5). It needs a run projection in `views.ts`, a wire type and a route, and a way in from the Time & authority page.
 
 The full slice (L) adds nesting, which needs a parent id or an event-to-use link plus event durations, and every producer has to record them. A bridge that cannot observe the reply reports the ask, and the engine infers an end, because a bridge that judges is a second copy of the rule (rule 8).
 
@@ -454,7 +454,7 @@ Closed:
 - `toEpoch` and `stampMs` read an ISO time with no zone as local time while SQLite reads it as UTC, so a run's timeline and a budget's period moved with the machine's zone.
 - `ambit goal <id> --simulate` and `ambit_simulate` reported a larger frontier for acquiring an id the graph does not hold. Both refuse it now, through the one resolver every MCP tool that takes a capability shares.
 - A missing or misspelt argument to an MCP tool came back as an SQLite bind error, a CLI usage line or a TypeError, and `ambit_verify` with a misspelt name ran every declared check. Arguments are checked against the tool's schema before dispatch, and a failed call is `isError`.
-- A simulation started on a scrubbed map, or a lens no observation records, played on the scrubbed day. It returns the map to now, in the store, so the finder, Time & cost and My Setup are all covered.
+- A simulation started on a scrubbed map, or a lens no observation records, played on the scrubbed day. It returns the map to now, in the store, so the finder, Time & authority and My Setup are all covered.
 - An era's ladder read the store while its header counted the observation, so "Model Access" said 1 of 6 reached over a ladder that said 3 of 6. It reads the same items and says "As of ...".
 - The header's pill counted a reached node whose check is failing as unproven. `mapCounts` keeps failing apart, and each segment lights the nodes it counts.
 - Escape was owned by the shell and the map, and whichever ran second found the first one's work done. `escapeLayer` in `utils/keys.ts` closes one layer a press, topmost overlay first.
