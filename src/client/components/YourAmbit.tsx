@@ -95,15 +95,17 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
   };
 
   // Where the setup came from: a file or a pick in this tab, or what the seed
-  // read on this machine.
-  let eyebrow = 'Your ambit';
+  // read on this machine. The eyebrow says My Setup, the name the app gives
+  // this material everywhere else; it said "your ambit" here, so the card and
+  // the tab a reader arrived from called one place two things.
+  let eyebrow = 'My Setup';
   let source = '';
   let given = '';
   if (reading) {
-    eyebrow = `Your ambit · ${reading.runtime}`;
+    eyebrow = `My Setup · ${reading.runtime}`;
     const entries = `${reading.entries} ${reading.entries === 1 ? 'entry' : 'entries'}`;
     source = reading.picked
-      ? `Placed from the ${reading.entries} you picked`
+      ? `From the ${reading.entries} ${reading.entries === 1 ? 'server' : 'servers'} you picked`
       : `${entries} from ${reading.named ? `${reading.runtime}'s config` : 'your config'}, read in this tab and sent nowhere`;
     // What the placement counted that the file never lists: the runtime's own
     // tools, and its model when the file names none.
@@ -116,7 +118,7 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
               : 'the model your agent runs on'
           }`;
   } else {
-    eyebrow = 'Your ambit · this machine';
+    eyebrow = 'My Setup · this machine';
     source = loop?.read?.length ? `Read from ${readFrom(loop.read)}` : '';
   }
 
@@ -147,7 +149,7 @@ export default function YourAmbit({ style, onClose, onMapAnother, onSample }: Yo
         <p className="app-tour-body">
           {source}
           {source && '.'}
-          {given && ` Counted though not listed: ${given}.`}
+          {given && ` Ambit counts these too, though no config file lists them: ${given}.`}
         </p>
       )}
 

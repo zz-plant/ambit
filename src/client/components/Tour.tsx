@@ -28,6 +28,19 @@ const named = (list: Item[]) =>
         .map(i => i.name)
         .join(', ')} and ${list[list.length - 1].name}`;
 
+/**
+ * The way on from the first card, named for the card it opens. "What else it
+ * shows" said nothing about where the press went, and the first card is the
+ * one a visitor decides on.
+ */
+const NEXT_LABEL: Record<TourStep, string> = {
+  next: 'Next',
+  outage: 'See what breaks',
+  failing: 'See a failing check',
+  approval: 'See the approval gate',
+  yours: 'Map yours',
+};
+
 interface Step {
   /** The name a link opens this step by (`?tour=`). */
   key: TourStep;
@@ -90,6 +103,11 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
           .flatMap(id => byId.get(id) ?? [])
           .filter(i => !isEntry(i))
       : [];
+    // The baseline the delta is a delta from, counted as the welcome screen
+    // counts it, so the card a visitor lands on says the same thing the
+    // button that brought them there said.
+    const tree = items.filter(i => !isEntry(i));
+    const reached = tree.filter(i => i.status === 'built').length;
 
     // Each body is a sentence or two: the map is doing the showing, and on a
     // phone a seventy-word card covered half of what it was describing.
@@ -99,12 +117,15 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
         key: 'next',
         intake: true,
         title: `One step would open ${best.reaches} more`,
-        body:
-          `This is a sample developer's agent setup. Setting up ${best.item.name}` +
-          `${cost ? ` (about ${cost})` : ''} would ` +
-          (opened.length
-            ? `unlock the ones ringed in blue: ${named(opened)}.`
-            : `open ${best.reaches} more things their agents could do.`),
+        body: (() => {
+          const opening =
+            `This sample setup reaches ${reached} of ${tree.length} capabilities. Setting up ` +
+            `${best.item.name}${cost ? ` (about ${cost})` : ''} would take it to ` +
+            `${reached + best.reaches}`;
+          return opened.length
+            ? `${opening} and unlock the ones ringed in blue: ${named(opened)}.`
+            : `${opening}.`;
+        })(),
         enter: () => {
           select(null);
           startAcquisition(best.item.id);
@@ -238,8 +259,13 @@ export default function Tour({ style, onDone, onShowProposals, onMapped, start }
             the sample is the quieter button beside it. The last card leads
             back to the first, where the visitor's setup goes in. */}
         {step.intake ? (
-          <button type="button" className="app-tour-back" onClick={() => go(index + 1)}>
-            What else it shows
+          <button
+            type="button"
+            className="app-tour-back"
+            onClick={() => go(index + 1)}
+            disabled={index + 1 >= steps.length}
+          >
+            {NEXT_LABEL[steps[index + 1]?.key ?? 'next']} →
           </button>
         ) : last ? (
           <>

@@ -27,8 +27,8 @@ test('the demo walks all seven legs, each from a figure the page already has', (
   const said = Object.fromEntries(legs.map(l => [l.key, l.said]));
   expect(said.stand).toContain(`${loop.status.reached} of ${loop.status.total} reached`);
   expect(said.next).toContain(loop.next[0].capability);
-  expect(said.trust).toContain(`${loop.authority.autonomous} may act without asking`);
-  expect(said.paid).toContain(`${loop.attention.interventions} times you stepped in`);
+  expect(said.trust).toContain(`${loop.authority.autonomous} run without asking`);
+  expect(said.paid).toContain(`You stepped in ${loop.attention.interventions} times`);
   expect(said.ask).toContain(loop.demand[0].name);
   // The gradual hand-over offers the command that sets the bar.
   expect(legs.find(l => l.key === 'trust')?.command).toBe(loop.authority.promotable[0].command);
@@ -39,10 +39,26 @@ test('with no ledger the legs it feeds say nothing was recorded, and draw no zer
   const by = Object.fromEntries(legs.map(l => [l.key, l]));
   // The glossary's word, as the header's count says it.
   expect(by.stand.said).toBe('4 of 10 reached, 1 verified by a passing check.');
+  // A healthy setup says so in words. It used to print "0 capabilities
+  // configured but failing, 0 pieces the setup rests on alone.": two zeros
+  // drawn as if they were measurements.
+  expect(by['stand-up'].said).toBe(
+    'Nothing is configured and failing, and nothing rests on a single piece.'
+  );
+  expect(by['stand-up'].said).not.toMatch(/\b0\b/);
   for (const key of ['next', 'trust', 'paid', 'ask']) {
     expect(by[key].state, key).toBe('unrecorded');
     expect(by[key].said, key).not.toMatch(/\b0\b/);
   }
+});
+
+test('the standing leg names only the half of itself that is true', () => {
+  const loop = demoSnapshot();
+  loop.status.degraded = [];
+  loop.status.spofs = [{} as never];
+  const said = journeyLegs(loop, [], fallback).find(l => l.key === 'stand-up')?.said;
+  expect(said).toBe('1 piece the setup rests on alone.');
+  expect(said).not.toContain('0 ');
 });
 
 test('a command built from an id is quoted for the shell it will be pasted into', () => {
