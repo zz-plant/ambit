@@ -5,7 +5,7 @@
       "key": "ambit",
       "term": "Ambit",
       "short": "What you, your agents and your machines can jointly do",
-      "long": "Your ambit is everything your setup can actually do, which is more than any config file says: capabilities compose from pieces configured separately. A capability counts once something provides it and its required prerequisites are reached. It is proven when its declared check passes, and a failing check takes it out of every plan until it passes again. Whether it may run is a separate question, which authority answers. The frontier is its edge, the next steps just past it are how it widens, and the capability graph is the model that computes it. The theory documents call the same object the affordance frontier. Widening it is what the product is for; checks, authority and approvals are what make each widening safe to lean on.",
+      "long": "Your ambit is everything your setup can actually do, which is more than any config file says: capabilities compose from pieces configured separately. A capability counts once something provides it and its required prerequisites are reached. It is verified when its declared check passes, and a failing check takes it out of every plan until it passes again. Whether it may run is a separate question, which authority answers. The frontier is its edge, the next steps just past it are how it widens, and the capability graph is the model that computes it. The theory documents call the same object the affordance frontier. Widening it is what the product is for; checks, authority and approvals are what make each widening safe to lean on.",
       "seen": "The first line of the README and the welcome screen, the tour's first step, and the glossary page"
     },
     {
@@ -34,21 +34,21 @@
       "term": "Required vs optional prerequisite",
       "short": "Whether a dependency gates a capability, or only helps",
       "long": "A required prerequisite must be in place or the dependent capability cannot work — a model cannot run without its provider. An optional one strengthens something without gating it. Only required prerequisites block a node from being reached; both are drawn, with optional ones fainter. The data model and the CLI call these hard and soft.",
-      "seen": "Solid vs dashed connection lines, keyed Required and Optional; and the Needs line above an opportunity's ways to acquire it on Time & cost"
+      "seen": "Solid vs dashed connection lines, keyed Required and Optional; and the Needs line above an opportunity's ways to acquire it on Time & authority"
     },
     {
       "key": "asked-for",
-      "term": "Asked for",
+      "term": "Deficit",
       "short": "Work was blocked on it while it was missing",
-      "long": "Each time an agent records that a task stopped for want of a capability, that capability's count goes up. On the map a next step fills from the inside as the count grows and is full at three. At three, Ambit calls the gap structural: it has the same cause every time, so it needs something new. `ambit next` ranks by these counts before it ranks by leverage, and the Time & cost page lists them under What to reach next.",
-      "seen": "The part-filled next step on the map and its key, the panel of such a node, and ambit next"
+      "long": "Each time an agent records that a task stopped for want of a capability, that capability's deficit count goes up. The map draws the count as Asked for: a next step filled from the inside, full at three. At three, Ambit calls the gap structural, since it has the same cause every time and needs something new. `ambit next` ranks by these counts before it ranks by leverage, `ambit deficits` lists them, and the Time & authority page shows them under What to reach next.",
+      "seen": "The part-filled next step on the map and its key, where the label reads Asked for; the panel of such a node; and ambit deficits"
     },
     {
       "key": "keystone",
       "term": "Keystone",
       "short": "A capability many others depend on",
-      "long": "Ranked by how many capabilities would be affected if it disappeared. High-leverage to invest in, and risky to leave unmaintained. `ambit impact <id>` shows exactly what falls over. The map marks a node with three or more dependants; `ambit status` reports the same idea under the heading bottlenecks, counting only the combos a capability unlocks, so the two lists overlap without being identical.",
-      "seen": "The amber wedge at a node's upper left on the map, and bottlenecks in ambit status"
+      "long": "Counted by how many capabilities would be affected if it disappeared: the map marks a node that three or more depend on. High-leverage to invest in, and risky to leave unmaintained. `ambit impact <id>` shows exactly what falls over. `ambit status` counts a narrower thing under Bottlenecks, the combos a capability unlocks, so the two lists overlap without being identical.",
+      "seen": "The amber wedge at a node's upper left on the map, and Bottlenecks in ambit status"
     },
     {
       "key": "combo",
@@ -76,7 +76,7 @@
       "term": "Verified",
       "short": "Its declared check passed, not just configured",
       "long": "Detection proves a name appears in a config file. Verification runs a declared read-only check and records the result, so a capability can be said to pass its own check, not merely exist; the claim is as strong as what the check tests. Reliability is the share of recorded runs that passed, which is why the history is kept: one success is a weaker claim than forty-seven of fifty. Checks execute, so they live in the repository and run only when asked, never on seed.",
-      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one, and a ring drawn off true is recovering: its last check passed and some recent ones did not, and the more of them failed the further it wavers. A plain filled circle is configured but unproven. The header leads with the verified count. The detail panel adds how many runs the verdict rests on"
+      "seen": "ambit verify, the evidence block in ambit status, and the map — a ✓ badge is a passing check, a ! badge is a failing one, and a ring drawn off true is recovering: its last check passed and some recent ones did not, and the more of them failed the further it wavers. A plain filled circle is configured but unverified. The header leads with the verified count. The detail panel adds how many runs the verdict rests on"
     },
     {
       "key": "maturity",
@@ -96,8 +96,8 @@
       "key": "attention",
       "term": "Attention",
       "short": "Time you spent stepping in so an agent could continue",
-      "long": "Every recorded moment where a person had to step in — approve, correct, copy something across — priced at what an hour of your time is worth. The Attention lens shades the map by how often each capability demanded it; Time & cost ranks what removing it would save. Judgment and knowledge are never counted as reducible, however often they recur.",
-      "seen": "The Attention lens, the Time & cost view, ambit attention"
+      "long": "Every recorded moment where a person had to step in — approve, correct, copy something across — priced at what an hour of your time is worth. The Attention lens shades the map by how often each capability demanded it; Time & authority ranks what removing it would save. Judgment and knowledge are never counted as reducible, however often they recur.",
+      "seen": "The Attention lens, the Time & authority view, ambit attention"
     },
     {
       "key": "proposal",
@@ -111,7 +111,7 @@
       "term": "Authority",
       "short": "Whether it may run, not whether it can",
       "long": "Being technically able to perform an action is not permission to perform it. Authority is tracked separately per capability — observe and execute, each autonomous, confirm, or forbidden — so a reached capability can still require approval. A reached capability no grant names is refused until someone grants one, and the map says \"no grant yet\" apart from a refusal somebody wrote. This is what lets a larger technical surface stay governable: the limits are explicit rather than implied.",
-      "seen": "The Authority lens on the map, the Authority figure on Time & cost, the mode line and the per-action list in the detail panel, and ambit authority"
+      "seen": "The Authority lens on the map, the Authority figure on Time & authority, the mode line and the per-action list in the detail panel, and ambit authority"
     },
     {
       "key": "joint",
@@ -125,14 +125,14 @@
       "term": "Frontier",
       "short": "The edge of your ambit, as of a moment",
       "long": "The frontier is where your ambit ends. It covers everything reached, with the next steps just past it. Every seed records it, so the graph can answer what was reachable at a past date and not only now. `ambit history since` compares two of those observations. Its useful column is the emergent one. It lists the capabilities that became reachable although nothing providing them was added, which happens when prerequisites are satisfied by something else entirely. A per-component changelog cannot show those, because no single change explains one.",
-      "seen": "The line over the map (verified, and how it moved this week), the timeline under the map, which redraws it as each observation left it, the Since strip on Time & cost, ambit history, ambit history since"
+      "seen": "The line over the map (verified, and how it moved this week), the timeline under the map, which redraws it as each observation left it, the Since strip on Time & authority, ambit history, ambit history since"
     },
     {
       "key": "council",
       "term": "Council",
       "short": "Five readings of the first step to reach",
       "long": "The step `ambit next` puts first, read by five seats, each from a question the engine already answers: Science reads the frontier (what reaching it opens), Defence reads fragility (what it would rest on), Treasury reads the ledger (what stepping in for it has cost, and whether it pays back), Justice reads authority (what it would be allowed to do once reached) and Interior reads the checks (whether its foundation is working). Each seat says one sentence, names the command behind it, and takes a stance; the panel says when they are split. A seat with nothing recorded to read says so and is marked silent. No seat runs anything.",
-      "seen": "The council on Time & cost, and ambit council"
+      "seen": "The council on Time & authority, and ambit council"
     },
     {
       "key": "decay",

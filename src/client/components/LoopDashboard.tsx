@@ -269,7 +269,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
   const unreached = Math.max(status.total - status.reached, 0);
   const segments = [
     { key: 'proven', n: proven, label: 'check passed' },
-    { key: 'unproven', n: unproven, label: 'configured, not yet proven' },
+    { key: 'unproven', n: unproven, label: 'configured, not yet verified' },
     { key: 'failing', n: failing, label: 'check failing' },
     { key: 'unreached', n: unreached, label: 'not reached' },
   ];
@@ -279,7 +279,7 @@ function AssuranceBar({ status }: { status: LoopSnapshot['status'] }) {
       <figcaption className="fig-caption">
         <span className="fig-caption-title">What the graph can prove</span>
         <span className="fig-caption-note">
-          {status.verified} of {status.total} proved
+          {status.verified} of {status.total} verified
           {status.total > 0 ? ` · ${Math.round((status.verified / status.total) * 100)}%` : ''}
         </span>
       </figcaption>
@@ -639,7 +639,7 @@ function AuthorityFigure({
 
       {authority.promotable.length > 0 && (
         <div className="fig-block">
-          <h4 className="fig-subtitle">Proven enough to stop asking</h4>
+          <h4 className="fig-subtitle">Earned enough to stop asking</h4>
           <ul className="fig-promote">
             {authority.promotable.map(p => (
               <li key={`${p.id}/${p.action}`} className="fig-promote-item">

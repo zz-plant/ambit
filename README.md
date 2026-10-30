@@ -47,7 +47,7 @@ The terminal and the map use the same words.
 
 - **Capability**: one thing your setup can do. Every MCP server, agent, skill, provider, model and command in your config becomes one, as does every node of the curated tree.
 - **Reached, next step, blocked**: Reached means a configured provider satisfies it and its required prerequisites are met. A next step has all required prerequisites met but lacks a configured provider; it sits just beyond the frontier and appears in `ambit goal`. Blocked means a required prerequisite is missing.
-- **Verified**: Reached, and its declared check recently passed. `ambit status` reports these as proven. Reached is a fact about the config; verified is a fact about a check that ran.
+- **Verified**: Reached, and its declared check recently passed. `ambit status` reports these as verified. Reached is a fact about the config; verified is a fact about a check that ran.
 - **Required vs optional prerequisite**: a required prerequisite gates the capability; an optional one strengthens it without gating. Only required ones block a node. The data model and the CLI call these hard and soft.
 - **Combo**: a capability the curated tree defines as composed from others, such as semantic retrieval from a vector store and local embeddings. Every node on the map is one, which is why their ids start with `combo:`.
 - **Era**: how far up the tree a capability sits. Later eras depend on earlier ones. Eras describe ordering, not importance.
@@ -104,7 +104,7 @@ For the architectural foundation, economic loop, and comparison to prior work, s
 
 | Command | What it answers |
 | :--- | :--- |
-| `ambit status` | Environment health: what is reached and how much of it is proven, what is failing its declared check, what has a single provider, pending approvals, and the one command to type next |
+| `ambit status` | Environment health: what is reached and how much of it is verified, what is failing its declared check, what has a single provider, pending approvals, and the one command to type next |
 | `ambit goal <name>` | The path to unlock a capability, in order, with setup estimates |
 | `ambit impact <id>` | What downstream stops working if this dependency fails |
 | `ambit graph combos` | Compound capabilities, including the ones you are one prerequisite away from |
@@ -124,10 +124,10 @@ The commands above read the capability graph. A second group (`attention`, `work
 ```console
 $ ambit status
 
-    15 of 46 reached, and 24 of your own · 0 proven · 8 with a single provider
+    15 of 46 reached, and 24 of your own · 0 verified · 8 with a single provider
     ────────────────────────────────────────────────────────────────────────
-    proven          0
-  › unproven       15  11 provable now · 4 with no check
+    verified        0
+  › unverified     15  11 provable now · 4 with no check
     failing         0
     entries        24  from your config; checks run on what they provide
     last check  never
@@ -140,11 +140,11 @@ $ ambit status
       ██████░░░░ backend   7/11
     …
 
-    Next  ambit verify · turns 11 of the unproven into evidence
+    Next  ambit verify · turns 11 of the unverified into evidence
 ```
 <!-- /example -->
 
-This is a fresh graph, before any check has run: reached and proven lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together, the `›` marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
+This is a fresh graph, before any check has run: reached and verified lead, the curated capabilities first and then the servers, models and runtimes of your own, the four counts under the rule add up to the two reached figures together, the `›` marks the count that wants a person, and the last line names the next command to type. CI captures the block from a fixture graph and fails if it drifts from what the command prints.
 
 ### ambit impact — downstream dependency impact
 
@@ -203,7 +203,7 @@ claude mcp add ambit -- ambit mcp --profile=agent
 
 `ambit-gate@ambit` is a companion plugin that puts `ambit gate` on every tool call, so what you refused or set to ask first in Ambit is denied or put to you. The hook block below does the same by hand.
 
-Ambit also publishes `ambit://briefing`, a resource a client reads on connect: what is reached and proven, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next with what each step would reach, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to `~/.claude/settings.json`:
+Ambit also publishes `ambit://briefing`, a resource a client reads on connect: what is reached and verified, what is failing, what is waiting on you, what blocked work in the last week, and what is worth reaching next with what each step would reach, in about 1,200 tokens. To put it at the top of every session yourself, add a hook to `~/.claude/settings.json`:
 
 ```json
 {
@@ -313,7 +313,7 @@ Ambit keeps two properties apart:
 - `state` is **structural**: is this thing configured, and what does it depend on. This is what the frontier ledger records.
 - `lifecycle` is **health**: did its declared verification command actually pass. A capability can be fully configured and still `broken`, or `degraded`, which means it is recovering: its last check passed after one that failed.
 
-Availability is decided by lifecycle, not state, and a check can only take availability away: an unverified capability stays in plans, and one whose check fails is excluded from plans, simulations, goals, authority checks, and opportunity rankings. A single successful check restores a broken capability to unproven status, and it is marked as recovering until five consecutive checks pass. `ambit status` reports proven, unproven and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified, or recovering.
+Availability is decided by lifecycle, not state, and a check can only take availability away: an unverified capability stays in plans, and one whose check fails is excluded from plans, simulations, goals, authority checks, and opportunity rankings. A single successful check restores a broken capability to unverified status, and it is marked as recovering until five consecutive checks pass. `ambit status` reports verified, unverified and failing counts, and the map badges each reached node: `✓` for a passing check, `!` for a failing one, nothing for configured but never verified, or recovering.
 
 ### Fragility is computed, not guessed
 

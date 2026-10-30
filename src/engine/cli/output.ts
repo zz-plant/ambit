@@ -145,7 +145,16 @@ function formatGeneric(data: any, c: Palette = terminalPalette()): string[] {
   const HEADLINE = ['name', 'title', 'capability_id', 'domain', 'id', 'type'];
   // How many rows of a nested list the text view prints before counting the rest.
   const LIST_ROWS = 5;
-  const label = (k: string) => k.replace(/_/g, ' ');
+  // A key is a name in JSON and a heading in the text. Where the name is an
+  // abbreviation or the data model's word for something a person says another
+  // way, the heading takes the person's words; `--json` keeps the key.
+  const SAYS: Record<string, string> = {
+    spofs: 'single points of failure',
+    needs_approval: 'asks first',
+    autonomous: 'runs without asking',
+    unattended_inside: 'runs without asking inside',
+  };
+  const label = (k: string) => SAYS[k] ?? k.replace(/_/g, ' ');
   const scalar = (v: any) =>
     Array.isArray(v) ? v.filter(x => typeof x !== 'object').join(', ') : String(v);
   const skip = (_k: string, v: any) =>

@@ -47,7 +47,7 @@ export function runCiCheck(
   if (strict) {
     if (counts.proven < counts.reached) {
       failures.push(
-        `Strict mode violation: ${counts.reached - counts.proven} capabilities have not been proven with declared checks`
+        `Strict mode violation: ${counts.reached - counts.proven} capabilities have not been verified with declared checks`
       );
     }
     if (spofs.length > 0) {

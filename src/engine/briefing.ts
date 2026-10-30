@@ -126,7 +126,7 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
 
   return {
     environment:
-      `${reachPhrase(db)} · ${g.proven} proven · ${g.failing} failing` +
+      `${reachPhrase(db)} · ${g.proven} verified · ${g.failing} failing` +
       (failingActions
         ? ` · ${failingActions} failing ${failingActions === 1 ? 'action' : 'actions'}`
         : ''),

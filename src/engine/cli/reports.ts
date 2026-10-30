@@ -52,11 +52,11 @@ function ago(ts: string | null | undefined): string | undefined {
 /**
  * What the graph can prove versus what it merely lists.
  *
- * Reached nodes split by the worth of their evidence: proven (check passed),
- * unproven (configured and never checked, or recovering: the last run passed
+ * Reached nodes split by the worth of their evidence: verified (check passed),
+ * unverified (configured and never checked, or recovering: the last run passed
  * and recent ones did not), failing (the last check failed), and entries,
  * which carry no check of their own. The four are `graphCounts`'s, so they add
- * up to the reached figure the head prints. The unproven-with-a-declared-check
+ * up to the reached figure the head prints. The unverified-with-a-declared-check
  * set is named, because it is the one a single command turns into evidence —
  * and an inventory that cannot say "installed is not working" is the failure
  * this project exists to prevent.
@@ -83,7 +83,7 @@ function evidenceReport(db: any, checkable: string[] = checkableNames(db)) {
     last_check: ago(last?.t) || 'never',
     provable_now: checkable,
     note: checkable.length
-      ? `configured is not working — ambit verify would turn ${checkable.length} of the unproven into evidence`
+      ? `configured is not working — ambit verify would turn ${checkable.length} of the unverified into evidence`
       : undefined,
   };
 }
@@ -117,7 +117,7 @@ interface NextMove {
  * In the order a person would fix things. A check that fails comes first,
  * because nothing built on it can be trusted. A draft waiting on a decision
  * comes next, since an agent stays idle until someone makes it. Then the
- * checks that turn configured into proven, which is the whole of a fresh
+ * checks that turn configured into verified, which is the whole of a fresh
  * install. Last is the capability `ambit next` ranks first. Absent when none
  * of them has anything to say, and the report then ends without the line.
  */
@@ -157,7 +157,7 @@ function nextMove(
   if (found.checkable) {
     return {
       command: 'ambit verify',
-      why: `turns ${found.checkable} of the unproven into evidence`,
+      why: `turns ${found.checkable} of the unverified into evidence`,
     };
   }
   // The hint is the least important line of a health report, so a failure
@@ -268,7 +268,7 @@ function statusReport(db: any) {
     evidence: [evidenceReport(db, checkable)],
     domains,
     degraded: degraded.length ? degraded : undefined,
-    // Counted with the unproven above, and named here with how their recent
+    // Counted with the unverified above, and named here with how their recent
     // runs went, since a pass after a failure reads as fixed.
     recovering: recoveringNow.length ? recoveringNow : undefined,
     spofs,
@@ -306,14 +306,14 @@ const SAID_IN_HEAD = new Set([
 /**
  * `ambit status` as a person reads it, as lines.
  *
- * The head carries the two numbers that matter, reached and proven, and the
+ * The head carries the two numbers that matter, reached and verified, and the
  * worries the report's own summary names. Under a rule come the evidence
  * counts in one aligned column that adds up to the reached figure, with a
- * marker on the one that wants a person: a failing check before an unproven
+ * marker on the one that wants a person: a failing check before an unverified
  * one, since a repair comes before an acquisition. The marker is a character
  * and colour only adds to it, so the row is found in a pipe and by someone
  * who cannot tell the colours apart. A row whose number another line repeats
- * in part says which part, so "11 of the unproven" on the last line has its
+ * in part says which part, so "11 of the unverified" on the last line has its
  * 11 above it. Whatever else the report found follows as it always has, and
  * the last line is the one thing to type next, taken from the report's `next`.
  *
@@ -323,7 +323,7 @@ const SAID_IN_HEAD = new Set([
 function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const ev = report.evidence[0];
   // Eighty columns hold the head without its noun, and the rows say what is counted.
-  const lead = `${report.reach.replace(' capabilities reached', ' reached')} · ${ev.proven} proven`;
+  const lead = `${report.reach.replace(' capabilities reached', ' reached')} · ${ev.proven} verified`;
   const worried = worries(report);
   const tail = worried.length ? worried.join(' · ') : 'nothing failing';
 
@@ -333,8 +333,8 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
     ev.no_check ? `${ev.no_check} with no check` : null,
   ].filter(Boolean);
   const rows: [label: string, value: string, gloss?: string][] = [
-    ['proven', String(ev.proven)],
-    ['unproven', String(ev.unproven), unprovenParts.join(' · ') || undefined],
+    ['verified', String(ev.proven)],
+    ['unverified', String(ev.unproven), unprovenParts.join(' · ') || undefined],
     ['failing', String(ev.failing)],
     [
       'entries',
@@ -345,7 +345,7 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   ];
   const labelWidth = Math.max(...rows.map(([label]) => label.length));
   const valueWidth = Math.max(...rows.map(([, value]) => value.length));
-  const wants = ev.failing ? 'failing' : ev.unproven ? 'unproven' : undefined;
+  const wants = ev.failing ? 'failing' : ev.unproven ? 'unverified' : undefined;
 
   const head = [
     `${GUTTER}${c.bold}${lead}${c.reset} · ${tail}`,
@@ -368,6 +368,8 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
   const rest = Object.fromEntries(
     Object.entries(report)
       .filter(([key]) => !SAID_IN_HEAD.has(key))
+      // A degraded capability is one that is recovering, and the text says so;
+      // `--json` keeps the key it has always had.
       .map(([key, value]) => [key === 'degraded' ? 'not_working' : key, value])
   );
   const provable =
@@ -396,10 +398,10 @@ function renderStatus(report: StatusReport, c: Palette = C): string[] {
  * check before leaning on it.
  *
  * `status` is the whole report, and a first run that printed it opened on a
- * count of what was unproven and sixty lines of single providers and
+ * count of what was unverified and sixty lines of single providers and
  * bottlenecks, ending on a suggestion to run checks. That is the guardrail
  * shown before the purpose. This leads with the next steps `ambit next` ranks,
- * keeps a failing check and the unproven count as the two things worth
+ * keeps a failing check and the unverified count as the two things worth
  * knowing first, and leaves the rest of the fragility detail to `status`.
  */
 function briefReport(db: any) {
@@ -472,7 +474,7 @@ function readFrom(read: { label: string; servers: string[]; models?: string[] }[
  *
  * It is the readout every first surface gives, in one order: what was read,
  * how much of the tree it reaches, the next step and what it opens, what is
- * not proven yet, and one thing to do. The hosted page and `ambit web` say the
+ * not verified yet, and one thing to do. The hosted page and `ambit web` say the
  * same five things about the same setup. `typed` writes a command the way the
  * person ran Ambit: under npx, `npx ambit-cli web`.
  */
@@ -559,7 +561,7 @@ function renderBrief(
           ? `${verify} checks ${checked} of them`
           : 'none of them declares a check';
       lines.push(
-        `${GUTTER}${report.unproven} configured and not yet proven ${c.grey}· ${how}${c.reset}`
+        `${GUTTER}${report.unproven} configured and not yet verified ${c.grey}· ${how}${c.reset}`
       );
     }
   }
@@ -1167,11 +1169,11 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
   const lines = [
     '',
     `${GUTTER}${c.bold}${head}${c.reset}`,
-    `${GUTTER}${report.reach} · ${cap.proven} proven · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
+    `${GUTTER}${report.reach} · ${cap.proven} verified · ${cap.failing} failing · ${report.spofs.length} with a single provider`,
   ];
   if (!report.grade) {
     lines.push(
-      `${GUTTER}${c.grey}No check has run, so nothing is proven or failing yet.${c.reset}`
+      `${GUTTER}${c.grey}No check has run, so nothing is verified or failing yet.${c.reset}`
     );
   }
   for (const d of cap.degraded.slice(0, 5)) {

@@ -188,7 +188,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   // round in a circle.
   if (provable > 0) {
     recommendations.push(
-      `Verify ${provable} unproven ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into proven`
+      `Verify ${provable} unverified ${provable === 1 ? 'capability' : 'capabilities'}: run "ambit verify" to turn configured into verified`
     );
   }
   if (runtimes.length > 0 && !hasConnected) {
@@ -206,7 +206,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
   const reach = reachPhrase(db);
   const summary = evidence
     ? `${grade} (${score}/100) : ${reach}, ${counts.proven} verified, ${counts.failing} failing`
-    : `Not graded yet: ${reach}, and no check has run, so nothing is proven or failing. ambit verify runs them.`;
+    : `Not graded yet: ${reach}, and no check has run, so nothing is verified or failing. ambit verify runs them.`;
 
   return {
     score,

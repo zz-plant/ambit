@@ -43,7 +43,7 @@ ambit credentials          # what revoking each declared credential would end
 Two of the answers need something from you first:
 
 - **Shared credentials are declared, never inferred.** Ambit cannot see that three servers present one token until a `credentials` block in the config names them ([the shape](./deep-dive.md#what-a-node-is)). Until then `ambit credentials` says none are declared, and three providers behind one token read as three providers.
-- **"Already broken" needs a declared check.** A capability counts as failing only when it declares a check and that check last failed (`ambit verify` runs them). Most MCP servers a person adds have none, so they read as reached and unproven: counted as working, never shown as broken.
+- **"Already broken" needs a declared check.** A capability counts as failing only when it declares a check and that check last failed (`ambit verify` runs them). Most MCP servers a person adds have none, so they read as reached and unverified: counted as working, never shown as broken.
 
 ## Seeing it on the map
 

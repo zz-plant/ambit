@@ -75,6 +75,48 @@ test('no surface uses a name the glossary retired', () => {
   expect(offences).toEqual([]);
 });
 
+/**
+ * The same rule for the two surfaces the client check never read: the words
+ * `ambit` prints, and the words an agent is given over MCP.
+ *
+ * The glossary claims every term is "the exact word the interface uses", and
+ * the interface is more than the page. `ambit status` said "proven" for the
+ * term the glossary calls Verified, `ambit help` called an opportunity an
+ * investment, and a capability that runs without asking was "needs approval"
+ * on one surface and "ask first" on another. Each phrase below reached a
+ * person and was replaced; a new one reaching a person again fails here.
+ */
+const RETIRED_PLATFORM: Record<string, string> = {
+  'needs approval': 'asks first',
+  'ranked investments': 'ranked opportunities',
+  'proposed acquisitions': 'opportunities',
+  'find friction': 'what interrupts you',
+  'the system can do': 'the setup can do',
+};
+
+/** The terminal's own files, and the one that describes every MCP tool. */
+function platformSources(): string[] {
+  const root = join(CLIENT_DIR, '..', '..');
+  const cli = join(root, 'src', 'engine', 'cli');
+  const files = readdirSync(cli)
+    .filter(name => name.endsWith('.ts') && !name.includes('.test.'))
+    .map(name => join(cli, name));
+  return [...files, join(root, 'src', 'engine', 'cli.ts'), join(root, 'src', 'mcp', 'tools.ts')];
+}
+
+test('the terminal and the MCP roster use the same words as the glossary', () => {
+  const offences: string[] = [];
+  for (const file of platformSources()) {
+    const text = readableText(readFileSync(file, 'utf8'));
+    for (const [retired, replacement] of Object.entries(RETIRED_PLATFORM)) {
+      if (text.includes(retired)) {
+        offences.push(`${file.split('/ambit/')[1]}: "${retired}" → "${replacement}"`);
+      }
+    }
+  }
+  expect(offences).toEqual([]);
+});
+
 test('the labels that name a concept use the glossary term exactly', () => {
   const terms = new Map(concepts.concepts.map(c => [c.key, c.term]));
   expect(typeLabel('possibility')).toBe(terms.get('combo'));
