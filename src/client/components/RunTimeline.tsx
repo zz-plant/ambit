@@ -16,7 +16,7 @@ import { NUM } from './figures';
 /**
  * One run, laid out in time: where it went, and how much of it was yours.
  *
- * The Time & cost page prices a month of attention in aggregate, and a person
+ * The Time & authority page prices a month of attention in aggregate, and a person
  * who wants to know what a single session cost them had only a list of counts.
  * This draws one run from what the ledger recorded and nothing else. The run is
  * a bar, the capabilities it used are bars of the length they were measured to
@@ -335,7 +335,7 @@ const label = (r: { id: string; goal?: string; started_at: string; asks: number 
 };
 
 /**
- * The run section of the Time & cost page: a chooser over recent runs and the
+ * The run section of the Time & authority page: a chooser over recent runs and the
  * one chosen, drawn. The store loads it, from the ledger on a real machine and
  * from a hand-written run on the demo; the ledger having no runs is a state
  * the section says, and not a blank.

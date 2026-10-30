@@ -1043,7 +1043,7 @@ export function stillLayout(items: Item[], connections: Connection[]): StillLayo
  * spotlight or headline, and a running simulation as the page draws it.
  *
  * Always in the standard lens. The other two paint who stepped in and what
- * may act without asking, which the allow-list in src/engine/share.ts keeps
+ * runs without asking, which the allow-list in src/engine/share.ts keeps
  * out of a shared picture of the map; the standard lens draws only names,
  * states, checks and edges. No tooltip is drawn either, so no description and
  * no person's name.

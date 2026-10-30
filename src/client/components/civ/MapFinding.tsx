@@ -7,7 +7,7 @@
  * real problem, a check that is failing now, came second; then it followed,
  * a second band over the map saying the week and the worst loss while the
  * first said something was broken. With a check failing, that check is the
- * headline and the range is Time & cost's to report.
+ * headline and the range is Time & authority's to report.
  *
  * The hosted demo is the exception. On someone's own machine a failing check
  * is news they have to act on; on the sample it is the guardrail, and leading

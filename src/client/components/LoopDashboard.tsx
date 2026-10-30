@@ -598,7 +598,7 @@ function BudgetRow({ budget: b }: { budget: LoopAuthority['budgets'][number] }) 
 }
 
 /**
- * What may act without asking, what could, and what is spent.
+ * What runs without asking, what could, and what is spent.
  *
  * The governance half of the product had no web surface at all: whether a
  * capability runs unattended, needs confirmation or is forbidden was terminal
@@ -619,7 +619,7 @@ function AuthorityFigure({
   const [copied, copy] = useCopied();
   const total = authority.autonomous + authority.confirm + authority.forbidden;
   const segments = [
-    { key: 'autonomous', n: authority.autonomous, label: 'run unattended' },
+    { key: 'autonomous', n: authority.autonomous, label: 'without asking' },
     { key: 'confirm', n: authority.confirm, label: 'ask first' },
     { key: 'forbidden', n: authority.forbidden, label: 'forbidden' },
   ];
@@ -628,10 +628,10 @@ function AuthorityFigure({
   return (
     <figure className="fig fig--authority">
       <figcaption className="fig-caption">
-        <span className="fig-caption-title">What may act without asking</span>
+        <span className="fig-caption-title">What runs without asking</span>
         <span className="fig-caption-note">
           {total
-            ? `${authority.autonomous} of ${total} reached capabilities run unattended`
+            ? `${authority.autonomous} of ${total} reached capabilities run without asking`
             : 'no authority declared yet'}
         </span>
       </figcaption>
@@ -697,8 +697,8 @@ function AuthorityFigure({
 
       {authority.sandboxes.length > 0 && (
         <p className="fig-note">
-          Unattended inside {authority.sandboxes.join(', ')}. A sandbox relaxes confirmation there
-          and never a refusal.
+          Without asking inside {authority.sandboxes.join(', ')}. A sandbox relaxes confirmation
+          there and never a refusal.
         </p>
       )}
     </figure>

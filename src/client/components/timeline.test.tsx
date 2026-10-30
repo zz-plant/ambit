@@ -196,7 +196,7 @@ test('the panel as Monday left it says so, and offers nothing drawn on today', (
   });
   const live = renderToStaticMarkup(<NodeDetailPanel />);
   expect(live).toContain('Simulate an outage');
-  expect(text(live)).toContain('Acts without asking');
+  expect(text(live)).toContain('Runs without asking');
 
   const past = renderToStaticMarkup(
     <NodeDetailPanel items={itemsAsOf([vc, ci], EDGES, MONDAY)} asOf="Sep 21, 2026, 09:00 UTC" />
@@ -205,7 +205,7 @@ test('the panel as Monday left it says so, and offers nothing drawn on today', (
   // Monday's check, and none of today's grants or simulations.
   expect(text(past)).toContain('Configured, but not working');
   expect(past).not.toContain('Simulate an outage');
-  expect(text(past)).not.toContain('Acts without asking');
+  expect(text(past)).not.toContain('Runs without asking');
 });
 
 const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>

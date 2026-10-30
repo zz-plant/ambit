@@ -11,7 +11,7 @@
 
 /**
  * The views, one question each: `map` is where you stand, `setup` is what this
- * machine has, `cost` is Time & cost, `audit` is the trail, `proposals` is
+ * machine has, `cost` is Time & authority, `audit` is the trail, `proposals` is
  * what waits on your decision. The words are the labels' own, so a link reads
  * as it lands. Links written before the rename read the old words
  * (`tree`, `config`, `loop`) as aliases, so they still open where they did.
@@ -148,7 +148,7 @@ export function readLinkState(search: string): LinkState {
     view: stated ?? (demo ? 'map' : 'setup'),
     viewStated: stated !== null,
     focusId: params.get('focus') || null,
-    docsOpen: params.get('docs') === 'open',
+    docsOpen: params.get('help') === 'open' || params.get('docs') === 'open',
     demo,
     guideOff: params.get('guide') === 'off',
     lens: oneOf(LENSES, params.get('lens'), 'default'),
@@ -283,7 +283,7 @@ export function writeLinkState(state: ShareState): string {
   params.set('view', state.view);
   if (state.demo) params.set('demo', '1');
   if (state.focusId) params.set('focus', state.focusId);
-  if (state.docsOpen) params.set('docs', 'open');
+  if (state.docsOpen) params.set('help', 'open');
   if (state.lens !== 'default') params.set('lens', state.lens);
   if (state.at) params.set('at', state.at);
   if (state.tab && state.tab !== 'entries') params.set('tab', state.tab);

@@ -313,7 +313,7 @@ const TOKEN_SOURCES: Readonly<Record<string, string>> = {
  * attention, the audit trail, failure signals, usage, unmapped use, token
  * counts, the council and the opportunity ranking, and the loop page that
  * shows them. They had settled on 30 days apiece, except `attention` and
- * `audit`, at 7, so `ambit attention` and the Time & cost page read the same
+ * `audit`, at 7, so `ambit attention` and the Time & authority page read the same
  * ledger over different months. A window that means something else keeps its
  * own: ROI compares before and after over 60, a receipt covers the last hour,
  * and `usage --windows` the last day.

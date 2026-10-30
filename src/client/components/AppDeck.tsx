@@ -340,8 +340,8 @@ export default function AppDeck(p: AppDeckProps) {
             aria-current={p.view === 'cost' ? 'page' : undefined}
             onClick={() => p.onShowView('cost')}
             // The name, for where the tab shows only its icon.
-            aria-label="Time & cost"
-            title="Where your time and your agents' spend go, and what would pay back fastest"
+            aria-label="Time & authority"
+            title="Where your time and your agents' spend go, what may run without asking, and what would pay back fastest"
           >
             <svg
               width="13"
@@ -358,7 +358,7 @@ export default function AppDeck(p: AppDeckProps) {
               <path d="M2 12 L6 8 L9 11 L14 4" />
               <circle cx="14" cy="4" r="1.5" fill="currentColor" />
             </svg>
-            <span className="app-deck-tab-label">Time &amp; cost</span>
+            <span className="app-deck-tab-label">Time &amp; authority</span>
           </button>
           <button
             type="button"
@@ -491,8 +491,8 @@ export default function AppDeck(p: AppDeckProps) {
           type="button"
           className="app-deck-btn"
           onClick={p.onShowDocs}
-          title="Every term on the map, defined (?)"
-          aria-label="Docs: the guide and glossary (?)"
+          title="Every term on the map, defined, and what each view does (?)"
+          aria-label="Help: every term, and what the map shows (?)"
         >
           <svg
             width="13"
@@ -508,7 +508,7 @@ export default function AppDeck(p: AppDeckProps) {
           >
             <path d="M2 3.5 C2 2.7 2.7 2 3.5 2 H7.5 V14 H3.5 C2.7 14 2 13.3 2 12.5 Z M14 3.5 C14 2.7 13.3 2 12.5 2 H8.5 V14 H12.5 C13.3 14 14 13.3 14 12.5 Z" />
           </svg>
-          <span className="app-deck-btn-label">Docs</span>
+          <span className="app-deck-btn-label">Help</span>
         </button>
       </div>
     </header>

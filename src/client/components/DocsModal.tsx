@@ -29,7 +29,7 @@ const HOTKEYS = [
   },
   {
     key: '[ / ]',
-    desc: 'Step through the views: the map, My Setup, Time & cost, Audit and Proposals',
+    desc: 'Step through the views: the map, My Setup, Time & authority, Audit and Proposals',
   },
   {
     key: 'J / K',
@@ -42,7 +42,7 @@ const HOTKEYS = [
   },
   { key: '0', desc: 'Back to actual size' },
   { key: 'G', desc: 'Go to Proposals, where the decisions wait; from there, back to the map' },
-  { key: '?', desc: 'Open this guide' },
+  { key: '?', desc: 'Open this help' },
   {
     key: 'Esc',
     desc: 'Close one thing a press: this guide, the tour’s Proposals card or search first, then a highlight, a simulation, and last the selection',
@@ -123,17 +123,12 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
           <div className="docs-title-wrap">
             <div>
               <h2 id="docs-title" className="docs-title">
-                Guide
+                Help
               </h2>
               <p className="docs-subtitle">What the map shows, and what you can do with it</p>
             </div>
           </div>
-          <button
-            type="button"
-            className="docs-close"
-            onClick={onClose}
-            aria-label="Close the guide"
-          >
+          <button type="button" className="docs-close" onClick={onClose} aria-label="Close help">
             ✕
           </button>
         </div>
@@ -157,8 +152,8 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
           {tab === 'concepts' && (
             <>
               <p className="docs-lede">
-                The {concepts.concepts.length} words the map and the CLI use, in the order you meet
-                them.
+                Every word the map and the CLI use, defined once, in the order you meet them. The
+                first few carry the map; the rest can wait.
               </p>
               {concepts.concepts.map(c => (
                 <div key={c.key} className="docs-concept">
@@ -371,6 +366,13 @@ export default function DocsModal({ isOpen, onClose, initialTab }: DocsModalProp
               </div>
             </>
           )}
+        </div>
+
+        {/* The way from the help overlay to the published pages. They were two
+            surfaces called Docs with no path between them: this one is the
+            terms and the map, and /docs/ is the twenty pages behind it. */}
+        <div className="docs-foot">
+          <a href={`${import.meta.env.BASE_URL}docs/`}>All documentation →</a>
         </div>
       </div>
     </div>

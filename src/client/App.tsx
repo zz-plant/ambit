@@ -682,7 +682,7 @@ export default function App() {
           </div>
         )}
         {view === 'cost' ? (
-          <Lazy what="Time & cost">
+          <Lazy what="Time & authority">
             <LoopDashboard onShowOnMap={showOnMap} onShow={show} />
           </Lazy>
         ) : view === 'audit' ? (
