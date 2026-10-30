@@ -39,7 +39,7 @@ Each task is routed the way a sentence is, and the tools the plan names under Te
 
 Every capability in those two eras carries defaults a careful CTO would set. The agent may read freely, must ask before anything a customer would notice, and may not do the few things that cannot be undone.
 
-| Capability | Runs on its own | Asks first | Refused |
+| Capability | Runs without asking | Asks first | Is refused |
 | :--- | :--- | :--- | :--- |
 | Hosting | read logs, deploy a preview | deploy to production, change the domain | delete the project |
 | Production Database | read the schema | read rows, run a migration, write a row | drop a table, delete the database |

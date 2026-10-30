@@ -2027,14 +2027,23 @@ button.app-sample-tag:hover {
   box-shadow: var(--shadow-md);
 }
 
+/* What the map is, in the key: the tab titles say it on hover only. */
+.civ-key-lead {
+  margin: 0 0 8px;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 .civ-key-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-}
+  gap: 1px;}
 
 .civ-key-head {
   padding: 4px 6px 2px;
@@ -4657,6 +4666,23 @@ button.app-sample-tag:hover {
   gap: 16px;
 }
 
+/* The foot of the help overlay: the one link from the terms and the map to the
+   published pages. */
+.docs-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.docs-foot a {
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.docs-foot a:hover {
+  text-decoration: underline;
+}
+
 .docs-lede {
   font-size: var(--fs-base);
   line-height: 1.5;
@@ -5821,6 +5847,15 @@ button.app-sample-tag:hover {
   margin: 0;
   font-size: var(--fs-sm);
   color: var(--text-muted);
+}
+
+/* What happens to a pasted config, at reading weight and beside the box: it
+   decides whether a visitor pastes one at all, and it used to be the last
+   muted note in the form. */
+.intake-trust {
+  margin: 2px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
 }
 
 /* ─── THE TOUR ───

@@ -1218,7 +1218,7 @@ export function authorityMark(item: Item): AuthorityMark | undefined {
 
 /** The lens's words for each mark, which the legend and the headline share. */
 export const AUTHORITY_LABEL: Record<AuthorityMark, string> = {
-  autonomous: 'Acts without asking',
+  autonomous: 'Runs without asking',
   confirm: 'Asks first',
   forbidden: 'Forbidden',
   ungranted: 'No grant yet',
@@ -1355,7 +1355,7 @@ export function mapFindings(
   const tree = visibleItems(items).filter(i => !isEntry(i));
   const failing = tree.filter(isFailing);
   let best: MapFindings['best'];
-  // The engine ranks what to reach next for My Setup, Time & cost and `ambit
+  // The engine ranks what to reach next for My Setup, Time & authority and `ambit
   // next`, by what blocked work and then by leverage per hour. The map ranked
   // by its own rule and named a different step on the same page, so its pick
   // is the engine's whenever the engine made one that is on the map.

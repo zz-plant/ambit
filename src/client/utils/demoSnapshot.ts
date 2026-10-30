@@ -93,7 +93,7 @@ function demoCouncil(): LoopCouncil {
       {
         seat: 'science',
         reads: 'the frontier',
-        says: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which is supplied and waiting on this alone.',
+        says: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which needs only this one thing to be reached.',
         command: 'ambit propose embeddings',
         subject: { id: 'combo:embeddings', name: 'Embeddings' },
         stance: 'for',
@@ -327,7 +327,7 @@ export function demoSnapshot(): LoopSnapshot {
       {
         id: 'combo:embeddings',
         capability: 'Embeddings',
-        why: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which is supplied and waiting on this alone.',
+        why: 'It has blocked work 4 times, and reaching it also reaches Vector Store, which needs only this one thing to be reached.',
         cost: '10m',
         basis: 'observed',
       },
@@ -341,7 +341,7 @@ export function demoSnapshot(): LoopSnapshot {
       {
         id: 'combo:model-routing',
         capability: 'Model Routing',
-        why: 'Reaching it also reaches Offline Capable, which is already supplied and waiting on this alone.',
+        why: 'Reaching it also reaches Offline Capable, which already has a provider and needs only this.',
         cost: '10m',
         basis: 'observed',
       },

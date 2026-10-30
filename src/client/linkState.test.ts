@@ -246,5 +246,5 @@ test('a change of view is a navigation, and a change of how the same one looks i
   );
   expect(addressMode('?view=map&focus=a', '?view=map&focus=b')).toBe('replace');
   expect(addressMode('?view=map', '?view=map&at=2026-09-26T10%3A00%3A00Z')).toBe('replace');
-  expect(addressMode('?view=map&docs=open', '?view=map')).toBe('replace');
+  expect(addressMode('?view=map&help=open', '?view=map')).toBe('replace');
 });

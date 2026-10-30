@@ -77,8 +77,8 @@ export function journeyLegs(
     title: 'Hand over trust gradually',
     state: !authority ? 'unrecorded' : promotable ? 'open' : authority.autonomous ? 'done' : 'open',
     said: !authority
-      ? 'Not read yet. The CLI reads which capabilities may act without asking.'
-      : `${authority.autonomous} may act without asking, ${authority.confirm} ask first, ${authority.forbidden} forbidden.${
+      ? 'Not read yet. The CLI reads which capabilities run without asking.'
+      : `${authority.autonomous} run without asking, ${authority.confirm} ask first, ${authority.forbidden} forbidden.${
           promotable
             ? ` ${promotable.capability} has passed often enough to stop asking first. Set the number of passes you want and it stops asking, and asks again after one failing check.`
             : ''
@@ -88,23 +88,41 @@ export function journeyLegs(
 
   const broken = status.degraded.length;
   const sole = status.spofs.length;
+  // Two zeros are not a reading: on a healthy machine this said "0 capabilities
+  // configured but failing, 0 pieces the setup rests on alone." Each half is
+  // said only when it is true, and neither being true is its own sentence.
+  const standing = [
+    broken ? `${plural(broken, 'capability', 'capabilities')} configured but failing` : '',
+    sole ? `${plural(sole, 'piece')} the setup rests on alone` : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
   legs.push({
     key: 'stand-up',
     title: 'Keep it standing',
-    state: broken ? 'open' : 'done',
-    said: `${plural(broken, 'capability', 'capabilities')} configured but failing, ${plural(sole, 'piece')} the setup rests on alone.`,
+    // A single point of failure is not a failure, but it is something to
+    // attend to, so the leg is open on either.
+    state: broken || sole ? 'open' : 'done',
+    said: standing
+      ? `${standing}.`
+      : 'Nothing is configured and failing, and nothing rests on a single piece.',
     // The list holds names, and impact takes an id; status names each one.
     command: sole || broken ? 'ambit status' : undefined,
   });
 
   const attention = loop?.attention;
+  // A saving of zero on three interventions is not a measurement, and printing
+  // it says the plugin failed rather than that a month has not passed.
+  const savedHours = loop?.roi.hours_per_year ?? 0;
   legs.push({
     key: 'paid',
     title: 'Know whether it paid',
     state: attention && attention.interventions > 0 ? 'done' : 'unrecorded',
     said:
       attention && attention.interventions > 0
-        ? `${plural(attention.interventions, 'time')} you stepped in, ${loop?.roi.hours_per_year ?? 0} hours a year saved so far.`
+        ? `You stepped in ${plural(attention.interventions, 'time')}; ${
+            savedHours ? `${savedHours} hours a year saved so far` : 'no saving measured yet'
+          }.`
         : "Nothing recorded yet. Ambit's Claude Code or OpenCode plugin records each time you step in, and the saving appears once there is a month to compare.",
   });
 

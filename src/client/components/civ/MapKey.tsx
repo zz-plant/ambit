@@ -76,6 +76,13 @@ export function MapKeyView({
   });
   return (
     <section className="civ-key" aria-label="Key" ref={boxRef}>
+      {/* What this view is, for the half of the distinction the deck's tab
+          titles carry only on hover: the map is the curated tree, and My
+          Setup is what this machine declares. */}
+      <p className="civ-key-lead">
+        The tree of what agent setups grow into, with your position on it. My Setup lists what your
+        configs declare.
+      </p>
       <ul className="civ-key-list">
         {keys.map(entry => {
           if (entry.kind === 'label') {

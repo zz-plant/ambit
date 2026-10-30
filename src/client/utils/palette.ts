@@ -51,7 +51,7 @@ export type ActionGroup = (typeof GROUPS)[number];
 const VIEWS: [View, string, string][] = [
   ['map', 'the map', 'tree reach frontier'],
   ['setup', 'My Setup', 'inventory servers entries'],
-  ['cost', 'Time & cost', 'spend budget tokens pay'],
+  ['cost', 'Time & authority', 'spend budget tokens pay permission authority unattended'],
   ['audit', 'Audit', 'trail approved ran happened'],
   ['proposals', 'Proposals', 'decide approve waiting'],
 ];

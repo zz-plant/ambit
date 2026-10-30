@@ -442,7 +442,7 @@ function ladderFor(
       rung: 'threshold',
       note: failing
         ? `Held: a check is failing inside the ${days}-day window.`
-        : `${have} of ${row.promote_after} in ${days}d${row.promote_set_by ? `, set by ${row.promote_set_by}` : ''}; ${left} more passing ${left === 1 ? 'check or successful use' : 'checks or successful uses'} and it runs unattended.`,
+        : `${have} of ${row.promote_after} in ${days}d${row.promote_set_by ? `, set by ${row.promote_set_by}` : ''}; ${left} more passing ${left === 1 ? 'check or successful use' : 'checks or successful uses'} and it runs without asking.`,
     };
   }
   if (budgeted) {

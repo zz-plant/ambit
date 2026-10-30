@@ -45,6 +45,11 @@ const RETIRED: Record<string, string> = {
   'Hard prerequisite': 'Required',
   'Soft prerequisite': 'Optional',
   Bottleneck: 'Keystone',
+  // One state, one phrase. The plain words replaced `autonomous` in every
+  // sentence a person reads; the mode keeps its own name in the data model.
+  'Acts without asking': 'Runs without asking',
+  'may act without asking': 'Runs without asking',
+  'run unattended': 'Runs without asking',
 };
 
 /** Quoted strings and JSX text — what a reader could actually end up seeing. */

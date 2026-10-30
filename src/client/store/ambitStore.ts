@@ -138,8 +138,15 @@ async function getJson<K extends keyof ApiRoutes>(path: K): Promise<ApiRoutes[K]
 }
 
 let backendProbe: Promise<boolean> | null = null;
-/** What a failed request says to the person: the error's own words, or that the network did not answer. */
-const errorMessage = (e: unknown) => (e instanceof Error && e.message) || 'Network error';
+/**
+ * What a failed request says to the person. The API is on loopback, so a
+ * request that gets no answer at all means the server is not running: that is
+ * a thing to fix, and the sentence says which. It used to say "Network error",
+ * which named nothing and suggested nothing.
+ */
+const errorMessage = (e: unknown) =>
+  (e instanceof Error && e.message) ||
+  'Could not reach the local server. Check that ambit web is still running, then try again.';
 
 /** Served from GitHub Pages, where no engine can be listening. */
 export const isHostedDemo = (
@@ -593,7 +600,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return { ok: true, artifact: data.artifact };
       }
       const err = (await res.json()) as { error?: string };
-      return { ok: false, error: err?.error || 'Approval failed' };
+      return {
+        ok: false,
+        error: err?.error || 'The approval did not go through, so nothing was signed. Try again.',
+      };
     } catch (e) {
       return { ok: false, error: errorMessage(e) };
     }
@@ -626,7 +636,10 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return { ok: true };
       }
       const err = (await res.json()) as { error?: string };
-      return { ok: false, error: err?.error || 'Could not record the decision' };
+      return {
+        ok: false,
+        error: err?.error || 'The decision was not recorded, so nothing changed. Try again.',
+      };
     } catch (e) {
       return { ok: false, error: errorMessage(e) };
     }
@@ -671,7 +684,9 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         return {
           ok: false,
           results: [],
-          error: isApiError(data) ? data.error : 'Could not record the decisions',
+          error: isApiError(data)
+            ? data.error
+            : 'The decisions were not recorded, so nothing changed. Try again.',
         };
       }
       await get().loadProposals();
@@ -1024,7 +1039,7 @@ export const useAmbitStore = create<StoreState>((set, get) => ({
         reading: null,
       });
     } catch (e) {
-      set({ error: 'Could not load: ' + (e as Error).message, loading: false });
+      set({ error: 'Could not read your graph: ' + (e as Error).message, loading: false });
     }
   },
 

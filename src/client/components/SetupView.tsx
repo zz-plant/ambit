@@ -271,7 +271,7 @@ export function SetupView({ onShow, tab, onTab }: SetupViewProps) {
               </div>
             )}
             <p className="setup-subtitle">
-              {demo ? "A sample developer's setup. " : ''}
+              {demo ? "A sample developer's setup. " : 'What your agent configs declare. '}
               {setupSummary(entries, provides)}
             </p>
             {anySwitch && tab === 'entries' && (

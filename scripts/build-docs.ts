@@ -326,7 +326,7 @@ export function renderBody(src: string, markdown: string): { html: string; asset
  * ends.
  */
 const NAV: Array<[string, string]> = [
-  ['Guide', `${BASE}docs/guide/`],
+  ['Get started', `${BASE}docs/guide/`],
   ['FAQ', `${BASE}docs/faq/`],
   ['Reference', `${BASE}docs/deep-dive/`],
   ['Glossary', `${BASE}docs/glossary/`],

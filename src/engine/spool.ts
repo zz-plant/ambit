@@ -2,7 +2,7 @@
  * What a Claude Code session did, read into the work ledger.
  *
  * The ledger was fed by the OpenCode plugin, the control plane and MCP calls,
- * so for someone on Claude Code the Time & cost view stayed empty, a grant
+ * so for someone on Claude Code the Time & authority view stayed empty, a grant
  * could never earn its promotion, and `ambit next` never learned what blocked
  * work. The Claude Code plugin's hooks now append one line per event to a spool
  * file (`spoolPath` in src/shared/db-path.ts), with the tool's name and, on a

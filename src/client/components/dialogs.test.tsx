@@ -24,9 +24,9 @@ function dialogOf(html: string) {
   return { tag, label };
 }
 
-test('the docs dialog is named by its title, and takes the focus itself', () => {
+test('the help dialog is named by its title, and takes the focus itself', () => {
   const { tag, label } = dialogOf(renderToStaticMarkup(<DocsModal isOpen onClose={() => {}} />));
-  expect(label).toBe('Guide');
+  expect(label).toBe('Help');
   expect(tag).toContain('tabindex="-1"');
   expect(tag).toContain('aria-modal="true"');
 });

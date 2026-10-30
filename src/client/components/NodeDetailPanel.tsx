@@ -38,7 +38,7 @@ const RUNG_LABEL: Record<(typeof RUNGS)[number], string> = {
   ungranted: 'No grant',
   confirm: 'Asks',
   threshold: 'Threshold',
-  autonomous: 'Unattended',
+  autonomous: 'Without asking',
   budgeted: 'Ceiling',
 };
 
@@ -528,7 +528,7 @@ export function NodeDetailPanel({ onShow, items: pastItems, asOf }: NodeDetailPa
           {authority.ungranted
             ? 'No grant yet: an agent asking to run it is refused until someone grants one'
             : authority.execute === 'autonomous'
-              ? 'Acts without asking'
+              ? 'Runs without asking'
               : authority.execute === 'confirm'
                 ? 'Asks before acting'
                 : 'Forbidden to act'}

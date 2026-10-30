@@ -91,7 +91,7 @@ const deck = (props: Partial<Parameters<typeof AppDeck>[0]> = {}) =>
 test('the time-and-cost view is offered on a real machine, not only in the demo', () => {
   // The tab was rendered behind `demo &&`, so the half of the product that
   // prices your time was invisible to anyone running it on their own setup.
-  expect(deck()).toContain('Time &amp; cost');
+  expect(deck()).toContain('Time &amp; authority');
 });
 
 test('each view tab keeps its name where it shows only its icon', () => {
@@ -99,7 +99,7 @@ test('each view tab keeps its name where it shows only its icon', () => {
   // buttons beside them already did, or Docs was pushed past the right edge
   // (at 1024px Docs started at x=1035).
   const html = deck();
-  for (const name of ['Map', 'My Setup', 'Time &amp; cost', 'Audit', 'Proposals']) {
+  for (const name of ['Map', 'My Setup', 'Time &amp; authority', 'Audit', 'Proposals']) {
     expect(html).toMatch(
       new RegExp(`<button[^>]*class="app-deck-tab[^"]*"[^>]*aria-label="${name}"`)
     );
@@ -541,7 +541,7 @@ test('the governance half is on the page: authority, next steps, and the week', 
   // until now, and the most decision-shaped data the engine holds.
   seed({ loop: demoSnapshot(), loopSource: 'sample', loopEmpty: false });
   const html = renderToStaticMarkup(<LoopDashboard />);
-  expect(html).toContain('What may act without asking');
+  expect(html).toContain('What runs without asking');
   expect(html).toContain('Proven enough to stop asking');
   expect(html).toContain('What to reach next');
   expect(html).toContain('emergent');
@@ -840,7 +840,7 @@ test('the map has an authority lens, keyed by what the demo actually grants', ()
     />
   );
   expect(html).toMatch(/aria-pressed="true"[^>]*>Authority</);
-  for (const label of ['Acts without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
+  for (const label of ['Runs without asking', 'Asks first', 'Forbidden', 'No grant yet']) {
     expect(html).toContain(label);
   }
 });
