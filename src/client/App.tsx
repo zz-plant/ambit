@@ -78,6 +78,8 @@ const Loading = ({ what }: { what: string }) => (
  * A view whose code could not be fetched, which is what an open page meets
  * after a deploy replaces the files it was built from. The suspense fallback
  * used to stay up forever; this says so and offers the one thing that works.
+ * main.tsx reloads once before this is reached, so it is what a person sees
+ * when the reload did not help.
  */
 class ViewBoundary extends React.Component<
   { what: string; children: React.ReactNode },
@@ -94,8 +96,8 @@ class ViewBoundary extends React.Component<
     return (
       <div className="app-loading" role="alert">
         <p>
-          {this.props.what.charAt(0).toUpperCase() + this.props.what.slice(1)} could not load. The
-          page may be older than the files it asks for.
+          {this.props.what.charAt(0).toUpperCase() + this.props.what.slice(1)} could not load. A
+          newer build may have replaced the files this page was loaded from. Reload to get it.
         </p>
         <button type="button" className="tp-btn" onClick={() => window.location.reload()}>
           Reload
