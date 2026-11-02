@@ -76,6 +76,8 @@ const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> 
   ['authority', 'promoted_on_evidence', 'TEXT'],
   // §13.10: time-bounded temporary authority elevation (TTL).
   ['authority', 'expires_at', 'TEXT'],
+  // §13.9: a condition a target must satisfy for the grant to cover it.
+  ['authority', 'condition', 'TEXT'],
   // A budget is a standing grant with a ceiling, so it has to know when its
   // period began or "20 dollars a month" silently means "20 dollars ever".
   ['budgets', 'period_start', 'TEXT'],

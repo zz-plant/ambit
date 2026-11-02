@@ -561,6 +561,7 @@ function grantAuthority(
     expires?: string;
     by?: string;
     note?: string;
+    condition?: string;
   }
 ) {
   const capability =
@@ -611,11 +612,13 @@ function grantAuthority(
   const by = input.by ? (input.by.startsWith('human:') ? input.by : `human:${input.by}`) : null;
   const holder = input.holder || '';
   const scope = input.scope || '';
+  const condition = input.condition || null;
   const source = input.source || 'human';
   const note =
     input.note ||
     [
       expiresAt ? `temporary ${mode} elevation (${expiresDesc})` : null,
+      condition ? `bound ${scope || '<any>'} ${condition}` : null,
       by ? `declared by ${by}` : null,
     ]
       .filter(Boolean)
@@ -623,14 +626,15 @@ function grantAuthority(
     null;
 
   db.prepare(`
-    INSERT INTO authority (capability_id, action, mode, holder, scope, source, note, expires_at, promote_set_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO authority (capability_id, action, mode, holder, scope, source, note, expires_at, condition, promote_set_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(capability_id, action, holder, scope, source) DO UPDATE SET
       mode = excluded.mode,
       note = excluded.note,
       expires_at = excluded.expires_at,
+      condition = excluded.condition,
       promote_set_by = COALESCE(excluded.promote_set_by, authority.promote_set_by)
-  `).run(capability, action, mode, holder, scope, source, note, expiresAt, by);
+  `).run(capability, action, mode, holder, scope, source, note, expiresAt, condition, by);
 
   db.prepare(
     "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes, object) VALUES ('authority', ?, 'grant-written', 1, ?, ?)"
@@ -642,6 +646,7 @@ function grantAuthority(
     action,
     mode,
     scope: scope || undefined,
+    condition: condition || undefined,
     holder: holder || undefined,
     declared_by: by || undefined,
     expires_at: expiresAt || undefined,

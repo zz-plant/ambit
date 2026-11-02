@@ -172,6 +172,29 @@ function scopeCovers(scope: string, target: string): boolean {
   return target.startsWith(scope + '/') || target.startsWith(scope + ':');
 }
 
+/** The last path segment of a target, which a condition names (`main`, `nuc`). */
+function lastSegment(target: string): string {
+  const base = target.slice(target.lastIndexOf(':') + 1);
+  return base.split('/').filter(Boolean).pop() ?? '';
+}
+
+/**
+ * Whether a bound affordance's condition holds for a target.
+ *
+ * A narrow DSL, evaluated with no shell: `key=value` requires the target's
+ * last segment to equal it; `key!=value` requires it to differ. This is what
+ * turns a scope from "yes on this repo" into "yes on this repo, not on main".
+ * A condition the parser does not recognise is not a narrowing — a grant it
+ * cannot understand should not refuse an action by accident.
+ */
+function conditionHolds(condition: string, target: string): boolean {
+  const m = /^([A-Za-z0-9_]+)(!=|==|=)(.+)$/.exec(condition.trim());
+  if (!m) return true;
+  const [, , op, want] = m;
+  const got = lastSegment(target);
+  return op === '!=' ? got !== want : got === want;
+}
+
 /**
  * Why a DENY is a DENY, for a caller that has to treat them differently. The
  * Claude Code gate denies what is forbidden or over budget, and asks a person
@@ -237,7 +260,7 @@ function canExecute(
   const runtimes = runtimesReaching(db, capability);
   const grants = db
     .prepare(
-      `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note, a.expires_at
+      `SELECT a.capability_id, a.action, a.mode, a.holder, a.scope, a.source, a.note, a.expires_at, a.condition
      FROM authority a JOIN capabilities c ON c.id = a.capability_id
      WHERE a.action = ? AND (a.capability_id = ?
        OR (c.kind = 'runtime' AND a.capability_id IN (${runtimes.map(() => '?').join(', ') || "''"})))`
@@ -255,6 +278,12 @@ function canExecute(
     // than the report again.
     if (!isRuntimeGrant(g) && g.holder && input.actor && g.holder !== input.actor) return false;
     if (g.scope && input.target && !scopeCovers(g.scope, input.target)) return false;
+    // A bound condition the target fails excludes the grant, exactly as a scope
+    // that does not cover does: "autonomous on this repo" covers main; "…but
+    // not on main" does not. The gate evaluates the condition; a grant whose
+    // condition it cannot parse is not a narrowing.
+    if (g.scope && g.condition && input.target && !conditionHolds(g.condition, input.target))
+      return false;
     // No target named, so a scoped grant cannot say the call is inside its
     // scope. It may still narrow, and never widen: "autonomous on staging"
     // was the most specific grant for a question that named no target, and
@@ -295,6 +324,18 @@ function canExecute(
       .filter(g => g.scope)
       .map(g => g.scope)
       .join(', ') || undefined;
+  // The bound affordance in the roadmap's shape: action × target × scope, with
+  // the condition the covering grant placed on it. Present when a target was
+  // named, so an answer can say "may push, not on main".
+  const bound =
+    input.target !== undefined
+      ? {
+          action,
+          target: input.target,
+          ...(scope ? { scope } : {}),
+          ...((grant as any)?.condition ? { condition: (grant as any).condition } : {}),
+        }
+      : undefined;
 
   // Budget: declared, spent, remaining. No budget declared is no limit, and
   // the report says so rather than inventing one.
@@ -421,6 +462,7 @@ function canExecute(
     action,
     governing_grant: grant,
     scope,
+    bound,
     sandbox: sandbox?.target,
     // What this action has actually been proved to do to this object, as
     // opposed to what it has been proved to do in general. Reading repository A
@@ -539,6 +581,7 @@ export {
   standing,
   governingMode,
   scopeCovers,
+  conditionHolds,
   sandboxCovering,
   objectEvidence,
   missingPrerequisites,
