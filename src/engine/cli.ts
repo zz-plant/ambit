@@ -529,6 +529,7 @@ async function runCommand(
                 mode: positional[2],
                 action: value('action'),
                 scope: value('scope'),
+                condition: value('condition'),
                 ttl: value('ttl'),
                 expires: value('expires'),
                 by: by(),

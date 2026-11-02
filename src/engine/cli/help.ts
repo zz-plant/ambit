@@ -136,9 +136,12 @@ check — what is proven, what is permitted, what is currently broken
                           acquire it, with each patch to paste. Prints only
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
-  check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]
+  check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--condition=branch!=main] [--by=<person>]
                           declare a grant, or elevate one for a window; once
-                          the TTL runs out whatever stood before decides again
+                          the TTL runs out whatever stood before decides again.
+                          --condition bounds the scope: "yes on this repo, not
+                          on main". A condition the gate cannot parse is not a
+                          narrowing
   check authority promote [<cap> <action> --after=N --window=30d --scope=<target>
                           --by=<person>]   widen a grant once the evidence
                           supports it; --scope buys it for one target only. One
