@@ -14,6 +14,7 @@
  * the acquisition catalog says it bills. Neither is a guess dressed as data.
  */
 import { shellQuote } from '../shared/shell.ts';
+import { projectContextBoosts } from './projectContext.ts';
 import type { Db } from './db.ts';
 import { recordingHint } from './paths.ts';
 import { usable } from './assurance.ts';
@@ -47,6 +48,7 @@ interface Candidate {
   observed_blocks: number;
   leverage: number;
   blocks: number;
+  boost?: number;
 }
 
 /**
@@ -58,6 +60,7 @@ interface Candidate {
  * becomes wallpaper. `ambit goal <cap>` is where the longer routes live.
  */
 function candidates(db: Db): Candidate[] {
+  const boosted = projectContextBoosts();
   const caps = db
     .prepare(
       `SELECT id, name, description, state, lifecycle, unlock_cost_setup
@@ -131,6 +134,7 @@ function candidates(db: Db): Candidate[] {
     observed_blocks: c.blocks,
     leverage: c.leverage,
     blocks: c.blocks,
+    boost: boosted.has(c.id) ? 1 : 0,
   }));
 }
 

@@ -53,6 +53,8 @@ const RECENT_RUNS = 5;
 export const usable = (lifecycle?: string): boolean =>
   !lifecycle || !(FAILING as readonly string[]).includes(lifecycle);
 
+const isPassed = (action: string) => action === 'verified' || action === 'passed';
+
 function lifecycleFrom(
   reached: boolean,
   hasProvider: boolean,
@@ -61,10 +63,10 @@ function lifecycleFrom(
   if (!reached) return hasProvider ? 'detected' : 'unknown';
   if (history.length === 0) return 'configured';
   // evidenceFor returns newest first.
-  if (history[0].action !== 'verified') return 'broken';
+  if (!isPassed(history[0].action)) return 'broken';
   const recent = history.slice(0, RECENT_RUNS);
-  const allRecentPassed = recent.every(h => h.action === 'verified');
-  if (!allRecentPassed) return 'degraded';
+  const allRecentPassed = recent.every(h => isPassed(h.action));
+  if (!allRecentPassed) return 'recovering';
   return history.length >= RECENT_RUNS ? 'reliable' : 'verified';
 }
 
@@ -132,7 +134,7 @@ function recentRuns(db: Db, id: string): string {
        AND ${CHECK_RUN_SQL} ORDER BY timestamp DESC, id DESC LIMIT ?`
     )
     .all<{ action: string }>(id, RECENT_RUNS);
-  const passed = runs.filter(r => r.action === CHECK_RUN.passed).length;
+  const passed = runs.filter(r => r.action === 'verified' || r.action === CHECK_RUN.passed).length;
   return `${passed} of the last ${runs.length} passed`;
 }
 

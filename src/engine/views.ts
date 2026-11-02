@@ -153,7 +153,10 @@ export function techTreeView(db: Db): TechTreeResponse {
        WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
       .all()
-      .map(r => [r.capability_id, { at: r.at, passed: r.action === 'verified' }])
+      .map(r => [
+        r.capability_id,
+        { at: r.at, passed: r.action === 'verified' || r.action === 'passed' },
+      ])
   );
 
   // How many runs passed, of how many: one success is a weaker claim than
@@ -162,7 +165,7 @@ export function techTreeView(db: Db): TechTreeResponse {
   try {
     for (const r of db
       .prepare(
-        `SELECT capability_id, SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passed,
+        `SELECT capability_id, SUM(CASE WHEN action IN ('verified', 'passed') THEN 1 ELSE 0 END) AS passed,
                 COUNT(*) AS total
          FROM session_learning WHERE ${CHECK_RUN_SQL} GROUP BY capability_id`
       )
@@ -571,7 +574,9 @@ function checkHistory(db: Db, runs = CHECK_HISTORY_RUNS): Map<string, CheckRun[]
       )
       .all<{ capability_id: string; id: number; action: string }>(runs)) {
       if (!out.has(r.capability_id)) out.set(r.capability_id, []);
-      out.get(r.capability_id)!.push({ id: r.id, passed: r.action === CHECK_RUN.passed });
+      out
+        .get(r.capability_id)!
+        .push({ id: r.id, passed: r.action === 'verified' || r.action === CHECK_RUN.passed });
     }
   } catch {
     /* a graph with no ledger yet */

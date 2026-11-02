@@ -114,7 +114,12 @@ function verifyCheck(
     if (exists) {
       db.prepare(
         "INSERT INTO session_learning (session_id, capability_id, action, outcome_score, notes) VALUES ('verify', ?, ?, ?, ?)"
-      ).run(id, status, status === 'verified' ? 1 : 0, detail || null);
+      ).run(
+        id,
+        status === 'verified' ? 'passed' : status,
+        status === 'verified' ? 1 : 0,
+        detail || null
+      );
     }
   }
   return { id, name, status, detail, ms };
@@ -238,7 +243,7 @@ function runVerification(
           {
             ...r,
             reliability: history.length
-              ? `${history.filter((h: any) => h.action === 'verified').length}/${history.length}`
+              ? `${history.filter((h: any) => h.action === 'verified' || h.action === 'passed').length}/${history.length}`
               : undefined,
             lifecycle: db.prepare('SELECT lifecycle FROM capabilities WHERE id = ?').get(which)
               ?.lifecycle,
@@ -267,7 +272,9 @@ function runVerification(
     const r = verifyAction(db, node, action);
     const history = evidenceFor(db, r.id);
     const runs = history.length;
-    const passes = history.filter((h: any) => h.action === 'verified').length;
+    const passes = history.filter(
+      (h: any) => h.action === 'verified' || h.action === 'passed'
+    ).length;
     deriveLifecycles(db);
     const authority = evaluatePromotions(db);
     recordDelegationState(db);
@@ -323,7 +330,9 @@ function settle(db: Db, results: any[], target?: string) {
   const withReliability = results.map((r: any) => {
     const history = evidenceFor(db, r.id);
     const runs = history.length;
-    const passes = history.filter((h: any) => h.action === 'verified').length;
+    const passes = history.filter(
+      (h: any) => h.action === 'verified' || h.action === 'passed'
+    ).length;
     return {
       ...r,
       reliability: runs ? `${passes}/${runs}` : undefined,

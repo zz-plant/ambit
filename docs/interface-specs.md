@@ -41,6 +41,7 @@ Size is loose. S is a file and its test. M is a projection, a route or a compone
 | [L3](#l3-one-row-per-machine) | One row per machine | My Setup, Infra | L | Slices 1 and 2 built |
 | [K1](#k1-a-palette-that-speaks-verbs) | A palette that speaks verbs | Finder | M | Built |
 | [K2](#k2-the-terminal-is-a-surface-too) | `ambit status` as a designed surface | CLI | S | Built |
+| [O1](#o1-ontological-rationalization-decoupled-assurance-bound-affordances-and-the-supervisory-ladder) | Ontological rationalization | Engine, API, CLI | M | Built |
 
 ## First use
 
@@ -404,6 +405,40 @@ Slice 2. A manifest device or service may carry `tags`, seeded into a `tags` col
 **Done when.** The status of a fresh install prints the aligned block with a `Next` line. Piped output is plain and carries the same content. JSON output is unchanged apart from the new field.
 
 **Built.** `cli/output.ts` gains a color gate (`colorOn`, `terminalPalette`, `PLAIN`) and `emit(data, human?)`, and the generic formatter now returns lines, with its output for the other commands byte-identical. `renderStatus` in `cli/reports.ts` prints a summary line (reached of total, and verified), the aligned counts and a final Next line from the new `next` field, which is the last key of the JSON and holds `{command, why}`. The order is a failing check, then a draft waiting, then `ambit verify`, then the top pick of `ambit next`; when none applies the field is absent and so is the line. A `›` marks the row that wants a person, so it survives a pipe, and an empty `NO_COLOR` counts as unset. The README block keeps its 14-line window and gains a one-line tail (`capture-doc-examples.ts` takes an optional `tail`), so it ends on Next after an ellipsis.
+
+## Ontology & Governance
+
+### O1. Ontological rationalization: decoupled assurance, bound affordances, and the supervisory ladder
+
+*Size M. Status: built.*
+
+**The question.** How does Ambit cleanly distinguish reachability from empirical verification, disambiguate providers and resources, formalize progressive supervision, and model actions bound to objects without breaking existing stored snapshot continuity?
+
+**Today.** Three naming and conceptual collisions created cognitive friction:
+1. `provider` was both a capability supplier (MCP server, skill) and an inference endpoint (`provider:anthropic`, which was mapped to `kind = 'resource'`).
+2. `degraded` meant failing in legacy wire fields and CLI output, but meant recovering (last check passed after failures) in `vocabulary.ts`.
+3. Authority was modeled as a flat 3-mode enum (`autonomous`, `confirm`, `forbidden`), while the governance engine actually evaluated a 6-rung ladder of supervision.
+4. Curated capabilities were coarse verbs (`combo:version-control`), lacking target objects and scopes.
+5. Human accounting labeled reducible friction "middleware", creating confusion with software middleware.
+
+**The change.**
+1. **Decoupled Assurance Model ($\text{State} \times \text{Assurance}$):**
+   - Structural reachability (`unconfigured`, `blocked`, `reached`) is strictly decoupled from empirical evidence.
+   - Node assurance levels: `untested`, `proven`, `reliable`, `recovering`, and `failing`.
+   - `recovering` is introduced as the explicit lifecycle for nodes whose latest check passed after failures, curing the `degraded` semantic inversion while retaining wire compatibility.
+   - Raw check run actions in `session_learning` are binary: `passed` (or legacy `verified`) and `failed`.
+2. **Taxonomy Normalization:**
+   - Canonical kind mapping normalizes `endpoint`, `upstream`, `substrate`, `host`, `adapter`, and `model` in `ontology.ts`.
+   - Stored node ids remain unchanged for complete continuous ledger backward compatibility.
+3. **The 6-Rung Supervisory Ladder:**
+   - Formalized ladder: `ungranted` $\rightarrow$ `forbidden` $\rightarrow$ `attended` $\rightarrow$ `thresholded` $\rightarrow$ `budgeted` $\rightarrow$ `autonomous`.
+   - Mapped at runtime to instantaneous gate verdicts: `ALLOW`, `CHALLENGE`, or `DENY`.
+4. **Labor Classification:**
+   - Explicit distinction between `Compensatory Friction` (mechanical shims and glue to eliminate) and `Sovereign Discretion` (essential human judgment, ethics, and fiduciary sign-off to preserve).
+
+**Implementation seams.** `src/shared/types.ts` (`LIFECYCLES`, `SUPERVISORY_RUNGS`), `src/engine/ontology.ts` (`PREFIX_KIND`, `CATEGORY_KIND`), `src/engine/vocabulary.ts` (`RECOVERING`, `CHECK_RUN_SQL`, `COMPENSATORY_FRICTION_KINDS`), `src/engine/assure/lifecycle.ts` (`lifecycleFrom`), and `src/engine/views.ts` (`ladderOf`).
+
+**Done when.** All 141 existing test suites pass. Check runs accept `passed` and `verified` identically. `recovering` is recognized as a valid lifecycle alongside `degraded`. Normalized prefixes (`upstream:`, `substrate:`, `adapter:`) map cleanly to engine kinds.
 
 ## Decisions, with recommendations
 

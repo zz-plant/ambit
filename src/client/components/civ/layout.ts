@@ -863,7 +863,8 @@ export const isFailing = (item: Item): boolean =>
  * `RECOVERING` in the engine's vocabulary.ts, transcribed.
  */
 export const isRecovering = (item: Item): boolean =>
-  item.status === 'built' && ['degraded'].includes(String(item.meta?.lifecycle ?? ''));
+  item.status === 'built' &&
+  ['degraded', 'recovering'].includes(String(item.meta?.lifecycle ?? ''));
 
 /** How many runs the engine's lifecycle reads: `RECENT_RUNS` in assure/lifecycle.ts, transcribed. */
 const RECENT_RUNS = 5;

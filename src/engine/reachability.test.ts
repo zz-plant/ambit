@@ -125,7 +125,7 @@ function checkRuns(id: string): { session_id: string; action: string; notes: str
     return rows(
       db,
       `SELECT session_id, action, notes FROM session_learning
-       WHERE capability_id = '${id}' AND action IN ('verified', 'failed') ORDER BY id DESC`
+       WHERE capability_id = '${id}' AND action IN ('verified', 'passed', 'failed') ORDER BY id DESC`
     );
   } finally {
     db.close();
@@ -162,7 +162,7 @@ test('an answered probe is a passing check, and the machine it reached is seen',
   expect(report.incidents).toEqual([]);
 
   for (const id of ['device:nuc', 'svc:ollama', 'svc:vllm']) {
-    expect(checkRuns(id)).toEqual([{ session_id: 'verify', action: 'verified', notes: null }]);
+    expect(checkRuns(id)).toEqual([{ session_id: 'verify', action: 'passed', notes: null }]);
     expect(node(id).lifecycle).toBe('verified');
     expect(node(id).last_seen_at).toMatch(/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
   }
@@ -238,10 +238,10 @@ test('the next answer makes it usable again, recovering until answers in a row',
 
   svc.answering = true;
   await probeWith(manifest);
-  expect(checkRuns('svc:ollama')[0].action).toBe('verified');
+  expect(checkRuns('svc:ollama')[0].action).toBe('passed');
   // The latest check decides: one answer after a failure is recovering,
   // which is usable, and a run of answers clears the failure from the window.
-  expect(node('svc:ollama').lifecycle).toBe('degraded');
+  expect(node('svc:ollama').lifecycle).toBe('recovering');
   expect(usable(node('svc:ollama').lifecycle)).toBe(true);
   expect(node('svc:ollama').last_seen_at).not.toBe(LONG_AGO);
 
@@ -404,7 +404,8 @@ test('when a machine was seen stays on the machine that saw it; the check runs t
   expect(nuc).not.toHaveProperty('tags');
   expect(
     payload.tables.session_learning.filter(
-      (r: any) => r.capability_id === 'device:nuc' && r.action === 'verified'
+      (r: any) =>
+        r.capability_id === 'device:nuc' && (r.action === 'verified' || r.action === 'passed')
     )
   ).toHaveLength(1);
 });

@@ -28,6 +28,8 @@ const HELP_SHORT = `ambit - what your setup can do, what it costs, what to chang
   verify [cap] [--history]   run the declared check, or show past verification;
                              --failing re-runs only the checks now failing
                              or recovering
+  fix <cap>         what to type for a failing or unreached capability, and
+                    the ways to acquire it. Prints only
   impact <id>       what actually breaks if a capability goes away
   doctor            setup health: what works, what fails, what rests on one piece
   connect [runtime] register Ambit's MCP server in each runtime config it can write
@@ -129,6 +131,9 @@ check — what is proven, what is permitted, what is currently broken
   check verify --failing  re-run only the checks that are failing or recovering
                           now, after fixing what broke them; one pass brings a
                           capability back
+  check fix <cap>         what to type for a capability that is failing or not
+                          yet reached: the re-check command and the ways to
+                          acquire it, with each patch to paste. Prints only
   check authority [cap] [scope <target>]   what may run unattended, what each
                           action may touch, whether a scope covers a target
   check authority grant <cap> <mode> [--ttl=30m] [--scope=<target>] [--by=<person>]

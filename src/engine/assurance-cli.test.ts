@@ -30,7 +30,7 @@ test('verification records evidence rather than trusting configuration', () => {
   cli('verify', 'shell-execution');
   const evidence = cli('verify', 'shell-execution', '--history');
   expect(evidence.length).toBe(2);
-  expect(evidence.every((e: any) => e.action === 'verified')).toBe(true);
+  expect(evidence.every((e: any) => e.action === 'passed')).toBe(true);
 });
 
 test('a capability with no declared check is not reported as verified', () => {
@@ -353,7 +353,7 @@ test('one passing check after a failure releases the gate', () => {
   const db = getDb(join(dir, 'graph.db'));
   expect(
     rows(db, "SELECT lifecycle FROM capabilities WHERE id = 'combo:shell-execution'")[0].lifecycle
-  ).toBe('degraded');
+  ).toBe('recovering');
   db.close();
   const p = cli('goal', 'shell-execution');
   expect(p.reachable).toBe(true);
@@ -460,7 +460,7 @@ test('a contract action can declare a check of its own', () => {
   // Evidence landed against the action, reachable by its own id.
   const evidence = cli('verify', 'act:version-control/commit_changes', '--history');
   expect(evidence.length).toBe(1);
-  expect(evidence[0].action).toMatch(/verified|failed/);
+  expect(evidence[0].action).toMatch(/passed|verified|failed/);
 });
 
 test('a promotion a person set survives the next seed', () => {

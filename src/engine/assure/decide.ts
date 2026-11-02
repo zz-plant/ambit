@@ -458,7 +458,7 @@ function objectEvidence(db: Db, capability: string, action: string, object: stri
   try {
     const row = db
       .prepare(
-        `SELECT SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passes,
+        `SELECT SUM(CASE WHEN action IN ('verified', 'passed') THEN 1 ELSE 0 END) AS passes,
                 SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
                 MAX(timestamp) AS last_seen
          FROM session_learning

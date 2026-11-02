@@ -45,8 +45,16 @@ const PREFIX_KIND: Record<string, Kind> = {
   // in this vocabulary's sense. It serves models, so it is a resource. The
   // collision is unfortunate and predates the split; the column disambiguates.
   provider: 'resource',
+  endpoint: 'resource',
+  upstream: 'resource',
+  substrate: 'resource',
+  host: 'resource',
   model: 'resource',
   device: 'resource',
+  adapter: 'provider',
+  tool: 'provider',
+  mcp: 'provider',
+  skill: 'provider',
   cred: 'credential',
 };
 
@@ -56,9 +64,15 @@ const CATEGORY_KIND: Record<string, Kind> = {
   human: 'actor',
   runtime: 'runtime',
   provider: 'resource',
+  endpoint: 'resource',
+  upstream: 'resource',
+  substrate: 'resource',
+  host: 'resource',
   model: 'resource',
   device: 'resource',
   service: 'resource',
+  adapter: 'provider',
+  tool: 'provider',
   credential: 'credential',
 };
 

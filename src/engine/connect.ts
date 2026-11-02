@@ -330,18 +330,28 @@ function startsAmbit(entry: any): boolean {
 }
 
 /**
+ * Append or configure an arbitrary MCP server table in Codex config.toml.
  * Codex keeps servers in TOML, which the engine reads with a reader of its
- * own and has no writer for. A table is appended when none is named ambit;
- * one that exists is left alone, since rewriting TOML by hand risks the rest.
+ * own and has no writer for. A table is appended when none is named; one that
+ * exists is left alone, since rewriting TOML by hand risks the rest.
  */
-function configureCodex(
+export function configureCodexServer(
   filePath: string,
+  server: ServerSpec,
   dryRun: boolean
 ): { action: 'added' | 'already_configured'; backup?: string } {
   const text = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '';
-  if (/^\[mcp_servers\.ambit\]\s*$/m.test(text)) return { action: 'already_configured' };
-  const { command, args } = serverCommand();
-  const table = `[mcp_servers.ambit]\ncommand = ${JSON.stringify(command)}\nargs = [${args.map(a => JSON.stringify(a)).join(', ')}]\n`;
+  const escaped = server.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (new RegExp(`^\\[mcp_servers\\.${escaped}\\]\\s*$`, 'm').test(text)) {
+    return { action: 'already_configured' };
+  }
+  let table = `[mcp_servers.${server.name}]\ncommand = ${JSON.stringify(server.command)}\nargs = [${server.args.map(a => JSON.stringify(a)).join(', ')}]\n`;
+  if (server.env && Object.keys(server.env).length) {
+    const envEntries = Object.entries(server.env)
+      .map(([k, v]) => `${JSON.stringify(k)} = ${JSON.stringify(v)}`)
+      .join(', ');
+    table += `env = { ${envEntries} }\n`;
+  }
   let backup: string | undefined;
   if (!dryRun) {
     backup = keepBackup(filePath);
@@ -354,17 +364,14 @@ function configureCodex(
   return { action: 'added', backup };
 }
 
-/** Add or update the ambit entry in a client configuration. */
-function configureFile(
+/** Add or update any server entry in a client configuration. */
+export function configureServerEntry(
   filePath: string,
   kind: ConfigKind,
+  server: ServerSpec,
   dryRun = false
 ): { action: 'added' | 'updated' | 'already_configured'; backup?: string } {
-  if (kind === 'codex') return configureCodex(filePath, dryRun);
-  // A file that does not parse is left as it is. Replacing it with `{}` plus
-  // one entry deleted every other server, agent and key a person had in it,
-  // and a commented `.jsonc` file, which OpenCode reads and JSON.parse does
-  // not, was exactly such a file.
+  if (kind === 'codex') return configureCodexServer(filePath, server, dryRun);
   let parsed: any = {};
   if (existsSync(filePath)) {
     const text = readFileSync(filePath, 'utf8');
@@ -378,7 +385,7 @@ function configureFile(
       } catch {}
       throw new Error(
         commented
-          ? `${filePath} has comments, and writing it would delete them; add the ambit server by hand`
+          ? `${filePath} has comments, and writing it would delete them; add the ${server.name} server by hand`
           : `${filePath} is not valid JSON; left unchanged`
       );
     }
@@ -389,37 +396,54 @@ function configureFile(
   if (kind === 'mcpServers' || kind === 'servers' || kind === 'context_servers') {
     if (!parsed[kind] || typeof parsed[kind] !== 'object') parsed[kind] = {};
     const servers = parsed[kind];
-    const existing = Object.hasOwn(servers, 'ambit') ? servers.ambit : undefined;
-    if (existing && startsAmbit(existing)) {
+    const existing = Object.hasOwn(servers, server.name) ? servers[server.name] : undefined;
+    const same =
+      server.name === 'ambit'
+        ? existing && startsAmbit(existing)
+        : existing &&
+          existing.command === server.command &&
+          JSON.stringify(existing.args ?? []) === JSON.stringify(server.args ?? []);
+    if (same) {
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
-      servers.ambit = entryOf(kind, serverCommand());
+      servers[server.name] = entryOf(kind, server);
     }
   } else if (kind === 'opencode') {
     if (!parsed.mcp || typeof parsed.mcp !== 'object') {
       parsed.mcp = {};
     }
-    // OpenCode 2 keeps servers under `mcp.servers` and switches one off with
-    // `disabled`; the entry goes into whichever shape the file is already in.
     const { bag, v2 } = mcpEntries(parsed);
     const servers = bag as Record<string, any>;
-    const existing = Object.hasOwn(servers, 'ambit') ? servers.ambit : undefined;
+    const existing = Object.hasOwn(servers, server.name) ? servers[server.name] : undefined;
     const off = existing && (existing.enabled === false || existing.disabled === true);
-    if (existing && !off) {
+    const same =
+      server.name === 'ambit'
+        ? existing && !off
+        : existing &&
+          JSON.stringify(existing.command ?? []) ===
+            JSON.stringify([server.command, ...server.args]);
+    if (same) {
       action = 'already_configured';
     } else {
       action = existing ? 'updated' : 'added';
-      const command = [...ambitCommand(), 'mcp'];
-      servers.ambit = v2
-        ? { type: 'local', command, disabled: false }
-        : { type: 'local', command, enabled: true };
+      const command = [server.command, ...server.args];
+      servers[server.name] = v2
+        ? {
+            type: 'local',
+            command,
+            disabled: false,
+            ...(server.env && Object.keys(server.env).length ? { environment: server.env } : {}),
+          }
+        : {
+            type: 'local',
+            command,
+            enabled: true,
+            ...(server.env && Object.keys(server.env).length ? { environment: server.env } : {}),
+          };
     }
   }
 
-  // The file is someone's own config, rewritten whole, so what it held is
-  // kept in `<file>.bak` first. A backup that cannot be made throws, and the
-  // file is left as it was.
   let backup: string | undefined;
   if (action !== 'already_configured' && !dryRun) {
     backup = keepBackup(filePath);
@@ -428,6 +452,15 @@ function configureFile(
   }
 
   return { action, backup };
+}
+
+/** Add or update the ambit entry in a client configuration. */
+function configureFile(
+  filePath: string,
+  kind: ConfigKind,
+  dryRun = false
+): { action: 'added' | 'updated' | 'already_configured'; backup?: string } {
+  return configureServerEntry(filePath, kind, { name: 'ambit', ...serverCommand() }, dryRun);
 }
 
 /** Connect Ambit as meta-MCP server to detected or specified agent runtimes. */
