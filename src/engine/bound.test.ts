@@ -80,3 +80,16 @@ test('conditionHolds parses the = and != DSL', () => {
   // Unrecognized conditions are not a narrowing.
   expect(conditionHolds('weird syntax', 'repo:ambit/main')).toBe(true);
 });
+
+test('a condition without a scope is refused, not silently ignored', () => {
+  const db = makeGraph(repo);
+  const res = grantAuthority(db, {
+    capability: 'combo:version-control',
+    mode: 'autonomous',
+    condition: 'branch!=main',
+  });
+  expect(res.error).toContain('--scope');
+  // Nothing was written.
+  expect(canExecute(db, { capability: 'combo:version-control' }).decision).toBe('DENY');
+  db.close();
+});

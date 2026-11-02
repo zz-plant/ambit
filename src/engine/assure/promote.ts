@@ -584,6 +584,11 @@ function grantAuthority(
   if (mode === 'forbidden' && (input.ttl || input.expires)) {
     return { error: 'A forbidden grant takes no TTL. Revoke it by declaring another mode.' };
   }
+  // A condition bounds a scope. Without one the gate would silently ignore it,
+  // which is a grant that looks narrower than it is.
+  if (input.condition && !input.scope) {
+    return { error: 'A condition bounds a scope; pass --scope=<target> too.' };
+  }
 
   let expiresAt: string | null = null;
   let expiresDesc = 'permanent';
