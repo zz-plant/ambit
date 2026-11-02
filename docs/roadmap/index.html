@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="https://zz-plant.github.io/ambit/og/roadmap.png" />
 <meta name="theme-color" content="#0f1013" />
 <link rel="icon" href="/ambit/favicon.svg" type="image/svg+xml" />
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit roadmap and design rationale","description":"Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks.","url":"https://zz-plant.github.io/ambit/docs/roadmap/","dateModified":"2026-10-30","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit roadmap and design rationale","item":"https://zz-plant.github.io/ambit/docs/roadmap/"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"TechArticle","headline":"Ambit roadmap and design rationale","description":"Ambit's design rationale, section by section: what each part decided, what is built, and what it still lacks.","url":"https://zz-plant.github.io/ambit/docs/roadmap/","dateModified":"2026-11-02","author":{"@type":"Person","name":"Kanav Jain"},"isPartOf":{"@type":"WebSite","name":"Ambit","url":"https://zz-plant.github.io/ambit/"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Ambit","item":"https://zz-plant.github.io/ambit/"},{"@type":"ListItem","position":2,"name":"Docs","item":"https://zz-plant.github.io/ambit/docs/"},{"@type":"ListItem","position":3,"name":"Ambit roadmap and design rationale","item":"https://zz-plant.github.io/ambit/docs/roadmap/"}]}]}</script>
 <style>
 @font-face{font-family:"Hubot Sans";font-weight:200 900;font-stretch:75% 125%;font-display:swap;src:url(/ambit/docs/fonts/hubot-sans.woff2) format("woff2")}@font-face{font-family:"Mona Sans";font-weight:200 900;font-display:swap;src:url(/ambit/docs/fonts/mona-sans.woff2) format("woff2")}@font-face{font-family:"Monaspace Neon";font-weight:400;font-display:swap;src:url(/ambit/docs/fonts/monaspace-neon.woff2) format("woff2")}
 :root{color-scheme:dark;--bg:#0f1013;--fg:#e8e8ea;--muted:#a4a7ae;--link:#7aa2f7;--line:#26282d;--code:#16171b;--panel:#14161a}
@@ -130,7 +130,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"><a href="#1-separate-capability-from-implementation--built">1</a></td>
 <td align="left">Separate capability from implementation</td>
 <td align="left">built</td>
-<td align="left"><code>resource</code> is a kind with little behind it: a model and a machine are both resources, and nothing reasons about capacity, location or contention. The half about actions carrying objects is §13&#39;s remainder.</td>
+<td align="left">Rationalized into adapters, upstreams, models and substrates. <code>resource</code> disambiguated into physical substrates and remote upstreams; bound affordances map actions to concrete target objects (§13.9, §18).</td>
 </tr>
 <tr>
 <td align="left"><a href="#2-put-the-human-and-the-machines-in-the-graph--partly-built">2</a></td>
@@ -148,7 +148,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"><a href="#4-detection-becomes-verification--built-and-gates">4</a></td>
 <td align="left">Detection becomes verification</td>
 <td align="left">built, and gates</td>
-<td align="left">Outside the three places §9 names, the gate is read and not obeyed. A failing check is re-run only when someone types it (<code>ambit verify --failing</code> runs every failing or recovering one at once).</td>
+<td align="left">Decoupled into orthogonal state (reachability) and assurance (empirical evidence). The semantic inversion of <code>degraded</code> is cured by <code>recovering</code>; raw check outcomes are binary (<code>passed</code>/<code>failed</code>) while node lifecycles reflect assurance levels (<code>proven</code>, <code>reliable</code>, <code>recovering</code>).</td>
 </tr>
 <tr>
 <td align="left"><a href="#5-goal--capability-delta--partly-built">5</a></td>
@@ -184,7 +184,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"><a href="#9-authority-as-a-first-class-edge--built-and-mediates-one-thing">9</a></td>
 <td align="left">Authority as a first-class edge</td>
 <td align="left">built, and mediates one thing</td>
-<td align="left">Runtimes other than Claude Code choose for themselves whether to ask the gate. A grant proposed from what interrupts a person waits on recording which command asked (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#g3-once-here-or-never">G3</a>).</td>
+<td align="left">The 6-rung Supervisory Ladder formalizes authority from <code>ungranted</code> to <code>autonomous</code>, harmonizing runtime gate verdicts (ALLOW/CHALLENGE/DENY) with progressive promotion on evidence.</td>
 </tr>
 <tr>
 <td align="left"><a href="#9b-the-record-it-writes-std-07--shipped">9b</a></td>
@@ -220,7 +220,7 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left"><a href="#14-the-economic-half--partly-built">14</a></td>
 <td align="left">The economic half</td>
 <td align="left">partly built</td>
-<td align="left">The marketplace, deliberately, until observed demand fills the catalog; and the reports need weeks of recorded work before they are worth trusting. Token and dollar attribution per capability, and local against hosted provider arbitrage, are unbuilt. Spend is recorded from Claude Code transcripts and Codex, OpenCode and Amp session logs as they are read, per hour, only on a model whose price a person declared (<code>ambit economics price</code>), and against the unscoped Hosted Inference budget; tokens from before a budget&#39;s current period are priced and not spent against it, and anything else that does not state its spend records none, so the ceiling-and-pace bar (<a href="https://github.com/zz-plant/ambit/blob/main/docs/interface-specs.md#l2-a-ceiling-with-a-forecast-tick">L2</a>) moves only once a price and a budget are set. Usage is reported in the five-hour windows subscription plans reset in, and never as a share of a plan&#39;s limit, which Ambit does not know.</td>
+<td align="left">Human agency accounting normalized into Compensatory Friction (mechanical shims and glue to automate away) versus Sovereign Discretion (judgment, ethics and fiduciary sign-off to preserve). Spend recorded from session logs against declared prices.</td>
 </tr>
 <tr>
 <td align="left"><a href="#15-the-control-plane--built-against-a-simulated-environment">15</a></td>
@@ -239,6 +239,12 @@ header a.cta,.button{background:var(--link);color:var(--bg);font-weight:650;text
 <td align="left">Defined outcomes</td>
 <td align="left">proposed, unbuilt</td>
 <td align="left">Versioned scenario definitions, attempts bound to their actual targets and setup, acceptance evidence, and comparisons across environments. Work runs, recorded outcomes, scoped authority and node checks supply parts of the foundation.</td>
+</tr>
+<tr>
+<td align="left"><a href="#18-ontological-rationalization--built-and-normalized">18</a></td>
+<td align="left">Ontological rationalization</td>
+<td align="left">built and normalized</td>
+<td align="left">Decoupled assurance from reachability; disambiguated provider collisions; unified 6-rung supervisory ladder; formal bound affordance calculus; normalized labor accounting (compensatory friction vs sovereign discretion).</td>
 </tr>
 </tbody></table>
 <h2 id="1-separate-capability-from-implementation--built"><a class="anchor" href="#1-separate-capability-from-implementation--built" aria-hidden="true" tabindex="-1">#</a>1. Separate capability from implementation — built</h2>
@@ -711,6 +717,100 @@ cross-machine capability routing → GitOps policy review → organizational fro
 <li>Repeated runs report acceptance, costs and human participation for observed conditions. General success probabilities need separate calibration.</li>
 </ul>
 <p><a href="/ambit/docs/affordance-frontier/#applications-worth-testing">Other applications</a> remain hypotheses. A paid service adds evidence about customer acceptance, cash movements and control over assets and returns. Less owner time alone establishes no increase in independence.</p>
+<h2 id="18-ontological-rationalization--built-and-normalized"><a class="anchor" href="#18-ontological-rationalization--built-and-normalized" aria-hidden="true" tabindex="-1">#</a>18. Ontological rationalization — built and normalized</h2>
+<p>As Ambit evolved from an exploratory tech tree into a runtime gate and supervisory control plane, its vocabulary accumulated historical collisions and semantic inversions. This section unifies and formalizes the underlying ontology without breaking continuous stored ledger history.</p>
+<h3 id="the-decoupled-assurance-model-state--assurance"><a class="anchor" href="#the-decoupled-assurance-model-state--assurance" aria-hidden="true" tabindex="-1">#</a>The decoupled assurance model: State × Assurance</h3>
+<p>Ambit&#39;s core claim is <code>installed ≠ working ≠ authorized</code>. The operational model reflects this by separating reachability from empirical evidence:</p>
+<pre><code>State (Reachability):   unconfigured ──► blocked ──► reached
+                                                       │
+Assurance (Evidence):   untested ◄─────────────────────┘
+                          │
+         ┌────────────────┴────────────────┐
+         │ check passes                    │ check fails
+         ▼                                 ▼
+       proven ◄───────────────────────── failing
+         │   ▲                             │
+  5 pass │   │                             │ check passes
+         ▼   │                             ▼
+      reliable ─────────────────────── recovering
+</code></pre>
+<ol>
+<li><strong>State</strong> (<code>unconfigured</code>, <code>blocked</code>, <code>reached</code>) answers whether the system is structurally wired to exercise a capability. It is continuous with the stored frontier snapshots.</li>
+<li><strong>Assurance</strong> (<code>untested</code>, <code>proven</code>, <code>reliable</code>, <code>recovering</code>, <code>failing</code>) reflects the empirical health of the capability&#39;s declared checks.</li>
+<li><strong>Curing the <code>degraded</code> inversion:</strong> Historically, <code>degraded</code> was overloaded: wire fields used it for failing nodes, while <code>vocabulary.ts</code> used it for recovering nodes. The model now standardizes on <code>recovering</code> for nodes whose latest check passed after recent failures, while <code>failing</code> represents nodes whose latest check failed.</li>
+<li><strong>Binary check runs:</strong> In <code>session_learning</code>, check runs record discrete outcomes: <code>passed</code> or <code>failed</code>. The word <code>verified</code> is preserved as an alias for backwards compatibility, but retired from row-level event semantics to prevent polysemic confusion with the assurance tier <code>proven</code>.</li>
+</ol>
+<h3 id="taxonomy-normalization"><a class="anchor" href="#taxonomy-normalization" aria-hidden="true" tabindex="-1">#</a>Taxonomy normalization</h3>
+<p>The historical <code>provider:</code> and <code>resource</code> collisions are disambiguated into functional layers:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Canonical Kind</th>
+<th align="left">Role</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong><code>capability</code></strong></td>
+<td align="left">Coarse node</td>
+<td align="left">An outcome or composition the system can bring about.</td>
+</tr>
+<tr>
+<td align="left"><strong><code>affordance</code></strong></td>
+<td align="left">Bound action</td>
+<td align="left">A concrete action bound to an object class (<code>git:commit</code> on <code>repo</code>).</td>
+</tr>
+<tr>
+<td align="left"><strong><code>adapter</code></strong></td>
+<td align="left">Tool / driver</td>
+<td align="left">An MCP server, CLI script, or skill supplying affordances.</td>
+</tr>
+<tr>
+<td align="left"><strong><code>upstream</code></strong></td>
+<td align="left">Remote service</td>
+<td align="left">Third-party APIs, inference endpoints, SaaS providers.</td>
+</tr>
+<tr>
+<td align="left"><strong><code>model</code></strong></td>
+<td align="left">Model weights</td>
+<td align="left">Generative or predictive model checkpoints.</td>
+</tr>
+<tr>
+<td align="left"><strong><code>substrate</code></strong></td>
+<td align="left">Compute host</td>
+<td align="left">Physical machines, local Docker daemons, execution environments.</td>
+</tr>
+<tr>
+<td align="left"><strong><code>credential</code></strong></td>
+<td align="left">Identity token</td>
+<td align="left">Secret handles (never secrets) used to authenticate adapters.</td>
+</tr>
+<tr>
+<td align="left"><strong><code>actor</code></strong></td>
+<td align="left">Principal</td>
+<td align="left">Human or team providing sovereign authority, budget, or oversight.</td>
+</tr>
+</tbody></table>
+<p>Existing stored node ids (e.g. <code>combo:version-control</code>, <code>provider:anthropic</code>, <code>model:claude-3-7-sonnet</code>) remain byte-stable so the frontier ledger&#39;s multi-month diffs remain unbroken. <code>kindOf</code> normalizes both legacy and modern prefixes into canonical kinds.</p>
+<h3 id="the-supervisory-ladder"><a class="anchor" href="#the-supervisory-ladder" aria-hidden="true" tabindex="-1">#</a>The Supervisory Ladder</h3>
+<p>Authority is unified from a coarse tri-state flag into a 6-rung progressive supervision model:</p>
+<p>$$\text{Rung 0: Ungranted} ;\rightarrow; \text{Rung 1: Forbidden} ;\rightarrow; \text{Rung 2: Attended} ;\rightarrow; \text{Rung 3: Thresholded} ;\rightarrow; \text{Rung 4: Budgeted} ;\rightarrow; \text{Rung 5: Autonomous}$$</p>
+<ul>
+<li><strong>Rung 0 (Ungranted):</strong> No grant declared. Default deny posture.</li>
+<li><strong>Rung 1 (Forbidden):</strong> Explicit refusal. Break-glass cannot override.</li>
+<li><strong>Rung 2 (Attended):</strong> Interactive human confirmation required on every invocation (<code>confirm</code>).</li>
+<li><strong>Rung 3 (Thresholded):</strong> Progressive promotion on evidence: unattended execution conditional on $N$ consecutive passing checks; falls back to Attended on one failure.</li>
+<li><strong>Rung 4 (Budgeted):</strong> Autonomous execution bounded by a standing financial or resource ceiling.</li>
+<li><strong>Rung 5 (Autonomous):</strong> Full unattended execution backed by retrospective audit trails.</li>
+</ul>
+<p>The runtime gate (<code>ambit gate</code>) resolves the active context against the ladder into instantaneous verdicts: <code>ALLOW</code>, <code>CHALLENGE</code>, or <code>DENY</code>.</p>
+<h3 id="human-agency-accounting-compensatory-friction-vs-sovereign-discretion"><a class="anchor" href="#human-agency-accounting-compensatory-friction-vs-sovereign-discretion" aria-hidden="true" tabindex="-1">#</a>Human Agency Accounting: Compensatory Friction vs. Sovereign Discretion</h3>
+<p>The economic optimization loop distinguishes two fundamentally different forms of human participation:</p>
+<p>$$\text{Labor} = \text{Compensatory Friction} ;\cup; \text{Sovereign Discretion}$$</p>
+<ul>
+<li><strong>Compensatory Friction</strong> (formerly &quot;middleware&quot;): The human acting as a mechanical shim, router, manual verifier, or clipboard because tooling or sandboxes are missing. Recurring friction represents an actionable capability deficit to automate away ($\lambda \cdot \text{reusable_capability_created}$).</li>
+<li><strong>Sovereign Discretion</strong> (formerly &quot;keeper&quot;): Essential human authority, ethical judgment, fiduciary risk assumption, and aesthetic intent. These are preserved by design and never counted as reducible friction.</li>
+</ul>
 <h2 id="sunset"><a class="anchor" href="#sunset" aria-hidden="true" tabindex="-1">#</a>Sunset</h2>
 <p>Anything that told you something interesting about the graph without changing what you should do is not a first-class feature. The 3D visualizer, <code>trend</code>, <code>recs</code>, <code>fork</code>, <code>insight</code>, <code>profile</code>, <code>prune</code>, the setup/token <code>budget</code>, the consultant/snapshot/trending stores, and <code>maturity_score</code> as a headline are gone or demoted. What is left groups under five nouns (graph, plan, check, govern, report), and <a href="/ambit/docs/deep-dive/#the-full-cli-surface">the deep dive</a> enumerates it. What stays is what establishes truth, measures dependence, supports decisions, and governs change.</p>
 <h2 id="the-through-line-the-living-ambit"><a class="anchor" href="#the-through-line-the-living-ambit" aria-hidden="true" tabindex="-1">#</a>The through-line: The Living Ambit</h2>
