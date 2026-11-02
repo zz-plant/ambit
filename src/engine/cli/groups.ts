@@ -32,6 +32,7 @@ const GROUPS: Record<string, string[]> = {
     'budget',
     'doctor',
     'connect',
+    'init',
     'init-rules',
     'receipt',
     'ci',

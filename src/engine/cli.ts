@@ -126,6 +126,7 @@ import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
 import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
 import { runInitRules } from './init-rules.ts';
+import { checkInit } from './checkInit.ts';
 import { runReceipt } from './receipt.ts';
 import { runCiCheck } from './ci-check.ts';
 import { judgeTasks, planDecision } from './decision/goals.ts';
@@ -466,6 +467,14 @@ async function runCommand(
           raiseExitCode(1);
       }
       break;
+    case 'init': {
+      // Scaffolds a declared check that is provably read-only, and prints it.
+      // It never registers anything: a check is a command, and the person is
+      // the one who pastes it and types verify.
+      const r = checkInit(db, arg ?? '', { command: value('command') });
+      emit(r);
+      break;
+    }
     case 'fix': {
       // A printer, not a writer: what to type for a capability that is failing
       // or not yet reached, and the acquisition options with their patches.
