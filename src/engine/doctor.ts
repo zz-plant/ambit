@@ -6,12 +6,21 @@ import { singlePointsOfFailure } from './inference.ts';
 import { clientConfigs } from './mcp-clients.ts';
 import { parseJsonc } from '../shared/opencode.ts';
 import { checkableNames } from './assurance.ts';
+import { carryById } from './weight.ts';
+import { carryByRuntime } from '../shared/carry.ts';
 
 export interface DoctorRuntime {
   runtime: string;
   label: string;
   path: string;
   has_ambit: boolean;
+}
+
+export interface DoctorBloat {
+  runtime: string;
+  tokens: number;
+  servers: number;
+  ceiling: number;
 }
 
 export interface DoctorReport {
@@ -30,6 +39,7 @@ export interface DoctorReport {
   };
   spofs: { capability: string; provider: string }[];
   runtimes_detected: DoctorRuntime[];
+  bloat?: DoctorBloat[];
   recommendations: string[];
 }
 
@@ -201,6 +211,35 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       `${fixable.length} ${fixable.length === 1 ? 'capability rests' : 'capabilities rest'} on one server or model alone: "ambit status" lists them, and a second provider for any of them raises the grade`
     );
   }
+
+  const bloat: DoctorBloat[] = [];
+  try {
+    const carried = carryById(db);
+    if (carried.size > 0) {
+      const byRuntime = carryByRuntime(
+        [...carried.values()].map(c => ({ tokens: c.tokens, runtimes: c.runtimes }))
+      );
+      for (const r of byRuntime) {
+        if (r.tokens > 15000) {
+          bloat.push({
+            runtime: r.runtime,
+            tokens: r.tokens,
+            servers: r.servers,
+            ceiling: 15000,
+          });
+        }
+      }
+    }
+  } catch {
+    // skip if carryById fails or table missing
+  }
+
+  for (const b of bloat) {
+    recommendations.push(
+      `Context bloat: ${b.runtime} carries ${(b.tokens / 1000).toFixed(1)}K tokens of tool schemas per session. Run "ambit weigh" to inspect heaviest tools`
+    );
+  }
+
   recommendations.push('Inspect interactive tech tree: run "ambit web" to explore your setup map');
 
   const reach = reachPhrase(db);
@@ -225,6 +264,7 @@ export function runDoctor(db: Db, home?: string): DoctorReport {
       provider: String(s.provider || ''),
     })),
     runtimes_detected: runtimes,
+    bloat: bloat.length ? bloat : undefined,
     recommendations,
   };
 }

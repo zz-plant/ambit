@@ -1185,6 +1185,15 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
       .join(', ');
     lines.push(`${GUTTER}Runtimes: ${runtimes}`);
   }
+  if (report.bloat?.length) {
+    lines.push('', `${GUTTER}${c.yellow}Context bloat warnings:${c.reset}`);
+    for (const b of report.bloat) {
+      const kTokens = (b.tokens / 1000).toFixed(1);
+      lines.push(
+        `  ${c.yellow}!${c.reset} ${b.runtime} carries ${c.bold}${kTokens}K tokens${c.reset} of tool schemas across ${b.servers} servers (${Math.round((b.tokens / b.ceiling) * 100)}% of ${b.ceiling / 1000}K ceiling)`
+      );
+    }
+  }
   if (report.recommendations.length) {
     lines.push('', `${GUTTER}${c.bold}What to do${c.reset}`);
     report.recommendations.forEach((r, i) => {
@@ -1300,6 +1309,120 @@ function explain(wanted: string): void {
     console.log(`${paint.grey}ambit help <term> for one of these on its own.${paint.reset}\n`);
 }
 
+function renderPort(result: any, c: Palette = C): string[] {
+  if (result.error) return formatGeneric(result, c);
+  if (result.servers) {
+    const lines = [
+      '',
+      `${GUTTER}${c.bold}MCP Servers across agent runtimes${c.reset}`,
+      `${GUTTER}${c.grey}${result.summary}${c.reset}`,
+      `${GUTTER}${c.grey}${'─'.repeat(64)}${c.reset}`,
+    ];
+    for (const s of result.servers) {
+      const conf = s.configured_in.join(', ');
+      const avail = s.available_to_port.length
+        ? ` · ${c.grey}can port to: ${s.available_to_port.join(', ')}${c.reset}`
+        : ` · ${c.green}in all detected runtimes${c.reset}`;
+      lines.push(`  ${c.bold}${s.name.padEnd(20)}${c.reset} ${conf}${avail}`);
+    }
+    lines.push(
+      '',
+      `${GUTTER}To port a server to another agent:`,
+      `  ${c.accent}ambit port <server> --to=<runtime>${c.reset}`,
+      `  e.g. ambit port ${result.servers[0]?.name || 'playwright'} --to=claude-code`,
+      ''
+    );
+    return lines;
+  }
+
+  const lines = [''];
+  if (result.dry_run) {
+    lines.push(`${GUTTER}${c.yellow}[dry run] Would port ${result.server}:${c.reset}`);
+  }
+  for (const r of result.results || []) {
+    const act =
+      r.action === 'already_configured'
+        ? 'already configured in'
+        : r.action === 'updated'
+          ? 'updated in'
+          : 'ported to';
+    const mark = r.action === 'already_configured' ? `${c.grey}=` : `${c.green}✓`;
+    lines.push(`  ${mark} ${result.server} ${act} ${r.label} (${r.path})${c.reset}`);
+    if (r.backup) {
+      lines.push(`    ${c.grey}Backup saved to ${r.backup}${c.reset}`);
+    }
+  }
+  lines.push('');
+  return lines;
+}
+
+function renderRepo(report: any, c: Palette = C): string[] {
+  if (report.error) return formatGeneric(report, c);
+  const stack = report.repo;
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}Repository stack in ${stack.name}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(50)}${c.reset}`,
+  ];
+  if (stack.languages?.length)
+    lines.push(`  ${c.grey}Languages:   ${c.reset}${stack.languages.join(', ')}`);
+  if (stack.frameworks?.length)
+    lines.push(`  ${c.grey}Frameworks:  ${c.reset}${stack.frameworks.join(', ')}`);
+  if (stack.databases?.length)
+    lines.push(`  ${c.grey}Databases:   ${c.reset}${stack.databases.join(', ')}`);
+  if (stack.testing?.length)
+    lines.push(`  ${c.grey}Testing:     ${c.reset}${stack.testing.join(', ')}`);
+  if (stack.infra?.length)
+    lines.push(`  ${c.grey}Infra:       ${c.reset}${stack.infra.join(', ')}`);
+
+  if (report.superpowers?.length) {
+    lines.push('', `${GUTTER}${c.bold}Recommended agent superpowers for this project:${c.reset}`);
+    report.superpowers.forEach((sp: any, i: number) => {
+      lines.push(`  ${c.accent}${i + 1}. ${sp.title}${c.reset}`);
+      lines.push(`     ${sp.reason}`);
+      if (sp.command) {
+        lines.push(`     ${c.accent}${sp.command}${c.reset}`);
+      }
+    });
+  } else {
+    lines.push(
+      '',
+      `  ${c.green}✓ Your agent setup already carries tools matching this project stack.${c.reset}`
+    );
+  }
+  lines.push('');
+  return lines;
+}
+
+function renderToggle(result: any, c: Palette = C): string[] {
+  if (result.error) return formatGeneric(result, c);
+  const lines = [''];
+  const dry = result.dry_run ? `${c.yellow}[dry run] ${c.reset}` : '';
+  const stateWord = result.state === 'disabled' ? 'Disabled' : 'Enabled';
+  const color = result.state === 'disabled' ? c.yellow : c.green;
+
+  lines.push(`${GUTTER}${dry}${color}${c.bold}${stateWord} ${result.server}${c.reset}`);
+
+  for (const r of result.results || []) {
+    if (r.state === 'unchanged') {
+      lines.push(`  ${c.grey}= ${r.label} (${r.path}) · already ${result.state}${c.reset}`);
+    } else {
+      lines.push(`  ${c.green}✓ ${r.label} (${r.path})${c.reset}`);
+      if (r.backup) {
+        lines.push(`    ${c.grey}Backup saved to ${r.backup}${c.reset}`);
+      }
+    }
+  }
+
+  const opposite = result.state === 'disabled' ? '--on' : '--off';
+  lines.push(
+    '',
+    `${GUTTER}${c.grey}To switch back: ambit toggle ${result.server} ${opposite}${c.reset}`,
+    ''
+  );
+  return lines;
+}
+
 export {
   ago,
   briefReport,
@@ -1308,6 +1431,9 @@ export {
   renderNext,
   renderApply,
   renderDoctor,
+  renderPort,
+  renderRepo,
+  renderToggle,
   renderCarry,
   renderWindows,
   renderPlan,

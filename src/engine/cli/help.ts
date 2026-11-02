@@ -33,6 +33,9 @@ const HELP_SHORT = `ambit - what your setup can do, what it costs, what to chang
   impact <id>       what actually breaks if a capability goes away
   doctor            setup health: what works, what fails, what rests on one piece
   connect [runtime] register Ambit's MCP server in each runtime config it can write
+  port [server]     port MCP tools between agent runtimes (Claude, Cursor, Codex, etc.)
+  toggle <server>   toggle an MCP server on or off across agent runtimes to manage context
+  repo [dir]        detect project stack and recommend tailored agent superpowers
 
   Grouped: graph · plan · check · govern · report — try \`ambit plan\`
   A decision is taken --by=<person>, or by the one person declared. A report
@@ -99,6 +102,7 @@ plan — what to acquire next, and whether it paid
                           single points of failure, where capex would produce the most
   plan reversible         which unreached capabilities could be acquired without
                           a person, and which need hands
+  plan repo [dir]         inspect project stack and recommend tailored agent superpowers
   plan judge goal <sentence> [--multi] [--threshold=0.8] [--record]   which
                           capability a sentence means: the vocabulary first,
                           then a judgment model for what it could not route;
@@ -180,6 +184,8 @@ check — what is proven, what is permitted, what is currently broken
                           each conversation's tool runs into the work ledger;
                           claude-code --statusline sets ambit statusline as the
                           status line where none is set, and never replaces one
+  check port [server] [--to=<runtime|all>] [--from=<runtime>] [--dry-run]
+                          port an MCP server between agent runtimes (Claude, Cursor, Codex, etc.)
   check init-rules        inject pre-flight guidance into workspace agent rules
   check receipt [hours]   what the ledger recorded: capabilities used, calls
                           stopped before running, failures reported

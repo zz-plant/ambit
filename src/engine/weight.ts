@@ -67,6 +67,8 @@ interface ToolServer {
   id: string;
   /** Every runtime whose config declares it switched on. */
   runtimes: string[];
+  /** Every runtime whose config declares this server, enabled or not. */
+  declared_runtimes?: string[];
   command?: string;
   args: string[];
   env: Record<string, string>;
@@ -148,10 +150,14 @@ function toolServers(home = process.env.HOME || '/'): ToolServer[] {
         name,
         id: `mcp:${name}`,
         runtimes: launch.enabled ? [runtime] : [],
+        declared_runtimes: [runtime],
         cwd,
         ...launch,
       });
       return;
+    }
+    if (!known.declared_runtimes?.includes(runtime)) {
+      known.declared_runtimes = [...(known.declared_runtimes ?? []), runtime];
     }
     if (!launch.enabled) return;
     if (!known.runtimes.includes(runtime)) known.runtimes.push(runtime);

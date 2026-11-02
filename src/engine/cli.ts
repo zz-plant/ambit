@@ -23,6 +23,9 @@ import {
   renderNext,
   renderApply,
   renderDoctor,
+  renderPort,
+  renderRepo,
+  renderToggle,
   renderWindows,
   renderPlan,
   renderSpec,
@@ -122,6 +125,9 @@ import {
   rollbackProposal,
 } from './governance.ts';
 import { runDoctor } from './doctor.ts';
+import { listPortStatus, portServer } from './port.ts';
+import { toggleServer } from './toggle.ts';
+import { analyzeRepo } from './repo-inspect.ts';
 import { claudeHookOutput, claudeHookSnippet, gateToolCall } from './gate.ts';
 import { statusLine } from './statusline.ts';
 import { runConnect } from './connect.ts';
@@ -185,9 +191,13 @@ async function runCommand(
     }
     case 'next': {
       const palette = terminalPalette();
-      emit(nextSteps(db, Number(arg) || undefined), r =>
-        r.error ? formatGeneric(r, palette) : renderNext(r, palette)
-      );
+      if (flags.has('--repo')) {
+        emit(analyzeRepo(), r => renderRepo(r, palette));
+      } else {
+        emit(nextSteps(db, Number(arg) || undefined), r =>
+          r.error ? formatGeneric(r, palette) : renderNext(r, palette)
+        );
+      }
       break;
     }
     case 'council':
@@ -901,6 +911,33 @@ async function runCommand(
           statusline: flags.has('--statusline'),
         })
       );
+      break;
+    }
+    case 'port': {
+      const palette = terminalPalette();
+      if (!arg) {
+        emit(listPortStatus(), r => renderPort(r, palette));
+      } else {
+        const to = value('to');
+        const from = value('from');
+        const dryRun = flags.has('--dry-run');
+        emit(portServer(arg, { to, from, dryRun }), r => renderPort(r, palette));
+      }
+      break;
+    }
+    case 'toggle': {
+      const palette = terminalPalette();
+      const off = flags.has('--off');
+      const on = flags.has('--on');
+      const to = value('to') || value('runtime');
+      const dryRun = flags.has('--dry-run');
+      emit(toggleServer(arg, { off, on, to, dryRun }), r => renderToggle(r, palette));
+      break;
+    }
+    case 'repo': {
+      const palette = terminalPalette();
+      const dir = arg || process.cwd();
+      emit(analyzeRepo(dir), r => renderRepo(r, palette));
       break;
     }
     case 'init-rules': {

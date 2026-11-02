@@ -19,6 +19,7 @@ const GROUPS: Record<string, string[]> = {
     'portfolio',
     'reversible',
     'judge',
+    'repo',
   ],
   check: [
     'verify',
@@ -32,6 +33,8 @@ const GROUPS: Record<string, string[]> = {
     'budget',
     'doctor',
     'connect',
+    'port',
+    'toggle',
     'init',
     'init-rules',
     'receipt',
