@@ -167,6 +167,10 @@ check — what is proven, what is permitted, what is currently broken
   check incidents [resolve <svc> <outcome>]   probe the manifest, record each
                           answer as a check and open incident runs for offline
                           services; or close one, with MTTR from the ledger
+  check init <cap> [--command="<probe>"]   scaffold a declared check, and print
+                          it. Refuses a command that would write (redirects,
+                          rm, tee, curl -o, git push, installs); nothing is
+                          registered, you paste the block and type ambit verify
   check doctor            setup health: what works, what fails, what rests on one piece
   check connect [runtime] register Ambit's MCP server in each runtime config it can
                           write; cursor --ledger also adds the hooks that record
