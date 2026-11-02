@@ -131,7 +131,7 @@ function grantsFor(db: Db, target: string) {
     try {
       const e = db
         .prepare(
-          `SELECT SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passes,
+          `SELECT SUM(CASE WHEN action IN ('verified', 'passed') THEN 1 ELSE 0 END) AS passes,
                   SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures
            FROM session_learning WHERE capability_id = ? AND object = ?`
         )

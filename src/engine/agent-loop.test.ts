@@ -605,7 +605,7 @@ describe('authority that widens on evidence', () => {
           .prepare("SELECT lifecycle FROM capabilities WHERE id = 'combo:version-control'")
           .get() as any
       ).lifecycle;
-    expect(lifecycle()).toBe('degraded');
+    expect(lifecycle()).toBe('recovering');
 
     expect(evaluatePromotions(db).promoted).toHaveLength(0);
     // Usable, so the grant decides, and the grant still asks.
@@ -758,7 +758,7 @@ describe('re-running what is failing', () => {
       // One pass brings it back: the latest check decides. Its record is
       // still mixed, so it is recovering, usable and not yet proven, and the
       // run says how its recent checks went.
-      expect(lifecycle('skill:deploy-notes')).toBe('degraded');
+      expect(lifecycle('skill:deploy-notes')).toBe('recovering');
       expect(usable(lifecycle('skill:deploy-notes'))).toBe(true);
       expect(again.now_unavailable).toBeUndefined();
       expect(again.recovering).toEqual([

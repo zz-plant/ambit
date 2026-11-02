@@ -189,7 +189,7 @@ function evidenceCount(db: Db, capability: string, days: number, scope?: string)
   const checks = db
     .prepare(
       `SELECT
-         SUM(CASE WHEN action = 'verified' THEN 1 ELSE 0 END) AS passes,
+         SUM(CASE WHEN action IN ('verified', 'passed') THEN 1 ELSE 0 END) AS passes,
          SUM(CASE WHEN action = 'failed' THEN 1 ELSE 0 END) AS failures,
          MAX(timestamp) AS last_seen
        FROM session_learning
@@ -312,7 +312,7 @@ function evaluatePromotions(db: Db) {
     const runs = db
       .prepare(
         `SELECT timestamp FROM session_learning
-         WHERE capability_id = ? AND action = 'verified' AND timestamp >= datetime('now', ?)
+         WHERE capability_id = ? AND action IN ('verified', 'passed') AND timestamp >= datetime('now', ?)
          ORDER BY timestamp DESC LIMIT 20`
       )
       .all(g.capability_id, `-${days} days`)
