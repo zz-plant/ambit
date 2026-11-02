@@ -48,6 +48,8 @@ export interface StepCandidate {
   blocks: number;
   /** What it unblocks per hour of setup, itself included. */
   leverage: number;
+  /** Project-context tiebreak: 1 when the project's manifests name it. */
+  boost?: number;
 }
 
 const reachedIn = (node: StepNode | undefined): boolean => Boolean(node?.configured && node.usable);
@@ -126,10 +128,12 @@ export function stepCandidates(graph: StepGraph): StepCandidate[] {
  * the tree's order, which the seed and the page both take from `placeOnTree`,
  * so the two name the same step.
  */
-export function rankSteps<C extends Pick<StepCandidate, 'blocks' | 'leverage'>>(
-  candidates: readonly C[]
-): C[] {
-  return [...candidates].sort((a, b) => b.blocks - a.blocks || b.leverage - a.leverage);
+export function rankSteps<
+  C extends Pick<StepCandidate, 'blocks' | 'leverage'> & { boost?: number },
+>(candidates: readonly C[]): C[] {
+  return [...candidates].sort(
+    (a, b) => b.blocks - a.blocks || b.leverage - a.leverage || (b.boost ?? 0) - (a.boost ?? 0)
+  );
 }
 
 /**

@@ -20,6 +20,7 @@ import { recovering } from './assure/lifecycle.ts';
 import { listProposals } from './governance.ts';
 import { ledgerSince } from './ledger.ts';
 import { andList, nextSteps } from './next.ts';
+import { projectContextBoosts } from './projectContext.ts';
 import { council, councilLines } from './council.ts';
 import { signalReport } from './failures.ts';
 import {
@@ -65,6 +66,21 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
   if (!seeded) return { environment: 'not seeded', ...notSeeded() };
 
   const g = graphCounts(db);
+
+  // What the working directory's manifests suggest the project needs. A hint,
+  // not a decision: `nextSteps` already uses it as a tiebreak.
+  const projectIds = [...projectContextBoosts()];
+  const project = projectIds.length
+    ? db
+        .prepare(
+          `SELECT name FROM capabilities
+           WHERE id IN (${projectIds.map(() => '?').join(',')})
+             AND state NOT IN ('unlocked', 'active')
+           ORDER BY name`
+        )
+        .all<any>(...projectIds)
+        .map((r: any) => r.name)
+    : [];
 
   // A contract action whose check fails is the finest-grained thing this model
   // can say is broken, so the list below names it. It is not counted with the
@@ -131,6 +147,7 @@ function briefing(db: Db, options: { mark?: boolean } = {}) {
         ? ` · ${failingActions} failing ${failingActions === 1 ? 'action' : 'actions'}`
         : ''),
     broken: broken.length ? broken.map(b => ({ id: b.id, name: b.name })) : undefined,
+    project: project.length ? project : undefined,
     // Usable, and counted as such above. Named, so an agent that meets a
     // failure from one knows its record was already mixed.
     recovering: back.length ? back : undefined,
@@ -204,6 +221,12 @@ function briefingText(db: Db, options: { mark?: boolean } = {}): string {
 
   const parts: Array<string | null> = [
     `Ambit · ${b.environment}.`,
+    line(
+      'Project context',
+      b.project?.length
+        ? `${b.project.join(', ')} — this directory's manifests point here; next steps lean toward these`
+        : null
+    ),
     line(
       'Broken',
       b.broken?.map((x: any) => `${x.name} (${x.id})`).join(', ') &&

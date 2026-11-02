@@ -27,6 +27,7 @@ import {
   renderPlan,
   renderSpec,
   renderStatus,
+  renderFix,
   statusReport,
 } from './cli/reports.ts';
 import { runSeed } from './cli/seed.ts';
@@ -104,7 +105,8 @@ import { roiFor, roiSummary } from './roi.ts';
 import { exportSummary, importSummary } from './federation.ts';
 import { portfolio } from './portfolio.ts';
 import { incidents, resolveIncident } from './incident.ts';
-import { catalogReport } from './catalog.ts';
+import { catalogReport, installText } from './catalog.ts';
+import { recheckCommand } from './vocabulary.ts';
 import { auditFor } from './audit.ts';
 import {
   addPerson,
@@ -464,6 +466,40 @@ async function runCommand(
           raiseExitCode(1);
       }
       break;
+    case 'fix': {
+      // A printer, not a writer: what to type for a capability that is failing
+      // or not yet reached, and the acquisition options with their patches.
+      const r = named(arg);
+      if (!('id' in r)) {
+        emit(r);
+        break;
+      }
+      const node = db
+        .prepare('SELECT id, name, state, lifecycle FROM capabilities WHERE id = ?')
+        .get(r.id) as any;
+      if (!node) {
+        emit({ error: `No capability ${r.id} in the graph. Run ambit seed first.` });
+        break;
+      }
+      const catalog = catalogReport(db, node.id) as any;
+      const options = (catalog.options ?? []).map((o: any) => ({
+        ...o,
+        install: installText(node.id, o),
+      }));
+      const palette = terminalPalette();
+      emit(
+        {
+          capability: node.name,
+          id: node.id,
+          state: node.state,
+          lifecycle: node.lifecycle,
+          check: recheckCommand(node.id),
+          options,
+        },
+        report => renderFix(report, palette)
+      );
+      break;
+    }
     case 'authority': {
       // Grants, then per-capability actions, then scope coverage, then the
       // thresholds that widen a grant on evidence — one verb.

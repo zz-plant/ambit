@@ -41,6 +41,18 @@ node --experimental-sqlite "$ROOT/src/engine/engine.ts" seed
 # "28/69 capabilities" seconds before `ambit status` said "15/41".
 node --experimental-sqlite --disable-warning=ExperimentalWarning "$ROOT/src/engine/engine.ts" status --brief 2>/dev/null || true
 
+# The first three commands, in the order they answer the question a new user
+# actually has. The readout above names the step; this names the sequence.
+echo ""
+echo "First run:"
+echo "  1. $ROOT/cli.js verify      # run the checks that exist, so 'verified' means something"
+echo "  2. $ROOT/cli.js next        # the three capabilities worth reaching next, and why"
+if [ "$MODE" = "web" ]; then
+  echo "  3. open http://localhost:3000   # the same, on the map"
+else
+  echo "  3. ./bootstrap.sh web       # the same, on the map"
+fi
+
 # Link the \`ambit\` command onto the PATH when ~/.local/bin is on it.
 echo ""
 if command -v ambit >/dev/null 2>&1; then

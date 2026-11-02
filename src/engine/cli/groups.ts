@@ -22,6 +22,7 @@ const GROUPS: Record<string, string[]> = {
   ],
   check: [
     'verify',
+    'fix',
     'authority',
     'can',
     'gate',

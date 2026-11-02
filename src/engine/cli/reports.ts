@@ -1195,6 +1195,65 @@ function renderDoctor(report: DoctorReport, c: Palette = C): string[] {
   return lines;
 }
 
+/**
+ * `ambit fix <capability>` as a person reads it: what state it is in, the one
+ * command that re-checks it, and — for something not yet reached — the ways to
+ * acquire it, each with the config patch a person can paste.
+ *
+ * It prints and never writes. The point is to remove the "what do I type now?"
+ * step, not to become a package manager.
+ */
+function renderFix(report: any, c: Palette = C): string[] {
+  if (report.error) return formatGeneric(report, c);
+  const head = `Fix ${report.capability}`;
+  const lines = [
+    '',
+    `${GUTTER}${c.bold}${head}${c.reset}`,
+    `${GUTTER}${c.grey}${'─'.repeat(head.length)}${c.reset}`,
+  ];
+  const row = (label: string, value: string) =>
+    `${GUTTER}${c.grey}${label.padEnd(9)}${c.reset}  ${value}`;
+  if (report.state) lines.push(row('state', String(report.state)));
+  if (report.lifecycle) lines.push(row('lifecycle', String(report.lifecycle)));
+  if (report.lifecycle === 'broken') {
+    lines.push(
+      `${GUTTER}${c.yellow}Its last check failed.${c.reset} Re-run it, then look at what the check said:`
+    );
+  } else if (report.state && report.state !== 'unlocked' && report.state !== 'active') {
+    lines.push(`${GUTTER}${c.grey}Not reached yet.${c.reset} The ways to acquire it are below.`);
+  }
+  lines.push('', `${GUTTER}${c.bold}Check${c.reset}  ${c.bold}${report.check}${c.reset}`);
+  const options: any[] = report.options ?? [];
+  if (options.length) {
+    lines.push('', `${GUTTER}${c.bold}Ways to acquire it${c.reset}`);
+    for (const o of options) {
+      const cost = [
+        o.setup ? `setup ${o.setup}` : null,
+        o.total_first_year_dollars != null ? `$${o.total_first_year_dollars}/yr` : null,
+        o.recurring_dollars_per_month != null ? `$${o.recurring_dollars_per_month}/mo` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      lines.push(
+        `  ${c.accent}›${c.reset} ${o.provider}${cost ? ` ${c.grey}· ${cost}${c.reset}` : ''}`
+      );
+      if (o.install) {
+        for (const line of o.install.split('\n')) lines.push(`     ${c.grey}${line}${c.reset}`);
+      }
+    }
+  } else {
+    lines.push(
+      `${GUTTER}${c.grey}No catalogued acquisition. \`ambit goal ${shellQuote(report.id.replace(/^combo:/, ''))}\` routes the longer path.${c.reset}`
+    );
+  }
+  lines.push(
+    '',
+    `${GUTTER}${c.grey}This command prints; it never writes. \`ambit apply\` is the only writer, and only for an approved proposal.${c.reset}`,
+    ''
+  );
+  return lines;
+}
+
 /** The concept glossary, shared with the visualiser so the two cannot drift. */
 function explain(wanted: string): void {
   const { concepts } = JSON.parse(
@@ -1256,6 +1315,7 @@ export {
   evidenceReport,
   statusReport,
   renderStatus,
+  renderFix,
   worries,
   explain,
   type BriefReport,
