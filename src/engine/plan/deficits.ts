@@ -115,7 +115,11 @@ function recordFailure(db: Db, capId?: string, classifier?: string, note?: strin
 function deficits(db: Db) {
   const rows = db
     .prepare(
-      `SELECT s.capability_id id, COUNT(*) AS times, MAX(s.timestamp) AS last_seen, c.name, c.state, c.lifecycle
+      `SELECT s.capability_id id, COUNT(*) AS times, MAX(s.timestamp) AS last_seen, c.name, c.state, c.lifecycle,
+              (SELECT s2.notes FROM session_learning s2
+               WHERE s2.capability_id = s.capability_id
+                 AND (s2.action = 'blocked' OR s2.action LIKE 'blocked:%')
+               ORDER BY s2.id DESC LIMIT 1) AS why
        FROM session_learning s JOIN capabilities c ON c.id = s.capability_id
        WHERE s.action = 'blocked' OR s.action LIKE 'blocked:%'
        GROUP BY s.capability_id ORDER BY times DESC, last_seen DESC`
@@ -155,6 +159,10 @@ function deficits(db: Db) {
     id: r.id,
     times_blocked: r.times,
     last_seen: r.last_seen,
+    // What the most recent block was trying to use, when the record says: the
+    // note a person typed, or the tool a bridge attributed the block to. This
+    // is what turns "N blocks on embeddings" into a sentence.
+    why: typeof r.why === 'string' && r.why.trim() ? r.why.trim() : undefined,
     still_missing: r.state === 'locked' || !usable(r.lifecycle),
     // The classification distribution, not just the count: a deficit that
     // recurs as the same cause is structural; one that recurs as several

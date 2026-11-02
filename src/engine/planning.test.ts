@@ -33,6 +33,26 @@ test('deficits rank by how often something actually blocked work', () => {
   db.close();
 });
 
+test('a deficit says what the last block was trying to use, when the record does', () => {
+  const db = makeGraph({ capabilities: [{ id: 'combo:x', name: 'X' }] });
+  learn(db, 'combo:x', 'blocked', { notes: 'semantic search over notes' });
+  learn(db, 'combo:x', 'blocked', { notes: 'vector index missing' });
+
+  const rows = deficits(db) as any[];
+  // The most recent block's note, not a join of all of them.
+  expect(rows[0].why).toBe('vector index missing');
+  db.close();
+});
+
+test('a deficit without a note carries no invented why', () => {
+  const db = makeGraph({ capabilities: [{ id: 'combo:x', name: 'X' }] });
+  learn(db, 'combo:x', 'blocked');
+
+  const rows = deficits(db) as any[];
+  expect(rows[0].why).toBeUndefined();
+  db.close();
+});
+
 test('a block class is carried through so the reason survives the count', () => {
   const db = makeGraph({ capabilities: [{ id: 'combo:x', name: 'X' }] });
   learn(db, 'combo:x', 'blocked:credential');
