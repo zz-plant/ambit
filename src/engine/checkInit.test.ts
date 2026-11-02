@@ -27,6 +27,12 @@ test('a read-only command scaffolds a verify block', () => {
   db.close();
 });
 
+test('redirecting to /dev/null or a descriptor is read-only, a file is not', () => {
+  expect(readOnlyViolation('command -v tsc >/dev/null 2>&1')).toBeUndefined();
+  expect(readOnlyViolation('curl -sf https://example.com >/dev/null')).toBeUndefined();
+  expect(readOnlyViolation('echo x > /tmp/ambit-check.txt')).toContain('redirect');
+});
+
 test('no command yields a placeholder with guidance, never a registration', () => {
   const db = graph();
   const r = checkInit(db, 'x');

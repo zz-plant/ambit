@@ -1,5 +1,5 @@
 /**
- * Scaffold a declared check that is provably read-only.
+ * Scaffold a declared check that is read-only.
  *
  * `ambit check init <capability>` prints a `verify` block for the person to
  * paste into the tree (or a config overlay). A check is a command that runs on
@@ -16,8 +16,6 @@ const DEFAULT_TIMEOUT_SECONDS = 10;
 
 /** A shell token that writes, however it is spelled. */
 const WRITE_TOKENS: { re: RegExp; why: string }[] = [
-  { re: />\s*\S/, why: 'redirect a file (>)' },
-  { re: />>/, why: 'append to a file (>>)' },
   { re: /\b(rm|mv|cp|dd|truncate|touch|mkdir|chmod|chown|ln)\b/, why: 'mutate the filesystem' },
   { re: /\btee\b/, why: 'write a stream to a file' },
   { re: /curl[^\n]*\s-(o|O)\b/, why: 'write a file with curl (-o/-O)' },
@@ -33,10 +31,24 @@ const WRITE_TOKENS: { re: RegExp; why: string }[] = [
   { re: /\b(openssl|ssh-keygen)\s+(genrsa|genpkey|req)\b/, why: 'write keys' },
 ];
 
+/**
+ * Whether a `>` redirect names a real file. `/dev/null` and a file-descriptor
+ * redirect (`2>&1`, `2> /dev/null`) are how read-only probes silence their
+ * output; everything else is writing a file.
+ */
+function redirectsToFile(command: string): boolean {
+  const redirects = command.match(/[0-9]?>(\s*\S+)/g) ?? [];
+  return redirects.some(r => {
+    const target = r.replace(/^\d?>/, '').trim();
+    return target !== '/dev/null' && !/^&\d+$/.test(target);
+  });
+}
+
 /** Why a command would write, or undefined when none of the obvious shapes match. */
 function readOnlyViolation(command: string): string | undefined {
   const seen = WRITE_TOKENS.find(w => w.re.test(command));
-  return seen ? seen.why : undefined;
+  if (seen) return seen.why;
+  return redirectsToFile(command) ? 'redirect a file (>), unless it is /dev/null' : undefined;
 }
 
 /** The scaffolded block, from a command a person typed or a placeholder. */
